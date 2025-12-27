@@ -12,12 +12,12 @@ import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 
 const COLORS = [
-  { name: "Standard", value: "bg-card" },
-  { name: "Gelb", value: "bg-yellow-100 dark:bg-yellow-900/30" },
-  { name: "Grün", value: "bg-green-100 dark:bg-green-900/30" },
-  { name: "Blau", value: "bg-blue-100 dark:bg-blue-900/30" },
-  { name: "Rosa", value: "bg-pink-100 dark:bg-pink-900/30" },
-  { name: "Lila", value: "bg-purple-100 dark:bg-purple-900/30" },
+  { name: "Standard", value: "#3b82f6" },
+  { name: "Gelb", value: "#f59e0b" },
+  { name: "Grün", value: "#10b981" },
+  { name: "Blau", value: "#06b6d4" },
+  { name: "Rosa", value: "#f472b6" },
+  { name: "Lila", value: "#8b5cf6" },
 ];
 
 interface MyWorkQuickCaptureProps {
@@ -31,23 +31,23 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
-  const [selectedColor, setSelectedColor] = useState("bg-card");
+  const [selectedColor, setSelectedColor] = useState("#3b82f6");
   const [isPinned, setIsPinned] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingAsTask, setSavingAsTask] = useState(false);
 
   const handleSaveNote = async () => {
-    if (!content.trim() || !user || !currentTenant) return;
+    if (!content.trim() || !user) return;
     
     setSaving(true);
     try {
       const { error } = await supabase.from("quick_notes").insert({
         user_id: user.id,
-        tenant_id: currentTenant.id,
         title: title.trim() || null,
         content: content.trim(),
         color: selectedColor,
         is_pinned: isPinned,
+        category: "general",
       });
 
       if (error) throw error;
@@ -55,7 +55,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       toast({ title: "Notiz gespeichert" });
       setContent("");
       setTitle("");
-      setSelectedColor("bg-card");
+      setSelectedColor("#3b82f6");
       setIsPinned(false);
       onNoteSaved?.();
     } catch (error) {
@@ -90,7 +90,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       toast({ title: "Als Aufgabe gespeichert" });
       setContent("");
       setTitle("");
-      setSelectedColor("bg-card");
+      setSelectedColor("#3b82f6");
       setIsPinned(false);
       onNoteSaved?.();
     } catch (error) {
@@ -102,10 +102,10 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   };
 
   return (
-    <Card className={cn("transition-colors", selectedColor)}>
+    <Card className="transition-colors border-l-4" style={{ borderLeftColor: selectedColor }}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Quick Capture</CardTitle>
+          <CardTitle className="text-lg">Quick Notes</CardTitle>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -128,11 +128,11 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
                       key={color.value}
                       className={cn(
                         "h-6 w-6 rounded-full border-2",
-                        color.value,
                         selectedColor === color.value
-                          ? "border-primary"
+                          ? "border-foreground"
                           : "border-transparent"
                       )}
+                      style={{ backgroundColor: color.value }}
                       onClick={() => setSelectedColor(color.value)}
                       title={color.name}
                     />

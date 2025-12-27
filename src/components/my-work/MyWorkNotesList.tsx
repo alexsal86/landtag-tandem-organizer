@@ -34,15 +34,15 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
   const [loading, setLoading] = useState(true);
 
   const loadNotes = useCallback(async () => {
-    if (!user || !currentTenant) return;
+    if (!user) return;
     
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from("quick_notes")
-        .select("id, title, content, color, is_pinned, created_at")
+        .select("id, title, content, color, is_pinned, created_at, is_archived")
         .eq("user_id", user.id)
-        .eq("tenant_id", currentTenant.id)
+        .eq("is_archived", false)
         .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(20);
@@ -54,7 +54,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
     } finally {
       setLoading(false);
     }
-  }, [user, currentTenant]);
+  }, [user]);
 
   // Load notes on mount and when refreshTrigger changes
   useEffect(() => {
@@ -63,7 +63,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
 
   // Realtime subscription for synchronization with Dashboard QuickNotes
   useEffect(() => {
-    if (!user || !currentTenant) return;
+    if (!user) return;
 
     const channel = supabase
       .channel('my-work-quick-notes-changes')
@@ -84,7 +84,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, currentTenant, loadNotes]);
+  }, [user, loadNotes]);
 
   const handleTogglePin = async (note: QuickNote) => {
     try {
@@ -166,10 +166,8 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
               {notes.map((note) => (
                 <div
                   key={note.id}
-                  className={cn(
-                    "p-3 rounded-lg border transition-colors hover:shadow-sm",
-                    note.color || "bg-card"
-                  )}
+                  className="p-3 rounded-lg border transition-colors hover:shadow-sm bg-card border-l-4"
+                  style={{ borderLeftColor: note.color || "#3b82f6" }}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
