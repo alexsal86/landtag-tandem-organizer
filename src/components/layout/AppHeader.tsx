@@ -49,6 +49,7 @@ const sectionLabels: Record<string, string> = {
   employee: 'Mitarbeiter',
   chat: 'Chat',
   administration: 'Administration',
+  mywork: 'Meine Arbeit',
 };
 
 export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {

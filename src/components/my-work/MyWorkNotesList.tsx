@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,14 +33,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
   const [notes, setNotes] = useState<QuickNote[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user && currentTenant) {
-      loadNotes();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, currentTenant?.id, refreshTrigger]);
-
-  const loadNotes = async () => {
+  const loadNotes = useCallback(async () => {
     if (!user || !currentTenant) return;
     
     try {
@@ -61,7 +54,37 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, currentTenant]);
+
+  // Load notes on mount and when refreshTrigger changes
+  useEffect(() => {
+    loadNotes();
+  }, [loadNotes, refreshTrigger]);
+
+  // Realtime subscription for synchronization with Dashboard QuickNotes
+  useEffect(() => {
+    if (!user || !currentTenant) return;
+
+    const channel = supabase
+      .channel('my-work-quick-notes-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quick_notes',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          loadNotes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, currentTenant, loadNotes]);
 
   const handleTogglePin = async (note: QuickNote) => {
     try {
