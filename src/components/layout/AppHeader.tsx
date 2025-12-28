@@ -11,6 +11,7 @@ import { useUserStatus } from '@/hooks/useUserStatus';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +64,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
   const [appSettings, setAppSettings] = useState({
     app_name: 'LandtagsOS',
+    app_subtitle: 'Koordinationssystem',
     app_logo_url: ''
   });
 
@@ -87,7 +89,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
       const { data: settings } = await supabase
         .from('app_settings')
         .select('setting_key, setting_value')
-        .in('setting_key', ['app_name', 'app_logo_url']);
+        .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
 
       if (settings) {
         const settingsMap = settings.reduce((acc, item) => {
@@ -97,6 +99,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
 
         setAppSettings({
           app_name: settingsMap.app_name || 'LandtagsOS',
+          app_subtitle: settingsMap.app_subtitle || 'Koordinationssystem',
           app_logo_url: settingsMap.app_logo_url || ''
         });
       }
@@ -155,10 +158,10 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
   };
 
   return (
-    <header className="h-12 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between px-4 sticky top-0 z-40">
+    <header className="h-14 border-b bg-header border-header-border flex items-center justify-between px-4 sticky top-0 z-40">
       {/* Left: Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
-        <span className="font-medium">{breadcrumbLabel}</span>
+        <span className="font-medium text-foreground">{breadcrumbLabel}</span>
       </div>
 
       {/* Center: Search Button */}
@@ -174,8 +177,8 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
         </kbd>
       </Button>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-2">
+      {/* Right: Actions with Office Info */}
+      <div className="flex items-center gap-3">
         {/* Online Users */}
         <Popover>
           <PopoverTrigger asChild>
@@ -194,6 +197,15 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
 
         {/* Notifications */}
         <NotificationBell />
+        
+        {/* Vertical Separator */}
+        <Separator orientation="vertical" className="h-6" />
+        
+        {/* Office Title and Subtitle */}
+        <div className="text-right hidden lg:block">
+          <p className="text-sm font-medium leading-none text-foreground">{appSettings.app_name}</p>
+          <p className="text-xs text-muted-foreground">{appSettings.app_subtitle}</p>
+        </div>
 
         {/* User Avatar with Dropdown */}
         <DropdownMenu>

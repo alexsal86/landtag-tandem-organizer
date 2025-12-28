@@ -72,6 +72,18 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				nav: {
+					DEFAULT: 'hsl(var(--nav-background))',
+					foreground: 'hsl(var(--nav-foreground))',
+					accent: 'hsl(var(--nav-accent))',
+					hover: 'hsl(var(--nav-hover))',
+					'active-bg': 'hsl(var(--nav-active-bg))',
+					muted: 'hsl(var(--nav-muted))'
+				},
+				header: {
+					DEFAULT: 'hsl(var(--header-background))',
+					border: 'hsl(var(--header-border))'
 				}
 			},
 			borderRadius: {
