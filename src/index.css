@@ -265,20 +265,25 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
+    /* Teams-ähnliche Navigation */
+    --nav-background: 250 15% 18%;
+    --nav-foreground: 0 0% 95%;
+    --nav-accent: 250 70% 60%;
+    --nav-hover: 250 15% 24%;
+    --nav-active-bg: 250 70% 60%;
+    --nav-muted: 250 10% 40%;
+    
+    /* Header abgehoben */
+    --header-background: 0 0% 100%;
+    --header-border: 210 15% 90%;
+
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -321,6 +326,18 @@ All colors MUST be HSL.
     --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.5);
     --shadow-elegant: 0 8px 30px -6px rgba(0, 0, 0, 0.7);
     
+    /* Teams-ähnliche Navigation Dark Mode */
+    --nav-background: 240 10% 8%;
+    --nav-foreground: 0 0% 92%;
+    --nav-accent: 250 80% 65%;
+    --nav-hover: 240 10% 14%;
+    --nav-active-bg: 250 80% 65%;
+    --nav-muted: 240 8% 45%;
+    
+    /* Header Dark Mode */
+    --header-background: 222 84% 5%;
+    --header-border: 217 32% 18%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;

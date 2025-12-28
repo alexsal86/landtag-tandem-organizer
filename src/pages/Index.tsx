@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
-import { Navigation } from "@/components/Navigation";
+import { TeamsNavigation } from "@/components/TeamsNavigation";
 import { Dashboard } from "@/components/Dashboard";
 import { CustomizableDashboard } from "@/components/CustomizableDashboard";
 import { CalendarView } from "@/components/CalendarView";
@@ -27,7 +27,6 @@ import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { MobileHeader } from "@/components/MobileHeader";
 import { AppHeader } from "@/components/layout/AppHeader";
 
@@ -193,37 +192,35 @@ const Index = () => {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <SidebarProvider>
-        {/* Skip to Content Link for Accessibility */}
-        <a 
-          href="#main-content" 
-          className="absolute -top-10 left-0 bg-primary text-primary-foreground px-4 py-2 z-[100] focus:top-0 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-        >
-          Zum Hauptinhalt springen
-        </a>
-        
-        <div className="flex min-h-screen w-full bg-background">
-          <Navigation 
-            activeSection={activeSection} 
-            onSectionChange={handleSectionChange} 
-          />
-          <div className="flex flex-col flex-1">
-            <div className="hidden md:block">
-              <AppHeader />
-            </div>
-            <MobileHeader />
-            <main id="main-content" className="flex-1" tabIndex={-1}>
-              {renderActiveSection()}
-            </main>
+      {/* Skip to Content Link for Accessibility */}
+      <a 
+        href="#main-content" 
+        className="absolute -top-10 left-0 bg-primary text-primary-foreground px-4 py-2 z-[100] focus:top-0 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+      >
+        Zum Hauptinhalt springen
+      </a>
+      
+      <div className="flex min-h-screen w-full bg-background">
+        <TeamsNavigation 
+          activeSection={activeSection} 
+          onSectionChange={handleSectionChange} 
+        />
+        <div className="flex flex-col flex-1">
+          <div className="hidden md:block">
+            <AppHeader />
           </div>
-          
-          {/* Create Appointment Dialog */}
-          <CreateAppointmentDialog
-            open={showCreateAppointmentDialog}
-            onOpenChange={handleCreateAppointmentDialogChange}
-          />
+          <MobileHeader />
+          <main id="main-content" className="flex-1" tabIndex={-1}>
+            {renderActiveSection()}
+          </main>
         </div>
-      </SidebarProvider>
+        
+        {/* Create Appointment Dialog */}
+        <CreateAppointmentDialog
+          open={showCreateAppointmentDialog}
+          onOpenChange={handleCreateAppointmentDialogChange}
+        />
+      </div>
     </ThemeProvider>
   );
 };
