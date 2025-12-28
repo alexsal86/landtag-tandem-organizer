@@ -158,7 +158,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
   };
 
   return (
-    <header className="h-14 border-b bg-header border-header-border flex items-center justify-between px-4 sticky top-0 z-40">
+    <header className="h-14 border-b bg-nav text-nav-foreground border-nav-foreground/10 flex items-center justify-between px-4 sticky top-0 z-40">
       {/* Left: Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
         <span className="font-medium text-foreground">{breadcrumbLabel}</span>
