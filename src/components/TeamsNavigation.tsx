@@ -39,6 +39,7 @@ import {
 interface NavigationProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
+  isMobile?: boolean;
 }
 
 interface NavSubItem {

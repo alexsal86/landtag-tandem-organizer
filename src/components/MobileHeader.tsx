@@ -1,7 +1,10 @@
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { TeamsNavigation } from "@/components/TeamsNavigation";
 
 export function MobileHeader() {
   const isMobile = useIsMobile();
@@ -9,6 +12,7 @@ export function MobileHeader() {
     app_name: "LandtagsOS",
     app_logo_url: ""
   });
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -36,9 +40,22 @@ export function MobileHeader() {
   if (!isMobile) return null;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-nav text-nav-foreground">
       <div className="flex h-14 items-center px-4">
-        <SidebarTrigger className="-ml-2" />
+        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="-ml-2 text-nav-foreground hover:bg-nav-hover">
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Navigation öffnen</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-[280px] bg-nav border-nav-foreground/10">
+            <TeamsNavigation 
+              activeSection="" 
+              onSectionChange={() => setMobileNavOpen(false)} 
+            />
+          </SheetContent>
+        </Sheet>
         
         <div className="flex items-center gap-2 ml-3">
           {appSettings.app_logo_url && (
