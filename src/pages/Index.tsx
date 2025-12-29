@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
-import { TeamsNavigation } from "@/components/TeamsNavigation";
+import { AppNavigation } from "@/components/AppNavigation";
 import { Dashboard } from "@/components/Dashboard";
 import { CustomizableDashboard } from "@/components/CustomizableDashboard";
 import { CalendarView } from "@/components/CalendarView";
@@ -201,7 +201,7 @@ const Index = () => {
       </a>
       
       <div className="flex min-h-screen w-full bg-background">
-        <TeamsNavigation 
+        <AppNavigation 
           activeSection={activeSection} 
           onSectionChange={handleSectionChange} 
         />
