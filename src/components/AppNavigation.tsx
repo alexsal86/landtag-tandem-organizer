@@ -122,6 +122,11 @@ const navigationGroups: NavGroup[] = [
   }
 ];
 
+// Export für SubNavigation in Index.tsx
+export function getNavigationGroups(): NavGroup[] {
+  return navigationGroups;
+}
+
 export function AppNavigation({ activeSection, onSectionChange, isMobile }: NavigationProps) {
   const { user } = useAuth();
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();

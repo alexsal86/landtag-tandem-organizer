@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
-import { AppNavigation } from "@/components/AppNavigation";
+import { AppNavigation, getNavigationGroups } from "@/components/AppNavigation";
 import { Dashboard } from "@/components/Dashboard";
 import { CustomizableDashboard } from "@/components/CustomizableDashboard";
 import { CalendarView } from "@/components/CalendarView";
@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { MobileHeader } from "@/components/MobileHeader";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { SubNavigation } from "@/components/layout/SubNavigation";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -208,6 +209,26 @@ const Index = () => {
         <div className="flex flex-col flex-1">
           <div className="hidden md:block">
             <AppHeader />
+            {/* Sekundäre Navigation für aktive Gruppe */}
+            {(() => {
+              const navGroups = getNavigationGroups();
+              const activeGroup = navGroups.find(g => 
+                g.subItems?.some(item => item.id === activeSection) ||
+                (g.route && g.route.slice(1) === activeSection) ||
+                g.id === activeSection
+              );
+              
+              if (activeGroup?.subItems && activeGroup.subItems.length > 1) {
+                return (
+                  <SubNavigation
+                    items={activeGroup.subItems}
+                    activeItem={activeSection}
+                    onItemChange={handleSectionChange}
+                  />
+                );
+              }
+              return null;
+            })()}
           </div>
           <MobileHeader />
           <main id="main-content" className="flex-1" tabIndex={-1}>
