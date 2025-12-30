@@ -11,7 +11,6 @@ import {
   Database,
   Clock,
   Shield,
-  Menu,
   CalendarPlus,
   Vote,
   FileText,
@@ -24,11 +23,6 @@ import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -137,7 +131,6 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
   const [appSettings, setAppSettings] = useState({
     app_logo_url: ""
   });
-  const [expandedNav, setExpandedNav] = useState(false);
 
   // Load app settings
   useEffect(() => {
@@ -251,141 +244,47 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
     return false;
   };
 
-  // Render nav item - direkt oder mit Popover
-  const renderNavGroup = (group: NavGroup, alignPopover: "start" | "end" = "start") => {
+  // Render nav item - IMMER direkter Klick zur ersten Unterseite (kein Popover)
+  const renderNavGroup = (group: NavGroup) => {
     const badge = getGroupBadge(group);
     const isActive = isGroupActive(group);
-    const hasSubItems = group.subItems && group.subItems.length > 1;
-    const hasSingleSubItem = group.subItems && group.subItems.length === 1;
-    const isDirect = group.route || hasSingleSubItem;
     
-    // Direkter Klick ohne Popover
-    if (isDirect) {
-      const targetId = group.route 
-        ? group.route.slice(1) 
-        : (hasSingleSubItem ? group.subItems![0].id : group.id);
-      
-      return (
-        <Tooltip key={group.id}>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => handleNavigationClick(targetId)}
-              className={cn(
-                "flex flex-col items-center justify-center w-full py-3 px-2 gap-1",
-                "transition-all duration-200 relative group",
-                "hover:bg-[hsl(var(--nav-hover))]",
-                isActive && "bg-[hsl(var(--nav-accent)/0.2)]"
-              )}
-            >
-              {isActive && (
-                <div className="absolute left-0 top-1/4 h-1/2 w-1 rounded-r-full bg-[hsl(var(--nav-accent))]" />
-              )}
-              <div className="relative">
-                <group.icon className={cn(
-                  "h-6 w-6 transition-colors",
-                  isActive ? "text-[hsl(var(--nav-accent))]" : "text-[hsl(var(--nav-foreground))] group-hover:text-[hsl(var(--nav-accent))]"
-                )} />
-                {badge > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
-                    {badge > 99 ? '99+' : badge}
-                  </span>
-                )}
-              </div>
-              <span className={cn(
-                "text-[10px] font-medium truncate max-w-full transition-colors",
-                isActive ? "text-[hsl(var(--nav-accent))]" : "text-[hsl(var(--nav-muted))] group-hover:text-[hsl(var(--nav-foreground))]"
-              )}>
-                {group.label}
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-            {group.label}
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
+    // Ziel-ID: Route oder erste Unterseite
+    const targetId = group.route 
+      ? group.route.slice(1) 
+      : (group.subItems && group.subItems.length > 0 
+          ? group.subItems[0].id 
+          : group.id);
     
-    // Mit Popover für mehrere Unterseiten
     return (
-      <Popover key={group.id}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <button
-                className={cn(
-                  "flex flex-col items-center justify-center w-full py-3 px-2 gap-1",
-                  "transition-all duration-200 relative group",
-                  "hover:bg-[hsl(var(--nav-hover))]",
-                  isActive && "bg-[hsl(var(--nav-accent)/0.2)]"
-                )}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-1/4 h-1/2 w-1 rounded-r-full bg-[hsl(var(--nav-accent))]" />
-                )}
-                <div className="relative">
-                  <group.icon className={cn(
-                    "h-6 w-6 transition-colors",
-                    isActive ? "text-[hsl(var(--nav-accent))]" : "text-[hsl(var(--nav-foreground))] group-hover:text-[hsl(var(--nav-accent))]"
-                  )} />
-                  {badge > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
-                      {badge > 99 ? '99+' : badge}
-                    </span>
-                  )}
-                </div>
-                <span className={cn(
-                  "text-[10px] font-medium truncate max-w-full transition-colors",
-                  isActive ? "text-[hsl(var(--nav-accent))]" : "text-[hsl(var(--nav-muted))] group-hover:text-[hsl(var(--nav-foreground))]"
-                )}>
-                  {group.label}
-                </span>
-              </button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-            {group.label}
-          </TooltipContent>
-        </Tooltip>
-        
-        {group.subItems && group.subItems.length > 0 && (
-          <PopoverContent 
-            side="right" 
-            align={alignPopover} 
-            className="w-56 p-1 bg-popover border shadow-lg"
-            sideOffset={8}
+      <Tooltip key={group.id}>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => handleNavigationClick(targetId)}
+            className={cn(
+              "flex flex-col items-center justify-center w-full py-3 px-2 gap-1",
+              "transition-all duration-200 relative group",
+              "hover:bg-[hsl(var(--nav-hover))]",
+              isActive && "bg-[hsl(var(--nav-active-bg))]"
+            )}
           >
-            <div className="py-1">
-              <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                {group.label}
-              </p>
-              {group.subItems.map((item) => {
-                const itemBadge = item.id === 'chat' ? matrixUnreadCount : (navigationCounts[item.id] || 0);
-                
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavigationClick(item.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors",
-                      "hover:bg-accent",
-                      activeSection === item.id && "bg-accent font-medium text-accent-foreground"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 text-muted-foreground" />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {itemBadge > 0 && (
-                      <span className="min-w-[20px] h-5 rounded-full bg-destructive text-[11px] text-white flex items-center justify-center font-medium px-1.5">
-                        {itemBadge > 99 ? '99+' : itemBadge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+            <div className="relative">
+              <group.icon className="h-6 w-6 text-[hsl(var(--nav-foreground))]" />
+              {badge > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
+                  {badge > 99 ? '99+' : badge}
+                </span>
+              )}
             </div>
-          </PopoverContent>
-        )}
-      </Popover>
+            <span className="text-[10px] font-medium truncate max-w-full text-[hsl(var(--nav-foreground))]">
+              {group.label}
+            </span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
+          {group.label}
+        </TooltipContent>
+      </Tooltip>
     );
   };
 
@@ -393,56 +292,35 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
   const renderTeamGroup = () => {
     if (!showTeamGroup) return null;
     
-    const teamGroup: NavGroup = {
-      id: "team",
-      label: "Team",
-      icon: UserCog,
-      subItems: teamSubItems
-    };
+    // Immer direkt zur ersten Unterseite navigieren
+    const firstItem = teamSubItems[0];
+    const isActive = teamSubItems.some(item => item.id === activeSection);
     
-    // Wenn nur ein Item, direkt navigieren
-    if (teamSubItems.length === 1) {
-      const singleItem = teamSubItems[0];
-      const isActive = activeSection === singleItem.id;
-      
-      return (
-        <Tooltip key="team">
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => handleNavigationClick(singleItem.id)}
-              className={cn(
-                "flex flex-col items-center justify-center w-full py-3 px-2 gap-1",
-                "transition-all duration-200 relative group",
-                "hover:bg-[hsl(var(--nav-hover))]",
-                isActive && "bg-[hsl(var(--nav-accent)/0.2)]"
-              )}
-            >
-              {isActive && (
-                <div className="absolute left-0 top-1/4 h-1/2 w-1 rounded-r-full bg-[hsl(var(--nav-accent))]" />
-              )}
-              <div className="relative">
-                <singleItem.icon className={cn(
-                  "h-6 w-6 transition-colors",
-                  isActive ? "text-[hsl(var(--nav-accent))]" : "text-[hsl(var(--nav-foreground))] group-hover:text-[hsl(var(--nav-accent))]"
-                )} />
-              </div>
-              <span className={cn(
-                "text-[10px] font-medium truncate max-w-full transition-colors",
-                isActive ? "text-[hsl(var(--nav-accent))]" : "text-[hsl(var(--nav-muted))] group-hover:text-[hsl(var(--nav-foreground))]"
-              )}>
-                {singleItem.label}
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-            {singleItem.label}
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
-    
-    // Mehrere Items: Popover anzeigen
-    return renderNavGroup(teamGroup, "end");
+    return (
+      <Tooltip key="team">
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => handleNavigationClick(firstItem.id)}
+            className={cn(
+              "flex flex-col items-center justify-center w-full py-3 px-2 gap-1",
+              "transition-all duration-200 relative group",
+              "hover:bg-[hsl(var(--nav-hover))]",
+              isActive && "bg-[hsl(var(--nav-active-bg))]"
+            )}
+          >
+            <div className="relative">
+              <UserCog className="h-6 w-6 text-[hsl(var(--nav-foreground))]" />
+            </div>
+            <span className="text-[10px] font-medium truncate max-w-full text-[hsl(var(--nav-foreground))]">
+              Team
+            </span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
+          Team
+        </TooltipContent>
+      </Tooltip>
+    );
   };
 
   return (
@@ -477,7 +355,7 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
 
         {/* Main Navigation */}
         <div className="flex-1 flex flex-col items-center py-2 overflow-y-auto">
-          {navigationGroups.map((group) => renderNavGroup(group, "start"))}
+          {navigationGroups.map((group) => renderNavGroup(group))}
         </div>
 
         {/* Bottom Section: Team + Admin */}
@@ -495,27 +373,18 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
                     "flex flex-col items-center justify-center w-full py-3 px-2 gap-1",
                     "transition-all duration-200 relative group",
                     "hover:bg-[hsl(var(--nav-hover))]",
-                    activeSection === "administration" && "bg-[hsl(var(--nav-accent)/0.2)]"
+                    activeSection === "administration" && "bg-[hsl(var(--nav-active-bg))]"
                   )}
                 >
-                  {activeSection === "administration" && (
-                    <div className="absolute left-0 top-1/4 h-1/2 w-1 rounded-r-full bg-[hsl(var(--nav-accent))]" />
-                  )}
                   <div className="relative">
-                    <Shield className={cn(
-                      "h-6 w-6 transition-colors",
-                      activeSection === "administration" ? "text-[hsl(var(--nav-accent))]" : "text-[hsl(var(--nav-foreground))] group-hover:text-[hsl(var(--nav-accent))]"
-                    )} />
+                    <Shield className="h-6 w-6 text-[hsl(var(--nav-foreground))]" />
                     {(navigationCounts['administration'] || 0) > 0 && (
                       <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
                         {navigationCounts['administration'] > 99 ? '99+' : navigationCounts['administration']}
                       </span>
                     )}
                   </div>
-                  <span className={cn(
-                    "text-[10px] font-medium truncate max-w-full transition-colors",
-                    activeSection === "administration" ? "text-[hsl(var(--nav-accent))]" : "text-[hsl(var(--nav-muted))] group-hover:text-[hsl(var(--nav-foreground))]"
-                  )}>
+                  <span className="text-[10px] font-medium truncate max-w-full text-[hsl(var(--nav-foreground))]">
                     Admin
                   </span>
                 </button>
@@ -526,24 +395,6 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
             </Tooltip>
           )}
           
-          {/* Hamburger Menu Toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setExpandedNav(!expandedNav)}
-                className={cn(
-                  "flex flex-col items-center justify-center w-full py-2 gap-1",
-                  "transition-all duration-200 group",
-                  "hover:bg-[hsl(var(--nav-hover))]"
-                )}
-              >
-                <Menu className="h-5 w-5 text-[hsl(var(--nav-muted))] group-hover:text-[hsl(var(--nav-foreground))] transition-colors" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-              Menü
-            </TooltipContent>
-          </Tooltip>
         </div>
       </nav>
     </TooltipProvider>
