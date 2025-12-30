@@ -207,7 +207,8 @@ const Index = () => {
           onSectionChange={handleSectionChange} 
         />
         <div className="flex flex-col flex-1">
-          <div className="hidden md:block">
+          {/* Header und SubNavigation fixiert am oberen Rand */}
+          <div className="hidden md:block sticky top-0 z-40">
             <AppHeader />
             {/* Sekundäre Navigation für aktive Gruppe */}
             {(() => {
