@@ -265,17 +265,17 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
-    /* Navigation mit GRÜNEN-CI (#8BAE66 = hsl(90, 32%, 54%)) */
-    --nav: 90 25% 22%;                   /* Dunkles gedämpftes Grün */
-    --nav-foreground: 90 20% 95%;        /* Helles Grün-Weiß */
-    --nav-accent: 90 40% 54%;            /* #8BAE66 als Akzent */
-    --nav-hover: 90 25% 28%;             /* Etwas helleres Grün */
-    --nav-active-bg: 90 40% 54%;
-    --nav-muted: 90 15% 55%;
+    /* Navigation Light Mode - Neutrales Grau */
+    --nav: 220 15% 20%;                  /* Dunkles Grau */
+    --nav-foreground: 0 0% 98%;          /* Weiß */
+    --nav-accent: 220 15% 40%;           /* Helleres Grau für Akzent */
+    --nav-hover: 220 15% 25%;
+    --nav-active-bg: 220 15% 30%;
+    --nav-muted: 220 10% 55%;
     
     /* Header gleiche Farbe wie Navigation */
-    --header-background: 90 25% 22%;
-    --header-border: 90 20% 30%;
+    --header-background: 220 15% 20%;
+    --header-border: 220 15% 28%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -326,17 +326,17 @@ All colors MUST be HSL.
     --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.5);
     --shadow-elegant: 0 8px 30px -6px rgba(0, 0, 0, 0.7);
     
-    /* Navigation Dark Mode - GRÜNEN-CI */
-    --nav: 90 20% 10%;                   /* Sehr dunkles Grün */
-    --nav-foreground: 90 15% 92%;
-    --nav-accent: 90 50% 60%;            /* Helleres Grün für Dark Mode */
-    --nav-hover: 90 20% 16%;
-    --nav-active-bg: 90 50% 60%;
-    --nav-muted: 90 12% 50%;
+    /* Navigation Dark Mode - Neutrales Dunkelgrau */
+    --nav: 222 84% 8%;                   /* Dunkles Blau-Grau */
+    --nav-foreground: 210 40% 95%;       /* Weiß */
+    --nav-accent: 215 25% 45%;           /* Gedämpftes Blau-Grau */
+    --nav-hover: 222 60% 12%;
+    --nav-active-bg: 222 60% 18%;
+    --nav-muted: 215 20% 55%;
     
     /* Header Dark Mode - gleiche Farbe wie Navigation */
-    --header-background: 90 20% 10%;
-    --header-border: 90 15% 18%;
+    --header-background: 222 84% 8%;
+    --header-border: 222 60% 15%;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;

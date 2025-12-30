@@ -159,19 +159,13 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
 
   return (
     <header className="h-14 border-b bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.1)] flex items-center justify-between px-4 sticky top-0 z-40">
-      {/* Left: Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm">
-        <span className="font-medium text-[hsl(var(--nav-foreground))]">{breadcrumbLabel}</span>
-      </div>
-
-      {/* Center: Direct Search Input */}
+      {/* Left: Search Input - Direkt nutzbar */}
       <div className="hidden md:flex items-center relative">
         <Search className="absolute left-3 h-4 w-4 text-[hsl(var(--nav-muted))]" />
         <input
           type="text"
           placeholder="Suchen..."
           className="w-64 pl-9 pr-12 py-1.5 text-sm rounded-md bg-[hsl(var(--nav-hover))] border border-[hsl(var(--nav-foreground)/0.2)] text-[hsl(var(--nav-foreground))] placeholder:text-[hsl(var(--nav-muted))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--nav-accent))]"
-          onFocus={handleOpenSearch}
         />
         <kbd className="absolute right-3 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border border-[hsl(var(--nav-foreground)/0.2)] bg-[hsl(var(--nav-hover))] px-1.5 font-mono text-[10px] font-medium text-[hsl(var(--nav-muted))]">
           ⌘K
@@ -179,7 +173,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
       </div>
 
       {/* Right: Actions with Office Info */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 ml-auto">
         {/* Online Users */}
         <Popover>
           <PopoverTrigger asChild>
@@ -198,15 +192,6 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
 
         {/* Notifications */}
         <NotificationBell />
-        
-        {/* Vertical Separator */}
-        <Separator orientation="vertical" className="h-6" />
-        
-        {/* Office Title and Subtitle */}
-        <div className="text-right hidden lg:block">
-          <p className="text-sm font-medium leading-none text-foreground">{appSettings.app_name}</p>
-          <p className="text-xs text-muted-foreground">{appSettings.app_subtitle}</p>
-        </div>
 
         {/* User Avatar with Dropdown */}
         <DropdownMenu>
@@ -279,7 +264,17 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        
+        {/* Separator zwischen Avatar und Büro-Info */}
+        <Separator orientation="vertical" className="h-6 bg-[hsl(var(--nav-foreground)/0.2)]" />
+        
+        {/* Office Title rechts neben Avatar */}
+        <div className="text-right hidden lg:block">
+          <p className="text-sm font-medium leading-none text-[hsl(var(--nav-foreground))]">{appSettings.app_name}</p>
+          <p className="text-xs text-[hsl(var(--nav-muted))]">{appSettings.app_subtitle}</p>
+        </div>
       </div>
     </header>
   );
 };
+
