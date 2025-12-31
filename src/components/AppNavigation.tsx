@@ -16,7 +16,9 @@ import {
   FileText,
   Archive,
   UserCog,
-  Phone
+  Phone,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { useMatrixClient } from "@/contexts/MatrixClientContext";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
@@ -34,6 +36,8 @@ interface NavigationProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
   isMobile?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 interface NavSubItem {
@@ -58,7 +62,6 @@ const navigationGroups: NavGroup[] = [
     label: "Meine Arbeit",
     icon: Home,
     route: "/mywork"
-    // Keine subItems = direkter Link
   },
   {
     id: "communication",
@@ -102,7 +105,6 @@ const navigationGroups: NavGroup[] = [
     label: "Kontakte",
     icon: Users,
     route: "/contacts"
-    // Nur eine Seite = direkter Link
   },
   {
     id: "more",
@@ -121,7 +123,13 @@ export function getNavigationGroups(): NavGroup[] {
   return navigationGroups;
 }
 
-export function AppNavigation({ activeSection, onSectionChange, isMobile }: NavigationProps) {
+export function AppNavigation({ 
+  activeSection, 
+  onSectionChange, 
+  isMobile,
+  isCollapsed = false,
+  onToggleCollapse 
+}: NavigationProps) {
   const { user } = useAuth();
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
   const { totalUnreadCount: matrixUnreadCount } = useMatrixClient();
@@ -160,7 +168,6 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
     if (!user) return;
     
     const checkRoles = async () => {
-      // Lade User-Rolle
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
@@ -169,7 +176,6 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
       
       setUserRole(roleData?.role || null);
       
-      // Prüfe Admin-Zugang
       const [{ data: isSuperAdmin }, { data: isBueroleitung }] = await Promise.all([
         supabase.rpc('is_admin', { _user_id: user.id }),
         supabase.rpc('has_role', { _user_id: user.id, _role: 'bueroleitung' })
@@ -181,17 +187,11 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
     checkRoles();
   }, [user]);
 
-  // Rollenbasierte Sichtbarkeit
   const isAbgeordneter = userRole === 'abgeordneter';
   const isBueroleitung = userRole === 'bueroleitung';
-  
-  // Zeiterfassung: Nur für Mitarbeiter, Büroleitung, Praktikant (NICHT Abgeordneter)
   const showTimeTracking = !isAbgeordneter && userRole !== null;
-  
-  // Mitarbeiter-Seite: Nur für Abgeordneter + Büroleitung
   const showEmployeePage = isAbgeordneter || isBueroleitung;
 
-  // Dynamisches Team-Menü basierend auf Rollen
   const getTeamSubItems = (): NavSubItem[] => {
     const items: NavSubItem[] = [];
     if (showEmployeePage) {
@@ -215,10 +215,8 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
     onSectionChange('dashboard');
   };
 
-  // Calculate group badge
   const getGroupBadge = (group: NavGroup): number => {
     if (!group.subItems) {
-      // Direkter Link - Badge für diese ID
       const directId = group.route ? group.route.slice(1) : group.id;
       return navigationCounts[directId] || 0;
     }
@@ -232,7 +230,6 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
     }, 0);
   };
 
-  // Check if group is active
   const isGroupActive = (group: NavGroup): boolean => {
     if (group.route) {
       const routeId = group.route.slice(1);
@@ -244,12 +241,10 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
     return false;
   };
 
-  // Render nav item - IMMER direkter Klick zur ersten Unterseite (kein Popover)
   const renderNavGroup = (group: NavGroup) => {
     const badge = getGroupBadge(group);
     const isActive = isGroupActive(group);
     
-    // Ziel-ID: Route oder erste Unterseite
     const targetId = group.route 
       ? group.route.slice(1) 
       : (group.subItems && group.subItems.length > 0 
@@ -262,37 +257,40 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
           <button
             onClick={() => handleNavigationClick(targetId)}
             className={cn(
-              "flex flex-col items-center justify-center w-full py-3 px-2 gap-1",
-              "transition-all duration-200 relative group",
+              "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group",
               "hover:bg-[hsl(var(--nav-hover))]",
-              isActive && "bg-[hsl(var(--nav-active-bg))]"
+              isActive && "bg-[hsl(var(--nav-active-bg))]",
+              isCollapsed ? "flex-col justify-center px-2" : "px-4"
             )}
           >
             <div className="relative">
-              <group.icon className="h-6 w-6 text-[hsl(var(--nav-foreground))]" />
+              <group.icon className="h-5 w-5 text-[hsl(var(--nav-foreground))]" />
               {badge > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-full bg-destructive text-[9px] text-white flex items-center justify-center font-bold px-1">
                   {badge > 99 ? '99+' : badge}
                 </span>
               )}
             </div>
-            <span className="text-[10px] font-medium truncate max-w-full text-[hsl(var(--nav-foreground))]">
+            <span className={cn(
+              "text-sm font-medium truncate text-[hsl(var(--nav-foreground))] transition-all duration-200",
+              isCollapsed ? "text-[10px] max-w-full" : "flex-1 text-left"
+            )}>
               {group.label}
             </span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-          {group.label}
-        </TooltipContent>
+        {isCollapsed && (
+          <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
+            {group.label}
+          </TooltipContent>
+        )}
       </Tooltip>
     );
   };
 
-  // Team-Gruppe rendern (dynamisch basierend auf Rollen)
   const renderTeamGroup = () => {
     if (!showTeamGroup) return null;
     
-    // Immer direkt zur ersten Unterseite navigieren
     const firstItem = teamSubItems[0];
     const isActive = teamSubItems.some(item => item.id === activeSection);
     
@@ -302,31 +300,39 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
           <button
             onClick={() => handleNavigationClick(firstItem.id)}
             className={cn(
-              "flex flex-col items-center justify-center w-full py-3 px-2 gap-1",
-              "transition-all duration-200 relative group",
+              "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group",
               "hover:bg-[hsl(var(--nav-hover))]",
-              isActive && "bg-[hsl(var(--nav-active-bg))]"
+              isActive && "bg-[hsl(var(--nav-active-bg))]",
+              isCollapsed ? "flex-col justify-center px-2" : "px-4"
             )}
           >
             <div className="relative">
-              <UserCog className="h-6 w-6 text-[hsl(var(--nav-foreground))]" />
+              <UserCog className="h-5 w-5 text-[hsl(var(--nav-foreground))]" />
             </div>
-            <span className="text-[10px] font-medium truncate max-w-full text-[hsl(var(--nav-foreground))]">
+            <span className={cn(
+              "text-sm font-medium truncate text-[hsl(var(--nav-foreground))] transition-all duration-200",
+              isCollapsed ? "text-[10px] max-w-full" : "flex-1 text-left"
+            )}>
               Team
             </span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-          Team
-        </TooltipContent>
+        {isCollapsed && (
+          <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
+            Team
+          </TooltipContent>
+        )}
       </Tooltip>
     );
   };
 
   return (
     <TooltipProvider delayDuration={300}>
-      <nav className="flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] w-[72px] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0">
-        {/* Logo Area - Klick führt zum Dashboard */}
+      <nav className={cn(
+        "flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 transition-all duration-300",
+        isCollapsed ? "w-[72px]" : "w-[200px]"
+      )}>
+        {/* Logo Area */}
         <div className="h-14 flex items-center justify-center border-b border-[hsl(var(--nav-foreground)/0.1)]">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -354,47 +360,77 @@ export function AppNavigation({ activeSection, onSectionChange, isMobile }: Navi
         </div>
 
         {/* Main Navigation */}
-        <div className="flex-1 flex flex-col items-center py-2 overflow-y-auto">
+        <div className="flex-1 flex flex-col py-2 overflow-y-auto">
           {navigationGroups.map((group) => renderNavGroup(group))}
         </div>
 
-        {/* Bottom Section: Team + Admin */}
+        {/* Bottom Section: Team + Admin + Collapse Toggle */}
         <div className="mt-auto border-t border-[hsl(var(--nav-foreground)/0.1)] py-2">
-          {/* Team Group (dynamisch basierend auf Rollen) */}
           {renderTeamGroup()}
 
-          {/* Administration - nur für Admins */}
           {hasAdminAccess && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => handleNavigationClick("administration")}
                   className={cn(
-                    "flex flex-col items-center justify-center w-full py-3 px-2 gap-1",
-                    "transition-all duration-200 relative group",
+                    "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group",
                     "hover:bg-[hsl(var(--nav-hover))]",
-                    activeSection === "administration" && "bg-[hsl(var(--nav-active-bg))]"
+                    activeSection === "administration" && "bg-[hsl(var(--nav-active-bg))]",
+                    isCollapsed ? "flex-col justify-center px-2" : "px-4"
                   )}
                 >
                   <div className="relative">
-                    <Shield className="h-6 w-6 text-[hsl(var(--nav-foreground))]" />
+                    <Shield className="h-5 w-5 text-[hsl(var(--nav-foreground))]" />
                     {(navigationCounts['administration'] || 0) > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-full bg-destructive text-[9px] text-white flex items-center justify-center font-bold px-1">
                         {navigationCounts['administration'] > 99 ? '99+' : navigationCounts['administration']}
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] font-medium truncate max-w-full text-[hsl(var(--nav-foreground))]">
+                  <span className={cn(
+                    "text-sm font-medium truncate text-[hsl(var(--nav-foreground))] transition-all duration-200",
+                    isCollapsed ? "text-[10px] max-w-full" : "flex-1 text-left"
+                  )}>
                     Admin
                   </span>
                 </button>
               </TooltipTrigger>
+              {isCollapsed && (
+                <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
+                  Administration
+                </TooltipContent>
+              )}
+            </Tooltip>
+          )}
+
+          {/* Collapse Toggle */}
+          {onToggleCollapse && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onToggleCollapse}
+                  className={cn(
+                    "flex items-center w-full py-3 gap-3 transition-all duration-200",
+                    "hover:bg-[hsl(var(--nav-hover))] text-[hsl(var(--nav-muted))]",
+                    isCollapsed ? "flex-col justify-center px-2" : "px-4"
+                  )}
+                >
+                  {isCollapsed ? (
+                    <ChevronRight className="h-5 w-5" />
+                  ) : (
+                    <>
+                      <ChevronLeft className="h-5 w-5" />
+                      <span className="text-sm font-medium">Einklappen</span>
+                    </>
+                  )}
+                </button>
+              </TooltipTrigger>
               <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-                Administration
+                {isCollapsed ? 'Navigation ausklappen' : 'Navigation einklappen'}
               </TooltipContent>
             </Tooltip>
           )}
-          
         </div>
       </nav>
     </TooltipProvider>

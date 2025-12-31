@@ -30,8 +30,11 @@ import { Loader2 } from "lucide-react";
 import { MobileHeader } from "@/components/MobileHeader";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { SubNavigation } from "@/components/layout/SubNavigation";
+import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
+import { useNavCollapse } from "@/hooks/useNavCollapse";
 
 const Index = () => {
+  const { isCollapsed, toggle: toggleNav } = useNavCollapse();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -202,10 +205,14 @@ const Index = () => {
       </a>
       
       <div className="flex min-h-screen w-full bg-background">
-        <AppNavigation 
-          activeSection={activeSection} 
-          onSectionChange={handleSectionChange} 
-        />
+        <div className="hidden md:block">
+          <AppNavigation 
+            activeSection={activeSection} 
+            onSectionChange={handleSectionChange}
+            isCollapsed={isCollapsed}
+            onToggleCollapse={toggleNav}
+          />
+        </div>
         <div className="flex flex-col flex-1">
           {/* Header und SubNavigation fixiert am oberen Rand */}
           <div className="hidden md:block sticky top-0 z-40">
@@ -232,6 +239,28 @@ const Index = () => {
             })()}
           </div>
           <MobileHeader />
+          {/* Mobile Sub-Navigation */}
+          <div className="md:hidden">
+            {(() => {
+              const navGroups = getNavigationGroups();
+              const activeGroup = navGroups.find(g => 
+                g.subItems?.some(item => item.id === activeSection) ||
+                (g.route && g.route.slice(1) === activeSection) ||
+                g.id === activeSection
+              );
+              
+              if (activeGroup?.subItems && activeGroup.subItems.length > 1) {
+                return (
+                  <MobileSubNavigation
+                    items={activeGroup.subItems}
+                    activeItem={activeSection}
+                    onItemChange={handleSectionChange}
+                  />
+                );
+              }
+              return null;
+            })()}
+          </div>
           <main id="main-content" className="flex-1" tabIndex={-1}>
             {renderActiveSection()}
           </main>
