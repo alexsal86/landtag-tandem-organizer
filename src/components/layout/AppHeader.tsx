@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Settings, LogOut, User } from 'lucide-react';
+import { Settings, LogOut, User, Plus, Calendar, Users, FileText, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { NotificationBell } from '@/components/NotificationBell';
 import { OnlineUsersWidget } from '@/components/OnlineUsersWidget';
 import { CompactStatusSelector } from '@/components/CompactStatusSelector';
+import { HeaderSearch } from '@/components/layout/HeaderSearch';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { useTenant } from '@/hooks/useTenant';
@@ -31,26 +32,26 @@ interface AppHeaderProps {
   onOpenSearch?: () => void;
 }
 
-// Map section IDs to readable labels
-const sectionLabels: Record<string, string> = {
-  dashboard: 'Dashboard',
-  calendar: 'Terminkalender',
-  contacts: 'Kontakte',
-  tasks: 'Aufgaben',
-  decisions: 'Entscheidungen',
-  casefiles: 'FallAkten',
-  meetings: 'Jour fixe',
-  eventplanning: 'Planungen',
-  karten: 'Karten',
-  documents: 'Dokumente',
-  drucksachen: 'Drucksachen',
-  knowledge: 'Wissen',
-  settings: 'Einstellungen',
-  time: 'Zeiterfassung',
-  employee: 'Mitarbeiter',
-  chat: 'Chat',
-  administration: 'Administration',
-  mywork: 'Meine Arbeit',
+// Map section IDs to readable labels and icons
+const sectionConfig: Record<string, { label: string; icon: typeof Calendar; quickAction?: { label: string; action: string } }> = {
+  dashboard: { label: 'Dashboard', icon: CheckSquare },
+  calendar: { label: 'Kalender', icon: Calendar, quickAction: { label: 'Neuer Termin', action: 'create-appointment' } },
+  contacts: { label: 'Kontakte', icon: Users, quickAction: { label: 'Neuer Kontakt', action: 'create-contact' } },
+  tasks: { label: 'Aufgaben', icon: CheckSquare, quickAction: { label: 'Neue Aufgabe', action: 'create-task' } },
+  decisions: { label: 'Entscheidungen', icon: CheckSquare },
+  casefiles: { label: 'FallAkten', icon: FileText },
+  meetings: { label: 'Jour fixe', icon: Calendar },
+  eventplanning: { label: 'Planungen', icon: Calendar },
+  karten: { label: 'Karten', icon: FileText },
+  documents: { label: 'Dokumente', icon: FileText, quickAction: { label: 'Neues Dokument', action: 'create-document' } },
+  drucksachen: { label: 'Drucksachen', icon: FileText },
+  knowledge: { label: 'Wissen', icon: FileText },
+  settings: { label: 'Einstellungen', icon: Settings },
+  time: { label: 'Zeiterfassung', icon: CheckSquare },
+  employee: { label: 'Mitarbeiter', icon: Users },
+  chat: { label: 'Chat', icon: FileText },
+  administration: { label: 'Administration', icon: Settings },
+  mywork: { label: 'Meine Arbeit', icon: CheckSquare },
 };
 
 export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
@@ -70,7 +71,8 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
 
   // Get current section from path
   const currentSection = location.pathname === '/' ? 'dashboard' : location.pathname.slice(1).split('/')[0];
-  const breadcrumbLabel = sectionLabels[currentSection] || currentSection;
+  const sectionInfo = sectionConfig[currentSection] || { label: currentSection, icon: CheckSquare };
+  const SectionIcon = sectionInfo.icon;
 
   // Load user profile and app settings
   useEffect(() => {
@@ -124,20 +126,17 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
     }
   };
 
-  const handleOpenSearch = () => {
-    // Trigger global search with Cmd+K
-    const event = new KeyboardEvent('keydown', {
-      key: 'k',
-      metaKey: true,
-      bubbles: true
-    });
-    document.dispatchEvent(event);
+  const handleQuickAction = () => {
+    if (sectionInfo.quickAction) {
+      const urlParams = new URLSearchParams(location.search);
+      urlParams.set('action', sectionInfo.quickAction.action);
+      navigate(`${location.pathname}?${urlParams.toString()}`);
+    }
   };
 
   const statusDisplay = currentStatus ? getStatusDisplay(currentStatus) : null;
 
   const getStatusRingColor = (statusType: string) => {
-    // Correct enum values: online, meeting, break, away, offline, custom
     switch (statusType) {
       case 'online':
         return 'ring-green-500';
@@ -150,7 +149,6 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
       case 'offline':
         return 'ring-gray-400';
       case 'custom':
-        // For custom, we'll use the color from statusDisplay
         return '';
       default:
         return 'ring-gray-300';
@@ -159,17 +157,33 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
 
   return (
     <header className="h-14 border-b bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.1)] flex items-center justify-between px-4 sticky top-0 z-40">
-      {/* Left: Search Input - Direkt nutzbar */}
-      <div className="hidden md:flex items-center relative">
-        <Search className="absolute left-3 h-4 w-4 text-[hsl(var(--nav-muted))]" />
-        <input
-          type="text"
-          placeholder="Suchen..."
-          className="w-64 pl-9 pr-12 py-1.5 text-sm rounded-md bg-[hsl(var(--nav-hover))] border border-[hsl(var(--nav-foreground)/0.2)] text-[hsl(var(--nav-foreground))] placeholder:text-[hsl(var(--nav-muted))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--nav-accent))]"
-        />
-        <kbd className="absolute right-3 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border border-[hsl(var(--nav-foreground)/0.2)] bg-[hsl(var(--nav-hover))] px-1.5 font-mono text-[10px] font-medium text-[hsl(var(--nav-muted))]">
-          ⌘K
-        </kbd>
+      {/* Left: Context Info + Quick Action + Search */}
+      <div className="hidden md:flex items-center gap-4">
+        {/* Current Section with Icon */}
+        <div className="flex items-center gap-2">
+          <SectionIcon className="h-4 w-4 text-[hsl(var(--nav-muted))]" />
+          <span className="text-sm font-medium text-[hsl(var(--nav-foreground))]">
+            {sectionInfo.label}
+          </span>
+        </div>
+
+        {/* Quick Action Button */}
+        {sectionInfo.quickAction && (
+          <Button 
+            size="sm" 
+            variant="ghost"
+            onClick={handleQuickAction}
+            className="h-7 px-2 text-xs bg-[hsl(var(--nav-hover))] hover:bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-foreground))]"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            {sectionInfo.quickAction.label}
+          </Button>
+        )}
+
+        <Separator orientation="vertical" className="h-5 bg-[hsl(var(--nav-foreground)/0.2)]" />
+
+        {/* Search */}
+        <HeaderSearch />
       </div>
 
       {/* Right: Actions with Office Info */}
