@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Home, 
   MessageSquare, 
@@ -16,9 +16,7 @@ import {
   FileText,
   Archive,
   UserCog,
-  Phone,
-  ChevronLeft,
-  ChevronRight
+  Phone
 } from "lucide-react";
 import { useMatrixClient } from "@/contexts/MatrixClientContext";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
@@ -36,8 +34,6 @@ interface NavigationProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
   isMobile?: boolean;
-  isCollapsed?: boolean;
-  onToggleCollapse?: () => void;
 }
 
 interface NavSubItem {
@@ -55,7 +51,7 @@ interface NavGroup {
   adminOnly?: boolean;
 }
 
-// Main navigation groups - Dashboard entfernt (Logo übernimmt)
+// Main navigation groups - Jour fixe unter Aufgaben
 const navigationGroups: NavGroup[] = [
   {
     id: "mywork",
@@ -69,7 +65,6 @@ const navigationGroups: NavGroup[] = [
     icon: MessageSquare,
     subItems: [
       { id: "chat", label: "Chat", icon: MessageSquare },
-      { id: "meetings", label: "Jour fixe", icon: MessageSquare },
     ]
   },
   {
@@ -88,6 +83,7 @@ const navigationGroups: NavGroup[] = [
     subItems: [
       { id: "tasks", label: "Aufgaben", icon: CheckSquare },
       { id: "decisions", label: "Entscheidungen", icon: Vote },
+      { id: "meetings", label: "Jour fixe", icon: Calendar },
     ]
   },
   {
@@ -126,9 +122,7 @@ export function getNavigationGroups(): NavGroup[] {
 export function AppNavigation({ 
   activeSection, 
   onSectionChange, 
-  isMobile,
-  isCollapsed = false,
-  onToggleCollapse 
+  isMobile
 }: NavigationProps) {
   const { user } = useAuth();
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
@@ -136,13 +130,22 @@ export function AppNavigation({
   
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [appSettings, setAppSettings] = useState({
     app_logo_url: ""
   });
+  
+  // Animation states
+  const [clickedItem, setClickedItem] = useState<string | null>(null);
+  const [pendingSection, setPendingSection] = useState<string | null>(null);
+  const [previousBadges, setPreviousBadges] = useState<Record<string, number>>({});
+  const [newBadgeItems, setNewBadgeItems] = useState<Set<string>>(new Set());
 
   // Load app settings
   useEffect(() => {
     const loadData = async () => {
+      setIsLoading(true);
+      
       const { data: settings } = await supabase
         .from('app_settings')
         .select('setting_key, setting_value')
@@ -158,6 +161,8 @@ export function AppNavigation({
           app_logo_url: settingsMap.app_logo_url || ""
         });
       }
+      
+      setIsLoading(false);
     };
     
     loadData();
@@ -187,6 +192,32 @@ export function AppNavigation({
     checkRoles();
   }, [user]);
 
+  // Track badge changes for animations
+  useEffect(() => {
+    const newItems = new Set<string>();
+    
+    Object.entries(navigationCounts).forEach(([key, count]) => {
+      const prevCount = previousBadges[key] || 0;
+      if (count > prevCount) {
+        newItems.add(key);
+        // Remove from newItems after animation
+        setTimeout(() => {
+          setNewBadgeItems(prev => {
+            const updated = new Set(prev);
+            updated.delete(key);
+            return updated;
+          });
+        }, 3000);
+      }
+    });
+    
+    if (newItems.size > 0) {
+      setNewBadgeItems(prev => new Set([...prev, ...newItems]));
+    }
+    
+    setPreviousBadges(navigationCounts);
+  }, [navigationCounts]);
+
   const isAbgeordneter = userRole === 'abgeordneter';
   const isBueroleitung = userRole === 'bueroleitung';
   const showTimeTracking = !isAbgeordneter && userRole !== null;
@@ -207,11 +238,24 @@ export function AppNavigation({
   const showTeamGroup = teamSubItems.length > 0;
 
   const handleNavigationClick = async (sectionId: string) => {
+    // Bounce animation
+    setClickedItem(sectionId);
+    setTimeout(() => setClickedItem(null), 150);
+    
+    // Optimistic UI - immediate visual feedback
+    setPendingSection(sectionId);
+    
+    // Background operations
     await markNavigationAsVisited(sectionId);
+    
+    // Navigate
     onSectionChange(sectionId);
+    setPendingSection(null);
   };
 
   const handleLogoClick = () => {
+    setClickedItem('dashboard');
+    setTimeout(() => setClickedItem(null), 150);
     onSectionChange('dashboard');
   };
 
@@ -241,9 +285,50 @@ export function AppNavigation({
     return false;
   };
 
+  const hasNewBadge = (group: NavGroup): boolean => {
+    if (!group.subItems) {
+      const directId = group.route ? group.route.slice(1) : group.id;
+      return newBadgeItems.has(directId);
+    }
+    return group.subItems.some(item => newBadgeItems.has(item.id));
+  };
+
+  // Skeleton loader
+  if (isLoading) {
+    return (
+      <TooltipProvider delayDuration={300}>
+        <nav className="flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 w-[200px]">
+          {/* Logo Skeleton */}
+          <div className="h-14 flex items-center justify-center border-b border-[hsl(var(--nav-foreground)/0.1)]">
+            <div className="h-8 w-8 rounded-lg animate-skeleton" />
+          </div>
+          
+          {/* Navigation Items Skeleton */}
+          <div className="flex-1 flex flex-col py-2 gap-1">
+            {[1, 2, 3, 4, 5, 6, 7].map(i => (
+              <div key={i} className="flex items-center gap-3 py-3 px-4">
+                <div className="h-5 w-5 rounded animate-skeleton" />
+                <div className="h-4 w-24 rounded animate-skeleton" />
+              </div>
+            ))}
+          </div>
+          
+          {/* Bottom Skeleton */}
+          <div className="mt-auto border-t border-[hsl(var(--nav-foreground)/0.1)] py-2">
+            <div className="flex items-center gap-3 py-3 px-4">
+              <div className="h-5 w-5 rounded animate-skeleton" />
+              <div className="h-4 w-16 rounded animate-skeleton" />
+            </div>
+          </div>
+        </nav>
+      </TooltipProvider>
+    );
+  }
+
   const renderNavGroup = (group: NavGroup) => {
     const badge = getGroupBadge(group);
     const isActive = isGroupActive(group);
+    const isNewBadge = hasNewBadge(group);
     
     const targetId = group.route 
       ? group.route.slice(1) 
@@ -251,39 +336,43 @@ export function AppNavigation({
           ? group.subItems[0].id 
           : group.id);
     
+    const isPending = pendingSection === targetId;
+    
     return (
       <Tooltip key={group.id}>
         <TooltipTrigger asChild>
           <button
             onClick={() => handleNavigationClick(targetId)}
             className={cn(
-              "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group",
+              "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group px-4",
               "hover:bg-[hsl(var(--nav-hover))]",
-              isActive && "bg-[hsl(var(--nav-active-bg))]",
-              isCollapsed ? "flex-col justify-center px-2" : "px-4"
+              (isActive || isPending) && "bg-[hsl(var(--nav-active-bg))]"
             )}
           >
             <div className="relative">
-              <group.icon className="h-5 w-5 text-[hsl(var(--nav-foreground))]" />
+              <group.icon 
+                className={cn(
+                  "h-5 w-5 text-[hsl(var(--nav-foreground))]",
+                  clickedItem === targetId && "animate-nav-bounce"
+                )} 
+              />
               {badge > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-full bg-destructive text-[9px] text-white flex items-center justify-center font-bold px-1">
+                <span 
+                  className={cn(
+                    "absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-full bg-destructive text-[9px] text-white flex items-center justify-center font-bold px-1",
+                    "animate-badge-appear",
+                    isNewBadge && "animate-badge-pulse"
+                  )}
+                >
                   {badge > 99 ? '99+' : badge}
                 </span>
               )}
             </div>
-            <span className={cn(
-              "text-sm font-medium truncate text-[hsl(var(--nav-foreground))] transition-all duration-200",
-              isCollapsed ? "text-[10px] max-w-full" : "flex-1 text-left"
-            )}>
+            <span className="text-sm font-medium truncate text-[hsl(var(--nav-foreground))] flex-1 text-left">
               {group.label}
             </span>
           </button>
         </TooltipTrigger>
-        {isCollapsed && (
-          <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-            {group.label}
-          </TooltipContent>
-        )}
       </Tooltip>
     );
   };
@@ -293,6 +382,7 @@ export function AppNavigation({
     
     const firstItem = teamSubItems[0];
     const isActive = teamSubItems.some(item => item.id === activeSection);
+    const isPending = pendingSection === firstItem.id;
     
     return (
       <Tooltip key="team">
@@ -300,38 +390,31 @@ export function AppNavigation({
           <button
             onClick={() => handleNavigationClick(firstItem.id)}
             className={cn(
-              "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group",
+              "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group px-4",
               "hover:bg-[hsl(var(--nav-hover))]",
-              isActive && "bg-[hsl(var(--nav-active-bg))]",
-              isCollapsed ? "flex-col justify-center px-2" : "px-4"
+              (isActive || isPending) && "bg-[hsl(var(--nav-active-bg))]"
             )}
           >
             <div className="relative">
-              <UserCog className="h-5 w-5 text-[hsl(var(--nav-foreground))]" />
+              <UserCog 
+                className={cn(
+                  "h-5 w-5 text-[hsl(var(--nav-foreground))]",
+                  clickedItem === firstItem.id && "animate-nav-bounce"
+                )} 
+              />
             </div>
-            <span className={cn(
-              "text-sm font-medium truncate text-[hsl(var(--nav-foreground))] transition-all duration-200",
-              isCollapsed ? "text-[10px] max-w-full" : "flex-1 text-left"
-            )}>
+            <span className="text-sm font-medium truncate text-[hsl(var(--nav-foreground))] flex-1 text-left">
               Team
             </span>
           </button>
         </TooltipTrigger>
-        {isCollapsed && (
-          <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-            Team
-          </TooltipContent>
-        )}
       </Tooltip>
     );
   };
 
   return (
     <TooltipProvider delayDuration={300}>
-      <nav className={cn(
-        "flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 transition-all duration-300",
-        isCollapsed ? "w-[72px]" : "w-[200px]"
-      )}>
+      <nav className="flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 w-[200px]">
         {/* Logo Area */}
         <div className="h-14 flex items-center justify-center border-b border-[hsl(var(--nav-foreground)/0.1)]">
           <Tooltip>
@@ -344,10 +427,18 @@ export function AppNavigation({
                   <img 
                     src={appSettings.app_logo_url} 
                     alt="Logo" 
-                    className="h-8 w-8 object-contain"
+                    className={cn(
+                      "h-8 w-8 object-contain",
+                      clickedItem === 'dashboard' && "animate-nav-bounce"
+                    )}
                   />
                 ) : (
-                  <div className="h-8 w-8 rounded-lg bg-[hsl(var(--nav-accent))] flex items-center justify-center">
+                  <div 
+                    className={cn(
+                      "h-8 w-8 rounded-lg bg-[hsl(var(--nav-accent))] flex items-center justify-center",
+                      clickedItem === 'dashboard' && "animate-nav-bounce"
+                    )}
+                  >
                     <Home className="h-4 w-4 text-white" />
                   </div>
                 )}
@@ -364,7 +455,7 @@ export function AppNavigation({
           {navigationGroups.map((group) => renderNavGroup(group))}
         </div>
 
-        {/* Bottom Section: Team + Admin + Collapse Toggle */}
+        {/* Bottom Section: Team + Admin */}
         <div className="mt-auto border-t border-[hsl(var(--nav-foreground)/0.1)] py-2">
           {renderTeamGroup()}
 
@@ -374,61 +465,35 @@ export function AppNavigation({
                 <button
                   onClick={() => handleNavigationClick("administration")}
                   className={cn(
-                    "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group",
+                    "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group px-4",
                     "hover:bg-[hsl(var(--nav-hover))]",
-                    activeSection === "administration" && "bg-[hsl(var(--nav-active-bg))]",
-                    isCollapsed ? "flex-col justify-center px-2" : "px-4"
+                    (activeSection === "administration" || pendingSection === "administration") && "bg-[hsl(var(--nav-active-bg))]"
                   )}
                 >
                   <div className="relative">
-                    <Shield className="h-5 w-5 text-[hsl(var(--nav-foreground))]" />
+                    <Shield 
+                      className={cn(
+                        "h-5 w-5 text-[hsl(var(--nav-foreground))]",
+                        clickedItem === "administration" && "animate-nav-bounce"
+                      )} 
+                    />
                     {(navigationCounts['administration'] || 0) > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-full bg-destructive text-[9px] text-white flex items-center justify-center font-bold px-1">
+                      <span 
+                        className={cn(
+                          "absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-full bg-destructive text-[9px] text-white flex items-center justify-center font-bold px-1",
+                          "animate-badge-appear",
+                          newBadgeItems.has('administration') && "animate-badge-pulse"
+                        )}
+                      >
                         {navigationCounts['administration'] > 99 ? '99+' : navigationCounts['administration']}
                       </span>
                     )}
                   </div>
-                  <span className={cn(
-                    "text-sm font-medium truncate text-[hsl(var(--nav-foreground))] transition-all duration-200",
-                    isCollapsed ? "text-[10px] max-w-full" : "flex-1 text-left"
-                  )}>
+                  <span className="text-sm font-medium truncate text-[hsl(var(--nav-foreground))] flex-1 text-left">
                     Admin
                   </span>
                 </button>
               </TooltipTrigger>
-              {isCollapsed && (
-                <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-                  Administration
-                </TooltipContent>
-              )}
-            </Tooltip>
-          )}
-
-          {/* Collapse Toggle */}
-          {onToggleCollapse && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onToggleCollapse}
-                  className={cn(
-                    "flex items-center w-full py-3 gap-3 transition-all duration-200",
-                    "hover:bg-[hsl(var(--nav-hover))] text-[hsl(var(--nav-muted))]",
-                    isCollapsed ? "flex-col justify-center px-2" : "px-4"
-                  )}
-                >
-                  {isCollapsed ? (
-                    <ChevronRight className="h-5 w-5" />
-                  ) : (
-                    <>
-                      <ChevronLeft className="h-5 w-5" />
-                      <span className="text-sm font-medium">Einklappen</span>
-                    </>
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-                {isCollapsed ? 'Navigation ausklappen' : 'Navigation einklappen'}
-              </TooltipContent>
             </Tooltip>
           )}
         </div>

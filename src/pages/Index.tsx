@@ -23,6 +23,7 @@ import { DrucksachenView } from "@/components/DrucksachenView";
 import { CaseFilesView } from "@/components/CaseFilesView";
 import { MatrixChatView } from "@/components/chat/MatrixChatView";
 import { MyWorkView } from "@/components/MyWorkView";
+import { CallsView } from "@/components/CallsView";
 import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,10 +32,8 @@ import { MobileHeader } from "@/components/MobileHeader";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { SubNavigation } from "@/components/layout/SubNavigation";
 import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
-import { useNavCollapse } from "@/hooks/useNavCollapse";
 
 const Index = () => {
-  const { isCollapsed, toggle: toggleNav } = useNavCollapse();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -188,6 +187,9 @@ const Index = () => {
       case "chat":
         console.log('Rendering MatrixChatView');
         return <MatrixChatView />;
+      case "calls":
+        console.log('Rendering CallsView');
+        return <CallsView />;
       default:
         console.log('Rendering default Dashboard');
         return <Dashboard />;
@@ -209,8 +211,6 @@ const Index = () => {
           <AppNavigation 
             activeSection={activeSection} 
             onSectionChange={handleSectionChange}
-            isCollapsed={isCollapsed}
-            onToggleCollapse={toggleNav}
           />
         </div>
         <div className="flex flex-col flex-1">
