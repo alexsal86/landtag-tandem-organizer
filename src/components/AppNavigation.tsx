@@ -297,7 +297,7 @@ export function AppNavigation({
   if (isLoading) {
     return (
       <TooltipProvider delayDuration={300}>
-        <nav className="flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 w-[200px]">
+        <nav className="flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 w-[72px]">
           {/* Logo Skeleton */}
           <div className="h-14 flex items-center justify-center border-b border-[hsl(var(--nav-foreground)/0.1)]">
             <div className="h-8 w-8 rounded-lg animate-skeleton" />
@@ -306,18 +306,18 @@ export function AppNavigation({
           {/* Navigation Items Skeleton */}
           <div className="flex-1 flex flex-col py-2 gap-1">
             {[1, 2, 3, 4, 5, 6, 7].map(i => (
-              <div key={i} className="flex items-center gap-3 py-3 px-4">
+              <div key={i} className="flex flex-col items-center gap-1 py-2 px-2">
                 <div className="h-5 w-5 rounded animate-skeleton" />
-                <div className="h-4 w-24 rounded animate-skeleton" />
+                <div className="h-3 w-10 rounded animate-skeleton" />
               </div>
             ))}
           </div>
           
           {/* Bottom Skeleton */}
           <div className="mt-auto border-t border-[hsl(var(--nav-foreground)/0.1)] py-2">
-            <div className="flex items-center gap-3 py-3 px-4">
+            <div className="flex flex-col items-center gap-1 py-2 px-2">
               <div className="h-5 w-5 rounded animate-skeleton" />
-              <div className="h-4 w-16 rounded animate-skeleton" />
+              <div className="h-3 w-8 rounded animate-skeleton" />
             </div>
           </div>
         </nav>
@@ -344,7 +344,7 @@ export function AppNavigation({
           <button
             onClick={() => handleNavigationClick(targetId)}
             className={cn(
-              "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group px-4",
+              "flex flex-col items-center w-full py-2 px-1 gap-1 transition-all duration-200 relative group",
               "hover:bg-[hsl(var(--nav-hover))]",
               (isActive || isPending) && "bg-[hsl(var(--nav-active-bg))]"
             )}
@@ -368,7 +368,7 @@ export function AppNavigation({
                 </span>
               )}
             </div>
-            <span className="text-sm font-medium truncate text-[hsl(var(--nav-foreground))] flex-1 text-left">
+            <span className="text-[10px] font-medium text-[hsl(var(--nav-foreground))] text-center leading-tight">
               {group.label}
             </span>
           </button>
@@ -390,7 +390,7 @@ export function AppNavigation({
           <button
             onClick={() => handleNavigationClick(firstItem.id)}
             className={cn(
-              "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group px-4",
+              "flex flex-col items-center w-full py-2 px-1 gap-1 transition-all duration-200 relative group",
               "hover:bg-[hsl(var(--nav-hover))]",
               (isActive || isPending) && "bg-[hsl(var(--nav-active-bg))]"
             )}
@@ -403,7 +403,7 @@ export function AppNavigation({
                 )} 
               />
             </div>
-            <span className="text-sm font-medium truncate text-[hsl(var(--nav-foreground))] flex-1 text-left">
+            <span className="text-[10px] font-medium text-[hsl(var(--nav-foreground))] text-center leading-tight">
               Team
             </span>
           </button>
@@ -414,7 +414,7 @@ export function AppNavigation({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <nav className="flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 w-[200px]">
+      <nav className="flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 w-[72px]">
         {/* Logo Area */}
         <div className="h-14 flex items-center justify-center border-b border-[hsl(var(--nav-foreground)/0.1)]">
           <Tooltip>
@@ -465,7 +465,7 @@ export function AppNavigation({
                 <button
                   onClick={() => handleNavigationClick("administration")}
                   className={cn(
-                    "flex items-center w-full py-3 gap-3 transition-all duration-200 relative group px-4",
+                    "flex flex-col items-center w-full py-2 px-1 gap-1 transition-all duration-200 relative group",
                     "hover:bg-[hsl(var(--nav-hover))]",
                     (activeSection === "administration" || pendingSection === "administration") && "bg-[hsl(var(--nav-active-bg))]"
                   )}
@@ -489,7 +489,7 @@ export function AppNavigation({
                       </span>
                     )}
                   </div>
-                  <span className="text-sm font-medium truncate text-[hsl(var(--nav-foreground))] flex-1 text-left">
+                  <span className="text-[10px] font-medium text-[hsl(var(--nav-foreground))] text-center leading-tight">
                     Admin
                   </span>
                 </button>
