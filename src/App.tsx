@@ -68,6 +68,7 @@ const App = () => (
                   <Route path="/employee" element={<Index />} />
                   <Route path="/administration" element={<Index />} />
                   <Route path="/drucksachen" element={<Index />} />
+                  <Route path="/calls" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
                 <Route path="/contacts/new" element={<CreateContact />} />
                 <Route path="/contacts/import" element={<ImportContacts />} />

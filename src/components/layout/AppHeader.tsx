@@ -32,26 +32,27 @@ interface AppHeaderProps {
   onOpenSearch?: () => void;
 }
 
-// Map section IDs to readable labels and icons
-const sectionConfig: Record<string, { label: string; icon: typeof Calendar; quickAction?: { label: string; action: string } }> = {
-  dashboard: { label: 'Dashboard', icon: CheckSquare },
-  calendar: { label: 'Kalender', icon: Calendar, quickAction: { label: 'Neuer Termin', action: 'create-appointment' } },
-  contacts: { label: 'Kontakte', icon: Users, quickAction: { label: 'Neuer Kontakt', action: 'create-contact' } },
-  tasks: { label: 'Aufgaben', icon: CheckSquare, quickAction: { label: 'Neue Aufgabe', action: 'create-task' } },
-  decisions: { label: 'Entscheidungen', icon: CheckSquare },
-  casefiles: { label: 'FallAkten', icon: FileText },
-  meetings: { label: 'Jour fixe', icon: Calendar },
-  eventplanning: { label: 'Planungen', icon: Calendar },
-  karten: { label: 'Karten', icon: FileText },
-  documents: { label: 'Dokumente', icon: FileText, quickAction: { label: 'Neues Dokument', action: 'create-document' } },
-  drucksachen: { label: 'Drucksachen', icon: FileText },
-  knowledge: { label: 'Wissen', icon: FileText },
-  settings: { label: 'Einstellungen', icon: Settings },
-  time: { label: 'Zeiterfassung', icon: CheckSquare },
-  employee: { label: 'Mitarbeiter', icon: Users },
-  chat: { label: 'Chat', icon: FileText },
-  administration: { label: 'Administration', icon: Settings },
-  mywork: { label: 'Meine Arbeit', icon: CheckSquare },
+// Map section IDs to readable labels and quick actions
+const sectionConfig: Record<string, { label: string; quickAction?: { label: string; action: string } }> = {
+  dashboard: { label: 'Dashboard' },
+  mywork: { label: 'Meine Arbeit' },
+  calendar: { label: 'Kalender', quickAction: { label: 'Neuer Termin', action: 'create-appointment' } },
+  eventplanning: { label: 'Planungen', quickAction: { label: 'Neue Planung', action: 'create-eventplanning' } },
+  contacts: { label: 'Kontakte', quickAction: { label: 'Neuer Kontakt', action: 'create-contact' } },
+  tasks: { label: 'Aufgaben', quickAction: { label: 'Neue Aufgabe', action: 'create-task' } },
+  decisions: { label: 'Entscheidungen', quickAction: { label: 'Neue Entscheidung', action: 'create-decision' } },
+  meetings: { label: 'Jour fixe', quickAction: { label: 'Neues Meeting', action: 'create-meeting' } },
+  casefiles: { label: 'FallAkten', quickAction: { label: 'Neue Akte', action: 'create-casefile' } },
+  documents: { label: 'Dokumente', quickAction: { label: 'Neues Dokument', action: 'create-document' } },
+  drucksachen: { label: 'Drucksachen', quickAction: { label: 'Neue Drucksache', action: 'create-drucksache' } },
+  knowledge: { label: 'Wissen', quickAction: { label: 'Neuer Artikel', action: 'create-article' } },
+  karten: { label: 'Karten' },
+  chat: { label: 'Chat' },
+  calls: { label: 'Anrufe', quickAction: { label: 'Neuer Anruf', action: 'create-call' } },
+  time: { label: 'Zeiterfassung', quickAction: { label: 'Zeit erfassen', action: 'create-timeentry' } },
+  employee: { label: 'Mitarbeiter', quickAction: { label: 'Neuer Mitarbeiter', action: 'create-employee' } },
+  settings: { label: 'Einstellungen' },
+  administration: { label: 'Administration' },
 };
 
 export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
@@ -71,8 +72,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
 
   // Get current section from path
   const currentSection = location.pathname === '/' ? 'dashboard' : location.pathname.slice(1).split('/')[0];
-  const sectionInfo = sectionConfig[currentSection] || { label: currentSection, icon: CheckSquare };
-  const SectionIcon = sectionInfo.icon;
+  const sectionInfo = sectionConfig[currentSection] || { label: currentSection };
 
   // Load user profile and app settings
   useEffect(() => {
@@ -157,16 +157,8 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
 
   return (
     <header className="h-14 border-b bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.1)] flex items-center justify-between px-4 sticky top-0 z-40">
-      {/* Left: Context Info + Quick Action + Search */}
+      {/* Left: Quick Action + Search */}
       <div className="hidden md:flex items-center gap-4">
-        {/* Current Section with Icon */}
-        <div className="flex items-center gap-2">
-          <SectionIcon className="h-4 w-4 text-[hsl(var(--nav-muted))]" />
-          <span className="text-sm font-medium text-[hsl(var(--nav-foreground))]">
-            {sectionInfo.label}
-          </span>
-        </div>
-
         {/* Quick Action Button */}
         {sectionInfo.quickAction && (
           <Button 
@@ -180,7 +172,9 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
           </Button>
         )}
 
-        <Separator orientation="vertical" className="h-5 bg-[hsl(var(--nav-foreground)/0.2)]" />
+        {sectionInfo.quickAction && (
+          <Separator orientation="vertical" className="h-5 bg-[hsl(var(--nav-foreground)/0.2)]" />
+        )}
 
         {/* Search */}
         <HeaderSearch />

@@ -547,6 +547,60 @@ All colors MUST be HSL.
 
 /* Phase 2 & 3: Enhanced Utilities and Animations */
 @layer utilities {
+  /* Navigation Icon Bounce Animation */
+  @keyframes nav-bounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.85); }
+  }
+
+  .animate-nav-bounce {
+    animation: nav-bounce 0.15s ease-out;
+  }
+
+  /* Badge Appear Animation */
+  @keyframes badge-appear {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .animate-badge-appear {
+    animation: badge-appear 0.3s ease-out forwards;
+  }
+
+  /* Badge Pulse Animation for new items */
+  @keyframes badge-pulse {
+    0%, 100% { 
+      transform: scale(1); 
+      box-shadow: 0 0 0 0 hsl(var(--destructive) / 0.7); 
+    }
+    50% { 
+      transform: scale(1.1); 
+      box-shadow: 0 0 0 4px hsl(var(--destructive) / 0); 
+    }
+  }
+
+  .animate-badge-pulse {
+    animation: badge-pulse 2s infinite;
+  }
+
+  /* Skeleton Loading Animation */
+  @keyframes skeleton-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .animate-skeleton {
+    background: linear-gradient(
+      90deg, 
+      hsl(var(--nav-hover)) 25%, 
+      hsl(var(--nav-active-bg)) 50%, 
+      hsl(var(--nav-hover)) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+
   /* Navigation Styles */
   .nav-item-active {
     background: linear-gradient(90deg, 
