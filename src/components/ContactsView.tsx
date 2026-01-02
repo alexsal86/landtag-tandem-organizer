@@ -826,8 +826,7 @@ export function ContactsView() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12">Favorit</TableHead>
-                <TableHead className="w-12">Avatar</TableHead>
+                <TableHead className="w-14">Avatar</TableHead>
                 <SortableTableHead sortKey="name">Name</SortableTableHead>
                 <SortableTableHead sortKey="organization">Organisation/Rolle</SortableTableHead>
                 <SortableTableHead sortKey="email">Kontakt</SortableTableHead>
@@ -847,31 +846,31 @@ export function ContactsView() {
                     }}
                   >
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(contact.id, !contact.is_favorite);
-                      }}
-                      className="p-1 h-6 w-6"
-                    >
-                      <Star 
-                        className={`h-3 w-3 transition-colors ${
-                          contact.is_favorite 
-                            ? 'text-yellow-500 fill-current' 
-                            : 'text-muted-foreground hover:text-yellow-500'
-                        }`} 
-                      />
-                    </Button>
-                  </TableCell>
-                  <TableCell>
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={contact.avatar_url} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                        {getInitials(contact.name)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={contact.avatar_url} />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                          {getInitials(contact.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(contact.id, !contact.is_favorite);
+                        }}
+                        className="absolute -top-1 -right-1 h-4 w-4 p-0 bg-background rounded-full shadow-sm hover:bg-muted"
+                      >
+                        <Star 
+                          className={`h-3 w-3 transition-colors ${
+                            contact.is_favorite 
+                              ? 'text-yellow-500 fill-current' 
+                              : 'text-muted-foreground hover:text-yellow-500'
+                          }`} 
+                        />
+                      </Button>
+                    </div>
                   </TableCell>
                   <TableCell className="font-medium">{contact.name}</TableCell>
                   <TableCell>
@@ -881,18 +880,90 @@ export function ContactsView() {
                     }
                   </TableCell>
                   <TableCell>
-                    <div className="space-y-1">
+                    <div className="flex items-center gap-1">
                       {contact.email && (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Mail className="h-3 w-3" />
-                          <span className="truncate max-w-[200px]">{contact.email}</span>
-                        </div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(contact.email!);
+                                  toast({ title: "E-Mail kopiert" });
+                                }}
+                              >
+                                <Mail className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{contact.email}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                       {contact.phone && (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Phone className="h-3 w-3" />
-                          <span>{contact.phone}</span>
-                        </div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(contact.phone!);
+                                  toast({ title: "Telefon kopiert" });
+                                }}
+                              >
+                                <Phone className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{contact.phone}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      {contact.website && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(contact.website!);
+                                  toast({ title: "Website kopiert" });
+                                }}
+                              >
+                                <Building className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{contact.website}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      {contact.linkedin && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(contact.linkedin!);
+                                  toast({ title: "LinkedIn kopiert" });
+                                }}
+                              >
+                                <User className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{contact.linkedin}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                   </TableCell>
