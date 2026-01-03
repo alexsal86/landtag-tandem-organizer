@@ -6596,11 +6596,13 @@ export type Database = {
           color: string | null
           content: string
           created_at: string
+          follow_up_date: string | null
           id: string
           is_archived: boolean | null
           is_pinned: boolean | null
           meeting_id: string | null
           meeting_result: string | null
+          priority_level: number | null
           tags: string[] | null
           task_id: string | null
           title: string | null
@@ -6614,11 +6616,13 @@ export type Database = {
           color?: string | null
           content: string
           created_at?: string
+          follow_up_date?: string | null
           id?: string
           is_archived?: boolean | null
           is_pinned?: boolean | null
           meeting_id?: string | null
           meeting_result?: string | null
+          priority_level?: number | null
           tags?: string[] | null
           task_id?: string | null
           title?: string | null
@@ -6632,11 +6636,13 @@ export type Database = {
           color?: string | null
           content?: string
           created_at?: string
+          follow_up_date?: string | null
           id?: string
           is_archived?: boolean | null
           is_pinned?: boolean | null
           meeting_id?: string | null
           meeting_result?: string | null
+          priority_level?: number | null
           tags?: string[] | null
           task_id?: string | null
           title?: string | null
