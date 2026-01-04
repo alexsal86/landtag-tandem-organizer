@@ -407,7 +407,258 @@ export function QuickNotesList({
           <p className="text-sm text-muted-foreground line-clamp-2">
             {getPreviewText(note.content)}
           </p>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+        </div>
+        
+        {/* Right column: Icons on top, metadata below */}
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+          {/* Quick Action Icons - always visible */}
+          <div className="flex items-center gap-0.5">
+            {/* Als Aufgabe */}
+            {!note.task_id && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-muted-foreground hover:text-blue-500"
+                      onClick={(e) => { e.stopPropagation(); createTaskFromNote(note); }}
+                    >
+                      <CheckSquare className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Als Aufgabe</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            
+            {/* Als Entscheidung */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-purple-500"
+                    onClick={(e) => { e.stopPropagation(); toast.info("Entscheidung erstellen", { description: "Funktion in Entwicklung" }); }}
+                  >
+                    <Vote className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Als Entscheidung</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Jour Fixe */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-6 w-6",
+                      note.meeting_id 
+                        ? "text-emerald-500" 
+                        : "text-muted-foreground hover:text-emerald-500"
+                    )}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (note.meeting_id) {
+                        removeNoteFromMeeting(note.id);
+                      } else {
+                        setNoteForMeeting(note);
+                        setMeetingSelectorOpen(true);
+                      }
+                    }}
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {note.meeting_id ? "Von Jour Fixe entfernen" : "Auf Jour Fixe setzen"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Wiedervorlage */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-6 w-6",
+                      note.follow_up_date 
+                        ? "text-orange-500" 
+                        : "text-muted-foreground hover:text-orange-500"
+                    )}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (note.follow_up_date) {
+                        handleSetFollowUp(note.id, null);
+                      } else {
+                        handleSetFollowUp(note.id, addDays(new Date(), 14));
+                      }
+                    }}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {note.follow_up_date 
+                    ? `Wiedervorlage: ${format(new Date(note.follow_up_date), "dd.MM.yyyy", { locale: de })}` 
+                    : "Wiedervorlage (+14 Tage)"
+                  }
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Three-dot menu - always visible */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onClick={() => openEditDialog(note)}>
+                  <Edit className="h-3 w-3 mr-2" />
+                  Bearbeiten
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                
+                {/* Priority Submenu */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Star className="h-3 w-3 mr-2" />
+                    Priorität
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => handleSetPriority(note.id, 1)}>
+                        <span className="text-amber-500 mr-2">★</span>
+                        Level 1
+                        {note.priority_level === 1 && <span className="ml-auto text-xs">✓</span>}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleSetPriority(note.id, 2)}>
+                        <span className="text-amber-500 mr-2">★★</span>
+                        Level 2
+                        {note.priority_level === 2 && <span className="ml-auto text-xs">✓</span>}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleSetPriority(note.id, 3)}>
+                        <span className="text-amber-500 mr-2">★★★</span>
+                        Level 3
+                        {note.priority_level === 3 && <span className="ml-auto text-xs">✓</span>}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleSetPriority(note.id, 0)}>
+                        Keine Priorität
+                        {(!note.priority_level || note.priority_level === 0) && <span className="ml-auto text-xs">✓</span>}
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+
+                {/* Follow-up Submenu */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Clock className="h-3 w-3 mr-2" />
+                    Wiedervorlage
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 14))}>
+                        In 14 Tagen
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 7))}>
+                        In 7 Tagen
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 30))}>
+                        In 30 Tagen
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => {
+                        setNoteForDatePicker(note);
+                        setDatePickerOpen(true);
+                      }}>
+                        <CalendarIcon className="h-3 w-3 mr-2" />
+                        Datum wählen...
+                      </DropdownMenuItem>
+                      {note.follow_up_date && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, null)} className="text-destructive">
+                            Wiedervorlage entfernen
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+
+                <DropdownMenuSeparator />
+                
+                {!note.task_id && (
+                  <DropdownMenuItem onClick={() => createTaskFromNote(note)}>
+                    <CheckSquare className="h-3 w-3 mr-2" />
+                    Als Aufgabe
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => toast.info("Entscheidung erstellen", { description: "Funktion in Entwicklung" })}>
+                  <Vote className="h-3 w-3 mr-2" />
+                  Als Entscheidung
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                {!note.meeting_id ? (
+                  <DropdownMenuItem onClick={() => {
+                    setNoteForMeeting(note);
+                    setMeetingSelectorOpen(true);
+                  }}>
+                    <CalendarIcon className="h-3 w-3 mr-2" />
+                    Auf Jour Fixe setzen
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => removeNoteFromMeeting(note.id)} className="text-amber-600">
+                    <CalendarIcon className="h-3 w-3 mr-2" />
+                    Von Jour Fixe entfernen
+                  </DropdownMenuItem>
+                )}
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem onClick={() => handleTogglePin(note)}>
+                  <Pin className={cn("h-3 w-3 mr-2", note.is_pinned && "text-amber-500")} />
+                  {note.is_pinned ? 'Loslösen' : 'Anpinnen'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleArchive(note.id)}>
+                  <Archive className="h-3 w-3 mr-2" />
+                  Archivieren
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem 
+                  onClick={() => handleDelete(note.id)} 
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-3 w-3 mr-2" />
+                  Löschen
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          
+          {/* Metadata row below icons */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
             {/* Date as icon with tooltip */}
             <TooltipProvider>
               <Tooltip>
@@ -423,12 +674,12 @@ export function QuickNotesList({
               <Pin className="h-3 w-3 text-amber-500" />
             )}
             {note.task_id && (
-              <Badge variant="outline" className="text-xs px-1 py-0 text-blue-600">
+              <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-blue-600">
                 Aufgabe
               </Badge>
             )}
             {note.meeting_id && (
-              <Badge variant="outline" className="text-xs px-1 py-0 text-emerald-600">
+              <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-emerald-600">
                 Jour Fixe
               </Badge>
             )}
@@ -438,7 +689,7 @@ export function QuickNotesList({
                   ? "destructive" 
                   : "secondary"
                 } 
-                className="text-xs px-1 py-0"
+                className="text-xs px-1 py-0 h-4"
               >
                 <Clock className="h-3 w-3 mr-1" />
                 {isToday(new Date(note.follow_up_date)) 
@@ -448,252 +699,6 @@ export function QuickNotesList({
               </Badge>
             )}
           </div>
-        </div>
-        
-        {/* Quick Action Icons - always visible */}
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          {/* Als Aufgabe */}
-          {!note.task_id && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground hover:text-blue-500"
-                    onClick={(e) => { e.stopPropagation(); createTaskFromNote(note); }}
-                  >
-                    <CheckSquare className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Als Aufgabe</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          
-          {/* Als Entscheidung */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-purple-500"
-                  onClick={(e) => { e.stopPropagation(); toast.info("Entscheidung erstellen", { description: "Funktion in Entwicklung" }); }}
-                >
-                  <Vote className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Als Entscheidung</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          {/* Jour Fixe */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-6 w-6",
-                    note.meeting_id 
-                      ? "text-emerald-500" 
-                      : "text-muted-foreground hover:text-emerald-500"
-                  )}
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (note.meeting_id) {
-                      removeNoteFromMeeting(note.id);
-                    } else {
-                      setNoteForMeeting(note);
-                      setMeetingSelectorOpen(true);
-                    }
-                  }}
-                >
-                  <CalendarIcon className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {note.meeting_id ? "Von Jour Fixe entfernen" : "Auf Jour Fixe setzen"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          {/* Wiedervorlage */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-6 w-6",
-                    note.follow_up_date 
-                      ? "text-orange-500" 
-                      : "text-muted-foreground hover:text-orange-500"
-                  )}
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (note.follow_up_date) {
-                      handleSetFollowUp(note.id, null);
-                    } else {
-                      handleSetFollowUp(note.id, addDays(new Date(), 14));
-                    }
-                  }}
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {note.follow_up_date 
-                  ? `Wiedervorlage: ${format(new Date(note.follow_up_date), "dd.MM.yyyy", { locale: de })}` 
-                  : "Wiedervorlage (+14 Tage)"
-                }
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          {/* Three-dot menu - always visible */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreHorizontal className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem onClick={() => openEditDialog(note)}>
-                <Edit className="h-3 w-3 mr-2" />
-                Bearbeiten
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              
-              {/* Priority Submenu */}
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Star className="h-3 w-3 mr-2" />
-                  Priorität
-                </DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuItem onClick={() => handleSetPriority(note.id, 1)}>
-                      <span className="text-amber-500 mr-2">★</span>
-                      Level 1
-                      {note.priority_level === 1 && <span className="ml-auto text-xs">✓</span>}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSetPriority(note.id, 2)}>
-                      <span className="text-amber-500 mr-2">★★</span>
-                      Level 2
-                      {note.priority_level === 2 && <span className="ml-auto text-xs">✓</span>}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSetPriority(note.id, 3)}>
-                      <span className="text-amber-500 mr-2">★★★</span>
-                      Level 3
-                      {note.priority_level === 3 && <span className="ml-auto text-xs">✓</span>}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleSetPriority(note.id, 0)}>
-                      Keine Priorität
-                      {(!note.priority_level || note.priority_level === 0) && <span className="ml-auto text-xs">✓</span>}
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-
-              {/* Follow-up Submenu */}
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Clock className="h-3 w-3 mr-2" />
-                  Wiedervorlage
-                </DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 14))}>
-                      In 14 Tagen
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 7))}>
-                      In 7 Tagen
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 30))}>
-                      In 30 Tagen
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => {
-                      setNoteForDatePicker(note);
-                      setDatePickerOpen(true);
-                    }}>
-                      <CalendarIcon className="h-3 w-3 mr-2" />
-                      Datum wählen...
-                    </DropdownMenuItem>
-                    {note.follow_up_date && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, null)} className="text-destructive">
-                          Wiedervorlage entfernen
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-
-              <DropdownMenuSeparator />
-              
-              {!note.task_id && (
-                <DropdownMenuItem onClick={() => createTaskFromNote(note)}>
-                  <CheckSquare className="h-3 w-3 mr-2" />
-                  Als Aufgabe
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => toast.info("Entscheidung erstellen", { description: "Funktion in Entwicklung" })}>
-                <Vote className="h-3 w-3 mr-2" />
-                Als Entscheidung
-              </DropdownMenuItem>
-              
-              <DropdownMenuSeparator />
-              
-              {!note.meeting_id ? (
-                <DropdownMenuItem onClick={() => {
-                  setNoteForMeeting(note);
-                  setMeetingSelectorOpen(true);
-                }}>
-                  <CalendarIcon className="h-3 w-3 mr-2" />
-                  Auf Jour Fixe setzen
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onClick={() => removeNoteFromMeeting(note.id)} className="text-amber-600">
-                  <CalendarIcon className="h-3 w-3 mr-2" />
-                  Von Jour Fixe entfernen
-                </DropdownMenuItem>
-              )}
-              
-              <DropdownMenuSeparator />
-              
-              <DropdownMenuItem onClick={() => handleTogglePin(note)}>
-                <Pin className={cn("h-3 w-3 mr-2", note.is_pinned && "text-amber-500")} />
-                {note.is_pinned ? 'Loslösen' : 'Anpinnen'}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleArchive(note.id)}>
-                <Archive className="h-3 w-3 mr-2" />
-                Archivieren
-              </DropdownMenuItem>
-              
-              <DropdownMenuSeparator />
-              
-              <DropdownMenuItem 
-                onClick={() => handleDelete(note.id)} 
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="h-3 w-3 mr-2" />
-                Löschen
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
     </div>
