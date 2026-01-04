@@ -4,6 +4,12 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
@@ -401,10 +407,18 @@ export function QuickNotesList({
           <p className="text-sm text-muted-foreground line-clamp-2">
             {getPreviewText(note.content)}
           </p>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <p className="text-xs text-muted-foreground">
-              {format(new Date(note.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
-            </p>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            {/* Date as icon with tooltip */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Clock className="h-3 w-3 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>{format(new Date(note.created_at), "dd.MM.yyyy 'um' HH:mm 'Uhr'", { locale: de })}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             {note.is_pinned && (
               <Pin className="h-3 w-3 text-amber-500" />
             )}
@@ -435,16 +449,121 @@ export function QuickNotesList({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
+        
+        {/* Quick Action Icons - always visible */}
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          {/* Als Aufgabe */}
+          {!note.task_id && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-blue-500"
+                    onClick={(e) => { e.stopPropagation(); createTaskFromNote(note); }}
+                  >
+                    <CheckSquare className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Als Aufgabe</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          
+          {/* Als Entscheidung */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground hover:text-purple-500"
+                  onClick={(e) => { e.stopPropagation(); toast.info("Entscheidung erstellen", { description: "Funktion in Entwicklung" }); }}
+                >
+                  <Vote className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Als Entscheidung</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          {/* Jour Fixe */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-6 w-6",
+                    note.meeting_id 
+                      ? "text-emerald-500" 
+                      : "text-muted-foreground hover:text-emerald-500"
+                  )}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (note.meeting_id) {
+                      removeNoteFromMeeting(note.id);
+                    } else {
+                      setNoteForMeeting(note);
+                      setMeetingSelectorOpen(true);
+                    }
+                  }}
+                >
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {note.meeting_id ? "Von Jour Fixe entfernen" : "Auf Jour Fixe setzen"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          {/* Wiedervorlage */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-6 w-6",
+                    note.follow_up_date 
+                      ? "text-orange-500" 
+                      : "text-muted-foreground hover:text-orange-500"
+                  )}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (note.follow_up_date) {
+                      handleSetFollowUp(note.id, null);
+                    } else {
+                      handleSetFollowUp(note.id, addDays(new Date(), 14));
+                    }
+                  }}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {note.follow_up_date 
+                  ? `Wiedervorlage: ${format(new Date(note.follow_up_date), "dd.MM.yyyy", { locale: de })}` 
+                  : "Wiedervorlage (+14 Tage)"
+                }
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          {/* Three-dot menu - always visible */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-6 w-6"
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreHorizontal className="h-3 w-3" />
+                <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>

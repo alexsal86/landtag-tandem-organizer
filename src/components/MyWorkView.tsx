@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Search, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { MyWorkQuickCapture } from "./my-work/MyWorkQuickCapture";
@@ -10,6 +12,7 @@ import { MyWorkDecisionsTab } from "./my-work/MyWorkDecisionsTab";
 import { MyWorkCaseFilesTab } from "./my-work/MyWorkCaseFilesTab";
 import { MyWorkPlanningsTab } from "./my-work/MyWorkPlanningsTab";
 import { MyWorkTeamTab } from "./my-work/MyWorkTeamTab";
+import { MyWorkJourFixeTab } from "./my-work/MyWorkJourFixeTab";
 
 interface TabCounts {
   tasks: number;
@@ -17,9 +20,10 @@ interface TabCounts {
   caseFiles: number;
   plannings: number;
   team: number;
+  jourFixe: number;
 }
 
-type TabValue = "capture" | "tasks" | "decisions" | "casefiles" | "plannings" | "team";
+type TabValue = "capture" | "tasks" | "decisions" | "jourFixe" | "casefiles" | "plannings" | "team";
 
 interface TabConfig {
   value: TabValue;
@@ -29,10 +33,16 @@ interface TabConfig {
   badgeVariant?: "secondary" | "destructive";
 }
 
+interface TabAction {
+  label: string;
+  onClick: () => void;
+}
+
 const TABS: TabConfig[] = [
   { value: "capture", label: "Quick Notes", icon: StickyNote },
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
   { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },
+  { value: "jourFixe", label: "Jour Fixe", icon: Calendar, countKey: "jourFixe" },
   { value: "casefiles", label: "FallAkten", icon: Briefcase, countKey: "caseFiles" },
   { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
   { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive" },
@@ -41,12 +51,14 @@ const TABS: TabConfig[] = [
 export function MyWorkView() {
   const { user } = useAuth();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
   const [counts, setCounts] = useState<TabCounts>({
     tasks: 0,
     decisions: 0,
     caseFiles: 0,
     plannings: 0,
     team: 0,
+    jourFixe: 0,
   });
   const [activeTab, setActiveTab] = useState<TabValue>("capture");
 
@@ -87,6 +99,14 @@ export function MyWorkView() {
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
 
+      // Count upcoming Jour Fixe meetings
+      const { count: jourFixeCount } = await supabase
+        .from("meetings")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .neq("status", "archived")
+        .gte("meeting_date", new Date().toISOString());
+
       // Check if admin for team count
       const { data: isAdmin } = await supabase.rpc("is_admin", { _user_id: user.id });
       let teamCount = 0;
@@ -104,6 +124,7 @@ export function MyWorkView() {
         caseFiles: caseFileCount || 0,
         plannings: planningCount || 0,
         team: teamCount,
+        jourFixe: jourFixeCount || 0,
       });
     } catch (error) {
       console.error("Error loading counts:", error);
@@ -114,17 +135,62 @@ export function MyWorkView() {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  // Dynamic action per tab
+  const getTabAction = (): TabAction | null => {
+    switch (activeTab) {
+      case "capture":
+        return { label: "Neue Notiz", onClick: () => {} }; // QuickCapture is always visible
+      case "tasks":
+        return { label: "Neue Aufgabe", onClick: () => window.location.href = "/tasks?new=1" };
+      case "decisions":
+        return { label: "Neue Entscheidung", onClick: () => window.location.href = "/decisions?new=1" };
+      case "jourFixe":
+        return { label: "Neues Meeting", onClick: () => window.location.href = "/jour-fixe?new=1" };
+      case "casefiles":
+        return { label: "Neue Akte", onClick: () => window.location.href = "/case-files?new=1" };
+      case "plannings":
+        return { label: "Neue Planung", onClick: () => window.location.href = "/plannings?new=1" };
+      default:
+        return null;
+    }
+  };
+
+  const tabAction = getTabAction();
+
   return (
     <div className="min-h-screen p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <ClipboardList className="h-8 w-8" />
-          Meine Arbeit
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Alle Aufgaben, Entscheidungen und Projekte auf einen Blick
-        </p>
+      {/* Header with Search and Action */}
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <ClipboardList className="h-8 w-8" />
+            Meine Arbeit
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Alle Aufgaben, Entscheidungen und Projekte auf einen Blick
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {/* Search Field */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Suchen..." 
+              className="pl-9 w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          {/* Dynamic Action Button */}
+          {tabAction && activeTab !== "capture" && (
+            <Button onClick={tabAction.onClick}>
+              <Plus className="h-4 w-4 mr-2" />
+              {tabAction.label}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Tab Navigation (horizontal, oben) */}
@@ -169,6 +235,7 @@ export function MyWorkView() {
       
       {activeTab === "tasks" && <MyWorkTasksTab />}
       {activeTab === "decisions" && <MyWorkDecisionsTab />}
+      {activeTab === "jourFixe" && <MyWorkJourFixeTab />}
       {activeTab === "casefiles" && <MyWorkCaseFilesTab />}
       {activeTab === "plannings" && <MyWorkPlanningsTab />}
       {activeTab === "team" && <MyWorkTeamTab />}
