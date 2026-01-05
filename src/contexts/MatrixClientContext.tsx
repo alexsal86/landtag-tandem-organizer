@@ -309,10 +309,20 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       // Initialize E2EE with Rust Crypto
       try {
+        console.log('Initializing Matrix E2EE with Rust Crypto...');
         await matrixClient.initRustCrypto();
-        console.log('Matrix E2EE initialized successfully');
+        
+        // Verify crypto is working
+        const crypto = matrixClient.getCrypto();
+        if (crypto) {
+          console.log('Matrix E2EE initialized successfully');
+          console.log('Device ID:', matrixClient.getDeviceId());
+        } else {
+          console.warn('Crypto API not available after initialization');
+        }
       } catch (cryptoError) {
-        console.warn('Could not initialize E2EE (encrypted chats may not be readable):', cryptoError);
+        console.error('Failed to initialize E2EE:', cryptoError);
+        // Continue without encryption - user will see warning for encrypted rooms
       }
 
       // Start the client with E2EE support
