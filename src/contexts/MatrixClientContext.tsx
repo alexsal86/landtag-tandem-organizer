@@ -311,6 +311,18 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       // Initialize E2EE with Rust Crypto
       try {
+        // Check Cross-Origin Isolation status (required for SharedArrayBuffer)
+        console.log('=== Matrix E2EE Diagnostics ===');
+        console.log('Cross-Origin Isolated:', window.crossOriginIsolated);
+        console.log('SharedArrayBuffer available:', typeof SharedArrayBuffer !== 'undefined');
+        console.log('Running in iframe:', window.self !== window.top);
+        
+        if (!window.crossOriginIsolated) {
+          console.warn('Cross-Origin Isolation is not enabled. This is required for Matrix E2EE.');
+          console.warn('This typically happens when running in an iframe (like Lovable Preview).');
+          console.warn('Try opening the app in a new tab for E2EE support.');
+        }
+        
         console.log('Initializing Matrix E2EE with Rust Crypto...');
         await matrixClient.initRustCrypto();
         
@@ -326,6 +338,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         }
       } catch (cryptoError) {
         console.error('Failed to initialize E2EE:', cryptoError);
+        console.error('E2EE will not be available for encrypted rooms.');
         setCryptoEnabled(false);
         // Continue without encryption - user will see warning for encrypted rooms
       }
