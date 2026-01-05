@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { MessageSquare, Hash, User } from 'lucide-react';
+import { MessageSquare, Hash, User, Lock } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,6 +14,7 @@ interface Room {
   unreadCount: number;
   isDirect?: boolean;
   memberCount?: number;
+  isEncrypted?: boolean;
 }
 
 interface RoomListProps {
@@ -73,12 +74,19 @@ export function RoomList({ rooms, selectedRoomId, onSelectRoom }: RoomListProps)
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className={cn(
-                  "font-medium text-sm truncate",
-                  room.unreadCount > 0 && "text-foreground"
-                )}>
-                  {getRoomDisplayName(room)}
-                </span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={cn(
+                    "font-medium text-sm truncate",
+                    room.unreadCount > 0 && "text-foreground"
+                  )}>
+                    {getRoomDisplayName(room)}
+                  </span>
+                  {room.isEncrypted && (
+                    <span title="Ende-zu-Ende verschlüsselt">
+                      <Lock className="h-3 w-3 text-green-500 flex-shrink-0" />
+                    </span>
+                  )}
+                </div>
                 {room.unreadCount > 0 && (
                   <Badge variant="default" className="flex-shrink-0 h-5 min-w-[20px] justify-center">
                     {room.unreadCount > 99 ? '99+' : room.unreadCount}

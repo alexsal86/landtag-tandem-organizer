@@ -18,6 +18,7 @@ interface MatrixRoom {
   unreadCount: number;
   isDirect: boolean;
   memberCount: number;
+  isEncrypted: boolean;
 }
 
 export interface MatrixMessage {
@@ -152,9 +153,14 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
         const eventType = event.getType();
 
-        // Handle message events
+        // Handle message events (including decrypted ones)
         if (eventType === 'm.room.message') {
           const content = event.getContent();
+          
+          // Skip if still encrypted (waiting for decryption)
+          if (!content.msgtype && event.isEncrypted?.()) {
+            return;
+          }
           const relatesTo = content['m.relates_to'];
           
           // Skip if this is a reaction or edit
@@ -258,7 +264,58 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         });
       });
 
-      // Start the client without crypto (no E2EE)
+      // Listen for decrypted events
+      matrixClient.on(sdk.MatrixEventEvent.Decrypted, (event) => {
+        const roomId = event.getRoomId();
+        if (!roomId) return;
+
+        const eventType = event.getType();
+        if (eventType !== 'm.room.message') return;
+
+        const content = event.getContent();
+        const room = matrixClient.getRoom(roomId);
+        if (!room) return;
+
+        const isMedia = ['m.image', 'm.video', 'm.audio', 'm.file'].includes(content.msgtype);
+
+        const decryptedMessage: MatrixMessage = {
+          eventId: event.getId() || '',
+          roomId,
+          sender: event.getSender() || '',
+          senderDisplayName: room.getMember(event.getSender() || '')?.name || event.getSender() || '',
+          content: content.body || '[Entschlüsselung fehlgeschlagen]',
+          timestamp: event.getTs(),
+          type: content.msgtype || 'm.text',
+          status: 'sent',
+          reactions: new Map(),
+          mediaContent: isMedia ? {
+            msgtype: content.msgtype,
+            body: content.body,
+            url: content.url,
+            info: content.info,
+          } : undefined,
+        };
+
+        setMessages(prev => {
+          const roomMessages = prev.get(roomId) || [];
+          const updated = new Map(prev);
+          // Replace the encrypted placeholder with decrypted message
+          updated.set(roomId, roomMessages.map(m =>
+            m.eventId === decryptedMessage.eventId ? decryptedMessage : m
+          ));
+          return updated;
+        });
+      });
+
+      // Initialize E2EE with Rust Crypto
+      try {
+        await matrixClient.initRustCrypto();
+        console.log('Matrix E2EE initialized successfully');
+      } catch (cryptoError) {
+        console.warn('Could not initialize E2EE (encrypted chats may not be readable):', cryptoError);
+      }
+
+      // Start the client with E2EE support
       await matrixClient.startClient({ initialSyncLimit: 50 });
       
       setClient(matrixClient);
@@ -293,6 +350,9 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       // Check if this is a direct message room
       const isDirect = room.getJoinedMemberCount() === 2;
       
+      // Check if the room has encryption enabled
+      const isEncrypted = room.hasEncryptionStateEvent();
+      
       return {
         roomId: room.roomId,
         name: room.name || room.roomId,
@@ -301,6 +361,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         unreadCount: room.getUnreadNotificationCount() || 0,
         isDirect,
         memberCount: room.getJoinedMemberCount(),
+        isEncrypted,
       };
     });
 

@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Reply } from 'lucide-react';
+import { Reply, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MediaMessage } from './MediaMessage';
 import { MessageReactions } from './MessageReactions';
@@ -191,6 +191,14 @@ export function ChatMessages({
                       {/* Message content */}
                       {isMediaMessage && message.mediaContent ? (
                         <MediaMessage content={message.mediaContent} homeserverUrl={homeserverUrl} />
+                      ) : message.content === '[Encrypted]' || message.type === 'm.bad.encrypted' ? (
+                        <div className={cn(
+                          "rounded-lg px-3 py-2 text-sm break-words flex items-center gap-2",
+                          "bg-muted/50 text-muted-foreground italic"
+                        )}>
+                          <Lock className="h-4 w-4 flex-shrink-0" />
+                          <span>Nachricht konnte nicht entschlüsselt werden</span>
+                        </div>
                       ) : (
                         <div className={cn(
                           "rounded-lg px-3 py-2 text-sm break-words",
