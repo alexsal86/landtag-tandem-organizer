@@ -19,4 +19,10 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    exclude: ['@matrix-org/matrix-sdk-crypto-wasm'],
+  },
+  build: {
+    target: 'esnext',
+  },
 }));
