@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, Plus } from 'lucide-react';
+import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, Plus, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useMatrixClient } from '@/contexts/MatrixClientContext';
@@ -250,7 +250,15 @@ export function MatrixChatView() {
             <>
               {/* Room Header */}
               <div className="px-4 py-3 border-b bg-background">
-                <h2 className="font-medium">{selectedRoom.name}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-medium">{selectedRoom.name}</h2>
+                  {selectedRoom.isEncrypted && (
+                    <span className="flex items-center gap-1 text-xs text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded">
+                      <Lock className="h-3 w-3" />
+                      E2EE
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {selectedRoom.memberCount} Mitglieder
                 </p>
