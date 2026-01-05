@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, Plus, Lock } from 'lucide-react';
+import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, Plus, Lock, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useMatrixClient } from '@/contexts/MatrixClientContext';
@@ -274,9 +274,18 @@ export function MatrixChatView() {
               {selectedRoom.isEncrypted && !cryptoEnabled && (
                 <Alert variant="destructive" className="mx-4 mt-2 rounded-lg">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Verschlüsselung wird nicht unterstützt. Nachrichten können nicht gesendet oder gelesen werden.
-                    Bitte laden Sie die Seite neu.
+                  <AlertTitle>Verschlüsselung nicht verfügbar</AlertTitle>
+                  <AlertDescription className="mt-1">
+                    Ende-zu-Ende-Verschlüsselung erfordert, dass die App in einem eigenständigen Browser-Tab läuft (nicht im Lovable Preview).
+                    <a 
+                      href={window.location.href} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 ml-2 underline font-medium hover:no-underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      App in neuem Tab öffnen
+                    </a>
                   </AlertDescription>
                 </Alert>
               )}
