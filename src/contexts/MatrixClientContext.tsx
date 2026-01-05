@@ -56,6 +56,7 @@ interface MatrixClientContextType {
   isConnected: boolean;
   isConnecting: boolean;
   connectionError: string | null;
+  cryptoEnabled: boolean;
   rooms: MatrixRoom[];
   credentials: MatrixCredentials | null;
   connect: (credentials: MatrixCredentials) => Promise<void>;
@@ -81,6 +82,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [cryptoEnabled, setCryptoEnabled] = useState(false);
   const [rooms, setRooms] = useState<MatrixRoom[]>([]);
   const [credentials, setCredentials] = useState<MatrixCredentials | null>(null);
   const [messages, setMessages] = useState<Map<string, MatrixMessage[]>>(new Map());
@@ -317,11 +319,14 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         if (crypto) {
           console.log('Matrix E2EE initialized successfully');
           console.log('Device ID:', matrixClient.getDeviceId());
+          setCryptoEnabled(true);
         } else {
           console.warn('Crypto API not available after initialization');
+          setCryptoEnabled(false);
         }
       } catch (cryptoError) {
         console.error('Failed to initialize E2EE:', cryptoError);
+        setCryptoEnabled(false);
         // Continue without encryption - user will see warning for encrypted rooms
       }
 
@@ -343,6 +348,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       setClient(null);
     }
     setIsConnected(false);
+    setCryptoEnabled(false);
     setRooms([]);
     setMessages(new Map());
     setTypingUsers(new Map());
@@ -385,6 +391,14 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       throw new Error('Nicht mit Matrix verbunden');
     }
 
+    // Check if room is encrypted and crypto is available
+    const room = client.getRoom(roomId);
+    const isRoomEncrypted = room?.hasEncryptionStateEvent();
+    
+    if (isRoomEncrypted && !client.getCrypto()) {
+      throw new Error('Verschlüsselung ist für diesen Raum erforderlich, aber Ihr Browser unterstützt die Verschlüsselung nicht. Bitte laden Sie die Seite neu.');
+    }
+
     const content: Record<string, unknown> = {
       msgtype: 'm.text',
       body: message,
@@ -392,7 +406,6 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
     // Add reply relation if replying
     if (replyToEventId) {
-      const room = client.getRoom(roomId);
       const replyEvent = room?.findEventById(replyToEventId);
       if (replyEvent) {
         const replyBody = replyEvent.getContent().body || '';
@@ -516,6 +529,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     isConnected,
     isConnecting,
     connectionError,
+    cryptoEnabled,
     rooms,
     credentials,
     connect,

@@ -21,6 +21,7 @@ export function MatrixChatView() {
     isConnected,
     isConnecting,
     connectionError,
+    cryptoEnabled,
     rooms,
     credentials,
     sendMessage,
@@ -253,9 +254,14 @@ export function MatrixChatView() {
                 <div className="flex items-center gap-2">
                   <h2 className="font-medium">{selectedRoom.name}</h2>
                   {selectedRoom.isEncrypted && (
-                    <span className="flex items-center gap-1 text-xs text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded">
+                    <span className={cn(
+                      "flex items-center gap-1 text-xs px-1.5 py-0.5 rounded",
+                      cryptoEnabled 
+                        ? "text-green-600 bg-green-500/10" 
+                        : "text-amber-600 bg-amber-500/10"
+                    )}>
                       <Lock className="h-3 w-3" />
-                      E2EE
+                      {cryptoEnabled ? 'E2EE' : 'E2EE nicht verfügbar'}
                     </span>
                   )}
                 </div>
@@ -263,6 +269,17 @@ export function MatrixChatView() {
                   {selectedRoom.memberCount} Mitglieder
                 </p>
               </div>
+
+              {/* Warning for encrypted rooms without crypto */}
+              {selectedRoom.isEncrypted && !cryptoEnabled && (
+                <Alert variant="destructive" className="mx-4 mt-2 rounded-lg">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Verschlüsselung wird nicht unterstützt. Nachrichten können nicht gesendet oder gelesen werden.
+                    Bitte laden Sie die Seite neu.
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {/* Messages */}
               <ChatMessages
