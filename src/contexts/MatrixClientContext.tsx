@@ -487,14 +487,17 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       })
       .slice(-limit);
 
+    // Use functional update to avoid dependency on messages
     setMessages(prev => {
+      // Only update if not already cached
+      if (prev.get(roomId)?.length) return prev;
       const updated = new Map(prev);
       updated.set(roomId, roomMessages);
       return updated;
     });
 
     return roomMessages;
-  }, [client, messages]);
+  }, [client]); // Remove messages from dependencies
 
   const totalUnreadCount = rooms.reduce((sum, room) => sum + room.unreadCount, 0);
 
