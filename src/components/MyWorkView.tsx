@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Search, Plus } from "lucide-react";
+import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { MyWorkQuickCapture } from "./my-work/MyWorkQuickCapture";
@@ -33,11 +32,6 @@ interface TabConfig {
   badgeVariant?: "secondary" | "destructive";
 }
 
-interface TabAction {
-  label: string;
-  onClick: () => void;
-}
-
 const TABS: TabConfig[] = [
   { value: "capture", label: "Quick Notes", icon: StickyNote },
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
@@ -50,8 +44,8 @@ const TABS: TabConfig[] = [
 
 export function MyWorkView() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [searchTerm, setSearchTerm] = useState("");
   const [counts, setCounts] = useState<TabCounts>({
     tasks: 0,
     decisions: 0,
@@ -60,7 +54,13 @@ export function MyWorkView() {
     team: 0,
     jourFixe: 0,
   });
-  const [activeTab, setActiveTab] = useState<TabValue>("capture");
+  
+  // Get active tab from URL or default to "capture"
+  const activeTab = (searchParams.get("tab") as TabValue) || "capture";
+  
+  const setActiveTab = (tab: TabValue) => {
+    setSearchParams({ tab });
+  };
 
   useEffect(() => {
     if (user) {
@@ -135,62 +135,17 @@ export function MyWorkView() {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // Dynamic action per tab
-  const getTabAction = (): TabAction | null => {
-    switch (activeTab) {
-      case "capture":
-        return { label: "Neue Notiz", onClick: () => {} }; // QuickCapture is always visible
-      case "tasks":
-        return { label: "Neue Aufgabe", onClick: () => window.location.href = "/tasks?new=1" };
-      case "decisions":
-        return { label: "Neue Entscheidung", onClick: () => window.location.href = "/decisions?new=1" };
-      case "jourFixe":
-        return { label: "Neues Meeting", onClick: () => window.location.href = "/jour-fixe?new=1" };
-      case "casefiles":
-        return { label: "Neue Akte", onClick: () => window.location.href = "/case-files?new=1" };
-      case "plannings":
-        return { label: "Neue Planung", onClick: () => window.location.href = "/plannings?new=1" };
-      default:
-        return null;
-    }
-  };
-
-  const tabAction = getTabAction();
-
   return (
-    <div className="min-h-screen p-6">
-      {/* Header with Search and Action */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <ClipboardList className="h-8 w-8" />
-            Meine Arbeit
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Alle Aufgaben, Entscheidungen und Projekte auf einen Blick
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          {/* Search Field */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Suchen..." 
-              className="pl-9 w-64"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          {/* Dynamic Action Button */}
-          {tabAction && activeTab !== "capture" && (
-            <Button onClick={tabAction.onClick}>
-              <Plus className="h-4 w-4 mr-2" />
-              {tabAction.label}
-            </Button>
-          )}
-        </div>
+    <div className="min-h-[calc(100vh-8rem)] p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <ClipboardList className="h-8 w-8" />
+          Meine Arbeit
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Alle Aufgaben, Entscheidungen und Projekte auf einen Blick
+        </p>
       </div>
 
       {/* Tab Navigation (horizontal, oben) */}
