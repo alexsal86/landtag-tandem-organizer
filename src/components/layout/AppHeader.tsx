@@ -55,6 +55,15 @@ const sectionConfig: Record<string, { label: string; quickAction?: { label: stri
   administration: { label: 'Administration' },
 };
 
+// Quick Actions for mywork tabs
+const myworkTabActions: Record<string, { label: string; action: string }> = {
+  tasks: { label: 'Neue Aufgabe', action: 'create-task' },
+  decisions: { label: 'Neue Entscheidung', action: 'create-decision' },
+  jourFixe: { label: 'Neues Meeting', action: 'create-meeting' },
+  casefiles: { label: 'Neue Akte', action: 'create-casefile' },
+  plannings: { label: 'Neue Planung', action: 'create-eventplanning' },
+};
+
 export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
   const { user, signOut } = useAuth();
   const { currentStatus, getStatusDisplay } = useUserStatus();
@@ -126,10 +135,23 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
     }
   };
 
+  // Get mywork tab from URL
+  const myworkTab = new URLSearchParams(location.search).get('tab');
+  
+  // Determine quick action - check mywork tabs first
+  const getQuickAction = () => {
+    if (currentSection === 'mywork' && myworkTab && myworkTabActions[myworkTab]) {
+      return myworkTabActions[myworkTab];
+    }
+    return sectionInfo.quickAction;
+  };
+  
+  const quickAction = getQuickAction();
+
   const handleQuickAction = () => {
-    if (sectionInfo.quickAction) {
+    if (quickAction) {
       const urlParams = new URLSearchParams(location.search);
-      urlParams.set('action', sectionInfo.quickAction.action);
+      urlParams.set('action', quickAction.action);
       navigate(`${location.pathname}?${urlParams.toString()}`);
     }
   };
@@ -160,7 +182,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
       {/* Left: Quick Action + Search */}
       <div className="hidden md:flex items-center gap-4">
         {/* Quick Action Button */}
-        {sectionInfo.quickAction && (
+        {quickAction && (
           <Button 
             size="sm" 
             variant="ghost"
@@ -168,11 +190,11 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
             className="h-7 px-2 text-xs bg-[hsl(var(--nav-hover))] hover:bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-foreground))]"
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
-            {sectionInfo.quickAction.label}
+            {quickAction.label}
           </Button>
         )}
 
-        {sectionInfo.quickAction && (
+        {quickAction && (
           <Separator orientation="vertical" className="h-5 bg-[hsl(var(--nav-foreground)/0.2)]" />
         )}
 

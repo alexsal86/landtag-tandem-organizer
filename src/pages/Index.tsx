@@ -261,7 +261,7 @@ const Index = () => {
               return null;
             })()}
           </div>
-          <main id="main-content" className="flex-1" tabIndex={-1}>
+          <main id="main-content" className="flex-1 bg-gradient-to-b from-background to-muted/20" tabIndex={-1}>
             {renderActiveSection()}
           </main>
         </div>
