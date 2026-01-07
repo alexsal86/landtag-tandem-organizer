@@ -87,33 +87,39 @@ export type Database = {
       }
       annual_tasks: {
         Row: {
+          auto_execute: boolean | null
           category: string
           created_at: string | null
           description: string | null
           due_day: number | null
           due_month: number
+          execute_function: string | null
           id: string
           is_system_task: boolean | null
           tenant_id: string | null
           title: string
         }
         Insert: {
+          auto_execute?: boolean | null
           category?: string
           created_at?: string | null
           description?: string | null
           due_day?: number | null
           due_month: number
+          execute_function?: string | null
           id?: string
           is_system_task?: boolean | null
           tenant_id?: string | null
           title: string
         }
         Update: {
+          auto_execute?: boolean | null
           category?: string
           created_at?: string | null
           description?: string | null
           due_day?: number | null
           due_month?: number
+          execute_function?: string | null
           id?: string
           is_system_task?: boolean | null
           tenant_id?: string | null
