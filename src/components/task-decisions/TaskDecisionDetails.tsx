@@ -173,7 +173,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
   };
 
   const archiveDecision = async () => {
-    if (!decision) return;
+    if (!decision || !currentUserId) return;
 
     setIsLoading(true);
     try {
@@ -187,6 +187,13 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
         .eq('id', decision.id);
 
       if (error) throw error;
+
+      // Mark related notifications as read
+      await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', currentUserId)
+        .eq('navigation_context', 'decisions');
 
       toast({
         title: "Erfolgreich",

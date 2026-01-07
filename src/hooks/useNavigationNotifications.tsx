@@ -45,29 +45,59 @@ export const useNavigationNotifications = (): NavigationNotifications => {
       });
 
       // Override decisions count with actual open decisions for this user
-      const { count: openDecisionsCount } = await supabase
+      const { data: unrespondedDecisions } = await supabase
         .from('task_decision_participants')
-        .select('id, task_decisions!inner(status)', { count: 'exact', head: true })
+        .select(`
+          id,
+          task_decisions!inner(status),
+          task_decision_responses(id)
+        `)
         .eq('user_id', user.id)
         .in('task_decisions.status', ['active', 'open']);
 
-      if (openDecisionsCount !== null) {
-        // Count only decisions where user hasn't responded yet
-        const { data: unrespondedDecisions } = await supabase
-          .from('task_decision_participants')
-          .select(`
-            id,
-            task_decisions!inner(status),
-            task_decision_responses(id)
-          `)
-          .eq('user_id', user.id)
-          .in('task_decisions.status', ['active', 'open']);
+      const unrespondedCount = (unrespondedDecisions || []).filter(
+        (d: any) => !d.task_decision_responses || d.task_decision_responses.length === 0
+      ).length;
 
-        const unrespondedCount = (unrespondedDecisions || []).filter(
-          (d: any) => !d.task_decision_responses || d.task_decision_responses.length === 0
-        ).length;
+      counts['decisions'] = unrespondedCount;
 
-        counts['decisions'] = unrespondedCount;
+      // Count open tasks assigned to or created by the user
+      const { data: openTasks } = await supabase
+        .from('tasks')
+        .select('id, assigned_to, user_id')
+        .neq('status', 'completed');
+
+      if (openTasks) {
+        const userTasksCount = openTasks.filter((task: any) => {
+          const assignedTo = task.assigned_to || [];
+          return assignedTo.includes(user.id) || task.user_id === user.id;
+        }).length;
+        counts['tasks'] = userTasksCount;
+      }
+
+      // Count overdue or due annual tasks for administration badge
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      
+      const { data: annualTasks } = await supabase
+        .from('annual_tasks')
+        .select(`
+          id,
+          due_month,
+          annual_task_completions!left(id, year, completed_at)
+        `);
+
+      if (annualTasks) {
+        const overdueOrDueCount = annualTasks.filter((task: any) => {
+          const completions = task.annual_task_completions || [];
+          const currentYearCompletion = completions.find((c: any) => c.year === currentYear && c.completed_at);
+          if (currentYearCompletion) return false; // Already completed
+          return task.due_month <= currentMonth; // Overdue or due this month
+        }).length;
+        
+        counts['annual_tasks'] = overdueOrDueCount;
+        // Also add to administration count
+        counts['administration'] = (counts['administration'] || 0) + overdueOrDueCount;
       }
 
       setNavigationCounts(counts);

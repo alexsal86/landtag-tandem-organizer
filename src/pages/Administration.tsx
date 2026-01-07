@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, Layers, Building, FileText, Users, Clock, MapPin, Rss, Palette, History, Tag } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, Layers, Building, FileText, Users, Clock, MapPin, Rss, Palette, History, Tag, RefreshCcw } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { NewUserForm } from "@/components/NewUserForm";
@@ -44,6 +44,7 @@ import { AuditLogViewer } from "@/components/administration/AuditLogViewer";
 import { TopicSettings } from "@/components/administration/TopicSettings";
 import { ConfigurableTypeSettings } from "@/components/administration/ConfigurableTypeSettings";
 import { MeetingTemplateParticipantsEditor } from "@/components/meetings/MeetingTemplateParticipantsEditor";
+import { AnnualTasksView } from "@/components/AnnualTasksView";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -415,7 +416,7 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="system" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             System
@@ -444,11 +445,20 @@ export default function Administration() {
             <Rss className="h-4 w-4" />
             RSS-Quellen & News
           </TabsTrigger>
+          <TabsTrigger value="annual" className="flex items-center gap-2">
+            <RefreshCcw className="h-4 w-4" />
+            Jährliche Aufgaben
+          </TabsTrigger>
           <TabsTrigger value="archiving" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Archivierung
           </TabsTrigger>
         </TabsList>
+
+        {/* Jährliche Aufgaben */}
+        <TabsContent value="annual" className="space-y-6">
+          <AnnualTasksView />
+        </TabsContent>
 
         {/* Zentrale Themen */}
         <TabsContent value="topics" className="space-y-6">
