@@ -1597,6 +1597,8 @@ export type Database = {
       contacts: {
         Row: {
           accessibility_features: string[] | null
+          added_at: string | null
+          added_reason: string | null
           additional_info: string | null
           address: string | null
           annual_revenue: string | null
@@ -1703,6 +1705,8 @@ export type Database = {
         }
         Insert: {
           accessibility_features?: string[] | null
+          added_at?: string | null
+          added_reason?: string | null
           additional_info?: string | null
           address?: string | null
           annual_revenue?: string | null
@@ -1809,6 +1813,8 @@ export type Database = {
         }
         Update: {
           accessibility_features?: string[] | null
+          added_at?: string | null
+          added_reason?: string | null
           additional_info?: string | null
           address?: string | null
           annual_revenue?: string | null
@@ -3124,6 +3130,42 @@ export type Database = {
           user_id?: string
           valid_from?: string
           valid_until?: string | null
+        }
+        Relationships: []
+      }
+      employee_yearly_stats: {
+        Row: {
+          annual_vacation_days: number
+          carry_over_days: number
+          created_at: string | null
+          id: string
+          sick_days_count: number
+          updated_at: string | null
+          used_vacation_days: number
+          user_id: string
+          year: number
+        }
+        Insert: {
+          annual_vacation_days?: number
+          carry_over_days?: number
+          created_at?: string | null
+          id?: string
+          sick_days_count?: number
+          updated_at?: string | null
+          used_vacation_days?: number
+          user_id: string
+          year: number
+        }
+        Update: {
+          annual_vacation_days?: number
+          carry_over_days?: number
+          created_at?: string | null
+          id?: string
+          sick_days_count?: number
+          updated_at?: string | null
+          used_vacation_days?: number
+          user_id?: string
+          year?: number
         }
         Relationships: []
       }
@@ -8288,6 +8330,10 @@ export type Database = {
     Functions: {
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
+      archive_employee_year_stats: {
+        Args: { target_year: number }
+        Returns: number
+      }
       assign_contact_to_organization: {
         Args: { contact_id: string; org_id: string }
         Returns: undefined

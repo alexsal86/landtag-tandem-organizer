@@ -427,6 +427,7 @@ export function AppNavigation({
                   <img 
                     src={appSettings.app_logo_url} 
                     alt="Logo" 
+                    crossOrigin="anonymous"
                     className={cn(
                       "h-8 w-8 object-contain",
                       clickedItem === 'dashboard' && "animate-nav-bounce"

@@ -187,6 +187,7 @@ export const KarlsruheDistrictsMap = ({
     tileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
+      crossOrigin: 'anonymous',
       className: isColorMap ? '' : 'grayscale-map',
     }).addTo(map);
 
@@ -220,6 +221,7 @@ export const KarlsruheDistrictsMap = ({
     tileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
+      crossOrigin: 'anonymous',
       className: isColorMap ? '' : 'grayscale-map',
     }).addTo(map);
   }, [isColorMap, mapReady]);
