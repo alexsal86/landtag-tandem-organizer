@@ -8492,6 +8492,18 @@ export type Database = {
         }
         Returns: string
       }
+      execute_archive_sick_days: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      execute_expire_carry_over: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      execute_reset_vacation_days: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       generate_decision_participant_token: { Args: never; Returns: string }
       generate_guest_invitation_token: { Args: never; Returns: string }
       generate_participant_token: { Args: never; Returns: string }

@@ -45,6 +45,7 @@ import { TopicSettings } from "@/components/administration/TopicSettings";
 import { ConfigurableTypeSettings } from "@/components/administration/ConfigurableTypeSettings";
 import { MeetingTemplateParticipantsEditor } from "@/components/meetings/MeetingTemplateParticipantsEditor";
 import { AnnualTasksView } from "@/components/AnnualTasksView";
+import { AnnualTasksTabTrigger } from "@/components/administration/AnnualTasksTabTrigger";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -445,10 +446,7 @@ export default function Administration() {
             <Rss className="h-4 w-4" />
             RSS-Quellen & News
           </TabsTrigger>
-          <TabsTrigger value="annual" className="flex items-center gap-2">
-            <RefreshCcw className="h-4 w-4" />
-            Jährliche Aufgaben
-          </TabsTrigger>
+          <AnnualTasksTabTrigger tenantId={currentTenant?.id} />
           <TabsTrigger value="archiving" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Archivierung
