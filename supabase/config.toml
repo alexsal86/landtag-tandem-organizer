@@ -127,3 +127,7 @@ schedule = "0 17 * * *"
 
 [functions.log-audit-event]
 verify_jwt = false
+
+[functions.execute-annual-tasks]
+verify_jwt = false
+schedule = "0 6 * * *"

@@ -15,15 +15,29 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import { Calendar, CheckCircle2, Clock, AlertTriangle, RefreshCcw } from "lucide-react";
-import { format, isPast, isSameMonth } from "date-fns";
+import { 
+  Calendar, 
+  CheckCircle2, 
+  Clock, 
+  AlertTriangle, 
+  RefreshCcw, 
+  Zap, 
+  Users, 
+  Info,
+  Loader2
+} from "lucide-react";
+import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +49,8 @@ interface AnnualTask {
   due_month: number;
   due_day: number | null;
   is_system_task: boolean;
+  auto_execute: boolean;
+  execute_function: string | null;
 }
 
 interface AnnualTaskCompletion {
@@ -49,6 +65,14 @@ interface AnnualTaskCompletion {
 interface AnnualTaskWithStatus extends AnnualTask {
   completion?: AnnualTaskCompletion;
   status: 'completed' | 'due' | 'upcoming' | 'overdue';
+}
+
+interface ExecutionResult {
+  success: boolean;
+  affected_employees?: number;
+  archived_year?: number;
+  new_year?: number;
+  message?: string;
 }
 
 const MONTH_NAMES = [
@@ -70,6 +94,31 @@ const CATEGORY_COLORS: Record<string, string> = {
   system: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
 };
 
+const FUNCTION_DESCRIPTIONS: Record<string, { title: string; actions: string[] }> = {
+  execute_reset_vacation_days: {
+    title: "Urlaubstage zurücksetzen",
+    actions: [
+      "Archiviert Urlaubsstatistik des Vorjahres",
+      "Berechnet Resturlaub für alle Mitarbeiter",
+      "Überträgt Resturlaub ins neue Jahr",
+    ],
+  },
+  execute_archive_sick_days: {
+    title: "Krankentage archivieren",
+    actions: [
+      "Speichert Krankentage-Statistik des Vorjahres",
+      "Erstellt Jahresübersicht für jeden Mitarbeiter",
+    ],
+  },
+  execute_expire_carry_over: {
+    title: "Resturlaub verfallen lassen",
+    actions: [
+      "Setzt alle übertragenen Urlaubstage auf 0",
+      "Dokumentiert verfallene Tage",
+    ],
+  },
+};
+
 export function AnnualTasksView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -79,6 +128,9 @@ export function AnnualTasksView() {
   const [selectedTask, setSelectedTask] = useState<AnnualTaskWithStatus | null>(null);
   const [completionNotes, setCompletionNotes] = useState("");
   const [completing, setCompleting] = useState(false);
+  const [enableAutoExecute, setEnableAutoExecute] = useState(false);
+  const [affectedCount, setAffectedCount] = useState<number | null>(null);
+  const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -87,12 +139,21 @@ export function AnnualTasksView() {
     loadTasks();
   }, [currentTenant]);
 
+  useEffect(() => {
+    if (selectedTask) {
+      setEnableAutoExecute(selectedTask.auto_execute || false);
+      // Load affected employee count if task has execute function
+      if (selectedTask.execute_function) {
+        loadAffectedCount();
+      }
+    }
+  }, [selectedTask]);
+
   const loadTasks = async () => {
     if (!currentTenant) return;
     setLoading(true);
 
     try {
-      // Load annual tasks - use any type since table might not be in types yet
       const { data: tasksData, error: tasksError } = await supabase
         .from("annual_tasks" as any)
         .select("*")
@@ -101,7 +162,6 @@ export function AnnualTasksView() {
 
       if (tasksError) throw tasksError;
 
-      // Load completions for current year
       const taskIds = (tasksData || []).map(t => t.id);
       if (taskIds.length === 0) {
         setTasks([]);
@@ -121,7 +181,6 @@ export function AnnualTasksView() {
         (completionsData || []).map(c => [c.annual_task_id, c])
       );
 
-      // Calculate status for each task
       const tasksWithStatus: AnnualTaskWithStatus[] = (tasksData || []).map(task => {
         const completion = completionMap.get(task.id);
         let status: AnnualTaskWithStatus['status'] = 'upcoming';
@@ -138,8 +197,6 @@ export function AnnualTasksView() {
       });
 
       setTasks(tasksWithStatus);
-
-      setTasks(tasksWithStatus);
     } catch (error) {
       console.error("Error loading annual tasks:", error);
     } finally {
@@ -147,11 +204,76 @@ export function AnnualTasksView() {
     }
   };
 
+  const loadAffectedCount = async () => {
+    if (!currentTenant) return;
+    
+    try {
+      // Get tenant user IDs first
+      const { data: memberships } = await supabase
+        .from("user_tenant_memberships")
+        .select("user_id")
+        .eq("tenant_id", currentTenant.id)
+        .eq("is_active", true);
+      
+      if (!memberships || memberships.length === 0) {
+        setAffectedCount(0);
+        return;
+      }
+      
+      const userIds = memberships.map(m => m.user_id);
+      
+      // Count employees managed by these users
+      const { count } = await supabase
+        .from("employee_settings")
+        .select("id", { count: 'exact', head: true })
+        .in("admin_id", userIds);
+      
+      setAffectedCount(count || 0);
+    } catch (error) {
+      console.error("Error loading affected count:", error);
+      setAffectedCount(null);
+    }
+  };
+
   const handleMarkComplete = async () => {
-    if (!selectedTask || !user) return;
+    if (!selectedTask || !user || !currentTenant) return;
     setCompleting(true);
+    setExecutionResult(null);
 
     try {
+      let result: ExecutionResult | null = null;
+
+      // Execute the function if available
+      if (selectedTask.execute_function) {
+        const { data, error } = await supabase.rpc(
+          selectedTask.execute_function as any,
+          { p_tenant_id: currentTenant.id }
+        );
+
+        if (error) {
+          console.error("Function execution error:", error);
+          toast({ 
+            title: "Fehler bei der Ausführung", 
+            description: error.message,
+            variant: "destructive" 
+          });
+          setCompleting(false);
+          return;
+        }
+
+        result = data as ExecutionResult;
+        setExecutionResult(result);
+      }
+
+      // Update auto_execute setting if changed
+      if (selectedTask.is_system_task && enableAutoExecute !== selectedTask.auto_execute) {
+        await supabase
+          .from("annual_tasks" as any)
+          .update({ auto_execute: enableAutoExecute })
+          .eq("id", selectedTask.id);
+      }
+
+      // Mark task as completed
       const { error } = await supabase
         .from("annual_task_completions" as any)
         .upsert({
@@ -159,20 +281,30 @@ export function AnnualTasksView() {
           year: currentYear,
           completed_at: new Date().toISOString(),
           completed_by: user.id,
-          notes: completionNotes || null,
+          notes: completionNotes || (result ? JSON.stringify(result) : null),
         }, {
           onConflict: 'annual_task_id,year'
         });
 
       if (error) throw error;
 
-      toast({ title: "Aufgabe als erledigt markiert" });
-      setSelectedTask(null);
-      setCompletionNotes("");
-      loadTasks();
-    } catch (error) {
+      const successMessage = result 
+        ? `${result.message || 'Aufgabe erledigt'} (${result.affected_employees || 0} Mitarbeiter betroffen)`
+        : "Aufgabe als erledigt markiert";
+
+      toast({ title: "Erfolgreich", description: successMessage });
+      
+      // Close dialog after short delay to show result
+      setTimeout(() => {
+        setSelectedTask(null);
+        setCompletionNotes("");
+        setExecutionResult(null);
+        loadTasks();
+      }, result ? 2000 : 500);
+
+    } catch (error: any) {
       console.error("Error completing task:", error);
-      toast({ title: "Fehler", variant: "destructive" });
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
     } finally {
       setCompleting(false);
     }
@@ -202,6 +334,11 @@ export function AnnualTasksView() {
       default:
         return <Badge variant="outline">Anstehend</Badge>;
     }
+  };
+
+  const getFunctionInfo = (functionName: string | null) => {
+    if (!functionName) return null;
+    return FUNCTION_DESCRIPTIONS[functionName] || null;
   };
 
   const overdueCount = tasks.filter(t => t.status === 'overdue').length;
@@ -282,6 +419,18 @@ export function AnnualTasksView() {
                           {CATEGORY_LABELS[task.category] || task.category}
                         </Badge>
                         {getStatusBadge(task.status)}
+                        {task.auto_execute && (
+                          <Badge variant="outline" className="gap-1">
+                            <Zap className="h-3 w-3" />
+                            Auto
+                          </Badge>
+                        )}
+                        {task.execute_function && (
+                          <Badge variant="outline" className="gap-1 text-blue-600">
+                            <Zap className="h-3 w-3" />
+                            Aktion
+                          </Badge>
+                        )}
                       </div>
                       {task.description && (
                         <p className="text-xs text-muted-foreground mt-1">
@@ -304,7 +453,7 @@ export function AnnualTasksView() {
                         size="sm"
                         onClick={() => setSelectedTask(task)}
                       >
-                        Erledigen
+                        {task.execute_function ? "Ausführen" : "Erledigen"}
                       </Button>
                     )}
                   </div>
@@ -315,34 +464,146 @@ export function AnnualTasksView() {
         </CardContent>
       </Card>
 
-      {/* Completion Dialog */}
-      <Dialog open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
-        <DialogContent>
+      {/* Enhanced Completion Dialog */}
+      <Dialog open={!!selectedTask} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedTask(null);
+          setCompletionNotes("");
+          setExecutionResult(null);
+        }
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Aufgabe als erledigt markieren</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedTask?.execute_function ? (
+                <>
+                  <Zap className="h-5 w-5 text-blue-500" />
+                  Aufgabe ausführen
+                </>
+              ) : (
+                "Aufgabe als erledigt markieren"
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedTask?.title}
+            </DialogDescription>
           </DialogHeader>
+
           <div className="space-y-4">
-            <div>
-              <p className="font-medium">{selectedTask?.title}</p>
-              <p className="text-sm text-muted-foreground">{selectedTask?.description}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Notizen (optional)</label>
-              <Textarea
-                value={completionNotes}
-                onChange={(e) => setCompletionNotes(e.target.value)}
-                placeholder="Anmerkungen zur Erledigung..."
-                className="mt-1"
-              />
-            </div>
+            {/* Task Description */}
+            {selectedTask?.description && (
+              <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
+            )}
+
+            {/* Function Actions Preview */}
+            {selectedTask?.execute_function && (
+              <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                  <Info className="h-4 w-4" />
+                  <span className="font-medium text-sm">Diese Aufgabe führt folgende Aktionen aus:</span>
+                </div>
+                <ul className="space-y-1.5 text-sm text-blue-600 dark:text-blue-400">
+                  {getFunctionInfo(selectedTask.execute_function)?.actions.map((action, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      {action}
+                    </li>
+                  ))}
+                </ul>
+                {affectedCount !== null && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+                    <Users className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm text-blue-700 dark:text-blue-300">
+                      Betroffene Mitarbeiter: <strong>{affectedCount}</strong>
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Execution Result */}
+            {executionResult && (
+              <div className={cn(
+                "rounded-lg p-4",
+                executionResult.success 
+                  ? "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300"
+                  : "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300"
+              )}>
+                <div className="flex items-center gap-2">
+                  {executionResult.success ? (
+                    <CheckCircle2 className="h-5 w-5" />
+                  ) : (
+                    <AlertTriangle className="h-5 w-5" />
+                  )}
+                  <span className="font-medium">{executionResult.message}</span>
+                </div>
+                {executionResult.affected_employees !== undefined && (
+                  <p className="text-sm mt-1">
+                    {executionResult.affected_employees} Mitarbeiter betroffen
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Auto Execute Toggle */}
+            {selectedTask?.is_system_task && selectedTask?.execute_function && !executionResult && (
+              <>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="auto-execute" className="text-sm font-medium">
+                      Automatisch ausführen
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Aufgabe wird automatisch zum Fälligkeitsdatum ausgeführt
+                    </p>
+                  </div>
+                  <Switch
+                    id="auto-execute"
+                    checked={enableAutoExecute}
+                    onCheckedChange={setEnableAutoExecute}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Notes */}
+            {!executionResult && (
+              <div>
+                <Label className="text-sm font-medium">Notizen (optional)</Label>
+                <Textarea
+                  value={completionNotes}
+                  onChange={(e) => setCompletionNotes(e.target.value)}
+                  placeholder="Anmerkungen zur Erledigung..."
+                  className="mt-1"
+                />
+              </div>
+            )}
           </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedTask(null)}>
-              Abbrechen
-            </Button>
-            <Button onClick={handleMarkComplete} disabled={completing}>
-              {completing ? "Speichern..." : "Als erledigt markieren"}
-            </Button>
+            {!executionResult && (
+              <>
+                <Button variant="outline" onClick={() => setSelectedTask(null)}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleMarkComplete} disabled={completing}>
+                  {completing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Wird ausgeführt...
+                    </>
+                  ) : selectedTask?.execute_function ? (
+                    <>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Jetzt ausführen
+                    </>
+                  ) : (
+                    "Als erledigt markieren"
+                  )}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
