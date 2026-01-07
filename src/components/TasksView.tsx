@@ -981,6 +981,14 @@ export function TasksView() {
         if (deleteError) {
           console.error('Error deleting completed task:', deleteError);
         }
+        // Mark task-related notifications as read
+        if (user) {
+          await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('user_id', user.id)
+            .eq('navigation_context', 'tasks');
+        }
       }
 
       loadTasks();

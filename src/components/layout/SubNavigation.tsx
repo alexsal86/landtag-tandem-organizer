@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 
 interface SubNavigationItem {
   id: string;
@@ -14,13 +16,20 @@ interface SubNavigationProps {
 }
 
 export function SubNavigation({ items, activeItem, onItemChange }: SubNavigationProps) {
+  const { navigationCounts } = useNavigationNotifications();
+  
   if (items.length <= 1) return null;
+
+  const getBadgeCount = (itemId: string): number => {
+    return navigationCounts[itemId] || 0;
+  };
 
   return (
     <div className="h-10 border-b border-border bg-background flex items-center px-4 gap-1">
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = activeItem === item.id;
+        const badgeCount = getBadgeCount(item.id);
         
         return (
           <button
@@ -35,6 +44,11 @@ export function SubNavigation({ items, activeItem, onItemChange }: SubNavigation
           >
             <Icon className="h-4 w-4" />
             {item.label}
+            {badgeCount > 0 && (
+              <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                {badgeCount}
+              </Badge>
+            )}
           </button>
         );
       })}

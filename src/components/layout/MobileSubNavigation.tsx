@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 
 interface SubNavigationItem {
   id: string;
@@ -15,7 +17,13 @@ interface MobileSubNavigationProps {
 }
 
 export function MobileSubNavigation({ items, activeItem, onItemChange }: MobileSubNavigationProps) {
+  const { navigationCounts } = useNavigationNotifications();
+  
   if (items.length <= 1) return null;
+
+  const getBadgeCount = (itemId: string): number => {
+    return navigationCounts[itemId] || 0;
+  };
 
   return (
     <div className="sticky top-14 z-40 bg-background border-b border-border">
@@ -24,6 +32,7 @@ export function MobileSubNavigation({ items, activeItem, onItemChange }: MobileS
           {items.map((item) => {
             const Icon = item.icon;
             const isActive = activeItem === item.id;
+            const badgeCount = getBadgeCount(item.id);
             
             return (
               <button
@@ -38,6 +47,11 @@ export function MobileSubNavigation({ items, activeItem, onItemChange }: MobileS
               >
                 <Icon className="h-4 w-4" />
                 {item.label}
+                {badgeCount > 0 && (
+                  <Badge variant={isActive ? "secondary" : "destructive"} className="h-5 min-w-5 px-1.5 text-xs">
+                    {badgeCount}
+                  </Badge>
+                )}
               </button>
             );
           })}

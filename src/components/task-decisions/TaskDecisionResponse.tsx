@@ -202,6 +202,16 @@ export const TaskDecisionResponse = ({
         }
       }
 
+      // Mark related decision notifications as read for this user
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (currentUser) {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', currentUser.id)
+          .eq('navigation_context', 'decisions');
+      }
+
       toast({
         title: "Erfolgreich",
         description: "Ihre Antwort wurde gespeichert.",

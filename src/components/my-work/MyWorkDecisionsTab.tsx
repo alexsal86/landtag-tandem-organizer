@@ -164,8 +164,13 @@ export function MyWorkDecisionsTab() {
   };
 
   const getBorderColor = (decision: Decision) => {
-    // Orange: Noch nicht beantwortet
+    // Konsistent mit DecisionOverview:
+    // Grau: Noch Antworten ausstehend (von Teilnehmern)
     if (!decision.hasResponded) {
+      return 'border-l-gray-400';
+    }
+    // Gelb: User hat Frage gestellt
+    if (decision.responseType === 'question') {
       return 'border-l-orange-500';
     }
     // Grün: User hat mit Ja geantwortet
@@ -176,12 +181,8 @@ export function MyWorkDecisionsTab() {
     if (decision.responseType === 'no') {
       return 'border-l-red-600';
     }
-    // Gelb: User hat Frage gestellt
-    if (decision.responseType === 'question') {
-      return 'border-l-yellow-500';
-    }
     // Grau: Keine Antwort
-    return 'border-l-muted';
+    return 'border-l-gray-400';
   };
 
   if (loading) {
