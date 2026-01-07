@@ -75,6 +75,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
+      crossOrigin: 'anonymous',
     }).addTo(map);
 
     // Create separate layer groups for polygons and markers

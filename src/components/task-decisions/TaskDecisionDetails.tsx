@@ -7,11 +7,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { UserBadge } from "@/components/ui/user-badge";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { Check, X, MessageCircle, Send, Archive, History, Paperclip } from "lucide-react";
+import { Check, X, MessageCircle, Send, Archive, History, Paperclip, Vote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ResponseHistoryTimeline } from "./ResponseHistoryTimeline";
 import { DecisionFileUpload } from "./DecisionFileUpload";
+import { TaskDecisionResponse } from "./TaskDecisionResponse";
 
 interface Participant {
   id: string;
@@ -282,6 +283,33 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
               </div>
             </CardContent>
           </Card>
+
+          {/* Current User's Response Section */}
+          {(() => {
+            const currentUserParticipant = participants.find(p => p.user_id === currentUserId);
+            if (!currentUserParticipant) return null;
+            
+            const hasResponded = currentUserParticipant.responses && currentUserParticipant.responses.length > 0;
+            
+            return (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Vote className="h-4 w-4" />
+                    Ihre Antwort
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TaskDecisionResponse
+                    decisionId={decisionId!}
+                    participantId={currentUserParticipant.id}
+                    onResponseSubmitted={loadDecisionDetails}
+                    hasResponded={hasResponded}
+                  />
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Participants */}
           <div className="space-y-3">

@@ -102,6 +102,10 @@ export function MyWorkTasksTab() {
           grouped[st.task_id].push(st);
         });
         setSubtasks(grouped);
+        
+        // Auto-expand tasks with subtasks
+        const tasksWithSubtasks = Object.keys(grouped);
+        setExpandedTasks(new Set(tasksWithSubtasks));
       }
     } catch (error) {
       console.error("Error loading tasks:", error);

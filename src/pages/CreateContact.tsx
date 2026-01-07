@@ -55,7 +55,21 @@ interface ContactFormData {
   business_postal_code: string;
   business_city: string;
   business_country: string;
+  // Added reason fields
+  added_reason: string;
+  added_at: string;
 }
+
+const ADDED_REASON_OPTIONS = [
+  { value: "veranstaltung", label: "Veranstaltung" },
+  { value: "empfehlung", label: "Empfehlung" },
+  { value: "eigeninitiative", label: "Eigeninitiative" },
+  { value: "anfrage", label: "Anfrage (eingehend)" },
+  { value: "presse", label: "Pressekontakt" },
+  { value: "netzwerk", label: "Netzwerk-Treffen" },
+  { value: "import", label: "Import aus anderem System" },
+  { value: "sonstiges", label: "Sonstiges" },
+];
 
 export function CreateContact() {
   const navigate = useNavigate();
@@ -102,6 +116,8 @@ export function CreateContact() {
     business_postal_code: "",
     business_city: "",
     business_country: "Deutschland",
+    added_reason: "",
+    added_at: new Date().toISOString().split('T')[0],
   });
 
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -326,8 +342,10 @@ export function CreateContact() {
           main_contact_person: formData.main_contact_person || null,
           billing_address: formData.billing_address || null,
           iban: formData.iban || null,
-        tags: formData.tags.length > 0 ? formData.tags : null,
-        tenant_id: currentTenant.id
+          tags: formData.tags.length > 0 ? formData.tags : null,
+          tenant_id: currentTenant.id,
+          added_reason: formData.added_reason || null,
+          added_at: formData.added_at || new Date().toISOString(),
         })
         .select('id');
 
@@ -846,6 +864,32 @@ export function CreateContact() {
                         <SelectItem value="low">Niedrig</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="added_reason">Grund der Aufnahme</Label>
+                    <Select onValueChange={(value) => handleInputChange("added_reason", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Grund auswählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ADDED_REASON_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="added_at">Aufnahmedatum</Label>
+                    <Input
+                      id="added_at"
+                      type="date"
+                      value={formData.added_at}
+                      onChange={(e) => handleInputChange("added_at", e.target.value)}
+                    />
                   </div>
                 </CardContent>
               </Card>
