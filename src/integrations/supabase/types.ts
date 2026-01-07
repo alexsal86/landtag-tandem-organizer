@@ -47,6 +47,88 @@ export type Database = {
         }
         Relationships: []
       }
+      annual_task_completions: {
+        Row: {
+          annual_task_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          year: number
+        }
+        Insert: {
+          annual_task_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          year: number
+        }
+        Update: {
+          annual_task_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annual_task_completions_annual_task_id_fkey"
+            columns: ["annual_task_id"]
+            isOneToOne: false
+            referencedRelation: "annual_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      annual_tasks: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          due_day: number | null
+          due_month: number
+          id: string
+          is_system_task: boolean | null
+          tenant_id: string | null
+          title: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          due_day?: number | null
+          due_month: number
+          id?: string
+          is_system_task?: boolean | null
+          tenant_id?: string | null
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          due_day?: number | null
+          due_month?: number
+          id?: string
+          is_system_task?: boolean | null
+          tenant_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annual_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           created_at: string

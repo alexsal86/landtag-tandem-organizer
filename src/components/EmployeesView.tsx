@@ -13,13 +13,15 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { startOfYear, endOfYear, eachDayOfInterval, isWeekend, formatDistanceToNow, differenceInDays, format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Calendar, AlertCircle, History } from "lucide-react";
+import { Calendar, AlertCircle, History, BarChart3, RefreshCcw } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EmployeeMeetingRequestDialog } from "./EmployeeMeetingRequestDialog";
 import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
 import { EmployeeMeetingHistory } from "./EmployeeMeetingHistory";
 import { EmployeeMeetingRequestManager } from "./EmployeeMeetingRequestManager";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { EmployeeYearlyStatsView } from "./EmployeeYearlyStatsView";
+import { AnnualTasksView } from "./AnnualTasksView";
 
 // Types derived from DB schema
 type LeaveType = "vacation" | "sick" | "other";
@@ -177,6 +179,8 @@ export function EmployeesView() {
   const [selectedEmployee, setSelectedEmployee] = useState<{ id: string; name: string } | null>(null);
   const [requestManagerOpen, setRequestManagerOpen] = useState(false);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [yearlyStatsOpen, setYearlyStatsOpen] = useState(false);
+  const [showAnnualTasks, setShowAnnualTasks] = useState(false);
 
   // Self-view state for non-admin users
   const [selfSettings, setSelfSettings] = useState<EmployeeSettingsRow | null>(null);
@@ -1186,20 +1190,37 @@ export function EmployeesView() {
   return (
     <main>
       <header className="p-4 sm:p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-2xl font-semibold">Mitarbeiterverwaltung</h1>
             <p className="text-muted-foreground">Überblick über Mitarbeitende, Stunden & Abwesenheiten</p>
           </div>
-          {pendingRequestsCount > 0 && (
-            <Button onClick={() => setRequestManagerOpen(true)} className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Gesprächsanfragen
-              <Badge variant="secondary">{pendingRequestsCount}</Badge>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => setYearlyStatsOpen(true)} className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Jahresstatistik
             </Button>
-          )}
+            <Button variant="outline" onClick={() => setShowAnnualTasks(!showAnnualTasks)} className="flex items-center gap-2">
+              <RefreshCcw className="h-4 w-4" />
+              Jährliche Aufgaben
+            </Button>
+            {pendingRequestsCount > 0 && (
+              <Button onClick={() => setRequestManagerOpen(true)} className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Gesprächsanfragen
+                <Badge variant="secondary">{pendingRequestsCount}</Badge>
+              </Button>
+            )}
+          </div>
         </div>
       </header>
+
+      {/* Annual Tasks Section */}
+      {showAnnualTasks && (
+        <section className="px-4 sm:px-6 mb-4">
+          <AnnualTasksView />
+        </section>
+      )}
 
       <section className="px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -1568,6 +1589,11 @@ export function EmployeesView() {
             <EmployeeMeetingRequestManager />
           </DialogContent>
         </Dialog>
+        {/* Yearly Stats Dialog */}
+        <EmployeeYearlyStatsView
+          isOpen={yearlyStatsOpen}
+          onClose={() => setYearlyStatsOpen(false)}
+        />
       </main>
     );
 }

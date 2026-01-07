@@ -57,17 +57,17 @@ export function MyWorkTasksTab() {
     if (!user) return;
     
     try {
-      // Load tasks assigned to user
+      // Load tasks assigned to user (check both array format and string format)
       const { data: assigned, error: assignedError } = await supabase
         .from("tasks")
         .select("*")
-        .or(`assigned_to.cs.{${user.id}},assigned_to.like.%${user.id}%`)
+        .or(`assigned_to.cs.{${user.id}},assigned_to.ilike.%${user.id}%`)
         .neq("status", "completed")
         .order("due_date", { ascending: true, nullsFirst: false });
 
       if (assignedError) throw assignedError;
 
-      // Load tasks created by user
+      // Load tasks created by user (not assigned to them)
       const { data: created, error: createdError } = await supabase
         .from("tasks")
         .select("*")
@@ -77,10 +77,16 @@ export function MyWorkTasksTab() {
 
       if (createdError) throw createdError;
 
-      setAssignedTasks(assigned || []);
-      // Filter out tasks that are also in assigned
-      const assignedIds = new Set((assigned || []).map(t => t.id));
-      const filteredCreated = (created || []).filter(t => !assignedIds.has(t.id));
+      // Also load tasks where user_id matches (own tasks)
+      const allAssigned = assigned || [];
+      const allCreated = created || [];
+      
+      // Filter: assigned = tasks where user is explicitly assigned
+      // created = tasks user created but are NOT assigned to them
+      const assignedIds = new Set(allAssigned.map(t => t.id));
+      const filteredCreated = allCreated.filter(t => !assignedIds.has(t.id));
+      
+      setAssignedTasks(allAssigned);
       setCreatedTasks(filteredCreated);
 
       // Load subtasks for all tasks

@@ -157,10 +157,31 @@ export function MyWorkDecisionsTab() {
   const getResponseIcon = (responseType: string | null | undefined) => {
     switch (responseType) {
       case 'yes': return <Check className="h-4 w-4 text-green-500" />;
-      case 'no': return <X className="h-4 w-4 text-red-500" />;
+      case 'no': return <X className="h-4 w-4 text-red-600" />;
       case 'question': return <MessageCircle className="h-4 w-4 text-yellow-500" />;
       default: return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
+  };
+
+  const getBorderColor = (decision: Decision) => {
+    // Orange: Noch nicht beantwortet
+    if (!decision.hasResponded) {
+      return 'border-l-orange-500';
+    }
+    // Grün: User hat mit Ja geantwortet
+    if (decision.responseType === 'yes') {
+      return 'border-l-green-500';
+    }
+    // Rot: User hat mit Nein geantwortet
+    if (decision.responseType === 'no') {
+      return 'border-l-red-600';
+    }
+    // Gelb: User hat Frage gestellt
+    if (decision.responseType === 'question') {
+      return 'border-l-yellow-500';
+    }
+    // Grau: Keine Antwort
+    return 'border-l-muted';
   };
 
   if (loading) {
@@ -206,7 +227,8 @@ export function MyWorkDecisionsTab() {
                 onClick={() => handleDecisionClick(decision.id)}
                 className={cn(
                   "flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer",
-                  !decision.hasResponded && "border-l-4 border-l-primary"
+                  "border-l-4",
+                  getBorderColor(decision)
                 )}
               >
                 <div className="mt-0.5">

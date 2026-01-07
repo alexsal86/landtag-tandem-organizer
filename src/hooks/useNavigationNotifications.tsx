@@ -44,6 +44,32 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         }
       });
 
+      // Override decisions count with actual open decisions for this user
+      const { count: openDecisionsCount } = await supabase
+        .from('task_decision_participants')
+        .select('id, task_decisions!inner(status)', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .in('task_decisions.status', ['active', 'open']);
+
+      if (openDecisionsCount !== null) {
+        // Count only decisions where user hasn't responded yet
+        const { data: unrespondedDecisions } = await supabase
+          .from('task_decision_participants')
+          .select(`
+            id,
+            task_decisions!inner(status),
+            task_decision_responses(id)
+          `)
+          .eq('user_id', user.id)
+          .in('task_decisions.status', ['active', 'open']);
+
+        const unrespondedCount = (unrespondedDecisions || []).filter(
+          (d: any) => !d.task_decision_responses || d.task_decision_responses.length === 0
+        ).length;
+
+        counts['decisions'] = unrespondedCount;
+      }
+
       setNavigationCounts(counts);
 
       // Load last visited timestamps
