@@ -214,28 +214,34 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
                 </div>
               ) : (
                 <div className="flex -space-x-2">
-                  {onlineUsers.slice(0, 3).map((onlineUser, index) => (
-                    <Avatar 
-                      key={onlineUser.user_id} 
-                      className="h-6 w-6 border-2 border-[hsl(var(--nav))] ring-1 ring-green-500"
-                      style={{ zIndex: 3 - index }}
-                    >
-                      <AvatarImage src={onlineUser.avatar_url || undefined} />
-                      <AvatarFallback className="text-[10px] bg-green-100 text-green-700">
-                        {onlineUser.display_name?.charAt(0) || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                  ))}
+                  {onlineUsers.slice(0, 3).map((onlineUser, index) => {
+                    const userStatusDisplay = getStatusDisplay(onlineUser.status);
+                    return (
+                      <div key={onlineUser.user_id} className="relative" style={{ zIndex: 3 - index }}>
+                        <Avatar className="h-6 w-6 border-2 border-[hsl(var(--nav))]">
+                          <AvatarImage src={onlineUser.avatar_url || undefined} />
+                          <AvatarFallback className="text-[10px]">
+                            {onlineUser.display_name?.charAt(0) || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        {/* Status indicator below avatar */}
+                        <span 
+                          className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[hsl(var(--nav))]"
+                          style={{ backgroundColor: userStatusDisplay?.color || '#22c55e' }}
+                        />
+                      </div>
+                    );
+                  })}
                   <div 
-                    className="h-6 w-6 rounded-full bg-green-500 border-2 border-[hsl(var(--nav))] flex items-center justify-center"
+                    className="h-6 w-6 rounded-full bg-primary border-2 border-[hsl(var(--nav))] flex items-center justify-center"
                     style={{ zIndex: 0 }}
                   >
                     {onlineUsers.length > 3 ? (
-                      <span className="text-[10px] font-medium text-white">
+                      <span className="text-[10px] font-medium text-primary-foreground">
                         +{onlineUsers.length - 3}
                       </span>
                     ) : (
-                      <span className="text-white text-[10px]">●</span>
+                      <span className="text-primary-foreground text-[10px]">●</span>
                     )}
                   </div>
                 </div>

@@ -214,14 +214,16 @@ export function GeneralSettings() {
           <div className="space-y-2">
             <Label>Logo</Label>
             <div className="flex items-center gap-4">
-              {settings.app_logo_url ? (
-                <img 
-                  src={settings.app_logo_url} 
-                  alt="App Logo" 
-                  className="h-16 w-16 object-contain"
-                />
+            {settings.app_logo_url ? (
+                <div className="h-20 w-20 rounded-lg border bg-muted/30 p-2 flex items-center justify-center">
+                  <img 
+                    src={settings.app_logo_url} 
+                    alt="App Logo" 
+                    className="max-h-16 max-w-16 object-contain"
+                  />
+                </div>
               ) : (
-                <div className="h-16 w-16 rounded-md border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
+                <div className="h-20 w-20 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
                   <FileText className="h-8 w-8 text-muted-foreground" />
                 </div>
               )}
