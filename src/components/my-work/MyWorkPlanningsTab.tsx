@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
@@ -152,7 +151,7 @@ export function MyWorkPlanningsTab() {
   }
 
   return (
-    <ScrollArea className="h-[500px]">
+    <>
       <div className="space-y-2 p-4">
         {plannings.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
@@ -302,6 +301,6 @@ export function MyWorkPlanningsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </ScrollArea>
+    </>
   );
 }

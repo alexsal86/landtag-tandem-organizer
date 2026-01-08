@@ -80,15 +80,7 @@ export function ContactsView() {
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
 
-  // Handle URL action parameter for QuickActions
-  useEffect(() => {
-    const action = searchParams.get('action');
-    if (action === 'create-contact') {
-      navigate('/contacts/new');
-      searchParams.delete('action');
-      setSearchParams(searchParams, { replace: true });
-    }
-  }, [searchParams, setSearchParams, navigate]);
+  // Note: create-contact action is handled globally by GlobalQuickActionHandler
 
   // Get accurate counts for tab badges - MUST be before early returns
   const { contactsCount, stakeholdersCount, archiveCount, distributionListsCount } = useCounts();
