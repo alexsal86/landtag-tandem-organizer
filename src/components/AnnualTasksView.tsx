@@ -100,7 +100,7 @@ const FUNCTION_DESCRIPTIONS: Record<string, { title: string; actions: string[] }
     actions: [
       "Archiviert Urlaubsstatistik des Vorjahres",
       "Berechnet Resturlaub für alle Mitarbeiter",
-      "Überträgt Resturlaub ins neue Jahr",
+      "Überträgt Resturlaub ins neue Jahr (verfällt am 31. März)",
     ],
   },
   execute_archive_sick_days: {
@@ -117,6 +117,14 @@ const FUNCTION_DESCRIPTIONS: Record<string, { title: string; actions: string[] }
       "Dokumentiert verfallene Tage",
     ],
   },
+  generate_current_year_stats: {
+    title: "Jahresstatistik erstellen",
+    actions: [
+      "Erstellt Statistik für das aktuelle Jahr",
+      "Berechnet genommene Urlaubstage",
+      "Erfasst Krankentage",
+    ],
+  },
 };
 
 export function AnnualTasksView() {
@@ -131,6 +139,7 @@ export function AnnualTasksView() {
   const [enableAutoExecute, setEnableAutoExecute] = useState(false);
   const [affectedCount, setAffectedCount] = useState<number | null>(null);
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
+  const [generatingStats, setGeneratingStats] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -341,6 +350,35 @@ export function AnnualTasksView() {
     return FUNCTION_DESCRIPTIONS[functionName] || null;
   };
 
+  const handleGenerateStats = async () => {
+    if (!currentTenant) return;
+    setGeneratingStats(true);
+    
+    try {
+      const { data, error } = await supabase.rpc(
+        'generate_current_year_stats' as any,
+        { p_tenant_id: currentTenant.id }
+      );
+
+      if (error) throw error;
+
+      const result = data as ExecutionResult;
+      toast({ 
+        title: "Jahresstatistik erstellt", 
+        description: `${result.affected_employees || 0} Mitarbeiter wurden aktualisiert.`
+      });
+    } catch (error: any) {
+      console.error("Error generating stats:", error);
+      toast({ 
+        title: "Fehler", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setGeneratingStats(false);
+    }
+  };
+
   const overdueCount = tasks.filter(t => t.status === 'overdue').length;
   const dueCount = tasks.filter(t => t.status === 'due').length;
   const completedCount = tasks.filter(t => t.status === 'completed').length;
@@ -376,7 +414,7 @@ export function AnnualTasksView() {
           <CardDescription>
             Wiederkehrende Aufgaben die jedes Jahr anfallen
           </CardDescription>
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-2 mt-2 flex-wrap">
             {overdueCount > 0 && (
               <Badge variant="destructive">{overdueCount} überfällig</Badge>
             )}
@@ -384,6 +422,25 @@ export function AnnualTasksView() {
               <Badge variant="secondary">{dueCount} fällig</Badge>
             )}
             <Badge variant="outline">{completedCount}/{tasks.length} erledigt</Badge>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleGenerateStats}
+              disabled={generatingStats}
+              className="ml-auto"
+            >
+              {generatingStats ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  Erstelle...
+                </>
+              ) : (
+                <>
+                  <RefreshCcw className="h-3 w-3 mr-1" />
+                  Statistik {currentYear} erstellen
+                </>
+              )}
+            </Button>
           </div>
         </CardHeader>
         <CardContent>

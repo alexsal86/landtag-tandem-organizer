@@ -8510,6 +8510,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      generate_current_year_stats: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       generate_decision_participant_token: { Args: never; Returns: string }
       generate_guest_invitation_token: { Args: never; Returns: string }
       generate_participant_token: { Args: never; Returns: string }

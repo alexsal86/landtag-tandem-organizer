@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Save, RefreshCw } from "lucide-react";
+import { Save, RefreshCw, Copy, Info } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface EmailTemplate {
   id: string;
@@ -160,23 +161,65 @@ export const DecisionEmailTemplates = () => {
     );
   }
 
+  const availableVariables = [
+    { name: '{participant_name}', description: 'Name des Empfängers' },
+    { name: '{creator_name}', description: 'Name des Erstellers' },
+    { name: '{decision_title}', description: 'Titel der Entscheidung' },
+    { name: '{task_title}', description: 'Titel der Aufgabe' },
+    { name: '{decision_description}', description: 'Beschreibung (optional)' },
+  ];
+
+  const copyVariable = (variable: string) => {
+    navigator.clipboard.writeText(variable);
+    toast({
+      title: "Kopiert",
+      description: `${variable} wurde in die Zwischenablage kopiert.`,
+    });
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>E-Mail-Template für Entscheidungsanfragen</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Passen Sie die Texte für E-Mail-Benachrichtigungen an. Verwenden Sie {"{participant_name}"} 
-          als Platzhalter für den Namen des Empfängers.
+          Passen Sie die Texte für E-Mail-Benachrichtigungen an.
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Variables Box */}
+        <div className="bg-muted/50 rounded-lg p-4 border">
+          <div className="flex items-center gap-2 mb-3">
+            <Info className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium text-sm">Verfügbare Variablen</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {availableVariables.map((v) => (
+              <Badge
+                key={v.name}
+                variant="secondary"
+                className="cursor-pointer hover:bg-secondary/80 transition-colors"
+                onClick={() => copyVariable(v.name)}
+                title={v.description}
+              >
+                <Copy className="h-3 w-3 mr-1" />
+                {v.name}
+              </Badge>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Klicken Sie auf eine Variable, um sie zu kopieren.
+          </p>
+        </div>
         <div>
           <label className="text-sm font-medium">Betreff</label>
           <Input
             value={template.subject}
             onChange={(e) => updateField('subject', e.target.value)}
-            placeholder="E-Mail-Betreff"
+            placeholder="z.B. Entscheidungsanfrage: {decision_title}"
           />
+          <p className="text-xs text-muted-foreground mt-1">
+            Tipp: Verwenden Sie {"{decision_title}"} für den Titel der Entscheidung
+          </p>
         </div>
 
         <div>

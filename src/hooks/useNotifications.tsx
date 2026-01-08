@@ -160,14 +160,27 @@ export const useNotifications = () => {
     setUnreadCount(0);
 
     try {
+      // First get the IDs of unread notifications
+      const { data: unreadNotifications, error: fetchError } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+
+      if (fetchError) throw fetchError;
+
+      if (!unreadNotifications || unreadNotifications.length === 0) {
+        return; // Nothing to update
+      }
+
+      // Update by ID list to avoid potential RLS issues
       const { error } = await supabase
         .from('notifications')
         .update({ 
           is_read: true, 
           read_at: new Date().toISOString() 
         })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
+        .in('id', unreadNotifications.map(n => n.id));
 
       if (error) throw error;
 
