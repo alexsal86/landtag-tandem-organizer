@@ -62,6 +62,27 @@ export function MyWorkView() {
     setSearchParams({ tab });
   };
 
+  // Handle QuickAction URL parameter
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action) {
+      // Map actions to their corresponding tabs
+      const actionToTab: Record<string, TabValue> = {
+        "create-task": "tasks",
+        "create-decision": "decisions",
+        "create-meeting": "jourFixe",
+        "create-casefile": "casefiles",
+        "create-eventplanning": "plannings",
+      };
+      
+      const targetTab = actionToTab[action];
+      if (targetTab && activeTab !== targetTab) {
+        // Navigate to the correct tab first
+        setSearchParams({ tab: targetTab, action });
+      }
+    }
+  }, [searchParams, activeTab, setSearchParams]);
+
   useEffect(() => {
     if (user) {
       loadCounts();
