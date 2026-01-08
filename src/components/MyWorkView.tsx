@@ -93,11 +93,18 @@ export function MyWorkView() {
         .eq("user_id", user.id)
         .in("status", ["active", "pending"]);
 
-      // Count plannings
-      const { count: planningCount } = await supabase
+      // Count plannings (owned + collaborating)
+      const { count: ownedPlanningCount } = await supabase
         .from("event_plannings")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
+
+      const { count: collabPlanningCount } = await supabase
+        .from("event_planning_collaborators")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+
+      const planningCount = (ownedPlanningCount || 0) + (collabPlanningCount || 0);
 
       // Count upcoming Jour Fixe meetings
       const { count: jourFixeCount } = await supabase

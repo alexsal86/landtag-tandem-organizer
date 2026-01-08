@@ -53,6 +53,10 @@ export interface QuickNote {
   priority_level?: number;
   follow_up_date?: string;
   is_archived?: boolean;
+  meetings?: {
+    title: string;
+    meeting_date: string;
+  } | null;
 }
 
 interface QuickNotesListProps {
@@ -95,7 +99,11 @@ export function QuickNotesList({
     try {
       const { data, error } = await supabase
         .from("quick_notes")
-        .select("id, title, content, color, is_pinned, created_at, updated_at, is_archived, task_id, meeting_id, priority_level, follow_up_date")
+        .select(`
+          id, title, content, color, is_pinned, created_at, updated_at, 
+          is_archived, task_id, meeting_id, priority_level, follow_up_date,
+          meetings!meeting_id(title, meeting_date)
+        `)
         .eq("user_id", user.id)
         .eq("is_archived", false)
         .order("is_pinned", { ascending: false })
@@ -679,9 +687,24 @@ export function QuickNotesList({
               </Badge>
             )}
             {note.meeting_id && (
-              <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-emerald-600">
-                Jour Fixe
-              </Badge>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-emerald-600 cursor-help">
+                      {note.meetings?.title 
+                        ? `JF: ${note.meetings.title.length > 12 ? note.meetings.title.substring(0, 12) + '...' : note.meetings.title}`
+                        : "Nächster JF ⏳"
+                      }
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {note.meetings?.meeting_date 
+                      ? `${note.meetings.title} am ${format(new Date(note.meetings.meeting_date), "dd.MM.yyyy", { locale: de })}`
+                      : "Wird dem nächsten geplanten Jour Fixe zugeordnet"
+                    }
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
             {showFollowUpBadge && note.follow_up_date && (
               <Badge 
