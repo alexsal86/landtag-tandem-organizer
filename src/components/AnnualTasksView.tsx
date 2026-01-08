@@ -140,6 +140,7 @@ export function AnnualTasksView() {
   const [affectedCount, setAffectedCount] = useState<number | null>(null);
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [generatingStats, setGeneratingStats] = useState(false);
+  const [generatingPreviousStats, setGeneratingPreviousStats] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -379,6 +380,35 @@ export function AnnualTasksView() {
     }
   };
 
+  const handleGeneratePreviousYearStats = async () => {
+    if (!currentTenant) return;
+    setGeneratingPreviousStats(true);
+    
+    try {
+      const { data, error } = await supabase.rpc(
+        'generate_yearly_stats_for_year' as any,
+        { p_tenant_id: currentTenant.id, p_year: currentYear - 1 }
+      );
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; year: number; affected_employees: number };
+      toast({ 
+        title: `Jahresstatistik ${currentYear - 1} erstellt`, 
+        description: `${result.affected_employees || 0} Mitarbeiter wurden archiviert.`
+      });
+    } catch (error: any) {
+      console.error("Error generating previous year stats:", error);
+      toast({ 
+        title: "Fehler", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setGeneratingPreviousStats(false);
+    }
+  };
+
   const overdueCount = tasks.filter(t => t.status === 'overdue').length;
   const dueCount = tasks.filter(t => t.status === 'due').length;
   const completedCount = tasks.filter(t => t.status === 'completed').length;
@@ -422,25 +452,44 @@ export function AnnualTasksView() {
               <Badge variant="secondary">{dueCount} fällig</Badge>
             )}
             <Badge variant="outline">{completedCount}/{tasks.length} erledigt</Badge>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleGenerateStats}
-              disabled={generatingStats}
-              className="ml-auto"
-            >
-              {generatingStats ? (
-                <>
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  Erstelle...
-                </>
-              ) : (
-                <>
-                  <RefreshCcw className="h-3 w-3 mr-1" />
-                  Statistik {currentYear} erstellen
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2 ml-auto">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleGeneratePreviousYearStats}
+                disabled={generatingPreviousStats}
+              >
+                {generatingPreviousStats ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Erstelle...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCcw className="h-3 w-3 mr-1" />
+                    Statistik {currentYear - 1} erstellen
+                  </>
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleGenerateStats}
+                disabled={generatingStats}
+              >
+                {generatingStats ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Erstelle...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCcw className="h-3 w-3 mr-1" />
+                    Statistik {currentYear} erstellen
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
