@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ interface DecisionRequest {
 }
 
 export const DecisionOverview = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
   const [decisions, setDecisions] = useState<DecisionRequest[]>([]);
@@ -73,6 +75,17 @@ export const DecisionOverview = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
   const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  // Handle URL action parameter for QuickActions
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-decision') {
+      setIsCreateDialogOpen(true);
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (user?.id) {
@@ -997,7 +1010,11 @@ export const DecisionOverview = () => {
       
       <div className="space-y-6">
         <div className="flex justify-center mb-4">
-          <StandaloneDecisionCreator onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)} />
+          <StandaloneDecisionCreator 
+            onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)} 
+            isOpen={isCreateDialogOpen}
+            onOpenChange={setIsCreateDialogOpen}
+          />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

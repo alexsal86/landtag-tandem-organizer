@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +101,7 @@ interface Profile {
 }
 
 export function MeetingsView() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -135,6 +137,16 @@ export function MeetingsView() {
   const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+
+  // Handle URL action parameter for QuickActions
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-meeting') {
+      setIsNewMeetingOpen(true);
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Load data on component mount
   useEffect(() => {

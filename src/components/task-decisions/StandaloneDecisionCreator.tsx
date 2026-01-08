@@ -18,6 +18,8 @@ import { DECISION_TEMPLATES, DEFAULT_TEMPLATE_ID, ResponseOption, getTemplateByI
 interface StandaloneDecisionCreatorProps {
   onDecisionCreated: () => void;
   variant?: 'button' | 'icon';
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface Profile {
@@ -25,8 +27,23 @@ interface Profile {
   display_name: string | null;
 }
 
-export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button' }: StandaloneDecisionCreatorProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const StandaloneDecisionCreator = ({ 
+  onDecisionCreated, 
+  variant = 'button',
+  isOpen: externalIsOpen,
+  onOpenChange 
+}: StandaloneDecisionCreatorProps) => {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  
+  // Use external state if provided, otherwise use internal state
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  const setIsOpen = (open: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(open);
+    } else {
+      setInternalIsOpen(open);
+    }
+  };
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useViewPreference } from "@/hooks/useViewPreference";
@@ -125,6 +126,7 @@ interface Letter {
 }
 
 export function DocumentsView() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -225,6 +227,16 @@ export function DocumentsView() {
     contact.organization?.toLowerCase().includes(editContactSearch.toLowerCase()) ||
     contact.tags?.some((tag: string) => tag.toLowerCase().includes(editContactSearch.toLowerCase()))
   );
+
+  // Handle URL action parameter for QuickActions
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-document') {
+      setShowUploadDialog(true);
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (user && currentTenant) {

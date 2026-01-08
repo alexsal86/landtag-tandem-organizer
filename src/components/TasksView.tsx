@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download, ChevronDown, ChevronRight, ListTodo, AlarmClock, StickyNote } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,6 +76,8 @@ interface Subtask {
 }
 
 export function TasksView() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   // Clear indicators when component unmounts
   useEffect(() => {
     return () => {
@@ -154,6 +157,16 @@ export function TasksView() {
   
   const { toast } = useToast();
   const { isItemNew, clearAllIndicators } = useNewItemIndicators('tasks');
+
+  // Handle URL action parameter for QuickActions
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-task') {
+      setTodoCreateOpen(true);
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Load tasks from database
   useEffect(() => {

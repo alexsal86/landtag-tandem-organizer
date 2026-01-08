@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useCaseFiles, CaseFile, CASE_STATUSES } from "@/hooks/useCaseFiles";
 import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 type ViewStyle = "flat" | "grouped";
 
 export function CaseFilesView() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { caseFiles, loading } = useCaseFiles();
   const { caseFileTypes, loading: typesLoading } = useCaseFileTypes();
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,6 +43,16 @@ export function CaseFilesView() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedCaseFile, setSelectedCaseFile] = useState<CaseFile | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  // Handle URL action parameter for QuickActions
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-casefile') {
+      setCreateDialogOpen(true);
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const filteredCaseFiles = caseFiles.filter((cf) => {
     const matchesSearch = 

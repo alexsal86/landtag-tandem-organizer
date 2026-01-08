@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Database, User, ChevronLeft, ChevronRight, Lock, Unlock, Save, Trash2 } from 'lucide-react';
 import EnhancedLexicalEditor from './EnhancedLexicalEditor';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,6 +34,7 @@ const KnowledgeBaseView = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { documentId } = useParams<{ documentId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { topics, getActiveTopics } = useTopics();
   
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
@@ -48,6 +49,16 @@ const KnowledgeBaseView = () => {
   const [documentTopicsMap, setDocumentTopicsMap] = useState<Record<string, string[]>>({});
   const [editorContent, setEditorContent] = useState('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Handle URL action parameter for QuickActions
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-article') {
+      setIsCreateDialogOpen(true);
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   
   // Topic management for selected document
   const { 
