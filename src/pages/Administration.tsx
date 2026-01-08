@@ -78,7 +78,7 @@ export default function Administration() {
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
 
   // Navigation state
-  const [activeSection, setActiveSection] = useState("system");
+  const [activeSection, setActiveSection] = useState("security");
   const [activeSubSection, setActiveSubSection] = useState("general");
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
 
@@ -217,12 +217,13 @@ export default function Administration() {
     } else {
       // Set default sub-section for sections with children
       const defaults: Record<string, string> = {
-        system: "general",
-        appointments: "config",
-        datatypes: "task-config",
+        security: "general",
+        users: "status",
+        calendar: "config",
+        content: "topics",
+        templates: "letters",
         politics: "associations",
-        documents: "letters",
-        rss: "sources",
+        automation: "rss-sources",
       };
       setActiveSubSection(defaults[section] || "");
     }
@@ -450,19 +451,13 @@ export default function Administration() {
 
   // Render content based on active section
   const renderContent = () => {
-    // System section
-    if (activeSection === "system") {
+    // SECTION 1: System & Sicherheit
+    if (activeSection === "security") {
       switch (activeSubSection) {
         case "general":
           return <GeneralSettings />;
         case "login":
           return <LoginCustomization />;
-        case "status":
-          return <StatusAdminSettings />;
-        case "collaboration":
-          return <TenantCollaboration />;
-        case "expense":
-          return <ExpenseManagement />;
         case "roles":
           if (!isSuperAdmin) return null;
           return (
@@ -553,25 +548,49 @@ export default function Administration() {
               </CardContent>
             </Card>
           );
-        case "usercolors":
-          if (!isSuperAdmin) return null;
-          return <UserColorManager />;
-        case "matrix":
-          return <MatrixSettings />;
         case "auditlogs":
           return <AuditLogViewer />;
+        case "archiving":
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Entscheidungsarchivierung
+                </CardTitle>
+                <CardDescription>
+                  Verwalten Sie die automatische Archivierung von Entscheidungsanfragen
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DecisionArchiveSettings />
+              </CardContent>
+            </Card>
+          );
         default:
           return <GeneralSettings />;
       }
     }
 
-    // Topics
-    if (activeSection === "topics") {
-      return <TopicSettings />;
+    // SECTION 2: Benutzer & Kommunikation
+    if (activeSection === "users") {
+      switch (activeSubSection) {
+        case "status":
+          return <StatusAdminSettings />;
+        case "usercolors":
+          if (!isSuperAdmin) return null;
+          return <UserColorManager />;
+        case "collaboration":
+          return <TenantCollaboration />;
+        case "matrix":
+          return <MatrixSettings />;
+        default:
+          return <StatusAdminSettings />;
+      }
     }
 
-    // Appointments section
-    if (activeSection === "appointments") {
+    // SECTION 3: Kalender & Termine
+    if (activeSection === "calendar") {
       switch (activeSubSection) {
         case "config":
           return (
@@ -612,19 +631,21 @@ export default function Administration() {
           return <DefaultGuestsAdmin />;
         case "preparation":
           return <AppointmentPreparationTemplateAdmin />;
-        case "calendar-debug":
-          return <CalendarSyncDebug />;
-        case "calendar-sync":
+        case "sync":
           return <CalendarSyncSettings />;
+        case "debug":
+          return <CalendarSyncDebug />;
         default:
           return null;
       }
     }
 
-    // Datatypes section
-    if (activeSection === "datatypes") {
+    // SECTION 4: Inhalte & Daten
+    if (activeSection === "content") {
       switch (activeSubSection) {
-        case "task-config":
+        case "topics":
+          return <TopicSettings />;
+        case "tasks":
           return (
             <ConfigurableTypeSettings
               title="Aufgaben-Kategorien"
@@ -637,7 +658,7 @@ export default function Administration() {
               deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten?"
             />
           );
-        case "todo-config":
+        case "todos":
           return (
             <ConfigurableTypeSettings
               title="ToDo-Kategorien"
@@ -652,7 +673,7 @@ export default function Administration() {
           );
         case "decisions":
           return <DecisionEmailTemplates />;
-        case "documenttypes":
+        case "documents":
           return (
             <ConfigurableTypeSettings
               title="Dokumenten-Kategorien"
@@ -665,7 +686,7 @@ export default function Administration() {
               deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten?"
             />
           );
-        case "casefiletypes":
+        case "casefiles":
           return (
             <ConfigurableTypeSettings
               title="FallAkten-Typen"
@@ -679,49 +700,12 @@ export default function Administration() {
             />
           );
         default:
-          return null;
+          return <TopicSettings />;
       }
     }
 
-    // Politics section
-    if (activeSection === "politics") {
-      switch (activeSubSection) {
-        case "associations":
-          return <PartyAssociationsAdmin />;
-        case "districts":
-          return (
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
-                    Betreuungswahlkreise
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <DistrictSupportManager />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building className="h-5 w-5" />
-                    Wahlkreis-Zuordnung
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <PartyDistrictMappingManager />
-                </CardContent>
-              </Card>
-            </div>
-          );
-        default:
-          return null;
-      }
-    }
-
-    // Documents section
-    if (activeSection === "documents") {
+    // SECTION 5: Vorlagen
+    if (activeSection === "templates") {
       switch (activeSubSection) {
         case "letters":
           return (
@@ -1076,29 +1060,7 @@ export default function Administration() {
               )}
             </Card>
           );
-        default:
-          return null;
-      }
-    }
-
-    // RSS section
-    if (activeSection === "rss") {
-      switch (activeSubSection) {
-        case "sources":
-          return (
-            <div>
-              <h3 className="text-lg font-medium mb-4">RSS-Quellen verwalten</h3>
-              <RSSSourceManager />
-            </div>
-          );
-        case "settings":
-          return (
-            <div>
-              <h3 className="text-lg font-medium mb-4">RSS-Einstellungen</h3>
-              <RSSSettingsManager />
-            </div>
-          );
-        case "templates":
+        case "emails":
           return (
             <div>
               <h3 className="text-lg font-medium mb-4">News E-Mail-Vorlagen</h3>
@@ -1110,29 +1072,68 @@ export default function Administration() {
       }
     }
 
-    // Annual Tasks
-    if (activeSection === "annual") {
-      return <AnnualTasksView />;
+    // SECTION 6: Politik & Organisation
+    if (activeSection === "politics") {
+      switch (activeSubSection) {
+        case "associations":
+          return <PartyAssociationsAdmin />;
+        case "districts":
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Betreuungswahlkreise
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DistrictSupportManager />
+              </CardContent>
+            </Card>
+          );
+        case "mapping":
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Wahlkreis-Zuordnung
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PartyDistrictMappingManager />
+              </CardContent>
+            </Card>
+          );
+        case "expense":
+          return <ExpenseManagement />;
+        default:
+          return <PartyAssociationsAdmin />;
+      }
     }
 
-    // Archiving
-    if (activeSection === "archiving") {
-      return (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Entscheidungsarchivierung
-            </CardTitle>
-            <CardDescription>
-              Verwalten Sie die automatische Archivierung von Entscheidungsanfragen
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DecisionArchiveSettings />
-          </CardContent>
-        </Card>
-      );
+    // SECTION 7: Automatisierung
+    if (activeSection === "automation") {
+      switch (activeSubSection) {
+        case "rss-sources":
+          return (
+            <div>
+              <h3 className="text-lg font-medium mb-4">RSS-Quellen verwalten</h3>
+              <RSSSourceManager />
+            </div>
+          );
+        case "rss-settings":
+          return (
+            <div>
+              <h3 className="text-lg font-medium mb-4">RSS-Einstellungen</h3>
+              <RSSSettingsManager />
+            </div>
+          );
+        case "annual":
+          return <AnnualTasksView />;
+        default:
+          return null;
+      }
     }
 
     return null;
