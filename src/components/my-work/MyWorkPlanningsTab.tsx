@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -9,7 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { useNavigate } from "react-router-dom";
 
 interface Planning {
   id: string;
@@ -29,10 +29,21 @@ interface Planning {
 export function MyWorkPlanningsTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [plannings, setPlannings] = useState<Planning[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlanning, setSelectedPlanning] = useState<Planning | null>(null);
+
+  // Handle action parameter from URL
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-eventplanning') {
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+      navigate('/eventplanning?action=create');
+    }
+  }, [searchParams, setSearchParams, navigate]);
 
   useEffect(() => {
     if (user) {

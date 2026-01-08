@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
-import { useNavigate } from "react-router-dom";
 
 interface Task {
   id: string;
@@ -38,6 +38,7 @@ export function MyWorkTasksTab() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
   const [createdTasks, setCreatedTasks] = useState<Task[]>([]);
@@ -46,6 +47,16 @@ export function MyWorkTasksTab() {
   const [loading, setLoading] = useState(true);
   const [assignedOpen, setAssignedOpen] = useState(true);
   const [createdOpen, setCreatedOpen] = useState(true);
+
+  // Handle action parameter from URL
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-task') {
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+      navigate('/tasks?action=create');
+    }
+  }, [searchParams, setSearchParams, navigate]);
 
   useEffect(() => {
     if (user) {

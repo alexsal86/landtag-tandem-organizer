@@ -220,6 +220,11 @@ export function GeneralSettings() {
                     src={settings.app_logo_url} 
                     alt="App Logo" 
                     className="max-h-16 max-w-16 object-contain"
+                    onError={(e) => {
+                      console.error("Logo konnte nicht geladen werden:", settings.app_logo_url);
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement?.classList.add('hidden');
+                    }}
                   />
                 </div>
               ) : (

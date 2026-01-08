@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,11 +28,23 @@ interface Decision {
 
 export function MyWorkDecisionsTab() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  // Handle action parameter from URL
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-decision') {
+      setIsCreateOpen(true);
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (user) {
@@ -217,6 +230,8 @@ export function MyWorkDecisionsTab() {
             <div className="text-center py-8 text-muted-foreground">
               <p>Keine offenen Entscheidungen</p>
               <StandaloneDecisionCreator 
+                isOpen={isCreateOpen}
+                onOpenChange={setIsCreateOpen}
                 onDecisionCreated={handleDecisionCreated}
                 variant="button"
               />
@@ -269,6 +284,15 @@ export function MyWorkDecisionsTab() {
         onClose={handleDetailsClose}
         onArchived={loadDecisions}
       />
+
+      {/* Create Decision Dialog - only show when there are decisions (otherwise it's in the empty state) */}
+      {decisions.length > 0 && (
+        <StandaloneDecisionCreator 
+          isOpen={isCreateOpen}
+          onOpenChange={setIsCreateOpen}
+          onDecisionCreated={handleDecisionCreated}
+        />
+      )}
     </>
   );
 }
