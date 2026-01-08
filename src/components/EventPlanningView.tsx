@@ -177,7 +177,7 @@ export function EventPlanningView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { isItemNew, clearAllIndicators } = useNewItemIndicators('eventplanning');
   const [plannings, setPlannings] = useState<EventPlanning[]>([]);
@@ -244,6 +244,16 @@ export function EventPlanningView() {
   // View preferences
   const [eventPlanningView, setEventPlanningView] = useState<'card' | 'table'>('card');
   const [appointmentPreparationView, setAppointmentPreparationView] = useState<'card' | 'table'>('card');
+
+  // Handle URL action parameter for QuickActions
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-eventplanning') {
+      setIsCreateDialogOpen(true);
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     console.log('EventPlanningView mounted, user:', user, 'currentTenant:', currentTenant);
