@@ -216,32 +216,32 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
                 <div className="flex -space-x-2">
                   {onlineUsers.slice(0, 3).map((onlineUser, index) => {
                     const userStatusDisplay = getStatusDisplay(onlineUser.status);
+                    const statusColor = userStatusDisplay?.color || '#22c55e';
                     return (
-                      <div key={onlineUser.user_id} className="relative" style={{ zIndex: 3 - index }}>
-                        <Avatar className="h-6 w-6 border-2 border-[hsl(var(--nav))]">
+                      <div key={onlineUser.user_id} style={{ zIndex: 3 - index }}>
+                        <Avatar 
+                          className="h-6 w-6 border-2 border-[hsl(var(--nav))] ring-2"
+                          style={{ '--tw-ring-color': statusColor } as React.CSSProperties}
+                        >
                           <AvatarImage src={onlineUser.avatar_url || undefined} />
                           <AvatarFallback className="text-[10px]">
                             {onlineUser.display_name?.charAt(0) || "?"}
                           </AvatarFallback>
                         </Avatar>
-                        {/* Status indicator in front of avatar */}
-                        <span 
-                          className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white z-10"
-                          style={{ backgroundColor: userStatusDisplay?.color || '#22c55e' }}
-                        />
                       </div>
                     );
                   })}
+                  {/* Grüner Kreis IMMER VORNE */}
                   <div 
-                    className="h-6 w-6 rounded-full bg-primary border-2 border-[hsl(var(--nav))] flex items-center justify-center"
-                    style={{ zIndex: 0 }}
+                    className="h-6 w-6 rounded-full bg-green-500 border-2 border-white flex items-center justify-center"
+                    style={{ zIndex: 10 }}
                   >
                     {onlineUsers.length > 3 ? (
-                      <span className="text-[10px] font-medium text-primary-foreground">
+                      <span className="text-[10px] font-medium text-white">
                         +{onlineUsers.length - 3}
                       </span>
                     ) : (
-                      <span className="text-primary-foreground text-[10px]">●</span>
+                      <span className="text-white text-[10px]">●</span>
                     )}
                   </div>
                 </div>
