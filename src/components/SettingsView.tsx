@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar, Mail } from "lucide-react";
+import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar, Mail, Activity } from "lucide-react";
 import { NotificationSettings } from "./NotificationSettings";
 import { ExternalCalendarSettings } from "./ExternalCalendarSettings";
 import { TwoFactorSettings } from "./TwoFactorSettings";
 import { SenderInformationManager } from "./administration/SenderInformationManager";
+import { AutoStatusDetection } from "./AutoStatusDetection";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -198,6 +199,11 @@ export function SettingsView() {
               </Button>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Auto Status Detection */}
+        <div className="mt-6">
+          <AutoStatusDetection />
         </div>
 
         {/* Notification Settings */}

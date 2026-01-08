@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Settings, LogOut, User, Plus, Calendar, Users, FileText, CheckSquare } from 'lucide-react';
+import { Settings, LogOut, User, Plus, Calendar, Users, FileText, CheckSquare, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { NotificationBell } from '@/components/NotificationBell';
 import { OnlineUsersWidget } from '@/components/OnlineUsersWidget';
-import { CompactStatusSelector } from '@/components/CompactStatusSelector';
+import { UserStatusSelector } from '@/components/UserStatusSelector';
 import { HeaderSearch } from '@/components/layout/HeaderSearch';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserStatus } from '@/hooks/useUserStatus';
@@ -302,10 +302,22 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             
-            {/* Status Selector */}
+            {/* Status Selector - öffnet den vollen UserStatusSelector Dialog */}
             <div className="p-2">
               <p className="text-xs text-muted-foreground mb-2">Status</p>
-              <CompactStatusSelector />
+              <UserStatusSelector>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <span>{statusDisplay?.emoji || '🟢'}</span>
+                    <span className="text-sm">{statusDisplay?.label || 'Online'}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </UserStatusSelector>
             </div>
             
             <DropdownMenuSeparator />
