@@ -5,40 +5,41 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import {
-  Settings,
-  Calendar,
-  Layers,
-  Building,
-  FileText,
-  Rss,
-  Clock,
-  Tag,
+  Shield,
+  Users2,
+  CalendarDays,
+  Database,
+  FileStack,
+  Building2,
+  Workflow,
   ChevronRight,
-  User,
+  Settings,
   LogIn,
-  Activity,
-  Users,
-  Palette,
-  MessageSquare,
-  History,
-  CalendarCheck,
   UserCheck,
+  History,
+  Archive,
+  Activity,
+  Palette,
+  Users,
+  MessageSquare,
+  CalendarCheck,
   FileCheck,
   CalendarClock,
   RefreshCcw,
+  Tag,
   CheckSquare,
   ListTodo,
   Gavel,
   File,
   Briefcase,
+  Mail,
+  Layout,
+  Newspaper,
   Landmark,
   MapPin,
-  Mail,
-  Puzzle,
-  Layout,
-  CircleCheck,
-  Newspaper,
-  Archive
+  CreditCard,
+  Rss,
+  CircleCheck
 } from "lucide-react";
 
 export interface AdminMenuItem {
@@ -66,88 +67,84 @@ interface AdminSidebarProps {
 
 export const adminMenuItems: AdminMenuItem[] = [
   {
-    id: "system",
-    label: "System",
-    icon: Settings,
+    id: "security",
+    label: "System & Sicherheit",
+    icon: Shield,
     children: [
       { id: "general", label: "Allgemein", icon: Settings },
       { id: "login", label: "Login-Anpassung", icon: LogIn },
-      { id: "status", label: "Status", icon: Activity },
-      { id: "collaboration", label: "Kollaboration", icon: Users },
-      { id: "expense", label: "Verwaltung", icon: Briefcase },
-      { id: "roles", label: "Rechte", icon: UserCheck, superAdminOnly: true },
-      { id: "usercolors", label: "Benutzerfarben", icon: Palette, superAdminOnly: true },
-      { id: "matrix", label: "Matrix", icon: MessageSquare },
+      { id: "roles", label: "Rechte & Rollen", icon: UserCheck, superAdminOnly: true },
       { id: "auditlogs", label: "Audit-Logs", icon: History },
+      { id: "archiving", label: "Archivierung", icon: Archive },
     ],
   },
   {
-    id: "topics",
-    label: "Themen",
-    icon: Tag,
+    id: "users",
+    label: "Benutzer & Kommunikation",
+    icon: Users2,
+    children: [
+      { id: "status", label: "Status", icon: Activity },
+      { id: "usercolors", label: "Benutzerfarben", icon: Palette, superAdminOnly: true },
+      { id: "collaboration", label: "Kollaboration", icon: Users },
+      { id: "matrix", label: "Matrix-Chat", icon: MessageSquare },
+    ],
   },
   {
-    id: "appointments",
-    label: "Termine",
-    icon: Calendar,
+    id: "calendar",
+    label: "Kalender & Termine",
+    icon: CalendarDays,
     children: [
-      { id: "config", label: "Kategorien & Status", icon: CalendarCheck },
+      { id: "config", label: "Kategorien & Status & Orte", icon: CalendarCheck },
       { id: "guests", label: "Standard-Gäste", icon: UserCheck },
       { id: "preparation", label: "Vorbereitung", icon: FileCheck },
-      { id: "calendar-debug", label: "Kalender Debug", icon: CalendarClock },
-      { id: "calendar-sync", label: "Synchronisation", icon: RefreshCcw },
+      { id: "sync", label: "Synchronisation", icon: RefreshCcw },
+      { id: "debug", label: "Debug", icon: CalendarClock },
     ],
   },
   {
-    id: "datatypes",
-    label: "Datentypen",
-    icon: Layers,
+    id: "content",
+    label: "Inhalte & Daten",
+    icon: Database,
     children: [
-      { id: "task-config", label: "Aufgaben", icon: CheckSquare },
-      { id: "todo-config", label: "ToDos", icon: ListTodo },
+      { id: "topics", label: "Themen", icon: Tag },
+      { id: "tasks", label: "Aufgaben", icon: CheckSquare },
+      { id: "todos", label: "ToDos", icon: ListTodo },
       { id: "decisions", label: "Entscheidungen", icon: Gavel },
-      { id: "documenttypes", label: "Dokumenttypen", icon: File },
-      { id: "casefiletypes", label: "FallAkten-Typen", icon: Briefcase },
+      { id: "documents", label: "Dokumenttypen", icon: File },
+      { id: "casefiles", label: "FallAkten-Typen", icon: Briefcase },
+    ],
+  },
+  {
+    id: "templates",
+    label: "Vorlagen",
+    icon: FileStack,
+    children: [
+      { id: "letters", label: "Briefvorlagen", icon: Mail },
+      { id: "meetings", label: "Meeting-Templates", icon: Users },
+      { id: "plannings", label: "Planungs-Templates", icon: Layout },
+      { id: "emails", label: "E-Mail-Vorlagen", icon: Newspaper },
     ],
   },
   {
     id: "politics",
-    label: "Politik & Wahlkreise",
-    icon: Building,
+    label: "Politik & Organisation",
+    icon: Building2,
     children: [
       { id: "associations", label: "Kreisverbände", icon: Landmark },
       { id: "districts", label: "Betreuungswahlkreise", icon: MapPin },
+      { id: "mapping", label: "Wahlkreis-Zuordnung", icon: Building2 },
+      { id: "expense", label: "Verwaltung", icon: CreditCard },
     ],
   },
   {
-    id: "documents",
-    label: "Dokumente & Vorlagen",
-    icon: FileText,
+    id: "automation",
+    label: "Automatisierung",
+    icon: Workflow,
     children: [
-      { id: "letters", label: "Briefvorlagen", icon: Mail },
-      { id: "meetings", label: "Meetings", icon: Users },
-      { id: "plannings", label: "Planungen", icon: Layout },
+      { id: "rss-sources", label: "RSS-Quellen", icon: Rss },
+      { id: "rss-settings", label: "RSS-Einstellungen", icon: Settings },
+      { id: "annual", label: "Jährliche Aufgaben", icon: CircleCheck },
     ],
-  },
-  {
-    id: "rss",
-    label: "RSS & News",
-    icon: Rss,
-    children: [
-      { id: "sources", label: "RSS-Quellen", icon: Rss },
-      { id: "settings", label: "RSS-Einstellungen", icon: Settings },
-      { id: "templates", label: "E-Mail-Vorlagen", icon: Newspaper },
-    ],
-  },
-  {
-    id: "annual",
-    label: "Jährliche Aufgaben",
-    icon: CircleCheck,
-  },
-  {
-    id: "archiving",
-    label: "Archivierung",
-    icon: Archive,
   },
 ];
 
@@ -205,7 +202,7 @@ export function AdminSidebar({
             );
 
             // Handle badge for annual tasks
-            const showBadge = item.id === "annual" && annualTasksBadge && annualTasksBadge > 0;
+            const showAnnualBadge = item.id === "automation" && annualTasksBadge && annualTasksBadge > 0;
 
             if (!hasChildren) {
               return (
@@ -220,11 +217,6 @@ export function AdminSidebar({
                 >
                   <Icon className="h-4 w-4" />
                   <span className="flex-1 text-left">{item.label}</span>
-                  {showBadge && (
-                    <Badge variant="destructive" className="h-5 px-1.5 text-xs">
-                      {annualTasksBadge}
-                    </Badge>
-                  )}
                 </Button>
               );
             }
@@ -245,6 +237,11 @@ export function AdminSidebar({
                   >
                     <Icon className="h-4 w-4" />
                     <span className="flex-1 text-left">{item.label}</span>
+                    {showAnnualBadge && (
+                      <Badge variant="destructive" className="h-5 px-1.5 text-xs mr-1">
+                        {annualTasksBadge}
+                      </Badge>
+                    )}
                     <ChevronRight
                       className={cn(
                         "h-4 w-4 transition-transform",
@@ -259,6 +256,9 @@ export function AdminSidebar({
                     const isSubActive =
                       activeSection === item.id && activeSubSection === subItem.id;
 
+                    // Show badge on annual tasks sub-item
+                    const showSubBadge = item.id === "automation" && subItem.id === "annual" && annualTasksBadge && annualTasksBadge > 0;
+
                     return (
                       <Button
                         key={subItem.id}
@@ -271,7 +271,12 @@ export function AdminSidebar({
                         onClick={() => handleClick(item, subItem)}
                       >
                         {SubIcon && <SubIcon className="h-3.5 w-3.5" />}
-                        <span>{subItem.label}</span>
+                        <span className="flex-1">{subItem.label}</span>
+                        {showSubBadge && (
+                          <Badge variant="destructive" className="h-5 px-1.5 text-xs">
+                            {annualTasksBadge}
+                          </Badge>
+                        )}
                       </Button>
                     );
                   })}
