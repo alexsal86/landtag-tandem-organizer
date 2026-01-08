@@ -25,6 +25,7 @@ import { MatrixChatView } from "@/components/chat/MatrixChatView";
 import { MyWorkView } from "@/components/MyWorkView";
 import { CallsView } from "@/components/CallsView";
 import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
+import { GlobalQuickActionHandler } from "@/components/layout/GlobalQuickActionHandler";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -265,6 +266,9 @@ const Index = () => {
             {renderActiveSection()}
           </main>
         </div>
+        
+        {/* Global QuickAction Handler - für Actions, die Navigation erfordern */}
+        <GlobalQuickActionHandler />
         
         {/* Create Appointment Dialog */}
         <CreateAppointmentDialog

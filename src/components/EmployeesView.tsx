@@ -377,7 +377,7 @@ export function EmployeesView() {
           .select("user_id, type, status, start_date, end_date")
           .in("user_id", managedIds)
           .gte("start_date", startOfYear(new Date()).toISOString())
-          .lte("end_date", endOfYear(new Date()).toISOString());
+          .lte("start_date", endOfYear(new Date()).toISOString());
 
         (fullLeaveData || []).forEach((lr: any) => {
           if (!agg[lr.user_id]) agg[lr.user_id] = initAgg();
@@ -494,7 +494,7 @@ export function EmployeesView() {
             .select("id, type, status, start_date, end_date")
             .eq("user_id", user.id)
             .gte("start_date", startOfYear(new Date()).toISOString())
-            .lte("end_date", endOfYear(new Date()).toISOString()),
+            .lte("start_date", endOfYear(new Date()).toISOString()),
           supabase
             .from("employee_meetings")
             .select("id")
@@ -583,8 +583,8 @@ export function EmployeesView() {
            .from("leave_requests")
            .select("type, status, start_date, end_date")
            .eq("user_id", user.id)
-           .gte("start_date", startOfYear(new Date()).toISOString())
-           .lte("end_date", endOfYear(new Date()).toISOString());
+            .gte("start_date", startOfYear(new Date()).toISOString())
+            .lte("start_date", endOfYear(new Date()).toISOString());
          
          (fullLeaveData || []).forEach((lr: any) => {
            const workingDays = lr.end_date ? calculateWorkingDays(lr.start_date, lr.end_date) : 1;
