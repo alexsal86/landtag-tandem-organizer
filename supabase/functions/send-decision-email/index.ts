@@ -16,6 +16,7 @@ interface DecisionEmailRequest {
   participantIds: string[];
   decisionTitle: string;
   decisionDescription?: string;
+  tenantId?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -35,7 +36,8 @@ const handler = async (req: Request): Promise<Response> => {
       taskId,
       participantIds, 
       decisionTitle, 
-      decisionDescription 
+      decisionDescription,
+      tenantId
     }: DecisionEmailRequest = await req.json();
 
     console.log("=== SEND DECISION EMAIL DEBUG ===");
@@ -43,12 +45,19 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Task ID:", taskId);
     console.log("Participant IDs:", participantIds);
     console.log("Decision title:", decisionTitle);
+    console.log("Tenant ID:", tenantId);
     console.log("=== END DEBUG INFO ===");
 
-    // Get email template from administration settings (get the first/latest one)
-    const { data: templates, error: templateError } = await supabase
+    // Get email template from administration settings - filter by tenant_id if provided
+    let templateQuery = supabase
       .from('decision_email_templates')
-      .select('*')
+      .select('*');
+    
+    if (tenantId) {
+      templateQuery = templateQuery.eq('tenant_id', tenantId);
+    }
+    
+    const { data: templates, error: templateError } = await templateQuery
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -173,19 +182,30 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log("About to send email to:", participantEmail, "for participant:", participantName);
 
-        // Prepare email content using template from administration
-        const greeting = emailTemplate.greeting.replace('{participant_name}', participantName);
-        const introduction = emailTemplate.introduction;
-        const instruction = emailTemplate.instruction;
-        const questionPrompt = emailTemplate.question_prompt;
-        const closing = emailTemplate.closing;
-        const signature = emailTemplate.signature;
+        // Helper function to replace all template variables
+        const replaceVariables = (text: string) => {
+          return text
+            .replace(/{participant_name}/g, participantName)
+            .replace(/{creator_name}/g, creatorName)
+            .replace(/{decision_title}/g, decisionTitle)
+            .replace(/{task_title}/g, taskTitle)
+            .replace(/{decision_description}/g, decisionDescription || '');
+        };
+
+        // Prepare email content using template from administration with all variables
+        const greeting = replaceVariables(emailTemplate.greeting);
+        const introduction = replaceVariables(emailTemplate.introduction);
+        const instruction = replaceVariables(emailTemplate.instruction);
+        const questionPrompt = replaceVariables(emailTemplate.question_prompt);
+        const closing = replaceVariables(emailTemplate.closing);
+        const signature = replaceVariables(emailTemplate.signature);
+        const subject = replaceVariables(emailTemplate.subject);
         
         // Send decision email with customized template
         const emailResponse = await resend.emails.send({
           from: "Entscheidungsanfrage <noreply@alexander-salomon.de>",
           to: [participantEmail],
-          subject: emailTemplate.subject,
+          subject: subject,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">${emailTemplate.subject}</h1>
