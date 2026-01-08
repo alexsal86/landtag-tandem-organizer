@@ -2,7 +2,10 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CalendarPlus, ExternalLink, MapPin, CheckSquare } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
+import { CalendarPlus, ExternalLink, MapPin, CheckSquare, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
@@ -30,6 +33,7 @@ export function MyWorkPlanningsTab() {
   
   const [plannings, setPlannings] = useState<Planning[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPlanning, setSelectedPlanning] = useState<Planning | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -159,7 +163,8 @@ export function MyWorkPlanningsTab() {
           plannings.map((planning) => (
             <div
               key={planning.id}
-              className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+              className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+              onClick={() => setSelectedPlanning(planning)}
             >
               <CalendarPlus className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div className="flex-1 min-w-0">
@@ -198,7 +203,10 @@ export function MyWorkPlanningsTab() {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 flex-shrink-0"
-                onClick={() => navigate("/eventplanning")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/eventplanning?planningId=${planning.id}`);
+                }}
               >
                 <ExternalLink className="h-3 w-3" />
               </Button>
@@ -206,6 +214,94 @@ export function MyWorkPlanningsTab() {
           ))
         )}
       </div>
+
+      {/* Planning Quick View Dialog */}
+      <Dialog open={!!selectedPlanning} onOpenChange={() => setSelectedPlanning(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarPlus className="h-5 w-5" />
+              {selectedPlanning?.title}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedPlanning && (
+            <div className="space-y-4">
+              {selectedPlanning.description && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Beschreibung</Label>
+                  <p className="text-sm mt-1">{selectedPlanning.description}</p>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Ort</Label>
+                  <p className="text-sm mt-1 flex items-center gap-1">
+                    {selectedPlanning.location ? (
+                      <>
+                        <MapPin className="h-3 w-3" />
+                        {selectedPlanning.location}
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Termin</Label>
+                  <p className="text-sm mt-1 flex items-center gap-1">
+                    {selectedPlanning.confirmed_date ? (
+                      <>
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(selectedPlanning.confirmed_date), "dd.MM.yyyy", { locale: de })}
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">Noch offen</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {selectedPlanning.checklistProgress.total > 0 && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Checkliste</Label>
+                  <div className="mt-2">
+                    <Progress 
+                      value={(selectedPlanning.checklistProgress.completed / selectedPlanning.checklistProgress.total) * 100} 
+                      className="h-2"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {selectedPlanning.checklistProgress.completed} von {selectedPlanning.checklistProgress.total} erledigt
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {selectedPlanning.isCollaborator && (
+                <Badge variant="secondary">Mitwirkend</Badge>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedPlanning(null)}
+            >
+              Schließen
+            </Button>
+            <Button 
+              onClick={() => {
+                navigate(`/eventplanning?planningId=${selectedPlanning?.id}`);
+                setSelectedPlanning(null);
+              }}
+            >
+              Zur Planung
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ScrollArea>
   );
 }

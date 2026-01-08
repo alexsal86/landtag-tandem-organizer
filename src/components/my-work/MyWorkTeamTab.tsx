@@ -78,7 +78,7 @@ function WorkTimeIndicator({ worked, target, lastEntry }: {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0 cursor-help", getColorClass())} />
+        <div className={cn("w-4 h-4 rounded-full flex-shrink-0 cursor-help", getColorClass())} />
       </TooltipTrigger>
       <TooltipContent side="top" className="text-xs">
         <p className="font-medium">Diese Woche: {workedHours} von {targetHours}h</p>

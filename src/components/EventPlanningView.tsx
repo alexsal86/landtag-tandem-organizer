@@ -252,6 +252,9 @@ export function EventPlanningView() {
       return;
     }
     
+    // Check for planningId parameter from URL (direct link from MyWork)
+    const planningIdParam = searchParams.get('planningId');
+    
     // Check for appointment parameters from URL
     const appointmentId = searchParams.get('appointmentId');
     const appointmentTitle = searchParams.get('title');
@@ -289,6 +292,19 @@ export function EventPlanningView() {
       clearAllIndicators();
     };
   }, [user, currentTenant?.id, searchParams]); // Added searchParams to dependencies
+
+  // Handle planningId URL parameter after plannings are loaded
+  useEffect(() => {
+    const planningIdParam = searchParams.get('planningId');
+    if (planningIdParam && plannings.length > 0 && !selectedPlanning) {
+      const planningToSelect = plannings.find(p => p.id === planningIdParam);
+      if (planningToSelect) {
+        setSelectedPlanning(planningToSelect);
+        // Clear the URL parameter
+        navigate('/eventplanning', { replace: true });
+      }
+    }
+  }, [plannings, searchParams, selectedPlanning, navigate]);
 
   // Load view preferences from localStorage
   const loadViewPreferences = () => {
