@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -9,7 +10,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday, isFuture } from "date-fns";
 import { de } from "date-fns/locale";
-import { useNavigate } from "react-router-dom";
 
 interface Meeting {
   id: string;
@@ -22,12 +22,23 @@ interface Meeting {
 export function MyWorkJourFixeTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [upcomingMeetings, setUpcomingMeetings] = useState<Meeting[]>([]);
   const [pastMeetings, setPastMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [upcomingOpen, setUpcomingOpen] = useState(true);
   const [pastOpen, setPastOpen] = useState(false);
+
+  // Handle action parameter from URL
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-meeting') {
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+      navigate('/jour-fixe?action=create');
+    }
+  }, [searchParams, setSearchParams, navigate]);
 
   useEffect(() => {
     if (user) {

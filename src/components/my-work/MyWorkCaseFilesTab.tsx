@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,7 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { useNavigate } from "react-router-dom";
 
 interface CaseFile {
   id: string;
@@ -33,9 +33,20 @@ const STATUS_COLORS: Record<string, string> = {
 export function MyWorkCaseFilesTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [caseFiles, setCaseFiles] = useState<CaseFile[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Handle action parameter from URL
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create-casefile') {
+      searchParams.delete('action');
+      setSearchParams(searchParams, { replace: true });
+      navigate('/casefiles?action=create');
+    }
+  }, [searchParams, setSearchParams, navigate]);
 
   useEffect(() => {
     if (user) {

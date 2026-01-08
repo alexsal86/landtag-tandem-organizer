@@ -224,9 +224,9 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
                             {onlineUser.display_name?.charAt(0) || "?"}
                           </AvatarFallback>
                         </Avatar>
-                        {/* Status indicator below avatar */}
+                        {/* Status indicator in front of avatar */}
                         <span 
-                          className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[hsl(var(--nav))]"
+                          className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white z-10"
                           style={{ backgroundColor: userStatusDisplay?.color || '#22c55e' }}
                         />
                       </div>
