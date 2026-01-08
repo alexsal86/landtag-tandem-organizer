@@ -114,15 +114,76 @@ export function MyWorkView() {
         .neq("status", "archived")
         .gte("meeting_date", new Date().toISOString());
 
-      // Check if admin for team count
+      // Check if admin for team count (meeting requests + time entry warnings)
       const { data: isAdmin } = await supabase.rpc("is_admin", { _user_id: user.id });
       let teamCount = 0;
       if (isAdmin) {
-        const { count } = await supabase
+        const { count: requestCount } = await supabase
           .from("employee_meeting_requests")
           .select("*", { count: "exact", head: true })
           .eq("status", "pending");
-        teamCount = count || 0;
+
+        // Count employees with missing time entries (>3 business days)
+        let warningCount = 0;
+        try {
+          // Get employee IDs
+          const { data: memberships } = await supabase
+            .from("user_tenant_memberships")
+            .select("user_id")
+            .eq("is_active", true);
+
+          if (memberships?.length) {
+            const userIds = memberships.map(m => m.user_id);
+            
+            const { data: roles } = await supabase
+              .from("user_roles")
+              .select("user_id, role")
+              .in("user_id", userIds);
+
+            const employeeIds = (roles || [])
+              .filter(r => ["mitarbeiter", "praktikant", "bueroleitung"].includes(r.role))
+              .map(r => r.user_id);
+
+            if (employeeIds.length > 0) {
+              const { data: lastEntries } = await supabase
+                .from("time_entries")
+                .select("user_id, work_date")
+                .in("user_id", employeeIds)
+                .order("work_date", { ascending: false });
+
+              const lastEntryByUser: Record<string, string> = {};
+              (lastEntries || []).forEach((entry: any) => {
+                if (!lastEntryByUser[entry.user_id]) {
+                  lastEntryByUser[entry.user_id] = entry.work_date;
+                }
+              });
+
+              // Calculate business days for each employee
+              const today = new Date();
+              employeeIds.forEach(uid => {
+                const lastDate = lastEntryByUser[uid];
+                if (!lastDate) {
+                  warningCount++;
+                  return;
+                }
+                const last = new Date(lastDate);
+                let count = 0;
+                let current = new Date(last);
+                current.setDate(current.getDate() + 1);
+                while (current <= today) {
+                  const day = current.getDay();
+                  if (day !== 0 && day !== 6) count++;
+                  current.setDate(current.getDate() + 1);
+                }
+                if (count > 3) warningCount++;
+              });
+            }
+          }
+        } catch (e) {
+          console.error("Error calculating time entry warnings:", e);
+        }
+
+        teamCount = (requestCount || 0) + warningCount;
       }
 
       setCounts({
