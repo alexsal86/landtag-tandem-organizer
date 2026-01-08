@@ -66,7 +66,7 @@ const myworkTabActions: Record<string, { label: string; action: string }> = {
 
 export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
   const { user, signOut } = useAuth();
-  const { currentStatus, getStatusDisplay } = useUserStatus();
+  const { currentStatus, getStatusDisplay, onlineUsers } = useUserStatus();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -207,12 +207,39 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
         {/* Online Users */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <div className="flex -space-x-2">
-                <div className="h-5 w-5 rounded-full bg-green-500/20 border-2 border-green-500 flex items-center justify-center">
-                  <span className="text-[10px] font-medium text-green-600">●</span>
+            <Button variant="ghost" size="sm" className="relative h-8 px-1">
+              {onlineUsers.length === 0 ? (
+                <div className="h-6 w-6 rounded-full bg-muted border-2 border-muted-foreground/30 flex items-center justify-center">
+                  <span className="text-muted-foreground text-[10px]">○</span>
                 </div>
-              </div>
+              ) : (
+                <div className="flex -space-x-2">
+                  {onlineUsers.slice(0, 3).map((onlineUser, index) => (
+                    <Avatar 
+                      key={onlineUser.user_id} 
+                      className="h-6 w-6 border-2 border-[hsl(var(--nav))] ring-1 ring-green-500"
+                      style={{ zIndex: 3 - index }}
+                    >
+                      <AvatarImage src={onlineUser.avatar_url || undefined} />
+                      <AvatarFallback className="text-[10px] bg-green-100 text-green-700">
+                        {onlineUser.display_name?.charAt(0) || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  <div 
+                    className="h-6 w-6 rounded-full bg-green-500 border-2 border-[hsl(var(--nav))] flex items-center justify-center"
+                    style={{ zIndex: 0 }}
+                  >
+                    {onlineUsers.length > 3 ? (
+                      <span className="text-[10px] font-medium text-white">
+                        +{onlineUsers.length - 3}
+                      </span>
+                    ) : (
+                      <span className="text-white text-[10px]">●</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="end">
