@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useTenant } from './useTenant';
 
 export interface NavigationCounts {
   [key: string]: number;
@@ -15,12 +16,13 @@ export interface NavigationNotifications {
 
 export const useNavigationNotifications = (): NavigationNotifications => {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [navigationCounts, setNavigationCounts] = useState<NavigationCounts>({});
   const [lastVisited, setLastVisited] = useState<Record<string, Date>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   const loadNavigationCounts = async () => {
-    if (!user) return;
+    if (!user || !currentTenant) return;
 
     try {
       // Get unread notification counts per navigation context
@@ -85,7 +87,8 @@ export const useNavigationNotifications = (): NavigationNotifications => {
           id,
           due_month,
           annual_task_completions!left(id, year, completed_at)
-        `);
+        `)
+        .or(`tenant_id.eq.${currentTenant.id},tenant_id.is.null`);
 
       if (annualTasks) {
         const overdueOrDueCount = annualTasks.filter((task: any) => {
@@ -209,14 +212,14 @@ export const useNavigationNotifications = (): NavigationNotifications => {
 
   // Load initial data
   useEffect(() => {
-    if (user) {
+    if (user && currentTenant) {
       loadNavigationCounts();
     } else {
       setNavigationCounts({});
       setLastVisited({});
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, currentTenant]);
 
   // Set up real-time subscriptions
   useEffect(() => {

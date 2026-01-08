@@ -8517,6 +8517,10 @@ export type Database = {
       generate_decision_participant_token: { Args: never; Returns: string }
       generate_guest_invitation_token: { Args: never; Returns: string }
       generate_participant_token: { Args: never; Returns: string }
+      generate_yearly_stats_for_year: {
+        Args: { p_tenant_id: string; p_year: number }
+        Returns: Json
+      }
       get_authored_messages: {
         Args: { author_id_param: string }
         Returns: {
