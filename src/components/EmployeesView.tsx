@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { startOfYear, endOfYear, eachDayOfInterval, isWeekend, formatDistanceToNow, differenceInDays, format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Calendar, AlertCircle, History, BarChart3, RefreshCcw } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EmployeeMeetingRequestDialog } from "./EmployeeMeetingRequestDialog";
 import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
@@ -40,6 +41,7 @@ type EmployeeSettingsRow = {
   last_meeting_date?: string | null;
   meeting_interval_months?: number;
   next_meeting_reminder_days?: number;
+  carry_over_days?: number;
 };
 
 type Profile = {
@@ -264,9 +266,9 @@ export function EmployeesView() {
 
         const [profilesRes, settingsRes, leaveRes, pendingRes, sickRes, meetingRequestsRes, lastMeetingsRes] = await Promise.all([
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
-          supabase
+        supabase
             .from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date, hours_per_month, days_per_month, days_per_week, last_meeting_date, meeting_interval_months, next_meeting_reminder_days")
+            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date, hours_per_month, days_per_month, days_per_week, last_meeting_date, meeting_interval_months, next_meeting_reminder_days, carry_over_days")
             .in("user_id", managedIds),
           supabase
             .from("leave_requests")
@@ -355,6 +357,7 @@ export function EmployeesView() {
             next_meeting_due,
             open_meeting_requests: meetingRequestCounts[uid] || 0,
             last_meeting_id: lastMeetingMap.get(uid) || null,
+            carry_over_days: s?.carry_over_days ?? 0,
           } as Employee;
         });
         setEmployees(joined);
@@ -1446,14 +1449,32 @@ export function EmployeesView() {
                           <Badge variant="outline">{sickDays[e.user_id] || 0} Tage</Badge>
                          </TableCell>
                           <TableCell>
-                            <Badge variant="secondary">
-                              {vacApproved} von {e.annual_vacation_days} Arbeitstagen
-                            </Badge>
-                            {remainingVacationDays > 0 && (
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {remainingVacationDays} verbleibende Arbeitstage
-                              </div>
-                            )}
+                            <div className="space-y-1">
+                              <Badge variant="secondary">
+                                {vacApproved} von {e.annual_vacation_days + ((e as any).carry_over_days || 0)} Tagen
+                              </Badge>
+                              {((e as any).carry_over_days || 0) > 0 && (
+                                <div className="text-xs text-amber-600 flex items-center gap-1">
+                                  <span>+{(e as any).carry_over_days} Resturlaub</span>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <AlertCircle className="h-3 w-3 cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Resturlaub aus {new Date().getFullYear() - 1}</p>
+                                        <p className="text-xs text-muted-foreground">Verfällt am 31.03.{new Date().getFullYear()}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                              )}
+                              {remainingVacationDays + ((e as any).carry_over_days || 0) > 0 && (
+                                <div className="text-xs text-muted-foreground">
+                                  {remainingVacationDays + ((e as any).carry_over_days || 0)} verbleibend
+                                </div>
+                              )}
+                            </div>
                          </TableCell>
                          <TableCell>
                            {e.last_meeting_date && e.last_meeting_id ? (
