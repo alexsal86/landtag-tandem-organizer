@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Users, ExternalLink, Clock, Calendar } from "lucide-react";
+import { Users, ExternalLink, Clock, Calendar, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { format, differenceInDays, startOfWeek } from "date-fns";
+import { format, differenceInDays, startOfWeek, isWeekend, subDays } from "date-fns";
 import { de } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,24 @@ interface TeamMember {
   weekly_worked_minutes: number;
   weekly_target_minutes: number;
   last_time_entry_date: string | null;
+  days_without_entry: number;
+}
+
+// Calculate business days since a date
+function calculateBusinessDaysSince(lastDate: string | null): number {
+  if (!lastDate) return 999; // Never entered
+  
+  const last = new Date(lastDate);
+  const today = new Date();
+  let count = 0;
+  let current = new Date(last);
+  current.setDate(current.getDate() + 1);
+  
+  while (current <= today) {
+    if (!isWeekend(current)) count++;
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
 }
 
 // Work time indicator component
@@ -140,14 +158,16 @@ export function MyWorkTeamTab() {
       const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
       const today = new Date();
 
-      // Get profiles, settings, requests, and time entries
-      const [profilesRes, settingsRes, requestsRes, timeEntriesRes] = await Promise.all([
+      // Get profiles, settings, requests, time entries (this week), and last global entries
+      const [profilesRes, settingsRes, requestsRes, timeEntriesRes, lastEntriesRes] = await Promise.all([
         supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", employeeIds),
         supabase.from("employee_settings").select("user_id, hours_per_week, last_meeting_date, meeting_interval_months").in("user_id", employeeIds),
         supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", employeeIds),
         supabase.from("time_entries").select("user_id, minutes, work_date").in("user_id", employeeIds)
           .gte("work_date", format(weekStart, "yyyy-MM-dd"))
           .lte("work_date", format(today, "yyyy-MM-dd")),
+        supabase.from("time_entries").select("user_id, work_date").in("user_id", employeeIds)
+          .order("work_date", { ascending: false }),
       ]);
 
       const profileMap = new Map(profilesRes.data?.map(p => [p.user_id, p]) || []);
@@ -159,13 +179,21 @@ export function MyWorkTeamTab() {
         requestCounts[req.employee_id] = (requestCounts[req.employee_id] || 0) + 1;
       });
 
-      // Sum weekly minutes and find last entry per employee
+      // Sum weekly minutes and find last entry per employee (this week)
       const weeklyMinutes: Record<string, number> = {};
       const lastTimeEntry: Record<string, string> = {};
       (timeEntriesRes.data || []).forEach((entry: any) => {
         weeklyMinutes[entry.user_id] = (weeklyMinutes[entry.user_id] || 0) + entry.minutes;
         if (!lastTimeEntry[entry.user_id] || entry.work_date > lastTimeEntry[entry.user_id]) {
           lastTimeEntry[entry.user_id] = entry.work_date;
+        }
+      });
+
+      // Find last global entry per employee (for warning calculation)
+      const lastGlobalEntry: Record<string, string> = {};
+      (lastEntriesRes.data || []).forEach((entry: any) => {
+        if (!lastGlobalEntry[entry.user_id]) {
+          lastGlobalEntry[entry.user_id] = entry.work_date;
         }
       });
 
@@ -201,6 +229,7 @@ export function MyWorkTeamTab() {
           weekly_worked_minutes: weeklyMinutes[uid] || 0,
           weekly_target_minutes: targetMinutesSoFar,
           last_time_entry_date: lastTimeEntry[uid] || null,
+          days_without_entry: calculateBusinessDaysSince(lastGlobalEntry[uid] || null),
         };
       });
 
@@ -283,6 +312,16 @@ export function MyWorkTeamTab() {
                     <span className="font-medium text-sm">
                       {member.display_name || "Unbekannt"}
                     </span>
+                    {member.days_without_entry > 3 && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          <p>Kein Zeiteintrag seit {member.days_without_entry} Werktagen</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                     {member.open_meeting_requests > 0 && (
                       <Badge variant="destructive" className="text-xs">
                         {member.open_meeting_requests} Anfrage{member.open_meeting_requests > 1 ? "n" : ""}
