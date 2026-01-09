@@ -8571,6 +8571,7 @@ export type Database = {
         }[]
       }
       get_daily_hours: { Args: { _user_id: string }; Returns: number }
+      get_shared_note_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_messages: {
         Args: { user_id_param: string }
         Returns: {
@@ -8608,6 +8609,10 @@ export type Database = {
       is_admin_of: { Args: { employee: string }; Returns: boolean }
       is_message_recipient: {
         Args: { message_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
+      is_note_owner: {
+        Args: { _note_id: string; _user_id: string }
         Returns: boolean
       }
       is_tenant_admin: {
