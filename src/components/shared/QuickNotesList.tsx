@@ -29,7 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { 
   Pin, Trash2, StickyNote, MoreHorizontal, CheckSquare, Vote, 
   Calendar as CalendarIcon, Archive, Edit, ChevronDown, Clock,
-  Star, ArrowUp, ArrowDown, RotateCcw
+  Star, ArrowUp, ArrowDown, RotateCcw, Share2, Users
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { format, addDays, isToday, isPast, isBefore, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { MeetingNoteSelector } from "@/components/widgets/MeetingNoteSelector";
+import { NoteShareDialog } from "@/components/shared/NoteShareDialog";
 
 export interface QuickNote {
   id: string;
@@ -53,6 +54,13 @@ export interface QuickNote {
   priority_level?: number;
   follow_up_date?: string;
   is_archived?: boolean;
+  user_id?: string;
+  is_shared?: boolean;
+  share_count?: number;
+  owner?: {
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
   meetings?: {
     title: string;
     meeting_date: string;
@@ -92,15 +100,18 @@ export function QuickNotesList({
   const [followUpExpanded, setFollowUpExpanded] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [noteForDatePicker, setNoteForDatePicker] = useState<QuickNote | null>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [noteForShare, setNoteForShare] = useState<QuickNote | null>(null);
 
   const loadNotes = useCallback(async () => {
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
+      // Load own notes
+      const { data: ownNotes, error: ownError } = await supabase
         .from("quick_notes")
         .select(`
-          id, title, content, color, is_pinned, created_at, updated_at, 
+          id, title, content, color, is_pinned, created_at, updated_at, user_id,
           is_archived, task_id, meeting_id, priority_level, follow_up_date,
           meetings!meeting_id(title, meeting_date)
         `)
@@ -109,8 +120,67 @@ export function QuickNotesList({
         .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setNotes((data as QuickNote[]) || []);
+      if (ownError) throw ownError;
+
+      // Load shares count for own notes
+      const noteIds = (ownNotes || []).map(n => n.id);
+      let shareCounts: Record<string, number> = {};
+      
+      if (noteIds.length > 0) {
+        const { data: sharesData } = await supabase
+          .from("quick_note_shares")
+          .select("note_id")
+          .in("note_id", noteIds);
+        
+        if (sharesData) {
+          sharesData.forEach(s => {
+            shareCounts[s.note_id] = (shareCounts[s.note_id] || 0) + 1;
+          });
+        }
+      }
+
+      // Load shared notes (notes shared with me)
+      const { data: sharedNoteIds } = await supabase
+        .from("quick_note_shares")
+        .select("note_id")
+        .eq("shared_with_user_id", user.id);
+
+      let sharedNotes: QuickNote[] = [];
+      if (sharedNoteIds && sharedNoteIds.length > 0) {
+        const ids = sharedNoteIds.map(s => s.note_id);
+        const { data: sharedData } = await supabase
+          .from("quick_notes")
+          .select(`
+            id, title, content, color, is_pinned, created_at, updated_at, user_id,
+            is_archived, task_id, meeting_id, priority_level, follow_up_date,
+            meetings!meeting_id(title, meeting_date)
+          `)
+          .in("id", ids)
+          .eq("is_archived", false);
+
+        if (sharedData && sharedData.length > 0) {
+          // Load owner profiles
+          const ownerIds = [...new Set(sharedData.map(n => n.user_id))];
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("user_id, display_name, avatar_url")
+            .in("user_id", ownerIds);
+
+          sharedNotes = sharedData.map(note => ({
+            ...note,
+            is_shared: true,
+            owner: profiles?.find(p => p.user_id === note.user_id) || null
+          })) as QuickNote[];
+        }
+      }
+
+      // Combine own notes with share counts and shared notes
+      const ownWithCounts = (ownNotes || []).map(note => ({
+        ...note,
+        share_count: shareCounts[note.id] || 0
+      })) as QuickNote[];
+
+      setNotes([...ownWithCounts, ...sharedNotes]);
     } catch (error) {
       console.error("Error loading notes:", error);
     } finally {
@@ -641,6 +711,25 @@ export function QuickNotesList({
                   </DropdownMenuItem>
                 )}
                 
+                {/* Share option - only for own notes */}
+                {note.user_id === user?.id && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => {
+                      setNoteForShare(note);
+                      setShareDialogOpen(true);
+                    }}>
+                      <Share2 className="h-3 w-3 mr-2" />
+                      Freigeben
+                      {(note.share_count || 0) > 0 && (
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          {note.share_count}
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                  </>
+                )}
+                
                 <DropdownMenuSeparator />
                 
                 <DropdownMenuItem onClick={() => handleTogglePin(note)}>
@@ -702,6 +791,38 @@ export function QuickNotesList({
                       ? `${note.meetings.title} am ${format(new Date(note.meetings.meeting_date), "dd.MM.yyyy", { locale: de })}`
                       : "Wird dem nächsten geplanten Jour Fixe zugeordnet"
                     }
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {/* Shared indicator */}
+            {(note.share_count || 0) > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-violet-600 cursor-help">
+                      <Users className="h-3 w-3 mr-0.5" />
+                      {note.share_count}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Mit {note.share_count} {note.share_count === 1 ? 'Person' : 'Personen'} geteilt
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {/* Shared from others indicator */}
+            {note.is_shared && note.owner && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="secondary" className="text-xs px-1 py-0 h-4 cursor-help">
+                      <Share2 className="h-3 w-3 mr-0.5" />
+                      {note.owner.display_name?.split(' ')[0] || 'Geteilt'}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Geteilt von {note.owner.display_name || 'Unbekannt'}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -879,6 +1000,22 @@ export function QuickNotesList({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Share Dialog */}
+      {noteForShare && (
+        <NoteShareDialog
+          open={shareDialogOpen}
+          onOpenChange={(open) => {
+            setShareDialogOpen(open);
+            if (!open) {
+              setNoteForShare(null);
+              loadNotes(); // Refresh to update share counts
+            }
+          }}
+          noteId={noteForShare.id}
+          noteTitle={noteForShare.title || noteForShare.content.substring(0, 50)}
+        />
+      )}
     </>
   );
 }

@@ -6718,6 +6718,41 @@ export type Database = {
         }
         Relationships: []
       }
+      quick_note_shares: {
+        Row: {
+          created_at: string
+          id: string
+          note_id: string
+          permission_type: string
+          shared_by_user_id: string
+          shared_with_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note_id: string
+          permission_type?: string
+          shared_by_user_id: string
+          shared_with_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note_id?: string
+          permission_type?: string
+          shared_by_user_id?: string
+          shared_with_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_note_shares_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "quick_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quick_notes: {
         Row: {
           added_to_meeting_at: string | null
