@@ -6718,6 +6718,30 @@ export type Database = {
         }
         Relationships: []
       }
+      quick_note_global_shares: {
+        Row: {
+          created_at: string
+          id: string
+          permission_type: string
+          shared_with_user_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission_type?: string
+          shared_with_user_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission_type?: string
+          shared_with_user_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       quick_note_shares: {
         Row: {
           created_at: string
@@ -6761,12 +6785,14 @@ export type Database = {
           color: string | null
           content: string
           created_at: string
+          deleted_at: string | null
           follow_up_date: string | null
           id: string
           is_archived: boolean | null
           is_pinned: boolean | null
           meeting_id: string | null
           meeting_result: string | null
+          permanent_delete_at: string | null
           priority_level: number | null
           tags: string[] | null
           task_id: string | null
@@ -6781,12 +6807,14 @@ export type Database = {
           color?: string | null
           content: string
           created_at?: string
+          deleted_at?: string | null
           follow_up_date?: string | null
           id?: string
           is_archived?: boolean | null
           is_pinned?: boolean | null
           meeting_id?: string | null
           meeting_result?: string | null
+          permanent_delete_at?: string | null
           priority_level?: number | null
           tags?: string[] | null
           task_id?: string | null
@@ -6801,12 +6829,14 @@ export type Database = {
           color?: string | null
           content?: string
           created_at?: string
+          deleted_at?: string | null
           follow_up_date?: string | null
           id?: string
           is_archived?: boolean | null
           is_pinned?: boolean | null
           meeting_id?: string | null
           meeting_result?: string | null
+          permanent_delete_at?: string | null
           priority_level?: number | null
           tags?: string[] | null
           task_id?: string | null
@@ -8571,6 +8601,10 @@ export type Database = {
         }[]
       }
       get_daily_hours: { Args: { _user_id: string }; Returns: number }
+      get_globally_shared_user_ids: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
       get_shared_note_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_messages: {
         Args: { user_id_param: string }
