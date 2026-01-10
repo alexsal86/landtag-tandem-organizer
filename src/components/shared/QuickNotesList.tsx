@@ -29,7 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { 
   Pin, Trash2, StickyNote, MoreHorizontal, CheckSquare, Vote, 
   Calendar as CalendarIcon, Archive, Edit, ChevronDown, Clock,
-  Star, ArrowUp, ArrowDown, RotateCcw, Share2, Users
+  Star, ArrowUp, ArrowDown, RotateCcw, Share2, Users, Globe
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,6 +40,8 @@ import { format, addDays, isToday, isPast, isBefore, startOfDay } from "date-fns
 import { de } from "date-fns/locale";
 import { MeetingNoteSelector } from "@/components/widgets/MeetingNoteSelector";
 import { NoteShareDialog } from "@/components/shared/NoteShareDialog";
+import { GlobalNoteShareDialog } from "@/components/shared/GlobalNoteShareDialog";
+import { NotesArchive } from "@/components/shared/NotesArchive";
 
 export interface QuickNote {
   id: string;
@@ -102,12 +104,15 @@ export function QuickNotesList({
   const [noteForDatePicker, setNoteForDatePicker] = useState<QuickNote | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [noteForShare, setNoteForShare] = useState<QuickNote | null>(null);
+  const [globalShareDialogOpen, setGlobalShareDialogOpen] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const [archiveRefreshTrigger, setArchiveRefreshTrigger] = useState(0);
 
   const loadNotes = useCallback(async () => {
     if (!user) return;
     
     try {
-      // Load own notes
+      // Load own notes (excluding soft-deleted)
       const { data: ownNotes, error: ownError } = await supabase
         .from("quick_notes")
         .select(`
@@ -117,6 +122,7 @@ export function QuickNotesList({
         `)
         .eq("user_id", user.id)
         .eq("is_archived", false)
+        .is("deleted_at", null)
         .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false });
 
@@ -155,8 +161,9 @@ export function QuickNotesList({
             is_archived, task_id, meeting_id, priority_level, follow_up_date,
             meetings!meeting_id(title, meeting_date)
           `)
-          .in("id", ids)
-          .eq("is_archived", false);
+        .in("id", ids)
+        .eq("is_archived", false)
+        .is("deleted_at", null);
 
         if (sharedData && sharedData.length > 0) {
           // Load owner profiles
@@ -286,16 +293,22 @@ export function QuickNotesList({
     }
   };
 
+  // Soft delete - move to trash instead of permanent delete
   const handleDelete = async (noteId: string) => {
     try {
+      const permanentDeleteAt = addDays(new Date(), 30);
       const { error } = await supabase
         .from("quick_notes")
-        .delete()
+        .update({ 
+          deleted_at: new Date().toISOString(),
+          permanent_delete_at: permanentDeleteAt.toISOString()
+        })
         .eq("id", noteId);
 
       if (error) throw error;
-      toast.success("Notiz gelöscht");
+      toast.success("Notiz in Papierkorb verschoben (wird nach 30 Tagen gelöscht)");
       loadNotes();
+      setArchiveRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error("Error deleting note:", error);
       toast.error("Fehler beim Löschen");
@@ -468,24 +481,69 @@ export function QuickNotesList({
     return html.replace(/<[^>]*>/g, '').substring(0, 150);
   };
 
-  const renderNoteCard = (note: QuickNote, showFollowUpBadge = false) => (
-    <div
-      key={note.id}
-      className="p-3 rounded-lg border transition-colors hover:shadow-sm bg-card border-l-4 group relative"
-      style={{ borderLeftColor: note.color || "#3b82f6" }}
-      onClick={() => onNoteClick?.(note)}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          {note.title && (
-            <h4 className="font-medium text-sm truncate mb-1">
-              {note.title}
-            </h4>
-          )}
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {getPreviewText(note.content)}
-          </p>
-        </div>
+  const toggleNoteExpand = (noteId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedNotes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) {
+        newSet.delete(noteId);
+      } else {
+        newSet.add(noteId);
+      }
+      return newSet;
+    });
+  };
+
+  // Simple HTML sanitizer for safe rendering
+  const sanitizeHtml = (html: string) => {
+    // Allow only basic formatting tags
+    const allowedTags = ['b', 'i', 'u', 'strong', 'em', 'br', 'p', 'ul', 'ol', 'li', 'span'];
+    const tagPattern = new RegExp(`<(?!\/?(${allowedTags.join('|')})(\\s|>))[^>]*>`, 'gi');
+    return html
+      .replace(tagPattern, '')
+      .replace(/<script[^>]*>.*?<\/script>/gi, '')
+      .replace(/on\w+="[^"]*"/gi, '')
+      .replace(/on\w+='[^']*'/gi, '');
+  };
+
+  const renderNoteCard = (note: QuickNote, showFollowUpBadge = false) => {
+    const isExpanded = expandedNotes.has(note.id);
+    const fullText = note.content.replace(/<[^>]*>/g, '');
+    const needsTruncation = fullText.length > 150;
+    
+    return (
+      <div
+        key={note.id}
+        className="p-3 rounded-lg border transition-colors hover:shadow-sm bg-card border-l-4 group relative"
+        style={{ borderLeftColor: note.color || "#3b82f6" }}
+        onClick={() => onNoteClick?.(note)}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            {note.title && (
+              <h4 className="font-medium text-sm truncate mb-1">
+                {note.title}
+              </h4>
+            )}
+            {isExpanded ? (
+              <div 
+                className="text-sm text-muted-foreground prose prose-sm max-w-none [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {getPreviewText(note.content)}
+              </p>
+            )}
+            {needsTruncation && (
+              <button 
+                className="text-xs text-primary hover:underline mt-1 font-medium"
+                onClick={(e) => toggleNoteExpand(note.id, e)}
+              >
+                {isExpanded ? "Weniger anzeigen" : "...mehr anzeigen"}
+              </button>
+            )}
+          </div>
         
         {/* Right column: Icons on top, metadata below */}
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
@@ -847,6 +905,7 @@ export function QuickNotesList({
       </div>
     </div>
   );
+  };
 
   if (loading) {
     return (
@@ -932,6 +991,13 @@ export function QuickNotesList({
               </Collapsible>
             </>
           )}
+
+          {/* Notes Archive (Trash) */}
+          <Separator className="my-3" />
+          <NotesArchive 
+            refreshTrigger={archiveRefreshTrigger} 
+            onRestore={loadNotes} 
+          />
         </div>
       </ScrollArea>
 
@@ -1016,6 +1082,12 @@ export function QuickNotesList({
           noteTitle={noteForShare.title || noteForShare.content.substring(0, 50)}
         />
       )}
+
+      {/* Global Share Dialog */}
+      <GlobalNoteShareDialog
+        open={globalShareDialogOpen}
+        onOpenChange={setGlobalShareDialogOpen}
+      />
     </>
   );
 }

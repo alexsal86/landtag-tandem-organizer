@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,11 +18,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useNoteSharing } from "@/hooks/useNoteSharing";
+import { useGlobalNoteSharing } from "@/hooks/useGlobalNoteSharing";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
-import { Trash2, Users, Loader2, Search } from "lucide-react";
+import { Trash2, Users, Loader2, Search, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TeamMember {
@@ -30,23 +31,19 @@ interface TeamMember {
   avatar_url: string | null;
 }
 
-interface NoteShareDialogProps {
+interface GlobalNoteShareDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  noteId: string;
-  noteTitle?: string;
 }
 
-export const NoteShareDialog = ({
+export const GlobalNoteShareDialog = ({
   open,
   onOpenChange,
-  noteId,
-  noteTitle,
-}: NoteShareDialogProps) => {
+}: GlobalNoteShareDialogProps) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { shares, loading, shareNote, unshareNote, updatePermission } =
-    useNoteSharing(noteId);
+  const { globalShares, loading, addGlobalShare, removeGlobalShare, updateGlobalPermission } =
+    useGlobalNoteSharing();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -103,19 +100,19 @@ export const NoteShareDialog = ({
   };
 
   const isSharedWith = (memberId: string) => {
-    return shares.some((s) => s.shared_with_user_id === memberId);
+    return globalShares.some((s) => s.shared_with_user_id === memberId);
   };
 
   const getShareForMember = (memberId: string) => {
-    return shares.find((s) => s.shared_with_user_id === memberId);
+    return globalShares.find((s) => s.shared_with_user_id === memberId);
   };
 
   const handleToggleShare = async (member: TeamMember) => {
     const existingShare = getShareForMember(member.id);
     if (existingShare) {
-      await unshareNote(existingShare.id);
+      await removeGlobalShare(existingShare.id);
     } else {
-      await shareNote(noteId, member.id, "view");
+      await addGlobalShare(member.id, "view");
     }
   };
 
@@ -128,16 +125,13 @@ export const NoteShareDialog = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Notiz freigeben
+            <Globe className="h-5 w-5" />
+            Alle Notizen freigeben
           </DialogTitle>
+          <DialogDescription>
+            Gib alle deine Quick Notes für Teammitglieder frei.
+          </DialogDescription>
         </DialogHeader>
-
-        {noteTitle && (
-          <p className="text-sm text-muted-foreground truncate">
-            „{noteTitle}"
-          </p>
-        )}
 
         <div className="space-y-4">
           {/* Search */}
@@ -194,7 +188,7 @@ export const NoteShareDialog = ({
                           <Select
                             value={share.permission_type}
                             onValueChange={(v) =>
-                              updatePermission(share.id, v as "view" | "edit")
+                              updateGlobalPermission(share.id, v as "view" | "edit")
                             }
                           >
                             <SelectTrigger className="h-8 w-[100px] text-xs">
@@ -209,7 +203,7 @@ export const NoteShareDialog = ({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => unshareNote(share.id)}
+                            onClick={() => removeGlobalShare(share.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -223,11 +217,12 @@ export const NoteShareDialog = ({
           )}
 
           {/* Summary */}
-          {shares.length > 0 && (
+          {globalShares.length > 0 && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2 border-t">
               <Users className="h-4 w-4" />
               <span>
-                Mit {shares.length} {shares.length === 1 ? "Person" : "Personen"} geteilt
+                Alle Notizen sind für {globalShares.length}{" "}
+                {globalShares.length === 1 ? "Person" : "Personen"} freigegeben
               </span>
             </div>
           )}
