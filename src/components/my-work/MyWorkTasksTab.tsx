@@ -194,40 +194,24 @@ export function MyWorkTasksTab() {
   const TaskItem = ({ task }: { task: Task }) => {
     const taskSubtasks = subtasks[task.id] || [];
     const hasSubtasks = taskSubtasks.length > 0;
-    const isExpanded = expandedTasks.has(task.id);
+    // Subtasks are always shown if they exist
+    const isExpanded = hasSubtasks || expandedTasks.has(task.id);
 
     return (
       <div className="rounded-lg border bg-card">
         <div className="flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors">
           <Checkbox
-            className="mt-0.5"
+            className="mt-0.5 h-4 w-4"
             onCheckedChange={() => handleToggleComplete(task.id)}
           />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium text-sm truncate">{task.title}</span>
               <Flag className={cn("h-3 w-3 flex-shrink-0", getPriorityColor(task.priority))} />
               {hasSubtasks && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5 p-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleTaskExpanded(task.id);
-                  }}
-                >
-                  {isExpanded ? (
-                    <ChevronDown className="h-3 w-3" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3" />
-                  )}
-                </Button>
-              )}
-              {hasSubtasks && (
-                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
                   <ListTodo className="h-2.5 w-2.5 mr-1" />
-                  {taskSubtasks.length}
+                  {taskSubtasks.length} Unteraufgaben
                 </Badge>
               )}
             </div>
@@ -253,23 +237,23 @@ export function MyWorkTasksTab() {
           </Button>
         </div>
         
-        {/* Subtasks */}
-        {hasSubtasks && isExpanded && (
+        {/* Subtasks - always visible if they exist */}
+        {hasSubtasks && (
           <div className="border-t bg-muted/30 px-3 py-2 space-y-1">
             {taskSubtasks.map((subtask) => (
               <div 
                 key={subtask.id} 
-                className="flex items-center gap-2 py-1 px-2 rounded hover:bg-accent/50 transition-colors"
+                className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-accent/50 transition-colors"
               >
                 <Checkbox
-                  className="h-3 w-3"
+                  className="h-4 w-4"
                   onCheckedChange={() => handleToggleSubtaskComplete(subtask.id)}
                 />
-                <span className="text-xs text-muted-foreground flex-1 truncate">
+                <span className="text-sm text-foreground flex-1 truncate">
                   {subtask.description}
                 </span>
                 {subtask.due_date && (
-                  <span className={cn("text-[10px]", getDueDateColor(subtask.due_date))}>
+                  <span className={cn("text-xs", getDueDateColor(subtask.due_date))}>
                     {format(new Date(subtask.due_date), "dd.MM.", { locale: de })}
                   </span>
                 )}

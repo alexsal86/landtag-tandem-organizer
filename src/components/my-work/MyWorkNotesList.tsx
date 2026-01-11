@@ -35,7 +35,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
           <QuickNotesList 
             refreshTrigger={refreshTrigger} 
             showHeader={false}
-            maxHeight="400px"
+            maxHeight="none"
           />
         </CardContent>
       </Card>

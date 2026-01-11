@@ -59,29 +59,47 @@ export const GlobalNoteShareDialog = ({
 
     setLoadingMembers(true);
     try {
-      const { data, error } = await supabase
+      // Step 1: Load all active memberships
+      const { data: memberships, error: memberError } = await supabase
         .from("user_tenant_memberships")
-        .select(`
-          user_id,
-          profiles:user_id (
-            user_id,
-            display_name,
-            avatar_url
-          )
-        `)
+        .select("user_id")
         .eq("tenant_id", currentTenant.id)
         .eq("is_active", true);
 
-      if (!error && data) {
-        const members = data
-          .filter((m) => m.profiles && (m.profiles as any).user_id !== user.id)
-          .map((m) => ({
-            id: (m.profiles as any).user_id,
-            display_name: (m.profiles as any).display_name || "Unbekannt",
-            avatar_url: (m.profiles as any).avatar_url,
-          }));
-        setTeamMembers(members);
+      if (memberError || !memberships) {
+        console.error("Error loading memberships:", memberError);
+        return;
       }
+
+      // Step 2: Get user IDs excluding current user
+      const userIds = memberships
+        .map(m => m.user_id)
+        .filter(id => id !== user.id);
+
+      if (userIds.length === 0) {
+        setTeamMembers([]);
+        return;
+      }
+
+      // Step 3: Load profiles for these user IDs in current tenant
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .eq("tenant_id", currentTenant.id)
+        .in("user_id", userIds);
+
+      if (profileError) {
+        console.error("Error loading profiles:", profileError);
+        return;
+      }
+
+      const members = (profiles || []).map(p => ({
+        id: p.user_id,
+        display_name: p.display_name || "Unbekannt",
+        avatar_url: p.avatar_url,
+      }));
+
+      setTeamMembers(members);
     } catch (error) {
       console.error("Error loading team members:", error);
     } finally {
