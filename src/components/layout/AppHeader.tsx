@@ -207,7 +207,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
         {/* Online Users */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="relative h-8 px-1">
+            <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0">
               {onlineUsers.length === 0 ? (
                 <div className="h-6 w-6 rounded-full bg-muted border-2 border-muted-foreground/30 flex items-center justify-center">
                   <span className="text-muted-foreground text-[10px]">○</span>
@@ -218,7 +218,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
                     const userStatusDisplay = getStatusDisplay(onlineUser.status);
                     const statusColor = userStatusDisplay?.color || '#22c55e';
                     return (
-                      <div key={onlineUser.user_id} style={{ zIndex: 3 - index }}>
+                      <div key={onlineUser.user_id} style={{ zIndex: index + 1 }}>
                         <Avatar 
                           className="h-6 w-6 border-2 border-[hsl(var(--nav))] ring-2"
                           style={{ '--tw-ring-color': statusColor } as React.CSSProperties}
@@ -234,7 +234,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
                   {/* Grüner Kreis IMMER VORNE */}
                   <div 
                     className="h-6 w-6 rounded-full bg-green-500 border-2 border-white flex items-center justify-center"
-                    style={{ zIndex: 10 }}
+                    style={{ zIndex: onlineUsers.length + 1 }}
                   >
                     {onlineUsers.length > 3 ? (
                       <span className="text-[10px] font-medium text-white">
