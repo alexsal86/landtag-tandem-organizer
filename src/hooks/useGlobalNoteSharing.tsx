@@ -95,13 +95,40 @@ export const useGlobalNoteSharing = () => {
   };
 
   const removeGlobalShare = async (shareId: string) => {
+    if (!shareId) {
+      console.error("No share ID provided for removal");
+      toast.error("Fehler: Keine Freigabe-ID");
+      return false;
+    }
+
+    if (!user) {
+      console.error("No user authenticated for share removal");
+      toast.error("Fehler: Nicht authentifiziert");
+      return false;
+    }
+
+    console.log("Attempting to remove global share:", shareId);
+    
     try {
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from("quick_note_global_shares")
         .delete()
-        .eq("id", shareId);
+        .eq("id", shareId)
+        .eq("user_id", user.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase delete error:", error);
+        throw error;
+      }
+
+      console.log("Deleted share result:", data);
+      
+      if (!data || data.length === 0) {
+        console.warn("No share found with ID:", shareId);
+        toast.error("Freigabe nicht gefunden");
+        return false;
+      }
 
       toast.success("Globale Freigabe entfernt");
       loadGlobalShares();

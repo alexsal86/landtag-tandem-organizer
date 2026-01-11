@@ -399,99 +399,154 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
             <Separator />
 
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="details">Kontaktdaten</TabsTrigger>
-                <TabsTrigger value="activities">Aktivitäten ({activities.length})</TabsTrigger>
-                <TabsTrigger value="calls">Anrufliste ({callLogs.length})</TabsTrigger>
-                <TabsTrigger value="documents">
-                  Dokumente ({directDocuments.length + taggedDocuments.length})
-                </TabsTrigger>
-                <TabsTrigger value="fundings">
-                  Förderungen ({fundings.length})
-                </TabsTrigger>
-              </TabsList>
+              <div className="border-b border-border mb-4">
+                <TabsList className="flex w-full h-auto bg-transparent p-0 gap-0">
+                  <TabsTrigger 
+                    value="details" 
+                    className="flex-1 py-3 px-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all"
+                  >
+                    <User className="h-4 w-4 mr-1.5" />
+                    <span className="hidden sm:inline">Kontakt</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="activities" 
+                    className="flex-1 py-3 px-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all"
+                  >
+                    <Calendar className="h-4 w-4 mr-1.5" />
+                    <span className="hidden sm:inline">Aktivitäten</span>
+                    <Badge variant="secondary" className="ml-1.5 text-xs h-5 px-1.5">{activities.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="calls" 
+                    className="flex-1 py-3 px-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all"
+                  >
+                    <PhoneCall className="h-4 w-4 mr-1.5" />
+                    <span className="hidden sm:inline">Anrufe</span>
+                    <Badge variant="secondary" className="ml-1.5 text-xs h-5 px-1.5">{callLogs.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="documents" 
+                    className="flex-1 py-3 px-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all"
+                  >
+                    <FileText className="h-4 w-4 mr-1.5" />
+                    <span className="hidden sm:inline">Doku</span>
+                    <Badge variant="secondary" className="ml-1.5 text-xs h-5 px-1.5">{directDocuments.length + taggedDocuments.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="fundings" 
+                    className="flex-1 py-3 px-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all"
+                  >
+                    <Euro className="h-4 w-4 mr-1.5" />
+                    <span className="hidden sm:inline">Förder.</span>
+                    <Badge variant="secondary" className="ml-1.5 text-xs h-5 px-1.5">{fundings.length}</Badge>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
               
-              <TabsContent value="details" className="space-y-4 mt-4">
+              <TabsContent value="details" className="space-y-6">
+                {/* Classification Card - Category & Priority */}
+                <Card className="border-l-4 border-l-primary">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Tag className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold text-lg">Klassifizierung</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Kategorie</p>
+                        <Badge className={getCategoryColor(contact.category)}>
+                          {contact.category === "citizen" && "Bürger"}
+                          {contact.category === "colleague" && "Kollege"}
+                          {contact.category === "business" && "Wirtschaft"}
+                          {contact.category === "media" && "Medien"}
+                          {contact.category === "lobbyist" && "Lobbyist"}
+                          {!contact.category && "Keine Kategorie"}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Priorität</p>
+                        <Badge variant="outline" className={
+                          contact.priority === 'high' ? 'border-destructive text-destructive' :
+                          contact.priority === 'medium' ? 'border-yellow-500 text-yellow-600' :
+                          'border-muted-foreground text-muted-foreground'
+                        }>
+                          {contact.priority === 'high' && '🔴 Hoch'}
+                          {contact.priority === 'medium' && '🟡 Mittel'}
+                          {contact.priority === 'low' && '🟢 Niedrig'}
+                          {!contact.priority && 'Keine Priorität'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Contact Information */}
                 <Card>
                   <CardContent className="p-4 space-y-4">
-                    <h3 className="font-semibold text-lg">Kontaktinformationen</h3>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Phone className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold text-lg">Kontaktinformationen</h3>
+                    </div>
                 
                 {contact.email && (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                     <Mail className="h-5 w-5 text-muted-foreground" />
                     <div className="flex-1">
-                      <p className="font-medium">E-Mail</p>
-                      <p className="text-muted-foreground">{contact.email}</p>
+                      <p className="text-sm text-muted-foreground">E-Mail</p>
+                      <p className="font-medium">{contact.email}</p>
                     </div>
-                    <Button size="sm" variant="outline">
-                      <Mail className="h-4 w-4" />
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={`mailto:${contact.email}`}>
+                        <Mail className="h-4 w-4" />
+                      </a>
                     </Button>
                   </div>
                 )}
 
                 {contact.phone && (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                     <Phone className="h-5 w-5 text-muted-foreground" />
                     <div className="flex-1">
-                      <p className="font-medium">Telefon</p>
-                      <p className="text-muted-foreground">{contact.phone}</p>
+                      <p className="text-sm text-muted-foreground">Telefon</p>
+                      <p className="font-medium">{contact.phone}</p>
                     </div>
-                    <Button size="sm" variant="outline">
-                      <Phone className="h-4 w-4" />
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={`tel:${contact.phone}`}>
+                        <Phone className="h-4 w-4" />
+                      </a>
                     </Button>
                   </div>
                 )}
 
                 {contact.contact_type === "person" && contact.organization && (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                     <Building className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">Organisation</p>
-                      <p className="text-muted-foreground">{contact.organization}</p>
-                    </div>
-                  </div>
-                )}
-
-                {(contact.business_street || contact.business_city || contact.address || contact.location) && (
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Geschäftsadresse</p>
-                      <p className="text-muted-foreground">
-                        {contact.business_street && (
-                          <>
-                            {contact.business_street} {contact.business_house_number}
-                            <br />
-                            {contact.business_postal_code} {contact.business_city}
-                            {contact.coordinates && ' 📍'}
-                          </>
-                        )}
-                        {!contact.business_street && (contact.address || contact.location)}
-                      </p>
+                      <p className="text-sm text-muted-foreground">Organisation</p>
+                      <p className="font-medium">{contact.organization}</p>
                     </div>
                   </div>
                 )}
 
                 {contact.birthday && (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                     <Calendar className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">Geburtstag</p>
-                      <p className="text-muted-foreground">{formatGermanDate(contact.birthday)}</p>
+                      <p className="text-sm text-muted-foreground">Geburtstag</p>
+                      <p className="font-medium">{formatGermanDate(contact.birthday)}</p>
                     </div>
                   </div>
                 )}
 
                 {contact.website && (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                     <Globe className="h-5 w-5 text-muted-foreground" />
                     <div className="flex-1">
-                      <p className="font-medium">Website</p>
-                      <p className="text-muted-foreground">{contact.website}</p>
+                      <p className="text-sm text-muted-foreground">Website</p>
+                      <p className="font-medium">{contact.website}</p>
                     </div>
                     <Button size="sm" variant="outline" asChild>
-                      <a href={contact.website} target="_blank" rel="noopener noreferrer">
+                      <a href={contact.website.startsWith('http') ? contact.website : `https://${contact.website}`} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="h-4 w-4" />
                       </a>
                     </Button>
@@ -499,6 +554,47 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                  )}
                </CardContent>
                 </Card>
+
+                {/* Business Address - More Detailed */}
+                {(contact.business_street || contact.business_city || contact.address || contact.location) && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <MapPin className="h-5 w-5 text-primary" />
+                        <h3 className="font-semibold text-lg">Geschäftsadresse</h3>
+                        {contact.coordinates && (
+                          <Badge variant="outline" className="text-xs ml-auto">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            Geocodiert
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {contact.business_street && (
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Straße</p>
+                              <p className="font-medium">{contact.business_street} {contact.business_house_number}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">PLZ / Ort</p>
+                              <p className="font-medium">{contact.business_postal_code} {contact.business_city}</p>
+                            </div>
+                          </div>
+                        )}
+                        {contact.business_country && (
+                          <div className="text-sm">
+                            <p className="text-muted-foreground">Land</p>
+                            <p className="font-medium">{contact.business_country}</p>
+                          </div>
+                        )}
+                        {!contact.business_street && (contact.address || contact.location) && (
+                          <p className="text-sm font-medium">{contact.address || contact.location}</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Social Media */}
                 {(contact.linkedin || contact.twitter || contact.facebook || contact.instagram || contact.xing) && (
