@@ -59,6 +59,10 @@ export interface QuickNote {
   user_id?: string;
   is_shared?: boolean;
   share_count?: number;
+  shared_with_users?: Array<{
+    id: string;
+    display_name: string | null;
+  }>;
   owner?: {
     display_name: string | null;
     avatar_url: string | null;
@@ -128,52 +132,77 @@ export function QuickNotesList({
 
       if (ownError) throw ownError;
 
-      // Load shares count for own notes
+      // Load shares with user details for own notes
       const noteIds = (ownNotes || []).map(n => n.id);
-      let shareCounts: Record<string, number> = {};
+      let shareDetails: Record<string, Array<{ id: string; display_name: string | null }>> = {};
       
       if (noteIds.length > 0) {
         const { data: sharesData } = await supabase
           .from("quick_note_shares")
-          .select("note_id")
+          .select("note_id, shared_with_user_id")
           .in("note_id", noteIds);
         
-        if (sharesData) {
+        if (sharesData && sharesData.length > 0) {
+          // Get user profiles for shared users
+          const sharedUserIds = [...new Set(sharesData.map(s => s.shared_with_user_id))];
+          const { data: sharedProfiles } = await supabase
+            .from("profiles")
+            .select("user_id, display_name")
+            .in("user_id", sharedUserIds);
+          
           sharesData.forEach(s => {
-            shareCounts[s.note_id] = (shareCounts[s.note_id] || 0) + 1;
+            if (!shareDetails[s.note_id]) {
+              shareDetails[s.note_id] = [];
+            }
+            const profile = sharedProfiles?.find(p => p.user_id === s.shared_with_user_id);
+            shareDetails[s.note_id].push({
+              id: s.shared_with_user_id,
+              display_name: profile?.display_name || null
+            });
           });
         }
       }
 
-      // Load shared notes (notes shared with me)
-      const { data: sharedNoteIds } = await supabase
+      // Load individually shared notes (notes shared with me)
+      const { data: individualShares } = await supabase
         .from("quick_note_shares")
         .select("note_id")
         .eq("shared_with_user_id", user.id);
 
+      // Load globally shared notes (notes from users who shared all their notes with me)
+      const { data: globalShares } = await supabase
+        .from("quick_note_global_shares")
+        .select("user_id")
+        .eq("shared_with_user_id", user.id);
+
+      // Collect all note IDs from individual shares
+      const individualNoteIds = individualShares?.map(s => s.note_id) || [];
+      // Collect user IDs from global shares
+      const globalShareUserIds = globalShares?.map(s => s.user_id) || [];
+
       let sharedNotes: QuickNote[] = [];
-      if (sharedNoteIds && sharedNoteIds.length > 0) {
-        const ids = sharedNoteIds.map(s => s.note_id);
-        const { data: sharedData } = await supabase
+      
+      // Load individually shared notes
+      if (individualNoteIds.length > 0) {
+        const { data: individuallySharedData } = await supabase
           .from("quick_notes")
           .select(`
             id, title, content, color, is_pinned, created_at, updated_at, user_id,
             is_archived, task_id, meeting_id, priority_level, follow_up_date,
             meetings!meeting_id(title, meeting_date)
           `)
-        .in("id", ids)
-        .eq("is_archived", false)
-        .is("deleted_at", null);
+          .in("id", individualNoteIds)
+          .eq("is_archived", false)
+          .is("deleted_at", null);
 
-        if (sharedData && sharedData.length > 0) {
-          // Load owner profiles
-          const ownerIds = [...new Set(sharedData.map(n => n.user_id))];
+        if (individuallySharedData && individuallySharedData.length > 0) {
+          const ownerIds = [...new Set(individuallySharedData.map(n => n.user_id))];
           const { data: profiles } = await supabase
             .from("profiles")
             .select("user_id, display_name, avatar_url")
             .in("user_id", ownerIds);
 
-          sharedNotes = sharedData.map(note => ({
+          sharedNotes = individuallySharedData.map(note => ({
             ...note,
             is_shared: true,
             owner: profiles?.find(p => p.user_id === note.user_id) || null
@@ -181,13 +210,46 @@ export function QuickNotesList({
         }
       }
 
-      // Combine own notes with share counts and shared notes
-      const ownWithCounts = (ownNotes || []).map(note => ({
+      // Load globally shared notes
+      if (globalShareUserIds.length > 0) {
+        const { data: globallySharedData } = await supabase
+          .from("quick_notes")
+          .select(`
+            id, title, content, color, is_pinned, created_at, updated_at, user_id,
+            is_archived, task_id, meeting_id, priority_level, follow_up_date,
+            meetings!meeting_id(title, meeting_date)
+          `)
+          .in("user_id", globalShareUserIds)
+          .eq("is_archived", false)
+          .is("deleted_at", null);
+
+        if (globallySharedData && globallySharedData.length > 0) {
+          const ownerIds = [...new Set(globallySharedData.map(n => n.user_id))];
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("user_id, display_name, avatar_url")
+            .in("user_id", ownerIds);
+
+          const globalNotes = globallySharedData
+            .filter(note => !sharedNotes.some(s => s.id === note.id)) // Avoid duplicates
+            .map(note => ({
+              ...note,
+              is_shared: true,
+              owner: profiles?.find(p => p.user_id === note.user_id) || null
+            })) as QuickNote[];
+
+          sharedNotes = [...sharedNotes, ...globalNotes];
+        }
+      }
+
+      // Combine own notes with share details and shared notes
+      const ownWithDetails = (ownNotes || []).map(note => ({
         ...note,
-        share_count: shareCounts[note.id] || 0
+        share_count: shareDetails[note.id]?.length || 0,
+        shared_with_users: shareDetails[note.id] || []
       })) as QuickNote[];
 
-      setNotes([...ownWithCounts, ...sharedNotes]);
+      setNotes([...ownWithDetails, ...sharedNotes]);
     } catch (error) {
       console.error("Error loading notes:", error);
     } finally {
@@ -864,7 +926,16 @@ export function QuickNotesList({
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Mit {note.share_count} {note.share_count === 1 ? 'Person' : 'Personen'} geteilt
+                    <div className="space-y-1">
+                      <p className="font-medium">Geteilt mit:</p>
+                      {note.shared_with_users && note.shared_with_users.length > 0 ? (
+                        note.shared_with_users.map(u => (
+                          <p key={u.id} className="text-sm">{u.display_name || 'Unbekannt'}</p>
+                        ))
+                      ) : (
+                        <p className="text-sm">Mit {note.share_count} {note.share_count === 1 ? 'Person' : 'Personen'} geteilt</p>
+                      )}
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

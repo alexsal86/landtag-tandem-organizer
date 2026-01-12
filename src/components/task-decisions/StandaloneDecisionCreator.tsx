@@ -70,10 +70,14 @@ export const StandaloneDecisionCreator = ({
   }, [selectedTemplateId, customOptions]);
 
   const loadProfiles = async () => {
+    console.log("Loading profiles for decision creator...");
     try {
       // Get current user's tenant
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
+      if (!userData.user) {
+        console.log("No user found");
+        return;
+      }
 
       const { data: tenantData } = await supabase
         .from('user_tenant_memberships')
@@ -81,6 +85,8 @@ export const StandaloneDecisionCreator = ({
         .eq('user_id', userData.user.id)
         .eq('is_active', true)
         .single();
+
+      console.log("Tenant ID:", tenantData?.tenant_id);
 
       const { data, error } = await supabase
         .from('profiles')
@@ -90,12 +96,14 @@ export const StandaloneDecisionCreator = ({
       if (error) throw error;
       setProfiles(data || []);
       
-      // Pre-select Abgeordneter from the same tenant
-      if (tenantData?.tenant_id) {
+      // Pre-select Abgeordneter from the same tenant - nur wenn noch keine Auswahl getroffen wurde
+      if (tenantData?.tenant_id && selectedUsers.length === 0) {
         const { data: roleData } = await supabase
           .from('user_roles')
           .select('user_id')
           .eq('role', 'abgeordneter');
+        
+        console.log("Abgeordnete roles found:", roleData);
         
         if (roleData && roleData.length > 0) {
           // Filter to only include users in the same tenant
@@ -105,11 +113,14 @@ export const StandaloneDecisionCreator = ({
             .eq('tenant_id', tenantData.tenant_id)
             .eq('is_active', true);
           
+          console.log("Tenant members:", tenantMembers);
+          
           const tenantUserIds = new Set(tenantMembers?.map(m => m.user_id) || []);
           const abgeordneteInTenant = roleData
             .filter(r => tenantUserIds.has(r.user_id))
             .map(r => r.user_id);
           
+          console.log("Abgeordnete in tenant (pre-selected):", abgeordneteInTenant);
           setSelectedUsers(abgeordneteInTenant);
         }
       }

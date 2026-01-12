@@ -23,17 +23,8 @@ export const ResponseOptionsEditor = ({ options, onChange }: ResponseOptionsEdit
   const updateOption = (index: number, updates: Partial<ResponseOption>) => {
     const newOptions = [...options];
     newOptions[index] = { ...newOptions[index], ...updates };
-    
-    // Auto-generate key from label if label changed
-    if (updates.label !== undefined) {
-      const sanitizedKey = updates.label
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '_')
-        .replace(/_+/g, '_')
-        .substring(0, 20);
-      newOptions[index].key = sanitizedKey || `option_${index}`;
-    }
-    
+    // Key wird NICHT mehr bei jeder Label-Änderung geändert, um Fokus-Verlust zu vermeiden
+    // Der Key bleibt stabil und wird nur bei der Erstellung gesetzt
     onChange(newOptions);
   };
 
@@ -50,7 +41,7 @@ export const ResponseOptionsEditor = ({ options, onChange }: ResponseOptionsEdit
       
       <div className="space-y-2">
         {options.map((option, index) => (
-          <div key={option.key} className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
+          <div key={`option-${index}`} className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
             <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
             
             <Input
