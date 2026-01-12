@@ -378,18 +378,36 @@ export function QuickNotesList({
   };
 
   const handleArchive = async (noteId: string) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+
+    console.log("Archiving note:", { noteId, userId: user.id });
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("quick_notes")
         .update({ 
           is_archived: true,
           archived_at: new Date().toISOString()
         })
-        .eq("id", noteId);
+        .eq("id", noteId)
+        .eq("user_id", user.id)
+        .select();
+
+      console.log("Archive result:", { data, error });
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("Notiz konnte nicht archiviert werden");
+        return;
+      }
+
       toast.success("Notiz archiviert");
       loadNotes();
+      setArchiveRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error("Error archiving note:", error);
       toast.error("Fehler beim Archivieren");
@@ -413,13 +431,30 @@ export function QuickNotesList({
   };
 
   const handleSetFollowUp = async (noteId: string, date: Date | null) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+
+    console.log("Setting follow-up:", { noteId, date, userId: user.id });
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("quick_notes")
         .update({ follow_up_date: date?.toISOString() || null })
-        .eq("id", noteId);
+        .eq("id", noteId)
+        .eq("user_id", user.id)
+        .select();
+
+      console.log("Follow-up result:", { data, error });
 
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        toast.error("Wiedervorlage konnte nicht gesetzt werden");
+        return;
+      }
+
       toast.success(date ? `Wiedervorlage für ${format(date, "dd.MM.yyyy", { locale: de })}` : "Wiedervorlage entfernt");
       loadNotes();
       setDatePickerOpen(false);
@@ -465,6 +500,35 @@ export function QuickNotesList({
     } catch (error) {
       console.error('Error creating task from note:', error);
       toast.error("Fehler beim Erstellen der Aufgabe");
+    }
+  };
+
+  const removeTaskFromNote = async (note: QuickNote) => {
+    if (!note.task_id || !user?.id) return;
+    
+    try {
+      // First delete the task
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', note.task_id);
+
+      if (taskError) throw taskError;
+
+      // Then remove the link from the note
+      const { error: noteError } = await supabase
+        .from("quick_notes")
+        .update({ task_id: null })
+        .eq("id", note.id)
+        .eq("user_id", user.id);
+
+      if (noteError) throw noteError;
+      
+      toast.success("Aufgabe entfernt");
+      loadNotes();
+    } catch (error) {
+      console.error('Error removing task from note:', error);
+      toast.error("Fehler beim Entfernen der Aufgabe");
     }
   };
 
@@ -611,24 +675,39 @@ export function QuickNotesList({
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           {/* Quick Action Icons - always visible */}
           <div className="flex items-center gap-0.5">
-            {/* Als Aufgabe */}
-            {!note.task_id && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-blue-500"
-                      onClick={(e) => { e.stopPropagation(); createTaskFromNote(note); }}
-                    >
-                      <CheckSquare className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">Als Aufgabe</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+            {/* Als Aufgabe - immer sichtbar, unterschiedliches Styling wenn verknüpft */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-6 w-6",
+                      note.task_id 
+                        ? "text-blue-500" 
+                        : "text-muted-foreground hover:text-blue-500"
+                    )}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (note.task_id) {
+                        // Show confirmation to remove task
+                        if (window.confirm("Möchten Sie die verknüpfte Aufgabe wirklich löschen?")) {
+                          removeTaskFromNote(note);
+                        }
+                      } else {
+                        createTaskFromNote(note); 
+                      }
+                    }}
+                  >
+                    <CheckSquare className={cn("h-3.5 w-3.5", note.task_id && "fill-blue-500/20")} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {note.task_id ? "Aufgabe entfernen" : "Als Aufgabe"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             
             {/* Als Entscheidung */}
             <TooltipProvider>

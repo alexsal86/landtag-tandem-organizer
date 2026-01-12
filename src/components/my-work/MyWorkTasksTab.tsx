@@ -68,11 +68,11 @@ export function MyWorkTasksTab() {
     if (!user) return;
     
     try {
-      // Load tasks assigned to user (check both array format and string format)
+      // Load tasks assigned to user (check both exact match and partial match)
       const { data: assigned, error: assignedError } = await supabase
         .from("tasks")
         .select("*")
-        .or(`assigned_to.cs.{${user.id}},assigned_to.ilike.%${user.id}%`)
+        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
         .neq("status", "completed")
         .order("due_date", { ascending: true, nullsFirst: false });
 

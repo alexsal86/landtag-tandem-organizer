@@ -125,7 +125,7 @@ export function MyWorkView() {
       const { count: taskCount } = await supabase
         .from("tasks")
         .select("*", { count: "exact", head: true })
-        .or(`assigned_to.cs.{${user.id}},assigned_to.like.%${user.id}%,user_id.eq.${user.id}`)
+        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
         .neq("status", "completed");
 
       // Count decisions (participant)
