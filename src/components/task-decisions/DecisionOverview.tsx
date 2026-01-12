@@ -506,29 +506,11 @@ export const DecisionOverview = () => {
       return;
     }
 
+    console.log("Archiving decision:", { decisionId, userId: user.id });
+
     try {
-      // Prüfe zuerst, ob der User der Ersteller ist
-      const { data: decision, error: checkError } = await supabase
-        .from('task_decisions')
-        .select('created_by')
-        .eq('id', decisionId)
-        .single();
-
-      if (checkError) {
-        console.error('Error checking decision:', checkError);
-        throw checkError;
-      }
-
-      if (decision.created_by !== user.id) {
-        toast({
-          title: "Keine Berechtigung",
-          description: "Nur der Ersteller kann diese Entscheidung archivieren.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const { error } = await supabase
+      // Direkt UPDATE mit .select() - RLS Policy regelt die Berechtigung
+      const { data, error } = await supabase
         .from('task_decisions')
         .update({ 
           status: 'archived',
@@ -536,9 +518,62 @@ export const DecisionOverview = () => {
           archived_by: user.id
         })
         .eq('id', decisionId)
-        .eq('created_by', user.id);
+        .eq('created_by', user.id)
+        .select();
 
-      if (error) throw error;
+      console.log("Archive result:", { data, error });
+
+      if (error) {
+        console.error("Supabase archive error:", error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.warn("No rows updated - checking decision ownership");
+        // Prüfe ob die Entscheidung existiert und wer der Ersteller ist
+        const { data: decision } = await supabase
+          .from('task_decisions')
+          .select('id, created_by, status')
+          .eq('id', decisionId)
+          .single();
+        
+        console.log("Decision check:", decision);
+        
+        if (!decision) {
+          toast({
+            title: "Fehler",
+            description: "Entscheidung nicht gefunden.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (decision.created_by !== user.id) {
+          toast({
+            title: "Keine Berechtigung",
+            description: "Nur der Ersteller kann diese Entscheidung archivieren.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (decision.status === 'archived') {
+          toast({
+            title: "Bereits archiviert",
+            description: "Diese Entscheidung ist bereits archiviert.",
+          });
+          loadDecisionRequests(user.id);
+          return;
+        }
+        
+        // Unerwarteter Fall - RLS blockiert möglicherweise
+        toast({
+          title: "Fehler",
+          description: "Archivierung fehlgeschlagen. Bitte kontaktieren Sie den Administrator.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({
         title: "Archiviert",

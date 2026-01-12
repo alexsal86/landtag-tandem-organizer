@@ -146,14 +146,51 @@ export const useGlobalNoteSharing = () => {
       return false;
     }
 
+    console.log("Updating global permission:", { shareId, permissionType, userId: user.id });
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("quick_note_global_shares")
         .update({ permission_type: permissionType })
         .eq("id", shareId)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .select();
 
-      if (error) throw error;
+      console.log("Update result:", { data, error });
+
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.warn("No rows updated - checking if share exists");
+        // Prüfe ob die Freigabe existiert
+        const { data: existingShare } = await supabase
+          .from("quick_note_global_shares")
+          .select("*")
+          .eq("id", shareId)
+          .single();
+        
+        console.log("Existing share:", existingShare);
+        
+        if (!existingShare) {
+          toast.error("Freigabe nicht gefunden");
+          return false;
+        }
+        
+        if (existingShare.user_id !== user.id) {
+          toast.error("Keine Berechtigung für diese Freigabe");
+          return false;
+        }
+        
+        // Berechtigung ist bereits gesetzt
+        if (existingShare.permission_type === permissionType) {
+          toast.success("Berechtigung bereits gesetzt");
+          loadGlobalShares();
+          return true;
+        }
+      }
 
       toast.success("Berechtigung aktualisiert");
       loadGlobalShares();
