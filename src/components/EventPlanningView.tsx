@@ -456,7 +456,12 @@ export function EventPlanningView() {
   };
 
   const fetchAllProfiles = async () => {
-    if (!currentTenant) return;
+    if (!currentTenant) {
+      console.log("fetchAllProfiles: Kein Tenant gefunden");
+      return;
+    }
+    
+    console.log("fetchAllProfiles: Lade Profile für Tenant:", currentTenant.id);
     
     try {
       // Step 1: Load active memberships for this tenant
@@ -471,13 +476,17 @@ export function EventPlanningView() {
         return;
       }
 
+      console.log("fetchAllProfiles: Memberships geladen:", memberships?.length);
+
       if (!memberships || memberships.length === 0) {
+        console.log("fetchAllProfiles: Keine Memberships gefunden");
         setAllProfiles([]);
         return;
       }
 
       // Step 2: Get user IDs
       const userIds = memberships.map(m => m.user_id);
+      console.log("fetchAllProfiles: User IDs:", userIds);
 
       // Step 3: Load profiles for these user IDs
       const { data: profiles, error: profileError } = await supabase
@@ -1261,12 +1270,23 @@ export function EventPlanningView() {
   };
 
   const updateCollaboratorPermission = async (collaboratorId: string, canEdit: boolean) => {
+    if (!selectedPlanning) {
+      toast({
+        title: "Fehler",
+        description: "Keine Planung ausgewählt.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from("event_planning_collaborators")
       .update({ can_edit: canEdit })
-      .eq("id", collaboratorId);
+      .eq("id", collaboratorId)
+      .eq("event_planning_id", selectedPlanning.id);
 
     if (error) {
+      console.error("Error updating collaborator permission:", error);
       toast({
         title: "Fehler",
         description: "Berechtigung konnte nicht aktualisiert werden.",
@@ -1591,12 +1611,23 @@ export function EventPlanningView() {
   };
 
   const removeCollaborator = async (collaboratorId: string) => {
+    if (!selectedPlanning) {
+      toast({
+        title: "Fehler",
+        description: "Keine Planung ausgewählt.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from("event_planning_collaborators")
       .delete()
-      .eq("id", collaboratorId);
+      .eq("id", collaboratorId)
+      .eq("event_planning_id", selectedPlanning.id);
 
     if (error) {
+      console.error("Error removing collaborator:", error);
       toast({
         title: "Fehler",
         description: "Mitarbeiter konnte nicht entfernt werden.",
@@ -1606,6 +1637,7 @@ export function EventPlanningView() {
     }
 
     setCollaborators(collaborators.filter(collab => collab.id !== collaboratorId));
+    setIsManageCollaboratorsOpen(false);
 
     toast({
       title: "Erfolg",
@@ -2796,6 +2828,34 @@ export function EventPlanningView() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-2">
+                {/* Bereits freigegebene Mitarbeiter */}
+                {collaborators.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Bereits freigegeben:</p>
+                    {collaborators.map((collab) => (
+                      <div key={collab.id} className="flex items-center justify-between p-2 rounded-md bg-muted/30">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={collab.profiles?.avatar_url} />
+                            <AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback>
+                          </Avatar>
+                          <span>{collab.profiles?.display_name || 'Unbenannt'}</span>
+                        </div>
+                        <Badge variant={collab.can_edit ? "default" : "secondary"}>
+                          {collab.can_edit ? "Bearbeiten" : "Nur ansehen"}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Noch nicht freigegebene Mitarbeiter */}
+                {allProfiles.filter(profile => 
+                  profile.user_id !== selectedPlanning?.user_id && 
+                  !collaborators.some(c => c.user_id === profile.user_id)
+                ).length > 0 && (
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Hinzufügen:</p>
+                )}
                 {allProfiles
                   .filter(profile => 
                     profile.user_id !== selectedPlanning?.user_id && 
@@ -2803,7 +2863,13 @@ export function EventPlanningView() {
                   )
                   .map((profile) => (
                     <div key={profile.user_id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                      <span>{profile.display_name || 'Unbenannt'}</span>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={profile.avatar_url} />
+                          <AvatarFallback>{profile.display_name?.charAt(0) || 'U'}</AvatarFallback>
+                        </Avatar>
+                        <span>{profile.display_name || 'Unbenannt'}</span>
+                      </div>
                       <div className="space-x-2">
                         <Button
                           size="sm"
@@ -2821,6 +2887,14 @@ export function EventPlanningView() {
                       </div>
                     </div>
                   ))}
+                {allProfiles.filter(profile => 
+                  profile.user_id !== selectedPlanning?.user_id && 
+                  !collaborators.some(c => c.user_id === profile.user_id)
+                ).length === 0 && collaborators.length === 0 && (
+                  <p className="text-center text-muted-foreground py-4">
+                    Keine Mitarbeiter verfügbar.
+                  </p>
+                )}
               </div>
             </DialogContent>
           </Dialog>
