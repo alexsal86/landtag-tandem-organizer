@@ -117,11 +117,28 @@ export const useNoteSharing = (noteId?: string) => {
   };
 
   const updatePermission = async (shareId: string, permissionType: "view" | "edit") => {
+    if (!user) return false;
+
     try {
+      // First get the note_id for the share (helps RLS policy evaluate correctly)
+      const { data: shareData, error: fetchError } = await supabase
+        .from("quick_note_shares")
+        .select("note_id")
+        .eq("id", shareId)
+        .single();
+
+      if (fetchError || !shareData) {
+        console.error("Error fetching share:", fetchError);
+        toast.error("Freigabe nicht gefunden");
+        return false;
+      }
+
+      // Update with note_id filter to help RLS policy
       const { error } = await supabase
         .from("quick_note_shares")
         .update({ permission_type: permissionType })
-        .eq("id", shareId);
+        .eq("id", shareId)
+        .eq("note_id", shareData.note_id);
 
       if (error) throw error;
 

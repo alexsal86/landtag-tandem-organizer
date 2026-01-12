@@ -114,11 +114,18 @@ export function MyWorkTeamTab() {
     if (!user) return;
 
     try {
-      // Check if user is admin
-      const { data: adminCheck } = await supabase.rpc("is_admin", { _user_id: user.id });
-      setIsAdmin(!!adminCheck);
+      // Check if user has role 'abgeordneter' (only this role sees team overview)
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+      
+      // Only 'abgeordneter' can see the team overview
+      const canViewTeam = roleData?.role === "abgeordneter";
+      setIsAdmin(canViewTeam);
 
-      if (!adminCheck || !currentTenant) {
+      if (!canViewTeam || !currentTenant) {
         setLoading(false);
         return;
       }
