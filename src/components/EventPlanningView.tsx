@@ -455,23 +455,42 @@ export function EventPlanningView() {
   const fetchAllProfiles = async () => {
     if (!currentTenant) return;
     
-    const { data, error } = await supabase
-      .from("profiles")
-      .select(`
-        user_id, 
-        display_name, 
-        avatar_url,
-        user_tenant_memberships!inner(tenant_id, is_active)
-      `)
-      .eq('user_tenant_memberships.tenant_id', currentTenant.id)
-      .eq('user_tenant_memberships.is_active', true);
+    try {
+      // Step 1: Load active memberships for this tenant
+      const { data: memberships, error: memberError } = await supabase
+        .from("user_tenant_memberships")
+        .select("user_id")
+        .eq("tenant_id", currentTenant.id)
+        .eq("is_active", true);
 
-    if (error) {
-      console.error("Error fetching profiles:", error);
-      return;
+      if (memberError) {
+        console.error("Error fetching memberships:", memberError);
+        return;
+      }
+
+      if (!memberships || memberships.length === 0) {
+        setAllProfiles([]);
+        return;
+      }
+
+      // Step 2: Get user IDs
+      const userIds = memberships.map(m => m.user_id);
+
+      // Step 3: Load profiles for these user IDs
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .in("user_id", userIds);
+
+      if (profileError) {
+        console.error("Error fetching profiles:", profileError);
+        return;
+      }
+
+      setAllProfiles(profiles || []);
+    } catch (error) {
+      console.error("Error in fetchAllProfiles:", error);
     }
-
-    setAllProfiles(data || []);
   };
 
   const fetchAvailableContacts = async () => {

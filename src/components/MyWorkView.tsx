@@ -33,6 +33,7 @@ interface TabConfig {
   badgeVariant?: "secondary" | "destructive";
   adminOnly?: boolean;
   employeeOnly?: boolean;
+  abgeordneterOnly?: boolean;
 }
 
 const BASE_TABS: TabConfig[] = [
@@ -43,7 +44,7 @@ const BASE_TABS: TabConfig[] = [
   { value: "casefiles", label: "FallAkten", icon: Briefcase, countKey: "caseFiles" },
   { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
-  { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", adminOnly: true },
+  { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOnly: true },
 ];
 
 export function MyWorkView() {
@@ -52,6 +53,7 @@ export function MyWorkView() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEmployee, setIsEmployee] = useState(false);
+  const [isAbgeordneter, setIsAbgeordneter] = useState(false);
   const [counts, setCounts] = useState<TabCounts>({
     tasks: 0,
     decisions: 0,
@@ -108,6 +110,7 @@ export function MyWorkView() {
     
     const employeeRoles = ["mitarbeiter", "praktikant", "bueroleitung"];
     setIsEmployee(roleData.data ? employeeRoles.includes(roleData.data.role) : false);
+    setIsAbgeordneter(roleData.data?.role === "abgeordneter");
     
     loadCounts();
   };
@@ -267,6 +270,7 @@ export function MyWorkView() {
             // Filter based on role
             if (tab.adminOnly && !isAdmin) return false;
             if (tab.employeeOnly && !isEmployee) return false;
+            if (tab.abgeordneterOnly && !isAbgeordneter) return false;
             return true;
           })
           .map((tab) => {
