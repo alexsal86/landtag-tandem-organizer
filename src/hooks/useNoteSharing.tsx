@@ -98,13 +98,32 @@ export const useNoteSharing = (noteId?: string) => {
   };
 
   const unshareNote = async (shareId: string) => {
+    console.log("Unsharing note:", { shareId });
+    
     try {
-      const { error } = await supabase
+      // Hole zuerst die note_id für die RLS-Policy
+      const { data: shareData } = await supabase
+        .from("quick_note_shares")
+        .select("note_id")
+        .eq("id", shareId)
+        .single();
+
+      console.log("Share data for unshare:", shareData);
+
+      const { data, error } = await supabase
         .from("quick_note_shares")
         .delete()
-        .eq("id", shareId);
+        .eq("id", shareId)
+        .select();
+
+      console.log("Delete result:", { data, error });
 
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        toast.error("Freigabe konnte nicht entfernt werden");
+        return false;
+      }
 
       toast.success("Freigabe entfernt");
       loadShares();
@@ -118,6 +137,8 @@ export const useNoteSharing = (noteId?: string) => {
 
   const updatePermission = async (shareId: string, permissionType: "view" | "edit") => {
     if (!user) return false;
+
+    console.log("Updating individual note permission:", { shareId, permissionType });
 
     try {
       // First get the note_id for the share (helps RLS policy evaluate correctly)
@@ -133,14 +154,24 @@ export const useNoteSharing = (noteId?: string) => {
         return false;
       }
 
+      console.log("Share data for permission update:", shareData);
+
       // Update with note_id filter to help RLS policy
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("quick_note_shares")
         .update({ permission_type: permissionType })
         .eq("id", shareId)
-        .eq("note_id", shareData.note_id);
+        .eq("note_id", shareData.note_id)
+        .select();
+
+      console.log("Update result:", { data, error });
 
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        toast.error("Berechtigung konnte nicht aktualisiert werden");
+        return false;
+      }
 
       toast.success("Berechtigung aktualisiert");
       loadShares();
