@@ -856,15 +856,47 @@ export function EventPlanningView() {
   };
 
   const deletePlanning = async (planningId: string) => {
-    const { error } = await supabase
+    // Prüfe ob der aktuelle User der Eigentümer ist
+    const planningToDelete = plannings.find(p => p.id === planningId);
+    
+    console.log("Deleting planning:", { 
+      planningId, 
+      currentUserId: user?.id,
+      planningOwnerId: planningToDelete?.user_id 
+    });
+
+    if (planningToDelete && planningToDelete.user_id !== user?.id) {
+      toast({
+        title: "Keine Berechtigung",
+        description: "Nur der Ersteller kann diese Planung löschen.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { data, error } = await supabase
       .from("event_plannings")
       .delete()
-      .eq("id", planningId);
+      .eq("id", planningId)
+      .eq("user_id", user?.id)
+      .select();
+
+    console.log("Delete result:", { data, error });
 
     if (error) {
+      console.error("Error deleting planning:", error);
       toast({
         title: "Fehler",
         description: "Planung konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      toast({
+        title: "Fehler",
+        description: "Planung konnte nicht gelöscht werden. Möglicherweise fehlt die Berechtigung.",
         variant: "destructive",
       });
       return;
