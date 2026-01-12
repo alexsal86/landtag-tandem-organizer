@@ -509,7 +509,7 @@ export const DecisionOverview = () => {
     console.log("Archiving decision:", { decisionId, userId: user.id });
 
     try {
-      // Direkt UPDATE mit .select() - RLS Policy regelt die Berechtigung
+      // UPDATE ohne created_by Filter - RLS Policy regelt die Berechtigung
       const { data, error } = await supabase
         .from('task_decisions')
         .update({ 
@@ -518,7 +518,6 @@ export const DecisionOverview = () => {
           archived_by: user.id
         })
         .eq('id', decisionId)
-        .eq('created_by', user.id)
         .select();
 
       console.log("Archive result:", { data, error });
