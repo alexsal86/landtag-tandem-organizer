@@ -2054,6 +2054,47 @@ export type Database = {
         }
         Relationships: []
       }
+      decision_archive_settings: {
+        Row: {
+          auto_archive_days: number | null
+          auto_archive_on_completion: boolean | null
+          auto_delete_after_days: number | null
+          created_at: string | null
+          id: string
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auto_archive_days?: number | null
+          auto_archive_on_completion?: boolean | null
+          auto_delete_after_days?: number | null
+          created_at?: string | null
+          id?: string
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auto_archive_days?: number | null
+          auto_archive_on_completion?: boolean | null
+          auto_delete_after_days?: number | null
+          created_at?: string | null
+          id?: string
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_archive_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_email_templates: {
         Row: {
           closing: string

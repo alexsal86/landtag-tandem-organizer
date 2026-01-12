@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar } from "lucide-react";
+import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { MyWorkQuickCapture } from "./my-work/MyWorkQuickCapture";
@@ -12,6 +12,7 @@ import { MyWorkCaseFilesTab } from "./my-work/MyWorkCaseFilesTab";
 import { MyWorkPlanningsTab } from "./my-work/MyWorkPlanningsTab";
 import { MyWorkTeamTab } from "./my-work/MyWorkTeamTab";
 import { MyWorkJourFixeTab } from "./my-work/MyWorkJourFixeTab";
+import { MyWorkTimeTrackingTab } from "./my-work/MyWorkTimeTrackingTab";
 
 interface TabCounts {
   tasks: number;
@@ -22,7 +23,7 @@ interface TabCounts {
   jourFixe: number;
 }
 
-type TabValue = "capture" | "tasks" | "decisions" | "jourFixe" | "casefiles" | "plannings" | "team";
+type TabValue = "capture" | "tasks" | "decisions" | "jourFixe" | "casefiles" | "plannings" | "team" | "time";
 
 interface TabConfig {
   value: TabValue;
@@ -30,22 +31,27 @@ interface TabConfig {
   icon: React.ElementType;
   countKey?: keyof TabCounts;
   badgeVariant?: "secondary" | "destructive";
+  adminOnly?: boolean;
+  employeeOnly?: boolean;
 }
 
-const TABS: TabConfig[] = [
+const BASE_TABS: TabConfig[] = [
   { value: "capture", label: "Quick Notes", icon: StickyNote },
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
   { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },
   { value: "jourFixe", label: "Jour Fixe", icon: Calendar, countKey: "jourFixe" },
   { value: "casefiles", label: "FallAkten", icon: Briefcase, countKey: "caseFiles" },
   { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
-  { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive" },
+  { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
+  { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", adminOnly: true },
 ];
 
 export function MyWorkView() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isEmployee, setIsEmployee] = useState(false);
   const [counts, setCounts] = useState<TabCounts>({
     tasks: 0,
     decisions: 0,
@@ -85,9 +91,26 @@ export function MyWorkView() {
 
   useEffect(() => {
     if (user) {
-      loadCounts();
+      loadUserRoleAndCounts();
     }
   }, [user]);
+
+  const loadUserRoleAndCounts = async () => {
+    if (!user) return;
+    
+    // Check user role
+    const [adminCheck, roleData] = await Promise.all([
+      supabase.rpc("is_admin", { _user_id: user.id }),
+      supabase.from("user_roles").select("role").eq("user_id", user.id).single()
+    ]);
+    
+    setIsAdmin(!!adminCheck.data);
+    
+    const employeeRoles = ["mitarbeiter", "praktikant", "bueroleitung"];
+    setIsEmployee(roleData.data ? employeeRoles.includes(roleData.data.role) : false);
+    
+    loadCounts();
+  };
 
   const loadCounts = async () => {
     if (!user) return;
@@ -239,34 +262,41 @@ export function MyWorkView() {
 
       {/* Tab Navigation (horizontal, oben) */}
       <div className="flex border-b mb-6 overflow-x-auto">
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const count = tab.countKey ? counts[tab.countKey] : 0;
-          const isActive = activeTab === tab.value;
-          
-          return (
-            <button
-              key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                isActive
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-              {count > 0 && (
-                <Badge 
-                  variant={tab.badgeVariant || "secondary"} 
-                  className="ml-1 h-5 min-w-5 text-xs"
-                >
-                  {count}
-                </Badge>
-              )}
-            </button>
-          );
-        })}
+        {BASE_TABS
+          .filter((tab) => {
+            // Filter based on role
+            if (tab.adminOnly && !isAdmin) return false;
+            if (tab.employeeOnly && !isEmployee) return false;
+            return true;
+          })
+          .map((tab) => {
+            const Icon = tab.icon;
+            const count = tab.countKey ? counts[tab.countKey] : 0;
+            const isActiveTab = activeTab === tab.value;
+            
+            return (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  isActiveTab
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+                {count > 0 && (
+                  <Badge 
+                    variant={tab.badgeVariant || "secondary"} 
+                    className="ml-1 h-5 min-w-5 text-xs"
+                  >
+                    {count}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
       </div>
 
       {/* Tab Content */}
@@ -282,6 +312,7 @@ export function MyWorkView() {
       {activeTab === "jourFixe" && <MyWorkJourFixeTab />}
       {activeTab === "casefiles" && <MyWorkCaseFilesTab />}
       {activeTab === "plannings" && <MyWorkPlanningsTab />}
+      {activeTab === "time" && <MyWorkTimeTrackingTab />}
       {activeTab === "team" && <MyWorkTeamTab />}
     </div>
   );

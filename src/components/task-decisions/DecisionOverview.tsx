@@ -496,20 +496,52 @@ export const DecisionOverview = () => {
     handleCloseDetails();
   };
 
+  const archiveDecision = async (decisionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ 
+          status: 'archived',
+          archived_at: new Date().toISOString(),
+          archived_by: user?.id
+        })
+        .eq('id', decisionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Archiviert",
+        description: "Entscheidung wurde archiviert.",
+      });
+
+      if (user?.id) {
+        loadDecisionRequests(user.id);
+      }
+    } catch (error) {
+      console.error('Error archiving decision:', error);
+      toast({
+        title: "Fehler",
+        description: "Entscheidung konnte nicht archiviert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteDecision = async () => {
     if (!deletingDecisionId) return;
 
     try {
+      // Actually delete the decision permanently
       const { error } = await supabase
         .from('task_decisions')
-        .update({ status: 'archived' })
+        .delete()
         .eq('id', deletingDecisionId);
 
       if (error) throw error;
 
       toast({
-        title: "Erfolgreich",
-        description: "Entscheidung wurde gelöscht.",
+        title: "Gelöscht",
+        description: "Entscheidung wurde endgültig gelöscht.",
       });
 
       setDeletingDecisionId(null);
@@ -635,12 +667,18 @@ export const DecisionOverview = () => {
                     <Edit className="h-4 w-4 mr-2" />
                     Bearbeiten
                   </DropdownMenuItem>
+                  {decision.status !== 'archived' && (
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); archiveDecision(decision.id); }}>
+                      <Archive className="h-4 w-4 mr-2" />
+                      Archivieren
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem 
                     onClick={(e) => { e.stopPropagation(); setDeletingDecisionId(decision.id); }}
                     className="text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Löschen
+                    Endgültig löschen
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1070,15 +1108,17 @@ export const DecisionOverview = () => {
       <AlertDialog open={!!deletingDecisionId} onOpenChange={() => setDeletingDecisionId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Entscheidung löschen?</AlertDialogTitle>
+            <AlertDialogTitle>Entscheidung endgültig löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Möchten Sie diese Entscheidung wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+              Diese Aktion löscht die Entscheidung unwiderruflich. Alle zugehörigen Antworten und Kommentare werden ebenfalls gelöscht. 
+              <br /><br />
+              <strong>Tipp:</strong> Wenn Sie die Entscheidung nur ausblenden möchten, nutzen Sie stattdessen die Archivieren-Funktion.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteDecision} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Löschen
+              Endgültig löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
