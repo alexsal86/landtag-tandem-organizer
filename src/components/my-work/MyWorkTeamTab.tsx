@@ -121,8 +121,8 @@ export function MyWorkTeamTab() {
         .eq("user_id", user.id)
         .single();
       
-      // Only 'abgeordneter' can see the team overview
-      const canViewTeam = roleData?.role === "abgeordneter";
+      // 'abgeordneter' and 'bueroleitung' can see the team overview
+      const canViewTeam = roleData?.role === "abgeordneter" || roleData?.role === "bueroleitung";
       setIsAdmin(canViewTeam);
 
       if (!canViewTeam || !currentTenant) {

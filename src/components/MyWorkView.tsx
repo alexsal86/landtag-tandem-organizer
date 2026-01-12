@@ -33,7 +33,7 @@ interface TabConfig {
   badgeVariant?: "secondary" | "destructive";
   adminOnly?: boolean;
   employeeOnly?: boolean;
-  abgeordneterOnly?: boolean;
+  abgeordneterOrBueroOnly?: boolean;
 }
 
 const BASE_TABS: TabConfig[] = [
@@ -44,7 +44,7 @@ const BASE_TABS: TabConfig[] = [
   { value: "casefiles", label: "FallAkten", icon: Briefcase, countKey: "caseFiles" },
   { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
-  { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOnly: true },
+  { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOrBueroOnly: true },
 ];
 
 export function MyWorkView() {
@@ -54,6 +54,7 @@ export function MyWorkView() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEmployee, setIsEmployee] = useState(false);
   const [isAbgeordneter, setIsAbgeordneter] = useState(false);
+  const [isBueroleitung, setIsBueroleitung] = useState(false);
   const [counts, setCounts] = useState<TabCounts>({
     tasks: 0,
     decisions: 0,
@@ -111,6 +112,7 @@ export function MyWorkView() {
     const employeeRoles = ["mitarbeiter", "praktikant", "bueroleitung"];
     setIsEmployee(roleData.data ? employeeRoles.includes(roleData.data.role) : false);
     setIsAbgeordneter(roleData.data?.role === "abgeordneter");
+    setIsBueroleitung(roleData.data?.role === "bueroleitung");
     
     loadCounts();
   };
@@ -270,7 +272,7 @@ export function MyWorkView() {
             // Filter based on role
             if (tab.adminOnly && !isAdmin) return false;
             if (tab.employeeOnly && !isEmployee) return false;
-            if (tab.abgeordneterOnly && !isAbgeordneter) return false;
+            if (tab.abgeordneterOrBueroOnly && !isAbgeordneter && !isBueroleitung) return false;
             return true;
           })
           .map((tab) => {

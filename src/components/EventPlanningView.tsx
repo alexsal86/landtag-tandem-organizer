@@ -245,6 +245,9 @@ export function EventPlanningView() {
   const [eventPlanningView, setEventPlanningView] = useState<'card' | 'table'>('card');
   const [appointmentPreparationView, setAppointmentPreparationView] = useState<'card' | 'table'>('card');
 
+  // Collaborator management dialog
+  const [isManageCollaboratorsOpen, setIsManageCollaboratorsOpen] = useState(false);
+
   // Handle URL action parameter for QuickActions
   useEffect(() => {
     const action = searchParams.get('action');
@@ -2678,38 +2681,103 @@ export function EventPlanningView() {
             </h1>
           </div>
         <div className="flex items-center space-x-4">
-          {/* Mitarbeiter Avatar-Kreise */}
+          {/* Mitarbeiter Avatar-Kreise - klickbar zum Verwalten */}
           {collaborators.length > 0 && (
-            <div className="flex -space-x-2">
-              {collaborators.slice(0, 5).map((collab) => (
-                <div key={collab.id} className="relative">
-                  <Avatar 
-                    className={cn(
-                      "h-8 w-8 border-2 cursor-pointer hover:z-10 transition-transform hover:scale-110",
-                      collab.can_edit 
-                        ? "border-primary ring-2 ring-primary/20" 
-                        : "border-muted-foreground/30 opacity-60"
-                    )}
-                    title={`${collab.profiles?.display_name || 'Unbenannt'} - ${collab.can_edit ? 'Bearbeiten' : 'Nur ansehen'}`}
-                  >
-                    <AvatarImage src={collab.profiles?.avatar_url} />
-                    <AvatarFallback className={collab.can_edit ? "bg-primary/10" : "bg-muted"}>
-                      {collab.profiles?.display_name?.charAt(0) || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  {!collab.can_edit && (
-                    <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
-                      <Eye className="h-3 w-3 text-muted-foreground" />
+            <Dialog open={isManageCollaboratorsOpen} onOpenChange={setIsManageCollaboratorsOpen}>
+              <DialogTrigger asChild>
+                <div className="flex -space-x-2 cursor-pointer" title="Klicken zum Verwalten der Freigaben">
+                  {collaborators.slice(0, 5).map((collab) => (
+                    <div key={collab.id} className="relative">
+                      <Avatar 
+                        className={cn(
+                          "h-8 w-8 border-2 hover:z-10 transition-transform hover:scale-110",
+                          collab.can_edit 
+                            ? "border-primary ring-2 ring-primary/20" 
+                            : "border-muted-foreground/30 opacity-60"
+                        )}
+                      >
+                        <AvatarImage src={collab.profiles?.avatar_url} />
+                        <AvatarFallback className={collab.can_edit ? "bg-primary/10" : "bg-muted"}>
+                          {collab.profiles?.display_name?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      {!collab.can_edit && (
+                        <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
+                          <Eye className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      )}
                     </div>
+                  ))}
+                  {collaborators.length > 5 && (
+                    <Avatar className="h-8 w-8 border-2 border-background">
+                      <AvatarFallback>+{collaborators.length - 5}</AvatarFallback>
+                    </Avatar>
                   )}
                 </div>
-              ))}
-              {collaborators.length > 5 && (
-                <Avatar className="h-8 w-8 border-2 border-background">
-                  <AvatarFallback>+{collaborators.length - 5}</AvatarFallback>
-                </Avatar>
-              )}
-            </div>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Freigaben verwalten</DialogTitle>
+                  <DialogDescription>
+                    Berechtigungen ändern oder Mitarbeiter entfernen.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                  {collaborators.map((collab) => (
+                    <div key={collab.id} className="flex items-center justify-between p-3 border rounded-md">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={collab.profiles?.avatar_url} />
+                          <AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">{collab.profiles?.display_name || 'Unbenannt'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {/* Berechtigung umschalten */}
+                        <Select
+                          value={collab.can_edit ? "edit" : "view"}
+                          onValueChange={(value) => updateCollaboratorPermission(collab.id, value === "edit")}
+                        >
+                          <SelectTrigger className="w-[130px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="view">
+                              <div className="flex items-center gap-2">
+                                <Eye className="h-4 w-4" />
+                                Nur ansehen
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="edit">
+                              <div className="flex items-center gap-2">
+                                <Edit2 className="h-4 w-4" />
+                                Bearbeiten
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        {/* Entfernen-Button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeCollaborator(collab.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {collaborators.length === 0 && (
+                    <p className="text-center text-muted-foreground py-4">
+                      Noch keine Mitarbeiter freigegeben.
+                    </p>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
 
           {/* Plus-Button für Mitarbeiter-Dialog */}
