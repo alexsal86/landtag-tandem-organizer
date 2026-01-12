@@ -141,11 +141,17 @@ export const useGlobalNoteSharing = () => {
   };
 
   const updateGlobalPermission = async (shareId: string, permissionType: "view" | "edit") => {
+    if (!user) {
+      toast.error("Nicht angemeldet");
+      return false;
+    }
+
     try {
       const { error } = await supabase
         .from("quick_note_global_shares")
         .update({ permission_type: permissionType })
-        .eq("id", shareId);
+        .eq("id", shareId)
+        .eq("user_id", user.id);
 
       if (error) throw error;
 

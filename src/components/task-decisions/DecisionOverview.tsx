@@ -497,15 +497,46 @@ export const DecisionOverview = () => {
   };
 
   const archiveDecision = async (decisionId: string) => {
+    if (!user?.id) {
+      toast({
+        title: "Fehler",
+        description: "Nicht angemeldet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      // Prüfe zuerst, ob der User der Ersteller ist
+      const { data: decision, error: checkError } = await supabase
+        .from('task_decisions')
+        .select('created_by')
+        .eq('id', decisionId)
+        .single();
+
+      if (checkError) {
+        console.error('Error checking decision:', checkError);
+        throw checkError;
+      }
+
+      if (decision.created_by !== user.id) {
+        toast({
+          title: "Keine Berechtigung",
+          description: "Nur der Ersteller kann diese Entscheidung archivieren.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('task_decisions')
         .update({ 
           status: 'archived',
           archived_at: new Date().toISOString(),
-          archived_by: user?.id
+          archived_by: user.id
         })
-        .eq('id', decisionId);
+        .eq('id', decisionId)
+        .eq('created_by', user.id);
 
       if (error) throw error;
 
@@ -514,9 +545,7 @@ export const DecisionOverview = () => {
         description: "Entscheidung wurde archiviert.",
       });
 
-      if (user?.id) {
-        loadDecisionRequests(user.id);
-      }
+      loadDecisionRequests(user.id);
     } catch (error) {
       console.error('Error archiving decision:', error);
       toast({
