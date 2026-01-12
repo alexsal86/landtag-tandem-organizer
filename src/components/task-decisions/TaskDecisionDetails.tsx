@@ -175,18 +175,48 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
   const archiveDecision = async () => {
     if (!decision || !currentUserId) return;
 
+    console.log("TaskDecisionDetails - Archiving decision:", { 
+      decisionId: decision.id, 
+      currentUserId,
+      decisionCreator: decision.created_by 
+    });
+
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('task_decisions')
         .update({
           status: 'archived',
           archived_at: new Date().toISOString(),
           archived_by: currentUserId,
         })
-        .eq('id', decision.id);
+        .eq('id', decision.id)
+        .select();
+
+      console.log("Archive result:", { data, error });
 
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        // Prüfe ob bereits archiviert
+        const { data: currentDecision } = await supabase
+          .from('task_decisions')
+          .select('status')
+          .eq('id', decision.id)
+          .single();
+        
+        if (currentDecision?.status === 'archived') {
+          toast({
+            title: "Bereits archiviert",
+            description: "Diese Entscheidung ist bereits archiviert.",
+          });
+          onArchived?.();
+          onClose();
+          return;
+        }
+        
+        throw new Error("Keine Berechtigung oder Entscheidung nicht gefunden");
+      }
 
       // Mark related notifications as read
       await supabase
