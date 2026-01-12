@@ -1279,17 +1279,47 @@ export function EventPlanningView() {
       return;
     }
 
-    const { error } = await supabase
+    // Prüfe ob der aktuelle User der Eigentümer ist
+    if (selectedPlanning.user_id !== user?.id) {
+      toast({
+        title: "Keine Berechtigung",
+        description: "Nur der Eigentümer der Veranstaltung kann Berechtigungen ändern.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("Updating collaborator permission:", { 
+      collaboratorId, 
+      canEdit, 
+      planningId: selectedPlanning.id,
+      planningOwnerId: selectedPlanning.user_id,
+      currentUserId: user?.id 
+    });
+
+    const { data, error } = await supabase
       .from("event_planning_collaborators")
       .update({ can_edit: canEdit })
       .eq("id", collaboratorId)
-      .eq("event_planning_id", selectedPlanning.id);
+      .eq("event_planning_id", selectedPlanning.id)
+      .select();
+
+    console.log("Update result:", { data, error });
 
     if (error) {
       console.error("Error updating collaborator permission:", error);
       toast({
         title: "Fehler",
         description: "Berechtigung konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      toast({
+        title: "Fehler",
+        description: "Keine Änderung vorgenommen. Möglicherweise fehlt die Berechtigung.",
         variant: "destructive",
       });
       return;
