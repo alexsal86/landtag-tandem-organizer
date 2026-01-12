@@ -40,6 +40,14 @@ interface DeletedNote {
   permanent_delete_at: string;
 }
 
+interface ArchivedNote {
+  id: string;
+  title: string | null;
+  content: string;
+  color: string | null;
+  archived_at: string;
+}
+
 interface NotesArchiveProps {
   refreshTrigger?: number;
   onRestore?: () => void;
@@ -48,8 +56,10 @@ interface NotesArchiveProps {
 export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
   const { user } = useAuth();
   const [notes, setNotes] = useState<DeletedNote[]>([]);
+  const [archivedNotes, setArchivedNotes] = useState<ArchivedNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isArchivedExpanded, setIsArchivedExpanded] = useState(false);
   const [confirmDeleteNote, setConfirmDeleteNote] = useState<DeletedNote | null>(null);
   const [datePickerNote, setDatePickerNote] = useState<DeletedNote | null>(null);
 
@@ -68,6 +78,25 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       setNotes((data || []) as DeletedNote[]);
     } catch (error) {
       console.error("Error loading deleted notes:", error);
+    }
+  }, [user]);
+
+  const loadArchivedNotes = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("quick_notes")
+        .select("id, title, content, color, archived_at")
+        .eq("user_id", user.id)
+        .eq("is_archived", true)
+        .is("deleted_at", null)
+        .order("archived_at", { ascending: false });
+
+      if (error) throw error;
+      setArchivedNotes((data || []) as ArchivedNote[]);
+    } catch (error) {
+      console.error("Error loading archived notes:", error);
     } finally {
       setLoading(false);
     }
@@ -75,7 +104,8 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
 
   useEffect(() => {
     loadDeletedNotes();
-  }, [loadDeletedNotes, refreshTrigger]);
+    loadArchivedNotes();
+  }, [loadDeletedNotes, loadArchivedNotes, refreshTrigger]);
 
   const handleRestore = async (noteId: string) => {
     try {
@@ -90,6 +120,23 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       onRestore?.();
     } catch (error) {
       console.error("Error restoring note:", error);
+      toast.error("Fehler beim Wiederherstellen");
+    }
+  };
+
+  const handleRestoreFromArchive = async (noteId: string) => {
+    try {
+      const { error } = await supabase
+        .from("quick_notes")
+        .update({ is_archived: false, archived_at: null })
+        .eq("id", noteId);
+
+      if (error) throw error;
+      toast.success("Notiz aus Archiv wiederhergestellt");
+      loadArchivedNotes();
+      onRestore?.();
+    } catch (error) {
+      console.error("Error restoring from archive:", error);
       toast.error("Fehler beim Wiederherstellen");
     }
   };
@@ -140,28 +187,93 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
     return null;
   }
 
-  if (notes.length === 0) {
+  if (notes.length === 0 && archivedNotes.length === 0) {
     return null;
   }
 
   return (
     <>
-      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-        <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-2 rounded hover:bg-muted/50 transition-colors">
-          <div className="flex items-center gap-2">
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 transition-transform",
-                !isExpanded && "-rotate-90"
-              )}
-            />
-            <Trash2 className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-muted-foreground">Papierkorb</span>
-            <Badge variant="secondary" className="text-xs px-1.5 py-0">
-              {notes.length}
-            </Badge>
-          </div>
-        </CollapsibleTrigger>
+      {/* Archived Notes Section */}
+      {archivedNotes.length > 0 && (
+        <Collapsible open={isArchivedExpanded} onOpenChange={setIsArchivedExpanded}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-2 rounded hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-2">
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  !isArchivedExpanded && "-rotate-90"
+                )}
+              />
+              <Archive className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">Archiv</span>
+              <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                {archivedNotes.length}
+              </Badge>
+            </div>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <ScrollArea className="max-h-[250px]">
+              <div className="space-y-2 p-2">
+                {archivedNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    className="p-3 rounded-lg border bg-card/50 border-l-4 opacity-75"
+                    style={{ borderLeftColor: note.color || "#94a3b8" }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {note.title && (
+                          <h4 className="font-medium text-sm truncate mb-1">
+                            {note.title}
+                          </h4>
+                        )}
+                        <p className="text-sm text-muted-foreground line-clamp-1">
+                          {getPreviewText(note.content)}
+                        </p>
+                        <span className="text-xs text-muted-foreground mt-1 block">
+                          Archiviert: {format(new Date(note.archived_at), "dd.MM.yyyy", { locale: de })}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-100"
+                          onClick={() => handleRestoreFromArchive(note.id)}
+                          title="Wiederherstellen"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Trash Section */}
+      {notes.length > 0 && (
+        <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-2 rounded hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-2">
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  !isExpanded && "-rotate-90"
+                )}
+              />
+              <Trash2 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">Papierkorb</span>
+              <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                {notes.length}
+              </Badge>
+            </div>
+          </CollapsibleTrigger>
 
         <CollapsibleContent>
           <ScrollArea className="max-h-[250px]">
@@ -249,10 +361,11 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
                   </div>
                 );
               })}
-            </div>
-          </ScrollArea>
-        </CollapsibleContent>
-      </Collapsible>
+              </div>
+            </ScrollArea>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       {/* Confirm Delete Dialog */}
       <AlertDialog
