@@ -211,13 +211,20 @@ export function EmployeesView() {
     };
   }, []);
 
-  // Admin check
+  // Admin check - only 'abgeordneter' sees full admin view
   useEffect(() => {
     if (!user) return;
     const run = async () => {
-      const { data, error } = await supabase.rpc("is_admin", { _user_id: user.id });
+      const { data: roleData, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+      
       if (error) console.error(error);
-      setIsAdmin(!!data);
+      // Only 'abgeordneter' role sees the full admin overview
+      const isAdminRole = roleData?.role === "abgeordneter";
+      setIsAdmin(isAdminRole);
     };
     run();
   }, [user]);
