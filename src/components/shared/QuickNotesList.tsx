@@ -116,20 +116,31 @@ export function QuickNotesList({
     if (!user) return;
     
     try {
-      // Load own notes (excluding soft-deleted)
-      const { data: ownNotes, error: ownError } = await supabase
-        .from("quick_notes")
-        .select(`
-          id, title, content, color, is_pinned, created_at, updated_at, user_id,
-          is_archived, task_id, meeting_id, priority_level, follow_up_date,
-          meetings!meeting_id(title, meeting_date)
-        `)
-        .eq("user_id", user.id)
-        .eq("is_archived", false)
-        .is("deleted_at", null)
-        .order("is_pinned", { ascending: false })
-        .order("created_at", { ascending: false });
+      // Load all initial data in parallel for better performance
+      const [ownNotesResult, individualSharesResult, globalSharesResult] = await Promise.all([
+        supabase
+          .from("quick_notes")
+          .select(`
+            id, title, content, color, is_pinned, created_at, updated_at, user_id,
+            is_archived, task_id, meeting_id, priority_level, follow_up_date,
+            meetings!meeting_id(title, meeting_date)
+          `)
+          .eq("user_id", user.id)
+          .eq("is_archived", false)
+          .is("deleted_at", null)
+          .order("is_pinned", { ascending: false })
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("quick_note_shares")
+          .select("note_id")
+          .eq("shared_with_user_id", user.id),
+        supabase
+          .from("quick_note_global_shares")
+          .select("user_id")
+          .eq("shared_with_user_id", user.id)
+      ]);
 
+      const { data: ownNotes, error: ownError } = ownNotesResult;
       if (ownError) throw ownError;
 
       // Load shares with user details for own notes
@@ -163,17 +174,9 @@ export function QuickNotesList({
         }
       }
 
-      // Load individually shared notes (notes shared with me)
-      const { data: individualShares } = await supabase
-        .from("quick_note_shares")
-        .select("note_id")
-        .eq("shared_with_user_id", user.id);
-
-      // Load globally shared notes (notes from users who shared all their notes with me)
-      const { data: globalShares } = await supabase
-        .from("quick_note_global_shares")
-        .select("user_id")
-        .eq("shared_with_user_id", user.id);
+      // Extract data from parallel results
+      const { data: individualShares } = individualSharesResult;
+      const { data: globalShares } = globalSharesResult;
 
       // Collect all note IDs from individual shares
       const individualNoteIds = individualShares?.map(s => s.note_id) || [];

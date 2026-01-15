@@ -62,7 +62,7 @@ export function StakeholderView({
   const stakeholderIds = stakeholders.map(s => s.id);
   const { counts: documentCounts } = useContactDocumentCounts(stakeholderIds);
 
-  console.log('StakeholderView: Topics loaded:', topics);
+  // Topics loaded for stakeholders
 
   // Helper to get topic IDs for a stakeholder from contact_topics
   const [stakeholderTopics, setStakeholderTopics] = useState<Record<string, string[]>>({});
@@ -267,10 +267,6 @@ export function StakeholderView({
 
   const sortedStakeholders = useMemo(() => {
     const filtered = [...stakeholders];
-    
-    // Log for debugging duplicate issues
-    console.log(`StakeholderView: Processing ${filtered.length} stakeholders for rendering, sortColumn: ${sortColumn}`);
-    console.log(`First few stakeholders:`, filtered.slice(0, 3).map(s => ({ id: s.id, name: s.name, contact_type: s.contact_type })));
     
     return filtered.sort((a, b) => {
       if (!sortColumn || !onSort) return 0;

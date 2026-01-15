@@ -1,29 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { AppNavigation, getNavigationGroups } from "@/components/AppNavigation";
 import { Dashboard } from "@/components/Dashboard";
-import { CustomizableDashboard } from "@/components/CustomizableDashboard";
-import { CalendarView } from "@/components/CalendarView";
-import { ContactsView } from "@/components/ContactsView";
-import { DocumentsView } from "@/components/DocumentsView";
-import KnowledgeBaseView from "@/components/KnowledgeBaseView";
-import { TasksView } from "@/components/TasksView";
-import { SettingsView } from "@/components/SettingsView";
-import { MeetingsView } from "@/components/MeetingsView";
-import { EventPlanningView } from "@/components/EventPlanningView";
-import { MapsView } from '@/pages/MapsView';
-import { PartyAssociationsMapView } from "@/components/PartyAssociationsMapView";
-import { EmployeesView } from "@/components/EmployeesView";
-import { TimeTrackingView } from "@/components/TimeTrackingView";
-import Administration from "@/pages/Administration";
-import { DecisionOverview } from "@/components/task-decisions/DecisionOverview";
-import { DrucksachenView } from "@/components/DrucksachenView";
-import { CaseFilesView } from "@/components/CaseFilesView";
-import { MatrixChatView } from "@/components/chat/MatrixChatView";
-import { MyWorkView } from "@/components/MyWorkView";
-import { CallsView } from "@/components/CallsView";
+
+// Lazy load all major view components for better initial load performance
+const CustomizableDashboard = lazy(() => import("@/components/CustomizableDashboard").then(m => ({ default: m.CustomizableDashboard })));
+const CalendarView = lazy(() => import("@/components/CalendarView").then(m => ({ default: m.CalendarView })));
+const ContactsView = lazy(() => import("@/components/ContactsView").then(m => ({ default: m.ContactsView })));
+const DocumentsView = lazy(() => import("@/components/DocumentsView").then(m => ({ default: m.DocumentsView })));
+const KnowledgeBaseView = lazy(() => import("@/components/KnowledgeBaseView"));
+const TasksView = lazy(() => import("@/components/TasksView").then(m => ({ default: m.TasksView })));
+const SettingsView = lazy(() => import("@/components/SettingsView").then(m => ({ default: m.SettingsView })));
+const MeetingsView = lazy(() => import("@/components/MeetingsView").then(m => ({ default: m.MeetingsView })));
+const EventPlanningView = lazy(() => import("@/components/EventPlanningView").then(m => ({ default: m.EventPlanningView })));
+const MapsView = lazy(() => import("@/pages/MapsView").then(m => ({ default: m.MapsView })));
+const PartyAssociationsMapView = lazy(() => import("@/components/PartyAssociationsMapView").then(m => ({ default: m.PartyAssociationsMapView })));
+const EmployeesView = lazy(() => import("@/components/EmployeesView").then(m => ({ default: m.EmployeesView })));
+const TimeTrackingView = lazy(() => import("@/components/TimeTrackingView").then(m => ({ default: m.TimeTrackingView })));
+const Administration = lazy(() => import("@/pages/Administration"));
+const DecisionOverview = lazy(() => import("@/components/task-decisions/DecisionOverview").then(m => ({ default: m.DecisionOverview })));
+const DrucksachenView = lazy(() => import("@/components/DrucksachenView").then(m => ({ default: m.DrucksachenView })));
+const CaseFilesView = lazy(() => import("@/components/CaseFilesView").then(m => ({ default: m.CaseFilesView })));
+const MatrixChatView = lazy(() => import("@/components/chat/MatrixChatView").then(m => ({ default: m.MatrixChatView })));
+const MyWorkView = lazy(() => import("@/components/MyWorkView").then(m => ({ default: m.MyWorkView })));
+const CallsView = lazy(() => import("@/components/CallsView").then(m => ({ default: m.CallsView })));
 import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
 import { GlobalQuickActionHandler } from "@/components/layout/GlobalQuickActionHandler";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -126,73 +128,48 @@ const Index = () => {
   }
 
   const renderActiveSection = () => {
-    console.log('=== renderActiveSection called ===');
-    console.log('Current activeSection:', activeSection);
-    
     switch (activeSection) {
       case 'dashboard':
-        console.log('Rendering CustomizableDashboard');
         return <CustomizableDashboard />;
       case "mywork":
-        console.log('Rendering MyWorkView');
         return <MyWorkView />;
       case "calendar":
-        console.log('Rendering CalendarView');
         return <CalendarView />;
       case "contacts":
-        console.log('Rendering ContactsView');
         return <ContactsView />;
       case "tasks":
-        console.log('Rendering TasksView');
         return <TasksView />;
       case "decisions":
-        console.log('Rendering DecisionOverview');
         return <DecisionOverview />;
       case "time":
-        console.log('Rendering TimeTrackingView');
         return <TimeTrackingView />;
       case "meetings":
-        console.log('Rendering MeetingsView');
         return <MeetingsView />;
       case "eventplanning":
-        console.log('Rendering EventPlanningView');
         return <EventPlanningView />;
       case "karten":
-        console.log('Rendering MapsView');
         return <MapsView />;
       case "kreisverbände":
-        console.log('Rendering PartyAssociationsMapView');
         return <PartyAssociationsMapView />;
       case "documents":
-        console.log('Rendering DocumentsView');
         return <DocumentsView />;
       case "knowledge":
-        console.log('Rendering KnowledgeBaseView');
         return <KnowledgeBaseView />;
       case "settings":
-        console.log('Rendering SettingsView');
         return <SettingsView />;
       case "employee":
-        console.log('Rendering EmployeesView');
-        // Admin-only view is handled inside the component
         return <EmployeesView />;
       case "administration":
-        console.log('Rendering Administration');
         return <Administration />;
       case "drucksachen":
-        console.log('Rendering DrucksachenView');
         return <DrucksachenView />;
       case "casefiles":
-        console.log('Rendering CaseFilesView');
         return <CaseFilesView />;
       case "chat":
-        console.log('Rendering MatrixChatView');
         return <MatrixChatView />;
       case "calls":
-        console.log('Rendering CallsView');
         return <CallsView />;
       default:
-        console.log('Rendering default Dashboard');
         return <Dashboard />;
     }
   };
@@ -263,7 +240,13 @@ const Index = () => {
             })()}
           </div>
           <main id="main-content" className="flex-1 bg-gradient-to-b from-background to-muted/20" tabIndex={-1}>
-            {renderActiveSection()}
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            }>
+              {renderActiveSection()}
+            </Suspense>
           </main>
         </div>
         
