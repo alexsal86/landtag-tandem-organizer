@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,8 +17,9 @@ export function CombinedMessagesWidget({ configuration }: CombinedMessagesWidget
   const [blackboardCount, setBlackboardCount] = useState(0);
   const [messagesCount, setMessagesCount] = useState(0);
   const [activeTab, setActiveTab] = useState("blackboard");
+  const debounceRef = useRef<NodeJS.Timeout>();
 
-  const fetchUnreadCounts = async () => {
+  const fetchUnreadCounts = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -44,40 +45,53 @@ export function CombinedMessagesWidget({ configuration }: CombinedMessagesWidget
     } catch (error) {
       console.error('Error fetching unread counts:', error);
     }
-  };
+  }, [user]);
+
+  // Debounced fetch to reduce API calls during rapid updates
+  const debouncedFetchUnreadCounts = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      fetchUnreadCounts();
+    }, 500);
+  }, [fetchUnreadCounts]);
 
   useEffect(() => {
     fetchUnreadCounts();
 
-    // Set up real-time subscriptions for live badge updates
+    // Set up real-time subscriptions for live badge updates with debouncing
     const subscriptionChannel = supabase.channel('combined-messages-counts')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'messages'
       }, () => {
-        fetchUnreadCounts();
+        debouncedFetchUnreadCounts();
       })
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'message_confirmations'
       }, () => {
-        fetchUnreadCounts();
+        debouncedFetchUnreadCounts();
       })
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'message_recipients'
       }, () => {
-        fetchUnreadCounts();
+        debouncedFetchUnreadCounts();
       })
       .subscribe();
 
     return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
       supabase.removeChannel(subscriptionChannel);
     };
-  }, [user]);
+  }, [user, fetchUnreadCounts, debouncedFetchUnreadCounts]);
 
   const totalCount = blackboardCount + messagesCount;
 
