@@ -7,6 +7,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -35,14 +36,11 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { navigationCounts, hasNewSinceLastVisit, markNavigationAsVisited } = useNavigationNotifications();
   const { notifications } = useNotifications();
   const { totalUnreadCount: matrixUnreadCount } = useMatrixClient();
+  const appSettings = useAppSettings();
   
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
-  const [appSettings, setAppSettings] = useState({
-    app_name: "LandtagsOS",
-    app_subtitle: "Koordinationssystem",
-    app_logo_url: ""
-  });
+  
   const handleNavigationClick = async (sectionId: string) => {
     await markNavigationAsVisited(sectionId);
     onSectionChange(sectionId);
@@ -74,31 +72,6 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "employee", label: "Mitarbeiter", icon: Users },
     { id: "chat", label: "Chat", icon: MessageSquareText },
   ];
-
-  // Load app settings
-  useEffect(() => {
-    const loadData = async () => {
-      const { data: settings } = await supabase
-        .from('app_settings')
-        .select('setting_key, setting_value')
-        .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
-
-      if (settings) {
-        const settingsMap = settings.reduce((acc, item) => {
-          acc[item.setting_key] = item.setting_value || '';
-          return acc;
-        }, {} as Record<string, string>);
-
-        setAppSettings({
-          app_name: settingsMap.app_name || "LandtagsOS",
-          app_subtitle: settingsMap.app_subtitle || "Koordinationssystem",
-          app_logo_url: settingsMap.app_logo_url || ""
-        });
-      }
-    };
-    
-    loadData();
-  }, []);
 
   // Update favicon when app logo changes
   useEffect(() => {

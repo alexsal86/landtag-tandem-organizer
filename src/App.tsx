@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { MatrixClientProvider } from "@/contexts/MatrixClientContext";
+import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { GlobalSearchCommand } from "@/components/GlobalSearchCommand";
 import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
@@ -38,9 +39,10 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TenantProvider>
-        <NotificationProvider>
-          <MatrixClientProvider>
-            <TooltipProvider>
+        <AppSettingsProvider>
+          <NotificationProvider>
+            <MatrixClientProvider>
+              <TooltipProvider>
               <Toaster />
               <Sonner />
               <BrowserRouter>
@@ -95,8 +97,9 @@ const App = () => (
                 </Routes>
               </BrowserRouter>
             </TooltipProvider>
-          </MatrixClientProvider>
-        </NotificationProvider>
+            </MatrixClientProvider>
+          </NotificationProvider>
+        </AppSettingsProvider>
       </TenantProvider>
     </AuthProvider>
   </QueryClientProvider>

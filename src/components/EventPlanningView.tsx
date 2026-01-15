@@ -284,14 +284,17 @@ export function EventPlanningView() {
       navigate('/eventplanning', { replace: true });
     }
     
-    // Use async wrapper to avoid blocking
+    // Use async wrapper with parallel loading for better performance
     const loadData = async () => {
       try {
-        await fetchPlannings();
-        await fetchAllProfiles();
-        await fetchAvailableContacts();
-        await fetchPlanningTemplates();
-        await fetchAppointmentPreparations();
+        // Load all data in parallel for faster initial load
+        await Promise.all([
+          fetchPlannings(),
+          fetchAllProfiles(),
+          fetchAvailableContacts(),
+          fetchPlanningTemplates(),
+          fetchAppointmentPreparations()
+        ]);
         loadViewPreferences();
       } catch (error) {
         console.error('Error loading planning data:', error);

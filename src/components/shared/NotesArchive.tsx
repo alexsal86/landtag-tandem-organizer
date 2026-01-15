@@ -103,9 +103,42 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
   }, [user]);
 
   useEffect(() => {
-    loadDeletedNotes();
-    loadArchivedNotes();
-  }, [loadDeletedNotes, loadArchivedNotes, refreshTrigger]);
+    // Load both note types in parallel for faster loading
+    const loadAllNotes = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      
+      setLoading(true);
+      try {
+        const [deletedRes, archivedRes] = await Promise.all([
+          supabase
+            .from("quick_notes")
+            .select("id, title, content, color, deleted_at, permanent_delete_at")
+            .eq("user_id", user.id)
+            .not("deleted_at", "is", null)
+            .order("deleted_at", { ascending: false }),
+          supabase
+            .from("quick_notes")
+            .select("id, title, content, color, archived_at")
+            .eq("user_id", user.id)
+            .eq("is_archived", true)
+            .is("deleted_at", null)
+            .order("archived_at", { ascending: false })
+        ]);
+        
+        setNotes((deletedRes.data || []) as DeletedNote[]);
+        setArchivedNotes((archivedRes.data || []) as ArchivedNote[]);
+      } catch (error) {
+        console.error("Error loading notes:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadAllNotes();
+  }, [user, refreshTrigger]);
 
   const handleRestore = async (noteId: string) => {
     try {

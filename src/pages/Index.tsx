@@ -70,7 +70,6 @@ const Index = () => {
   useEffect(() => {
     const newSection = getActiveSectionFromPath(location.pathname);
     setActiveSection(newSection);
-    console.log('Active section changed to:', newSection);
   }, [location.pathname]);
 
   // Handle navigation to sections

@@ -10,6 +10,7 @@ import { HeaderSearch } from '@/components/layout/HeaderSearch';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { useTenant } from '@/hooks/useTenant';
+import { useAppSettings } from '@/hooks/useAppSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Separator } from '@/components/ui/separator';
@@ -71,52 +72,30 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const appSettings = useAppSettings();
   
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
-  const [appSettings, setAppSettings] = useState({
-    app_name: 'LandtagsOS',
-    app_subtitle: 'Koordinationssystem',
-    app_logo_url: ''
-  });
 
   // Get current section from path
   const currentSection = location.pathname === '/' ? 'dashboard' : location.pathname.slice(1).split('/')[0];
   const sectionInfo = sectionConfig[currentSection] || { label: currentSection };
 
-  // Load user profile and app settings
+  // Load user profile only - app settings now come from context
   useEffect(() => {
-    const loadData = async () => {
-      if (user) {
+    const loadProfile = async () => {
+      if (user && currentTenant?.id) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('display_name, avatar_url')
           .eq('user_id', user.id)
-          .eq('tenant_id', currentTenant?.id || '')
+          .eq('tenant_id', currentTenant.id)
           .maybeSingle();
         
         setUserProfile(profile);
       }
-
-      const { data: settings } = await supabase
-        .from('app_settings')
-        .select('setting_key, setting_value')
-        .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
-
-      if (settings) {
-        const settingsMap = settings.reduce((acc, item) => {
-          acc[item.setting_key] = item.setting_value || '';
-          return acc;
-        }, {} as Record<string, string>);
-
-        setAppSettings({
-          app_name: settingsMap.app_name || 'LandtagsOS',
-          app_subtitle: settingsMap.app_subtitle || 'Koordinationssystem',
-          app_logo_url: settingsMap.app_logo_url || ''
-        });
-      }
     };
     
-    loadData();
+    loadProfile();
   }, [user, currentTenant]);
 
   const handleSignOut = async () => {
