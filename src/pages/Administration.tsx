@@ -167,11 +167,20 @@ export default function Administration() {
     try {
       setLoadingData(true);
       
-      const { data: tenantMemberships } = await supabase
-        .from('user_tenant_memberships')
-        .select('user_id')
-        .eq('tenant_id', currentTenant.id)
-        .eq('is_active', true);
+      // Parallel: Load tenant memberships and templates simultaneously
+      const [tenantMembershipsRes, meetingTemplatesRes, planningTemplatesRes] = await Promise.all([
+        supabase
+          .from('user_tenant_memberships')
+          .select('user_id')
+          .eq('tenant_id', currentTenant.id)
+          .eq('is_active', true),
+        supabase.from('meeting_templates').select('*').order('name'),
+        supabase.from('planning_templates').select('*').order('name')
+      ]);
+      
+      const tenantMemberships = tenantMembershipsRes.data;
+      setMeetingTemplates(meetingTemplatesRes.data || []);
+      setPlanningTemplates(planningTemplatesRes.data || []);
       
       if (!tenantMemberships?.length) {
         setProfiles([]);
@@ -179,28 +188,22 @@ export default function Administration() {
       } else {
         const userIds = tenantMemberships.map(m => m.user_id);
         
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, avatar_url')
-          .in('user_id', userIds)
-          .order('display_name');
+        // Parallel: Load profiles and roles simultaneously
+        const [profilesRes, rolesRes] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('user_id, display_name, avatar_url')
+            .in('user_id', userIds)
+            .order('display_name'),
+          supabase
+            .from('user_roles')
+            .select('user_id, role')
+            .in('user_id', userIds)
+        ]);
         
-        const { data: rolesData } = await supabase
-          .from('user_roles')
-          .select('user_id, role')
-          .in('user_id', userIds);
-        
-        setProfiles(profilesData || []);
-        setRoles(rolesData || []);
+        setProfiles(profilesRes.data || []);
+        setRoles(rolesRes.data || []);
       }
-      
-      const [meetingTemplatesRes, planningTemplatesRes] = await Promise.all([
-        supabase.from('meeting_templates').select('*').order('name'),
-        supabase.from('planning_templates').select('*').order('name')
-      ]);
-      
-      setMeetingTemplates(meetingTemplatesRes.data || []);
-      setPlanningTemplates(planningTemplatesRes.data || []);
       
     } catch (error) {
       console.error('Error loading data:', error);

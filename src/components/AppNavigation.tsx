@@ -21,6 +21,7 @@ import {
 import { useMatrixClient } from "@/contexts/MatrixClientContext";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
@@ -127,13 +128,11 @@ export function AppNavigation({
   const { user } = useAuth();
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
   const { totalUnreadCount: matrixUnreadCount } = useMatrixClient();
+  const appSettings = useAppSettings();
   
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [appSettings, setAppSettings] = useState({
-    app_logo_url: ""
-  });
   
   // Animation states
   const [clickedItem, setClickedItem] = useState<string | null>(null);
@@ -141,38 +140,15 @@ export function AppNavigation({
   const [previousBadges, setPreviousBadges] = useState<Record<string, number>>({});
   const [newBadgeItems, setNewBadgeItems] = useState<Set<string>>(new Set());
 
-  // Load app settings
+  // Check admin role and user role - no more separate app settings load needed
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      
-      const { data: settings } = await supabase
-        .from('app_settings')
-        .select('setting_key, setting_value')
-        .in('setting_key', ['app_logo_url']);
-
-      if (settings) {
-        const settingsMap = settings.reduce((acc, item) => {
-          acc[item.setting_key] = item.setting_value || '';
-          return acc;
-        }, {} as Record<string, string>);
-
-        setAppSettings({
-          app_logo_url: settingsMap.app_logo_url || ""
-        });
-      }
-      
+    if (!user) {
       setIsLoading(false);
-    };
-    
-    loadData();
-  }, []);
-
-  // Check admin role and user role
-  useEffect(() => {
-    if (!user) return;
+      return;
+    }
     
     const checkRoles = async () => {
+      setIsLoading(true);
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
@@ -187,10 +163,37 @@ export function AppNavigation({
       ]);
       
       setHasAdminAccess(!!(isSuperAdmin || isBueroleitung));
+      setIsLoading(false);
     };
     
     checkRoles();
   }, [user]);
+
+  // Track badge changes for animations
+  useEffect(() => {
+    const newItems = new Set<string>();
+    
+    Object.entries(navigationCounts).forEach(([key, count]) => {
+      const prevCount = previousBadges[key] || 0;
+      if (count > prevCount) {
+        newItems.add(key);
+        // Remove from newItems after animation
+        setTimeout(() => {
+          setNewBadgeItems(prev => {
+            const updated = new Set(prev);
+            updated.delete(key);
+            return updated;
+          });
+        }, 3000);
+      }
+    });
+    
+    if (newItems.size > 0) {
+      setNewBadgeItems(prev => new Set([...prev, ...newItems]));
+    }
+    
+    setPreviousBadges(navigationCounts);
+  }, [navigationCounts]);
 
   // Track badge changes for animations
   useEffect(() => {
