@@ -28,18 +28,5 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     target: 'esnext',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-supabase': ['@supabase/supabase-js'],
-          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tooltip', '@radix-ui/react-popover'],
-          'vendor-charts': ['recharts'],
-          'vendor-calendar': ['react-big-calendar', 'date-fns'],
-          'vendor-editor': ['lexical', '@lexical/react', '@lexical/rich-text'],
-          'vendor-maps': ['leaflet', 'react-leaflet'],
-        }
-      }
-    }
   },
 }));
