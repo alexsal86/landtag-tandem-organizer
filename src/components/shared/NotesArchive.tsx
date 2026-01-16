@@ -165,12 +165,17 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
         .eq("id", noteId);
 
       if (error) throw error;
+      
+      // Optimistic state update - immediately remove from list
+      setArchivedNotes(prev => prev.filter(n => n.id !== noteId));
+      
       toast.success("Notiz aus Archiv wiederhergestellt");
-      loadArchivedNotes();
       onRestore?.();
     } catch (error) {
       console.error("Error restoring from archive:", error);
       toast.error("Fehler beim Wiederherstellen");
+      // On error: reload archive list to ensure consistent state
+      loadArchivedNotes();
     }
   };
 

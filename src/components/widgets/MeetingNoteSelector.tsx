@@ -19,6 +19,7 @@ interface MeetingNoteSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (meetingId: string, meetingTitle: string, meetingDate: string) => void;
+  onMarkForNextJourFixe?: () => void;
   currentMeetingId?: string | null;
 }
 
@@ -26,6 +27,7 @@ export const MeetingNoteSelector: React.FC<MeetingNoteSelectorProps> = ({
   open,
   onOpenChange,
   onSelect,
+  onMarkForNextJourFixe,
   currentMeetingId
 }) => {
   const { user } = useAuth();
@@ -92,7 +94,20 @@ export const MeetingNoteSelector: React.FC<MeetingNoteSelectorProps> = ({
           ) : meetings.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Keine kommenden Jour Fixes gefunden</p>
+              <p className="text-sm mb-3">Keine kommenden Jour Fixes gefunden</p>
+              {onMarkForNextJourFixe && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    onMarkForNextJourFixe();
+                    onOpenChange(false);
+                  }}
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  Für nächsten Jour Fixe vormerken
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-2">

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StickyNote, Globe } from "lucide-react";
+import { StickyNote, Globe, Archive } from "lucide-react";
 import { QuickNotesList } from "@/components/shared/QuickNotesList";
 import { GlobalNoteShareDialog } from "@/components/shared/GlobalNoteShareDialog";
+import { NotesArchiveDialog } from "@/components/shared/NotesArchiveDialog";
 
 interface MyWorkNotesListProps {
   refreshTrigger?: number;
@@ -11,6 +12,13 @@ interface MyWorkNotesListProps {
 
 export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
   const [globalShareOpen, setGlobalShareOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveRefreshTrigger, setArchiveRefreshTrigger] = useState(0);
+
+  const handleArchiveRestore = () => {
+    // Trigger refresh of the notes list
+    setArchiveRefreshTrigger(prev => prev + 1);
+  };
 
   return (
     <>
@@ -21,14 +29,24 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
               <StickyNote className="h-5 w-5" />
               Meine Notizen
             </CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setGlobalShareOpen(true)}
-              title="Alle Notizen freigeben"
-            >
-              <Globe className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setArchiveOpen(true)}
+                title="Archiv & Papierkorb"
+              >
+                <Archive className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setGlobalShareOpen(true)}
+                title="Alle Notizen freigeben"
+              >
+                <Globe className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -43,6 +61,13 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
       <GlobalNoteShareDialog
         open={globalShareOpen}
         onOpenChange={setGlobalShareOpen}
+      />
+      
+      <NotesArchiveDialog
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        refreshTrigger={archiveRefreshTrigger}
+        onRestore={handleArchiveRestore}
       />
     </>
   );

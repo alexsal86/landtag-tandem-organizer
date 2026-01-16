@@ -29,19 +29,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { 
   Pin, Trash2, StickyNote, MoreHorizontal, CheckSquare, Vote, 
   Calendar as CalendarIcon, Archive, Edit, ChevronDown, Clock,
-  Star, ArrowUp, ArrowDown, RotateCcw, Share2, Users, Globe
+  Star, ArrowUp, ArrowDown, RotateCcw, Share2, Users, Globe, Hourglass
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { format, addDays, isToday, isPast, isBefore, startOfDay } from "date-fns";
+import { format, addDays, isToday, isPast, isBefore, isAfter, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { MeetingNoteSelector } from "@/components/widgets/MeetingNoteSelector";
 import { NoteShareDialog } from "@/components/shared/NoteShareDialog";
 import { GlobalNoteShareDialog } from "@/components/shared/GlobalNoteShareDialog";
-import { NotesArchive } from "@/components/shared/NotesArchive";
 
 export interface QuickNote {
   id: string;
@@ -59,6 +58,7 @@ export interface QuickNote {
   user_id?: string;
   is_shared?: boolean;
   share_count?: number;
+  pending_for_jour_fixe?: boolean;
   shared_with_users?: Array<{
     id: string;
     display_name: string | null;
@@ -110,7 +110,7 @@ export function QuickNotesList({
   const [noteForShare, setNoteForShare] = useState<QuickNote | null>(null);
   const [globalShareDialogOpen, setGlobalShareDialogOpen] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
-  const [archiveRefreshTrigger, setArchiveRefreshTrigger] = useState(0);
+  const [scheduledFollowUpsExpanded, setScheduledFollowUpsExpanded] = useState(false);
 
   const loadNotes = useCallback(async () => {
     if (!user) return;
@@ -122,7 +122,7 @@ export function QuickNotesList({
           .from("quick_notes")
           .select(`
             id, title, content, color, is_pinned, created_at, updated_at, user_id,
-            is_archived, task_id, meeting_id, priority_level, follow_up_date,
+            is_archived, task_id, meeting_id, priority_level, follow_up_date, pending_for_jour_fixe,
             meetings!meeting_id(title, meeting_date)
           `)
           .eq("user_id", user.id)
@@ -191,7 +191,7 @@ export function QuickNotesList({
           .from("quick_notes")
           .select(`
             id, title, content, color, is_pinned, created_at, updated_at, user_id,
-            is_archived, task_id, meeting_id, priority_level, follow_up_date,
+            is_archived, task_id, meeting_id, priority_level, follow_up_date, pending_for_jour_fixe,
             meetings!meeting_id(title, meeting_date)
           `)
           .in("id", individualNoteIds)
@@ -219,7 +219,7 @@ export function QuickNotesList({
           .from("quick_notes")
           .select(`
             id, title, content, color, is_pinned, created_at, updated_at, user_id,
-            is_archived, task_id, meeting_id, priority_level, follow_up_date,
+            is_archived, task_id, meeting_id, priority_level, follow_up_date, pending_for_jour_fixe,
             meetings!meeting_id(title, meeting_date)
           `)
           .in("user_id", globalShareUserIds)
@@ -292,17 +292,22 @@ export function QuickNotesList({
   const groupNotesByPriority = useCallback((allNotes: QuickNote[]) => {
     const now = startOfDay(new Date());
     
-    // Follow-up notes (due today or earlier)
+    // Follow-up notes (due today or earlier - fällig)
     const followUpNotes = allNotes.filter(n => 
       n.follow_up_date && isBefore(startOfDay(new Date(n.follow_up_date)), addDays(now, 1))
     ).sort((a, b) => 
       new Date(a.follow_up_date!).getTime() - new Date(b.follow_up_date!).getTime()
     );
     
-    // Remaining notes (no follow-up or future follow-up)
-    const remaining = allNotes.filter(n => 
-      !n.follow_up_date || !isBefore(startOfDay(new Date(n.follow_up_date)), addDays(now, 1))
+    // Scheduled follow-ups (future dates - geplant, werden bis dahin ausgeblendet)
+    const scheduledFollowUps = allNotes.filter(n => 
+      n.follow_up_date && isAfter(startOfDay(new Date(n.follow_up_date)), now)
+    ).sort((a, b) => 
+      new Date(a.follow_up_date!).getTime() - new Date(b.follow_up_date!).getTime()
     );
+    
+    // Remaining notes: no follow-up date (exclude scheduled notes!)
+    const remaining = allNotes.filter(n => !n.follow_up_date);
     
     // Find max priority level
     const maxLevel = Math.max(...remaining.map(n => n.priority_level || 0), 0);
@@ -337,10 +342,10 @@ export function QuickNotesList({
       });
     }
     
-    return { groups, followUpNotes };
+    return { groups, followUpNotes, scheduledFollowUps };
   }, []);
 
-  const { groups, followUpNotes } = groupNotesByPriority(notes);
+  const { groups, followUpNotes, scheduledFollowUps } = groupNotesByPriority(notes);
 
   // Action handlers
   const handleTogglePin = async (note: QuickNote) => {
@@ -373,7 +378,6 @@ export function QuickNotesList({
       if (error) throw error;
       toast.success("Notiz in Papierkorb verschoben (wird nach 30 Tagen gelöscht)");
       loadNotes();
-      setArchiveRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error("Error deleting note:", error);
       toast.error("Fehler beim Löschen");
@@ -410,7 +414,6 @@ export function QuickNotesList({
 
       toast.success("Notiz archiviert");
       loadNotes();
-      setArchiveRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error("Error archiving note:", error);
       toast.error("Fehler beim Archivieren");
@@ -554,6 +557,38 @@ export function QuickNotesList({
     } catch (error) {
       console.error('Error adding note to meeting:', error);
       toast.error("Fehler beim Hinzufügen zum Jour Fixe");
+    }
+  };
+
+  const markForNextJourFixe = async (noteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('quick_notes')
+        .update({ pending_for_jour_fixe: true })
+        .eq('id', noteId);
+
+      if (error) throw error;
+      toast.success("Notiz für nächsten Jour Fixe vorgemerkt");
+      loadNotes();
+    } catch (error) {
+      console.error('Error marking for Jour Fixe:', error);
+      toast.error("Fehler beim Vormerken");
+    }
+  };
+
+  const removeFromJourFixeQueue = async (noteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('quick_notes')
+        .update({ pending_for_jour_fixe: false })
+        .eq('id', noteId);
+
+      if (error) throw error;
+      toast.success("Vormerkung entfernt");
+      loadNotes();
+    } catch (error) {
+      console.error('Error removing from Jour Fixe queue:', error);
+      toast.error("Fehler beim Entfernen der Vormerkung");
     }
   };
 
@@ -1038,6 +1073,22 @@ export function QuickNotesList({
                 </Tooltip>
               </TooltipProvider>
             )}
+            {/* Pending for Jour Fixe indicator */}
+            {note.pending_for_jour_fixe && !note.meeting_id && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-amber-600 cursor-help">
+                      <Hourglass className="h-3 w-3 mr-0.5" />
+                      JF
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Wartet auf nächsten Jour Fixe
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             {showFollowUpBadge && note.follow_up_date && (
               <Badge 
                 variant={isPast(new Date(note.follow_up_date)) && !isToday(new Date(note.follow_up_date)) 
@@ -1145,12 +1196,33 @@ export function QuickNotesList({
             </>
           )}
 
-          {/* Notes Archive (Trash) */}
-          <Separator className="my-3" />
-          <NotesArchive 
-            refreshTrigger={archiveRefreshTrigger} 
-            onRestore={loadNotes} 
-          />
+          {/* Scheduled Follow-ups Section (future dates - hidden from main list) */}
+          {scheduledFollowUps.length > 0 && (
+            <>
+              <Separator className="my-3" />
+              <Collapsible open={scheduledFollowUpsExpanded} onOpenChange={setScheduledFollowUpsExpanded}>
+                <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <ChevronDown className={cn(
+                      "h-4 w-4 transition-transform",
+                      !scheduledFollowUpsExpanded && "-rotate-90"
+                    )} />
+                    <Hourglass className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground">Geplante Wiedervorlagen</span>
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                      {scheduledFollowUps.length}
+                    </Badge>
+                  </div>
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent>
+                  <div className="space-y-2 mt-2">
+                    {scheduledFollowUps.map(note => renderNoteCard(note, true))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </>
+          )}
         </div>
       </ScrollArea>
 
@@ -1160,6 +1232,7 @@ export function QuickNotesList({
           open={meetingSelectorOpen}
           onOpenChange={setMeetingSelectorOpen}
           onSelect={(meetingId, meetingTitle) => addNoteToMeeting(noteForMeeting.id, meetingId, meetingTitle)}
+          onMarkForNextJourFixe={() => markForNextJourFixe(noteForMeeting.id)}
         />
       )}
 

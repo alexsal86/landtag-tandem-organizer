@@ -6833,6 +6833,7 @@ export type Database = {
           is_pinned: boolean | null
           meeting_id: string | null
           meeting_result: string | null
+          pending_for_jour_fixe: boolean | null
           permanent_delete_at: string | null
           priority_level: number | null
           tags: string[] | null
@@ -6855,6 +6856,7 @@ export type Database = {
           is_pinned?: boolean | null
           meeting_id?: string | null
           meeting_result?: string | null
+          pending_for_jour_fixe?: boolean | null
           permanent_delete_at?: string | null
           priority_level?: number | null
           tags?: string[] | null
@@ -6877,6 +6879,7 @@ export type Database = {
           is_pinned?: boolean | null
           meeting_id?: string | null
           meeting_result?: string | null
+          pending_for_jour_fixe?: boolean | null
           permanent_delete_at?: string | null
           priority_level?: number | null
           tags?: string[] | null
