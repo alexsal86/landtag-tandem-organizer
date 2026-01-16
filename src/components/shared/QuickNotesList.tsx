@@ -365,17 +365,30 @@ export function QuickNotesList({
 
   // Soft delete - move to trash instead of permanent delete
   const handleDelete = async (noteId: string) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+    
     try {
       const permanentDeleteAt = addDays(new Date(), 30);
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("quick_notes")
         .update({ 
           deleted_at: new Date().toISOString(),
           permanent_delete_at: permanentDeleteAt.toISOString()
         })
-        .eq("id", noteId);
+        .eq("id", noteId)
+        .eq("user_id", user.id)
+        .select();
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("Notiz konnte nicht gelöscht werden");
+        return;
+      }
+      
       toast.success("Notiz in Papierkorb verschoben (wird nach 30 Tagen gelöscht)");
       loadNotes();
     } catch (error) {
@@ -561,13 +574,26 @@ export function QuickNotesList({
   };
 
   const markForNextJourFixe = async (noteId: string) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+    
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('quick_notes')
         .update({ pending_for_jour_fixe: true })
-        .eq('id', noteId);
+        .eq('id', noteId)
+        .eq('user_id', user.id)
+        .select();
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("Notiz konnte nicht vorgemerkt werden");
+        return;
+      }
+      
       toast.success("Notiz für nächsten Jour Fixe vorgemerkt");
       loadNotes();
     } catch (error) {
@@ -1172,7 +1198,7 @@ export function QuickNotesList({
                       !followUpExpanded && "-rotate-90"
                     )} />
                     <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground">Wiedervorlage</span>
+                    <span className="text-xs font-medium text-muted-foreground">Fällige Wiedervorlagen</span>
                     {followUpNotes.length > 0 && (
                       <Badge variant="destructive" className="text-xs px-1.5 py-0">
                         {followUpNotes.length}
@@ -1208,7 +1234,7 @@ export function QuickNotesList({
                       !scheduledFollowUpsExpanded && "-rotate-90"
                     )} />
                     <Hourglass className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground">Geplante Wiedervorlagen</span>
+                    <span className="text-xs font-medium text-muted-foreground">Geplant (bis zum Datum ausgeblendet)</span>
                     <Badge variant="secondary" className="text-xs px-1.5 py-0">
                       {scheduledFollowUps.length}
                     </Badge>
