@@ -711,7 +711,7 @@ export function QuickNotesList({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             {note.title && (
-              <h4 className="font-medium text-sm truncate mb-1">
+              <h4 className="font-semibold text-sm truncate mb-1">
                 {note.title}
               </h4>
             )}
