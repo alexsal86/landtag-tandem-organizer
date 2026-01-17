@@ -631,6 +631,41 @@ export function MeetingsView() {
       // Clear the agenda items first to prevent conflicts
       setAgendaItems([]);
       
+      // Auto-assign pending notes (marked for next Jour Fixe) to this meeting
+      try {
+        const { data: pendingNotes, error: pendingError } = await supabase
+          .from('quick_notes')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('pending_for_jour_fixe', true)
+          .is('deleted_at', null);
+
+        if (!pendingError && pendingNotes && pendingNotes.length > 0) {
+          console.log('📝 Found pending notes for Jour Fixe:', pendingNotes.length);
+          
+          // Link pending notes to this meeting and reset the flag
+          const noteIds = pendingNotes.map(n => n.id);
+          const { error: updateError } = await supabase
+            .from('quick_notes')
+            .update({ 
+              meeting_id: data.id,
+              pending_for_jour_fixe: false 
+            })
+            .in('id', noteIds);
+
+          if (updateError) {
+            console.error('Error linking pending notes:', updateError);
+          } else {
+            toast({
+              title: "Notizen verknüpft",
+              description: `${pendingNotes.length} vorgemerkte Notiz(en) wurden automatisch hinzugefügt.`,
+            });
+          }
+        }
+      } catch (pendingNotesError) {
+        console.error('Error processing pending notes:', pendingNotesError);
+      }
+      
       // Wait a moment for the trigger to complete, then load the items
       setTimeout(async () => {
         await loadAgendaItems(data.id);
@@ -1526,43 +1561,49 @@ export function MeetingsView() {
   const deleteAgendaItem = async (item: AgendaItem, index: number) => {
     if (!selectedMeeting?.id) return;
 
-    try {
-      // If item has an ID, delete from Supabase
-      if (item.id) {
+    // Optimistic update: remove from local state first
+    const previousItems = [...agendaItems];
+    const updatedItems = agendaItems.filter((_, i) => i !== index);
+    const reindexedItems = updatedItems.map((it, idx) => ({
+      ...it,
+      order_index: idx
+    }));
+    setAgendaItems(reindexedItems);
+
+    // If item has an ID, delete from database
+    if (item.id) {
+      try {
         const { error } = await supabase
           .from('meeting_agenda_items')
           .delete()
           .eq('id', item.id);
 
-        if (error) throw error;
-
-        // Remove item from local state and reindex properly
-        const updatedItems = agendaItems.filter((_, i) => i !== index);
-        const reindexedItems = updatedItems.map((item, idx) => ({
-          ...item,
-          order_index: idx
-        }));
-        setAgendaItems(reindexedItems);
+        if (error) {
+          // Rollback on error
+          setAgendaItems(previousItems);
+          console.error('Delete error:', error);
+          toast({
+            title: "Fehler beim Löschen",
+            description: "Der Agenda-Punkt konnte nicht gelöscht werden.",
+            variant: "destructive",
+          });
+          return;
+        }
 
         toast({
           title: "Punkt gelöscht",
           description: "Der Agenda-Punkt wurde erfolgreich gelöscht.",
         });
-      } else {
-        // If no ID, just remove locally and reindex
-        const updatedItems = agendaItems.filter((_, i) => i !== index);
-        const reindexedItems = updatedItems.map((item, idx) => ({
-          ...item,
-          order_index: idx
-        }));
-        setAgendaItems(reindexedItems);
+      } catch (error) {
+        // Rollback on error
+        setAgendaItems(previousItems);
+        console.error('Delete error:', error);
+        toast({
+          title: "Fehler beim Löschen",
+          description: "Der Agenda-Punkt konnte nicht gelöscht werden.",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      toast({
-        title: "Fehler beim Löschen",
-        description: "Der Agenda-Punkt konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
     }
   };
 

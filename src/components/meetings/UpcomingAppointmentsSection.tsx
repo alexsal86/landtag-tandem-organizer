@@ -15,6 +15,9 @@ interface Appointment {
   location?: string;
   category?: string;
   status?: string;
+  isExternal?: boolean;
+  calendarName?: string;
+  calendarColor?: string;
 }
 
 interface UpcomingAppointmentsSectionProps {
@@ -67,7 +70,8 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
       console.log('- startDate:', startDate.toISOString());
       console.log('- endDate:', endDate.toISOString());
 
-      const { data, error } = await supabase
+      // Load internal appointments
+      const { data: internalData, error: internalError } = await supabase
         .from('appointments')
         .select('id, title, start_time, end_time, location, category, status')
         .eq('tenant_id', currentTenant.id)
@@ -75,13 +79,59 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         .lte('start_time', endDate.toISOString())
         .order('start_time', { ascending: true });
 
-      console.log('📅 Query result:');
-      console.log('- data:', data);
-      console.log('- data length:', data?.length);
-      console.log('- error:', error);
+      if (internalError) throw internalError;
 
-      if (error) throw error;
-      setAppointments(data || []);
+      // Load external calendar events
+      const { data: externalData, error: externalError } = await supabase
+        .from('external_events')
+        .select(`
+          id, 
+          title, 
+          start_time, 
+          end_time, 
+          location,
+          external_calendars!inner(
+            id,
+            name,
+            color,
+            tenant_id
+          )
+        `)
+        .eq('external_calendars.tenant_id', currentTenant.id)
+        .gte('start_time', startDate.toISOString())
+        .lte('start_time', endDate.toISOString());
+
+      console.log('📅 Internal appointments:', internalData?.length || 0);
+      console.log('📅 External events:', externalData?.length || 0);
+
+      if (externalError) {
+        console.error('Error loading external events:', externalError);
+      }
+
+      // Merge and format appointments
+      const internalAppointments: Appointment[] = (internalData || []).map(apt => ({
+        ...apt,
+        isExternal: false
+      }));
+
+      const externalAppointments: Appointment[] = (externalData || []).map((event: any) => ({
+        id: event.id,
+        title: event.title,
+        start_time: event.start_time,
+        end_time: event.end_time,
+        location: event.location,
+        category: 'external',
+        isExternal: true,
+        calendarName: event.external_calendars?.name,
+        calendarColor: event.external_calendars?.color
+      }));
+
+      // Combine and sort by start_time
+      const allAppointments = [...internalAppointments, ...externalAppointments]
+        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+      console.log('📅 Total combined appointments:', allAppointments.length);
+      setAppointments(allAppointments);
     } catch (error) {
       console.error('Error loading appointments:', error);
     } finally {
@@ -123,6 +173,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
     <div 
       key={apt.id} 
       className="flex items-start gap-3 py-2 px-3 rounded-md hover:bg-muted/50 transition-colors"
+      style={apt.isExternal && apt.calendarColor ? { borderLeft: `3px solid ${apt.calendarColor}` } : undefined}
     >
       <div className="flex flex-col items-center min-w-[50px] text-xs text-muted-foreground">
         <span className="font-medium">{format(new Date(apt.start_time), 'EEE', { locale: de })}</span>
@@ -142,10 +193,15 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
             </span>
           )}
         </div>
+        {apt.isExternal && apt.calendarName && (
+          <div className="text-xs text-muted-foreground mt-0.5 italic">
+            📅 {apt.calendarName}
+          </div>
+        )}
       </div>
       {apt.category && (
         <Badge variant="secondary" className={`text-xs shrink-0 ${getCategoryColor(apt.category)}`}>
-          {apt.category}
+          {apt.isExternal ? 'Extern' : apt.category}
         </Badge>
       )}
     </div>
