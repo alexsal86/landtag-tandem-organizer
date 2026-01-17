@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { NewUserForm } from "@/components/NewUserForm";
@@ -363,6 +363,47 @@ export default function Administration() {
       saveTemplateItems(newItems);
       setNewTemplateItem(null);
     }
+  };
+
+  const addSystemTemplateItem = (systemType: 'upcoming_appointments' | 'quick_notes', parentIndex?: number) => {
+    if (!selectedTemplate) return;
+    
+    // Check if this system type already exists
+    const existingSystemItem = templateItems.find(item => item.system_type === systemType);
+    if (existingSystemItem) {
+      toast({ 
+        title: "Bereits vorhanden", 
+        description: `"${systemType === 'upcoming_appointments' ? 'Kommende Termine' : 'Meine Notizen'}" ist bereits in der Agenda.`,
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    const title = systemType === 'upcoming_appointments' ? 'Kommende Termine' : 'Meine Notizen';
+    const newItems = [...templateItems];
+    
+    if (parentIndex !== undefined) {
+      // Add as child of an existing item
+      if (!newItems[parentIndex].children) {
+        newItems[parentIndex].children = [];
+      }
+      newItems[parentIndex].children.push({ 
+        title, 
+        type: 'system',
+        system_type: systemType,
+        order_index: newItems[parentIndex].children.length 
+      });
+    } else {
+      newItems.push({ 
+        title, 
+        type: 'system',
+        system_type: systemType,
+        order_index: newItems.length 
+      });
+    }
+    
+    setTemplateItems(newItems);
+    saveTemplateItems(newItems);
   };
 
   const addPlanningTemplateItem = (title: string, parentIndex?: number) => {
@@ -802,12 +843,34 @@ export default function Administration() {
                             {templateItems.map((item, index) => (
                               <Draggable key={index} draggableId={index.toString()} index={index}>
                                 {(provided) => (
-                                  <div ref={provided.innerRef} {...provided.draggableProps} className="flex items-center gap-2 p-2 bg-card rounded border">
+                                  <div 
+                                    ref={provided.innerRef} 
+                                    {...provided.draggableProps} 
+                                    className={`flex items-center gap-2 p-2 bg-card rounded border ${
+                                      item.type === 'system' 
+                                        ? item.system_type === 'upcoming_appointments' 
+                                          ? 'border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20' 
+                                          : 'border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20'
+                                        : ''
+                                    }`}
+                                  >
                                     <div {...provided.dragHandleProps} className="cursor-grab">
                                       <GripVertical className="h-4 w-4 text-muted-foreground" />
                                     </div>
                                     {item.type === 'separator' ? (
                                       <div className="flex-1 h-px bg-border" />
+                                    ) : item.type === 'system' ? (
+                                      <div className="flex items-center gap-2 flex-1">
+                                        {item.system_type === 'upcoming_appointments' ? (
+                                          <CalendarDays className="h-4 w-4 text-blue-600" />
+                                        ) : (
+                                          <StickyNote className="h-4 w-4 text-amber-600" />
+                                        )}
+                                        <span className="font-medium">{item.title}</span>
+                                        <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                          Dynamisch
+                                        </span>
+                                      </div>
                                     ) : (
                                       <>
                                         {editingTemplate?.id === index.toString() && editingTemplate.field === 'title' ? (
@@ -850,7 +913,7 @@ export default function Administration() {
                       </Droppable>
                     </DragDropContext>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {newTemplateItem ? (
                         <>
                           <Input
@@ -874,7 +937,23 @@ export default function Administration() {
                           </Button>
                           <Button variant="outline" onClick={addSeparator}>
                             <Minus className="h-4 w-4 mr-2" />
-                            Trenner hinzufügen
+                            Trenner
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            className="border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950"
+                            onClick={() => addSystemTemplateItem('upcoming_appointments')}
+                          >
+                            <CalendarDays className="h-4 w-4 mr-2" />
+                            Kommende Termine
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            className="border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950"
+                            onClick={() => addSystemTemplateItem('quick_notes')}
+                          >
+                            <StickyNote className="h-4 w-4 mr-2" />
+                            Meine Notizen
                           </Button>
                         </>
                       )}
@@ -885,20 +964,23 @@ export default function Administration() {
                       templateId={selectedTemplate.id}
                       defaultParticipants={selectedTemplate.default_participants || []}
                       defaultRecurrence={selectedTemplate.default_recurrence || null}
-                      onSave={async (participants, recurrence) => {
+                      autoCreateCount={selectedTemplate.auto_create_count || 3}
+                      onSave={async (participants, recurrence, autoCreateCount) => {
                         try {
                           await supabase
                             .from('meeting_templates')
                             .update({
                               default_participants: participants,
-                              default_recurrence: recurrence as any
+                              default_recurrence: recurrence as any,
+                              auto_create_count: autoCreateCount || 3
                             })
                             .eq('id', selectedTemplate.id);
                           
                           setSelectedTemplate({
                             ...selectedTemplate,
                             default_participants: participants,
-                            default_recurrence: recurrence
+                            default_recurrence: recurrence,
+                            auto_create_count: autoCreateCount
                           });
                           
                           toast({ title: "Gespeichert", description: "Template-Einstellungen aktualisiert." });

@@ -3,11 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserSelector } from '@/components/UserSelector';
 import { RecurrenceSelector } from '@/components/ui/recurrence-selector';
-import { Users, X } from 'lucide-react';
+import { Users, X, CalendarRange, Repeat } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 
 interface RecurrenceData {
   enabled: boolean;
@@ -21,7 +23,8 @@ interface MeetingTemplateParticipantsEditorProps {
   templateId: string;
   defaultParticipants: string[];
   defaultRecurrence: RecurrenceData | null;
-  onSave: (participants: string[], recurrence: RecurrenceData | null) => void;
+  autoCreateCount?: number;
+  onSave: (participants: string[], recurrence: RecurrenceData | null, autoCreateCount?: number) => void;
 }
 
 interface User {
@@ -34,11 +37,13 @@ export function MeetingTemplateParticipantsEditor({
   templateId,
   defaultParticipants,
   defaultRecurrence,
+  autoCreateCount: initialAutoCreateCount = 3,
   onSave
 }: MeetingTemplateParticipantsEditorProps) {
   const { currentTenant } = useTenant();
   const [participants, setParticipants] = useState<string[]>(defaultParticipants || []);
   const [participantUsers, setParticipantUsers] = useState<User[]>([]);
+  const [autoCreateCount, setAutoCreateCount] = useState<number>(initialAutoCreateCount);
   const [recurrence, setRecurrence] = useState<RecurrenceData>(
     defaultRecurrence || {
       enabled: false,
@@ -86,19 +91,25 @@ export function MeetingTemplateParticipantsEditor({
     const newParticipants = [...participants, user.id];
     setParticipants(newParticipants);
     setParticipantUsers(prev => [...prev, user]);
-    onSave(newParticipants, recurrence.enabled ? recurrence : null);
+    onSave(newParticipants, recurrence.enabled ? recurrence : null, autoCreateCount);
   };
 
   const handleRemoveParticipant = (userId: string) => {
     const newParticipants = participants.filter(id => id !== userId);
     setParticipants(newParticipants);
     setParticipantUsers(prev => prev.filter(u => u.id !== userId));
-    onSave(newParticipants, recurrence.enabled ? recurrence : null);
+    onSave(newParticipants, recurrence.enabled ? recurrence : null, autoCreateCount);
   };
 
   const handleRecurrenceChange = (newRecurrence: RecurrenceData) => {
     setRecurrence(newRecurrence);
-    onSave(participants, newRecurrence.enabled ? newRecurrence : null);
+    onSave(participants, newRecurrence.enabled ? newRecurrence : null, autoCreateCount);
+  };
+
+  const handleAutoCreateCountChange = (value: number[]) => {
+    const count = value[0];
+    setAutoCreateCount(count);
+    onSave(participants, recurrence.enabled ? recurrence : null, count);
   };
 
   const getInitials = (name: string) => {
@@ -183,6 +194,57 @@ export function MeetingTemplateParticipantsEditor({
         onChange={handleRecurrenceChange}
         startDate={today}
       />
+
+      {/* Anzahl offener Meetings bei Wiederholung */}
+      {recurrence.enabled && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarRange className="h-4 w-4" />
+              Anzahl offener Meetings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Label className="text-sm text-muted-foreground block">
+              Bei wiederkehrenden Meetings werden automatisch immer {autoCreateCount} zukünftige Termine offen gehalten. 
+              Wenn ein Meeting archiviert wird, wird automatisch ein neuer Termin erstellt.
+            </Label>
+            
+            <div className="flex items-center gap-4">
+              <Slider
+                value={[autoCreateCount]}
+                onValueChange={handleAutoCreateCountChange}
+                min={1}
+                max={10}
+                step={1}
+                className="flex-1"
+              />
+              <div className="flex items-center gap-2 min-w-[80px]">
+                <Input
+                  type="number"
+                  value={autoCreateCount}
+                  onChange={(e) => {
+                    const val = Math.min(10, Math.max(1, parseInt(e.target.value) || 1));
+                    setAutoCreateCount(val);
+                    onSave(participants, recurrence.enabled ? recurrence : null, val);
+                  }}
+                  min={1}
+                  max={10}
+                  className="w-16 text-center"
+                />
+                <span className="text-sm text-muted-foreground">Meetings</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Repeat className="h-3 w-3" />
+              <span>
+                Aktuell werden {autoCreateCount} Meetings im Voraus geplant
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

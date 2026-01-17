@@ -5531,6 +5531,7 @@ export type Database = {
       }
       meeting_templates: {
         Row: {
+          auto_create_count: number | null
           created_at: string
           default_participants: string[] | null
           default_recurrence: Json | null
@@ -5545,6 +5546,7 @@ export type Database = {
           version: number | null
         }
         Insert: {
+          auto_create_count?: number | null
           created_at?: string
           default_participants?: string[] | null
           default_recurrence?: Json | null
@@ -5559,6 +5561,7 @@ export type Database = {
           version?: number | null
         }
         Update: {
+          auto_create_count?: number | null
           created_at?: string
           default_participants?: string[] | null
           default_recurrence?: Json | null
