@@ -27,6 +27,8 @@ import { UserSelector } from "@/components/UserSelector";
 import { RecurrenceSelector } from "@/components/ui/recurrence-selector";
 import { MeetingParticipantsManager } from "@/components/meetings/MeetingParticipantsManager";
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
+import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
+import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
 
 interface RecurrenceData {
   enabled: boolean;
@@ -93,6 +95,7 @@ interface MeetingTemplate {
   default_participants?: string[];
   default_recurrence?: any;
   is_default?: boolean;
+  auto_create_count?: number;
 }
 
 interface Profile {
@@ -3104,6 +3107,9 @@ export function MeetingsView() {
                     </CardContent>
                   </Card>
                  )}
+
+              {/* Pending Jour Fixe Notes Preview */}
+              <PendingJourFixeNotes className="mt-4" />
 
               {/* Upcoming Appointments Preview */}
               <Card className="mt-4">
