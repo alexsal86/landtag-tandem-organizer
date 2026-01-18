@@ -5427,6 +5427,7 @@ export type Database = {
           parent_id: string | null
           result_text: string | null
           source_meeting_id: string | null
+          system_type: string | null
           task_id: string | null
           title: string
           updated_at: string
@@ -5450,6 +5451,7 @@ export type Database = {
           parent_id?: string | null
           result_text?: string | null
           source_meeting_id?: string | null
+          system_type?: string | null
           task_id?: string | null
           title: string
           updated_at?: string
@@ -5473,6 +5475,7 @@ export type Database = {
           parent_id?: string | null
           result_text?: string | null
           source_meeting_id?: string | null
+          system_type?: string | null
           task_id?: string | null
           title?: string
           updated_at?: string
