@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { NewUserForm } from "@/components/NewUserForm";
 import { CreateDemoUsers } from "@/components/CreateDemoUsers";
 import { TenantCollaboration } from "@/components/TenantCollaboration";
@@ -846,63 +847,143 @@ export default function Administration() {
                                   <div 
                                     ref={provided.innerRef} 
                                     {...provided.draggableProps} 
-                                    className={`flex items-center gap-2 p-2 bg-card rounded border ${
+                                    className="space-y-1"
+                                  >
+                                    <div className={`flex items-center gap-2 p-2 bg-card rounded border ${
                                       item.type === 'system' 
                                         ? item.system_type === 'upcoming_appointments' 
                                           ? 'border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20' 
                                           : 'border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20'
                                         : ''
-                                    }`}
-                                  >
-                                    <div {...provided.dragHandleProps} className="cursor-grab">
-                                      <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                    {item.type === 'separator' ? (
-                                      <div className="flex-1 h-px bg-border" />
-                                    ) : item.type === 'system' ? (
-                                      <div className="flex items-center gap-2 flex-1">
-                                        {item.system_type === 'upcoming_appointments' ? (
-                                          <CalendarDays className="h-4 w-4 text-blue-600" />
-                                        ) : (
-                                          <StickyNote className="h-4 w-4 text-amber-600" />
-                                        )}
-                                        <span className="font-medium">{item.title}</span>
-                                        <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                                          Dynamisch
-                                        </span>
+                                    }`}>
+                                      <div {...provided.dragHandleProps} className="cursor-grab">
+                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
                                       </div>
-                                    ) : (
-                                      <>
-                                        {editingTemplate?.id === index.toString() && editingTemplate.field === 'title' ? (
-                                          <>
-                                            <Input
-                                              value={editingTemplate.value}
-                                              onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })}
-                                              className="flex-1"
-                                            />
-                                            <Button size="sm" onClick={() => {
-                                              updateTemplateItem(index, 'title', editingTemplate.value);
-                                              setEditingTemplate(null);
-                                            }}>
-                                              <Check className="h-3 w-3" />
+                                      {item.type === 'separator' ? (
+                                        <div className="flex-1 h-px bg-border" />
+                                      ) : item.type === 'system' ? (
+                                        <div className="flex items-center gap-2 flex-1">
+                                          {item.system_type === 'upcoming_appointments' ? (
+                                            <CalendarDays className="h-4 w-4 text-blue-600" />
+                                          ) : (
+                                            <StickyNote className="h-4 w-4 text-amber-600" />
+                                          )}
+                                          <span className="font-medium">{item.title}</span>
+                                          <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                            Dynamisch
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          {editingTemplate?.id === index.toString() && editingTemplate.field === 'title' ? (
+                                            <>
+                                              <Input
+                                                value={editingTemplate.value}
+                                                onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })}
+                                                className="flex-1"
+                                              />
+                                              <Button size="sm" onClick={() => {
+                                                updateTemplateItem(index, 'title', editingTemplate.value);
+                                                setEditingTemplate(null);
+                                              }}>
+                                                <Check className="h-3 w-3" />
+                                              </Button>
+                                              <Button size="sm" variant="outline" onClick={() => setEditingTemplate(null)}>
+                                                <X className="h-3 w-3" />
+                                              </Button>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <span className="flex-1">{item.title}</span>
+                                              <Button size="sm" variant="outline" onClick={() => setEditingTemplate({ id: index.toString(), field: 'title', value: item.title })}>
+                                                <Edit className="h-3 w-3" />
+                                              </Button>
+                                            </>
+                                          )}
+                                        </>
+                                      )}
+                                      {/* Add child buttons for regular items */}
+                                      {item.type !== 'separator' && item.type !== 'system' && (
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <Button size="sm" variant="ghost">
+                                              <Plus className="h-3 w-3" />
                                             </Button>
-                                            <Button size="sm" variant="outline" onClick={() => setEditingTemplate(null)}>
-                                              <X className="h-3 w-3" />
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-56">
+                                            <div className="space-y-2">
+                                              <p className="text-sm font-medium mb-2">Unterpunkt hinzufügen</p>
+                                              <Button 
+                                                variant="outline" 
+                                                className="w-full justify-start border-blue-200 text-blue-700"
+                                                onClick={() => addSystemTemplateItem('upcoming_appointments', index)}
+                                              >
+                                                <CalendarDays className="h-4 w-4 mr-2" />
+                                                Kommende Termine
+                                              </Button>
+                                              <Button 
+                                                variant="outline" 
+                                                className="w-full justify-start border-amber-200 text-amber-700"
+                                                onClick={() => addSystemTemplateItem('quick_notes', index)}
+                                              >
+                                                <StickyNote className="h-4 w-4 mr-2" />
+                                                Meine Notizen
+                                              </Button>
+                                            </div>
+                                          </PopoverContent>
+                                        </Popover>
+                                      )}
+                                      <Button size="sm" variant="destructive" onClick={() => deleteTemplateItem(index)}>
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                    
+                                    {/* Display children if any */}
+                                    {item.children && item.children.length > 0 && (
+                                      <div className="ml-8 space-y-1">
+                                        {item.children.map((child: any, childIndex: number) => (
+                                          <div 
+                                            key={childIndex}
+                                            className={`flex items-center gap-2 p-2 bg-muted/50 rounded border-l-2 ${
+                                              child.type === 'system' || child.system_type
+                                                ? child.system_type === 'upcoming_appointments' 
+                                                  ? 'border-l-blue-500 bg-blue-50/30 dark:bg-blue-950/10' 
+                                                  : 'border-l-amber-500 bg-amber-50/30 dark:bg-amber-950/10'
+                                                : 'border-l-muted-foreground/30'
+                                            }`}
+                                          >
+                                            {child.system_type ? (
+                                              <div className="flex items-center gap-2 flex-1">
+                                                {child.system_type === 'upcoming_appointments' ? (
+                                                  <CalendarDays className="h-3 w-3 text-blue-600" />
+                                                ) : (
+                                                  <StickyNote className="h-3 w-3 text-amber-600" />
+                                                )}
+                                                <span className="text-sm">{child.title}</span>
+                                                <span className="text-xs px-1 py-0.5 rounded bg-muted text-muted-foreground">
+                                                  Dynamisch
+                                                </span>
+                                              </div>
+                                            ) : (
+                                              <span className="text-sm flex-1">{child.title}</span>
+                                            )}
+                                            <Button 
+                                              size="sm" 
+                                              variant="ghost" 
+                                              className="h-6 w-6 p-0 text-destructive"
+                                              onClick={() => {
+                                                const newItems = [...templateItems];
+                                                newItems[index].children = newItems[index].children.filter((_: any, i: number) => i !== childIndex);
+                                                setTemplateItems(newItems);
+                                                saveTemplateItems(newItems);
+                                              }}
+                                            >
+                                              <Trash2 className="h-3 w-3" />
                                             </Button>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <span className="flex-1">{item.title}</span>
-                                            <Button size="sm" variant="outline" onClick={() => setEditingTemplate({ id: index.toString(), field: 'title', value: item.title })}>
-                                              <Edit className="h-3 w-3" />
-                                            </Button>
-                                          </>
-                                        )}
-                                      </>
+                                          </div>
+                                        ))}
+                                      </div>
                                     )}
-                                    <Button size="sm" variant="destructive" onClick={() => deleteTemplateItem(index)}>
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
                                   </div>
                                 )}
                               </Draggable>

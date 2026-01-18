@@ -69,6 +69,7 @@ interface AgendaItem {
   original_meeting_date?: string | null;
   original_meeting_title?: string | null;
   carryover_notes?: string | null;
+  system_type?: string | null;
   // lokale Hilfskeys für Hierarchie vor dem Speichern
   localKey?: string;
   parentLocalKey?: string;
@@ -669,9 +670,119 @@ export function MeetingsView() {
         console.error('Error processing pending notes:', pendingNotesError);
       }
       
+      // Auto-create future recurring meetings if enabled
+      if (newMeetingRecurrence.enabled && newMeeting.template_id) {
+        try {
+          // Get template's auto_create_count
+          const template = meetingTemplates.find(t => t.id === newMeeting.template_id);
+          const autoCreateCount = template?.auto_create_count || 3;
+          
+          // Count existing future meetings for this template
+          const { count: existingCount } = await supabase
+            .from('meetings')
+            .select('id', { count: 'exact', head: true })
+            .eq('template_id', newMeeting.template_id)
+            .eq('status', 'planned')
+            .gte('meeting_date', format(new Date(), 'yyyy-MM-dd'));
+          
+          const toCreate = autoCreateCount - (existingCount || 1);
+          
+          if (toCreate > 0) {
+            console.log(`📅 Creating ${toCreate} future recurring meetings`);
+            
+            // Calculate next meeting dates based on recurrence
+            const futureDates: Date[] = [];
+            let currentDate = new Date(newMeeting.meeting_date);
+            
+            for (let i = 0; i < toCreate; i++) {
+              // Calculate next occurrence based on frequency
+              switch (newMeetingRecurrence.frequency) {
+                case 'daily':
+                  currentDate = new Date(currentDate);
+                  currentDate.setDate(currentDate.getDate() + newMeetingRecurrence.interval);
+                  break;
+                case 'weekly':
+                  currentDate = new Date(currentDate);
+                  currentDate.setDate(currentDate.getDate() + (7 * newMeetingRecurrence.interval));
+                  break;
+                case 'monthly':
+                  currentDate = new Date(currentDate);
+                  currentDate.setMonth(currentDate.getMonth() + newMeetingRecurrence.interval);
+                  break;
+                case 'yearly':
+                  currentDate = new Date(currentDate);
+                  currentDate.setFullYear(currentDate.getFullYear() + newMeetingRecurrence.interval);
+                  break;
+              }
+              futureDates.push(new Date(currentDate));
+            }
+            
+            // Create future meetings
+            for (const futureDate of futureDates) {
+              const futureMeetingData: any = {
+                title: newMeeting.title,
+                description: newMeeting.description || null,
+                meeting_date: format(futureDate, 'yyyy-MM-dd'),
+                location: newMeeting.location || null,
+                status: 'planned',
+                user_id: user.id,
+                tenant_id: currentTenant?.id,
+                template_id: newMeeting.template_id,
+                recurrence_rule: newMeetingRecurrence as any
+              };
+              
+              const { data: futureMeeting, error: futureError } = await supabase
+                .from('meetings')
+                .insert([futureMeetingData])
+                .select()
+                .single();
+              
+              if (futureError) {
+                console.error('Error creating future meeting:', futureError);
+              } else {
+                console.log(`✅ Created future meeting for ${format(futureDate, 'dd.MM.yyyy')}`);
+                
+                // Add participants to future meetings too
+                if (newMeetingParticipants.length > 0 && futureMeeting?.id) {
+                  const participantInserts = newMeetingParticipants.map(p => ({
+                    meeting_id: futureMeeting.id,
+                    user_id: p.userId,
+                    role: p.role,
+                    status: 'pending'
+                  }));
+                  
+                  await supabase
+                    .from('meeting_participants')
+                    .insert(participantInserts);
+                }
+              }
+            }
+            
+            toast({
+              title: "Wiederkehrende Meetings erstellt",
+              description: `${toCreate} zukünftige Meeting(s) wurden automatisch erstellt.`,
+            });
+          }
+        } catch (recurringError) {
+          console.error('Error creating recurring meetings:', recurringError);
+        }
+      }
+      
       // Wait a moment for the trigger to complete, then load the items
       setTimeout(async () => {
         await loadAgendaItems(data.id);
+        // Reload all meetings to show the newly created ones
+        if (currentTenant) {
+          const { data: allMeetings } = await supabase
+            .from('meetings')
+            .select('*')
+            .eq('tenant_id', currentTenant.id)
+            .order('meeting_date', { ascending: false });
+          
+          if (allMeetings) {
+            setMeetings(allMeetings.map(m => ({ ...m, meeting_date: new Date(m.meeting_date) })));
+          }
+        }
       }, 500);
       
       setIsNewMeetingOpen(false);
@@ -1847,19 +1958,45 @@ export function MeetingsView() {
 
   const deleteMeeting = async (meetingId: string) => {
     try {
-      // Delete agenda items first
+      // 1. Get all agenda item IDs for this meeting first
+      const { data: agendaItemIds } = await supabase
+        .from('meeting_agenda_items')
+        .select('id')
+        .eq('meeting_id', meetingId);
+
+      // 2. Delete agenda documents if there are agenda items
+      if (agendaItemIds && agendaItemIds.length > 0) {
+        await supabase
+          .from('meeting_agenda_documents')
+          .delete()
+          .in('meeting_agenda_item_id', agendaItemIds.map(i => i.id));
+      }
+
+      // 3. Delete agenda items
       await supabase
         .from('meeting_agenda_items')
         .delete()
         .eq('meeting_id', meetingId);
 
-      // Delete corresponding appointment
+      // 4. Delete meeting participants
+      await supabase
+        .from('meeting_participants')
+        .delete()
+        .eq('meeting_id', meetingId);
+
+      // 5. Unlink quick notes (don't delete, just remove meeting reference)
+      await supabase
+        .from('quick_notes')
+        .update({ meeting_id: null })
+        .eq('meeting_id', meetingId);
+
+      // 6. Delete corresponding appointment
       await supabase
         .from('appointments')
         .delete()
         .eq('meeting_id', meetingId);
 
-      // Delete meeting
+      // 7. Delete meeting
       const { error } = await supabase
         .from('meetings')
         .delete()
@@ -1868,11 +2005,17 @@ export function MeetingsView() {
       if (error) throw error;
 
       // Update local state
-      setMeetings(meetings.filter(m => m.id !== meetingId));
+      setMeetings(prev => prev.filter(m => m.id !== meetingId));
       
       if (selectedMeeting?.id === meetingId) {
         setSelectedMeeting(null);
         setAgendaItems([]);
+      }
+      
+      if (activeMeetingId === meetingId) {
+        setActiveMeeting(null);
+        setActiveMeetingId(null);
+        setLinkedQuickNotes([]);
       }
 
       toast({
@@ -1880,6 +2023,7 @@ export function MeetingsView() {
         description: "Das Meeting wurde erfolgreich gelöscht.",
       });
     } catch (error) {
+      console.error('Delete meeting error:', error);
       toast({
         title: "Fehler",
         description: "Das Meeting konnte nicht gelöscht werden.",
@@ -2411,8 +2555,30 @@ export function MeetingsView() {
                         <p className="text-muted-foreground mb-3 ml-12">{item.description}</p>
                       )}
 
-                      {/* Show upcoming appointments for "Aktuelles aus dem Landtag" */}
-                      {item.title.toLowerCase().includes('aktuelles aus dem landtag') && (
+                      {/* Show system content based on system_type */}
+                      {item.system_type === 'upcoming_appointments' && (
+                        <div className="ml-12 mb-4">
+                          <SystemAgendaItem 
+                            systemType="upcoming_appointments" 
+                            meetingDate={activeMeeting.meeting_date}
+                            isEmbedded={true}
+                          />
+                        </div>
+                      )}
+                      
+                      {item.system_type === 'quick_notes' && (
+                        <div className="ml-12 mb-4">
+                          <SystemAgendaItem 
+                            systemType="quick_notes"
+                            linkedQuickNotes={linkedQuickNotes}
+                            onUpdateNoteResult={updateQuickNoteResult}
+                            isEmbedded={true}
+                          />
+                        </div>
+                      )}
+
+                      {/* Fallback: Show upcoming appointments for "Aktuelles aus dem Landtag" if no system_type */}
+                      {!item.system_type && item.title.toLowerCase().includes('aktuelles aus dem landtag') && (
                         <div className="ml-12 mb-4">
                           <UpcomingAppointmentsSection meetingDate={activeMeeting.meeting_date} />
                         </div>
