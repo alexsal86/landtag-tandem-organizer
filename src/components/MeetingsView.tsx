@@ -1362,14 +1362,19 @@ export function MeetingsView() {
       // Insert parents first and capture returned ids in same order
       const parentInserts = parents.map((p) => ({
         meeting_id: selectedMeeting.id,
-        title: p.title,
-        description: p.description,
-        assigned_to: (p.assigned_to && Array.isArray(p.assigned_to) && p.assigned_to.length > 0) ? p.assigned_to : null,
+        title: p.title || '',
+        description: p.description || null,
+        assigned_to: Array.isArray(p.assigned_to) && p.assigned_to.length > 0 
+          ? p.assigned_to.filter(Boolean) 
+          : null,
         notes: p.notes || null,
-        is_completed: p.is_completed,
-        is_recurring: p.is_recurring,
+        is_completed: Boolean(p.is_completed),
+        is_recurring: Boolean(p.is_recurring),
         task_id: p.task_id || null,
         order_index: p.order_index,
+        system_type: p.system_type || null,
+        is_optional: Boolean(p.is_optional),
+        is_visible: p.is_visible !== false,
       }));
 
       let parentIdByLocalKey: Record<string, string> = {};
@@ -1389,15 +1394,20 @@ export function MeetingsView() {
       if (children.length > 0) {
         const childInserts = children.map((c) => ({
           meeting_id: selectedMeeting.id,
-          title: c.title,
-          description: c.description,
-          assigned_to: (c.assigned_to && Array.isArray(c.assigned_to) && c.assigned_to.length > 0) ? c.assigned_to : null,
+          title: c.title || '',
+          description: c.description || null,
+          assigned_to: Array.isArray(c.assigned_to) && c.assigned_to.length > 0 
+            ? c.assigned_to.filter(Boolean) 
+            : null,
           notes: c.notes || null,
-          is_completed: c.is_completed,
-          is_recurring: c.is_recurring,
+          is_completed: Boolean(c.is_completed),
+          is_recurring: Boolean(c.is_recurring),
           task_id: c.task_id || null,
           order_index: c.order_index,
           parent_id: c.parentLocalKey ? parentIdByLocalKey[c.parentLocalKey] || null : null,
+          system_type: c.system_type || null,
+          is_optional: Boolean(c.is_optional),
+          is_visible: c.is_visible !== false,
         }));
         const { error: childErr } = await supabase.from('meeting_agenda_items').insert(childInserts);
         if (childErr) throw childErr;
@@ -1418,10 +1428,19 @@ export function MeetingsView() {
       } else {
         console.log('❌ NOT reloading agenda - not an active meeting or conditions not met');
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error saving agenda:', error);
+      
+      let errorMessage = 'Die Agenda konnte nicht gespeichert werden.';
+      if (error.message?.includes('invalid input syntax for type json')) {
+        errorMessage = 'Ungültiges Datenformat. Bitte prüfen Sie die Eingaben.';
+      } else if (error.message?.includes('Failed to fetch')) {
+        errorMessage = 'Netzwerkfehler. Die Änderungen werden beim nächsten Laden synchronisiert.';
+      }
+      
       toast({
         title: 'Fehler beim Speichern',
-        description: 'Die Agenda konnte nicht gespeichert werden.',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
