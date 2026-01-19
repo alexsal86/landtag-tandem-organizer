@@ -46,6 +46,7 @@ import { AnnualTasksView } from "@/components/AnnualTasksView";
 import { AdminSidebar } from "@/components/administration/AdminSidebar";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 // Roles in descending hierarchy
 const ROLE_OPTIONS = [
@@ -296,6 +297,39 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
   };
 
   // Template functions
+  const createNewMeetingTemplate = async () => {
+    if (!user || !currentTenant) return;
+    
+    try {
+      const newName = `Neues Template ${meetingTemplates.length + 1}`;
+      const { data, error } = await supabase
+        .from('meeting_templates')
+        .insert({
+          name: newName,
+          description: '',
+          template_items: [],
+          default_participants: [],
+          default_recurrence: null,
+          auto_create_count: 3,
+          is_default: false,
+          user_id: user.id
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      setMeetingTemplates([...meetingTemplates, data]);
+      loadTemplate(data);
+      setEditingTemplateName({ id: data.id, value: data.name });
+      
+      toast({ title: "Template erstellt", description: "Neues Meeting-Template wurde angelegt." });
+    } catch (error: any) {
+      console.error('Error creating template:', error);
+      toast({ title: "Fehler", description: "Template konnte nicht erstellt werden.", variant: "destructive" });
+    }
+  };
+
   const loadTemplate = (template: any) => {
     setSelectedTemplate(template);
     const templateItems = Array.isArray(template.template_items) ? template.template_items : [];
@@ -967,17 +1001,29 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                         <Select 
                           value={selectedTemplate?.id || ""}
                           onValueChange={(value) => {
-                            const template = meetingTemplates.find(t => t.id === value);
-                            if (template) loadTemplate(template);
+                            if (value === "__new__") {
+                              createNewMeetingTemplate();
+                            } else {
+                              const template = meetingTemplates.find(t => t.id === value);
+                              if (template) loadTemplate(template);
+                            }
                           }}
                         >
                           <SelectTrigger className="w-full">
                             <SelectValue placeholder="Template auswählen" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="__new__" className="text-primary font-medium">
+                              <span className="flex items-center gap-2">
+                                <Plus className="h-4 w-4" />
+                                Neues Template erstellen
+                              </span>
+                            </SelectItem>
+                            {meetingTemplates.length > 0 && <Separator className="my-1" />}
                             {meetingTemplates.map(template => (
                               <SelectItem key={template.id} value={template.id}>
                                 {template.name}
+                                {template.is_default && " ⭐"}
                               </SelectItem>
                             ))}
                           </SelectContent>
