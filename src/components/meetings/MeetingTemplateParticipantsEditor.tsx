@@ -24,6 +24,7 @@ interface MeetingTemplateParticipantsEditorProps {
   defaultParticipants: string[];
   defaultRecurrence: RecurrenceData | null;
   autoCreateCount?: number;
+  compact?: boolean;
   onSave: (participants: string[], recurrence: RecurrenceData | null, autoCreateCount?: number) => void;
 }
 
@@ -38,6 +39,7 @@ export function MeetingTemplateParticipantsEditor({
   defaultParticipants,
   defaultRecurrence,
   autoCreateCount: initialAutoCreateCount = 3,
+  compact = false,
   onSave
 }: MeetingTemplateParticipantsEditorProps) {
   const { currentTenant } = useTenant();
@@ -124,6 +126,98 @@ export function MeetingTemplateParticipantsEditor({
   // Use current date as base for recurrence selector
   const today = new Date().toISOString().split('T')[0];
 
+  // Compact mode for sidebar display
+  if (compact) {
+    return (
+      <div className="space-y-4">
+        {/* Standard-Teilnehmer - Compact */}
+        <div>
+          <label className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+            <Users className="h-3 w-3" />
+            Standard-Teilnehmer
+          </label>
+          <UserSelector
+            onSelect={handleAddUser}
+            placeholder="Teilnehmer hinzufügen..."
+            clearAfterSelect
+            excludeUserIds={participants}
+          />
+          {participantUsers.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {participantUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center gap-2 p-1.5 rounded-md border bg-muted/50 text-sm"
+                >
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={user.avatar_url} />
+                    <AvatarFallback className="text-[10px]">
+                      {getInitials(user.display_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="flex-1 truncate text-xs">{user.display_name}</span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-5 w-5"
+                    onClick={() => handleRemoveParticipant(user.id)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Standard-Wiederholung - Compact */}
+        <div className="border-t pt-4">
+          <RecurrenceSelector
+            value={recurrence}
+            onChange={handleRecurrenceChange}
+            startDate={today}
+          />
+        </div>
+
+        {/* Anzahl offener Meetings - Compact */}
+        {recurrence.enabled && (
+          <div className="border-t pt-4">
+            <label className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+              <CalendarRange className="h-3 w-3" />
+              Offene Meetings
+            </label>
+            <div className="flex items-center gap-2">
+              <Slider
+                value={[autoCreateCount]}
+                onValueChange={handleAutoCreateCountChange}
+                min={1}
+                max={10}
+                step={1}
+                className="flex-1"
+              />
+              <Input
+                type="number"
+                value={autoCreateCount}
+                onChange={(e) => {
+                  const val = Math.min(10, Math.max(1, parseInt(e.target.value) || 1));
+                  setAutoCreateCount(val);
+                  onSave(participants, recurrence.enabled ? recurrence : null, val);
+                }}
+                min={1}
+                max={10}
+                className="w-12 h-7 text-center text-xs"
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              {autoCreateCount} Meetings im Voraus
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Full mode (default)
   return (
     <div className="space-y-6">
       {/* Standard-Teilnehmer */}

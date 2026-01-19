@@ -97,7 +97,8 @@ export default function Administration() {
   const [newPlanningTemplateItem, setNewPlanningTemplateItem] = useState<{ title: string; parentIndex?: number } | null>(null);
   const [editingTemplateName, setEditingTemplateName] = useState<{ id: string; value: string } | null>(null);
   const [editingPlanningTemplateName, setEditingPlanningTemplateName] = useState<{ id: string; value: string } | null>(null);
-  const [editingChild, setEditingChild] = useState<{ parentIndex: number; childIndex: number; value: string } | null>(null);
+const [editingChild, setEditingChild] = useState<{ parentIndex: number; childIndex: number; value: string } | null>(null);
+  const [deletingChild, setDeletingChild] = useState<{ parentIndex: number; childIndex: number; title: string } | null>(null);
   const [childPopoverOpen, setChildPopoverOpen] = useState<number | null>(null);
 
   const currentUserRole = useMemo(() => {
@@ -371,8 +372,8 @@ export default function Administration() {
     }
   };
 
-  // Delete child item permanently
-  const deleteChildItem = (parentIndex: number, childIndex: number) => {
+  // Delete child item permanently (after confirmation)
+  const confirmDeleteChild = (parentIndex: number, childIndex: number) => {
     const newItems = [...templateItems];
     newItems[parentIndex].children = newItems[parentIndex].children.filter((_: any, i: number) => i !== childIndex);
     if (newItems[parentIndex].children.length === 0) {
@@ -380,6 +381,7 @@ export default function Administration() {
     }
     setTemplateItems(newItems);
     saveTemplateItems(newItems);
+    setDeletingChild(null);
   };
 
   // Make child available (move to pool)
@@ -922,69 +924,151 @@ export default function Administration() {
           );
         case "meetings":
           return (
-            <Card>
-              <CardHeader>
-                <CardTitle>Meeting Templates</CardTitle>
-                <div className="flex gap-2">
-                  <Select onValueChange={(value) => {
-                    const template = meetingTemplates.find(t => t.id === value);
-                    if (template) loadTemplate(template);
-                  }}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Template auswählen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {meetingTemplates.map(template => (
-                        <SelectItem key={template.id} value={template.id}>
-                          {template.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardHeader>
-              {selectedTemplate && (
-                <>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-                      {editingTemplateName?.id === selectedTemplate.id ? (
+            <>
+              {/* Delete confirmation dialog for child items */}
+              <AlertDialog open={!!deletingChild} onOpenChange={(open) => !open && setDeletingChild(null)}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Unterpunkt löschen?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Möchten Sie den Unterpunkt "{deletingChild?.title}" wirklich permanent löschen?
+                      Dieser Vorgang kann nicht rückgängig gemacht werden.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                    <AlertDialogAction 
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => {
+                        if (deletingChild) {
+                          confirmDeleteChild(deletingChild.parentIndex, deletingChild.childIndex);
+                        }
+                      }}
+                    >
+                      Löschen
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle>Meeting Templates</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Side-by-side layout: Sidebar | Agenda */}
+                  <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+                    
+                    {/* LEFT SIDEBAR */}
+                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                      {/* Template Selection */}
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-2 block">Template auswählen</label>
+                        <Select 
+                          value={selectedTemplate?.id || ""}
+                          onValueChange={(value) => {
+                            const template = meetingTemplates.find(t => t.id === value);
+                            if (template) loadTemplate(template);
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Template auswählen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {meetingTemplates.map(template => (
+                              <SelectItem key={template.id} value={template.id}>
+                                {template.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {selectedTemplate && (
                         <>
-                          <Input
-                            value={editingTemplateName.value}
-                            onChange={(e) => setEditingTemplateName({ ...editingTemplateName, value: e.target.value })}
-                            className="flex-1"
-                          />
-                          <Button size="sm" onClick={async () => {
-                            try {
-                              const { error } = await supabase
-                                .from('meeting_templates')
-                                .update({ name: editingTemplateName.value })
-                                .eq('id', selectedTemplate.id);
-                              if (error) throw error;
-                              await loadData();
-                              setEditingTemplateName(null);
-                              toast({ title: "Gespeichert", description: "Template-Name aktualisiert." });
-                            } catch (error: any) {
-                              toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
-                            }
-                          }}>
-                            <Check className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => setEditingTemplateName(null)}>
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="font-medium flex-1">{selectedTemplate.name}</span>
-                          <Button size="sm" variant="outline" onClick={() => setEditingTemplateName({ id: selectedTemplate.id, value: selectedTemplate.name })}>
-                            <Edit className="h-3 w-3" />
-                          </Button>
+                          <div className="border-t pt-4">
+                            <label className="text-xs text-muted-foreground mb-2 block">Template-Name</label>
+                            <div className="flex items-center gap-2">
+                              {editingTemplateName?.id === selectedTemplate.id ? (
+                                <>
+                                  <Input
+                                    value={editingTemplateName.value}
+                                    onChange={(e) => setEditingTemplateName({ ...editingTemplateName, value: e.target.value })}
+                                    className="flex-1 h-8 text-sm"
+                                  />
+                                  <Button size="sm" className="h-8 w-8 p-0" onClick={async () => {
+                                    try {
+                                      const { error } = await supabase
+                                        .from('meeting_templates')
+                                        .update({ name: editingTemplateName.value })
+                                        .eq('id', selectedTemplate.id);
+                                      if (error) throw error;
+                                      await loadData();
+                                      setEditingTemplateName(null);
+                                      toast({ title: "Gespeichert", description: "Template-Name aktualisiert." });
+                                    } catch (error: any) {
+                                      toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
+                                    }
+                                  }}>
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => setEditingTemplateName(null)}>
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-sm font-medium flex-1 truncate">{selectedTemplate.name}</span>
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditingTemplateName({ id: selectedTemplate.id, value: selectedTemplate.name })}>
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Participants & Recurrence in sidebar */}
+                          <div className="border-t pt-4">
+                            <MeetingTemplateParticipantsEditor
+                              templateId={selectedTemplate.id}
+                              defaultParticipants={selectedTemplate.default_participants || []}
+                              defaultRecurrence={selectedTemplate.default_recurrence || null}
+                              autoCreateCount={selectedTemplate.auto_create_count || 3}
+                              compact
+                              onSave={async (participants, recurrence, autoCreateCount) => {
+                                try {
+                                  await supabase
+                                    .from('meeting_templates')
+                                    .update({
+                                      default_participants: participants,
+                                      default_recurrence: recurrence as any,
+                                      auto_create_count: autoCreateCount || 3
+                                    })
+                                    .eq('id', selectedTemplate.id);
+                                  
+                                  setSelectedTemplate({
+                                    ...selectedTemplate,
+                                    default_participants: participants,
+                                    default_recurrence: recurrence,
+                                    auto_create_count: autoCreateCount
+                                  });
+                                } catch (error) {
+                                  toast({ title: "Fehler", description: "Speichern fehlgeschlagen.", variant: "destructive" });
+                                }
+                              }}
+                            />
+                          </div>
                         </>
                       )}
                     </div>
 
-                    <DragDropContext onDragEnd={handleMeetingDragEnd}>
+                    {/* RIGHT SIDE: AGENDA */}
+                    <div className="space-y-4">
+                      {selectedTemplate ? (
+                        <>
+                          <h3 className="text-lg font-semibold">Tagesordnung</h3>
+                          
+                          <DragDropContext onDragEnd={handleMeetingDragEnd}>
                       <Droppable droppableId="template-items">
                         {(provided) => (
                           <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
@@ -1323,12 +1407,12 @@ export default function Administration() {
                                                 <CornerUpLeft className="h-3 w-3" />
                                               </Button>
 
-                                              {/* Delete button */}
+                                              {/* Delete button - opens confirmation dialog */}
                                               <Button 
                                                 size="sm" 
                                                 variant="ghost" 
                                                 className="h-5 w-5 p-0 text-destructive shrink-0"
-                                                onClick={() => deleteChildItem(index, childIndex)}
+                                                onClick={() => setDeletingChild({ parentIndex: index, childIndex, title: child.title })}
                                                 title="Permanent löschen"
                                               >
                                                 <Trash2 className="h-3 w-3" />
@@ -1348,86 +1432,67 @@ export default function Administration() {
                       </Droppable>
                     </DragDropContext>
 
-                    <div className="flex flex-wrap gap-2">
-                      {newTemplateItem ? (
-                        <>
-                          <Input
-                            value={newTemplateItem.title}
-                            onChange={(e) => setNewTemplateItem({ ...newTemplateItem, title: e.target.value })}
-                            placeholder="Neuer Punkt..."
-                            className="flex-1"
-                          />
-                          <Button size="sm" onClick={() => addTemplateItem(newTemplateItem.title)}>
-                            <Save className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => setNewTemplateItem(null)}>
-                            <X className="h-3 w-3" />
-                          </Button>
+                          <div className="flex flex-wrap gap-2 pt-4 border-t">
+                            {newTemplateItem ? (
+                              <>
+                                <Input
+                                  value={newTemplateItem.title}
+                                  onChange={(e) => setNewTemplateItem({ ...newTemplateItem, title: e.target.value })}
+                                  placeholder="Neuer Punkt..."
+                                  className="flex-1"
+                                />
+                                <Button size="sm" onClick={() => addTemplateItem(newTemplateItem.title)}>
+                                  <Save className="h-3 w-3" />
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setNewTemplateItem(null)}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button variant="outline" size="sm" onClick={() => setNewTemplateItem({ title: '' })}>
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Punkt hinzufügen
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={addSeparator}>
+                                  <Minus className="h-4 w-4 mr-2" />
+                                  Trenner
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950"
+                                  onClick={() => addSystemTemplateItem('upcoming_appointments')}
+                                >
+                                  <CalendarDays className="h-4 w-4 mr-2" />
+                                  Termine
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950"
+                                  onClick={() => addSystemTemplateItem('quick_notes')}
+                                >
+                                  <StickyNote className="h-4 w-4 mr-2" />
+                                  Notizen
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </>
                       ) : (
-                        <>
-                          <Button variant="outline" onClick={() => setNewTemplateItem({ title: '' })}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Punkt hinzufügen
-                          </Button>
-                          <Button variant="outline" onClick={addSeparator}>
-                            <Minus className="h-4 w-4 mr-2" />
-                            Trenner
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            className="border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950"
-                            onClick={() => addSystemTemplateItem('upcoming_appointments')}
-                          >
-                            <CalendarDays className="h-4 w-4 mr-2" />
-                            Kommende Termine
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            className="border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950"
-                            onClick={() => addSystemTemplateItem('quick_notes')}
-                          >
-                            <StickyNote className="h-4 w-4 mr-2" />
-                            Meine Notizen
-                          </Button>
-                        </>
+                        <div className="flex items-center justify-center h-64 text-muted-foreground">
+                          <div className="text-center">
+                            <CalendarDays className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>Wählen Sie links ein Template aus</p>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </CardContent>
-                  <CardContent className="border-t pt-4">
-                    <MeetingTemplateParticipantsEditor
-                      templateId={selectedTemplate.id}
-                      defaultParticipants={selectedTemplate.default_participants || []}
-                      defaultRecurrence={selectedTemplate.default_recurrence || null}
-                      autoCreateCount={selectedTemplate.auto_create_count || 3}
-                      onSave={async (participants, recurrence, autoCreateCount) => {
-                        try {
-                          await supabase
-                            .from('meeting_templates')
-                            .update({
-                              default_participants: participants,
-                              default_recurrence: recurrence as any,
-                              auto_create_count: autoCreateCount || 3
-                            })
-                            .eq('id', selectedTemplate.id);
-                          
-                          setSelectedTemplate({
-                            ...selectedTemplate,
-                            default_participants: participants,
-                            default_recurrence: recurrence,
-                            auto_create_count: autoCreateCount
-                          });
-                          
-                          toast({ title: "Gespeichert", description: "Template-Einstellungen aktualisiert." });
-                        } catch (error) {
-                          toast({ title: "Fehler", description: "Speichern fehlgeschlagen.", variant: "destructive" });
-                        }
-                      }}
-                    />
-                  </CardContent>
-                </>
-              )}
-            </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
           );
         case "plannings":
           return (
