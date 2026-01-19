@@ -11,6 +11,7 @@ interface SystemAgendaItemProps {
   onUpdateNoteResult?: (noteId: string, result: string) => void;
   className?: string;
   isEmbedded?: boolean;
+  defaultCollapsed?: boolean;
 }
 
 export function SystemAgendaItem({
@@ -19,7 +20,8 @@ export function SystemAgendaItem({
   linkedQuickNotes = [],
   onUpdateNoteResult,
   className,
-  isEmbedded = false
+  isEmbedded = false,
+  defaultCollapsed = false
 }: SystemAgendaItemProps) {
   if (systemType === 'upcoming_appointments') {
     return (
@@ -39,6 +41,7 @@ export function SystemAgendaItem({
         <UpcomingAppointmentsSection 
           meetingDate={meetingDate} 
           className={isEmbedded ? "" : "border-0 shadow-none"}
+          defaultCollapsed={defaultCollapsed}
         />
       </div>
     );
