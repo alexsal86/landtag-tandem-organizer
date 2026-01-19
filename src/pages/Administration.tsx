@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote, MoveVertical, ArrowUp, ArrowDown } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { NewUserForm } from "@/components/NewUserForm";
 import { CreateDemoUsers } from "@/components/CreateDemoUsers";
@@ -369,9 +370,13 @@ export default function Administration() {
   const addSystemTemplateItem = (systemType: 'upcoming_appointments' | 'quick_notes', parentIndex?: number) => {
     if (!selectedTemplate) return;
     
-    // Check if this system type already exists
-    const existingSystemItem = templateItems.find(item => item.system_type === systemType);
-    if (existingSystemItem) {
+    // Check if this system type already exists in main items OR in children
+    const existsInMain = templateItems.find(item => item.system_type === systemType);
+    const existsInChildren = templateItems.some(item => 
+      item.children?.some((child: any) => child.system_type === systemType)
+    );
+    
+    if (existsInMain || existsInChildren) {
       toast({ 
         title: "Bereits vorhanden", 
         description: `"${systemType === 'upcoming_appointments' ? 'Kommende Termine' : 'Meine Notizen'}" ist bereits in der Agenda.`,
@@ -405,6 +410,70 @@ export default function Administration() {
     
     setTemplateItems(newItems);
     saveTemplateItems(newItems);
+  };
+
+  // Move system item between main level and child level
+  const moveSystemItem = (
+    fromMain: boolean,
+    fromIndex: number,
+    fromChildIndex: number | null,
+    toParentIndex: number | null // null = move to main level
+  ) => {
+    const newItems = [...templateItems];
+    let movedItem: any;
+
+    // Remove from current position
+    if (fromMain && fromChildIndex === null) {
+      // Remove from main level
+      [movedItem] = newItems.splice(fromIndex, 1);
+    } else if (!fromMain && fromChildIndex !== null) {
+      // Remove from children
+      movedItem = newItems[fromIndex].children.splice(fromChildIndex, 1)[0];
+      // Clean up empty children array
+      if (newItems[fromIndex].children.length === 0) {
+        delete newItems[fromIndex].children;
+      }
+    } else {
+      return;
+    }
+
+    // Add to new position
+    if (toParentIndex !== null) {
+      // Add as child
+      if (!newItems[toParentIndex].children) {
+        newItems[toParentIndex].children = [];
+      }
+      movedItem.order_index = newItems[toParentIndex].children.length;
+      newItems[toParentIndex].children.push(movedItem);
+    } else {
+      // Add to main level
+      movedItem.order_index = newItems.length;
+      newItems.push(movedItem);
+    }
+
+    // Re-index all items
+    const reindexedItems = newItems.map((item, idx) => ({
+      ...item,
+      order_index: idx,
+      children: item.children?.map((child: any, childIdx: number) => ({
+        ...child,
+        order_index: childIdx
+      }))
+    }));
+
+    setTemplateItems(reindexedItems);
+    saveTemplateItems(reindexedItems);
+    toast({ title: "Verschoben", description: "Element wurde erfolgreich verschoben." });
+  };
+
+  // Toggle is_optional flag for template children
+  const toggleChildOptional = (parentIndex: number, childIndex: number) => {
+    const newItems = [...templateItems];
+    if (newItems[parentIndex].children && newItems[parentIndex].children[childIndex]) {
+      newItems[parentIndex].children[childIndex].is_optional = !newItems[parentIndex].children[childIndex].is_optional;
+      setTemplateItems(newItems);
+      saveTemplateItems(newItems);
+    }
   };
 
   const addPlanningTemplateItem = (title: string, parentIndex?: number) => {
@@ -872,6 +941,40 @@ export default function Administration() {
                                           <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                                             Dynamisch
                                           </span>
+                                          {/* Move menu for system items on main level */}
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                                                <MoveVertical className="h-3 w-3" />
+                                              </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                              <DropdownMenuSub>
+                                                <DropdownMenuSubTrigger>
+                                                  <ArrowDown className="h-3 w-3 mr-2" />
+                                                  Als Unterpunkt verschieben
+                                                </DropdownMenuSubTrigger>
+                                                <DropdownMenuPortal>
+                                                  <DropdownMenuSubContent>
+                                                    {templateItems
+                                                      .filter((parentItem, parentIdx) => parentIdx !== index && parentItem.type !== 'separator' && parentItem.type !== 'system')
+                                                      .map((parentItem, filteredIdx) => {
+                                                        const originalIdx = templateItems.findIndex(i => i === parentItem);
+                                                        return (
+                                                          <DropdownMenuItem 
+                                                            key={originalIdx}
+                                                            onClick={() => moveSystemItem(true, index, null, originalIdx)}
+                                                          >
+                                                            {parentItem.title}
+                                                          </DropdownMenuItem>
+                                                        );
+                                                      })
+                                                    }
+                                                  </DropdownMenuSubContent>
+                                                </DropdownMenuPortal>
+                                              </DropdownMenuSub>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
                                         </div>
                                       ) : (
                                         <>
@@ -945,6 +1048,8 @@ export default function Administration() {
                                           <div 
                                             key={childIndex}
                                             className={`flex items-center gap-2 p-2 bg-muted/50 rounded border-l-2 ${
+                                              child.is_optional ? 'border-dashed ' : ''
+                                            }${
                                               child.type === 'system' || child.system_type
                                                 ? child.system_type === 'upcoming_appointments' 
                                                   ? 'border-l-blue-500 bg-blue-50/30 dark:bg-blue-950/10' 
@@ -963,9 +1068,66 @@ export default function Administration() {
                                                 <span className="text-xs px-1 py-0.5 rounded bg-muted text-muted-foreground">
                                                   Dynamisch
                                                 </span>
+                                                {/* Move menu for system items in children */}
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <Button size="sm" variant="ghost" className="h-5 w-5 p-0">
+                                                      <MoveVertical className="h-3 w-3" />
+                                                    </Button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => moveSystemItem(false, index, childIndex, null)}>
+                                                      <ArrowUp className="h-3 w-3 mr-2" />
+                                                      Auf Hauptebene verschieben
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuSub>
+                                                      <DropdownMenuSubTrigger>
+                                                        <ArrowDown className="h-3 w-3 mr-2" />
+                                                        Zu anderem Punkt verschieben
+                                                      </DropdownMenuSubTrigger>
+                                                      <DropdownMenuPortal>
+                                                        <DropdownMenuSubContent>
+                                                          {templateItems
+                                                            .filter((parentItem, parentIdx) => parentIdx !== index && parentItem.type !== 'separator' && parentItem.type !== 'system')
+                                                            .map((parentItem) => {
+                                                              const originalIdx = templateItems.findIndex(i => i === parentItem);
+                                                              return (
+                                                                <DropdownMenuItem 
+                                                                  key={originalIdx}
+                                                                  onClick={() => moveSystemItem(false, index, childIndex, originalIdx)}
+                                                                >
+                                                                  {parentItem.title}
+                                                                </DropdownMenuItem>
+                                                              );
+                                                            })
+                                                          }
+                                                        </DropdownMenuSubContent>
+                                                      </DropdownMenuPortal>
+                                                    </DropdownMenuSub>
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
                                               </div>
                                             ) : (
-                                              <span className="text-sm flex-1">{child.title}</span>
+                                              <div className="flex items-center gap-2 flex-1">
+                                                <span className="text-sm">{child.title}</span>
+                                                {child.is_optional && (
+                                                  <span className="text-xs px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                                    Optional
+                                                  </span>
+                                                )}
+                                              </div>
+                                            )}
+                                            {/* Optional toggle for non-system children */}
+                                            {!child.system_type && (
+                                              <Button 
+                                                size="sm" 
+                                                variant={child.is_optional ? "secondary" : "ghost"}
+                                                className="h-6 px-2 text-xs"
+                                                onClick={() => toggleChildOptional(index, childIndex)}
+                                              >
+                                                {child.is_optional ? "Pflicht" : "Optional"}
+                                              </Button>
                                             )}
                                             <Button 
                                               size="sm" 
