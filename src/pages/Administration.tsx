@@ -1013,28 +1013,61 @@ export default function Administration() {
                                               <Plus className="h-3 w-3" />
                                             </Button>
                                           </PopoverTrigger>
-                                          <PopoverContent className="w-56">
-                                            <div className="space-y-2">
-                                              <p className="text-sm font-medium mb-2">Unterpunkt hinzufügen</p>
-                                              <Button 
-                                                variant="outline" 
-                                                className="w-full justify-start border-blue-200 text-blue-700"
-                                                onClick={() => addSystemTemplateItem('upcoming_appointments', index)}
-                                              >
-                                                <CalendarDays className="h-4 w-4 mr-2" />
-                                                Kommende Termine
-                                              </Button>
-                                              <Button 
-                                                variant="outline" 
-                                                className="w-full justify-start border-amber-200 text-amber-700"
-                                                onClick={() => addSystemTemplateItem('quick_notes', index)}
-                                              >
-                                                <StickyNote className="h-4 w-4 mr-2" />
-                                                Meine Notizen
-                                              </Button>
-                                            </div>
-                                          </PopoverContent>
-                                        </Popover>
+                          <PopoverContent className="w-64">
+                            <div className="space-y-3">
+                              <div>
+                                <p className="text-sm font-medium mb-2">Text-Unterpunkt hinzufügen</p>
+                                <div className="flex gap-2">
+                                  <Input 
+                                    placeholder="Neuer Unterpunkt..." 
+                                    className="flex-1 text-sm"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && (e.target as HTMLInputElement).value) {
+                                        addTemplateItem((e.target as HTMLInputElement).value, index);
+                                        (e.target as HTMLInputElement).value = '';
+                                      }
+                                    }}
+                                  />
+                                  <Button 
+                                    size="sm"
+                                    onClick={(e) => {
+                                      const input = (e.target as HTMLElement).closest('.flex')?.querySelector('input') as HTMLInputElement;
+                                      if (input?.value) {
+                                        addTemplateItem(input.value, index);
+                                        input.value = '';
+                                      }
+                                    }}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="border-t pt-2">
+                                <p className="text-xs text-muted-foreground mb-2">Dynamische Inhalte:</p>
+                                <div className="space-y-1">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="w-full justify-start border-blue-200 text-blue-700 h-8"
+                                    onClick={() => addSystemTemplateItem('upcoming_appointments', index)}
+                                  >
+                                    <CalendarDays className="h-3 w-3 mr-2" />
+                                    Kommende Termine
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="w-full justify-start border-amber-200 text-amber-700 h-8"
+                                    onClick={() => addSystemTemplateItem('quick_notes', index)}
+                                  >
+                                    <StickyNote className="h-3 w-3 mr-2" />
+                                    Meine Notizen
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                                       )}
                                       <Button size="sm" variant="destructive" onClick={() => deleteTemplateItem(index)}>
                                         <Trash2 className="h-3 w-3" />
