@@ -23,16 +23,18 @@ interface Appointment {
 interface UpcomingAppointmentsSectionProps {
   meetingDate: Date | string;
   className?: string;
+  defaultCollapsed?: boolean;
 }
 
 export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionProps> = ({
   meetingDate,
-  className = ''
+  className = '',
+  defaultCollapsed = false
 }) => {
   const { currentTenant } = useTenant();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(!defaultCollapsed);
 
   const baseDate = typeof meetingDate === 'string' ? new Date(meetingDate) : meetingDate;
 
