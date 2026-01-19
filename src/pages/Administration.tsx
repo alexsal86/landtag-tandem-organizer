@@ -1056,20 +1056,15 @@ export default function Administration() {
                                           )}
                                         </>
                                       )}
-                                      {/* Add/manage children via Popover for regular items */}
+                                      {/* Add children via Popover - only add options, no existing children list */}
                                       {item.type !== 'separator' && item.type !== 'system' && (
                                         <Popover open={childPopoverOpen === index} onOpenChange={(open) => setChildPopoverOpen(open ? index : null)}>
                                           <PopoverTrigger asChild>
-                                            <Button size="sm" variant="ghost" className="relative">
+                                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
                                               <Plus className="h-3 w-3" />
-                                              {item.children && item.children.length > 0 && (
-                                                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] text-primary-foreground flex items-center justify-center">
-                                                  {item.children.length}
-                                                </span>
-                                              )}
                                             </Button>
                                           </PopoverTrigger>
-                                          <PopoverContent className="w-80">
+                                          <PopoverContent className="w-64">
                                             <div className="space-y-3">
                                               {/* Add new sub-item */}
                                               <div>
@@ -1077,21 +1072,24 @@ export default function Administration() {
                                                 <div className="flex gap-2">
                                                   <Input 
                                                     placeholder="Neuer Unterpunkt..." 
-                                                    className="flex-1 text-sm"
+                                                    className="flex-1 text-sm h-8"
                                                     onKeyDown={(e) => {
                                                       if (e.key === 'Enter' && (e.target as HTMLInputElement).value) {
                                                         addTemplateItem((e.target as HTMLInputElement).value, index);
                                                         (e.target as HTMLInputElement).value = '';
+                                                        setChildPopoverOpen(null);
                                                       }
                                                     }}
                                                   />
                                                   <Button 
                                                     size="sm"
+                                                    className="h-8"
                                                     onClick={(e) => {
                                                       const input = (e.target as HTMLElement).closest('.flex')?.querySelector('input') as HTMLInputElement;
                                                       if (input?.value) {
                                                         addTemplateItem(input.value, index);
                                                         input.value = '';
+                                                        setChildPopoverOpen(null);
                                                       }
                                                     }}
                                                   >
@@ -1110,6 +1108,7 @@ export default function Administration() {
                                                     className="flex-1 justify-start border-blue-200 text-blue-700 h-7 text-xs"
                                                     onClick={() => {
                                                       addSystemTemplateItem('upcoming_appointments', index);
+                                                      setChildPopoverOpen(null);
                                                     }}
                                                   >
                                                     <CalendarDays className="h-3 w-3 mr-1" />
@@ -1121,6 +1120,7 @@ export default function Administration() {
                                                     className="flex-1 justify-start border-amber-200 text-amber-700 h-7 text-xs"
                                                     onClick={() => {
                                                       addSystemTemplateItem('quick_notes', index);
+                                                      setChildPopoverOpen(null);
                                                     }}
                                                   >
                                                     <StickyNote className="h-3 w-3 mr-1" />
@@ -1128,141 +1128,126 @@ export default function Administration() {
                                                   </Button>
                                                 </div>
                                               </div>
-
-                                              {/* Existing children list */}
-                                              {item.children && item.children.length > 0 && (
-                                                <div className="border-t pt-2">
-                                                  <p className="text-xs text-muted-foreground mb-2">Vorhandene Unterpunkte:</p>
-                                                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                                                    {item.children.map((child: any, childIndex: number) => (
-                                                      <div 
-                                                        key={childIndex}
-                                                        className={`flex items-center gap-1 p-1.5 rounded text-sm ${
-                                                          child.system_type
-                                                            ? child.system_type === 'upcoming_appointments' 
-                                                              ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200' 
-                                                              : 'bg-amber-50 dark:bg-amber-950/30 border border-amber-200'
-                                                            : 'bg-muted/50 border border-border'
-                                                        }`}
-                                                      >
-                                                        {/* Up/Down arrows */}
-                                                        <div className="flex flex-col">
-                                                          <Button 
-                                                            size="sm" 
-                                                            variant="ghost" 
-                                                            className="h-4 w-4 p-0"
-                                                            disabled={childIndex === 0}
-                                                            onClick={() => moveChildItem(index, childIndex, 'up')}
-                                                          >
-                                                            <ChevronUp className="h-3 w-3" />
-                                                          </Button>
-                                                          <Button 
-                                                            size="sm" 
-                                                            variant="ghost" 
-                                                            className="h-4 w-4 p-0"
-                                                            disabled={childIndex === item.children.length - 1}
-                                                            onClick={() => moveChildItem(index, childIndex, 'down')}
-                                                          >
-                                                            <ChevronDown className="h-3 w-3" />
-                                                          </Button>
-                                                        </div>
-
-                                                        {/* Child content with inline editing */}
-                                                        {editingChild?.parentIndex === index && editingChild?.childIndex === childIndex ? (
-                                                          <div className="flex items-center gap-1 flex-1">
-                                                            <Input
-                                                              value={editingChild.value}
-                                                              onChange={(e) => setEditingChild({ ...editingChild, value: e.target.value })}
-                                                              className="h-6 text-xs flex-1"
-                                                              autoFocus
-                                                              onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') {
-                                                                  updateChildItem(index, childIndex, editingChild.value);
-                                                                  setEditingChild(null);
-                                                                } else if (e.key === 'Escape') {
-                                                                  setEditingChild(null);
-                                                                }
-                                                              }}
-                                                            />
-                                                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => {
-                                                              updateChildItem(index, childIndex, editingChild.value);
-                                                              setEditingChild(null);
-                                                            }}>
-                                                              <Check className="h-3 w-3" />
-                                                            </Button>
-                                                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setEditingChild(null)}>
-                                                              <X className="h-3 w-3" />
-                                                            </Button>
-                                                          </div>
-                                                        ) : (
-                                                          <div className="flex items-center gap-1 flex-1 min-w-0">
-                                                            {child.system_type ? (
-                                                              <>
-                                                                {child.system_type === 'upcoming_appointments' ? (
-                                                                  <CalendarDays className="h-3 w-3 text-blue-600 shrink-0" />
-                                                                ) : (
-                                                                  <StickyNote className="h-3 w-3 text-amber-600 shrink-0" />
-                                                                )}
-                                                                <span className="truncate text-xs">{child.title}</span>
-                                                                <span className="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
-                                                                  Dynamisch
-                                                                </span>
-                                                              </>
-                                                            ) : (
-                                                              <>
-                                                                <span className="truncate text-xs">{child.title}</span>
-                                                                <Button 
-                                                                  size="sm" 
-                                                                  variant="ghost" 
-                                                                  className="h-4 w-4 p-0 opacity-60 hover:opacity-100 shrink-0"
-                                                                  onClick={() => setEditingChild({ parentIndex: index, childIndex, value: child.title })}
-                                                                >
-                                                                  <Edit className="h-2.5 w-2.5" />
-                                                                </Button>
-                                                                {child.is_optional && (
-                                                                  <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 shrink-0">
-                                                                    Opt.
-                                                                  </span>
-                                                                )}
-                                                              </>
-                                                            )}
-                                                          </div>
-                                                        )}
-
-                                                        {/* Optional toggle for non-system children */}
-                                                        {!child.system_type && !editingChild && (
-                                                          <Button 
-                                                            size="sm" 
-                                                            variant={child.is_optional ? "secondary" : "ghost"}
-                                                            className="h-5 px-1 text-[10px] shrink-0"
-                                                            onClick={() => toggleChildOptional(index, childIndex)}
-                                                          >
-                                                            {child.is_optional ? "Pflicht" : "Opt."}
-                                                          </Button>
-                                                        )}
-
-                                                        {/* Delete button */}
-                                                        <Button 
-                                                          size="sm" 
-                                                          variant="ghost" 
-                                                          className="h-5 w-5 p-0 text-destructive shrink-0"
-                                                          onClick={() => deleteChildItem(index, childIndex)}
-                                                        >
-                                                          <Trash2 className="h-3 w-3" />
-                                                        </Button>
-                                                      </div>
-                                                    ))}
-                                                  </div>
-                                                </div>
-                                              )}
                                             </div>
                                           </PopoverContent>
                                         </Popover>
                                       )}
-                                      <Button size="sm" variant="destructive" onClick={() => deleteTemplateItem(index)}>
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost" 
+                                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                        onClick={() => deleteTemplateItem(index)}
+                                      >
                                         <Trash2 className="h-3 w-3" />
                                       </Button>
                                     </div>
+                                  
+                                    {/* Children displayed below main item in agenda */}
+                                    {item.children && item.children.length > 0 && (
+                                      <div className="ml-8 mt-1 space-y-1">
+                                        {item.children.map((child: any, childIndex: number) => (
+                                          <div 
+                                            key={childIndex}
+                                            className={`flex items-center gap-2 p-2 rounded-md border ${
+                                              child.system_type
+                                                ? child.system_type === 'upcoming_appointments'
+                                                  ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
+                                                  : 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
+                                                : 'bg-muted/30 border-border'
+                                            }`}
+                                          >
+                                            {/* Up/Down arrows */}
+                                            <div className="flex flex-col gap-0.5">
+                                              <Button 
+                                                size="sm" 
+                                                variant="ghost" 
+                                                className="h-4 w-4 p-0"
+                                                disabled={childIndex === 0}
+                                                onClick={() => moveChildItem(index, childIndex, 'up')}
+                                              >
+                                                <ChevronUp className="h-3 w-3" />
+                                              </Button>
+                                              <Button 
+                                                size="sm" 
+                                                variant="ghost" 
+                                                className="h-4 w-4 p-0"
+                                                disabled={childIndex === item.children.length - 1}
+                                                onClick={() => moveChildItem(index, childIndex, 'down')}
+                                              >
+                                                <ChevronDown className="h-3 w-3" />
+                                              </Button>
+                                            </div>
+
+                                            {/* Child content with inline editing */}
+                                            {editingChild?.parentIndex === index && editingChild?.childIndex === childIndex ? (
+                                              <div className="flex items-center gap-1 flex-1">
+                                                <Input
+                                                  value={editingChild.value}
+                                                  onChange={(e) => setEditingChild({ ...editingChild, value: e.target.value })}
+                                                  className="h-6 text-xs flex-1"
+                                                  autoFocus
+                                                  onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                      updateChildItem(index, childIndex, editingChild.value);
+                                                      setEditingChild(null);
+                                                    } else if (e.key === 'Escape') {
+                                                      setEditingChild(null);
+                                                    }
+                                                  }}
+                                                />
+                                                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => {
+                                                  updateChildItem(index, childIndex, editingChild.value);
+                                                  setEditingChild(null);
+                                                }}>
+                                                  <Check className="h-3 w-3" />
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setEditingChild(null)}>
+                                                  <X className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+                                            ) : (
+                                              <div className="flex items-center gap-1 flex-1 min-w-0">
+                                                {child.system_type ? (
+                                                  <>
+                                                    {child.system_type === 'upcoming_appointments' ? (
+                                                      <CalendarDays className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                                    ) : (
+                                                      <StickyNote className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                                                    )}
+                                                    <span className="text-sm">{child.title}</span>
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                                                      Dynamisch
+                                                    </span>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <span className="text-sm">{child.title}</span>
+                                                    <Button 
+                                                      size="sm" 
+                                                      variant="ghost" 
+                                                      className="h-5 w-5 p-0 opacity-60 hover:opacity-100 shrink-0"
+                                                      onClick={() => setEditingChild({ parentIndex: index, childIndex, value: child.title })}
+                                                    >
+                                                      <Edit className="h-3 w-3" />
+                                                    </Button>
+                                                  </>
+                                                )}
+                                              </div>
+                                            )}
+
+                                            {/* Delete button */}
+                                            <Button 
+                                              size="sm" 
+                                              variant="ghost" 
+                                              className="h-5 w-5 p-0 text-destructive shrink-0"
+                                              onClick={() => deleteChildItem(index, childIndex)}
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </Draggable>
