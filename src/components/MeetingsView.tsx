@@ -1759,16 +1759,6 @@ export function MeetingsView() {
 
     const { source, destination } = result;
     
-    console.log('🚀 DRAG & DROP START');
-    console.log('Source:', source.index, 'Destination:', destination.index);
-    console.log('Current agendaItems before drag:', agendaItems.map(item => ({
-      id: item.id,
-      title: item.title,
-      order_index: item.order_index,
-      parent_id: item.parent_id,
-      localKey: item.localKey,
-      parentLocalKey: item.parentLocalKey
-    })));
 
     // Create a copy of all items
     const allItems = [...agendaItems];
@@ -1776,26 +1766,17 @@ export function MeetingsView() {
     // Get the dragged item
     const draggedItem = allItems[source.index];
     
-    console.log('Dragged item:', {
-      title: draggedItem.title,
-      parent_id: draggedItem.parent_id,
-      parentLocalKey: draggedItem.parentLocalKey,
-      isMainItem: !draggedItem.parent_id && !draggedItem.parentLocalKey
-    });
+                  // Remove the dragged item from its current position
+                  allItems.splice(source.index, 1);
 
-    // Remove the dragged item from its current position
-    allItems.splice(source.index, 1);
-
-    // If this is a main item (no parent), move it with all its children
-    if (!draggedItem.parent_id && !draggedItem.parentLocalKey) {
-      const draggedKey = draggedItem.id || draggedItem.localKey;
-      
-      // Find all children of this main item
-      const children = allItems.filter(item => 
-        item.parent_id === draggedItem.id || item.parentLocalKey === draggedKey
-      );
-      
-      console.log('Found children for main item:', children.map(c => c.title));
+                  // If this is a main item (no parent), move it with all its children
+                  if (!draggedItem.parent_id && !draggedItem.parentLocalKey) {
+                    const draggedKey = draggedItem.id || draggedItem.localKey;
+                    
+                    // Find all children of this main item
+                    const children = allItems.filter(item => 
+                      item.parent_id === draggedItem.id || item.parentLocalKey === draggedKey
+                    );
       
       // Remove children from their current positions (in reverse order)
       children.reverse().forEach(child => {
@@ -2480,29 +2461,8 @@ export function MeetingsView() {
             <CardContent>
               <div className="space-y-4">
                 {(() => {
-                  console.log('🎯 ACTIVE MEETING RENDER - activeMeetingItems at render time:', activeMeetingItems.map(item => ({
-                    title: item.title,
-                    order_index: item.order_index,
-                    parent_id: item.parent_id,
-                    isMainItem: !item.parent_id && !item.parentLocalKey
-                  })));
-                  
-                  console.log('=== ACTIVE MEETING RENDERING ===');
-                  console.log('All agenda items before processing:', activeMeetingItems.map(item => ({
-                    id: item.id,
-                    title: item.title,
-                    order_index: item.order_index,
-                    parent_id: item.parent_id,
-                    parentLocalKey: item.parentLocalKey
-                  })));
-                  
                   // Sort ALL items by order_index first - this is the order from drag & drop
                   const allItemsSorted = [...activeMeetingItems].sort((a, b) => a.order_index - b.order_index);
-                  console.log('All items sorted by order_index:', allItemsSorted.map(item => ({
-                    title: item.title,
-                    order_index: item.order_index,
-                    hasParent: !!(item.parent_id || item.parentLocalKey)
-                  })));
                   
                   const processedItems: any[] = [];
 
@@ -2511,6 +2471,7 @@ export function MeetingsView() {
                     // Only process main items (no parent)
                     if (!item.parent_id && !item.parentLocalKey) {
                       // Find ALL sub-items that belong to this main item and sort by order_index
+                      // Filter by is_visible: only show items where is_visible is true or undefined
                       const subItems = allItemsSorted.filter(subItem => {
                         // For items saved to database: check parent_id matches item.id
                         if (subItem.parent_id && item.id) {
@@ -2523,27 +2484,16 @@ export function MeetingsView() {
                         return false;
                       }).sort((a, b) => a.order_index - b.order_index);
                       
-                      console.log(`Main item: ${item.title} (order: ${item.order_index}) with ${subItems.length} sub-items:`, 
-                        subItems.map(sub => ({ title: sub.title, order_index: sub.order_index })));
+                      // Filter visible sub-items (is_visible !== false)
+                      const visibleSubItems = subItems.filter(sub => sub.is_visible !== false);
+                      // Hidden optional sub-items for toggle button
+                      const hiddenOptionalSubItems = subItems.filter(sub => sub.is_visible === false && sub.is_optional);
                       
-                      processedItems.push({ item, subItems });
+                      processedItems.push({ item, subItems: visibleSubItems, hiddenOptionalSubItems });
                     }
                   });
 
-                  console.log('Final processed items for active meeting:', processedItems.map(proc => ({
-                    mainTitle: proc.item.title,
-                    order: proc.item.order_index,
-                    subItemsCount: proc.subItems.length
-                  })));
-
-                  return processedItems.map(({ item, subItems: sortedSubItems }, index) => {
-                    
-                    console.log(`Item ${index + 1} (${item.title}):`, {
-                      item,
-                      subItems: sortedSubItems,
-                      sortedSubItems
-                    });
-                    
+                  return processedItems.map(({ item, subItems: sortedSubItems, hiddenOptionalSubItems }, index) => {
                     return (
                       <div key={item.id} className="border rounded-lg p-4">
                         <div className="flex items-center gap-4 mb-3">
@@ -2610,12 +2560,7 @@ export function MeetingsView() {
                         </div>
                       )}
 
-                      {/* Fallback: Show upcoming appointments for "Aktuelles aus dem Landtag" if no system_type */}
-                      {!item.system_type && item.title.toLowerCase().includes('aktuelles aus dem landtag') && (
-                        <div className="ml-12 mb-4">
-                          <UpcomingAppointmentsSection meetingDate={activeMeeting.meeting_date} />
-                        </div>
-                      )}
+                      {/* Note: Removed fallback for "Aktuelles aus dem Landtag" - system_type should be used exclusively */}
 
                       {/* Display notes if available */}
                       {item.notes && (
@@ -2670,17 +2615,79 @@ export function MeetingsView() {
                       )}
 
                        {/* Display sub-items */}
-                       {sortedSubItems.length > 0 && (
+                       {(sortedSubItems.length > 0 || hiddenOptionalSubItems.length > 0) && (
                          <div className="ml-12 mb-3">
-                           <label className="text-sm font-medium mb-2 block">Unterpunkte</label>
+                           <div className="flex items-center justify-between mb-2">
+                             <label className="text-sm font-medium">Unterpunkte</label>
+                             {hiddenOptionalSubItems.length > 0 && (
+                               <Popover>
+                                 <PopoverTrigger asChild>
+                                   <Button variant="outline" size="sm" className="h-6 text-xs">
+                                     <Plus className="h-3 w-3 mr-1" />
+                                     {hiddenOptionalSubItems.length} optional
+                                   </Button>
+                                 </PopoverTrigger>
+                                 <PopoverContent className="w-64">
+                                   <div className="space-y-2">
+                                     <p className="text-sm font-medium">Optionale Unterpunkte aktivieren</p>
+                                     {hiddenOptionalSubItems.map(subItem => (
+                                       <Button 
+                                         key={subItem.id}
+                                         size="sm" 
+                                         variant="ghost"
+                                         className="w-full justify-start text-xs h-8"
+                                         onClick={() => toggleOptionalItemVisibility(subItem.id!, false)}
+                                       >
+                                         <Eye className="h-3 w-3 mr-2" /> {subItem.title}
+                                       </Button>
+                                     ))}
+                                   </div>
+                                 </PopoverContent>
+                               </Popover>
+                             )}
+                           </div>
                            <div className="space-y-2">
                                  {sortedSubItems.map((subItem, subIndex) => (
-                                 <div key={subItem.id} className="pl-4 border-l-2 border-muted">
+                                 <div key={subItem.id} className={cn(
+                                   "pl-4 border-l-2",
+                                   subItem.system_type === 'upcoming_appointments' 
+                                     ? "border-l-blue-500" 
+                                     : subItem.system_type === 'quick_notes'
+                                       ? "border-l-amber-500"
+                                       : "border-muted"
+                                 )}>
+                                   {/* Render system items differently */}
+                                   {subItem.system_type === 'upcoming_appointments' ? (
+                                     <SystemAgendaItem 
+                                       systemType="upcoming_appointments" 
+                                       meetingDate={activeMeeting.meeting_date}
+                                       isEmbedded={true}
+                                     />
+                                   ) : subItem.system_type === 'quick_notes' ? (
+                                     <SystemAgendaItem 
+                                       systemType="quick_notes"
+                                       linkedQuickNotes={linkedQuickNotes}
+                                       onUpdateNoteResult={updateQuickNoteResult}
+                                       isEmbedded={true}
+                                     />
+                                   ) : (
+                                   <>
                                    <div className="flex items-center gap-2 mb-2">
                                      <span className="text-xs font-medium text-muted-foreground">
                                        {index + 1}.{subIndex + 1}
                                      </span>
                                      <span className="text-sm font-medium flex-1">{subItem.title}</span>
+                                     {subItem.is_optional && (
+                                       <Button
+                                         variant="ghost"
+                                         size="sm"
+                                         className="h-6 w-6 p-0"
+                                         onClick={() => toggleOptionalItemVisibility(subItem.id!, true)}
+                                         title="Ausblenden"
+                                       >
+                                         <EyeOff className="h-3 w-3 text-muted-foreground" />
+                                       </Button>
+                                     )}
                                      <Select
                                        value={subItem.assigned_to || 'unassigned'}
                                        onValueChange={(value) => {
@@ -2868,8 +2875,10 @@ export function MeetingsView() {
                                     </label>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                                  </>
+                                   )}
+                                 </div>
+                               ))}
                           </div>
                         </div>
                       )}
