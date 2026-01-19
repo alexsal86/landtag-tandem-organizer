@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote, MoveVertical, ArrowUp, ArrowDown, ChevronUp, ChevronDown } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote, MoveVertical, ArrowUp, ArrowDown, ChevronUp, ChevronDown, CornerUpLeft } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
@@ -317,16 +317,28 @@ export default function Administration() {
         .eq('id', selectedTemplate.id);
         
       if (error) throw error;
-      
-      // Only show toast if not a silent update (i.e., if items === templateItems which means explicit save)
+      // Silent save - no toast on success
     } catch (error: any) {
-      console.error(error);
-      // Retry on network errors
-      if (retryCount < 2 && error.message?.includes('Failed to fetch')) {
-        await new Promise(r => setTimeout(r, 500));
+      console.error('Save error:', error);
+      // Extended network error detection
+      const isNetworkError = 
+        error.message?.includes('Failed to fetch') ||
+        error.name === 'TypeError' ||
+        error.message?.includes('NetworkError') ||
+        error.message?.includes('network') ||
+        !navigator.onLine;
+        
+      if (retryCount < 2 && isNetworkError) {
+        // Exponential backoff
+        await new Promise(r => setTimeout(r, 500 * (retryCount + 1)));
         return saveTemplateItems(items, retryCount + 1);
       }
-      toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
+      
+      // Only show toast if all retries failed and it's not a network issue (local state is current)
+      if (!isNetworkError) {
+        toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
+      }
+      // For network errors: local state is already updated, changes will sync on next page load
     }
   };
 
@@ -359,7 +371,7 @@ export default function Administration() {
     }
   };
 
-  // Delete child item
+  // Delete child item permanently
   const deleteChildItem = (parentIndex: number, childIndex: number) => {
     const newItems = [...templateItems];
     newItems[parentIndex].children = newItems[parentIndex].children.filter((_: any, i: number) => i !== childIndex);
@@ -368,6 +380,27 @@ export default function Administration() {
     }
     setTemplateItems(newItems);
     saveTemplateItems(newItems);
+  };
+
+  // Make child available (move to pool)
+  const makeChildAvailable = (parentIndex: number, childIndex: number) => {
+    const newItems = [...templateItems];
+    if (newItems[parentIndex].children?.[childIndex]) {
+      newItems[parentIndex].children[childIndex].is_available = true;
+      setTemplateItems(newItems);
+      saveTemplateItems(newItems);
+    }
+  };
+
+  // Activate child from pool (make visible in agenda)
+  const activateChild = (parentIndex: number, childIndex: number) => {
+    const newItems = [...templateItems];
+    if (newItems[parentIndex].children?.[childIndex]) {
+      newItems[parentIndex].children[childIndex].is_available = false;
+      setTemplateItems(newItems);
+      saveTemplateItems(newItems);
+      setChildPopoverOpen(null);
+    }
   };
 
   const savePlanningTemplateItems = async (items = planningTemplateItems) => {
@@ -1064,7 +1097,7 @@ export default function Administration() {
                                               <Plus className="h-3 w-3" />
                                             </Button>
                                           </PopoverTrigger>
-                                          <PopoverContent className="w-64">
+                                          <PopoverContent className="w-72">
                                             <div className="space-y-3">
                                               {/* Add new sub-item */}
                                               <div>
@@ -1097,6 +1130,42 @@ export default function Administration() {
                                                   </Button>
                                                 </div>
                                               </div>
+
+                                              {/* Available sub-items (pool) */}
+                                              {(() => {
+                                                const availableChildren = item.children?.filter((c: any) => c.is_available === true) || [];
+                                                if (availableChildren.length === 0) return null;
+                                                return (
+                                                  <div className="border-t pt-2">
+                                                    <p className="text-xs text-muted-foreground mb-2">Verfügbare Unterpunkte:</p>
+                                                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                                                      {item.children?.map((child: any, childIdx: number) => {
+                                                        if (!child.is_available) return null;
+                                                        return (
+                                                          <Button 
+                                                            key={childIdx}
+                                                            variant="ghost" 
+                                                            size="sm"
+                                                            className="w-full justify-between text-sm h-8 px-2"
+                                                            onClick={() => activateChild(index, childIdx)}
+                                                          >
+                                                            <span className="flex items-center gap-1.5 truncate">
+                                                              {child.system_type === 'upcoming_appointments' && (
+                                                                <CalendarDays className="h-3 w-3 text-blue-600 shrink-0" />
+                                                              )}
+                                                              {child.system_type === 'quick_notes' && (
+                                                                <StickyNote className="h-3 w-3 text-amber-600 shrink-0" />
+                                                              )}
+                                                              {child.title}
+                                                            </span>
+                                                            <CornerUpLeft className="h-3 w-3 text-muted-foreground shrink-0" />
+                                                          </Button>
+                                                        );
+                                                      })}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })()}
 
                                               {/* Dynamic content buttons */}
                                               <div className="border-t pt-2">
@@ -1142,110 +1211,131 @@ export default function Administration() {
                                       </Button>
                                     </div>
                                   
-                                    {/* Children displayed below main item in agenda */}
-                                    {item.children && item.children.length > 0 && (
+                                    {/* Children displayed below main item in agenda - only active ones (is_available !== true) */}
+                                    {item.children && item.children.filter((c: any) => c.is_available !== true).length > 0 && (
                                       <div className="ml-8 mt-1 space-y-1">
-                                        {item.children.map((child: any, childIndex: number) => (
-                                          <div 
-                                            key={childIndex}
-                                            className={`flex items-center gap-2 p-2 rounded-md border ${
-                                              child.system_type
-                                                ? child.system_type === 'upcoming_appointments'
-                                                  ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
-                                                  : 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
-                                                : 'bg-muted/30 border-border'
-                                            }`}
-                                          >
-                                            {/* Up/Down arrows */}
-                                            <div className="flex flex-col gap-0.5">
+                                        {item.children.map((child: any, childIndex: number) => {
+                                          // Skip available (pooled) children
+                                          if (child.is_available === true) return null;
+                                          
+                                          // Calculate the display index for active children only (for up/down button logic)
+                                          const activeChildren = item.children.filter((c: any) => c.is_available !== true);
+                                          const activeDisplayIndex = activeChildren.findIndex((c: any) => c === child);
+                                          
+                                          return (
+                                            <div 
+                                              key={childIndex}
+                                              className={`flex items-center gap-2 p-2 rounded-md border ${
+                                                child.system_type
+                                                  ? child.system_type === 'upcoming_appointments'
+                                                    ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
+                                                    : 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
+                                                  : 'bg-muted/30 border-border'
+                                              }`}
+                                            >
+                                              {/* Up/Down arrows */}
+                                              <div className="flex flex-col gap-0.5">
+                                                <Button 
+                                                  size="sm" 
+                                                  variant="ghost" 
+                                                  className="h-4 w-4 p-0"
+                                                  disabled={activeDisplayIndex === 0}
+                                                  onClick={() => moveChildItem(index, childIndex, 'up')}
+                                                >
+                                                  <ChevronUp className="h-3 w-3" />
+                                                </Button>
+                                                <Button 
+                                                  size="sm" 
+                                                  variant="ghost" 
+                                                  className="h-4 w-4 p-0"
+                                                  disabled={activeDisplayIndex === activeChildren.length - 1}
+                                                  onClick={() => moveChildItem(index, childIndex, 'down')}
+                                                >
+                                                  <ChevronDown className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+
+                                              {/* Child content with inline editing */}
+                                              {editingChild?.parentIndex === index && editingChild?.childIndex === childIndex ? (
+                                                <div className="flex items-center gap-1 flex-1">
+                                                  <Input
+                                                    value={editingChild.value}
+                                                    onChange={(e) => setEditingChild({ ...editingChild, value: e.target.value })}
+                                                    className="h-6 text-xs flex-1"
+                                                    autoFocus
+                                                    onKeyDown={(e) => {
+                                                      if (e.key === 'Enter') {
+                                                        updateChildItem(index, childIndex, editingChild.value);
+                                                        setEditingChild(null);
+                                                      } else if (e.key === 'Escape') {
+                                                        setEditingChild(null);
+                                                      }
+                                                    }}
+                                                  />
+                                                  <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => {
+                                                    updateChildItem(index, childIndex, editingChild.value);
+                                                    setEditingChild(null);
+                                                  }}>
+                                                    <Check className="h-3 w-3" />
+                                                  </Button>
+                                                  <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setEditingChild(null)}>
+                                                    <X className="h-3 w-3" />
+                                                  </Button>
+                                                </div>
+                                              ) : (
+                                                <div className="flex items-center gap-1 flex-1 min-w-0">
+                                                  {child.system_type ? (
+                                                    <>
+                                                      {child.system_type === 'upcoming_appointments' ? (
+                                                        <CalendarDays className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                                      ) : (
+                                                        <StickyNote className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                                                      )}
+                                                      <span className="text-sm">{child.title}</span>
+                                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                                                        Dynamisch
+                                                      </span>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <span className="text-sm">{child.title}</span>
+                                                      <Button 
+                                                        size="sm" 
+                                                        variant="ghost" 
+                                                        className="h-5 w-5 p-0 opacity-60 hover:opacity-100 shrink-0"
+                                                        onClick={() => setEditingChild({ parentIndex: index, childIndex, value: child.title })}
+                                                      >
+                                                        <Edit className="h-3 w-3" />
+                                                      </Button>
+                                                    </>
+                                                  )}
+                                                </div>
+                                              )}
+
+                                              {/* Make available button (move to pool) */}
                                               <Button 
                                                 size="sm" 
                                                 variant="ghost" 
-                                                className="h-4 w-4 p-0"
-                                                disabled={childIndex === 0}
-                                                onClick={() => moveChildItem(index, childIndex, 'up')}
+                                                className="h-5 w-5 p-0 text-muted-foreground hover:text-primary shrink-0"
+                                                onClick={() => makeChildAvailable(index, childIndex)}
+                                                title="In 'Verfügbar' verschieben"
                                               >
-                                                <ChevronUp className="h-3 w-3" />
+                                                <CornerUpLeft className="h-3 w-3" />
                                               </Button>
+
+                                              {/* Delete button */}
                                               <Button 
                                                 size="sm" 
                                                 variant="ghost" 
-                                                className="h-4 w-4 p-0"
-                                                disabled={childIndex === item.children.length - 1}
-                                                onClick={() => moveChildItem(index, childIndex, 'down')}
+                                                className="h-5 w-5 p-0 text-destructive shrink-0"
+                                                onClick={() => deleteChildItem(index, childIndex)}
+                                                title="Permanent löschen"
                                               >
-                                                <ChevronDown className="h-3 w-3" />
+                                                <Trash2 className="h-3 w-3" />
                                               </Button>
                                             </div>
-
-                                            {/* Child content with inline editing */}
-                                            {editingChild?.parentIndex === index && editingChild?.childIndex === childIndex ? (
-                                              <div className="flex items-center gap-1 flex-1">
-                                                <Input
-                                                  value={editingChild.value}
-                                                  onChange={(e) => setEditingChild({ ...editingChild, value: e.target.value })}
-                                                  className="h-6 text-xs flex-1"
-                                                  autoFocus
-                                                  onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                      updateChildItem(index, childIndex, editingChild.value);
-                                                      setEditingChild(null);
-                                                    } else if (e.key === 'Escape') {
-                                                      setEditingChild(null);
-                                                    }
-                                                  }}
-                                                />
-                                                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => {
-                                                  updateChildItem(index, childIndex, editingChild.value);
-                                                  setEditingChild(null);
-                                                }}>
-                                                  <Check className="h-3 w-3" />
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setEditingChild(null)}>
-                                                  <X className="h-3 w-3" />
-                                                </Button>
-                                              </div>
-                                            ) : (
-                                              <div className="flex items-center gap-1 flex-1 min-w-0">
-                                                {child.system_type ? (
-                                                  <>
-                                                    {child.system_type === 'upcoming_appointments' ? (
-                                                      <CalendarDays className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                                                    ) : (
-                                                      <StickyNote className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                                                    )}
-                                                    <span className="text-sm">{child.title}</span>
-                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
-                                                      Dynamisch
-                                                    </span>
-                                                  </>
-                                                ) : (
-                                                  <>
-                                                    <span className="text-sm">{child.title}</span>
-                                                    <Button 
-                                                      size="sm" 
-                                                      variant="ghost" 
-                                                      className="h-5 w-5 p-0 opacity-60 hover:opacity-100 shrink-0"
-                                                      onClick={() => setEditingChild({ parentIndex: index, childIndex, value: child.title })}
-                                                    >
-                                                      <Edit className="h-3 w-3" />
-                                                    </Button>
-                                                  </>
-                                                )}
-                                              </div>
-                                            )}
-
-                                            {/* Delete button */}
-                                            <Button 
-                                              size="sm" 
-                                              variant="ghost" 
-                                              className="h-5 w-5 p-0 text-destructive shrink-0"
-                                              onClick={() => deleteChildItem(index, childIndex)}
-                                            >
-                                              <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                          </div>
-                                        ))}
+                                          );
+                                        })}
                                       </div>
                                     )}
                                   </div>
