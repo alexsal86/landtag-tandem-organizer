@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
-import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote } from "lucide-react";
+import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -70,6 +70,8 @@ interface AgendaItem {
   original_meeting_title?: string | null;
   carryover_notes?: string | null;
   system_type?: string | null;
+  is_optional?: boolean;
+  is_visible?: boolean;
   // lokale Hilfskeys für Hierarchie vor dem Speichern
   localKey?: string;
   parentLocalKey?: string;
@@ -1718,6 +1720,37 @@ export function MeetingsView() {
           variant: "destructive",
         });
       }
+    }
+  };
+
+  // Toggle visibility of optional sub-items
+  const toggleOptionalItemVisibility = async (itemId: string, currentVisibility: boolean) => {
+    try {
+      const newVisibility = !currentVisibility;
+      
+      const { error } = await supabase
+        .from('meeting_agenda_items')
+        .update({ is_visible: newVisibility })
+        .eq('id', itemId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setAgendaItems(prev => prev.map(item => 
+        item.id === itemId ? { ...item, is_visible: newVisibility } : item
+      ));
+      
+      toast({
+        title: newVisibility ? "Punkt aktiviert" : "Punkt ausgeblendet",
+        description: newVisibility ? "Der optionale Punkt wird nun angezeigt." : "Der optionale Punkt wurde ausgeblendet.",
+      });
+    } catch (error) {
+      console.error('Error toggling visibility:', error);
+      toast({
+        title: "Fehler",
+        description: "Sichtbarkeit konnte nicht geändert werden.",
+        variant: "destructive",
+      });
     }
   };
 

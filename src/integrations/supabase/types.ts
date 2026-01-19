@@ -5418,7 +5418,9 @@ export type Database = {
           file_path: string | null
           id: string
           is_completed: boolean
+          is_optional: boolean | null
           is_recurring: boolean
+          is_visible: boolean | null
           meeting_id: string
           notes: string | null
           order_index: number
@@ -5442,7 +5444,9 @@ export type Database = {
           file_path?: string | null
           id?: string
           is_completed?: boolean
+          is_optional?: boolean | null
           is_recurring?: boolean
+          is_visible?: boolean | null
           meeting_id: string
           notes?: string | null
           order_index?: number
@@ -5466,7 +5470,9 @@ export type Database = {
           file_path?: string | null
           id?: string
           is_completed?: boolean
+          is_optional?: boolean | null
           is_recurring?: boolean
+          is_visible?: boolean | null
           meeting_id?: string
           notes?: string | null
           order_index?: number
