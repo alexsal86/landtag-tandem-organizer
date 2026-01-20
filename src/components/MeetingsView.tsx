@@ -435,29 +435,45 @@ export function MeetingsView() {
       
       console.log('Raw data from database:', data);
       
-      const items = (data || []).map((item) => ({
-        ...item,
-        localKey: item.id,
-        parentLocalKey: item.parent_id || undefined,
-      }));
+      // Hierarchische Sortierung: Hauptpunkte zuerst, dann deren Kinder direkt darunter
+      const mainItems = (data || [])
+        .filter(item => !item.parent_id)
+        .sort((a, b) => a.order_index - b.order_index);
       
-      console.log('Processed items:', items);
-      console.log('Items sorted by order_index:', items.sort((a, b) => a.order_index - b.order_index));
+      const sortedItems: any[] = [];
+      mainItems.forEach(main => {
+        sortedItems.push({ 
+          ...main, 
+          localKey: main.id,
+          parentLocalKey: undefined 
+        });
+        
+        // Kinder dieses Hauptpunkts direkt darunter einfügen
+        const children = (data || [])
+          .filter(item => item.parent_id === main.id)
+          .sort((a, b) => a.order_index - b.order_index);
+        
+        children.forEach(child => {
+          sortedItems.push({ 
+            ...child, 
+            localKey: child.id, 
+            parentLocalKey: child.parent_id 
+          });
+        });
+      });
       
-      console.log('🚀 SETTING AGENDA ITEMS - This should trigger the useEffect');
-      console.log('- Setting agendaItems to:', items.map(item => ({
+      console.log('Hierarchically sorted items:', sortedItems.map(item => ({
         id: item.id,
         title: item.title,
-        order_index: item.order_index
+        order_index: item.order_index,
+        parent_id: item.parent_id
       })));
       
-      setAgendaItems(items);
-      
-      console.log('✅ setAgendaItems called - useEffect should now trigger');
+      setAgendaItems(sortedItems);
       
       // Load documents for all agenda items
-      if (items.length > 0) {
-        await loadAgendaDocuments(items.map(item => item.id!).filter(Boolean));
+      if (sortedItems.length > 0) {
+        await loadAgendaDocuments(sortedItems.map(item => item.id!).filter(Boolean));
       }
     } catch (error) {
       console.error('Error loading agenda items:', error);
