@@ -27,7 +27,8 @@ export function SystemAgendaItem({
     return (
       <div className={cn(
         "relative",
-        !isEmbedded && "border-l-4 border-blue-500 rounded-lg overflow-hidden",
+        "border-l-4 border-blue-500 rounded-lg overflow-hidden",
+        isEmbedded && "bg-card border border-border",
         className
       )}>
         {!isEmbedded && (
@@ -40,7 +41,7 @@ export function SystemAgendaItem({
         )}
         <UpcomingAppointmentsSection 
           meetingDate={meetingDate} 
-          className={isEmbedded ? "" : "border-0 shadow-none"}
+          className={isEmbedded ? "border-0 shadow-none bg-transparent" : "border-0 shadow-none"}
           defaultCollapsed={defaultCollapsed}
         />
       </div>
