@@ -434,13 +434,26 @@ export function QuickNotesList({
   };
 
   const handleSetPriority = async (noteId: string, level: number) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("quick_notes")
         .update({ priority_level: level })
-        .eq("id", noteId);
+        .eq("id", noteId)
+        .eq("user_id", user.id)
+        .select();
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("Keine Berechtigung zum Ändern dieser Notiz");
+        return;
+      }
+      
       toast.success(level > 0 ? `Level ${level} gesetzt` : "Priorität entfernt");
       loadNotes();
     } catch (error) {
