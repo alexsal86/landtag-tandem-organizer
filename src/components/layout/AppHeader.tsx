@@ -105,6 +105,8 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
         title: 'Erfolgreich abgemeldet',
         description: 'Sie wurden erfolgreich abgemeldet.',
       });
+      // Navigate to auth page after successful logout
+      navigate('/auth');
     } catch (error) {
       toast({
         title: 'Fehler beim Abmelden',

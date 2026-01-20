@@ -80,7 +80,7 @@ export function MyWorkDecisionsTab() {
 
       if (participantError) throw participantError;
 
-      // Load decisions created by user
+      // Load decisions created by user - include response types for summary
       const { data: creatorData, error: creatorError } = await supabase
         .from("task_decisions")
         .select(`
@@ -92,7 +92,7 @@ export function MyWorkDecisionsTab() {
           created_by,
           task_decision_participants (
             id,
-            task_decision_responses (id)
+            task_decision_responses (id, response_type)
           )
         `)
         .eq("created_by", user.id)
@@ -115,14 +115,31 @@ export function MyWorkDecisionsTab() {
         responseType: item.task_decision_responses[0]?.response_type || null,
       }));
 
-      // Format creator decisions and calculate pending
+      // Format creator decisions and calculate pending + dominant response
       const creatorDecisions: Decision[] = (creatorData || [])
         .filter((item: any) => item.created_by === user.id)
         .map((item: any) => {
           const participants = item.task_decision_participants || [];
+          const responses = participants.flatMap((p: any) => p.task_decision_responses || []);
+          
           const pendingCount = participants.filter(
             (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0
           ).length;
+
+          // Calculate dominant response for creator view
+          const hasQuestions = responses.some((r: any) => r.response_type === 'question');
+          const hasNo = responses.some((r: any) => r.response_type === 'no');
+          const allYes = responses.length > 0 && 
+                         participants.length === responses.length && 
+                         responses.every((r: any) => r.response_type === 'yes');
+
+          // Determine dominant response type for card color
+          let dominantResponse: 'yes' | 'no' | 'question' | null = null;
+          if (pendingCount === 0 && responses.length > 0) {
+            if (hasNo) dominantResponse = 'no';
+            else if (hasQuestions) dominantResponse = 'question';
+            else if (allYes) dominantResponse = 'yes';
+          }
 
           return {
             id: item.id,
@@ -135,7 +152,7 @@ export function MyWorkDecisionsTab() {
             hasResponded: true,
             isCreator: true,
             pendingCount,
-            responseType: null,
+            responseType: dominantResponse,
           };
         });
 
