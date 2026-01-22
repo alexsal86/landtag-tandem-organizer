@@ -154,6 +154,22 @@ export function MeetingsView() {
     }
   }, [searchParams, setSearchParams]);
 
+  // Handle URL id parameter for deep-linking from MyWork
+  useEffect(() => {
+    const urlMeetingId = searchParams.get('id');
+    if (urlMeetingId && meetings.length > 0) {
+      const meetingFromUrl = meetings.find(m => m.id === urlMeetingId);
+      if (meetingFromUrl && selectedMeeting?.id !== urlMeetingId) {
+        setSelectedMeeting(meetingFromUrl);
+        loadAgendaItems(urlMeetingId);
+        loadLinkedQuickNotes(urlMeetingId);
+        // Clear the id param after selecting
+        searchParams.delete('id');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, meetings]);
+
   // Load data on component mount
   useEffect(() => {
     console.log('=== MeetingsView useEffect triggered ===');

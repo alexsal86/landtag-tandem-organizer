@@ -4,11 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight, Calendar, Users, ExternalLink, Clock } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { format, isPast, isToday, isFuture } from "date-fns";
+import { format, isToday, isPast } from "date-fns";
 import { de } from "date-fns/locale";
 
 interface Meeting {
@@ -17,6 +17,13 @@ interface Meeting {
   meeting_date: string;
   status: string;
   description?: string | null;
+}
+
+interface AgendaItem {
+  id: string;
+  title: string;
+  parent_id: string | null;
+  order_index: number;
 }
 
 export function MyWorkJourFixeTab() {
@@ -29,6 +36,11 @@ export function MyWorkJourFixeTab() {
   const [loading, setLoading] = useState(true);
   const [upcomingOpen, setUpcomingOpen] = useState(true);
   const [pastOpen, setPastOpen] = useState(false);
+  
+  // State for expandable agenda
+  const [expandedMeetingId, setExpandedMeetingId] = useState<string | null>(null);
+  const [agendaItems, setAgendaItems] = useState<Record<string, AgendaItem[]>>({});
+  const [loadingAgenda, setLoadingAgenda] = useState<string | null>(null);
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -36,7 +48,7 @@ export function MyWorkJourFixeTab() {
     if (action === 'create-meeting') {
       searchParams.delete('action');
       setSearchParams(searchParams, { replace: true });
-      navigate('/jour-fixe?action=create');
+      navigate('/meetings?action=create-meeting');
     }
   }, [searchParams, setSearchParams, navigate]);
 
@@ -89,6 +101,29 @@ export function MyWorkJourFixeTab() {
     }
   };
 
+  const loadAgendaForMeeting = async (meetingId: string) => {
+    // Already loaded
+    if (agendaItems[meetingId]) return;
+    
+    setLoadingAgenda(meetingId);
+    try {
+      const { data, error } = await supabase
+        .from('meeting_agenda_items')
+        .select('id, title, parent_id, order_index')
+        .eq('meeting_id', meetingId)
+        .is('system_type', null) // Only normal agenda items, not system items
+        .order('order_index');
+
+      if (error) throw error;
+      
+      setAgendaItems(prev => ({ ...prev, [meetingId]: data || [] }));
+    } catch (error) {
+      console.error('Error loading agenda:', error);
+    } finally {
+      setLoadingAgenda(null);
+    }
+  };
+
   const getMeetingStatusColor = (meeting: Meeting) => {
     const meetingDate = new Date(meeting.meeting_date);
     if (isToday(meetingDate)) return "text-orange-500";
@@ -98,52 +133,110 @@ export function MyWorkJourFixeTab() {
 
   const MeetingItem = ({ meeting }: { meeting: Meeting }) => {
     const meetingDate = new Date(meeting.meeting_date);
+    const isExpanded = expandedMeetingId === meeting.id;
+    const meetingAgenda = agendaItems[meeting.id] || [];
+    const isLoadingThisAgenda = loadingAgenda === meeting.id;
+    
+    // Get only main items (no parent)
+    const mainItems = meetingAgenda
+      .filter(item => !item.parent_id)
+      .sort((a, b) => a.order_index - b.order_index);
+
+    const handleToggleExpand = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isExpanded) {
+        setExpandedMeetingId(null);
+      } else {
+        setExpandedMeetingId(meeting.id);
+        loadAgendaForMeeting(meeting.id);
+      }
+    };
+
+    const handleNavigate = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      navigate(`/meetings?id=${meeting.id}`);
+    };
 
     return (
-      <div 
-        className="rounded-lg border bg-card p-3 hover:bg-muted/50 transition-colors cursor-pointer"
-        onClick={() => navigate(`/jour-fixe/${meeting.id}`)}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className={cn("font-medium text-sm truncate", getMeetingStatusColor(meeting))}>
-                {meeting.title}
-              </span>
-              {isToday(meetingDate) && (
-                <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-orange-100 text-orange-700">
-                  Heute
-                </Badge>
+      <div className="rounded-lg border bg-card overflow-hidden">
+        {/* Header - clickable for expand */}
+        <div 
+          className="p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+          onClick={handleToggleExpand}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                )}
+                <span className={cn("font-medium text-sm truncate", getMeetingStatusColor(meeting))}>
+                  {meeting.title}
+                </span>
+                {isToday(meetingDate) && (
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-orange-100 text-orange-700">
+                    Heute
+                  </Badge>
+                )}
+              </div>
+              {meeting.description && (
+                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5 ml-6">
+                  {meeting.description}
+                </p>
               )}
-            </div>
-            {meeting.description && (
-              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                {meeting.description}
-              </p>
-            )}
-            <div className="flex items-center gap-3 mt-1.5">
-              <div className={cn("flex items-center gap-1 text-xs", getMeetingStatusColor(meeting))}>
-                <Calendar className="h-3 w-3" />
-                {format(meetingDate, "dd.MM.yyyy", { locale: de })}
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                {format(meetingDate, "HH:mm", { locale: de })} Uhr
+              <div className="flex items-center gap-3 mt-1.5 ml-6">
+                <div className={cn("flex items-center gap-1 text-xs", getMeetingStatusColor(meeting))}>
+                  <Calendar className="h-3 w-3" />
+                  {format(meetingDate, "dd.MM.yyyy", { locale: de })}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {format(meetingDate, "HH:mm", { locale: de })} Uhr
+                </div>
               </div>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 flex-shrink-0"
+              onClick={handleNavigate}
+              title="Zum Jour Fixe"
+            >
+              <ExternalLink className="h-3 w-3" />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 flex-shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/jour-fixe/${meeting.id}`);
-            }}
-          >
-            <ExternalLink className="h-3 w-3" />
-          </Button>
         </div>
+        
+        {/* Expandable Agenda - read-only */}
+        {isExpanded && (
+          <div className="border-t bg-muted/30 p-3">
+            <div className="flex items-center gap-1.5 mb-2">
+              <List className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">Tagesordnung</span>
+            </div>
+            
+            {isLoadingThisAgenda ? (
+              <div className="space-y-1.5">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-4 bg-muted animate-pulse rounded w-3/4" />
+                ))}
+              </div>
+            ) : mainItems.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Keine Agenda-Punkte vorhanden</p>
+            ) : (
+              <ul className="space-y-1">
+                {mainItems.map((item, index) => (
+                  <li key={item.id} className="text-xs flex items-start gap-2">
+                    <span className="text-muted-foreground font-medium min-w-[1rem]">{index + 1}.</span>
+                    <span className="text-foreground">{item.title}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
     );
   };
