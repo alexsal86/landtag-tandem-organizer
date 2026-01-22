@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock } from "lucide-react";
+import { PageHelpButton } from "@/components/shared/PageHelpButton";
+import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { MyWorkQuickCapture } from "./my-work/MyWorkQuickCapture";
@@ -255,14 +257,25 @@ export function MyWorkView() {
   return (
     <div className="min-h-[calc(100vh-8rem)] p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <ClipboardList className="h-8 w-8" />
-          Meine Arbeit
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Alle Aufgaben, Entscheidungen und Projekte auf einen Blick
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <ClipboardList className="h-8 w-8" />
+            Meine Arbeit
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Alle Aufgaben, Entscheidungen und Projekte auf einen Blick
+          </p>
+        </div>
+        
+        {/* Hilfe-Button - zeigt Inhalt basierend auf aktivem Tab */}
+        {MYWORK_HELP_CONTENT[activeTab] && (
+          <PageHelpButton
+            title={MYWORK_HELP_CONTENT[activeTab].title}
+            description={MYWORK_HELP_CONTENT[activeTab].description}
+            features={MYWORK_HELP_CONTENT[activeTab].features}
+          />
+        )}
       </div>
 
       {/* Tab Navigation (horizontal, oben) */}
