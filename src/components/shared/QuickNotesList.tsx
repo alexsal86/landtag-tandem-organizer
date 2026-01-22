@@ -565,18 +565,31 @@ export function QuickNotesList({
   };
 
   const addNoteToMeeting = async (noteId: string, meetingId: string, meetingTitle: string) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('quick_notes')
         .update({
           meeting_id: meetingId,
-          added_to_meeting_at: new Date().toISOString()
+          added_to_meeting_at: new Date().toISOString(),
+          pending_for_jour_fixe: false
         })
-        .eq('id', noteId);
+        .eq('id', noteId)
+        .eq('user_id', user.id)
+        .select();
 
       if (error) throw error;
 
-      toast.success(`Notiz zum Jour Fixe "${meetingTitle}" hinzugefügt`);
+      if (!data || data.length === 0) {
+        toast.error("Notiz konnte nicht zugewiesen werden");
+        return;
+      }
+
+      toast.success(`Notiz zum Jour Fixe hinzugefügt`);
       setMeetingSelectorOpen(false);
       setNoteForMeeting(null);
       loadNotes();
@@ -632,16 +645,29 @@ export function QuickNotesList({
   };
 
   const removeNoteFromMeeting = async (noteId: string) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('quick_notes')
         .update({
           meeting_id: null,
           added_to_meeting_at: null
         })
-        .eq('id', noteId);
+        .eq('id', noteId)
+        .eq('user_id', user.id)
+        .select();
 
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        toast.error("Notiz konnte nicht entfernt werden");
+        return;
+      }
+
       toast.success("Notiz vom Jour Fixe entfernt");
       loadNotes();
     } catch (error) {
@@ -1056,8 +1082,8 @@ export function QuickNotesList({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-emerald-600 cursor-help">
-                      {note.meetings?.title 
-                        ? `JF: ${note.meetings.title.length > 12 ? note.meetings.title.substring(0, 12) + '...' : note.meetings.title}`
+                      {note.meetings?.meeting_date 
+                        ? `JF: ${format(new Date(note.meetings.meeting_date), "dd.MM.", { locale: de })}`
                         : "Nächster JF ⏳"
                       }
                     </Badge>
