@@ -15,7 +15,8 @@ import { toast } from "sonner";
 import { EmployeeInfoTab } from "./EmployeeInfoTab";
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from "date-fns";
 import { de } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Edit, Trash2, History, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit, Trash2, History, Calendar, Clock, AlertTriangle } from "lucide-react";
+import { VacationHistoryDialog } from "./VacationHistoryDialog";
 import { calculateVacationBalance } from "@/utils/vacationCalculations";
 
 interface TimeEntryRow {
@@ -36,6 +37,7 @@ interface EmployeeSettingsRow {
   days_per_week: number;
   annual_vacation_days: number;
   carry_over_days: number;
+  carry_over_expires_at: string | null;
   employment_start_date: string | null;
 }
 
@@ -92,6 +94,8 @@ export function TimeTrackingView() {
   const [sickStartDate, setSickStartDate] = useState("");
   const [sickEndDate, setSickEndDate] = useState("");
   const [sickNotes, setSickNotes] = useState("");
+  const [vacationHistoryOpen, setVacationHistoryOpen] = useState(false);
+  const [pendingLeaves, setPendingLeaves] = useState<LeaveRow[]>([]);
 
   const monthStart = startOfMonth(selectedMonth);
   const monthEnd = endOfMonth(selectedMonth);
@@ -103,21 +107,47 @@ export function TimeTrackingView() {
     setLoading(true);
     try {
       const year = selectedMonth.getFullYear();
-      const [e, s, v, sick, h] = await Promise.all([
+      const [e, s, v, sick, h, pending] = await Promise.all([
         supabase.from("time_entries").select("*").eq("user_id", user.id).gte("work_date", format(monthStart, "yyyy-MM-dd")).lte("work_date", format(monthEnd, "yyyy-MM-dd")).order("work_date", { ascending: false }),
-        supabase.from("employee_settings").select("*").eq("user_id", user.id).single(),
+        supabase.from("employee_settings").select("*, carry_over_expires_at").eq("user_id", user.id).single(),
         supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "vacation").in("status", ["approved", "pending", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
         supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "sick").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
         supabase.from("public_holidays").select("*").gte("holiday_date", `${year}-01-01`).lte("holiday_date", `${year}-12-31`).order("holiday_date"),
+        supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("status", "pending").order("start_date"),
       ]);
-      setEntries(e.data || []); setEmployeeSettings(s.data); setVacationLeaves(v.data || []); setSickLeaves(sick.data || []); setHolidays(h.data || []);
+      setEntries(e.data || []); 
+      setEmployeeSettings(s.data); 
+      setVacationLeaves(v.data || []); 
+      setSickLeaves(sick.data || []); 
+      setHolidays(h.data || []);
+      setPendingLeaves(pending.data || []);
     } catch (error: any) { toast.error("Fehler: " + error.message); } finally { setLoading(false); }
   };
 
   const dailyHours = employeeSettings ? employeeSettings.hours_per_month / employeeSettings.days_per_month : 8;
   const vacationBalance = useMemo(() => {
-    if (!employeeSettings) return { totalEntitlement: 0, taken: 0, remaining: 0 };
-    return calculateVacationBalance({ annualVacationDays: employeeSettings.annual_vacation_days, carryOverDays: employeeSettings.carry_over_days, employmentStartDate: employeeSettings.employment_start_date, approvedVacationLeaves: vacationLeaves.filter(l => l.status === "approved").map(l => ({ start_date: l.start_date, end_date: l.end_date })), currentYear: selectedMonth.getFullYear() });
+    if (!employeeSettings) return { 
+      totalEntitlement: 0, 
+      taken: 0, 
+      remaining: 0, 
+      carryOver: 0, 
+      carryOverRemaining: 0, 
+      carryOverExpiresAt: null, 
+      carryOverExpired: false, 
+      newVacationRemaining: 0,
+      prorated: 0,
+      annual: 0,
+      carryOverUsed: 0,
+      newVacationUsed: 0,
+    };
+    return calculateVacationBalance({ 
+      annualVacationDays: employeeSettings.annual_vacation_days, 
+      carryOverDays: employeeSettings.carry_over_days, 
+      employmentStartDate: employeeSettings.employment_start_date, 
+      approvedVacationLeaves: vacationLeaves.filter(l => l.status === "approved").map(l => ({ start_date: l.start_date, end_date: l.end_date })), 
+      currentYear: selectedMonth.getFullYear(),
+      carryOverExpiresAt: employeeSettings.carry_over_expires_at,
+    });
   }, [employeeSettings, vacationLeaves, selectedMonth]);
 
   const monthlyTotals = useMemo(() => {
@@ -541,14 +571,195 @@ export function TimeTrackingView() {
 
         </TabsContent>
         <TabsContent value="leave-requests" className="space-y-6">
-          <div className="grid grid-cols-2 gap-6">
-            <Card><CardHeader><CardTitle>Urlaub beantragen</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><Label>Von</Label><Input type="date" value={vacationStartDate} onChange={e => setVacationStartDate(e.target.value)} /></div><div><Label>Bis</Label><Input type="date" value={vacationEndDate} onChange={e => setVacationEndDate(e.target.value)} /></div></div><div><Label>Grund</Label><Textarea value={vacationReason} onChange={e => setVacationReason(e.target.value)} placeholder="Optional" /></div><Button onClick={handleRequestVacation}>Urlaub beantragen</Button></CardContent></Card>
-            <Card><CardHeader><CardTitle>Urlaubskonto {selectedMonth.getFullYear()}</CardTitle><CardDescription>Anspruch: {vacationBalance.totalEntitlement} | Genommen: {vacationBalance.taken} | Verbleibend: {vacationBalance.remaining}</CardDescription></CardHeader><CardContent>{vacationLeaves.length === 0 ? <p className="text-sm text-muted-foreground">Keine Urlaubsanträge vorhanden</p> : <Table><TableHeader><TableRow><TableHead>Von</TableHead><TableHead>Bis</TableHead><TableHead>Tage</TableHead><TableHead>Grund</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{vacationLeaves.map(v => { const d = eachDayOfInterval({ start: parseISO(v.start_date), end: parseISO(v.end_date) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length; return (<TableRow key={v.id}><TableCell>{format(parseISO(v.start_date), "dd.MM.yyyy")}</TableCell><TableCell>{format(parseISO(v.end_date), "dd.MM.yyyy")}</TableCell><TableCell>{d}</TableCell><TableCell>{v.reason || "-"}</TableCell><TableCell>{getStatusBadge(v.status)}</TableCell></TableRow>); })}</TableBody></Table>}</CardContent></Card>
+          {/* Pending Requests Alert */}
+          {pendingLeaves.length > 0 && (
+            <Card className="border-yellow-300 bg-yellow-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2 text-yellow-800">
+                  <Clock className="h-4 w-4" />
+                  Ausstehende Anträge ({pendingLeaves.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm">
+                  {pendingLeaves.map(p => (
+                    <li key={p.id} className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                        {p.type === 'vacation' ? '🏖️ Urlaub' : p.type === 'sick' ? '🤒 Krankheit' : '📋 Sonstiges'}
+                      </Badge>
+                      <span>{format(parseISO(p.start_date), "dd.MM.yyyy")} - {format(parseISO(p.end_date), "dd.MM.yyyy")}</span>
+                      <span className="text-muted-foreground">• Warten auf Genehmigung</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Urlaub beantragen</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Von</Label><Input type="date" value={vacationStartDate} onChange={e => setVacationStartDate(e.target.value)} /></div>
+                  <div><Label>Bis</Label><Input type="date" value={vacationEndDate} onChange={e => setVacationEndDate(e.target.value)} /></div>
+                </div>
+                <div><Label>Grund</Label><Textarea value={vacationReason} onChange={e => setVacationReason(e.target.value)} placeholder="Optional" /></div>
+                <Button onClick={handleRequestVacation}>Urlaub beantragen</Button>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Urlaubskonto {selectedMonth.getFullYear()}</CardTitle>
+                    <CardDescription className="mt-1">
+                      Anspruch: {vacationBalance.totalEntitlement} | Genommen: {vacationBalance.taken} | Verbleibend: {vacationBalance.remaining}
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setVacationHistoryOpen(true)}>
+                    <History className="h-4 w-4 mr-1" />
+                    Historie
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Resturlaub Anzeige */}
+                {vacationBalance.carryOver > 0 && !vacationBalance.carryOverExpired && (
+                  <div className="p-3 rounded-lg border border-amber-200 bg-amber-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        <span className="font-medium text-amber-800">Resturlaub aus {selectedMonth.getFullYear() - 1}</span>
+                      </div>
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                        {vacationBalance.carryOverRemaining} von {vacationBalance.carryOver} Tagen übrig
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-amber-700 mt-1">
+                      ⚠️ Verfällt am 31.03.{selectedMonth.getFullYear()} – Wird zuerst verbraucht!
+                    </p>
+                  </div>
+                )}
+                
+                {vacationBalance.carryOverExpired && (
+                  <div className="p-3 rounded-lg border border-red-200 bg-red-50">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                      <span className="text-sm text-red-800">Resturlaub aus dem Vorjahr ist am 31.03. verfallen.</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Aufschlüsselung */}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="text-muted-foreground">Neuer Urlaub {selectedMonth.getFullYear()}</div>
+                    <div className="font-semibold text-lg">{vacationBalance.newVacationRemaining} / {vacationBalance.prorated} Tage</div>
+                  </div>
+                  {vacationBalance.carryOver > 0 && !vacationBalance.carryOverExpired && (
+                    <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                      <div className="text-amber-700">Resturlaub</div>
+                      <div className="font-semibold text-lg text-amber-800">{vacationBalance.carryOverRemaining} / {vacationBalance.carryOver} Tage</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Urlaubsliste */}
+                {vacationLeaves.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Keine Urlaubsanträge vorhanden</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Von</TableHead>
+                        <TableHead>Bis</TableHead>
+                        <TableHead>Tage</TableHead>
+                        <TableHead>Grund</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {vacationLeaves.map(v => { 
+                        const d = eachDayOfInterval({ start: parseISO(v.start_date), end: parseISO(v.end_date) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length; 
+                        return (
+                          <TableRow key={v.id}>
+                            <TableCell>{format(parseISO(v.start_date), "dd.MM.yyyy")}</TableCell>
+                            <TableCell>{format(parseISO(v.end_date), "dd.MM.yyyy")}</TableCell>
+                            <TableCell>{d}</TableCell>
+                            <TableCell>{v.reason || "-"}</TableCell>
+                            <TableCell>{getStatusBadge(v.status)}</TableCell>
+                          </TableRow>
+                        ); 
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </div>
-          <div className="grid grid-cols-2 gap-6">
-            <Card><CardHeader><CardTitle>Krankmeldung</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><Label>Von</Label><Input type="date" value={sickStartDate} onChange={e => setSickStartDate(e.target.value)} /></div><div><Label>Bis</Label><Input type="date" value={sickEndDate} onChange={e => setSickEndDate(e.target.value)} /></div></div><div><Label>Notizen</Label><Textarea value={sickNotes} onChange={e => setSickNotes(e.target.value)} placeholder="Optional" /></div><Button onClick={handleReportSick}>Krankmeldung einreichen</Button></CardContent></Card>
-            <Card><CardHeader><CardTitle>Krankmeldungen {selectedMonth.getFullYear()}</CardTitle></CardHeader><CardContent>{sickLeaves.length === 0 ? <p className="text-sm text-muted-foreground">Keine Krankmeldungen vorhanden</p> : <Table><TableHeader><TableRow><TableHead>Von</TableHead><TableHead>Bis</TableHead><TableHead>Tage</TableHead><TableHead>Notizen</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{sickLeaves.map(s => { const d = eachDayOfInterval({ start: parseISO(s.start_date), end: parseISO(s.end_date) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length; return (<TableRow key={s.id}><TableCell>{format(parseISO(s.start_date), "dd.MM.yyyy")}</TableCell><TableCell>{format(parseISO(s.end_date), "dd.MM.yyyy")}</TableCell><TableCell>{d}</TableCell><TableCell>{s.reason || "-"}</TableCell><TableCell>{getStatusBadge(s.status)}</TableCell></TableRow>); })}</TableBody></Table>}</CardContent></Card>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Krankmeldung</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Von</Label><Input type="date" value={sickStartDate} onChange={e => setSickStartDate(e.target.value)} /></div>
+                  <div><Label>Bis</Label><Input type="date" value={sickEndDate} onChange={e => setSickEndDate(e.target.value)} /></div>
+                </div>
+                <div><Label>Notizen</Label><Textarea value={sickNotes} onChange={e => setSickNotes(e.target.value)} placeholder="Optional" /></div>
+                <Button onClick={handleReportSick}>Krankmeldung einreichen</Button>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Krankmeldungen {selectedMonth.getFullYear()}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {sickLeaves.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Keine Krankmeldungen vorhanden</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Von</TableHead>
+                        <TableHead>Bis</TableHead>
+                        <TableHead>Tage</TableHead>
+                        <TableHead>Notizen</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sickLeaves.map(s => { 
+                        const d = eachDayOfInterval({ start: parseISO(s.start_date), end: parseISO(s.end_date) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length; 
+                        return (
+                          <TableRow key={s.id}>
+                            <TableCell>{format(parseISO(s.start_date), "dd.MM.yyyy")}</TableCell>
+                            <TableCell>{format(parseISO(s.end_date), "dd.MM.yyyy")}</TableCell>
+                            <TableCell>{d}</TableCell>
+                            <TableCell>{s.reason || "-"}</TableCell>
+                            <TableCell>{getStatusBadge(s.status)}</TableCell>
+                          </TableRow>
+                        ); 
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </div>
+          
+          {/* Vacation History Dialog */}
+          <VacationHistoryDialog 
+            open={vacationHistoryOpen} 
+            onOpenChange={setVacationHistoryOpen} 
+          />
         </TabsContent>
 
         <TabsContent value="employee-info" className="space-y-6">

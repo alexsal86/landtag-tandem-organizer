@@ -3156,6 +3156,7 @@ export type Database = {
           admin_id: string | null
           annual_vacation_days: number
           carry_over_days: number
+          carry_over_expires_at: string | null
           contract_file_path: string | null
           created_at: string
           days_per_month: number
@@ -3177,6 +3178,7 @@ export type Database = {
           admin_id?: string | null
           annual_vacation_days?: number
           carry_over_days?: number
+          carry_over_expires_at?: string | null
           contract_file_path?: string | null
           created_at?: string
           days_per_month?: number
@@ -3198,6 +3200,7 @@ export type Database = {
           admin_id?: string | null
           annual_vacation_days?: number
           carry_over_days?: number
+          carry_over_expires_at?: string | null
           contract_file_path?: string | null
           created_at?: string
           days_per_month?: number
@@ -8502,6 +8505,48 @@ export type Database = {
           },
         ]
       }
+      vacation_history: {
+        Row: {
+          annual_entitlement: number
+          carry_over_from_previous: number | null
+          carry_over_to_next: number | null
+          created_at: string | null
+          expired_days: number | null
+          id: string
+          notes: string | null
+          total_taken: number | null
+          updated_at: string | null
+          user_id: string
+          year: number
+        }
+        Insert: {
+          annual_entitlement?: number
+          carry_over_from_previous?: number | null
+          carry_over_to_next?: number | null
+          created_at?: string | null
+          expired_days?: number | null
+          id?: string
+          notes?: string | null
+          total_taken?: number | null
+          updated_at?: string | null
+          user_id: string
+          year: number
+        }
+        Update: {
+          annual_entitlement?: number
+          carry_over_from_previous?: number | null
+          carry_over_to_next?: number | null
+          created_at?: string | null
+          expired_days?: number | null
+          id?: string
+          notes?: string | null
+          total_taken?: number | null
+          updated_at?: string | null
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       widget_configurations: {
         Row: {
           configuration: Json
@@ -8631,6 +8676,7 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      expire_carry_over_vacation: { Args: never; Returns: undefined }
       generate_current_year_stats: {
         Args: { p_tenant_id: string }
         Returns: Json

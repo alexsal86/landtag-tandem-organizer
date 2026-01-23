@@ -42,6 +42,7 @@ type EmployeeSettingsRow = {
   meeting_interval_months?: number;
   next_meeting_reminder_days?: number;
   carry_over_days?: number;
+  carry_over_expires_at?: string | null;
 };
 
 type Profile = {
@@ -275,7 +276,7 @@ export function EmployeesView() {
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
         supabase
             .from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date, hours_per_month, days_per_month, days_per_week, last_meeting_date, meeting_interval_months, next_meeting_reminder_days, carry_over_days")
+            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date, hours_per_month, days_per_month, days_per_week, last_meeting_date, meeting_interval_months, next_meeting_reminder_days, carry_over_days, carry_over_expires_at")
             .in("user_id", managedIds),
           supabase
             .from("leave_requests")
@@ -1453,8 +1454,16 @@ export function EmployeesView() {
                           />
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{sickDays[e.user_id] || 0} Tage</Badge>
-                         </TableCell>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{sickDays[e.user_id] || 0} Tage</Badge>
+                            {/* Pending Sick Badge */}
+                            {(a?.pending?.sick || 0) > 0 && (
+                              <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-300">
+                                ⏳ {a?.pending.sick}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
                           <TableCell>
                             <div className="space-y-1">
                               <Badge variant="secondary">
@@ -1481,8 +1490,14 @@ export function EmployeesView() {
                                   {remainingVacationDays + ((e as any).carry_over_days || 0)} verbleibend
                                 </div>
                               )}
+                              {/* Pending Vacation Badge */}
+                              {(a?.pending?.vacation || 0) > 0 && (
+                                <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">
+                                  ⏳ {a?.pending.vacation} ausstehend
+                                </Badge>
+                              )}
                             </div>
-                         </TableCell>
+                          </TableCell>
                          <TableCell>
                            {e.last_meeting_date && e.last_meeting_id ? (
                              <Button
