@@ -228,11 +228,13 @@ export function AppNavigation({
 
   const getTeamSubItems = (): NavSubItem[] => {
     const items: NavSubItem[] = [];
-    if (showEmployeePage) {
-      items.push({ id: "employee", label: "Mitarbeiter", icon: Users });
-    }
+    // Zeiterfassung ZUERST (wenn verfügbar) - damit alle Mitarbeiter dieselbe Ansicht sehen
     if (showTimeTracking) {
       items.push({ id: "time", label: "Zeiterfassung", icon: Clock });
+    }
+    // Dann Mitarbeiter (für Admin-Rollen)
+    if (showEmployeePage) {
+      items.push({ id: "employee", label: "Mitarbeiter", icon: Users });
     }
     return items;
   };
