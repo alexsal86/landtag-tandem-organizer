@@ -216,9 +216,7 @@ export function MyWorkTasksTab() {
               )}
             </div>
             {task.description && (
-              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                {task.description.replace(/<[^>]*>/g, '')}
-              </p>
+              <RichTextDisplay content={task.description} className="text-xs line-clamp-1 mt-0.5" />
             )}
             {task.due_date && (
               <div className={cn("flex items-center gap-1 mt-1 text-xs", getDueDateColor(task.due_date))}>

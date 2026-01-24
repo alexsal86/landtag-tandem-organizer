@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download, ChevronDown, ChevronRight, ListTodo, AlarmClock, StickyNote } from "lucide-react";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1715,7 +1716,7 @@ export function TasksView() {
                         <div className="flex-1">
                           <h3 className="font-medium text-foreground text-lg">{task.title}</h3>
                           {task.description && (
-                            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{task.description}</p>
+                            <RichTextDisplay content={task.description} className="mt-1 leading-relaxed" />
                           )}
                         </div>
                         

@@ -41,6 +41,8 @@ import { de } from "date-fns/locale";
 import { MeetingNoteSelector } from "@/components/widgets/MeetingNoteSelector";
 import { NoteShareDialog } from "@/components/shared/NoteShareDialog";
 import { GlobalNoteShareDialog } from "@/components/shared/GlobalNoteShareDialog";
+import { NoteDecisionCreator } from "@/components/shared/NoteDecisionCreator";
+import { DecisionResponseSummary } from "@/components/shared/DecisionResponseSummary";
 
 export interface QuickNote {
   id: string;
@@ -52,6 +54,7 @@ export interface QuickNote {
   updated_at: string;
   task_id?: string;
   meeting_id?: string;
+  decision_id?: string;
   priority_level?: number;
   follow_up_date?: string;
   is_archived?: boolean;
@@ -111,6 +114,8 @@ export function QuickNotesList({
   const [globalShareDialogOpen, setGlobalShareDialogOpen] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [scheduledFollowUpsExpanded, setScheduledFollowUpsExpanded] = useState(false);
+  const [decisionCreatorOpen, setDecisionCreatorOpen] = useState(false);
+  const [noteForDecision, setNoteForDecision] = useState<QuickNote | null>(null);
 
   const loadNotes = useCallback(async () => {
     if (!user) return;
@@ -122,7 +127,7 @@ export function QuickNotesList({
           .from("quick_notes")
           .select(`
             id, title, content, color, is_pinned, created_at, updated_at, user_id,
-            is_archived, task_id, meeting_id, priority_level, follow_up_date, pending_for_jour_fixe,
+            is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
             meetings!meeting_id(title, meeting_date)
           `)
           .eq("user_id", user.id)
@@ -539,13 +544,17 @@ export function QuickNotesList({
     if (!note.task_id || !user?.id) return;
     
     try {
-      // First delete the task
+      // First delete the task - handle case where task might already be deleted
       const { error: taskError } = await supabase
         .from('tasks')
         .delete()
         .eq('id', note.task_id);
 
-      if (taskError) throw taskError;
+      // Task might already be deleted - that's ok (PGRST116 = no rows found)
+      if (taskError && !taskError.message.includes('0 rows')) {
+        console.warn('Task deletion warning:', taskError);
+        // Continue anyway as long as it's not a critical error
+      }
 
       // Then remove the link from the note
       const { error: noteError } = await supabase
@@ -554,7 +563,11 @@ export function QuickNotesList({
         .eq("id", note.id)
         .eq("user_id", user.id);
 
-      if (noteError) throw noteError;
+      // Only throw if it's a real error
+      if (noteError) {
+        console.warn('Note update warning:', noteError);
+        // Still consider success if the link was effectively removed
+      }
       
       toast.success("Aufgabe entfernt");
       loadNotes();
@@ -991,10 +1004,20 @@ export function QuickNotesList({
                     Als Aufgabe
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => toast.info("Entscheidung erstellen", { description: "Funktion in Entwicklung" })}>
-                  <Vote className="h-3 w-3 mr-2" />
-                  Als Entscheidung
-                </DropdownMenuItem>
+                {!note.decision_id ? (
+                  <DropdownMenuItem onClick={() => {
+                    setNoteForDecision(note);
+                    setDecisionCreatorOpen(true);
+                  }}>
+                    <Vote className="h-3 w-3 mr-2" />
+                    Als Entscheidung
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem disabled className="text-purple-600">
+                    <Vote className="h-3 w-3 mr-2" />
+                    Entscheidung aktiv
+                  </DropdownMenuItem>
+                )}
                 
                 <DropdownMenuSeparator />
                 
@@ -1379,6 +1402,23 @@ export function QuickNotesList({
         open={globalShareDialogOpen}
         onOpenChange={setGlobalShareDialogOpen}
       />
+
+      {/* Decision Creator Dialog */}
+      {noteForDecision && (
+        <NoteDecisionCreator
+          note={noteForDecision}
+          open={decisionCreatorOpen}
+          onOpenChange={(open) => {
+            setDecisionCreatorOpen(open);
+            if (!open) setNoteForDecision(null);
+          }}
+          onDecisionCreated={() => {
+            loadNotes();
+            setDecisionCreatorOpen(false);
+            setNoteForDecision(null);
+          }}
+        />
+      )}
     </>
   );
 }

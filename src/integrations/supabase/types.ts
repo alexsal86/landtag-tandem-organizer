@@ -6841,6 +6841,7 @@ export type Database = {
           color: string | null
           content: string
           created_at: string
+          decision_id: string | null
           deleted_at: string | null
           follow_up_date: string | null
           id: string
@@ -6864,6 +6865,7 @@ export type Database = {
           color?: string | null
           content: string
           created_at?: string
+          decision_id?: string | null
           deleted_at?: string | null
           follow_up_date?: string | null
           id?: string
@@ -6887,6 +6889,7 @@ export type Database = {
           color?: string | null
           content?: string
           created_at?: string
+          decision_id?: string | null
           deleted_at?: string | null
           follow_up_date?: string | null
           id?: string
@@ -6904,6 +6907,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "quick_notes_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quick_notes_meeting_id_fkey"
             columns: ["meeting_id"]
