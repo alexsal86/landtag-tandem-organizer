@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/hooks/useTenant';
 import { DashboardLayout } from '@/hooks/useDashboardLayout';
 import { toast } from 'sonner';
 
@@ -33,6 +34,7 @@ interface ConnectedUser {
 
 export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProps) {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [isConnected, setIsConnected] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [connectedUsers, setConnectedUsers] = useState<ConnectedUser[]>([]);
@@ -132,8 +134,8 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
           owner_id: user.id,
           name: currentLayout.name,
           layout_data: JSON.parse(JSON.stringify(currentLayout)),
-          updated_at: new Date().toISOString(),
-          tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
+        updated_at: new Date().toISOString(),
+        tenant_id: currentTenant?.id || 'default-tenant-id'
         }, {
           onConflict: 'owner_id'
         });

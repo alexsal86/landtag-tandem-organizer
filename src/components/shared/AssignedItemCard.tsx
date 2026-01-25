@@ -63,20 +63,19 @@ const typeLabels: Record<ItemType, { label: string; variant: 'default' | 'second
 };
 
 const isOverdue = (dateString: string): boolean => {
-  if (!dateString || dateString === '1970-01-01T00:00:00.000Z' || dateString === '1970-01-01') {
-    return false;
-  }
+  if (!dateString) return false;
   const date = new Date(dateString);
+  if (isNaN(date.getTime()) || date.getFullYear() <= 1970) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return date < today;
 };
 
 const formatDate = (dateString: string): string => {
-  if (!dateString || dateString === '1970-01-01T00:00:00.000Z' || dateString === '1970-01-01') {
-    return 'unbefristet';
-  }
-  return new Date(dateString).toLocaleDateString('de-DE');
+  if (!dateString) return 'unbefristet';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime()) || date.getFullYear() <= 1970) return 'unbefristet';
+  return date.toLocaleDateString('de-DE');
 };
 
 export function AssignedItemCard({

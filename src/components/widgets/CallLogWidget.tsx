@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/hooks/useTenant';
 
 interface CallLog {
   id: string;
@@ -50,6 +51,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
   configuration = {} 
 }) => {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
@@ -188,7 +190,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               status: 'todo',
               category: 'call_follow_up',
               due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-              tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
+              tenant_id: currentTenant?.id || 'default-tenant-id'
             })
             .select('id')
             .single();
@@ -216,7 +218,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               category: 'call_follow_up',
               due_date: followUpDate ? new Date(followUpDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               call_log_id: data.id,
-              tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
+              tenant_id: currentTenant?.id || 'default-tenant-id'
           })
           .select('id')
           .single();
@@ -247,7 +249,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               category: 'follow_up',
               priority: priority,
               status: 'planned',
-              tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
+              tenant_id: currentTenant?.id || 'default-tenant-id'
             });
 
           if (appointmentError) {
@@ -450,9 +452,9 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
           user_id: user?.id,
           name: callerName.trim(),
           phone: callerPhone.trim() || undefined,
-          contact_type: 'person',
-          category: 'citizen',
-          tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
+        contact_type: 'person',
+        category: 'citizen',
+        tenant_id: currentTenant?.id || 'default-tenant-id'
         })
         .select()
         .single();

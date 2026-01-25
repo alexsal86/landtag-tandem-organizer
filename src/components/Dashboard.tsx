@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExpenseWidget } from "@/components/widgets/ExpenseWidget";
-
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 interface QuickStats {
   todayMeetings: number;
   pendingTasks: number;
@@ -216,7 +216,7 @@ export function Dashboard() {
                             {task.priority === "high" ? "Hoch" : task.priority === "medium" ? "Mittel" : "Niedrig"}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">{task.description}</p>
+                        <RichTextDisplay content={task.description} className="line-clamp-1" />
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
