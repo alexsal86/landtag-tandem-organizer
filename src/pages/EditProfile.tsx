@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 
 interface ProfileData {
   display_name: string;
@@ -21,6 +22,7 @@ export function EditProfile() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   
   const [formData, setFormData] = useState<ProfileData>({
     display_name: "",
@@ -188,7 +190,7 @@ export function EditProfile() {
             display_name: formData.display_name || null,
             bio: formData.bio || null,
             avatar_url: formData.avatar_url || null,
-            tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
+            tenant_id: currentTenant?.id || 'default-tenant-id'
           });
         error = insertError;
       }
