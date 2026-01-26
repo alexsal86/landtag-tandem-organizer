@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { Check, X, MessageCircle, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -241,7 +242,7 @@ export function MyWorkDecisionsTab() {
 
   return (
     <>
-      <ScrollArea className="h-[500px]">
+      <ScrollArea className="h-[calc(100vh-20rem)]">
         <div className="space-y-2 p-4">
           {decisions.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -280,9 +281,10 @@ export function MyWorkDecisionsTab() {
                     )}
                   </div>
                   {decision.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                      {decision.description.replace(/<[^>]*>/g, '')}
-                    </p>
+                    <RichTextDisplay 
+                      content={decision.description} 
+                      className="text-xs line-clamp-1 mt-0.5" 
+                    />
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
                     {format(new Date(decision.created_at), "dd.MM.yyyy", { locale: de })}

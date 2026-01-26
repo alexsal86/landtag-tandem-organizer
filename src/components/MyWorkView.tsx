@@ -1,7 +1,14 @@
-import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus } from "lucide-react";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +58,7 @@ const BASE_TABS: TabConfig[] = [
 
 export function MyWorkView() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -94,32 +102,8 @@ export function MyWorkView() {
     }
   }, [searchParams, activeTab, setSearchParams]);
 
-  useEffect(() => {
-    if (user) {
-      loadUserRoleAndCounts();
-    }
-  }, [user]);
-
-  const loadUserRoleAndCounts = async () => {
-    if (!user) return;
-    
-    // Check user role
-    const [adminCheck, roleData] = await Promise.all([
-      supabase.rpc("is_admin", { _user_id: user.id }),
-      supabase.from("user_roles").select("role").eq("user_id", user.id).single()
-    ]);
-    
-    setIsAdmin(!!adminCheck.data);
-    
-    const employeeRoles = ["mitarbeiter", "praktikant", "bueroleitung"];
-    setIsEmployee(roleData.data ? employeeRoles.includes(roleData.data.role) : false);
-    setIsAbgeordneter(roleData.data?.role === "abgeordneter");
-    setIsBueroleitung(roleData.data?.role === "bueroleitung");
-    
-    loadCounts();
-  };
-
-  const loadCounts = async () => {
+  // Memoized loadCounts for realtime updates
+  const loadCounts = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -166,9 +150,9 @@ export function MyWorkView() {
         .gte("meeting_date", new Date().toISOString());
 
       // Check if admin for team count (meeting requests + time entry warnings)
-      const { data: isAdmin } = await supabase.rpc("is_admin", { _user_id: user.id });
+      const { data: adminData } = await supabase.rpc("is_admin", { _user_id: user.id });
       let teamCount = 0;
-      if (isAdmin) {
+      if (adminData) {
         const { count: requestCount } = await supabase
           .from("employee_meeting_requests")
           .select("*", { count: "exact", head: true })
@@ -248,6 +232,64 @@ export function MyWorkView() {
     } catch (error) {
       console.error("Error loading counts:", error);
     }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadUserRoleAndCounts();
+    }
+  }, [user]);
+
+  // Supabase Realtime subscriptions for live updates
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('my-work-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks' },
+        () => loadCounts()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'task_decisions' },
+        () => loadCounts()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'task_decision_participants' },
+        () => loadCounts()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'quick_notes' },
+        () => setRefreshTrigger(prev => prev + 1)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, loadCounts]);
+
+  const loadUserRoleAndCounts = async () => {
+    if (!user) return;
+    
+    // Check user role
+    const [adminCheck, roleData] = await Promise.all([
+      supabase.rpc("is_admin", { _user_id: user.id }),
+      supabase.from("user_roles").select("role").eq("user_id", user.id).single()
+    ]);
+    
+    setIsAdmin(!!adminCheck.data);
+    
+    const employeeRoles = ["mitarbeiter", "praktikant", "bueroleitung"];
+    setIsEmployee(roleData.data ? employeeRoles.includes(roleData.data.role) : false);
+    setIsAbgeordneter(roleData.data?.role === "abgeordneter");
+    setIsBueroleitung(roleData.data?.role === "bueroleitung");
+    
+    loadCounts();
   };
 
   const handleNoteSaved = () => {
@@ -268,14 +310,44 @@ export function MyWorkView() {
           </p>
         </div>
         
-        {/* Hilfe-Button - zeigt Inhalt basierend auf aktivem Tab */}
-        {MYWORK_HELP_CONTENT[activeTab] && (
-          <PageHelpButton
-            title={MYWORK_HELP_CONTENT[activeTab].title}
-            description={MYWORK_HELP_CONTENT[activeTab].description}
-            features={MYWORK_HELP_CONTENT[activeTab].features}
-          />
-        )}
+        <div className="flex items-center gap-2">
+          {/* Schnellaktionen-Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" className="gap-1">
+                <Plus className="h-4 w-4" />
+                Neu
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => setActiveTab("capture")}>
+                <StickyNote className="h-4 w-4 mr-2" />
+                Quick Note
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/tasks?action=create")}>
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Aufgabe
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSearchParams({ tab: "decisions", action: "create-decision" })}>
+                <Vote className="h-4 w-4 mr-2" />
+                Entscheidung
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/meetings?action=create-meeting")}>
+                <Calendar className="h-4 w-4 mr-2" />
+                Jour Fixe
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Hilfe-Button - zeigt Inhalt basierend auf aktivem Tab */}
+          {MYWORK_HELP_CONTENT[activeTab] && (
+            <PageHelpButton
+              title={MYWORK_HELP_CONTENT[activeTab].title}
+              description={MYWORK_HELP_CONTENT[activeTab].description}
+              features={MYWORK_HELP_CONTENT[activeTab].features}
+            />
+          )}
+        </div>
       </div>
 
       {/* Tab Navigation (horizontal, oben) */}
