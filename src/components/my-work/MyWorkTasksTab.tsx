@@ -277,7 +277,7 @@ export function MyWorkTasksTab() {
   const totalTasks = assignedTasks.length + createdTasks.length;
 
   return (
-    <ScrollArea className="h-[500px]">
+    <ScrollArea className="h-[calc(100vh-20rem)]">
       <div className="space-y-4 p-4">
         {totalTasks === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
