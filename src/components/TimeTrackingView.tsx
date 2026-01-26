@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { EmployeeInfoTab } from "./EmployeeInfoTab";
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from "date-fns";
 import { de } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Edit, Trash2, History, Calendar, Clock, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit, Trash2, History, Calendar, Clock, AlertTriangle, Undo2 } from "lucide-react";
 import { VacationHistoryDialog } from "./VacationHistoryDialog";
 import { calculateVacationBalance } from "@/utils/vacationCalculations";
 
@@ -301,9 +301,40 @@ export function TimeTrackingView() {
       approved: { variant: "default" as const, label: "✓ Genehmigt", className: "bg-green-100 text-green-800 border-green-200" },
       pending: { variant: "secondary" as const, label: "⏳ Ausstehend", className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
       rejected: { variant: "destructive" as const, label: "✗ Abgelehnt", className: "bg-red-100 text-red-800 border-red-200" },
+      cancel_requested: { variant: "outline" as const, label: "↩ Stornierung angefragt", className: "bg-amber-50 text-amber-700 border-amber-300" },
+      cancelled: { variant: "secondary" as const, label: "✗ Storniert", className: "bg-gray-100 text-gray-600 border-gray-200" },
     };
     const { label, className } = config[status as keyof typeof config] || config.pending;
     return <Badge className={className}>{label}</Badge>;
+  };
+
+  const handleCancelVacationRequest = async (leaveId: string) => {
+    if (!window.confirm('Möchten Sie diesen Urlaubsantrag wirklich stornieren?')) return;
+    
+    try {
+      const leave = vacationLeaves.find(v => v.id === leaveId);
+      // For pending requests: set directly to cancelled
+      // For approved requests: set to cancel_requested (admin must confirm)
+      const newStatus = leave?.status === 'pending' ? 'cancelled' : 'cancel_requested';
+      
+      const { error } = await supabase
+        .from("leave_requests")
+        .update({ status: newStatus as any }) // Cast needed for extended status types
+        .eq("id", leaveId)
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+      
+      if (newStatus === 'cancelled') {
+        toast.success("Urlaubsantrag storniert");
+      } else {
+        toast.success("Stornierungsanfrage gesendet - Wartet auf Genehmigung");
+      }
+      loadData();
+    } catch (error: any) {
+      console.error('Error cancelling vacation request:', error);
+      toast.error("Fehler beim Stornieren");
+    }
   };
 
   if (loading) return <div className="p-4">Lädt...</div>;
@@ -680,11 +711,15 @@ export function TimeTrackingView() {
                         <TableHead>Tage</TableHead>
                         <TableHead>Grund</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Aktion</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {vacationLeaves.map(v => { 
-                        const d = eachDayOfInterval({ start: parseISO(v.start_date), end: parseISO(v.end_date) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length; 
+                        const d = eachDayOfInterval({ start: parseISO(v.start_date), end: parseISO(v.end_date) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length;
+                        const canCancel = (v.status === 'pending' || v.status === 'approved') && parseISO(v.start_date) > new Date();
+                        const isCancelRequested = v.status === 'cancel_requested';
+                        
                         return (
                           <TableRow key={v.id}>
                             <TableCell>{format(parseISO(v.start_date), "dd.MM.yyyy")}</TableCell>
@@ -692,6 +727,25 @@ export function TimeTrackingView() {
                             <TableCell>{d}</TableCell>
                             <TableCell>{v.reason || "-"}</TableCell>
                             <TableCell>{getStatusBadge(v.status)}</TableCell>
+                            <TableCell>
+                              {canCancel && !isCancelRequested && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCancelVacationRequest(v.id)}
+                                  className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Undo2 className="h-4 w-4 mr-1" />
+                                  Stornieren
+                                </Button>
+                              )}
+                              {isCancelRequested && (
+                                <span className="text-xs text-amber-600 flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Wird geprüft
+                                </span>
+                              )}
+                            </TableCell>
                           </TableRow>
                         ); 
                       })}

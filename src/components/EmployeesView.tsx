@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { startOfYear, endOfYear, eachDayOfInterval, isWeekend, formatDistanceToNow, differenceInDays, format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Calendar, AlertCircle, History, BarChart3, RefreshCcw } from "lucide-react";
+import { Calendar, AlertCircle, History, BarChart3, RefreshCcw, Check, X, Undo2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EmployeeMeetingRequestDialog } from "./EmployeeMeetingRequestDialog";
@@ -25,7 +25,7 @@ import { EmployeeYearlyStatsView } from "./EmployeeYearlyStatsView";
 
 // Types derived from DB schema
 type LeaveType = "vacation" | "sick" | "other";
-type LeaveStatus = "pending" | "approved" | "rejected";
+type LeaveStatus = "pending" | "approved" | "rejected" | "cancel_requested" | "cancelled";
 
 type EmployeeSettingsRow = {
   user_id: string;
@@ -285,7 +285,7 @@ export function EmployeesView() {
           supabase
             .from("leave_requests")
             .select("id, user_id, type, status, start_date, end_date")
-            .eq("status", "pending")
+            .in("status", ["pending", "cancel_requested"] as any)
             .in("user_id", managedIds),
           supabase
             .from("sick_days")
@@ -752,6 +752,58 @@ export function EmployeesView() {
       toast({
         title: "Fehler",
         description: e?.message ?? "Antrag konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle cancellation approval/rejection
+  const handleCancelApproval = async (leaveId: string, approve: boolean) => {
+    try {
+      const leaveRequest = pendingLeaves.find(req => req.id === leaveId);
+      // If approved: set to cancelled, if rejected: set back to approved
+      const newStatus = approve ? 'cancelled' : 'approved';
+      
+      const { error } = await supabase
+        .from("leave_requests")
+        .update({ status: newStatus as any })
+        .eq("id", leaveId);
+
+      if (error) throw error;
+
+      // If cancellation approved, remove calendar entry
+      if (approve && leaveRequest) {
+        const { data: userProfile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("user_id", leaveRequest.user_id)
+          .single();
+
+        const userName = userProfile?.display_name || "Mitarbeiter";
+
+        // Delete the vacation calendar entry
+        await supabase
+          .from("appointments")
+          .delete()
+          .eq("title", `Urlaub von ${userName}`)
+          .gte("start_time", new Date(leaveRequest.start_date).toISOString())
+          .eq("category", "vacation");
+      }
+
+      toast({
+        title: approve ? "Stornierung genehmigt" : "Stornierung abgelehnt",
+        description: approve 
+          ? "Die Urlaubsstornierung wurde genehmigt und der Kalendereintrag entfernt." 
+          : "Die Stornierung wurde abgelehnt. Der Urlaub bleibt bestehen.",
+      });
+
+      // Reload data
+      window.location.reload();
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Fehler",
+        description: e?.message ?? "Stornierungsanfrage konnte nicht verarbeitet werden.",
         variant: "destructive",
       });
     }
@@ -1268,6 +1320,7 @@ export function EmployeesView() {
                   <TableRow>
                     <TableHead>Mitarbeiter</TableHead>
                     <TableHead>Typ</TableHead>
+                     <TableHead>Status</TableHead>
                      <TableHead>Von</TableHead>
                      <TableHead>Bis</TableHead>
                      <TableHead>Arbeitstage</TableHead>
@@ -1277,13 +1330,27 @@ export function EmployeesView() {
                 <TableBody>
                    {pendingLeaves.map((req) => {
                      const workingDays = calculateWorkingDays(req.start_date, req.end_date);
+                     const isCancelRequest = req.status === 'cancel_requested';
+                     
                      return (
-                     <TableRow key={req.id}>
+                     <TableRow key={req.id} className={isCancelRequest ? "bg-amber-50/50" : ""}>
                        <TableCell>{req.user_name}</TableCell>
                        <TableCell>
                          <Badge variant="outline">
                            {req.type === "vacation" ? "Urlaub" : req.type === "sick" ? "Krank" : "Sonstiges"}
                          </Badge>
+                       </TableCell>
+                       <TableCell>
+                         {isCancelRequest ? (
+                           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
+                             <Undo2 className="h-3 w-3 mr-1" />
+                             Stornierung
+                           </Badge>
+                         ) : (
+                           <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                             Neu
+                           </Badge>
+                         )}
                        </TableCell>
                        <TableCell>{new Date(req.start_date).toLocaleDateString("de-DE")}</TableCell>
                        <TableCell>{new Date(req.end_date).toLocaleDateString("de-DE")}</TableCell>
@@ -1291,22 +1358,45 @@ export function EmployeesView() {
                          <Badge variant="secondary">{workingDays} Tage</Badge>
                        </TableCell>
                        <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => handleLeaveAction(req.id, "approved")}
-                          >
-                            Genehmigen
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleLeaveAction(req.id, "rejected")}
-                          >
-                            Ablehnen
-                          </Button>
-                        </div>
+                        {isCancelRequest ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-green-700 hover:bg-green-50"
+                              onClick={() => handleCancelApproval(req.id, true)}
+                            >
+                              <Check className="h-4 w-4 mr-1" />
+                              Stornierung genehmigen
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-muted-foreground"
+                              onClick={() => handleCancelApproval(req.id, false)}
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Ablehnen
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleLeaveAction(req.id, "approved")}
+                            >
+                              Genehmigen
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleLeaveAction(req.id, "rejected")}
+                            >
+                              Ablehnen
+                            </Button>
+                          </div>
+                        )}
                        </TableCell>
                      </TableRow>
                    )})}
