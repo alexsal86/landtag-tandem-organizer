@@ -46,6 +46,10 @@ interface EventPlanning {
   digital_platform?: string;
   digital_link?: string;
   digital_access_info?: string;
+  creator?: {
+    display_name: string | null;
+    avatar_url: string | null;
+  };
 }
 
 interface EventPlanningContact {
@@ -569,41 +573,57 @@ export function EventPlanningView() {
         <TableRow>
           <TableHead className="w-10"></TableHead>
           <TableHead>Titel</TableHead>
+          <TableHead>Verantwortlich</TableHead>
           <TableHead>Beschreibung</TableHead>
           <TableHead>Datum</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {plannings.map((planning) => (
-          <TableRow 
-            key={planning.id} 
-            className="cursor-pointer hover:bg-muted/50 relative"
-            onClick={() => setSelectedPlanning(planning)}
-          >
-            <TableCell className="w-10">
-              {planning.confirmed_date ? (
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20">
-                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+        {plannings.map((planning) => {
+          const creatorProfile = allProfiles.find(p => p.user_id === planning.user_id);
+          
+          return (
+            <TableRow 
+              key={planning.id} 
+              className="cursor-pointer hover:bg-muted/50 relative"
+              onClick={() => setSelectedPlanning(planning)}
+            >
+              <TableCell className="w-10">
+                {planning.confirmed_date ? (
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20">
+                    <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20">
+                    <Clock className="h-4 w-4 text-amber-500" />
+                  </div>
+                )}
+              </TableCell>
+              <TableCell className="font-medium relative">
+                <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} size="sm" />
+                {planning.title}
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1.5">
+                  <Avatar className="h-5 w-5">
+                    <AvatarImage src={creatorProfile?.avatar_url} />
+                    <AvatarFallback className="text-xs">
+                      {creatorProfile?.display_name?.[0] || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm">{creatorProfile?.display_name || "Unbekannt"}</span>
                 </div>
-              ) : (
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20">
-                  <Clock className="h-4 w-4 text-amber-500" />
-                </div>
-              )}
-            </TableCell>
-            <TableCell className="font-medium relative">
-              <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} size="sm" />
-              {planning.title}
-            </TableCell>
-            <TableCell className="max-w-xs truncate">{planning.description || '-'}</TableCell>
-            <TableCell>
-              {planning.confirmed_date 
-                ? format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })
-                : "-"
-              }
-            </TableCell>
-          </TableRow>
-        ))}
+              </TableCell>
+              <TableCell className="max-w-xs truncate">{planning.description || '-'}</TableCell>
+              <TableCell>
+                {planning.confirmed_date 
+                  ? format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })
+                  : "-"
+                }
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );
@@ -2520,6 +2540,7 @@ export function EventPlanningView() {
               {plannings.map((planning) => {
                 // Get collaborators for this planning
                 const planningCollaborators = collaborators.filter(c => c.event_planning_id === planning.id);
+                const creatorProfile = allProfiles.find(p => p.user_id === planning.user_id);
                 
                 return (
                   <Card
@@ -2544,6 +2565,19 @@ export function EventPlanningView() {
                           {planning.description}
                         </p>
                       )}
+                      
+                      {/* Creator / Responsible person */}
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Users className="h-3 w-3" />
+                        <span className="text-xs font-medium">Verantwortlich:</span>
+                        <Avatar className="h-5 w-5">
+                          <AvatarImage src={creatorProfile?.avatar_url} />
+                          <AvatarFallback className="text-xs">
+                            {creatorProfile?.display_name?.[0] || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs">{creatorProfile?.display_name || "Unbekannt"}</span>
+                      </div>
                       
                       {planning.location && (
                         <div className="flex items-center text-sm text-muted-foreground">
@@ -2571,6 +2605,7 @@ export function EventPlanningView() {
                       {planningCollaborators.length > 0 && (
                         <div className="flex items-center text-sm text-muted-foreground">
                           <Users className="mr-2 h-3 w-3" />
+                          <span className="text-xs mr-1">Mitarbeiter:</span>
                           <div className="flex -space-x-2">
                             {planningCollaborators.slice(0, 3).map((collab) => (
                               <Avatar key={collab.id} className="h-6 w-6 border-2 border-background">

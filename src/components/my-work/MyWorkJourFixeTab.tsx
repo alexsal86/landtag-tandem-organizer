@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ interface AgendaItem {
   title: string;
   parent_id: string | null;
   order_index: number;
+  system_type?: string | null;
 }
 
 export function MyWorkJourFixeTab() {
@@ -109,9 +110,8 @@ export function MyWorkJourFixeTab() {
     try {
       const { data, error } = await supabase
         .from('meeting_agenda_items')
-        .select('id, title, parent_id, order_index')
+        .select('id, title, parent_id, order_index, system_type')
         .eq('meeting_id', meetingId)
-        .is('system_type', null) // Only normal agenda items, not system items
         .order('order_index');
 
       if (error) throw error;
@@ -122,6 +122,12 @@ export function MyWorkJourFixeTab() {
     } finally {
       setLoadingAgenda(null);
     }
+  };
+
+  const getSystemItemIcon = (systemType: string | null | undefined) => {
+    if (systemType === 'quick_notes') return <StickyNote className="h-3 w-3 text-amber-500" />;
+    if (systemType === 'upcoming_appointments') return <Calendar className="h-3 w-3 text-blue-500" />;
+    return null;
   };
 
   const getMeetingStatusColor = (meeting: Meeting) => {
@@ -226,13 +232,39 @@ export function MyWorkJourFixeTab() {
             ) : mainItems.length === 0 ? (
               <p className="text-xs text-muted-foreground italic">Keine Agenda-Punkte vorhanden</p>
             ) : (
-              <ul className="space-y-1">
-                {mainItems.map((item, index) => (
-                  <li key={item.id} className="text-xs flex items-start gap-2">
-                    <span className="text-muted-foreground font-medium min-w-[1rem]">{index + 1}.</span>
-                    <span className="text-foreground">{item.title}</span>
-                  </li>
-                ))}
+              <ul className="space-y-1.5">
+                {mainItems.map((item, index) => {
+                  const subItems = meetingAgenda.filter(sub => sub.parent_id === item.id).sort((a, b) => a.order_index - b.order_index);
+                  const systemIcon = getSystemItemIcon(item.system_type);
+                  
+                  return (
+                    <li key={item.id} className="text-xs">
+                      <div className="flex items-start gap-2">
+                        <span className="text-muted-foreground font-medium min-w-[1rem]">{index + 1}.</span>
+                        {systemIcon}
+                        <span className={cn("text-foreground", item.system_type && "font-medium")}>
+                          {item.title}
+                        </span>
+                      </div>
+                      {subItems.length > 0 && (
+                        <ul className="ml-6 mt-1 space-y-0.5">
+                          {subItems.map((subItem, subIndex) => {
+                            const subSystemIcon = getSystemItemIcon(subItem.system_type);
+                            return (
+                              <li key={subItem.id} className="flex items-start gap-1.5 text-muted-foreground">
+                                <span className="min-w-[1rem]">{String.fromCharCode(97 + subIndex)})</span>
+                                {subSystemIcon}
+                                <span className={subItem.system_type ? "font-medium text-foreground" : ""}>
+                                  {subItem.title}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

@@ -509,13 +509,20 @@ export function QuickNotesList({
     }
 
     try {
+      // Strip HTML tags from content for clean title
+      const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim();
+      const plainContent = stripHtml(note.content);
+      const taskTitle = note.title 
+        ? stripHtml(note.title) 
+        : plainContent.substring(0, 50) + (plainContent.length > 50 ? '...' : '');
+      
       const { data: task, error: taskError } = await supabase
         .from('tasks')
         .insert({
           user_id: user.id,
           tenant_id: currentTenant.id,
-          title: note.title || note.content.substring(0, 50) + (note.content.length > 50 ? '...' : ''),
-          description: note.content,
+          title: taskTitle,
+          description: note.content, // Keep HTML for RichTextDisplay rendering
           category: 'personal',
           priority: 'medium',
           status: 'todo',
