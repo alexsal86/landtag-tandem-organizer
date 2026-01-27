@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { PlanningPreferencesCard } from "@/components/profile/PlanningPreferencesCard";
 
 interface ProfileData {
   display_name: string;
@@ -365,12 +366,15 @@ export function EditProfile() {
                       onChange={(e) => handleInputChange("bio", e.target.value)}
                     />
                     <p className="text-sm text-muted-foreground mt-1">
-                      Eine kurze Beschreibung über Sie
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                    Eine kurze Beschreibung über Sie
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Planungs-Voreinstellungen */}
+            <PlanningPreferencesCard />
+          </div>
 
             {/* Sidebar */}
             <div className="space-y-6">

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
-import { Check, X, MessageCircle, Clock } from "lucide-react";
+import { Check, X, MessageCircle, Clock, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ interface Decision {
   isCreator: boolean;
   pendingCount: number;
   responseType?: 'yes' | 'no' | 'question' | null;
+  isPublic?: boolean;
 }
 
 export function MyWorkDecisionsTab() {
@@ -101,6 +102,29 @@ export function MyWorkDecisionsTab() {
 
       if (creatorError) throw creatorError;
 
+      // Load public decisions (visible_to_all = true) where user is not creator and not participant
+      const { data: publicData, error: publicError } = await supabase
+        .from("task_decisions")
+        .select(`
+          id,
+          title,
+          description,
+          status,
+          created_at,
+          created_by,
+          visible_to_all,
+          task_decision_participants (
+            id,
+            user_id,
+            task_decision_responses (id, response_type)
+          )
+        `)
+        .eq("visible_to_all", true)
+        .in("status", ["active", "open"])
+        .neq("created_by", user.id);
+
+      if (publicError) throw publicError;
+
       // Format participant decisions
       const participantDecisions: Decision[] = (participantData || []).map((item: any) => ({
         id: item.task_decisions.id,
@@ -157,6 +181,50 @@ export function MyWorkDecisionsTab() {
           };
         });
 
+      // Get participant decision IDs to filter public decisions
+      const participantDecisionIds = new Set(participantDecisions.map(d => d.id));
+
+      // Format public decisions (exclude those where user is already participant)
+      const publicDecisions: Decision[] = (publicData || [])
+        .filter((item: any) => !participantDecisionIds.has(item.id))
+        .map((item: any) => {
+          const participants = item.task_decision_participants || [];
+          const userParticipant = participants.find((p: any) => p.user_id === user.id);
+          const responses = participants.flatMap((p: any) => p.task_decision_responses || []);
+          const pendingCount = participants.filter(
+            (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0
+          ).length;
+
+          // Calculate dominant response for public view
+          const hasQuestions = responses.some((r: any) => r.response_type === 'question');
+          const hasNo = responses.some((r: any) => r.response_type === 'no');
+          const allYes = responses.length > 0 && 
+                         participants.length === responses.length && 
+                         responses.every((r: any) => r.response_type === 'yes');
+
+          let dominantResponse: 'yes' | 'no' | 'question' | null = null;
+          if (pendingCount === 0 && responses.length > 0) {
+            if (hasNo) dominantResponse = 'no';
+            else if (hasQuestions) dominantResponse = 'question';
+            else if (allYes) dominantResponse = 'yes';
+          }
+
+          return {
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            status: item.status,
+            created_at: item.created_at,
+            created_by: item.created_by,
+            participant_id: userParticipant?.id || null,
+            hasResponded: userParticipant ? userParticipant.task_decision_responses.length > 0 : true,
+            isCreator: false,
+            pendingCount,
+            responseType: dominantResponse,
+            isPublic: true,
+          };
+        });
+
       // Merge and deduplicate
       const allDecisions = new Map<string, Decision>();
       participantDecisions.forEach(d => allDecisions.set(d.id, d));
@@ -167,6 +235,12 @@ export function MyWorkDecisionsTab() {
           // Merge pendingCount
           const existing = allDecisions.get(d.id)!;
           existing.pendingCount = d.pendingCount;
+        }
+      });
+      // Add public decisions
+      publicDecisions.forEach(d => {
+        if (!allDecisions.has(d.id)) {
+          allDecisions.set(d.id, d);
         }
       });
 
@@ -271,6 +345,12 @@ export function MyWorkDecisionsTab() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-sm">{decision.title}</span>
+                    {decision.isPublic && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Globe className="h-3 w-3" />
+                        Öffentlich
+                      </Badge>
+                    )}
                     {!decision.hasResponded && (
                       <Badge variant="destructive" className="text-xs">Ausstehend</Badge>
                     )}

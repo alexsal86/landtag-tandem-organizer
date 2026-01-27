@@ -8391,6 +8391,41 @@ export type Database = {
           },
         ]
       }
+      user_planning_preferences: {
+        Row: {
+          created_at: string
+          default_collaborators: Json | null
+          id: string
+          tenant_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_collaborators?: Json | null
+          id?: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_collaborators?: Json | null
+          id?: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_planning_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           assigned_at: string
@@ -8812,7 +8847,12 @@ export type Database = {
     Enums: {
       app_role: "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant"
       flag_visibility: "public" | "private" | "team"
-      leave_status: "pending" | "approved" | "rejected"
+      leave_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "cancel_requested"
+        | "cancelled"
       leave_type: "vacation" | "sick" | "other"
       user_status_type:
         | "online"
@@ -8950,7 +8990,13 @@ export const Constants = {
     Enums: {
       app_role: ["abgeordneter", "bueroleitung", "mitarbeiter", "praktikant"],
       flag_visibility: ["public", "private", "team"],
-      leave_status: ["pending", "approved", "rejected"],
+      leave_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "cancel_requested",
+        "cancelled",
+      ],
       leave_type: ["vacation", "sick", "other"],
       user_status_type: [
         "online",
