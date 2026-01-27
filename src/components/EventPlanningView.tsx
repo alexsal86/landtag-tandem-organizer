@@ -1205,61 +1205,79 @@ export function EventPlanningView() {
 
     // Optimistic update - update UI immediately
     const previousItems = [...checklistItems];
+    const newCompletedState = !isCompleted;
+    
     setChecklistItems(prev => 
       prev.map(item => 
-        item.id === itemId ? { ...item, is_completed: !isCompleted } : item
+        item.id === itemId ? { ...item, is_completed: newCompletedState } : item
       )
     );
 
-    const { error } = await supabase
-      .from("event_planning_checklist_items")
-      .update({ is_completed: !isCompleted })
-      .eq("id", itemId);
+    try {
+      const { error } = await supabase
+        .from("event_planning_checklist_items")
+        .update({ is_completed: newCompletedState })
+        .eq("id", itemId);
 
-    if (error) {
-      // Rollback on error
-      setChecklistItems(previousItems);
-      toast({
-        title: "Fehler",
-        description: "Checkliste konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if email automation should be triggered (when checking, not unchecking)
-    const emailAction = itemEmailActions[itemId];
-    if (!isCompleted && emailAction?.is_enabled) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          await supabase.functions.invoke("send-checklist-email", {
-            body: {
-              actionId: emailAction.id,
-              checklistItemId: itemId,
-            },
-          });
-
-          toast({
-            title: "E-Mail versendet",
-            description: "Benachrichtigung wurde automatisch versendet.",
-          });
-        }
-      } catch (emailError) {
-        console.error("Error sending email:", emailError);
+      if (error) {
+        // Nur bei echten Supabase-Fehlern rollbacken
+        console.error("Checklist update error:", error);
+        setChecklistItems(previousItems);
         toast({
-          title: "Warnung",
-          description: "Checklist wurde aktualisiert, aber E-Mail konnte nicht versendet werden.",
+          title: "Fehler",
+          description: "Checkliste konnte nicht aktualisiert werden.",
           variant: "destructive",
         });
+        return;
       }
-    }
 
-    toast({
-      title: "Erfolg",
-      description: "Checkliste wurde aktualisiert.",
-    });
+      // Check if email automation should be triggered (when checking, not unchecking)
+      const emailAction = itemEmailActions[itemId];
+      if (newCompletedState && emailAction?.is_enabled) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session) {
+            await supabase.functions.invoke("send-checklist-email", {
+              body: {
+                actionId: emailAction.id,
+                checklistItemId: itemId,
+              },
+            });
+
+            toast({
+              title: "E-Mail versendet",
+              description: "Benachrichtigung wurde automatisch versendet.",
+            });
+          }
+        } catch (emailError) {
+          console.error("Error sending email:", emailError);
+          // Don't show error toast for email - the main update succeeded
+        }
+      }
+    } catch (fetchError) {
+      // Bei Netzwerk-Fehlern (Failed to fetch) NICHT sofort rollbacken
+      // Stattdessen: Nach kurzer Pause den Stand vom Server holen
+      console.warn("Network error during checklist update, verifying state...", fetchError);
+      
+      // Kurz warten und dann den echten Stand vom Server holen
+      setTimeout(async () => {
+        if (selectedPlanning) {
+          const { data: freshItems } = await supabase
+            .from("event_planning_checklist_items")
+            .select("*")
+            .eq("event_planning_id", selectedPlanning.id)
+            .order("order_index", { ascending: true });
+          
+          if (freshItems) {
+            setChecklistItems(freshItems.map(item => ({
+              ...item,
+              sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[]
+            })));
+          }
+        }
+      }, 500);
+    }
   };
 
   const updateChecklistItemTitle = async (itemId: string, title: string) => {
@@ -2858,6 +2876,12 @@ export function EventPlanningView() {
             )}
           </div>
         </div>
+
+        {/* Default Collaborators Dialog - auch in Übersicht */}
+        <PlanningDefaultCollaboratorsDialog
+          open={showDefaultCollaboratorsDialog}
+          onOpenChange={setShowDefaultCollaboratorsDialog}
+        />
       </div>
     );
   }
