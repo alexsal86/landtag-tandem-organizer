@@ -30,6 +30,8 @@ import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { NewItemIndicator } from "./NewItemIndicator";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { ChecklistItemEmailDialog } from "@/components/event-planning/ChecklistItemEmailDialog";
+import { PlanningDefaultCollaboratorsDialog } from "@/components/event-planning/PlanningDefaultCollaboratorsDialog";
+import { usePlanningPreferences } from "@/hooks/usePlanningPreferences";
 
 interface EventPlanning {
   id: string;
@@ -251,6 +253,10 @@ export function EventPlanningView() {
 
   // Collaborator management dialog
   const [isManageCollaboratorsOpen, setIsManageCollaboratorsOpen] = useState(false);
+  const [showDefaultCollaboratorsDialog, setShowDefaultCollaboratorsDialog] = useState(false);
+
+  // Planning preferences hook for default collaborators
+  const { defaultCollaborators } = usePlanningPreferences();
 
   // Handle URL action parameter for QuickActions
   useEffect(() => {
@@ -1197,12 +1203,22 @@ export function EventPlanningView() {
       return;
     }
 
+    // Optimistic update - update UI immediately
+    const previousItems = [...checklistItems];
+    setChecklistItems(prev => 
+      prev.map(item => 
+        item.id === itemId ? { ...item, is_completed: !isCompleted } : item
+      )
+    );
+
     const { error } = await supabase
       .from("event_planning_checklist_items")
       .update({ is_completed: !isCompleted })
       .eq("id", itemId);
 
     if (error) {
+      // Rollback on error
+      setChecklistItems(previousItems);
       toast({
         title: "Fehler",
         description: "Checkliste konnte nicht aktualisiert werden.",
@@ -1238,10 +1254,6 @@ export function EventPlanningView() {
           variant: "destructive",
         });
       }
-    }
-
-    if (selectedPlanning) {
-      fetchPlanningDetails(selectedPlanning.id);
     }
 
     toast({
@@ -2503,6 +2515,15 @@ export function EventPlanningView() {
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold">Veranstaltungsplanung</h1>
             <div className="flex items-center gap-4">
+              {/* Default Collaborators Button */}
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowDefaultCollaboratorsDialog(true)}
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Standard-Mitarbeiter
+              </Button>
               {/* View Toggle for Event Planning */}
               <div className="flex items-center border rounded-lg p-1">
                 <Button
@@ -4444,6 +4465,12 @@ export function EventPlanningView() {
           }}
         />
       )}
+
+      {/* Default Collaborators Dialog */}
+      <PlanningDefaultCollaboratorsDialog
+        open={showDefaultCollaboratorsDialog}
+        onOpenChange={setShowDefaultCollaboratorsDialog}
+      />
     </div>
   );
 }
