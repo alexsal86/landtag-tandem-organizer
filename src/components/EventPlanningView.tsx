@@ -1220,7 +1220,37 @@ export function EventPlanningView() {
         .eq("id", itemId);
 
       if (error) {
-        // Nur bei echten Supabase-Fehlern rollbacken
+        // UNTERSCHEIDUNG: "Failed to fetch" = Netzwerkabbruch, kein echter DB-Fehler
+        const isNetworkError = error.message?.includes("Failed to fetch") || 
+                               error.message?.includes("NetworkError") ||
+                               error.message?.includes("TypeError");
+        
+        if (isNetworkError) {
+          // Bei Netzwerk-Abbruch: Server-Stand nach kurzer Pause verifizieren
+          console.warn("Network interruption detected, verifying server state...", error);
+          
+          setTimeout(async () => {
+            if (selectedPlanning) {
+              const { data: freshItems } = await supabase
+                .from("event_planning_checklist_items")
+                .select("*")
+                .eq("event_planning_id", selectedPlanning.id)
+                .order("order_index", { ascending: true });
+              
+              if (freshItems) {
+                setChecklistItems(freshItems.map(item => ({
+                  ...item,
+                  sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[]
+                })));
+              }
+            }
+          }, 500);
+          
+          // KEIN Rollback, KEIN Fehler-Toast bei Netzwerk-Abbrüchen!
+          return;
+        }
+        
+        // Nur bei echten Supabase-Fehlern (z.B. RLS-Verletzung) rollbacken
         console.error("Checklist update error:", error);
         setChecklistItems(previousItems);
         toast({
