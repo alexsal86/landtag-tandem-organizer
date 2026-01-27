@@ -865,6 +865,34 @@ export function EventPlanningView() {
       template_id_param: templateParam,
     });
 
+    // Add default collaborators from user preferences
+    try {
+      const { data: prefs } = await supabase
+        .from("user_planning_preferences")
+        .select("default_collaborators")
+        .eq("user_id", user.id)
+        .eq("tenant_id", currentTenant.id)
+        .maybeSingle();
+
+      if (prefs?.default_collaborators && Array.isArray(prefs.default_collaborators)) {
+        const collabs = prefs.default_collaborators as unknown as Array<{ user_id: string; can_edit: boolean }>;
+        if (collabs.length > 0) {
+          const collabsToInsert = collabs.map((c) => ({
+            event_planning_id: data.id,
+            user_id: c.user_id,
+            can_edit: c.can_edit,
+          }));
+          
+          await supabase
+            .from("event_planning_collaborators")
+            .insert(collabsToInsert);
+        }
+      }
+    } catch (prefError) {
+      console.error("Error adding default collaborators:", prefError);
+      // Don't fail the whole operation if collaborators fail
+    }
+
     setNewPlanningTitle("");
     setNewPlanningIsPrivate(false);
     setSelectedTemplateId("none");
@@ -1156,6 +1184,19 @@ export function EventPlanningView() {
   };
 
   const toggleChecklistItem = async (itemId: string, isCompleted: boolean) => {
+    // Check if user has edit permission
+    const canEdit = selectedPlanning?.user_id === user?.id || 
+      collaborators.some(c => c.user_id === user?.id && c.can_edit);
+    
+    if (!canEdit) {
+      toast({
+        title: "Keine Berechtigung",
+        description: "Sie haben keine Bearbeitungsrechte für diese Checkliste.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from("event_planning_checklist_items")
       .update({ is_completed: !isCompleted })
