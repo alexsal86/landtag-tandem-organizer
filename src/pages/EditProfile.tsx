@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, User, Mail, Upload } from "lucide-react";
+import { ArrowLeft, Save, User, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { PlanningPreferencesCard } from "@/components/profile/PlanningPreferencesCard";
 
 interface ProfileData {
   display_name: string;
@@ -372,8 +371,6 @@ export function EditProfile() {
               </CardContent>
             </Card>
 
-            {/* Planungs-Voreinstellungen */}
-            <PlanningPreferencesCard />
           </div>
 
             {/* Sidebar */}
