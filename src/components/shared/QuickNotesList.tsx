@@ -745,18 +745,37 @@ export function QuickNotesList({
   };
 
   const handleSaveEdit = async () => {
-    if (!editingNote) return;
+    if (!editingNote || !user?.id) return;
 
     try {
-      const { error } = await supabase
+      // 1. Save current version to history before updating
+      await supabase
+        .from("quick_note_versions")
+        .insert({
+          note_id: editingNote.id,
+          title: editingNote.title,
+          content: editingNote.content,
+          user_id: user.id
+        });
+
+      // 2. Update the note with user_id filter for RLS compliance
+      const { data, error } = await supabase
         .from("quick_notes")
         .update({ 
           title: editTitle.trim() || null,
           content: editContent.trim()
         })
-        .eq("id", editingNote.id);
+        .eq("id", editingNote.id)
+        .eq("user_id", user.id)
+        .select();
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("Keine Berechtigung zum Bearbeiten dieser Notiz");
+        return;
+      }
+      
       toast.success("Notiz aktualisiert");
       setEditDialogOpen(false);
       setEditingNote(null);
@@ -764,6 +783,68 @@ export function QuickNotesList({
     } catch (error) {
       console.error("Error updating note:", error);
       toast.error("Fehler beim Speichern");
+    }
+  };
+
+  // Version history state and functions
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [versionHistoryNote, setVersionHistoryNote] = useState<QuickNote | null>(null);
+  const [versions, setVersions] = useState<Array<{
+    id: string;
+    title: string | null;
+    content: string;
+    created_at: string;
+  }>>([]);
+
+  const openVersionHistory = async (note: QuickNote) => {
+    const { data, error } = await supabase
+      .from("quick_note_versions")
+      .select("*")
+      .eq("note_id", note.id)
+      .order("created_at", { ascending: false });
+    
+    if (error) {
+      console.error("Error loading versions:", error);
+      toast.error("Fehler beim Laden der Versionen");
+      return;
+    }
+    
+    setVersions(data || []);
+    setVersionHistoryNote(note);
+    setVersionHistoryOpen(true);
+  };
+
+  const restoreVersion = async (version: { title: string | null; content: string }) => {
+    if (!versionHistoryNote || !user?.id) return;
+
+    try {
+      // Save current state before restoring
+      await supabase
+        .from("quick_note_versions")
+        .insert({
+          note_id: versionHistoryNote.id,
+          title: versionHistoryNote.title,
+          content: versionHistoryNote.content,
+          user_id: user.id
+        });
+
+      const { error } = await supabase
+        .from("quick_notes")
+        .update({ 
+          title: version.title,
+          content: version.content
+        })
+        .eq("id", versionHistoryNote.id)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      
+      toast.success("Version wiederhergestellt");
+      setVersionHistoryOpen(false);
+      loadNotes();
+    } catch (error) {
+      console.error("Error restoring version:", error);
+      toast.error("Fehler beim Wiederherstellen");
     }
   };
 
@@ -1004,9 +1085,19 @@ export function QuickNotesList({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                {/* Creation date as menu header */}
+                <DropdownMenuItem disabled className="text-xs text-muted-foreground py-1">
+                  <Clock className="h-3 w-3 mr-2" />
+                  Erstellt: {format(new Date(note.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => openEditDialog(note)}>
                   <Edit className="h-3 w-3 mr-2" />
                   Bearbeiten
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openVersionHistory(note)}>
+                  <RotateCcw className="h-3 w-3 mr-2" />
+                  Versionshistorie
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 
@@ -1164,20 +1255,6 @@ export function QuickNotesList({
           
           {/* Metadata row below icons */}
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            {/* Creation date with icon */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 cursor-help">
-                    <Clock className="h-2.5 w-2.5" />
-                    {format(new Date(note.created_at), "dd.MM.", { locale: de })}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Erstellt: {format(new Date(note.created_at), "dd.MM.yyyy 'um' HH:mm 'Uhr'", { locale: de })}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
             {note.is_pinned && (
               <Pin className="h-3 w-3 text-amber-500" />
             )}
@@ -1550,6 +1627,55 @@ export function QuickNotesList({
           }}
         />
       )}
+
+      {/* Version History Dialog */}
+      <Dialog open={versionHistoryOpen} onOpenChange={setVersionHistoryOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Versionshistorie</DialogTitle>
+            <DialogDescription>
+              Frühere Versionen dieser Notiz
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 max-h-[400px]">
+            {versions.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                Keine früheren Versionen vorhanden
+              </p>
+            ) : (
+              <div className="space-y-3 pr-4">
+                {versions.map((version, index) => (
+                  <div key={version.id} className="p-3 border rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <Badge variant="secondary">
+                        Version {versions.length - index}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(version.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                      </span>
+                    </div>
+                    {version.title && (
+                      <p className="font-medium text-sm mb-1">{version.title}</p>
+                    )}
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {version.content.replace(/<[^>]*>/g, '')}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => restoreVersion(version)}
+                    >
+                      <RotateCcw className="h-3 w-3 mr-1" />
+                      Wiederherstellen
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
