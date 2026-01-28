@@ -6833,6 +6833,41 @@ export type Database = {
           },
         ]
       }
+      quick_note_versions: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          note_id: string
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          note_id: string
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          note_id?: string
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_note_versions_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "quick_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quick_notes: {
         Row: {
           added_to_meeting_at: string | null

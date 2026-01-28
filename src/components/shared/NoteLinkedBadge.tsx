@@ -33,7 +33,7 @@ export function NoteLinkedBadge({ type, id, label, className }: NoteLinkedBadgeP
     <Badge 
       variant="outline" 
       className={cn(
-        "text-xs px-1.5 py-0 h-4 cursor-pointer transition-all group/badge",
+        "text-xs px-1.5 py-0 h-4 cursor-pointer transition-all duration-200 group/badge overflow-hidden",
         getColor(),
         className
       )}
@@ -42,12 +42,16 @@ export function NoteLinkedBadge({ type, id, label, className }: NoteLinkedBadgeP
         navigate(getPath());
       }}
     >
-      {label}
-      <ArrowRight className={cn(
-        "h-3 w-3 ml-0.5 opacity-0 -translate-x-1",
-        "group-hover/badge:opacity-100 group-hover/badge:translate-x-0",
-        "transition-all duration-200 ease-out"
-      )} />
+      <span className="flex items-center">
+        {label}
+        <ArrowRight className={cn(
+          "h-3 transition-all duration-200 ease-out",
+          // Initially hidden and takes no space
+          "w-0 opacity-0 ml-0",
+          // On hover: appears and takes space
+          "group-hover/badge:w-3 group-hover/badge:opacity-100 group-hover/badge:ml-0.5"
+        )} />
+      </span>
     </Badge>
   );
 }

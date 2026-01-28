@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Vote, Calendar as CalendarIcon, ChevronDown, Info } from "lucide-react";
+import { CheckSquare, Vote, Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -136,17 +136,19 @@ export function NoteLinkedDetails({ taskId, decisionId, meetingId }: NoteLinkedD
   
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded}>
-      <CollapsibleTrigger 
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-2 py-0.5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <ChevronDown className={cn(
-          "h-3 w-3 transition-transform duration-200",
-          !expanded && "-rotate-90"
-        )} />
-        <Info className="h-3 w-3" />
-        <span>Details anzeigen</span>
-      </CollapsibleTrigger>
+      {/* Right-aligned trigger */}
+      <div className="flex justify-end mt-2">
+        <CollapsibleTrigger 
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ChevronDown className={cn(
+            "h-3 w-3 transition-transform duration-200",
+            !expanded && "-rotate-90"
+          )} />
+          <span>Details</span>
+        </CollapsibleTrigger>
+      </div>
       
       <CollapsibleContent className="pt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
         {/* Task Status */}
