@@ -13,6 +13,8 @@ import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
+import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
 import { MyWorkQuickCapture } from "./my-work/MyWorkQuickCapture";
 import { MyWorkNotesList } from "./my-work/MyWorkNotesList";
 import { MyWorkTasksTab } from "./my-work/MyWorkTasksTab";
@@ -65,7 +67,7 @@ export function MyWorkView() {
   const [isEmployee, setIsEmployee] = useState(false);
   const [isAbgeordneter, setIsAbgeordneter] = useState(false);
   const [isBueroleitung, setIsBueroleitung] = useState(false);
-  const [counts, setCounts] = useState<TabCounts>({
+  const [totalCounts, setTotalCounts] = useState<TabCounts>({
     tasks: 0,
     decisions: 0,
     caseFiles: 0,
@@ -74,11 +76,32 @@ export function MyWorkView() {
     jourFixe: 0,
   });
   
+  // Badge display mode setting and new counts
+  const { badgeDisplayMode } = useMyWorkSettings();
+  const { newCounts, markTabAsVisited, refreshCounts } = useMyWorkNewCounts();
+  
   // Get active tab from URL or default to "capture"
   const activeTab = (searchParams.get("tab") as TabValue) || "capture";
   
   const setActiveTab = (tab: TabValue) => {
     setSearchParams({ tab });
+    
+    // Mark tab as visited when switching
+    const tabToContext: Record<TabValue, string> = {
+      capture: '',
+      tasks: 'mywork_tasks',
+      decisions: 'mywork_decisions',
+      jourFixe: 'mywork_jourFixe',
+      casefiles: 'mywork_casefiles',
+      plannings: 'mywork_plannings',
+      time: '',
+      team: '',
+    };
+    
+    const context = tabToContext[tab];
+    if (context) {
+      markTabAsVisited(context as any);
+    }
   };
 
   // Handle QuickAction URL parameter
@@ -221,7 +244,7 @@ export function MyWorkView() {
         teamCount = (requestCount || 0) + warningCount;
       }
 
-      setCounts({
+      setTotalCounts({
         tasks: taskCount || 0,
         decisions: decisionCount || 0,
         caseFiles: caseFileCount || 0,
@@ -244,34 +267,69 @@ export function MyWorkView() {
   useEffect(() => {
     if (!user) return;
 
+    const handleUpdate = () => {
+      loadCounts();
+      refreshCounts();
+    };
+
     const channel = supabase
       .channel('my-work-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks' },
-        () => loadCounts()
+        handleUpdate
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'task_decisions' },
-        () => loadCounts()
+        handleUpdate
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'task_decision_participants' },
-        () => loadCounts()
+        handleUpdate
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'task_decision_responses' },
+        handleUpdate
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'quick_notes' },
         () => setRefreshTrigger(prev => prev + 1)
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'meetings' },
+        handleUpdate
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'meeting_participants' },
+        handleUpdate
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'case_files' },
+        handleUpdate
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'event_plannings' },
+        handleUpdate
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'event_planning_collaborators' },
+        handleUpdate
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, loadCounts]);
+  }, [user, loadCounts, refreshCounts]);
 
   const loadUserRoleAndCounts = async () => {
     if (!user) return;
@@ -362,8 +420,37 @@ export function MyWorkView() {
           })
           .map((tab) => {
             const Icon = tab.icon;
-            const count = tab.countKey ? counts[tab.countKey] : 0;
+            
+            // Get display count based on badge display mode
+            const getDisplayCount = () => {
+              if (!tab.countKey) return 0;
+              
+              // Team tab always shows total (no "new" logic for team)
+              if (tab.countKey === 'team') {
+                return totalCounts.team;
+              }
+              
+              if (badgeDisplayMode === 'new') {
+                // Map countKey to newCounts keys
+                const newCountsMap: Record<string, keyof typeof newCounts> = {
+                  tasks: 'tasks',
+                  decisions: 'decisions',
+                  jourFixe: 'jourFixe',
+                  caseFiles: 'caseFiles',
+                  plannings: 'plannings',
+                };
+                const key = newCountsMap[tab.countKey];
+                return key ? newCounts[key] : 0;
+              }
+              
+              return totalCounts[tab.countKey];
+            };
+            
+            const count = getDisplayCount();
             const isActiveTab = activeTab === tab.value;
+            
+            // Badge variant: "new" mode uses destructive for new items, total uses secondary
+            const badgeVariant = tab.badgeVariant || (badgeDisplayMode === 'new' ? 'destructive' : 'secondary');
             
             return (
               <button
@@ -379,7 +466,7 @@ export function MyWorkView() {
                 {tab.label}
                 {count > 0 && (
                   <Badge 
-                    variant={tab.badgeVariant || "secondary"} 
+                    variant={badgeVariant} 
                     className="ml-1 h-5 min-w-5 text-xs"
                   >
                     {count}

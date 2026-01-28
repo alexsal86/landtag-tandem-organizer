@@ -8358,6 +8358,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_mywork_settings: {
+        Row: {
+          badge_display_mode: string
+          created_at: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          badge_display_mode?: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          badge_display_mode?: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_navigation_visits: {
         Row: {
           created_at: string
