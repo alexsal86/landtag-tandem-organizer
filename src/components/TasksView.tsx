@@ -701,10 +701,14 @@ export function TasksView() {
   };
 
   const loadTasks = async () => {
+    if (!user) return;
+    
     try {
+      // Filter tasks: only show own tasks or tasks assigned to the user
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
+        .or(`user_id.eq.${user.id},assigned_to.cs.{${user.id}},assigned_to.ilike.%${user.id}%`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -940,22 +944,30 @@ export function TasksView() {
     return new Date(dueDate) < new Date();
   };
 
+  // State for preventing double clicks
+  const [processingTaskIds, setProcessingTaskIds] = useState<Set<string>>(new Set());
+
   const toggleTaskStatus = async (taskId: string) => {
+    // Prevent double clicks
+    if (processingTaskIds.has(taskId)) return;
+    
     const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
+    if (!task || !user) return;
 
     const newStatus = task.status === "completed" ? "todo" : "completed";
+    
+    // Optimistic update
+    setTasks(prev => prev.map(t => 
+      t.id === taskId ? { ...t, status: newStatus } : t
+    ));
+    
+    setProcessingTaskIds(prev => new Set(prev).add(taskId));
     
     try {
       const updateData: any = { 
         status: newStatus,
         progress: newStatus === "completed" ? 100 : task.progress || 0
       };
-
-      if (newStatus === "completed" && !user) {
-        console.error('No user available for archiving');
-        return;
-      }
 
       const { error } = await supabase
         .from('tasks')
@@ -970,7 +982,7 @@ export function TasksView() {
           .from('archived_tasks')
           .insert({
             task_id: taskId,
-            user_id: user?.id,
+            user_id: user.id,
             title: task.title,
             description: task.description,
             priority: task.priority,
@@ -995,22 +1007,19 @@ export function TasksView() {
         if (deleteError) {
           console.error('Error deleting completed task:', deleteError);
         }
+        
         // Mark task-related notifications as read
-        if (user) {
-          await supabase
-            .from('notifications')
-            .update({ is_read: true })
-            .eq('user_id', user.id)
-            .eq('navigation_context', 'tasks');
-        }
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', user.id)
+          .eq('navigation_context', 'tasks');
+          
+        // Trigger unicorn animation
+        setShowUnicorn(true);
       }
 
       loadTasks();
-      
-      // Trigger unicorn animation when task is completed
-      if (newStatus === "completed") {
-        setShowUnicorn(true);
-      }
       
       toast({
         title: "Status aktualisiert",
@@ -1020,10 +1029,20 @@ export function TasksView() {
       });
     } catch (error: any) {
       console.error('Error updating task:', error);
+      // Rollback on error
+      setTasks(prev => prev.map(t => 
+        t.id === taskId ? { ...t, status: task.status } : t
+      ));
       toast({
         title: "Fehler",
         description: "Status konnte nicht aktualisiert werden.",
         variant: "destructive"
+      });
+    } finally {
+      setProcessingTaskIds(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
       });
     }
   };

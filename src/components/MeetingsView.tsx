@@ -297,19 +297,38 @@ export function MeetingsView() {
     console.log('Current user:', user?.id);
     
     try {
-      const { data, error } = await supabase
+      // 1. Load meetings where user is the creator
+      const { data: ownMeetings, error: ownError } = await supabase
         .from('meetings')
         .select('*')
-        .eq('user_id', user?.id) // Filter by user
-        .neq('status', 'archived') // Exclude archived meetings
+        .eq('user_id', user?.id)
+        .neq('status', 'archived')
         .order('meeting_date', { ascending: false });
 
-      console.log('Meetings query result:', data);
-      console.log('Meetings query error:', error);
-      console.log('Number of meetings loaded:', data?.length || 0);
+      if (ownError) throw ownError;
+      
+      // 2. Load meetings where user is a participant
+      const { data: participantMeetings, error: participantError } = await supabase
+        .from('meeting_participants')
+        .select('meeting_id, meetings(*)')
+        .eq('user_id', user?.id);
 
-      if (error) throw error;
-      setMeetings((data || []).map(meeting => ({
+      if (participantError) {
+        console.error('Error loading participant meetings:', participantError);
+      }
+
+      // Combine and deduplicate meetings
+      const ownMeetingIds = new Set((ownMeetings || []).map(m => m.id));
+      const participantMeetingsData = (participantMeetings || [])
+        .filter(p => p.meetings && !ownMeetingIds.has(p.meeting_id) && p.meetings.status !== 'archived')
+        .map(p => p.meetings);
+
+      const allMeetings = [...(ownMeetings || []), ...participantMeetingsData];
+      
+      console.log('Meetings query result:', allMeetings);
+      console.log('Number of meetings loaded:', allMeetings.length);
+
+      setMeetings(allMeetings.map(meeting => ({
         ...meeting,
         meeting_date: new Date(meeting.meeting_date)
       })));

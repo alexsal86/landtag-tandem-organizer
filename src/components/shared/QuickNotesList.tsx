@@ -30,7 +30,7 @@ import {
   Pin, Trash2, StickyNote, MoreHorizontal, CheckSquare, Vote, 
   Calendar as CalendarIcon, Archive, Edit, ChevronDown, Clock,
   Star, ArrowUp, ArrowDown, RotateCcw, Share2, Users, Globe, Hourglass,
-  Pencil, GripVertical
+  Pencil, GripVertical, ListTree
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { supabase } from "@/integrations/supabase/client";
@@ -848,6 +848,76 @@ export function QuickNotesList({
     }
   };
 
+  // Split note into individual notes based on bullets/list items
+  const splitNoteIntoBullets = async (note: QuickNote) => {
+    if (!user) return;
+    
+    // HTML list items regex
+    const listItemRegex = /<li[^>]*>(.*?)<\/li>/gi;
+    // Dash/bullet regex for plain text
+    const dashBulletRegex = /^[-•*]\s+(.+)$/gm;
+    
+    let items: string[] = [];
+    
+    // Try HTML lists first
+    let match;
+    while ((match = listItemRegex.exec(note.content)) !== null) {
+      const text = match[1].replace(/<[^>]*>/g, '').trim();
+      if (text) items.push(text);
+    }
+    
+    // If no HTML lists found, try dash bullets in plain text
+    if (items.length === 0) {
+      const plainText = note.content.replace(/<[^>]*>/g, '');
+      while ((match = dashBulletRegex.exec(plainText)) !== null) {
+        if (match[1].trim()) items.push(match[1].trim());
+      }
+    }
+    
+    // If still no items, try splitting by line breaks (for paragraphs)
+    if (items.length === 0) {
+      const plainText = note.content.replace(/<[^>]*>/g, '');
+      const lines = plainText.split(/\n+/).map(l => l.trim()).filter(l => l.length > 5);
+      if (lines.length > 1) {
+        items = lines;
+      }
+    }
+    
+    if (items.length <= 1) {
+      toast.info("Keine Aufzählungspunkte gefunden", {
+        description: "Die Notiz enthält keine Aufzählung oder Liste zum Aufteilen."
+      });
+      return;
+    }
+    
+    try {
+      // Create new notes for each item
+      const newNotes = items.map((content) => ({
+        user_id: user.id,
+        content,
+        title: content.substring(0, 30) + (content.length > 30 ? '...' : ''),
+        color: note.color,
+        priority_level: note.priority_level || 0,
+        is_pinned: false,
+        is_archived: false,
+      }));
+      
+      const { error } = await supabase
+        .from('quick_notes')
+        .insert(newNotes);
+        
+      if (error) throw error;
+      
+      toast.success(`${items.length} Notizen erstellt`, {
+        description: "Die Aufzählungspunkte wurden in separate Notizen aufgeteilt."
+      });
+      loadNotes();
+    } catch (error) {
+      console.error('Error splitting note:', error);
+      toast.error("Fehler beim Aufteilen der Notiz");
+    }
+  };
+
   const getPreviewText = (html: string) => {
     return html.replace(/<[^>]*>/g, '').substring(0, 150);
   };
@@ -1227,6 +1297,14 @@ export function QuickNotesList({
                       )}
                     </DropdownMenuItem>
                   </>
+                )}
+                
+                {/* Split into individual notes - only for own notes */}
+                {note.user_id === user?.id && (
+                  <DropdownMenuItem onClick={() => splitNoteIntoBullets(note)}>
+                    <ListTree className="h-3 w-3 mr-2" />
+                    In Einzelnotizen aufteilen
+                  </DropdownMenuItem>
                 )}
                 
                 <DropdownMenuSeparator />
