@@ -141,11 +141,17 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
   }, [user, refreshTrigger]);
 
   const handleRestore = async (noteId: string) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+    
     try {
       const { error } = await supabase
         .from("quick_notes")
         .update({ deleted_at: null, permanent_delete_at: null })
-        .eq("id", noteId);
+        .eq("id", noteId)
+        .eq("user_id", user.id);
 
       if (error) throw error;
       toast.success("Notiz wiederhergestellt");
@@ -158,11 +164,17 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
   };
 
   const handleRestoreFromArchive = async (noteId: string) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+    
     try {
       const { error } = await supabase
         .from("quick_notes")
         .update({ is_archived: false, archived_at: null })
-        .eq("id", noteId);
+        .eq("id", noteId)
+        .eq("user_id", user.id);
 
       if (error) throw error;
       
