@@ -29,8 +29,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { 
   Pin, Trash2, StickyNote, MoreHorizontal, CheckSquare, Vote, 
   Calendar as CalendarIcon, Archive, Edit, ChevronDown, Clock,
-  Star, ArrowUp, ArrowDown, RotateCcw, Share2, Users, Globe, Hourglass
+  Star, ArrowUp, ArrowDown, RotateCcw, Share2, Users, Globe, Hourglass,
+  Pencil, GripVertical
 } from "lucide-react";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -43,6 +45,8 @@ import { NoteShareDialog } from "@/components/shared/NoteShareDialog";
 import { GlobalNoteShareDialog } from "@/components/shared/GlobalNoteShareDialog";
 import { NoteDecisionCreator } from "@/components/shared/NoteDecisionCreator";
 import { DecisionResponseSummary } from "@/components/shared/DecisionResponseSummary";
+import { NoteLinkedBadge } from "@/components/shared/NoteLinkedBadge";
+import { NoteLinkedDetails } from "@/components/shared/NoteLinkedDetails";
 
 export interface QuickNote {
   id: string;
@@ -467,6 +471,43 @@ export function QuickNotesList({
     }
   };
 
+  // Drag-and-Drop handler for priority changes
+  const handleNoteDragEnd = async (result: DropResult) => {
+    if (!result.destination || !user?.id) return;
+    
+    const sourceLevel = parseInt(result.source.droppableId.replace('level-', ''));
+    const destLevel = parseInt(result.destination.droppableId.replace('level-', ''));
+    
+    if (sourceLevel === destLevel) return; // No change within same group
+    
+    const noteId = result.draggableId;
+    
+    // Optimistic update
+    setNotes(prev => prev.map(n => 
+      n.id === noteId ? { ...n, priority_level: destLevel } : n
+    ));
+    
+    // Database update
+    try {
+      const { error } = await supabase
+        .from("quick_notes")
+        .update({ priority_level: destLevel })
+        .eq("id", noteId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Error updating priority via drag:", error);
+        loadNotes(); // Rollback on error
+        toast.error("Fehler beim Verschieben");
+      } else {
+        toast.success(destLevel > 0 ? `Level ${destLevel} gesetzt` : "Priorität entfernt");
+      }
+    } catch (error) {
+      console.error("Error in drag handler:", error);
+      loadNotes();
+    }
+  };
+
   const handleSetFollowUp = async (noteId: string, date: Date | null) => {
     if (!user?.id) {
       toast.error("Nicht angemeldet");
@@ -839,15 +880,50 @@ export function QuickNotesList({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-muted-foreground hover:text-purple-500"
-                    onClick={(e) => { e.stopPropagation(); toast.info("Entscheidung erstellen", { description: "Funktion in Entwicklung" }); }}
+                    className={cn(
+                      "h-6 w-6",
+                      note.decision_id 
+                        ? "text-purple-500" 
+                        : "text-muted-foreground hover:text-purple-500"
+                    )}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (!note.decision_id) {
+                        setNoteForDecision(note);
+                        setDecisionCreatorOpen(true);
+                      }
+                    }}
                   >
-                    <Vote className="h-3.5 w-3.5" />
+                    <Vote className={cn("h-3.5 w-3.5", note.decision_id && "fill-purple-500/20")} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">Als Entscheidung</TooltipContent>
+                <TooltipContent side="bottom">
+                  {note.decision_id ? "Entscheidung aktiv" : "Als Entscheidung"}
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            
+            {/* Bearbeiten - nur für eigene Notizen */}
+            {note.user_id === user?.id && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        openEditDialog(note); 
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Bearbeiten</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             
             {/* Jour Fixe */}
             <TooltipProvider>
@@ -1088,14 +1164,17 @@ export function QuickNotesList({
           
           {/* Metadata row below icons */}
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            {/* Date as icon with tooltip */}
+            {/* Creation date with icon */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Clock className="h-3 w-3 text-muted-foreground cursor-help" />
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 cursor-help">
+                    <Clock className="h-2.5 w-2.5" />
+                    {format(new Date(note.created_at), "dd.MM.", { locale: de })}
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <p>{format(new Date(note.created_at), "dd.MM.yyyy 'um' HH:mm 'Uhr'", { locale: de })}</p>
+                  <p>Erstellt: {format(new Date(note.created_at), "dd.MM.yyyy 'um' HH:mm 'Uhr'", { locale: de })}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -1103,29 +1182,20 @@ export function QuickNotesList({
               <Pin className="h-3 w-3 text-amber-500" />
             )}
             {note.task_id && (
-              <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-blue-600">
-                Aufgabe
-              </Badge>
+              <NoteLinkedBadge type="task" id={note.task_id} label="Aufgabe" />
+            )}
+            {note.decision_id && (
+              <NoteLinkedBadge type="decision" id={note.decision_id} label="Entscheidung" />
             )}
             {note.meeting_id && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-emerald-600 cursor-help">
-                      {note.meetings?.meeting_date 
-                        ? `JF: ${format(new Date(note.meetings.meeting_date), "dd.MM.", { locale: de })}`
-                        : "Nächster JF ⏳"
-                      }
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {note.meetings?.meeting_date 
-                      ? `${note.meetings.title} am ${format(new Date(note.meetings.meeting_date), "dd.MM.yyyy", { locale: de })}`
-                      : "Wird dem nächsten geplanten Jour Fixe zugeordnet"
-                    }
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <NoteLinkedBadge 
+                type="meeting" 
+                id={note.meeting_id} 
+                label={note.meetings?.meeting_date 
+                  ? `JF: ${format(new Date(note.meetings.meeting_date), "dd.MM.", { locale: de })}`
+                  : "Jour Fixe"
+                } 
+              />
             )}
             {/* Shared indicator */}
             {(note.share_count || 0) > 0 && (
@@ -1202,6 +1272,15 @@ export function QuickNotesList({
           </div>
         </div>
       </div>
+      
+      {/* Collapsible Details for linked items */}
+      {(note.task_id || note.decision_id || note.meeting_id) && (
+        <NoteLinkedDetails 
+          taskId={note.task_id} 
+          decisionId={note.decision_id} 
+          meetingId={note.meeting_id} 
+        />
+      )}
     </div>
   );
   };
@@ -1229,96 +1308,141 @@ export function QuickNotesList({
   return (
     <>
       <ScrollArea style={{ height: maxHeight }}>
-        <div className="space-y-4 p-4">
-          {/* Priority Groups */}
-          {groups.map((group, index) => (
-            <div key={group.level}>
-              {index > 0 && <Separator className="my-3" />}
-              
-              <div className="flex items-center gap-2 mb-2">
-                {group.level > 0 && (
-                  <span className="text-amber-500 text-sm">
-                    {'★'.repeat(group.level)}
+        <DragDropContext onDragEnd={handleNoteDragEnd}>
+          <div className="space-y-4 p-4">
+            {/* Priority Groups */}
+            {groups.map((group, index) => (
+              <div key={group.level}>
+                {index > 0 && <Separator className="my-3" />}
+                
+                <div className="flex items-center gap-2 mb-2">
+                  {group.level > 0 && (
+                    <span className="text-amber-500 text-sm">
+                      {'★'.repeat(group.level)}
+                    </span>
+                  )}
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {group.label}
                   </span>
-                )}
-                <span className="text-xs font-medium text-muted-foreground">
-                  {group.label}
-                </span>
-                <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                  {group.notes.length}
-                </Badge>
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                    {group.notes.length}
+                  </Badge>
+                </div>
+                
+                <Droppable droppableId={`level-${group.level}`}>
+                  {(provided, snapshot) => (
+                    <div 
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={cn(
+                        "space-y-2 min-h-[40px] rounded-lg transition-colors",
+                        snapshot.isDraggingOver && "bg-primary/5 ring-1 ring-primary/20"
+                      )}
+                    >
+                      {group.notes.map((note, noteIndex) => (
+                        <Draggable 
+                          key={note.id} 
+                          draggableId={note.id} 
+                          index={noteIndex}
+                          isDragDisabled={note.user_id !== user?.id}
+                        >
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={cn(
+                                "flex items-start gap-1",
+                                snapshot.isDragging && "opacity-90"
+                              )}
+                            >
+                              {/* Dezenter Drag-Handle */}
+                              {note.user_id === user?.id && (
+                                <div 
+                                  {...provided.dragHandleProps}
+                                  className="pt-4 px-0.5 cursor-grab opacity-20 hover:opacity-50 transition-opacity"
+                                >
+                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                {renderNoteCard(note)}
+                              </div>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
               </div>
-              
-              <div className="space-y-2">
-                {group.notes.map(note => renderNoteCard(note))}
-              </div>
-            </div>
-          ))}
+            ))}
 
-          {/* Follow-up Section (collapsible) */}
-          {(followUpNotes.length > 0 || notes.some(n => n.follow_up_date)) && (
-            <>
-              <Separator className="my-3" />
-              <Collapsible open={followUpExpanded} onOpenChange={setFollowUpExpanded}>
-                <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <ChevronDown className={cn(
-                      "h-4 w-4 transition-transform",
-                      !followUpExpanded && "-rotate-90"
-                    )} />
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground">Fällige Wiedervorlagen</span>
-                    {followUpNotes.length > 0 && (
-                      <Badge variant="destructive" className="text-xs px-1.5 py-0">
-                        {followUpNotes.length}
+            {/* Follow-up Section (collapsible) */}
+            {(followUpNotes.length > 0 || notes.some(n => n.follow_up_date)) && (
+              <>
+                <Separator className="my-3" />
+                <Collapsible open={followUpExpanded} onOpenChange={setFollowUpExpanded}>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <ChevronDown className={cn(
+                        "h-4 w-4 transition-transform",
+                        !followUpExpanded && "-rotate-90"
+                      )} />
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground">Fällige Wiedervorlagen</span>
+                      {followUpNotes.length > 0 && (
+                        <Badge variant="destructive" className="text-xs px-1.5 py-0">
+                          {followUpNotes.length}
+                        </Badge>
+                      )}
+                    </div>
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent>
+                    <div className="space-y-2 mt-2">
+                      {followUpNotes.length > 0 ? (
+                        followUpNotes.map(note => renderNoteCard(note, true))
+                      ) : (
+                        <p className="text-xs text-muted-foreground text-center py-4">
+                          Keine fälligen Wiedervorlagen
+                        </p>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
+
+            {/* Scheduled Follow-ups Section (future dates - hidden from main list) */}
+            {scheduledFollowUps.length > 0 && (
+              <>
+                <Separator className="my-3" />
+                <Collapsible open={scheduledFollowUpsExpanded} onOpenChange={setScheduledFollowUpsExpanded}>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <ChevronDown className={cn(
+                        "h-4 w-4 transition-transform",
+                        !scheduledFollowUpsExpanded && "-rotate-90"
+                      )} />
+                      <Hourglass className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground">Geplant (bis zum Datum ausgeblendet)</span>
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                        {scheduledFollowUps.length}
                       </Badge>
-                    )}
-                  </div>
-                </CollapsibleTrigger>
-                
-                <CollapsibleContent>
-                  <div className="space-y-2 mt-2">
-                    {followUpNotes.length > 0 ? (
-                      followUpNotes.map(note => renderNoteCard(note, true))
-                    ) : (
-                      <p className="text-xs text-muted-foreground text-center py-4">
-                        Keine fälligen Wiedervorlagen
-                      </p>
-                    )}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </>
-          )}
-
-          {/* Scheduled Follow-ups Section (future dates - hidden from main list) */}
-          {scheduledFollowUps.length > 0 && (
-            <>
-              <Separator className="my-3" />
-              <Collapsible open={scheduledFollowUpsExpanded} onOpenChange={setScheduledFollowUpsExpanded}>
-                <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <ChevronDown className={cn(
-                      "h-4 w-4 transition-transform",
-                      !scheduledFollowUpsExpanded && "-rotate-90"
-                    )} />
-                    <Hourglass className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground">Geplant (bis zum Datum ausgeblendet)</span>
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                      {scheduledFollowUps.length}
-                    </Badge>
-                  </div>
-                </CollapsibleTrigger>
-                
-                <CollapsibleContent>
-                  <div className="space-y-2 mt-2">
-                    {scheduledFollowUps.map(note => renderNoteCard(note, true))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </>
-          )}
-        </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent>
+                    <div className="space-y-2 mt-2">
+                      {scheduledFollowUps.map(note => renderNoteCard(note, true))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
+          </div>
+        </DragDropContext>
       </ScrollArea>
 
       {/* Meeting Selector Dialog */}
