@@ -247,6 +247,10 @@ export function EventPlanningView() {
   const [archivedPreparations, setArchivedPreparations] = useState<AppointmentPreparation[]>([]);
   const [showArchived, setShowArchived] = useState(false);
 
+  // States for event planning archive
+  const [archivedPlannings, setArchivedPlannings] = useState<EventPlanning[]>([]);
+  const [showPlanningArchive, setShowPlanningArchive] = useState(false);
+
   // View preferences
   const [eventPlanningView, setEventPlanningView] = useState<'card' | 'table'>('card');
   const [appointmentPreparationView, setAppointmentPreparationView] = useState<'card' | 'table'>('card');
@@ -400,6 +404,7 @@ export function EventPlanningView() {
         .from("event_plannings")
         .select("*")
         .eq("tenant_id", currentTenant.id)
+        .or("is_archived.is.null,is_archived.eq.false")
         .order("created_at", { ascending: false });
 
       clearTimeout(timeoutId);
@@ -436,6 +441,85 @@ export function EventPlanningView() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchArchivedPlannings = async () => {
+    if (!user || !currentTenant?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("event_plannings")
+        .select("*")
+        .eq("tenant_id", currentTenant.id)
+        .eq("is_archived", true)
+        .order("archived_at", { ascending: false });
+
+      if (error) throw error;
+      setArchivedPlannings(data || []);
+    } catch (error) {
+      console.error('Error fetching archived plannings:', error);
+    }
+  };
+
+  const archivePlanning = async (planningId: string) => {
+    const planning = plannings.find(p => p.id === planningId);
+    if (planning?.user_id !== user?.id) {
+      toast({
+        title: "Keine Berechtigung",
+        description: "Nur der Ersteller kann diese Planung archivieren.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("event_plannings")
+        .update({ is_archived: true, archived_at: new Date().toISOString() })
+        .eq("id", planningId)
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Planung archiviert",
+        description: "Die Veranstaltungsplanung wurde ins Archiv verschoben.",
+      });
+      fetchPlannings();
+    } catch (error) {
+      console.error('Error archiving planning:', error);
+      toast({
+        title: "Fehler",
+        description: "Planung konnte nicht archiviert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const restorePlanning = async (planningId: string) => {
+    try {
+      const { error } = await supabase
+        .from("event_plannings")
+        .update({ is_archived: false, archived_at: null })
+        .eq("id", planningId)
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Planung wiederhergestellt",
+        description: "Die Veranstaltungsplanung wurde aus dem Archiv geholt.",
+      });
+      fetchPlannings();
+      fetchArchivedPlannings();
+    } catch (error) {
+      console.error('Error restoring planning:', error);
+      toast({
+        title: "Fehler",
+        description: "Planung konnte nicht wiederhergestellt werden.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -2572,6 +2656,18 @@ export function EventPlanningView() {
                 <Users className="h-4 w-4 mr-2" />
                 Standard-Mitarbeiter
               </Button>
+              {/* Archive Button */}
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  fetchArchivedPlannings();
+                  setShowPlanningArchive(true);
+                }}
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                Archiv
+              </Button>
               {/* View Toggle for Event Planning */}
               <div className="flex items-center border rounded-lg p-1">
                 <Button
@@ -4525,6 +4621,54 @@ export function EventPlanningView() {
         open={showDefaultCollaboratorsDialog}
         onOpenChange={setShowDefaultCollaboratorsDialog}
       />
+
+      {/* Planning Archive Dialog */}
+      <Dialog open={showPlanningArchive} onOpenChange={setShowPlanningArchive}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Archive className="h-5 w-5" />
+              Archivierte Veranstaltungsplanungen
+            </DialogTitle>
+            <DialogDescription>
+              Hier finden Sie alle archivierten Planungen. Sie können diese wiederherstellen.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            {archivedPlannings.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Keine archivierten Planungen vorhanden.
+              </p>
+            ) : (
+              archivedPlannings.map((planning) => (
+                <div 
+                  key={planning.id} 
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
+                  <div>
+                    <h4 className="font-medium">{planning.title}</h4>
+                    {planning.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-1">
+                        {planning.description}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Erstellt: {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
+                    </p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => restorePlanning(planning.id)}
+                  >
+                    Wiederherstellen
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

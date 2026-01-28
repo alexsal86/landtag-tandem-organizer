@@ -29,8 +29,8 @@ interface NewsToTaskDialogProps {
   article: NewsArticle | null;
 }
 
-interface TodoCategory {
-  id: string;
+interface TaskCategory {
+  name: string;
   label: string;
 }
 
@@ -47,7 +47,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [categories, setCategories] = useState<TodoCategory[]>([]);
+  const [categories, setCategories] = useState<TaskCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [assignedTo, setAssignedTo] = useState<string[]>([]);
@@ -69,10 +69,10 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Load categories
+      // Load categories from task_categories (not todo_categories)
       const { data: categoriesData } = await supabase
-        .from('todo_categories')
-        .select('id, label')
+        .from('task_categories')
+        .select('name, label')
         .eq('is_active', true)
         .order('order_index');
 
@@ -198,7 +198,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
             >
               <option value="">Kategorie auswählen</option>
               {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>
+                <option key={cat.name} value={cat.name}>
                   {cat.label}
                 </option>
               ))}

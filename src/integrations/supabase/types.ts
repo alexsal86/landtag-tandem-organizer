@@ -3646,6 +3646,7 @@ export type Database = {
       }
       event_plannings: {
         Row: {
+          archived_at: string | null
           background_info: string | null
           confirmed_date: string | null
           contact_person: string | null
@@ -3655,6 +3656,7 @@ export type Database = {
           digital_link: string | null
           digital_platform: string | null
           id: string
+          is_archived: boolean | null
           is_digital: boolean | null
           is_private: boolean
           location: string | null
@@ -3665,6 +3667,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           background_info?: string | null
           confirmed_date?: string | null
           contact_person?: string | null
@@ -3674,6 +3677,7 @@ export type Database = {
           digital_link?: string | null
           digital_platform?: string | null
           id?: string
+          is_archived?: boolean | null
           is_digital?: boolean | null
           is_private?: boolean
           location?: string | null
@@ -3684,6 +3688,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           background_info?: string | null
           confirmed_date?: string | null
           contact_person?: string | null
@@ -3693,6 +3698,7 @@ export type Database = {
           digital_link?: string | null
           digital_platform?: string | null
           id?: string
+          is_archived?: boolean | null
           is_digital?: boolean | null
           is_private?: boolean
           location?: string | null
