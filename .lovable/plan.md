@@ -1,373 +1,275 @@
 
-# Plan: Fehlerbehebungen für Notizen und Verbesserungen der Planungs-Karten
+# Plan: Einstellung für Tab-Badge-Anzeige in "Meine Arbeit" + Realtime-System für neue Elemente
 
-## Übersicht der Änderungen
+## Übersicht
 
-| # | Problem | Ursache | Lösung |
-|---|---------|---------|--------|
-| 1 | Wiederherstellung aus Papierkorb zeigt Fehler | Fehlender `user_id` Filter bei RLS | Filter hinzufügen |
-| 2 | Notiz-Bearbeitung zeigt HTML | Textarea statt Rich-Text-Editor | SimpleRichTextEditor verwenden |
-| 3 | Archiv-Button bei Planungen fehlt | Funktion existiert, aber kein UI-Element | Archiv-Button/Menü auf Karten |
-| 4 | Anpinnen erzeugt Fehler | Fehlender `user_id` Filter bei RLS | Filter hinzufügen |
-| 5 | Mitarbeiter ohne Farben auf Karten | Avatare statt farbige Badges | UserBadge-Komponente + neues Layout |
+Der Benutzer wünscht sich:
+1. Einstellung pro User: Tab-Badges zeigen entweder **neue Elemente** (Standard) oder **Gesamtzahl**
+2. Realtime-Updates für alle Tabs
+3. Klare Definition, was "neu" bedeutet für jeden Elementtyp
 
----
+## Bestandsaufnahme
 
-## 1. Wiederherstellung aus Papierkorb: RLS-Fehler beheben
+### Bereits vorhanden:
+- `useNewItemIndicators` Hook: Trackt `user_navigation_visits` für "neu seit letztem Besuch"
+- `useNavigationNotifications` Hook: Verwaltet Benachrichtigungszähler
+- `MyWorkView`: Hat Realtime-Subscriptions für tasks, task_decisions, quick_notes
+- `user_navigation_visits` Tabelle: Speichert letzten Besuch pro Kontext
 
-**Datei:** `src/components/shared/NotesArchive.tsx`
-
-**Problem:** Die Funktionen `handleRestore` (Zeile 143-158) und `handleRestoreFromArchive` (Zeile 160-180) haben keinen `user_id` Filter, was bei RLS-geschützten Tabellen zu einer Fehlermeldung führt.
-
-**Lösung:**
-
-```typescript
-// handleRestore - Zeile 143-158
-const handleRestore = async (noteId: string) => {
-  if (!user?.id) return;  // Prüfung hinzufügen
-  
-  try {
-    const { error } = await supabase
-      .from("quick_notes")
-      .update({ deleted_at: null, permanent_delete_at: null })
-      .eq("id", noteId)
-      .eq("user_id", user.id);  // Filter hinzufügen
-
-    if (error) throw error;
-    toast.success("Notiz wiederhergestellt");
-    // ...
-  }
-};
-
-// handleRestoreFromArchive - Zeile 160-180
-const handleRestoreFromArchive = async (noteId: string) => {
-  if (!user?.id) return;  // Prüfung hinzufügen
-  
-  try {
-    const { error } = await supabase
-      .from("quick_notes")
-      .update({ is_archived: false, archived_at: null })
-      .eq("id", noteId)
-      .eq("user_id", user.id);  // Filter hinzufügen
-
-    if (error) throw error;
-    // ...
-  }
-};
-```
+### Noch nicht vorhanden:
+- Benutzereinstellung für Badge-Anzeigeart
+- "Neu"-Zählung für jeden Tab-Typ
+- Einstellungs-UI für "Meine Arbeit"
 
 ---
 
-## 2. Notiz-Bearbeitung: Rich-Text-Editor statt Textarea
+## System-Design: Was ist "neu"?
 
-**Datei:** `src/components/shared/QuickNotesList.tsx`
-
-**Problem:** Der Edit-Dialog (Zeile 1637-1670) verwendet `Textarea` für den Inhalt, was HTML-Tags roh anzeigt.
-
-**Aktuelle Implementierung:**
-```typescript
-<Textarea
-  placeholder="Inhalt"
-  value={editContent}
-  onChange={(e) => setEditContent(e.target.value)}
-  className="min-h-[150px]"
-/>
-```
-
-**Lösung:**
-```typescript
-// Import am Anfang der Datei
-import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-
-// Im Edit-Dialog (ca. Zeile 1652-1656)
-<SimpleRichTextEditor
-  initialContent={editContent}
-  onChange={setEditContent}
-  placeholder="Inhalt"
-  className="min-h-[150px]"
-/>
-```
-
-**Zusätzlich:** Den `editContent` State beim Öffnen des Dialogs mit dem HTML-Inhalt initialisieren (funktioniert bereits korrekt in `openEditDialog`).
+| Tab | Element ist "neu" wenn... |
+|-----|---------------------------|
+| **Aufgaben** | `created_at > last_visit` ODER `assigned_to` enthält User und wurde nach `last_visit` zugewiesen |
+| **Entscheidungen** | Neue Anfrage seit `last_visit` ODER neue Antwort auf eigene Anfrage seit `last_visit` |
+| **Jour Fixe** | Meeting erstellt seit `last_visit` ODER Teilnehmer hinzugefügt seit `last_visit` |
+| **FallAkten** | `created_at > last_visit` |
+| **Planungen** | `created_at > last_visit` ODER User als Collaborator hinzugefügt seit `last_visit` |
 
 ---
 
-## 3. Archiv-Button bei einzelnen Planungen
+## Implementierungsplan
 
-**Datei:** `src/components/EventPlanningView.tsx`
+### 1. Datenbank-Änderung
 
-**Problem:** Die Funktion `archivePlanning` existiert (Zeile 465-498), aber es gibt keinen Button auf den Planungs-Karten, um sie zu verwenden.
+Neue Tabelle für Benutzereinstellungen zu "Meine Arbeit":
 
-**Lösung:** Ein Drei-Punkte-Menü auf jeder Planungs-Karte hinzufügen (Zeile 2751-2834):
+```sql
+CREATE TABLE user_mywork_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  badge_display_mode TEXT NOT NULL DEFAULT 'new' CHECK (badge_display_mode IN ('new', 'total')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id)
+);
 
-```typescript
-// Im CardHeader der Planungs-Karte (nach Zeile 2758)
-<CardHeader className="pb-2">
-  <CardTitle className="flex items-center justify-between">
-    <span className="truncate">{planning.title}</span>
-    <div className="flex items-center gap-2">
-      {planning.is_private && (
-        <Badge variant="outline">Privat</Badge>
-      )}
-      {/* Archiv-Menü - nur für Ersteller */}
-      {planning.user_id === user?.id && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={(e) => {
-              e.stopPropagation();
-              archivePlanning(planning.id);
-            }}>
-              <Archive className="h-4 w-4 mr-2" />
-              Archivieren
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </div>
-  </CardTitle>
-</CardHeader>
+-- RLS Policies
+ALTER TABLE user_mywork_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own settings"
+  ON user_mywork_settings FOR SELECT
+  USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert own settings"
+  ON user_mywork_settings FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update own settings"
+  ON user_mywork_settings FOR UPDATE
+  USING (user_id = auth.uid());
 ```
 
-**Import hinzufügen:**
-```typescript
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
-```
-
----
-
-## 4. Anpinnen bei Notizen: RLS-Fehler beheben
-
-**Datei:** `src/components/shared/QuickNotesList.tsx`
-
-**Problem:** Die Funktion `handleTogglePin` (Zeile 360-373) hat keinen `user_id` Filter:
+### 2. Neuer Hook: `useMyWorkSettings`
 
 ```typescript
-// Aktuell
-const handleTogglePin = async (note: QuickNote) => {
-  try {
-    const { error } = await supabase
-      .from("quick_notes")
-      .update({ is_pinned: !note.is_pinned })
-      .eq("id", note.id);  // Fehlt: .eq("user_id", user.id)
-    // ...
-  }
-};
-```
+// src/hooks/useMyWorkSettings.tsx
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
 
-**Lösung:**
-```typescript
-const handleTogglePin = async (note: QuickNote) => {
-  if (!user?.id) {
-    toast.error("Nicht angemeldet");
-    return;
-  }
-  
-  try {
-    const { data, error } = await supabase
-      .from("quick_notes")
-      .update({ is_pinned: !note.is_pinned })
-      .eq("id", note.id)
-      .eq("user_id", user.id)  // RLS-konform
-      .select();
+export type BadgeDisplayMode = 'new' | 'total';
 
-    if (error) throw error;
+export function useMyWorkSettings() {
+  const { user } = useAuth();
+  const [badgeDisplayMode, setBadgeDisplayMode] = useState<BadgeDisplayMode>('new');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    loadSettings();
+  }, [user]);
+
+  const loadSettings = async () => {
+    if (!user) return;
     
-    if (!data || data.length === 0) {
-      toast.error("Keine Berechtigung zum Ändern dieser Notiz");
-      return;
+    const { data } = await supabase
+      .from('user_mywork_settings')
+      .select('badge_display_mode')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    if (data) {
+      setBadgeDisplayMode(data.badge_display_mode as BadgeDisplayMode);
     }
+    setIsLoading(false);
+  };
+
+  const updateBadgeDisplayMode = async (mode: BadgeDisplayMode) => {
+    if (!user) return;
     
-    toast.success(note.is_pinned ? "Notiz losgelöst" : "Notiz angepinnt");
-    loadNotes();
-  } catch (error) {
-    console.error("Error toggling pin:", error);
-    toast.error("Fehler beim Ändern");
-  }
-};
+    const { error } = await supabase
+      .from('user_mywork_settings')
+      .upsert({
+        user_id: user.id,
+        badge_display_mode: mode,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+    
+    if (!error) {
+      setBadgeDisplayMode(mode);
+    }
+    return !error;
+  };
+
+  return {
+    badgeDisplayMode,
+    updateBadgeDisplayMode,
+    isLoading
+  };
+}
 ```
 
----
+### 3. Neuer Hook: `useMyWorkNewCounts`
 
-## 5. Planungs-Karten: Mitarbeiter mit Farben und neues Layout
-
-**Datei:** `src/components/EventPlanningView.tsx`
-
-**Konzept:** Die Karten-Struktur wird überarbeitet:
-- **Unten links:** Datum und Uhrzeit
-- **Unten mittig:** Mitarbeiter mit ihren Badge-Farben
-- **Unten rechts:** Verantwortliche Person mit Badge-Farbe
-
-**Imports hinzufügen:**
 ```typescript
-import { UserBadge } from "@/components/ui/user-badge";
-import { getHashedColor } from "@/utils/userColors";
+// src/hooks/useMyWorkNewCounts.tsx
+// Berechnet die Anzahl "neuer" Elemente für jeden Tab
+
+export interface NewCounts {
+  tasks: number;
+  decisions: number;
+  jourFixe: number;
+  caseFiles: number;
+  plannings: number;
+}
+
+export function useMyWorkNewCounts() {
+  const { user } = useAuth();
+  const [newCounts, setNewCounts] = useState<NewCounts>({...});
+  const [lastVisits, setLastVisits] = useState<Record<string, Date>>({});
+
+  // Lade last_visited_at für jeden Kontext
+  useEffect(() => {
+    loadLastVisits();
+    loadNewCounts();
+  }, [user]);
+
+  const loadLastVisits = async () => {
+    // Hole user_navigation_visits für:
+    // - mywork_tasks
+    // - mywork_decisions
+    // - mywork_jourFixe
+    // - mywork_casefiles
+    // - mywork_plannings
+  };
+
+  const loadNewCounts = async () => {
+    // Für jeden Tab: Zähle Elemente mit created_at > last_visit
+    // Tasks: created_at > last_visit ODER assigned_to geändert
+    // Decisions: created_at > last_visit ODER neue Responses
+    // etc.
+  };
+
+  return { newCounts, markTabAsVisited };
+}
 ```
 
-**Profile-Daten erweitern:** `badge_color` beim Laden der Profile mit abrufen:
+### 4. Anpassung `MyWorkView.tsx`
 
 ```typescript
-// In fetchAllProfiles oder ähnlich
-const { data: profiles } = await supabase
-  .from("profiles")
-  .select("user_id, display_name, avatar_url, badge_color")
-  .in("user_id", userIds);
-```
+// Neue Imports
+import { useMyWorkSettings } from '@/hooks/useMyWorkSettings';
+import { useMyWorkNewCounts } from '@/hooks/useMyWorkNewCounts';
 
-**Neues Card-Layout (Zeile 2751-2834):**
-
-```typescript
-<Card
-  key={planning.id}
-  className="cursor-pointer hover:shadow-md transition-shadow relative flex flex-col"
-  onClick={() => setSelectedPlanning(planning)}
->
-  <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} />
+export function MyWorkView() {
+  const { badgeDisplayMode } = useMyWorkSettings();
+  const { newCounts, markTabAsVisited } = useMyWorkNewCounts();
+  const [totalCounts, setTotalCounts] = useState<TabCounts>({...});
   
-  <CardHeader className="pb-2">
-    <CardTitle className="flex items-center justify-between">
-      <span className="truncate">{planning.title}</span>
-      <div className="flex items-center gap-2">
-        {planning.is_private && (
-          <Badge variant="outline">Privat</Badge>
-        )}
-        {/* Archiv-Menü */}
-        {planning.user_id === user?.id && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                archivePlanning(planning.id);
-              }}>
-                <Archive className="h-4 w-4 mr-2" />
-                Archivieren
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-    </CardTitle>
-  </CardHeader>
-  
-  <CardContent className="flex-1 space-y-3">
-    {/* Beschreibung */}
-    {planning.description && (
-      <p className="text-sm text-muted-foreground line-clamp-2">
-        {planning.description}
-      </p>
-    )}
-    
-    {/* Ort */}
-    {planning.location && (
-      <div className="flex items-center text-sm text-muted-foreground">
-        <MapPin className="mr-2 h-3 w-3" />
-        {planning.location}
-      </div>
-    )}
-    
-    {/* Status Badge */}
-    <Badge variant={planning.confirmed_date ? "default" : "secondary"}>
-      {planning.confirmed_date ? "Bestätigt" : "In Planung"}
+  // Bei Tab-Wechsel: Tab als besucht markieren
+  const handleTabChange = (tab: TabValue) => {
+    setActiveTab(tab);
+    markTabAsVisited(`mywork_${tab}`);
+  };
+
+  // Badge zeigt je nach Einstellung:
+  const getDisplayCount = (countKey: keyof TabCounts) => {
+    if (badgeDisplayMode === 'new') {
+      return newCounts[countKey] || 0;
+    }
+    return totalCounts[countKey] || 0;
+  };
+
+  // In Tab-Rendering:
+  {getDisplayCount(tab.countKey) > 0 && (
+    <Badge 
+      variant={badgeDisplayMode === 'new' ? 'destructive' : 'secondary'}
+      className="..."
+    >
+      {getDisplayCount(tab.countKey)}
     </Badge>
-  </CardContent>
-  
-  {/* Footer mit neuem Layout */}
-  <div className="px-6 pb-4 pt-2 border-t mt-auto">
-    <div className="flex items-end justify-between gap-2">
-      {/* Links: Datum & Uhrzeit */}
-      <div className="flex flex-col text-xs text-muted-foreground">
-        {planning.confirmed_date ? (
-          <>
-            <span className="flex items-center gap-1">
-              <CalendarIcon className="h-3 w-3" />
-              {format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })}
-            </span>
-            {/* Falls Uhrzeit vorhanden */}
-            {planning.confirmed_date.includes('T') && (
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {format(new Date(planning.confirmed_date), "HH:mm", { locale: de })} Uhr
-              </span>
-            )}
-          </>
-        ) : (
-          <span className="italic">Termin offen</span>
-        )}
-      </div>
-      
-      {/* Mitte: Mitarbeiter mit Farben */}
-      {planningCollaborators.length > 0 && (
-        <div className="flex flex-wrap gap-1 justify-center">
-          {planningCollaborators.slice(0, 3).map((collab) => {
-            const profile = allProfiles.find(p => p.user_id === collab.user_id);
-            const color = profile?.badge_color || getHashedColor(collab.user_id);
-            return (
-              <span
-                key={collab.id}
-                className={cn(
-                  "text-xs px-2 py-0.5 rounded-full text-white",
-                  color
-                )}
-                title={profile?.display_name || "Unbekannt"}
-              >
-                {(profile?.display_name || "?")[0]}
-              </span>
-            );
-          })}
-          {planningCollaborators.length > 3 && (
-            <span className="text-xs text-muted-foreground">
-              +{planningCollaborators.length - 3}
-            </span>
-          )}
-        </div>
-      )}
-      
-      {/* Rechts: Verantwortliche Person */}
-      <div className="flex flex-col items-end">
-        <span className="text-[10px] text-muted-foreground mb-0.5">Verantwortlich</span>
-        <UserBadge
-          userId={planning.user_id}
-          displayName={creatorProfile?.display_name || null}
-          badgeColor={creatorProfile?.badge_color}
-          size="sm"
-        />
-      </div>
+  )}
+}
+```
+
+### 5. Einstellungs-UI in `SettingsView.tsx`
+
+Neuer Bereich "Meine Arbeit":
+
+```typescript
+{/* My Work Settings */}
+<Card className="bg-card shadow-card border-border">
+  <CardHeader>
+    <CardTitle className="flex items-center gap-2">
+      <ClipboardList className="h-5 w-5" />
+      Meine Arbeit
+    </CardTitle>
+    <CardDescription>
+      Einstellungen für die Anzeige in "Meine Arbeit"
+    </CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-4">
+    <div className="space-y-2">
+      <Label>Tab-Badge Anzeige</Label>
+      <Select 
+        value={badgeDisplayMode} 
+        onValueChange={updateBadgeDisplayMode}
+      >
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="new">
+            Nur neue Elemente anzeigen (Standard)
+          </SelectItem>
+          <SelectItem value="total">
+            Gesamtzahl der Elemente anzeigen
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      <p className="text-sm text-muted-foreground">
+        Wählen Sie, ob die Badges die Anzahl neuer oder aller Elemente anzeigen sollen.
+      </p>
     </div>
-  </div>
+  </CardContent>
 </Card>
 ```
 
-**Visuelle Darstellung des neuen Layouts:**
+### 6. Erweiterte Realtime-Subscriptions
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ Veranstaltungstitel                            [Privat] [⋮] │
-├─────────────────────────────────────────────────────────────┤
-│ Beschreibung der Veranstaltung...                           │
-│ 📍 Stuttgart, Rathaus                                       │
-│ [In Planung]                                                │
-├─────────────────────────────────────────────────────────────┤
-│ 📅 28.01.2026    [C] [F] [M]          Verantwortlich        │
-│ 🕐 14:00 Uhr      +2                  [Alexander]           │
-│                                           ↑                  │
-│ ↑ Datum/Uhrzeit   ↑ Mitarbeiter-Badges    UserBadge         │
-└─────────────────────────────────────────────────────────────┘
-
-Legende:
-[C] = Carla (blaue Farbe)
-[F] = Franziska (grüne Farbe)  
-[M] = Michael (orange Farbe)
-[Alexander] = UserBadge mit Farbe des Erstellers
+```typescript
+// In MyWorkView.tsx - erweiterte Channels
+const channel = supabase
+  .channel('my-work-realtime')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, handleUpdate)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'task_decisions' }, handleUpdate)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'task_decision_participants' }, handleUpdate)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'task_decision_responses' }, handleUpdate)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'quick_notes' }, handleUpdate)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, handleUpdate)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_participants' }, handleUpdate)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'case_files' }, handleUpdate)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'event_plannings' }, handleUpdate)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'event_planning_collaborators' }, handleUpdate)
+  .subscribe();
 ```
 
 ---
@@ -376,30 +278,75 @@ Legende:
 
 | Datei | Änderung |
 |-------|----------|
-| `src/components/shared/NotesArchive.tsx` | `user_id` Filter in `handleRestore` und `handleRestoreFromArchive` |
-| `src/components/shared/QuickNotesList.tsx` | SimpleRichTextEditor im Edit-Dialog + `user_id` in `handleTogglePin` |
-| `src/components/EventPlanningView.tsx` | Archiv-Dropdown auf Karten + neues Layout mit UserBadge-Farben |
+| **Migration** | Neue Tabelle `user_mywork_settings` |
+| `src/hooks/useMyWorkSettings.tsx` | Neuer Hook für Einstellungen |
+| `src/hooks/useMyWorkNewCounts.tsx` | Neuer Hook für "Neu"-Zählung |
+| `src/components/MyWorkView.tsx` | Integration der Hooks + Realtime-Erweiterung |
+| `src/components/SettingsView.tsx` | Neuer Einstellungsbereich |
+
+---
+
+## Visuelle Darstellung
+
+```text
+Einstellung: "Nur neue Elemente" (Standard)
+┌─────────────────────────────────────────────────────────────┐
+│ Quick Notes | Aufgaben [2] | Entscheidungen [1] | Jour Fixe │
+│                    ↑              ↑                         │
+│              2 neue Tasks   1 neue Anfrage                  │
+│              (rot Badge)    (rot Badge)                     │
+└─────────────────────────────────────────────────────────────┘
+
+Einstellung: "Gesamtzahl anzeigen"
+┌─────────────────────────────────────────────────────────────┐
+│ Quick Notes | Aufgaben [15] | Entscheidungen [8] | Jour Fixe│
+│                    ↑              ↑                         │
+│              15 offene      8 aktive                        │
+│              (grau Badge)   (grau Badge)                    │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Technische Details
 
-### RLS-konforme Updates
-Alle Update-Operationen auf `quick_notes` benötigen `.eq("user_id", user.id)` um mit Row Level Security zu funktionieren ohne Fehlermeldungen.
+### Navigation-Kontext für "Meine Arbeit" Tabs
+Jeder Tab bekommt einen eigenen Kontext für `user_navigation_visits`:
+- `mywork_tasks`
+- `mywork_decisions`
+- `mywork_jourFixe`
+- `mywork_casefiles`
+- `mywork_plannings`
+- `mywork_time`
+- `mywork_team`
 
-### SimpleRichTextEditor Props
-```typescript
-interface SimpleRichTextEditorProps {
-  initialContent?: string;
-  onChange: (html: string) => void;
-  placeholder?: string;
-  className?: string;
-  disabled?: boolean;
-}
+### "Neu"-Logik im Detail
+
+**Aufgaben:**
+```sql
+SELECT COUNT(*) FROM tasks
+WHERE (user_id = :user_id OR :user_id = ANY(assigned_to))
+  AND status != 'completed'
+  AND created_at > :last_visit_tasks
 ```
 
-### UserBadge-Komponente
-Verwendet `badge_color` aus dem Profil oder generiert eine konsistente Farbe basierend auf der User-ID.
+**Entscheidungen:**
+```sql
+-- Neue Anfragen an mich
+SELECT COUNT(*) FROM task_decision_participants p
+JOIN task_decisions d ON d.id = p.decision_id
+WHERE p.user_id = :user_id
+  AND d.status IN ('active', 'open')
+  AND d.created_at > :last_visit_decisions
+
+-- ODER neue Antworten auf meine Anfragen
+UNION
+SELECT COUNT(*) FROM task_decision_responses r
+JOIN task_decision_participants p ON p.id = r.participant_id
+JOIN task_decisions d ON d.id = p.decision_id
+WHERE d.created_by = :user_id
+  AND r.created_at > :last_visit_decisions
+```
 
 ---
 
@@ -407,9 +354,10 @@ Verwendet `badge_color` aus dem Profil oder generiert eine konsistente Farbe bas
 
 | Änderung | Zeit |
 |----------|------|
-| Wiederherstellung RLS-Fix | 5 Min |
-| Edit-Dialog Rich-Text | 10 Min |
-| Archiv-Button auf Karten | 15 Min |
-| Anpinnen RLS-Fix | 5 Min |
-| Neues Karten-Layout mit Farben | 25 Min |
-| **Gesamt** | **~60 Min** |
+| Migration + RLS | 10 Min |
+| useMyWorkSettings Hook | 15 Min |
+| useMyWorkNewCounts Hook | 45 Min |
+| MyWorkView Anpassung | 30 Min |
+| SettingsView Einstellungsbereich | 20 Min |
+| Realtime-Erweiterung | 15 Min |
+| **Gesamt** | **~135 Min** |
