@@ -19,7 +19,10 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List, Eye, Mail, CheckCircle, FileEdit } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List, Eye, Mail, CheckCircle, FileEdit, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { UserBadge } from "@/components/ui/user-badge";
+import { getHashedColor } from "@/utils/userColors";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -2751,39 +2754,45 @@ export function EventPlanningView() {
                 return (
                   <Card
                     key={planning.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow relative"
+                    className="cursor-pointer hover:shadow-md transition-shadow relative flex flex-col"
                     onClick={() => setSelectedPlanning(planning)}
                   >
                     <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} />
-                    <CardHeader>
+                    <CardHeader className="pb-2">
                       <CardTitle className="flex items-center justify-between">
                         <span className="truncate">{planning.title}</span>
-                        {planning.is_private && (
-                          <Badge variant="outline" className="ml-2">
-                            Privat
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {planning.is_private && (
+                            <Badge variant="outline">Privat</Badge>
+                          )}
+                          {/* Archive menu - only for creator */}
+                          {planning.user_id === user?.id && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-popover">
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  archivePlanning(planning.id);
+                                }}>
+                                  <Archive className="h-4 w-4 mr-2" />
+                                  Archivieren
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="flex-1 space-y-3">
                       {planning.description && (
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {planning.description}
                         </p>
                       )}
-                      
-                      {/* Creator / Responsible person */}
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="h-3 w-3" />
-                        <span className="text-xs font-medium">Verantwortlich:</span>
-                        <Avatar className="h-5 w-5">
-                          <AvatarImage src={creatorProfile?.avatar_url} />
-                          <AvatarFallback className="text-xs">
-                            {creatorProfile?.display_name?.[0] || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs">{creatorProfile?.display_name || "Unbekannt"}</span>
-                      </div>
                       
                       {planning.location && (
                         <div className="flex items-center text-sm text-muted-foreground">
@@ -2792,44 +2801,73 @@ export function EventPlanningView() {
                         </div>
                       )}
 
-                      {planning.confirmed_date && (
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <CalendarIcon className="mr-2 h-3 w-3" />
-                          {format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })}
+                      <Badge variant={planning.confirmed_date ? "default" : "secondary"}>
+                        {planning.confirmed_date ? "Bestätigt" : "In Planung"}
+                      </Badge>
+                    </CardContent>
+                    
+                    {/* Footer with new layout */}
+                    <div className="px-6 pb-4 pt-2 border-t mt-auto">
+                      <div className="flex items-end justify-between gap-2">
+                        {/* Left: Date & Time */}
+                        <div className="flex flex-col text-xs text-muted-foreground">
+                          {planning.confirmed_date ? (
+                            <>
+                              <span className="flex items-center gap-1">
+                                <CalendarIcon className="h-3 w-3" />
+                                {format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })}
+                              </span>
+                              {planning.confirmed_date.includes('T') && !planning.confirmed_date.endsWith('T00:00:00') && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {format(new Date(planning.confirmed_date), "HH:mm", { locale: de })} Uhr
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="italic">Termin offen</span>
+                          )}
                         </div>
-                      )}
-
-                      <div className="flex items-center justify-between">
-                        <Badge variant={planning.confirmed_date ? "default" : "secondary"}>
-                          {planning.confirmed_date ? "Bestätigt" : "In Planung"}
-                        </Badge>
-                        <div className="text-xs text-muted-foreground">
-                          {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
-                        </div>
-                      </div>
-
-                      {planningCollaborators.length > 0 && (
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Users className="mr-2 h-3 w-3" />
-                          <span className="text-xs mr-1">Mitarbeiter:</span>
-                          <div className="flex -space-x-2">
-                            {planningCollaborators.slice(0, 3).map((collab) => (
-                              <Avatar key={collab.id} className="h-6 w-6 border-2 border-background">
-                                <AvatarImage src={collab.profiles?.avatar_url} />
-                                <AvatarFallback className="text-xs">
-                                  {collab.profiles?.display_name?.[0] || "?"}
-                                </AvatarFallback>
-                              </Avatar>
-                            ))}
+                        
+                        {/* Center: Collaborators with colors */}
+                        {planningCollaborators.length > 0 && (
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            {planningCollaborators.slice(0, 3).map((collab) => {
+                              const profile = allProfiles.find(p => p.user_id === collab.user_id);
+                              const color = (profile as any)?.badge_color || getHashedColor(collab.user_id);
+                              return (
+                                <span
+                                  key={collab.id}
+                                  className={cn(
+                                    "text-xs px-2 py-0.5 rounded-full text-white",
+                                    color
+                                  )}
+                                  title={profile?.display_name || "Unbekannt"}
+                                >
+                                  {(profile?.display_name || "?")[0]}
+                                </span>
+                              );
+                            })}
                             {planningCollaborators.length > 3 && (
-                              <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs">
+                              <span className="text-xs text-muted-foreground">
                                 +{planningCollaborators.length - 3}
-                              </div>
+                              </span>
                             )}
                           </div>
+                        )}
+                        
+                        {/* Right: Responsible person */}
+                        <div className="flex flex-col items-end">
+                          <span className="text-[10px] text-muted-foreground mb-0.5">Verantwortlich</span>
+                          <UserBadge
+                            userId={planning.user_id}
+                            displayName={creatorProfile?.display_name || null}
+                            badgeColor={(creatorProfile as any)?.badge_color}
+                            size="sm"
+                          />
                         </div>
-                      )}
-                    </CardContent>
+                      </div>
+                    </div>
                   </Card>
                 );
               })}

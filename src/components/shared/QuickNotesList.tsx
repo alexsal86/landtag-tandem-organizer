@@ -24,6 +24,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
@@ -358,13 +359,27 @@ export function QuickNotesList({
 
   // Action handlers
   const handleTogglePin = async (note: QuickNote) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+    
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("quick_notes")
         .update({ is_pinned: !note.is_pinned })
-        .eq("id", note.id);
+        .eq("id", note.id)
+        .eq("user_id", user.id)
+        .select();
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("Keine Berechtigung zum Ändern dieser Notiz");
+        return;
+      }
+      
+      toast.success(note.is_pinned ? "Notiz losgelöst" : "Notiz angepinnt");
       loadNotes();
     } catch (error) {
       console.error("Error toggling pin:", error);
@@ -1649,11 +1664,12 @@ export function QuickNotesList({
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
             />
-            <Textarea
+            <SimpleRichTextEditor
+              key={editDialogOpen ? editingNote?.id : 'closed'}
+              initialContent={editContent}
+              onChange={setEditContent}
               placeholder="Inhalt"
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="min-h-[150px]"
+              minHeight="150px"
             />
           </div>
           <div className="flex justify-end gap-2">
