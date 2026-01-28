@@ -1692,9 +1692,7 @@ export function TasksView() {
             }
           }}
           resolveUserNames={resolveUserNames}
-        >
-          <TaskDecisionList />
-        </AssignedItemsSection>
+        />
 
 
         {/* Main Tasks List */}
