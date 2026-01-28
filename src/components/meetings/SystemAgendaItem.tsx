@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { CalendarDays, StickyNote } from 'lucide-react';
 import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
 import { cn } from '@/lib/utils';
+import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 
 interface SystemAgendaItemProps {
   systemType: 'upcoming_appointments' | 'quick_notes';
@@ -77,7 +78,7 @@ export function SystemAgendaItem({
                   {note.title && (
                     <h4 className="font-semibold text-sm mb-1">{note.title}</h4>
                   )}
-                  <p className="text-sm">{note.content}</p>
+                  <RichTextDisplay content={note.content} className="text-sm" />
                   {note.meeting_result && (
                     <p className="text-xs text-muted-foreground mt-1">
                       Ergebnis: {note.meeting_result}

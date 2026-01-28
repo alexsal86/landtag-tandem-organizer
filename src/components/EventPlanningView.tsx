@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -667,13 +668,15 @@ export function EventPlanningView() {
           <TableHead className="w-10"></TableHead>
           <TableHead>Titel</TableHead>
           <TableHead>Verantwortlich</TableHead>
-          <TableHead>Beschreibung</TableHead>
+          <TableHead>Mitarbeiter</TableHead>
           <TableHead>Datum</TableHead>
+          <TableHead className="w-10"></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {plannings.map((planning) => {
           const creatorProfile = allProfiles.find(p => p.user_id === planning.user_id);
+          const planningCollabs = collaborators.filter(c => c.event_planning_id === planning.id);
           
           return (
             <TableRow 
@@ -697,22 +700,69 @@ export function EventPlanningView() {
                 {planning.title}
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-1.5">
-                  <Avatar className="h-5 w-5">
-                    <AvatarImage src={creatorProfile?.avatar_url} />
-                    <AvatarFallback className="text-xs">
-                      {creatorProfile?.display_name?.[0] || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm">{creatorProfile?.display_name || "Unbekannt"}</span>
-                </div>
+                <UserBadge
+                  userId={planning.user_id}
+                  displayName={creatorProfile?.display_name || null}
+                  badgeColor={(creatorProfile as any)?.badge_color}
+                  size="sm"
+                />
               </TableCell>
-              <TableCell className="max-w-xs truncate">{planning.description || '-'}</TableCell>
+              <TableCell>
+                {planningCollabs.length > 0 ? (
+                  <div className="flex gap-1">
+                    {planningCollabs.slice(0, 3).map(collab => {
+                      const profile = allProfiles.find(p => p.user_id === collab.user_id);
+                      const color = (profile as any)?.badge_color || getHashedColor(collab.user_id);
+                      return (
+                        <TooltipProvider key={collab.id}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span
+                                className={cn(
+                                  "text-xs px-2 py-0.5 rounded-full text-white",
+                                  color
+                                )}
+                              >
+                                {(profile?.display_name || "?")[0]}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {profile?.display_name || "Unbekannt"}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })}
+                    {planningCollabs.length > 3 && (
+                      <span className="text-xs text-muted-foreground">+{planningCollabs.length - 3}</span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
               <TableCell>
                 {planning.confirmed_date 
                   ? format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })
                   : "-"
                 }
+              </TableCell>
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                {planning.user_id === user?.id && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover">
+                      <DropdownMenuItem onClick={() => archivePlanning(planning.id)}>
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archivieren
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </TableCell>
             </TableRow>
           );
@@ -2801,9 +2851,24 @@ export function EventPlanningView() {
                         </div>
                       )}
 
-                      <Badge variant={planning.confirmed_date ? "default" : "secondary"}>
-                        {planning.confirmed_date ? "Bestätigt" : "In Planung"}
-                      </Badge>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            {planning.confirmed_date ? (
+                              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20">
+                                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20">
+                                <Clock className="h-4 w-4 text-amber-500" />
+                              </div>
+                            )}
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {planning.confirmed_date ? "Bestätigt" : "In Planung"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </CardContent>
                     
                     {/* Footer with new layout */}
@@ -2829,30 +2894,40 @@ export function EventPlanningView() {
                           )}
                         </div>
                         
-                        {/* Center: Collaborators with colors */}
+                        {/* Center: Collaborators with colors and label */}
                         {planningCollaborators.length > 0 && (
-                          <div className="flex flex-wrap gap-1 justify-center">
-                            {planningCollaborators.slice(0, 3).map((collab) => {
-                              const profile = allProfiles.find(p => p.user_id === collab.user_id);
-                              const color = (profile as any)?.badge_color || getHashedColor(collab.user_id);
-                              return (
-                                <span
-                                  key={collab.id}
-                                  className={cn(
-                                    "text-xs px-2 py-0.5 rounded-full text-white",
-                                    color
-                                  )}
-                                  title={profile?.display_name || "Unbekannt"}
-                                >
-                                  {(profile?.display_name || "?")[0]}
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-[10px] text-muted-foreground">Mitarbeit</span>
+                            <div className="flex flex-wrap gap-1 justify-center">
+                              {planningCollaborators.slice(0, 3).map((collab) => {
+                                const profile = allProfiles.find(p => p.user_id === collab.user_id);
+                                const color = (profile as any)?.badge_color || getHashedColor(collab.user_id);
+                                return (
+                                  <TooltipProvider key={collab.id}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span
+                                          className={cn(
+                                            "text-xs px-2 py-0.5 rounded-full text-white",
+                                            color
+                                          )}
+                                        >
+                                          {(profile?.display_name || "?")[0]}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        {profile?.display_name || "Unbekannt"}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              })}
+                              {planningCollaborators.length > 3 && (
+                                <span className="text-xs text-muted-foreground">
+                                  +{planningCollaborators.length - 3}
                                 </span>
-                              );
-                            })}
-                            {planningCollaborators.length > 3 && (
-                              <span className="text-xs text-muted-foreground">
-                                +{planningCollaborators.length - 3}
-                              </span>
-                            )}
+                              )}
+                            </div>
                           </div>
                         )}
                         

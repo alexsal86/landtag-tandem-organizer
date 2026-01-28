@@ -48,6 +48,7 @@ import { NoteDecisionCreator } from "@/components/shared/NoteDecisionCreator";
 import { DecisionResponseSummary } from "@/components/shared/DecisionResponseSummary";
 import { NoteLinkedBadge } from "@/components/shared/NoteLinkedBadge";
 import { NoteLinkedDetails } from "@/components/shared/NoteLinkedDetails";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 
 export interface QuickNote {
   id: string;
@@ -492,11 +493,24 @@ export function QuickNotesList({
     
     const sourceLevel = parseInt(result.source.droppableId.replace('level-', ''));
     const destLevel = parseInt(result.destination.droppableId.replace('level-', ''));
-    
-    if (sourceLevel === destLevel) return; // No change within same group
-    
     const noteId = result.draggableId;
+    const note = notes.find(n => n.id === noteId);
     
+    if (!note) return;
+    
+    // Check ownership
+    if (note.user_id !== user.id) {
+      toast.error("Nur eigene Notizen können verschoben werden");
+      return;
+    }
+    
+    // Same level: inform user about sort order
+    if (sourceLevel === destLevel) {
+      toast.info("Reihenfolge wird durch Erstelldatum bestimmt");
+      return;
+    }
+    
+    // Level change: Update priority_level
     // Optimistic update
     setNotes(prev => prev.map(n => 
       n.id === noteId ? { ...n, priority_level: destLevel } : n
@@ -962,7 +976,7 @@ export function QuickNotesList({
       .replace(/on\w+='[^']*'/gi, '');
   };
 
-  const renderNoteCard = (note: QuickNote, showFollowUpBadge = false) => {
+  const renderNoteCard = (note: QuickNote, showFollowUpBadge = false, dragHandleProps?: any) => {
     const isExpanded = expandedNotes.has(note.id);
     const fullText = note.content.replace(/<[^>]*>/g, '');
     const needsTruncation = fullText.length > 150;
@@ -987,9 +1001,10 @@ export function QuickNotesList({
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
               />
             ) : (
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {getPreviewText(note.content)}
-              </p>
+              <RichTextDisplay 
+                content={note.content} 
+                className="text-sm text-muted-foreground line-clamp-2"
+              />
             )}
             {needsTruncation && (
               <button 
@@ -1001,74 +1016,10 @@ export function QuickNotesList({
             )}
           </div>
         
-        {/* Right column: Icons on top, metadata below */}
+        {/* Right column: Icons on top - SIMPLIFIED, most actions in dropdown */}
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-          {/* Quick Action Icons - always visible */}
+          {/* Quick Action Icons - minimal, drag handle on right */}
           <div className="flex items-center gap-0.5">
-            {/* Als Aufgabe - immer sichtbar, unterschiedliches Styling wenn verknüpft */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-6 w-6",
-                      note.task_id 
-                        ? "text-blue-500" 
-                        : "text-muted-foreground hover:text-blue-500"
-                    )}
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      if (note.task_id) {
-                        // Show confirmation to remove task
-                        if (window.confirm("Möchten Sie die verknüpfte Aufgabe wirklich löschen?")) {
-                          removeTaskFromNote(note);
-                        }
-                      } else {
-                        createTaskFromNote(note); 
-                      }
-                    }}
-                  >
-                    <CheckSquare className={cn("h-3.5 w-3.5", note.task_id && "fill-blue-500/20")} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {note.task_id ? "Aufgabe entfernen" : "Als Aufgabe"}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            {/* Als Entscheidung */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-6 w-6",
-                      note.decision_id 
-                        ? "text-purple-500" 
-                        : "text-muted-foreground hover:text-purple-500"
-                    )}
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      if (!note.decision_id) {
-                        setNoteForDecision(note);
-                        setDecisionCreatorOpen(true);
-                      }
-                    }}
-                  >
-                    <Vote className={cn("h-3.5 w-3.5", note.decision_id && "fill-purple-500/20")} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {note.decision_id ? "Entscheidung aktiv" : "Als Entscheidung"}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
             {/* Bearbeiten - nur für eigene Notizen */}
             {note.user_id === user?.id && (
               <TooltipProvider>
@@ -1091,73 +1042,7 @@ export function QuickNotesList({
               </TooltipProvider>
             )}
             
-            {/* Jour Fixe */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-6 w-6",
-                      note.meeting_id 
-                        ? "text-emerald-500" 
-                        : "text-muted-foreground hover:text-emerald-500"
-                    )}
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      if (note.meeting_id) {
-                        removeNoteFromMeeting(note.id);
-                      } else {
-                        setNoteForMeeting(note);
-                        setMeetingSelectorOpen(true);
-                      }
-                    }}
-                  >
-                    <CalendarIcon className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {note.meeting_id ? "Von Jour Fixe entfernen" : "Auf Jour Fixe setzen"}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            {/* Wiedervorlage */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-6 w-6",
-                      note.follow_up_date 
-                        ? "text-orange-500" 
-                        : "text-muted-foreground hover:text-orange-500"
-                    )}
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      if (note.follow_up_date) {
-                        handleSetFollowUp(note.id, null);
-                      } else {
-                        handleSetFollowUp(note.id, addDays(new Date(), 14));
-                      }
-                    }}
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {note.follow_up_date 
-                    ? `Wiedervorlage: ${format(new Date(note.follow_up_date), "dd.MM.yyyy", { locale: de })}` 
-                    : "Wiedervorlage (+14 Tage)"
-                  }
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            {/* Three-dot menu - always visible */}
+            {/* Three-dot menu - contains all actions */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1344,6 +1229,16 @@ export function QuickNotesList({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            
+            {/* Drag Handle - only for own notes, on the right */}
+            {note.user_id === user?.id && dragHandleProps && (
+              <div 
+                {...dragHandleProps}
+                className="cursor-grab opacity-30 hover:opacity-70 transition-opacity ml-1"
+              >
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
+              </div>
+            )}
           </div>
           
           {/* Metadata row below icons */}
@@ -1521,22 +1416,10 @@ export function QuickNotesList({
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               className={cn(
-                                "flex items-start gap-1",
                                 snapshot.isDragging && "opacity-90"
                               )}
                             >
-                              {/* Dezenter Drag-Handle */}
-                              {note.user_id === user?.id && (
-                                <div 
-                                  {...provided.dragHandleProps}
-                                  className="pt-4 px-0.5 cursor-grab opacity-20 hover:opacity-50 transition-opacity"
-                                >
-                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                              )}
-                              <div className="flex-1">
-                                {renderNoteCard(note)}
-                              </div>
+                              {renderNoteCard(note, false, provided.dragHandleProps)}
                             </div>
                           )}
                         </Draggable>

@@ -183,14 +183,14 @@ const Index = () => {
         Zum Hauptinhalt springen
       </a>
       
-      <div className="flex min-h-screen w-full bg-background">
-        <div className="hidden md:block">
+      <div className="flex min-h-screen w-full bg-background overflow-hidden">
+        <div className="hidden md:block sticky top-0 h-screen z-30">
           <AppNavigation 
             activeSection={activeSection} 
             onSectionChange={handleSectionChange}
           />
         </div>
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 overflow-y-auto h-screen">
           {/* Header und SubNavigation fixiert am oberen Rand */}
           <div className="hidden md:block sticky top-0 z-40">
             <AppHeader />
