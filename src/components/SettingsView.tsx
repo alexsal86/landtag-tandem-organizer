@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar, Mail, Activity } from "lucide-react";
+import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar, Mail, Activity, ClipboardList } from "lucide-react";
 import { NotificationSettings } from "./NotificationSettings";
 import { ExternalCalendarSettings } from "./ExternalCalendarSettings";
 import { TwoFactorSettings } from "./TwoFactorSettings";
 import { SenderInformationManager } from "./administration/SenderInformationManager";
 import { AutoStatusDetection } from "./AutoStatusDetection";
+import { useMyWorkSettings, BadgeDisplayMode } from "@/hooks/useMyWorkSettings";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,9 @@ export function SettingsView() {
   const [timezone, setTimezone] = useState("Europe/Berlin");
   const [isAdmin, setIsAdmin] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  
+  // My Work Settings
+  const { badgeDisplayMode, updateBadgeDisplayMode, isLoading: myWorkSettingsLoading } = useMyWorkSettings();
 
   useEffect(() => {
     if (!user) return;
@@ -197,6 +201,59 @@ export function SettingsView() {
                 <User className="h-4 w-4 mr-2" />
                 Profil bearbeiten
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* My Work Settings */}
+        <div className="mt-6">
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Meine Arbeit
+              </CardTitle>
+              <CardDescription>
+                Einstellungen für die Anzeige in "Meine Arbeit"
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="badge-display-mode">Tab-Badge Anzeige</Label>
+                <Select 
+                  value={badgeDisplayMode} 
+                  onValueChange={(value) => {
+                    updateBadgeDisplayMode(value as BadgeDisplayMode);
+                    toast({
+                      title: "Einstellung gespeichert",
+                      description: value === 'new' 
+                        ? "Badges zeigen jetzt nur neue Elemente an." 
+                        : "Badges zeigen jetzt die Gesamtzahl an.",
+                    });
+                  }}
+                  disabled={myWorkSettingsLoading}
+                >
+                  <SelectTrigger id="badge-display-mode">
+                    <SelectValue placeholder="Auswählen..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">
+                      <div className="flex flex-col items-start">
+                        <span>Nur neue Elemente anzeigen (Standard)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="total">
+                      <div className="flex flex-col items-start">
+                        <span>Gesamtzahl der Elemente anzeigen</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Wählen Sie, ob die Badges die Anzahl neuer oder aller Elemente anzeigen sollen.
+                  Bei "Nur neue Elemente" wird die Zahl nach dem Besuch eines Tabs zurückgesetzt.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
