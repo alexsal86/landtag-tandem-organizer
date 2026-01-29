@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useCombinedTimeEntries, CombinedTimeEntry } from "@/hooks/useCombinedTimeEntries";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,11 +44,15 @@ interface EmployeeSettingsRow {
 
 interface LeaveRow {
   id: string;
-  type: "vacation" | "sick" | "other";
+  type: "vacation" | "sick" | "other" | "medical" | "overtime_reduction";
   start_date: string;
   end_date: string;
   status: string;
   reason: string | null;
+  medical_reason?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  minutes_counted?: number | null;
 }
 
 interface HistoryRow {
@@ -66,6 +71,8 @@ interface HolidayRow {
   id: string;
   holiday_date: string;
   name: string;
+  is_nationwide?: boolean;
+  state?: string | null;
 }
 
 export function TimeTrackingView() {
@@ -81,6 +88,8 @@ export function TimeTrackingView() {
   const [employeeSettings, setEmployeeSettings] = useState<EmployeeSettingsRow | null>(null);
   const [vacationLeaves, setVacationLeaves] = useState<LeaveRow[]>([]);
   const [sickLeaves, setSickLeaves] = useState<LeaveRow[]>([]);
+  const [medicalLeaves, setMedicalLeaves] = useState<LeaveRow[]>([]);
+  const [overtimeLeaves, setOvertimeLeaves] = useState<LeaveRow[]>([]);
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
   const [editingEntry, setEditingEntry] = useState<TimeEntryRow | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -107,11 +116,17 @@ export function TimeTrackingView() {
     setLoading(true);
     try {
       const year = selectedMonth.getFullYear();
-      const [e, s, v, sick, h, pending] = await Promise.all([
+      
+      // Sync holidays for current year (fire and forget)
+      supabase.functions.invoke('sync-holidays', { body: { year } }).catch(console.error);
+      
+      const [e, s, v, sick, medical, overtime, h, pending] = await Promise.all([
         supabase.from("time_entries").select("*").eq("user_id", user.id).gte("work_date", format(monthStart, "yyyy-MM-dd")).lte("work_date", format(monthEnd, "yyyy-MM-dd")).order("work_date", { ascending: false }),
         supabase.from("employee_settings").select("*, carry_over_expires_at").eq("user_id", user.id).single(),
         supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "vacation").in("status", ["approved", "pending", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
         supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "sick").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
+        supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "medical").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
+        supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "overtime_reduction").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
         supabase.from("public_holidays").select("*").gte("holiday_date", `${year}-01-01`).lte("holiday_date", `${year}-12-31`).order("holiday_date"),
         supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("status", "pending").order("start_date"),
       ]);
@@ -119,12 +134,28 @@ export function TimeTrackingView() {
       setEmployeeSettings(s.data); 
       setVacationLeaves(v.data || []); 
       setSickLeaves(sick.data || []); 
+      setMedicalLeaves(medical.data || []);
+      setOvertimeLeaves(overtime.data || []);
       setHolidays(h.data || []);
       setPendingLeaves(pending.data || []);
     } catch (error: any) { toast.error("Fehler: " + error.message); } finally { setLoading(false); }
   };
 
   const dailyHours = employeeSettings ? employeeSettings.hours_per_month / employeeSettings.days_per_month : 8;
+  const dailyMinutes = Math.round(dailyHours * 60);
+  
+  // Combined time entries with leaves and holidays
+  const combinedEntries = useCombinedTimeEntries({
+    entries,
+    sickLeaves,
+    vacationLeaves,
+    medicalLeaves,
+    overtimeLeaves,
+    holidays,
+    monthStart,
+    monthEnd,
+    dailyMinutes,
+  });
   const vacationBalance = useMemo(() => {
     if (!employeeSettings) return { 
       totalEntitlement: 0, 
@@ -247,7 +278,7 @@ export function TimeTrackingView() {
     try {
       await validateDailyLimit(entryDate, gross, editingEntry.id);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("time_entries")
         .update({
           work_date: entryDate,
@@ -258,9 +289,15 @@ export function TimeTrackingView() {
           notes: notes || null,
         })
         .eq("id", editingEntry.id)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .select();
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("Keine Berechtigung zum Bearbeiten dieses Eintrags");
+        return;
+      }
 
       toast.success("Eintrag aktualisiert");
       setIsEditDialogOpen(false);
@@ -271,6 +308,7 @@ export function TimeTrackingView() {
       setNotes("");
       loadData();
     } catch (error: any) {
+      console.error("Update error:", error);
       toast.error(error.message);
     }
   };
@@ -279,17 +317,23 @@ export function TimeTrackingView() {
     if (!confirm("Eintrag wirklich löschen?")) return;
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("time_entries")
         .delete()
         .eq("id", entryId)
-        .eq("user_id", user!.id);
+        .eq("user_id", user!.id)
+        .select();
 
       if (error) throw error;
       
-      toast.success("Eintrag gelöscht");
+      if (!data || data.length === 0) {
+        toast.warning("Eintrag wurde möglicherweise bereits gelöscht");
+      } else {
+        toast.success("Eintrag gelöscht");
+      }
       loadData();
     } catch (error: any) {
+      console.error("Delete error:", error);
       toast.error("Fehler beim Löschen: " + error.message);
     }
   };
@@ -475,12 +519,14 @@ export function TimeTrackingView() {
           <Card>
             <CardHeader>
               <CardTitle>Zeiteinträge</CardTitle>
+              <CardDescription>Arbeitszeit, Urlaub, Krankheit und Feiertage</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Datum</TableHead>
+                    <TableHead>Typ</TableHead>
                     <TableHead>Start</TableHead>
                     <TableHead>Ende</TableHead>
                     <TableHead>Pause</TableHead>
@@ -491,43 +537,64 @@ export function TimeTrackingView() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {entries.map(e => {
-                    const g = e.started_at && e.ended_at 
-                      ? Math.round((new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000)
-                      : 0;
+                  {combinedEntries.map(entry => {
+                    const gross = entry.started_at && entry.ended_at 
+                      ? Math.round((new Date(entry.ended_at).getTime() - new Date(entry.started_at).getTime()) / 60000)
+                      : entry.minutes || 0;
                     
                     return (
-                      <TableRow key={e.id}>
-                        <TableCell>{format(parseISO(e.work_date), "dd.MM.yyyy")}</TableCell>
-                        <TableCell>{e.started_at ? format(parseISO(e.started_at), "HH:mm") : "-"}</TableCell>
-                        <TableCell>{e.ended_at ? format(parseISO(e.ended_at), "HH:mm") : "-"}</TableCell>
-                        <TableCell>{e.pause_minutes || 0} Min</TableCell>
-                        <TableCell>{fmt(g)}</TableCell>
-                        <TableCell>{fmt(e.minutes || 0)}</TableCell>
-                        <TableCell>{e.notes || "-"}</TableCell>
+                      <TableRow key={entry.id} className={entry.type_class}>
+                        <TableCell>
+                          {entry.type_icon && <span className="mr-1">{entry.type_icon}</span>}
+                          {format(parseISO(entry.work_date), "dd.MM.yyyy")}
+                        </TableCell>
+                        <TableCell>
+                          {entry.type_label ? (
+                            <Badge variant="outline" className="text-xs">{entry.type_label}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Arbeit</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "-"}</TableCell>
+                        <TableCell>{entry.ended_at ? format(parseISO(entry.ended_at), "HH:mm") : "-"}</TableCell>
+                        <TableCell>{entry.pause_minutes || 0} Min</TableCell>
+                        <TableCell>{fmt(gross)}</TableCell>
+                        <TableCell>{fmt(entry.minutes || 0)}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{entry.notes || "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditEntry(e)}
-                              title="Bearbeiten"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteEntry(e.id)}
-                              title="Löschen"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
+                            {entry.is_editable && entry.entry_type === 'work' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditEntry(entry as TimeEntryRow)}
+                                title="Bearbeiten"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {entry.is_deletable && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteEntry(entry.id)}
+                                title="Löschen"
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
                     );
                   })}
+                  {combinedEntries.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                        Keine Einträge in diesem Monat
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
