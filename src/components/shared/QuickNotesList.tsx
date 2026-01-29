@@ -133,6 +133,7 @@ export function QuickNotesList({
   const [scheduledFollowUpsExpanded, setScheduledFollowUpsExpanded] = useState(false);
   const [decisionCreatorOpen, setDecisionCreatorOpen] = useState(false);
   const [noteForDecision, setNoteForDecision] = useState<QuickNote | null>(null);
+  const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set());
   
   // Confirmation dialogs state
   const [confirmDeleteTaskNote, setConfirmDeleteTaskNote] = useState<QuickNote | null>(null);
@@ -553,6 +554,20 @@ export function QuickNotesList({
       console.error("Error in drag handler:", error);
       loadNotes();
     }
+  };
+
+  // Toggle linked details expansion (not description)
+  const toggleDetailsExpand = (noteId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedDetails(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) {
+        newSet.delete(noteId);
+      } else {
+        newSet.add(noteId);
+      }
+      return newSet;
+    });
   };
 
   const handleSetFollowUp = async (noteId: string, date: Date | null) => {
@@ -1208,17 +1223,17 @@ export function QuickNotesList({
                 "flex items-center gap-1",
                 "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
               )}>
-                {/* "→ Details" button only if linked items */}
+                {/* "→ Details" button only if linked items - opens LINKED DETAILS, not description */}
                 {hasLinkedItems && (
                   <>
                     <button 
-                      className="text-xs text-primary flex items-center hover:underline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleNoteExpand(note.id, e);
-                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center"
+                      onClick={(e) => toggleDetailsExpand(note.id, e)}
                     >
-                      <ArrowRight className="h-3 w-3" strokeWidth={2.5} />
+                      <ArrowRight className={cn(
+                        "h-3 w-3 transition-transform",
+                        expandedDetails.has(note.id) && "rotate-90"
+                      )} strokeWidth={2.5} />
                       <span className="ml-0.5">Details</span>
                     </button>
                     {note.user_id === user?.id && (
@@ -1591,12 +1606,13 @@ export function QuickNotesList({
           />
         )}
         
-        {/* Collapsible Details for linked items */}
+        {/* Collapsible Details for linked items - controlled by expandedDetails state */}
         {hasLinkedItems && (
           <NoteLinkedDetails 
             taskId={note.task_id} 
             decisionId={note.decision_id} 
-            meetingId={note.meeting_id} 
+            meetingId={note.meeting_id}
+            isExpanded={expandedDetails.has(note.id)}
           />
         )}
       </div>
