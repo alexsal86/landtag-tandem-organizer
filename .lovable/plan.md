@@ -1,243 +1,213 @@
 
-# Plan: Zeiterfassung - Kritische Fehler beheben
+# Plan: 7 Fehler beheben in Zeiterfassung, Notizen und Datenbank
 
 ## Zusammenfassung der Probleme
 
-| Problem | Ursache | Lösung |
-|---------|---------|--------|
-| **Netto = Brutto** | DB-Trigger `time_entries_calculate_net` wurde nie erstellt | Trigger erstellen + bestehende Daten korrigieren |
-| **Feiertage fehlen** (01.01., 06.01.) | Hook überspringt Feiertage wenn Arbeitseintrag existiert | Logik umkehren: Feiertage haben Priorität |
-| **Urlaub fehlt** (02.01.) | Hook überspringt Urlaub wenn Arbeitseintrag existiert | Logik umkehren: Urlaub hat Priorität |
+| # | Problem | Ursache | Lösung |
+|---|---------|---------|--------|
+| 1 | Krankmeldung nicht beim Admin sichtbar | DB-Trigger `notify_on_leave_request` verwendet `'admin'` statt `'abgeordneter'` | Trigger-Funktion korrigieren |
+| 2 | Urlaub/Arzttermin/Überstunden prüfen | Gleiche Ursache wie #1 | Mit #1 behoben |
+| 3 | `invalid input value for enum app_role: "admin"` | Zeile 35: `WHERE ur.role IN ('admin', 'bueroleitung')` | Ändern zu `'abgeordneter'` |
+| 4 | Brutto = Netto (Pause nicht abgezogen) | Trigger existiert, aber bestehende Daten nicht korrigiert | UPDATE-Query ausführen |
+| 5 | Text bei Zeiteinträgen wird abgeschnitten | `truncate` Klasse ohne Tooltip/Hover-Anzeige | Tooltip oder expandierbare Anzeige hinzufügen |
+| 7 | Notiz-Titel zu lang, kein Umbruch | `truncate` Klasse verwendet, aber zu kurz | `break-words` und `line-clamp-2` verwenden |
 
 ---
 
-## 1. Datenbank-Trigger erstellen
+## 1. Datenbank-Trigger korrigieren (Probleme 1, 2, 3)
 
-**Problem:** Die Funktion `ensure_net_minutes` existiert, aber der Trigger wurde nie erstellt.
+**Ursache:** Die Funktion `notify_on_leave_request()` verwendet `'admin'` als Rolle, aber das `app_role` enum enthält nur:
+- `abgeordneter`
+- `bueroleitung`
+- `mitarbeiter`
+- `praktikant`
 
 **SQL-Migration:**
 ```sql
--- Trigger erstellen (falls noch nicht vorhanden)
-DROP TRIGGER IF EXISTS time_entries_calculate_net ON time_entries;
+-- Korrigiere die notify_on_leave_request Funktion
+CREATE OR REPLACE FUNCTION notify_on_leave_request()
+RETURNS TRIGGER AS $$
+DECLARE
+  admin_user_record RECORD;
+  notification_type_id UUID;
+  requester_name TEXT;
+  leave_type_label TEXT;
+BEGIN
+  IF NEW.status = 'pending' THEN
+    SELECT display_name INTO requester_name
+    FROM profiles WHERE user_id = NEW.user_id LIMIT 1;
+    
+    IF NEW.type = 'vacation' THEN
+      SELECT id INTO notification_type_id FROM notification_types 
+      WHERE name = 'vacation_request_pending' LIMIT 1;
+      leave_type_label := 'Urlaubsantrag';
+    ELSIF NEW.type = 'sick' THEN
+      SELECT id INTO notification_type_id FROM notification_types 
+      WHERE name = 'sick_leave_request_pending' LIMIT 1;
+      leave_type_label := 'Krankmeldung';
+    ELSIF NEW.type = 'medical' THEN
+      SELECT id INTO notification_type_id FROM notification_types 
+      WHERE name = 'vacation_request_pending' LIMIT 1;
+      leave_type_label := 'Arzttermin';
+    ELSIF NEW.type = 'overtime_reduction' THEN
+      SELECT id INTO notification_type_id FROM notification_types 
+      WHERE name = 'vacation_request_pending' LIMIT 1;
+      leave_type_label := 'Überstundenabbau';
+    ELSE
+      SELECT id INTO notification_type_id FROM notification_types 
+      WHERE name = 'vacation_request_pending' LIMIT 1;
+      leave_type_label := 'Antrag';
+    END IF;
+    
+    -- KORREKTUR: 'abgeordneter' statt 'admin'
+    FOR admin_user_record IN 
+      SELECT DISTINCT ur.user_id FROM user_roles ur 
+      WHERE ur.role IN ('abgeordneter', 'bueroleitung')
+      AND ur.user_id != NEW.user_id
+    LOOP
+      INSERT INTO notifications (
+        user_id, 
+        notification_type_id, 
+        title, 
+        message, 
+        navigation_context,
+        data,
+        tenant_id
+      ) VALUES (
+        admin_user_record.user_id,
+        notification_type_id,
+        leave_type_label || ' von ' || COALESCE(requester_name, 'Mitarbeiter'),
+        COALESCE(requester_name, 'Ein Mitarbeiter') || ' hat einen ' || leave_type_label || ' eingereicht (' || 
+          TO_CHAR(NEW.start_date, 'DD.MM.YYYY') || ' bis ' || TO_CHAR(NEW.end_date, 'DD.MM.YYYY') || ')',
+        'employee',
+        jsonb_build_object(
+          'leave_request_id', NEW.id,
+          'requester_id', NEW.user_id,
+          'leave_type', NEW.type,
+          'start_date', NEW.start_date,
+          'end_date', NEW.end_date
+        ),
+        NEW.tenant_id
+      );
+    END LOOP;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+```
 
-CREATE TRIGGER time_entries_calculate_net
-BEFORE INSERT OR UPDATE ON time_entries
-FOR EACH ROW EXECUTE FUNCTION ensure_net_minutes();
+---
 
--- Bestehende Einträge korrigieren
+## 2. Bestehende Zeiteinträge korrigieren (Problem 4)
+
+**Ursache:** Der Trigger `time_entries_calculate_net` existiert, aber bestehende Daten haben immer noch `minutes = brutto`.
+
+**SQL-Migration:**
+```sql
+-- Korrigiere alle bestehenden Einträge
 UPDATE time_entries
 SET minutes = ROUND(EXTRACT(EPOCH FROM (ended_at - started_at))/60) - COALESCE(pause_minutes, 0)
 WHERE started_at IS NOT NULL 
-  AND ended_at IS NOT NULL;
+  AND ended_at IS NOT NULL
+  AND minutes = ROUND(EXTRACT(EPOCH FROM (ended_at - started_at))/60);
 ```
 
 ---
 
-## 2. Hook `useCombinedTimeEntries` korrigieren
+## 3. Notizen-Text bei Zeiteinträgen (Problem 5)
 
-**Aktuelles (falsches) Verhalten:**
-1. Arbeitseinträge werden ZUERST hinzugefügt
-2. Feiertage/Urlaub werden ÜBERSPRUNGEN wenn Arbeitseintrag existiert
+**Aktuell (Zeile 669):**
+```typescript
+<TableCell className="max-w-[200px] truncate">{entry.notes || "-"}</TableCell>
+```
 
-**Neues (korrektes) Verhalten:**
-1. **Priorität 1:** Feiertage - werden IMMER angezeigt (kein Arbeiten an Feiertagen)
-2. **Priorität 2:** Urlaub/Krankheit - werden angezeigt (statt Arbeit)
-3. **Priorität 3:** Arbeitseinträge - NUR wenn kein Feiertag/Urlaub an diesem Tag
-
-**Geänderte Logik in `useCombinedTimeEntries.ts`:**
+**Lösung:** Tooltip hinzufügen für lange Texte
 
 ```typescript
-export function useCombinedTimeEntries({...}): CombinedTimeEntry[] {
-  return useMemo(() => {
-    const combined: CombinedTimeEntry[] = [];
-    const config = typeConfig;
-    
-    // Hilfsfunktionen für Datum-Checks
-    const holidayDates = new Set(
-      holidays
-        .filter(h => {
-          const d = parseISO(h.holiday_date);
-          return d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6;
-        })
-        .map(h => h.holiday_date)
-    );
-    
-    const vacationDates = new Set<string>();
-    vacationLeaves.filter(l => l.status === 'approved').forEach(leave => {
-      try {
-        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
-          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
-          .forEach(day => vacationDates.add(format(day, 'yyyy-MM-dd')));
-      } catch (e) {}
-    });
-    
-    const sickDates = new Set<string>();
-    sickLeaves.filter(l => l.status === 'approved').forEach(leave => {
-      try {
-        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
-          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
-          .forEach(day => sickDates.add(format(day, 'yyyy-MM-dd')));
-      } catch (e) {}
-    });
-    
-    const overtimeDates = new Set<string>();
-    overtimeLeaves.filter(l => l.status === 'approved').forEach(leave => {
-      try {
-        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
-          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
-          .forEach(day => overtimeDates.add(format(day, 'yyyy-MM-dd')));
-      } catch (e) {}
-    });
+<TableCell className="max-w-[200px]">
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="block truncate cursor-help">
+          {entry.notes || "-"}
+        </span>
+      </TooltipTrigger>
+      {entry.notes && entry.notes.length > 30 && (
+        <TooltipContent className="max-w-md whitespace-pre-wrap">
+          {entry.notes}
+        </TooltipContent>
+      )}
+    </Tooltip>
+  </TooltipProvider>
+</TableCell>
+```
 
-    // 1. PRIORITÄT: Feiertage (IMMER anzeigen)
-    holidays.forEach(holiday => {
-      const holidayDate = parseISO(holiday.holiday_date);
-      if (holidayDate < monthStart || holidayDate > monthEnd) return;
-      if (holidayDate.getDay() === 0 || holidayDate.getDay() === 6) return;
-      
-      combined.push({
-        id: `holiday-${holiday.id}`,
-        work_date: holiday.holiday_date,
-        started_at: null,
-        ended_at: null,
-        minutes: dailyMinutes,
-        pause_minutes: 0,
-        notes: holiday.name,
-        entry_type: 'holiday',
-        is_editable: false,
-        is_deletable: false,
-        holiday_id: holiday.id,
-        type_label: config.holiday.label,
-        type_icon: config.holiday.icon,
-        type_class: config.holiday.className,
-      });
-    });
-
-    // 2. PRIORITÄT: Krankmeldungen (nur wenn KEIN Feiertag)
-    sickLeaves.filter(l => l.status === 'approved').forEach(leave => {
-      eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
-        .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
-        .forEach(day => {
-          const dateStr = format(day, 'yyyy-MM-dd');
-          if (holidayDates.has(dateStr)) return; // Feiertag hat Vorrang
-          if (combined.some(c => c.work_date === dateStr)) return; // Bereits eingetragen
-          
-          combined.push({...sick entry...});
-        });
-    });
-
-    // 3. PRIORITÄT: Urlaub (nur wenn KEIN Feiertag und KEINE Krankheit)
-    vacationLeaves.filter(l => l.status === 'approved').forEach(leave => {
-      eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
-        .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
-        .forEach(day => {
-          const dateStr = format(day, 'yyyy-MM-dd');
-          if (holidayDates.has(dateStr)) return; // Feiertag hat Vorrang
-          if (sickDates.has(dateStr)) return; // Krankheit hat Vorrang
-          if (combined.some(c => c.work_date === dateStr)) return;
-          
-          combined.push({...vacation entry...});
-        });
-    });
-
-    // 4. PRIORITÄT: Überstundenabbau
-    overtimeLeaves.filter(l => l.status === 'approved').forEach(leave => {
-      eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
-        .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
-        .forEach(day => {
-          const dateStr = format(day, 'yyyy-MM-dd');
-          if (holidayDates.has(dateStr)) return;
-          if (sickDates.has(dateStr)) return;
-          if (vacationDates.has(dateStr)) return;
-          if (combined.some(c => c.work_date === dateStr)) return;
-          
-          combined.push({...overtime entry...});
-        });
-    });
-
-    // 5. PRIORITÄT: Arzttermine (können parallel zu Arbeit existieren)
-    medicalLeaves.filter(l => l.status === 'approved').forEach(leave => {
-      const dateStr = leave.start_date;
-      const date = parseISO(dateStr);
-      if (date < monthStart || date > monthEnd) return;
-      // Arzttermine werden IMMER hinzugefügt (können zusätzlich zur Arbeit sein)
-      combined.push({...medical entry...});
-    });
-
-    // 6. PRIORITÄT: Arbeitseinträge (NUR wenn kein Feiertag/Urlaub/Krankheit/Überstundenabbau)
-    entries.forEach(e => {
-      const dateStr = e.work_date;
-      
-      // WICHTIG: Arbeitseinträge an Feiertagen/Urlaub/Krankheit NICHT anzeigen
-      if (holidayDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Feiertag ignoriert: ${dateStr}`);
-        return;
-      }
-      if (vacationDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Urlaubstag ignoriert: ${dateStr}`);
-        return;
-      }
-      if (sickDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Krankheitstag ignoriert: ${dateStr}`);
-        return;
-      }
-      if (overtimeDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Überstundenabbau-Tag ignoriert: ${dateStr}`);
-        return;
-      }
-      
-      combined.push({...work entry...});
-    });
-
-    combined.sort((a, b) => new Date(b.work_date).getTime() - new Date(a.work_date).getTime());
-    return combined;
-  }, [...]);
-}
+**Zusätzlich Import hinzufügen:**
+```typescript
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 ```
 
 ---
 
-## 3. Visuelle Darstellung nach der Korrektur
+## 4. Notiz-Titel Umbruch (Problem 7)
 
-**Vor der Korrektur (aktuell):**
-```
-01.01.2026  Arbeit   08:00  16:24  30 Min  8:24  8:24  Feiertag, System erkennt...
-02.01.2026  Arbeit   08:00  16:24  30 Min  8:24  8:24  Urlaub, System verrechnet...
-06.01.2026  Arbeit   08:00  16:24  30 Min  8:24  8:24  Feiertag, System erkennt...
+**Aktuell (QuickNotesList.tsx, Zeile 1088-1091):**
+```typescript
+{note.title && (
+  <h4 className="font-semibold text-base truncate mb-1">
+    {note.title}
+  </h4>
+)}
 ```
 
-**Nach der Korrektur:**
-```
-01.01.2026  🎉 Feiertag    -      -     0 Min  8:33  8:33  Neujahr
-02.01.2026  🏖️ Urlaub      -      -     0 Min  8:33  8:33  Weihnachten
-06.01.2026  🎉 Feiertag    -      -     0 Min  8:33  8:33  Heilige Drei Könige
-07.01.2026  Arbeit   08:43  17:09  30 Min  8:26  7:56  -  ← Netto jetzt korrekt!
+**Lösung:** `truncate` durch `break-words` und `line-clamp-2` ersetzen
+
+```typescript
+{note.title && (
+  <h4 className="font-semibold text-base break-words line-clamp-2 mb-1">
+    {note.title}
+  </h4>
+)}
 ```
 
 ---
 
-## Zusammenfassung der Änderungen
+## Zusammenfassung der Datei-Änderungen
 
 | Datei | Änderung |
 |-------|----------|
-| **SQL-Migration** | 1) Trigger `time_entries_calculate_net` erstellen, 2) Bestehende Einträge korrigieren |
-| `src/hooks/useCombinedTimeEntries.ts` | Prioritätslogik umkehren: Feiertage > Urlaub > Krankheit > Arbeit |
+| **SQL-Migration** | 1) `notify_on_leave_request` korrigieren (`'admin'` → `'abgeordneter'`), 2) Bestehende time_entries Netto-Werte korrigieren |
+| `src/components/TimeTrackingView.tsx` | Tooltip für Notizen-Spalte hinzufügen |
+| `src/components/shared/QuickNotesList.tsx` | Titel-Umbruch mit `break-words line-clamp-2` |
 
 ---
 
-## Wichtige Hinweise
+## Reihenfolge der Implementierung
 
-1. **Bestehende Arbeitseinträge** an Feiertagen/Urlaubstagen werden **nicht gelöscht**, aber **nicht mehr angezeigt** in der kombinierten Liste
-2. Der Admin sollte prüfen, ob diese Einträge manuell gelöscht werden sollen
-3. Neue Einträge an Feiertagen/Urlaubstagen können weiterhin erstellt werden (für Sonderfälle), aber die Anzeige priorisiert Feiertage/Urlaub
+1. **Kritisch:** DB-Migration für `notify_on_leave_request` (behebt enum-Fehler)
+2. **Kritisch:** DB-Migration für Netto-Werte (korrigiert bestehende Daten)
+3. **UI:** TimeTrackingView Notizen-Tooltip
+4. **UI:** QuickNotesList Titel-Umbruch
 
 ---
 
-## Geschätzter Aufwand
+## Technische Details
 
-| Änderung | Zeit |
-|----------|------|
-| SQL-Migration (Trigger + Datenkorrektur) | 5 Min |
-| Hook-Logik umschreiben | 20 Min |
-| Testen | 10 Min |
-| **Gesamt** | **~35 Min** |
+### Warum funktioniert Arzttermin/Überstunden nicht?
+Der Trigger `notify_on_leave_request` wird bei jedem `INSERT` auf `leave_requests` ausgelöst. Wenn der Antrag eingereicht wird, versucht der Trigger, Administratoren zu benachrichtigen mit:
+
+```sql
+WHERE ur.role IN ('admin', 'bueroleitung')
+```
+
+Da `'admin'` kein gültiger Wert im `app_role` enum ist, schlägt die gesamte Trigger-Ausführung fehl, was auch den INSERT abbricht - daher die Fehlermeldung beim Einreichen.
+
+### Warum ist Netto = Brutto?
+Der Trigger `ensure_net_minutes` berechnet:
+```sql
+NEW.minutes := ROUND(EXTRACT(EPOCH FROM (NEW.ended_at - NEW.started_at))/60) - COALESCE(NEW.pause_minutes, 0);
+```
+
+Der Trigger existiert und funktioniert für NEUE Einträge. Aber alle bestehenden Einträge, die VOR der Trigger-Erstellung eingefügt wurden, haben noch die alten Werte. Ein einmaliges UPDATE ist erforderlich.
+
