@@ -86,26 +86,78 @@ export function useCombinedTimeEntries({
     const combined: CombinedTimeEntry[] = [];
     const config = typeConfig;
 
-    // 1. Regular work entries
-    entries.forEach(e => {
-      combined.push({
-        id: e.id,
-        work_date: e.work_date,
-        started_at: e.started_at,
-        ended_at: e.ended_at,
-        minutes: e.minutes,
-        pause_minutes: e.pause_minutes || 0,
-        notes: e.notes,
-        entry_type: 'work',
-        is_editable: true,
-        is_deletable: true,
-        type_label: config.work.label,
-        type_icon: config.work.icon,
-        type_class: config.work.className,
-      });
+    // Build date sets for priority checks
+    const holidayDates = new Set(
+      holidays
+        .filter(h => {
+          const d = parseISO(h.holiday_date);
+          return d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6;
+        })
+        .map(h => h.holiday_date)
+    );
+
+    const sickDates = new Set<string>();
+    sickLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      try {
+        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+          .forEach(day => sickDates.add(format(day, 'yyyy-MM-dd')));
+      } catch (e) {
+        console.error('Error processing sick leave dates:', e);
+      }
     });
 
-    // 2. Approved sick leaves
+    const vacationDates = new Set<string>();
+    vacationLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      try {
+        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+          .forEach(day => vacationDates.add(format(day, 'yyyy-MM-dd')));
+      } catch (e) {
+        console.error('Error processing vacation dates:', e);
+      }
+    });
+
+    const overtimeDates = new Set<string>();
+    overtimeLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      try {
+        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+          .forEach(day => overtimeDates.add(format(day, 'yyyy-MM-dd')));
+      } catch (e) {
+        console.error('Error processing overtime dates:', e);
+      }
+    });
+
+    // PRIORITY 1: Holidays (ALWAYS shown, highest priority)
+    holidays.forEach(holiday => {
+      try {
+        const holidayDate = parseISO(holiday.holiday_date);
+        if (holidayDate < monthStart || holidayDate > monthEnd) return;
+        if (holidayDate.getDay() === 0 || holidayDate.getDay() === 6) return;
+
+        combined.push({
+          id: `holiday-${holiday.id}`,
+          work_date: holiday.holiday_date,
+          started_at: null,
+          ended_at: null,
+          minutes: dailyMinutes,
+          pause_minutes: 0,
+          notes: holiday.name,
+          entry_type: 'holiday',
+          is_editable: false,
+          is_deletable: false,
+          holiday_id: holiday.id,
+          type_label: config.holiday.label,
+          type_icon: config.holiday.icon,
+          type_class: config.holiday.className,
+        });
+      } catch (e) {
+        console.error('Error processing holiday:', e);
+      }
+    });
+
+    // PRIORITY 2: Sick leaves (only if NOT a holiday)
     sickLeaves
       .filter(l => l.status === 'approved')
       .forEach(leave => {
@@ -118,9 +170,11 @@ export function useCombinedTimeEntries({
             .filter(d => d.getDay() !== 0 && d.getDay() !== 6)
             .forEach(day => {
               const dateStr = format(day, 'yyyy-MM-dd');
-              // Skip if already a work entry on this day
-              if (combined.some(c => c.work_date === dateStr && c.entry_type === 'work')) return;
-              
+              // Skip if holiday takes priority
+              if (holidayDates.has(dateStr)) return;
+              // Skip if already added
+              if (combined.some(c => c.work_date === dateStr)) return;
+
               combined.push({
                 id: `sick-${leave.id}-${dateStr}`,
                 work_date: dateStr,
@@ -143,7 +197,7 @@ export function useCombinedTimeEntries({
         }
       });
 
-    // 3. Approved vacation leaves
+    // PRIORITY 3: Vacation leaves (only if NOT a holiday and NOT sick)
     vacationLeaves
       .filter(l => l.status === 'approved')
       .forEach(leave => {
@@ -156,8 +210,12 @@ export function useCombinedTimeEntries({
             .filter(d => d.getDay() !== 0 && d.getDay() !== 6)
             .forEach(day => {
               const dateStr = format(day, 'yyyy-MM-dd');
+              // Skip if holiday or sick takes priority
+              if (holidayDates.has(dateStr)) return;
+              if (sickDates.has(dateStr)) return;
+              // Skip if already added
               if (combined.some(c => c.work_date === dateStr)) return;
-              
+
               combined.push({
                 id: `vacation-${leave.id}-${dateStr}`,
                 work_date: dateStr,
@@ -180,68 +238,7 @@ export function useCombinedTimeEntries({
         }
       });
 
-    // 4. Holidays in month (only if not weekend and no other entry)
-    holidays.forEach(holiday => {
-      try {
-        const holidayDate = parseISO(holiday.holiday_date);
-        if (holidayDate < monthStart || holidayDate > monthEnd) return;
-        if (holidayDate.getDay() === 0 || holidayDate.getDay() === 6) return;
-        
-        const dateStr = holiday.holiday_date;
-        if (combined.some(c => c.work_date === dateStr)) return;
-        
-        combined.push({
-          id: `holiday-${holiday.id}`,
-          work_date: dateStr,
-          started_at: null,
-          ended_at: null,
-          minutes: dailyMinutes,
-          pause_minutes: 0,
-          notes: holiday.name,
-          entry_type: 'holiday',
-          is_editable: false,
-          is_deletable: false,
-          holiday_id: holiday.id,
-          type_label: config.holiday.label,
-          type_icon: config.holiday.icon,
-          type_class: config.holiday.className,
-        });
-      } catch (e) {
-        console.error('Error processing holiday:', e);
-      }
-    });
-
-    // 5. Approved medical appointments
-    medicalLeaves
-      .filter(l => l.status === 'approved')
-      .forEach(leave => {
-        try {
-          const dateStr = leave.start_date;
-          const date = parseISO(dateStr);
-          if (date < monthStart || date > monthEnd) return;
-          
-          combined.push({
-            id: `medical-${leave.id}`,
-            work_date: dateStr,
-            started_at: leave.start_time ? `${dateStr}T${leave.start_time}` : null,
-            ended_at: leave.end_time ? `${dateStr}T${leave.end_time}` : null,
-            minutes: leave.minutes_counted || dailyMinutes,
-            pause_minutes: 0,
-            notes: `${leave.medical_reason || 'Arzttermin'}${leave.reason ? ': ' + leave.reason : ''}`,
-            entry_type: 'medical',
-            is_editable: false,
-            is_deletable: false,
-            leave_id: leave.id,
-            type_label: config.medical.label,
-            type_icon: config.medical.icon,
-            type_class: config.medical.className,
-          });
-        } catch (e) {
-          console.error('Error processing medical leave:', e);
-        }
-      });
-
-    // 6. Approved overtime reduction
+    // PRIORITY 4: Overtime reduction (only if no higher priority)
     overtimeLeaves
       .filter(l => l.status === 'approved')
       .forEach(leave => {
@@ -254,8 +251,12 @@ export function useCombinedTimeEntries({
             .filter(d => d.getDay() !== 0 && d.getDay() !== 6)
             .forEach(day => {
               const dateStr = format(day, 'yyyy-MM-dd');
+              // Skip if higher priority exists
+              if (holidayDates.has(dateStr)) return;
+              if (sickDates.has(dateStr)) return;
+              if (vacationDates.has(dateStr)) return;
               if (combined.some(c => c.work_date === dateStr)) return;
-              
+
               combined.push({
                 id: `overtime-${leave.id}-${dateStr}`,
                 work_date: dateStr,
@@ -277,6 +278,75 @@ export function useCombinedTimeEntries({
           console.error('Error processing overtime leave:', e);
         }
       });
+
+    // PRIORITY 5: Medical appointments (can coexist with work)
+    medicalLeaves
+      .filter(l => l.status === 'approved')
+      .forEach(leave => {
+        try {
+          const dateStr = leave.start_date;
+          const date = parseISO(dateStr);
+          if (date < monthStart || date > monthEnd) return;
+
+          combined.push({
+            id: `medical-${leave.id}`,
+            work_date: dateStr,
+            started_at: leave.start_time ? `${dateStr}T${leave.start_time}` : null,
+            ended_at: leave.end_time ? `${dateStr}T${leave.end_time}` : null,
+            minutes: leave.minutes_counted || dailyMinutes,
+            pause_minutes: 0,
+            notes: `${leave.medical_reason || 'Arzttermin'}${leave.reason ? ': ' + leave.reason : ''}`,
+            entry_type: 'medical',
+            is_editable: false,
+            is_deletable: false,
+            leave_id: leave.id,
+            type_label: config.medical.label,
+            type_icon: config.medical.icon,
+            type_class: config.medical.className,
+          });
+        } catch (e) {
+          console.error('Error processing medical leave:', e);
+        }
+      });
+
+    // PRIORITY 6: Work entries (ONLY if no holiday/sick/vacation/overtime on that day)
+    entries.forEach(e => {
+      const dateStr = e.work_date;
+
+      // IMPORTANT: Skip work entries on holidays/leave days
+      if (holidayDates.has(dateStr)) {
+        console.warn(`Arbeitseintrag an Feiertag ignoriert: ${dateStr}`);
+        return;
+      }
+      if (sickDates.has(dateStr)) {
+        console.warn(`Arbeitseintrag an Krankheitstag ignoriert: ${dateStr}`);
+        return;
+      }
+      if (vacationDates.has(dateStr)) {
+        console.warn(`Arbeitseintrag an Urlaubstag ignoriert: ${dateStr}`);
+        return;
+      }
+      if (overtimeDates.has(dateStr)) {
+        console.warn(`Arbeitseintrag an Überstundenabbau-Tag ignoriert: ${dateStr}`);
+        return;
+      }
+
+      combined.push({
+        id: e.id,
+        work_date: e.work_date,
+        started_at: e.started_at,
+        ended_at: e.ended_at,
+        minutes: e.minutes,
+        pause_minutes: e.pause_minutes || 0,
+        notes: e.notes,
+        entry_type: 'work',
+        is_editable: true,
+        is_deletable: true,
+        type_label: config.work.label,
+        type_icon: config.work.icon,
+        type_class: config.work.className,
+      });
+    });
 
     // Sort by date descending
     combined.sort((a, b) => new Date(b.work_date).getTime() - new Date(a.work_date).getTime());
