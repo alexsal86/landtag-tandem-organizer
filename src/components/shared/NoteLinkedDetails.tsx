@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Vote, Calendar as CalendarIcon, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import { CheckSquare, Vote, Calendar as CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { DecisionResponseSummary } from "@/components/shared/DecisionResponseSummary";
@@ -13,6 +12,7 @@ interface NoteLinkedDetailsProps {
   taskId?: string | null;
   decisionId?: string | null;
   meetingId?: string | null;
+  isExpanded: boolean;  // Controlled from parent
 }
 
 interface TaskData {
@@ -128,28 +128,14 @@ function NoteMeetingStatus({ meetingId }: { meetingId: string }) {
   );
 }
 
-export function NoteLinkedDetails({ taskId, decisionId, meetingId }: NoteLinkedDetailsProps) {
-  const [expanded, setExpanded] = useState(false);
+export function NoteLinkedDetails({ taskId, decisionId, meetingId, isExpanded }: NoteLinkedDetailsProps) {
   const hasLinks = taskId || decisionId || meetingId;
   
   if (!hasLinks) return null;
   
+  // No internal state, no trigger - controlled from parent via isExpanded prop
   return (
-    <Collapsible open={expanded} onOpenChange={setExpanded}>
-      {/* Right-aligned trigger */}
-      <div className="flex justify-end mt-2">
-        <CollapsibleTrigger 
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ChevronDown className={cn(
-            "h-3 w-3 transition-transform duration-200",
-            !expanded && "-rotate-90"
-          )} />
-          <span>Details</span>
-        </CollapsibleTrigger>
-      </div>
-      
+    <Collapsible open={isExpanded}>
       <CollapsibleContent className="pt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
         {/* Task Status */}
         {taskId && (
