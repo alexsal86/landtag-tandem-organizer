@@ -147,19 +147,29 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
     }
     
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("quick_notes")
         .update({ deleted_at: null, permanent_delete_at: null })
         .eq("id", noteId)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .select();
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("Keine Berechtigung zum Wiederherstellen dieser Notiz");
+        return;
+      }
+      
+      // Optimistic UI update
+      setNotes(prev => prev.filter(n => n.id !== noteId));
+      
       toast.success("Notiz wiederhergestellt");
-      loadDeletedNotes();
       onRestore?.();
     } catch (error) {
       console.error("Error restoring note:", error);
       toast.error("Fehler beim Wiederherstellen");
+      loadDeletedNotes();
     }
   };
 
@@ -170,13 +180,19 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
     }
     
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("quick_notes")
         .update({ is_archived: false, archived_at: null })
         .eq("id", noteId)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .select();
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("Keine Berechtigung zum Wiederherstellen dieser Notiz");
+        return;
+      }
       
       // Optimistic state update - immediately remove from list
       setArchivedNotes(prev => prev.filter(n => n.id !== noteId));

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Tooltip,
   TooltipContent,
@@ -22,6 +23,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
@@ -122,6 +133,13 @@ export function QuickNotesList({
   const [scheduledFollowUpsExpanded, setScheduledFollowUpsExpanded] = useState(false);
   const [decisionCreatorOpen, setDecisionCreatorOpen] = useState(false);
   const [noteForDecision, setNoteForDecision] = useState<QuickNote | null>(null);
+  
+  // Confirmation dialogs state
+  const [confirmDeleteTaskNote, setConfirmDeleteTaskNote] = useState<QuickNote | null>(null);
+  const [confirmDeleteLinkedNote, setConfirmDeleteLinkedNote] = useState<QuickNote | null>(null);
+  const [deleteLinkedTask, setDeleteLinkedTask] = useState(true);
+  const [deleteLinkedDecision, setDeleteLinkedDecision] = useState(true);
+  const [deleteLinkedMeeting, setDeleteLinkedMeeting] = useState(false);
 
   const loadNotes = useCallback(async () => {
     if (!user) return;
@@ -647,10 +665,62 @@ export function QuickNotesList({
       }
       
       toast.success("Aufgabe entfernt");
+      setConfirmDeleteTaskNote(null);
       loadNotes();
     } catch (error) {
       console.error('Error removing task from note:', error);
       toast.error("Fehler beim Entfernen der Aufgabe");
+    }
+  };
+
+  // Handle delete with confirmation for linked items
+  const handleDeleteWithConfirmation = (note: QuickNote) => {
+    const hasLinks = note.task_id || note.decision_id || note.meeting_id;
+    
+    if (hasLinks) {
+      // Reset checkboxes based on what's linked
+      setDeleteLinkedTask(!!note.task_id);
+      setDeleteLinkedDecision(!!note.decision_id);
+      setDeleteLinkedMeeting(false); // Default: don't remove from meeting
+      setConfirmDeleteLinkedNote(note);
+    } else {
+      // No links - delete directly
+      handleDelete(note.id);
+    }
+  };
+
+  const handleDeleteNoteWithLinks = async () => {
+    if (!confirmDeleteLinkedNote || !user?.id) return;
+    
+    const note = confirmDeleteLinkedNote;
+    
+    try {
+      // 1. Delete linked task if selected
+      if (note.task_id && deleteLinkedTask) {
+        await supabase.from('tasks').delete().eq('id', note.task_id);
+      }
+      
+      // 2. Delete linked decision if selected  
+      if (note.decision_id && deleteLinkedDecision) {
+        await supabase.from('task_decisions').delete().eq('id', note.decision_id);
+      }
+      
+      // 3. Remove from meeting if selected (not delete the meeting itself)
+      if (note.meeting_id && deleteLinkedMeeting) {
+        await supabase
+          .from("quick_notes")
+          .update({ meeting_id: null, added_to_meeting_at: null })
+          .eq("id", note.id)
+          .eq("user_id", user.id);
+      }
+      
+      // 4. Move note to trash
+      await handleDelete(note.id);
+      
+      setConfirmDeleteLinkedNote(null);
+    } catch (error) {
+      console.error("Error deleting note with links:", error);
+      toast.error("Fehler beim Löschen");
     }
   };
 
@@ -1161,7 +1231,7 @@ export function QuickNotesList({
                   
                   {/* Task - kontextabhängig */}
                   {note.task_id ? (
-                    <DropdownMenuItem onClick={() => removeTaskFromNote(note)} className="text-blue-600">
+                    <DropdownMenuItem onClick={() => setConfirmDeleteTaskNote(note)} className="text-blue-600">
                       <CheckSquare className="h-3 w-3 mr-2" />
                       Aufgabe entfernen
                     </DropdownMenuItem>
@@ -1318,7 +1388,7 @@ export function QuickNotesList({
                   
                   {/* LÖSCHEN */}
                   <DropdownMenuItem 
-                    onClick={() => handleDelete(note.id)} 
+                    onClick={() => handleDeleteWithConfirmation(note)} 
                     className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="h-3 w-3 mr-2" />
@@ -1381,27 +1451,11 @@ export function QuickNotesList({
           />
         )}
         
-        {/* Hover Quick Actions - BOTTOM RIGHT with Details button */}
+        {/* Hover Quick Actions - BOTTOM RIGHT - only icons, no Details button */}
         <div className={cn(
           "absolute bottom-2 right-3 flex items-center gap-1",
           "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
         )}>
-          {/* Details expand button - only when truncated and not expanded */}
-          {needsTruncation && !isExpanded && (
-            <button 
-              className="text-xs text-primary font-medium flex items-center"
-              onClick={(e) => toggleNoteExpand(note.id, e)}
-            >
-              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
-              <span className="ml-0.5">Details</span>
-            </button>
-          )}
-          
-          {/* Vertical separator */}
-          {note.user_id === user?.id && needsTruncation && !isExpanded && (
-            <div className="h-4 w-px bg-border mx-1" />
-          )}
-          
           {/* Quick action icons - only for own notes */}
           {note.user_id === user?.id && (
             <>
@@ -1435,7 +1489,7 @@ export function QuickNotesList({
                       className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.task_id && "text-blue-600")}
                       onClick={(e) => {
                         e.stopPropagation();
-                        note.task_id ? removeTaskFromNote(note) : createTaskFromNote(note);
+                        note.task_id ? setConfirmDeleteTaskNote(note) : createTaskFromNote(note);
                       }}
                     >
                       <CheckSquare className="h-3 w-3" />
@@ -1837,6 +1891,101 @@ export function QuickNotesList({
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Delete Task Dialog */}
+      <AlertDialog 
+        open={!!confirmDeleteTaskNote} 
+        onOpenChange={(open) => !open && setConfirmDeleteTaskNote(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aufgabe entfernen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Die verknüpfte Aufgabe wird unwiderruflich gelöscht. Die Notiz selbst bleibt erhalten.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (confirmDeleteTaskNote) removeTaskFromNote(confirmDeleteTaskNote);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Aufgabe löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Delete Note with Linked Items Dialog */}
+      <AlertDialog 
+        open={!!confirmDeleteLinkedNote} 
+        onOpenChange={(open) => !open && setConfirmDeleteLinkedNote(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Notiz mit Verknüpfungen löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Diese Notiz hat verknüpfte Elemente. Was soll mit ihnen geschehen?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-3 py-4">
+            {confirmDeleteLinkedNote?.task_id && (
+              <div className="flex items-center gap-3">
+                <Checkbox 
+                  id="delete-task" 
+                  checked={deleteLinkedTask} 
+                  onCheckedChange={(checked) => setDeleteLinkedTask(!!checked)} 
+                />
+                <label htmlFor="delete-task" className="text-sm flex items-center gap-2 cursor-pointer">
+                  <CheckSquare className="h-4 w-4 text-blue-600" />
+                  Verknüpfte Aufgabe auch löschen
+                </label>
+              </div>
+            )}
+            
+            {confirmDeleteLinkedNote?.decision_id && (
+              <div className="flex items-center gap-3">
+                <Checkbox 
+                  id="delete-decision" 
+                  checked={deleteLinkedDecision} 
+                  onCheckedChange={(checked) => setDeleteLinkedDecision(!!checked)} 
+                />
+                <label htmlFor="delete-decision" className="text-sm flex items-center gap-2 cursor-pointer">
+                  <Vote className="h-4 w-4 text-purple-600" />
+                  Verknüpfte Entscheidung auch löschen
+                </label>
+              </div>
+            )}
+            
+            {confirmDeleteLinkedNote?.meeting_id && (
+              <div className="flex items-center gap-3">
+                <Checkbox 
+                  id="delete-meeting" 
+                  checked={deleteLinkedMeeting} 
+                  onCheckedChange={(checked) => setDeleteLinkedMeeting(!!checked)} 
+                />
+                <label htmlFor="delete-meeting" className="text-sm flex items-center gap-2 cursor-pointer">
+                  <CalendarIcon className="h-4 w-4 text-emerald-600" />
+                  Vom Jour Fixe entfernen
+                </label>
+              </div>
+            )}
+          </div>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteNoteWithLinks}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
