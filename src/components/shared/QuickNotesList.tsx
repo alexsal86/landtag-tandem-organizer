@@ -981,11 +981,19 @@ export function QuickNotesList({
     const fullText = note.content.replace(/<[^>]*>/g, '');
     const needsTruncation = fullText.length > 150;
     const hasLinkedItems = note.task_id || note.decision_id || note.meeting_id;
+    const hasShared = (note.share_count || 0) > 0 || note.is_shared === true;
+    
+    // Helper to get preview text with inline "..."
+    const getPreviewText = (content: string, maxLength = 150) => {
+      const text = content.replace(/<[^>]*>/g, '').trim();
+      if (text.length <= maxLength) return text;
+      return text.substring(0, maxLength).trim() + '...';
+    };
     
     return (
       <div
         key={note.id}
-        className="p-3 rounded-lg border transition-all hover:shadow-sm bg-card border-l-4 group relative"
+        className="p-3 pb-8 rounded-lg border transition-all hover:shadow-sm bg-card border-l-4 group relative"
         style={{ borderLeftColor: note.color || "#3b82f6" }}
         onClick={() => onNoteClick?.(note)}
       >
@@ -997,43 +1005,43 @@ export function QuickNotesList({
                 {note.title}
               </h4>
             )}
-            {/* Description - gray, with inline expand arrow */}
+            {/* Description - gray, with INLINE expand arrow after "..." */}
             {isExpanded ? (
-              <div 
-                className="text-sm text-muted-foreground/70 prose prose-sm max-w-none [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
-              />
-            ) : (
-              <div className="flex items-start">
-                <RichTextDisplay 
-                  content={note.content} 
-                  className="text-sm text-muted-foreground/70 line-clamp-2"
+              <div>
+                <div 
+                  className="text-sm text-muted-foreground/70 prose prose-sm max-w-none [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
                 />
                 {needsTruncation && (
                   <button 
-                    className="inline-flex items-center ml-0.5 text-primary hover:underline flex-shrink-0"
+                    className="inline-flex items-center mt-1 text-primary hover:underline"
                     onClick={(e) => toggleNoteExpand(note.id, e)}
                   >
-                    <span className="text-muted-foreground/70">...</span>
-                    <ArrowRight className="h-3.5 w-3.5 ml-0.5" strokeWidth={2.5} />
+                    <ChevronUp className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    <span className="text-xs ml-0.5">Weniger</span>
                   </button>
                 )}
               </div>
-            )}
-            {/* Expand/Collapse inline with description */}
-            {isExpanded && needsTruncation && (
-              <button 
-                className="inline-flex items-center mt-1 text-primary hover:underline"
-                onClick={(e) => toggleNoteExpand(note.id, e)}
-              >
-                <ChevronUp className="h-3.5 w-3.5" strokeWidth={2.5} />
-                <span className="text-xs ml-0.5">Weniger</span>
-              </button>
+            ) : (
+              <div className="text-sm text-muted-foreground/70">
+                <span>
+                  {getPreviewText(note.content, 150)}
+                  {needsTruncation && (
+                    <button 
+                      className="inline-flex items-center text-primary hover:underline align-baseline"
+                      onClick={(e) => toggleNoteExpand(note.id, e)}
+                    >
+                      <ArrowRight className="h-3.5 w-3.5 inline ml-0.5" strokeWidth={2.5} />
+                    </button>
+                  )}
+                </span>
+              </div>
             )}
             
             {/* Status Indicators - small colored SQUARES, become badges on card hover */}
-            {(hasLinkedItems || (note.share_count || 0) > 0 || (note.is_shared && note.owner)) && (
-              <div className="flex items-center gap-2 mt-3">
+            {/* Status Indicators - ABSOLUTE BOTTOM LEFT */}
+            {(hasLinkedItems || hasShared) && (
+              <div className="absolute bottom-2 left-3 flex items-center gap-2">
                 {/* Small squares - visible when not hovering card */}
                 <div className="flex items-center gap-1.5 group-hover:hidden">
                   {note.task_id && (
@@ -1054,11 +1062,11 @@ export function QuickNotesList({
                       title="Jour Fixe"
                     />
                   )}
-                  {/* Shared indicator as square */}
-                  {((note.share_count || 0) > 0 || (note.is_shared && note.owner)) && (
+                  {/* Shared indicator as square - for BOTH cases */}
+                  {hasShared && (
                     <div 
                       className="w-1.5 h-1.5 bg-violet-500" 
-                      title="Geteilt"
+                      title={note.is_shared ? `Geteilt von ${note.owner?.display_name || 'Unbekannt'}` : "Geteilt"}
                     />
                   )}
                 </div>
@@ -1373,130 +1381,149 @@ export function QuickNotesList({
           />
         )}
         
-        {/* Hover Quick Actions - TOP right, individual icons without box */}
-        {note.user_id === user?.id && (
-          <div className={cn(
-            "absolute top-2 right-8 flex items-center gap-1",
-            "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          )}>
-            {/* Edit */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 hover:bg-muted/80 rounded-full"
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      openEditDialog(note); 
-                    }}
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Bearbeiten</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            {/* Task */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.task_id && "text-blue-600")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      note.task_id ? removeTaskFromNote(note) : createTaskFromNote(note);
-                    }}
-                  >
-                    <CheckSquare className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{note.task_id ? "Aufgabe entfernen" : "Als Aufgabe"}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            {/* Decision */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.decision_id && "text-purple-600")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!note.decision_id) {
-                        setNoteForDecision(note);
-                        setDecisionCreatorOpen(true);
-                      }
-                    }}
-                    disabled={!!note.decision_id}
-                  >
-                    <Vote className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{note.decision_id ? "Entscheidung aktiv" : "Als Entscheidung"}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            {/* Follow-up */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.follow_up_date && "text-amber-600")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setNoteForDatePicker(note);
-                      setDatePickerOpen(true);
-                    }}
-                  >
-                    <Clock className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Wiedervorlage</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            {/* Jour Fixe */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.meeting_id && "text-emerald-600")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (note.meeting_id) {
-                        removeNoteFromMeeting(note.id);
-                      } else {
-                        setNoteForMeeting(note);
-                        setMeetingSelectorOpen(true);
-                      }
-                    }}
-                  >
-                    <CalendarIcon className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{note.meeting_id ? "Von Jour Fixe entfernen" : "Auf Jour Fixe"}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            {/* Drag Handle - LAST */}
-            {dragHandleProps && (
-              <div {...dragHandleProps} className="cursor-grab p-1 hover:bg-muted/80 rounded-full">
-                <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-            )}
-          </div>
-        )}
+        {/* Hover Quick Actions - BOTTOM RIGHT with Details button */}
+        <div className={cn(
+          "absolute bottom-2 right-3 flex items-center gap-1",
+          "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        )}>
+          {/* Details expand button - only when truncated and not expanded */}
+          {needsTruncation && !isExpanded && (
+            <button 
+              className="text-xs text-primary font-medium flex items-center"
+              onClick={(e) => toggleNoteExpand(note.id, e)}
+            >
+              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
+              <span className="ml-0.5">Details</span>
+            </button>
+          )}
+          
+          {/* Vertical separator */}
+          {note.user_id === user?.id && needsTruncation && !isExpanded && (
+            <div className="h-4 w-px bg-border mx-1" />
+          )}
+          
+          {/* Quick action icons - only for own notes */}
+          {note.user_id === user?.id && (
+            <>
+              {/* Edit */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 hover:bg-muted/80 rounded-full"
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        openEditDialog(note); 
+                      }}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Bearbeiten</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              {/* Task */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.task_id && "text-blue-600")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        note.task_id ? removeTaskFromNote(note) : createTaskFromNote(note);
+                      }}
+                    >
+                      <CheckSquare className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{note.task_id ? "Aufgabe entfernen" : "Als Aufgabe"}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              {/* Decision */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.decision_id && "text-purple-600")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!note.decision_id) {
+                          setNoteForDecision(note);
+                          setDecisionCreatorOpen(true);
+                        }
+                      }}
+                      disabled={!!note.decision_id}
+                    >
+                      <Vote className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{note.decision_id ? "Entscheidung aktiv" : "Als Entscheidung"}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              {/* Follow-up */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.follow_up_date && "text-amber-600")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNoteForDatePicker(note);
+                        setDatePickerOpen(true);
+                      }}
+                    >
+                      <Clock className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Wiedervorlage</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              {/* Jour Fixe */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.meeting_id && "text-emerald-600")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (note.meeting_id) {
+                          removeNoteFromMeeting(note.id);
+                        } else {
+                          setNoteForMeeting(note);
+                          setMeetingSelectorOpen(true);
+                        }
+                      }}
+                    >
+                      <CalendarIcon className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{note.meeting_id ? "Von Jour Fixe entfernen" : "Auf Jour Fixe"}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              {/* Drag Handle - LAST */}
+              {dragHandleProps && (
+                <div {...dragHandleProps} className="cursor-grab p-1 hover:bg-muted/80 rounded-full">
+                  <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+              )}
+            </>
+          )}
+        </div>
         
         {/* Collapsible Details for linked items */}
         {hasLinkedItems && (
