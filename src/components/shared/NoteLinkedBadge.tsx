@@ -23,9 +23,12 @@ export function NoteLinkedBadge({ type, id, label, className }: NoteLinkedBadgeP
   
   const getColor = () => {
     switch (type) {
-      case 'task': return 'text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/50';
-      case 'decision': return 'text-purple-600 border-purple-200 hover:bg-purple-50 dark:hover:bg-purple-950/50';
-      case 'meeting': return 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50';
+      case 'task': 
+        return 'text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 dark:text-blue-300 dark:bg-blue-900/50 dark:border-blue-700 dark:hover:bg-blue-800/50';
+      case 'decision': 
+        return 'text-purple-700 bg-purple-100 border-purple-300 hover:bg-purple-200 dark:text-purple-300 dark:bg-purple-900/50 dark:border-purple-700 dark:hover:bg-purple-800/50';
+      case 'meeting': 
+        return 'text-emerald-700 bg-emerald-100 border-emerald-300 hover:bg-emerald-200 dark:text-emerald-300 dark:bg-emerald-900/50 dark:border-emerald-700 dark:hover:bg-emerald-800/50';
     }
   };
 

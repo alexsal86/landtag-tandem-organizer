@@ -31,7 +31,7 @@ import {
   Pin, Trash2, StickyNote, MoreHorizontal, CheckSquare, Vote, 
   Calendar as CalendarIcon, Archive, Edit, ChevronDown, Clock,
   Star, ArrowUp, ArrowDown, RotateCcw, Share2, Users, Globe, Hourglass,
-  Pencil, GripVertical, ListTree
+  Pencil, GripVertical, ListTree, History
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { supabase } from "@/integrations/supabase/client";
@@ -980,210 +980,244 @@ export function QuickNotesList({
     const isExpanded = expandedNotes.has(note.id);
     const fullText = note.content.replace(/<[^>]*>/g, '');
     const needsTruncation = fullText.length > 150;
+    const hasLinkedItems = note.task_id || note.decision_id || note.meeting_id;
     
     return (
       <div
         key={note.id}
-        className="p-3 rounded-lg border transition-colors hover:shadow-sm bg-card border-l-4 group relative"
+        className="p-3 rounded-lg border transition-all hover:shadow-sm bg-card border-l-4 group relative"
         style={{ borderLeftColor: note.color || "#3b82f6" }}
         onClick={() => onNoteClick?.(note)}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
+            {/* Title - larger */}
             {note.title && (
-              <h4 className="font-semibold text-sm truncate mb-1">
+              <h4 className="font-semibold text-base truncate mb-1">
                 {note.title}
               </h4>
             )}
+            {/* Description - gray */}
             {isExpanded ? (
               <div 
-                className="text-sm text-muted-foreground prose prose-sm max-w-none [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1"
+                className="text-sm text-muted-foreground/80 prose prose-sm max-w-none [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1"
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
               />
             ) : (
               <RichTextDisplay 
                 content={note.content} 
-                className="text-sm text-muted-foreground line-clamp-2"
+                className="text-sm text-muted-foreground/70 line-clamp-2"
               />
             )}
+            {/* Details button with hover effect */}
             {needsTruncation && (
               <button 
-                className="text-xs text-primary hover:underline mt-1 font-medium"
+                className="text-xs text-primary hover:underline mt-1 font-medium flex items-center gap-0.5 group/details"
                 onClick={(e) => toggleNoteExpand(note.id, e)}
               >
-                {isExpanded ? "Weniger anzeigen" : "...mehr anzeigen"}
+                {isExpanded ? (
+                  <>
+                    <ChevronDown className="h-3 w-3 rotate-180" />
+                    <span>Weniger</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3 w-3" />
+                    <span className="hidden group-hover/details:inline transition-all">Details</span>
+                  </>
+                )}
               </button>
+            )}
+            
+            {/* Status Indicators - small colored squares, become badges on card hover */}
+            {hasLinkedItems && (
+              <div className="flex items-center gap-1.5 mt-2">
+                {/* Small squares - visible when not hovering card */}
+                <div className="flex items-center gap-1 group-hover:hidden">
+                  {note.task_id && (
+                    <div 
+                      className="w-2 h-2 rounded-sm bg-blue-500" 
+                      title="Aufgabe"
+                    />
+                  )}
+                  {note.decision_id && (
+                    <div 
+                      className="w-2 h-2 rounded-sm bg-purple-500" 
+                      title="Entscheidung"
+                    />
+                  )}
+                  {note.meeting_id && (
+                    <div 
+                      className="w-2 h-2 rounded-sm bg-emerald-500" 
+                      title="Jour Fixe"
+                    />
+                  )}
+                </div>
+                
+                {/* Full badges - visible on card hover */}
+                <div className="hidden group-hover:flex items-center gap-1.5">
+                  {note.task_id && (
+                    <NoteLinkedBadge type="task" id={note.task_id} label="Aufgabe" />
+                  )}
+                  {note.decision_id && (
+                    <NoteLinkedBadge type="decision" id={note.decision_id} label="Entscheidung" />
+                  )}
+                  {note.meeting_id && (
+                    <NoteLinkedBadge 
+                      type="meeting" 
+                      id={note.meeting_id} 
+                      label={note.meetings?.meeting_date 
+                        ? `JF: ${format(new Date(note.meetings.meeting_date), "dd.MM.", { locale: de })}`
+                        : "Jour Fixe"
+                      } 
+                    />
+                  )}
+                </div>
+              </div>
             )}
           </div>
         
-        {/* Right column: Icons on top - SIMPLIFIED, most actions in dropdown */}
-        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-          {/* Quick Action Icons - minimal, drag handle on right */}
-          <div className="flex items-center gap-0.5">
-            {/* Bearbeiten - nur für eigene Notizen */}
-            {note.user_id === user?.id && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        openEditDialog(note); 
-                      }}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">Bearbeiten</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            
-            {/* Three-dot menu - contains all actions */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreHorizontal className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                {/* Creation date as menu header */}
-                <DropdownMenuItem disabled className="text-xs text-muted-foreground py-1">
-                  <Clock className="h-3 w-3 mr-2" />
-                  Erstellt: {format(new Date(note.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => openEditDialog(note)}>
-                  <Edit className="h-3 w-3 mr-2" />
-                  Bearbeiten
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => openVersionHistory(note)}>
-                  <RotateCcw className="h-3 w-3 mr-2" />
-                  Versionshistorie
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                
-                {/* Priority Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Star className="h-3 w-3 mr-2" />
-                    Priorität
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem onClick={() => handleSetPriority(note.id, 1)}>
-                        <span className="text-amber-500 mr-2">★</span>
-                        Level 1
-                        {note.priority_level === 1 && <span className="ml-auto text-xs">✓</span>}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleSetPriority(note.id, 2)}>
-                        <span className="text-amber-500 mr-2">★★</span>
-                        Level 2
-                        {note.priority_level === 2 && <span className="ml-auto text-xs">✓</span>}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleSetPriority(note.id, 3)}>
-                        <span className="text-amber-500 mr-2">★★★</span>
-                        Level 3
-                        {note.priority_level === 3 && <span className="ml-auto text-xs">✓</span>}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleSetPriority(note.id, 0)}>
-                        Keine Priorität
-                        {(!note.priority_level || note.priority_level === 0) && <span className="ml-auto text-xs">✓</span>}
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
+          {/* Right column: Only menu icon visible, rest on hover */}
+          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-0.5">
+              {/* Three-dot menu - always visible */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreHorizontal className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {/* PRIMÄRE AKTIONEN */}
+                  {note.user_id === user?.id && (
+                    <DropdownMenuItem onClick={() => openEditDialog(note)}>
+                      <Pencil className="h-3 w-3 mr-2" />
+                      Bearbeiten
+                    </DropdownMenuItem>
+                  )}
+                  
+                  {/* Task - kontextabhängig */}
+                  {note.task_id ? (
+                    <DropdownMenuItem onClick={() => removeTaskFromNote(note)} className="text-blue-600">
+                      <CheckSquare className="h-3 w-3 mr-2" />
+                      Aufgabe entfernen
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={() => createTaskFromNote(note)}>
+                      <CheckSquare className="h-3 w-3 mr-2" />
+                      Als Aufgabe
+                    </DropdownMenuItem>
+                  )}
+                  
+                  {/* Decision - kontextabhängig */}
+                  {note.decision_id ? (
+                    <DropdownMenuItem disabled className="text-purple-600">
+                      <Vote className="h-3 w-3 mr-2" />
+                      Entscheidung aktiv
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={() => {
+                      setNoteForDecision(note);
+                      setDecisionCreatorOpen(true);
+                    }}>
+                      <Vote className="h-3 w-3 mr-2" />
+                      Als Entscheidung
+                    </DropdownMenuItem>
+                  )}
+                  
+                  {/* Meeting - kontextabhängig */}
+                  {note.meeting_id ? (
+                    <DropdownMenuItem onClick={() => removeNoteFromMeeting(note.id)} className="text-emerald-600">
+                      <CalendarIcon className="h-3 w-3 mr-2" />
+                      Von Jour Fixe entfernen
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={() => {
+                      setNoteForMeeting(note);
+                      setMeetingSelectorOpen(true);
+                    }}>
+                      <CalendarIcon className="h-3 w-3 mr-2" />
+                      Auf Jour Fixe setzen
+                    </DropdownMenuItem>
+                  )}
 
-                {/* Follow-up Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Clock className="h-3 w-3 mr-2" />
-                    Wiedervorlage
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 14))}>
-                        In 14 Tagen
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 7))}>
-                        In 7 Tagen
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 30))}>
-                        In 30 Tagen
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => {
-                        setNoteForDatePicker(note);
-                        setDatePickerOpen(true);
-                      }}>
-                        <CalendarIcon className="h-3 w-3 mr-2" />
-                        Datum wählen...
-                      </DropdownMenuItem>
-                      {note.follow_up_date && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, null)} className="text-destructive">
-                            Wiedervorlage entfernen
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
+                  <DropdownMenuSeparator />
+                  
+                  {/* SEKUNDÄRE AKTIONEN */}
+                  {/* Priority Submenu */}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Star className="h-3 w-3 mr-2" />
+                      Priorität
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem onClick={() => handleSetPriority(note.id, 3)}>
+                          <span className="text-amber-500 mr-2">★★★</span> Level 3
+                          {note.priority_level === 3 && <span className="ml-auto text-xs">✓</span>}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSetPriority(note.id, 2)}>
+                          <span className="text-amber-500 mr-2">★★</span> Level 2
+                          {note.priority_level === 2 && <span className="ml-auto text-xs">✓</span>}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSetPriority(note.id, 1)}>
+                          <span className="text-amber-500 mr-2">★</span> Level 1
+                          {note.priority_level === 1 && <span className="ml-auto text-xs">✓</span>}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleSetPriority(note.id, 0)}>
+                          Keine Priorität
+                          {(!note.priority_level || note.priority_level === 0) && <span className="ml-auto text-xs">✓</span>}
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
 
-                <DropdownMenuSeparator />
-                
-                {!note.task_id && (
-                  <DropdownMenuItem onClick={() => createTaskFromNote(note)}>
-                    <CheckSquare className="h-3 w-3 mr-2" />
-                    Als Aufgabe
-                  </DropdownMenuItem>
-                )}
-                {!note.decision_id ? (
-                  <DropdownMenuItem onClick={() => {
-                    setNoteForDecision(note);
-                    setDecisionCreatorOpen(true);
-                  }}>
-                    <Vote className="h-3 w-3 mr-2" />
-                    Als Entscheidung
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem disabled className="text-purple-600">
-                    <Vote className="h-3 w-3 mr-2" />
-                    Entscheidung aktiv
-                  </DropdownMenuItem>
-                )}
-                
-                <DropdownMenuSeparator />
-                
-                {!note.meeting_id ? (
-                  <DropdownMenuItem onClick={() => {
-                    setNoteForMeeting(note);
-                    setMeetingSelectorOpen(true);
-                  }}>
-                    <CalendarIcon className="h-3 w-3 mr-2" />
-                    Auf Jour Fixe setzen
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem onClick={() => removeNoteFromMeeting(note.id)} className="text-amber-600">
-                    <CalendarIcon className="h-3 w-3 mr-2" />
-                    Von Jour Fixe entfernen
-                  </DropdownMenuItem>
-                )}
-                
-                {/* Share option - only for own notes */}
-                {note.user_id === user?.id && (
-                  <>
-                    <DropdownMenuSeparator />
+                  {/* Follow-up Submenu */}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Clock className="h-3 w-3 mr-2" />
+                      Wiedervorlage
+                      {note.follow_up_date && <span className="ml-auto text-xs text-amber-600">●</span>}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 7))}>
+                          In 7 Tagen
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 14))}>
+                          In 14 Tagen
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, addDays(new Date(), 30))}>
+                          In 30 Tagen
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => {
+                          setNoteForDatePicker(note);
+                          setDatePickerOpen(true);
+                        }}>
+                          <CalendarIcon className="h-3 w-3 mr-2" />
+                          Datum wählen...
+                        </DropdownMenuItem>
+                        {note.follow_up_date && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleSetFollowUp(note.id, null)} className="text-destructive">
+                              Wiedervorlage entfernen
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                  
+                  {/* Share option - only for own notes */}
+                  {note.user_id === user?.id && (
                     <DropdownMenuItem onClick={() => {
                       setNoteForShare(note);
                       setShareDialogOpen(true);
@@ -1196,158 +1230,271 @@ export function QuickNotesList({
                         </span>
                       )}
                     </DropdownMenuItem>
-                  </>
-                )}
-                
-                {/* Split into individual notes - only for own notes */}
-                {note.user_id === user?.id && (
-                  <DropdownMenuItem onClick={() => splitNoteIntoBullets(note)}>
-                    <ListTree className="h-3 w-3 mr-2" />
-                    In Einzelnotizen aufteilen
+                  )}
+                  
+                  {/* Split into individual notes - only for own notes */}
+                  {note.user_id === user?.id && (
+                    <DropdownMenuItem onClick={() => splitNoteIntoBullets(note)}>
+                      <ListTree className="h-3 w-3 mr-2" />
+                      In Einzelnotizen aufteilen
+                    </DropdownMenuItem>
+                  )}
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* TERTIÄRE AKTIONEN */}
+                  <DropdownMenuItem onClick={() => handleTogglePin(note)}>
+                    <Pin className={cn("h-3 w-3 mr-2", note.is_pinned && "text-amber-500")} />
+                    {note.is_pinned ? 'Loslösen' : 'Anpinnen'}
                   </DropdownMenuItem>
-                )}
-                
-                <DropdownMenuSeparator />
-                
-                <DropdownMenuItem onClick={() => handleTogglePin(note)}>
-                  <Pin className={cn("h-3 w-3 mr-2", note.is_pinned && "text-amber-500")} />
-                  {note.is_pinned ? 'Loslösen' : 'Anpinnen'}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleArchive(note.id)}>
-                  <Archive className="h-3 w-3 mr-2" />
-                  Archivieren
-                </DropdownMenuItem>
-                
-                <DropdownMenuSeparator />
-                
-                <DropdownMenuItem 
-                  onClick={() => handleDelete(note.id)} 
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="h-3 w-3 mr-2" />
-                  Löschen
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuItem onClick={() => handleArchive(note.id)}>
+                    <Archive className="h-3 w-3 mr-2" />
+                    Archivieren
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => openVersionHistory(note)}>
+                    <History className="h-3 w-3 mr-2" />
+                    Versionshistorie
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* LÖSCHEN */}
+                  <DropdownMenuItem 
+                    onClick={() => handleDelete(note.id)} 
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3 mr-2" />
+                    Löschen
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* ERSTELLUNGSDATUM - am Ende */}
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3 inline mr-1" />
+                    Erstellt: {format(new Date(note.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             
-            {/* Drag Handle - only for own notes, on the right */}
-            {note.user_id === user?.id && dragHandleProps && (
-              <div 
-                {...dragHandleProps}
-                className="cursor-grab opacity-30 hover:opacity-70 transition-opacity ml-1"
-              >
-                <GripVertical className="h-4 w-4 text-muted-foreground" />
-              </div>
-            )}
-          </div>
-          
-          {/* Metadata row below icons */}
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            {note.is_pinned && (
-              <Pin className="h-3 w-3 text-amber-500" />
-            )}
-            {note.task_id && (
-              <NoteLinkedBadge type="task" id={note.task_id} label="Aufgabe" />
-            )}
-            {note.decision_id && (
-              <NoteLinkedBadge type="decision" id={note.decision_id} label="Entscheidung" />
-            )}
-            {note.meeting_id && (
-              <NoteLinkedBadge 
-                type="meeting" 
-                id={note.meeting_id} 
-                label={note.meetings?.meeting_date 
-                  ? `JF: ${format(new Date(note.meetings.meeting_date), "dd.MM.", { locale: de })}`
-                  : "Jour Fixe"
-                } 
-              />
-            )}
-            {/* Shared indicator */}
-            {(note.share_count || 0) > 0 && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-violet-600 cursor-help">
-                      <Users className="h-3 w-3 mr-0.5" />
-                      {note.share_count}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="space-y-1">
-                      <p className="font-medium">Geteilt mit:</p>
-                      {note.shared_with_users && note.shared_with_users.length > 0 ? (
-                        note.shared_with_users.map(u => (
-                          <p key={u.id} className="text-sm">{u.display_name || 'Unbekannt'}</p>
-                        ))
-                      ) : (
-                        <p className="text-sm">Mit {note.share_count} {note.share_count === 1 ? 'Person' : 'Personen'} geteilt</p>
-                      )}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            {/* Shared from others indicator */}
-            {note.is_shared && note.owner && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="secondary" className="text-xs px-1 py-0 h-4 cursor-help">
-                      <Share2 className="h-3 w-3 mr-0.5" />
-                      {note.owner.display_name?.split(' ')[0] || 'Geteilt'}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Geteilt von {note.owner.display_name || 'Unbekannt'}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            {/* Pending for Jour Fixe indicator */}
-            {note.pending_for_jour_fixe && !note.meeting_id && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-amber-600 cursor-help">
-                      <Hourglass className="h-3 w-3 mr-0.5" />
-                      JF
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Wartet auf nächsten Jour Fixe
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            {showFollowUpBadge && note.follow_up_date && (
-              <Badge 
-                variant={isPast(new Date(note.follow_up_date)) && !isToday(new Date(note.follow_up_date)) 
-                  ? "destructive" 
-                  : "secondary"
-                } 
-                className="text-xs px-1 py-0 h-4"
-              >
-                <Clock className="h-3 w-3 mr-1" />
-                {isToday(new Date(note.follow_up_date)) 
-                  ? "Heute"
-                  : format(new Date(note.follow_up_date), "dd.MM.", { locale: de })
-                }
-              </Badge>
-            )}
+            {/* Metadata row: pinned, shared indicators, follow-up badge */}
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              {note.is_pinned && (
+                <Pin className="h-3 w-3 text-amber-500" />
+              )}
+              {/* Shared indicator */}
+              {(note.share_count || 0) > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-violet-600 cursor-help">
+                        <Users className="h-3 w-3 mr-0.5" />
+                        {note.share_count}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p className="font-medium">Geteilt mit:</p>
+                        {note.shared_with_users && note.shared_with_users.length > 0 ? (
+                          note.shared_with_users.map(u => (
+                            <p key={u.id} className="text-sm">{u.display_name || 'Unbekannt'}</p>
+                          ))
+                        ) : (
+                          <p className="text-sm">Mit {note.share_count} {note.share_count === 1 ? 'Person' : 'Personen'} geteilt</p>
+                        )}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {/* Shared from others indicator */}
+              {note.is_shared && note.owner && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="secondary" className="text-xs px-1 py-0 h-4 cursor-help">
+                        <Share2 className="h-3 w-3 mr-0.5" />
+                        {note.owner.display_name?.split(' ')[0] || 'Geteilt'}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Geteilt von {note.owner.display_name || 'Unbekannt'}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {/* Pending for Jour Fixe indicator */}
+              {note.pending_for_jour_fixe && !note.meeting_id && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-amber-600 cursor-help">
+                        <Hourglass className="h-3 w-3 mr-0.5" />
+                        JF
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Wartet auf nächsten Jour Fixe
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {showFollowUpBadge && note.follow_up_date && (
+                <Badge 
+                  variant={isPast(new Date(note.follow_up_date)) && !isToday(new Date(note.follow_up_date)) 
+                    ? "destructive" 
+                    : "secondary"
+                  } 
+                  className="text-xs px-1 py-0 h-4"
+                >
+                  <Clock className="h-3 w-3 mr-1" />
+                  {isToday(new Date(note.follow_up_date)) 
+                    ? "Heute"
+                    : format(new Date(note.follow_up_date), "dd.MM.", { locale: de })
+                  }
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
+        
+        {/* Hover Quick Actions - bottom right, only visible on hover */}
+        {note.user_id === user?.id && (
+          <div className={cn(
+            "absolute bottom-2 right-2 flex items-center gap-0.5",
+            "opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+            "bg-background/95 backdrop-blur-sm rounded-md px-1 py-0.5 border shadow-sm"
+          )}>
+            {/* Drag Handle */}
+            {dragHandleProps && (
+              <div {...dragHandleProps} className="cursor-grab p-1 hover:bg-muted rounded">
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+            )}
+            
+            {/* Edit */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      openEditDialog(note); 
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Bearbeiten</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Task */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn("h-6 w-6", note.task_id && "text-blue-600")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      note.task_id ? removeTaskFromNote(note) : createTaskFromNote(note);
+                    }}
+                  >
+                    <CheckSquare className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{note.task_id ? "Aufgabe entfernen" : "Als Aufgabe"}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Decision */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn("h-6 w-6", note.decision_id && "text-purple-600")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!note.decision_id) {
+                        setNoteForDecision(note);
+                        setDecisionCreatorOpen(true);
+                      }
+                    }}
+                    disabled={!!note.decision_id}
+                  >
+                    <Vote className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{note.decision_id ? "Entscheidung aktiv" : "Als Entscheidung"}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Follow-up */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn("h-6 w-6", note.follow_up_date && "text-amber-600")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setNoteForDatePicker(note);
+                      setDatePickerOpen(true);
+                    }}
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Wiedervorlage</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {/* Jour Fixe */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn("h-6 w-6", note.meeting_id && "text-emerald-600")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (note.meeting_id) {
+                        removeNoteFromMeeting(note.id);
+                      } else {
+                        setNoteForMeeting(note);
+                        setMeetingSelectorOpen(true);
+                      }
+                    }}
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{note.meeting_id ? "Von Jour Fixe entfernen" : "Auf Jour Fixe"}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        )}
+        
+        {/* Collapsible Details for linked items */}
+        {hasLinkedItems && (
+          <NoteLinkedDetails 
+            taskId={note.task_id} 
+            decisionId={note.decision_id} 
+            meetingId={note.meeting_id} 
+          />
+        )}
       </div>
-      
-      {/* Collapsible Details for linked items */}
-      {(note.task_id || note.decision_id || note.meeting_id) && (
-        <NoteLinkedDetails 
-          taskId={note.task_id} 
-          decisionId={note.decision_id} 
-          meetingId={note.meeting_id} 
-        />
-      )}
-    </div>
-  );
+    );
   };
 
   if (loading) {
