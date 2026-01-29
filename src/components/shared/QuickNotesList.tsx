@@ -1078,7 +1078,7 @@ export function QuickNotesList({
     return (
       <div
         key={note.id}
-        className="p-3 pb-8 rounded-lg border transition-all hover:shadow-sm bg-card border-l-4 group relative"
+        className="p-3 pb-12 rounded-lg border transition-all hover:shadow-sm bg-card border-l-4 group relative"
         style={{ borderLeftColor: note.color || "#3b82f6" }}
         onClick={() => onNoteClick?.(note)}
       >
@@ -1211,29 +1211,30 @@ export function QuickNotesList({
               </div>
             </div>
             
-            {/* RIGHT: ">" (default) / "→ Details | Icons" (hover) */}
+            {/* RIGHT: "→" (default) / "↓/↑ Details | Icons" (hover) */}
             <div className="flex items-center gap-1 flex-shrink-0">
-              {/* Simple ">" - visible when NOT hovering, only if linked items exist */}
+              {/* Simple "→" - visible when NOT hovering, only if linked items exist */}
               {hasLinkedItems && (
-                <span className="text-sm text-muted-foreground group-hover:hidden">›</span>
+                <span className="text-sm text-muted-foreground group-hover:hidden">→</span>
               )}
               
-              {/* "→ Details" + separator + icons - visible on hover */}
+              {/* "↓/↑ Details" + separator + icons - visible on hover */}
               <div className={cn(
                 "flex items-center gap-1",
                 "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
               )}>
-                {/* "→ Details" button only if linked items - opens LINKED DETAILS, not description */}
+                {/* "↓/↑ Details" button only if linked items - opens LINKED DETAILS, not description */}
                 {hasLinkedItems && (
                   <>
                     <button 
                       className="text-xs text-muted-foreground hover:text-foreground flex items-center"
                       onClick={(e) => toggleDetailsExpand(note.id, e)}
                     >
-                      <ArrowRight className={cn(
-                        "h-3 w-3 transition-transform",
-                        expandedDetails.has(note.id) && "rotate-90"
-                      )} strokeWidth={2.5} />
+                      {expandedDetails.has(note.id) ? (
+                        <ChevronUp className="h-3 w-3" strokeWidth={2.5} />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" strokeWidth={2.5} />
+                      )}
                       <span className="ml-0.5">Details</span>
                     </button>
                     {note.user_id === user?.id && (
