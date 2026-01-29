@@ -12,11 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { EmployeeInfoTab } from "./EmployeeInfoTab";
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from "date-fns";
 import { de } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Edit, Trash2, History, Calendar, Clock, AlertTriangle, Undo2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit, Trash2, History, Calendar, Clock, AlertTriangle, Undo2, Stethoscope, Timer } from "lucide-react";
 import { VacationHistoryDialog } from "./VacationHistoryDialog";
 import { calculateVacationBalance } from "@/utils/vacationCalculations";
 
@@ -105,6 +106,18 @@ export function TimeTrackingView() {
   const [sickNotes, setSickNotes] = useState("");
   const [vacationHistoryOpen, setVacationHistoryOpen] = useState(false);
   const [pendingLeaves, setPendingLeaves] = useState<LeaveRow[]>([]);
+  
+  // Medical appointment states
+  const [medicalDate, setMedicalDate] = useState("");
+  const [medicalStartTime, setMedicalStartTime] = useState("");
+  const [medicalEndTime, setMedicalEndTime] = useState("");
+  const [medicalReason, setMedicalReason] = useState<string>("acute");
+  const [medicalNotes, setMedicalNotes] = useState("");
+  
+  // Overtime reduction states
+  const [overtimeStartDate, setOvertimeStartDate] = useState("");
+  const [overtimeEndDate, setOvertimeEndDate] = useState("");
+  const [overtimeReason, setOvertimeReason] = useState("");
 
   const monthStart = startOfMonth(selectedMonth);
   const monthEnd = endOfMonth(selectedMonth);
@@ -186,12 +199,12 @@ export function TimeTrackingView() {
     const sick = sickLeaves.reduce((s, l) => {
       if (l.status !== "approved") return s;
       const days = eachDayOfInterval({ start: parseISO(l.start_date), end: parseISO(l.end_date) }).filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6).length;
-      return s + days * dailyHours * 60;
+      return s + Math.round(days * dailyMinutes);
     }, 0);
     const workingDays = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(d => d.getDay() !== 0 && d.getDay() !== 6 && !holidays.some(h => h.holiday_date === format(d, "yyyy-MM-dd"))).length;
-    const target = workingDays * dailyHours * 60;
+    const target = Math.round(workingDays * dailyMinutes);
     return { worked, sick, target, difference: worked + sick - target, workingDays };
-  }, [entries, sickLeaves, holidays, monthStart, monthEnd, dailyHours]);
+  }, [entries, sickLeaves, holidays, monthStart, monthEnd, dailyMinutes]);
 
   const projectionTotals = useMemo(() => {
     const today = new Date();
@@ -199,15 +212,15 @@ export function TimeTrackingView() {
     if (!isCurrentMonth) return null;
     const effectiveEndDate = today > monthEnd ? monthEnd : today;
     const workedDaysSoFar = eachDayOfInterval({ start: monthStart, end: effectiveEndDate }).filter(d => d.getDay() !== 0 && d.getDay() !== 6 && !holidays.some(h => h.holiday_date === format(d, "yyyy-MM-dd"))).length;
-    const targetSoFar = workedDaysSoFar * dailyHours * 60;
+    const targetSoFar = Math.round(workedDaysSoFar * dailyMinutes);
     const workedSoFar = entries.filter(e => parseISO(e.work_date) <= today).reduce((s, e) => s + (e.minutes || 0), 0);
     const sickSoFar = sickLeaves.filter(l => l.status === "approved").reduce((s, l) => {
       const days = eachDayOfInterval({ start: parseISO(l.start_date), end: parseISO(l.end_date) }).filter(d => d >= monthStart && d <= effectiveEndDate && d.getDay() !== 0 && d.getDay() !== 6).length;
-      return s + days * dailyHours * 60;
+      return s + Math.round(days * dailyMinutes);
     }, 0);
     const actualSoFar = workedSoFar + sickSoFar;
     return { workedDaysSoFar, targetSoFar, actualSoFar, differenceSoFar: actualSoFar - targetSoFar };
-  }, [entries, sickLeaves, holidays, monthStart, monthEnd, selectedMonth, dailyHours]);
+  }, [entries, sickLeaves, holidays, monthStart, monthEnd, selectedMonth, dailyMinutes]);
 
   const validateDailyLimit = async (workDate: string, grossMin: number, excludeId?: string) => {
     if (!user) return;
@@ -246,6 +259,99 @@ export function TimeTrackingView() {
   const handleReportSick = async () => {
     if (!user || !sickStartDate || !sickEndDate) { toast.error("Bitte beide Felder"); return; }
     try { await supabase.from("leave_requests").insert({ user_id: user.id, type: "sick", start_date: sickStartDate, end_date: sickEndDate, reason: sickNotes || null, status: "pending" }); toast.success("Krankmeldung eingereicht"); setSickStartDate(""); setSickEndDate(""); setSickNotes(""); loadData(); } catch (error: any) { toast.error(error.message); }
+  };
+
+  const handleReportMedical = async () => {
+    if (!user || !medicalDate || !medicalStartTime || !medicalEndTime) {
+      toast.error("Bitte alle Felder ausfüllen");
+      return;
+    }
+    
+    const [startH, startM] = medicalStartTime.split(':').map(Number);
+    const [endH, endM] = medicalEndTime.split(':').map(Number);
+    const minutesCounted = (endH * 60 + endM) - (startH * 60 + startM);
+    
+    if (minutesCounted <= 0) {
+      toast.error("Endzeit muss nach Startzeit liegen");
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase.from("leave_requests").insert({
+        user_id: user.id,
+        type: "medical",
+        start_date: medicalDate,
+        end_date: medicalDate,
+        medical_reason: medicalReason,
+        start_time: medicalStartTime,
+        end_time: medicalEndTime,
+        minutes_counted: minutesCounted,
+        reason: medicalNotes || null,
+        status: "pending",
+      }).select();
+      
+      if (error) throw error;
+      
+      toast.success("Arzttermin eingereicht");
+      setMedicalDate("");
+      setMedicalStartTime("");
+      setMedicalEndTime("");
+      setMedicalReason("acute");
+      setMedicalNotes("");
+      loadData();
+    } catch (error: any) {
+      console.error("Medical appointment error:", error);
+      toast.error(error.message);
+    }
+  };
+
+  const handleRequestOvertimeReduction = async () => {
+    if (!user || !overtimeStartDate || !overtimeEndDate) {
+      toast.error("Bitte beide Datumsfelder ausfüllen");
+      return;
+    }
+    
+    const days = eachDayOfInterval({ 
+      start: parseISO(overtimeStartDate), 
+      end: parseISO(overtimeEndDate) 
+    }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length;
+    
+    if (days === 0) {
+      toast.error("Bitte mindestens einen Werktag auswählen");
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase.from("leave_requests").insert({
+        user_id: user.id,
+        type: "overtime_reduction",
+        start_date: overtimeStartDate,
+        end_date: overtimeEndDate,
+        reason: overtimeReason || null,
+        status: "pending",
+      }).select();
+      
+      if (error) throw error;
+      
+      toast.success("Überstundenabbau beantragt");
+      setOvertimeStartDate("");
+      setOvertimeEndDate("");
+      setOvertimeReason("");
+      loadData();
+    } catch (error: any) {
+      console.error("Overtime reduction error:", error);
+      toast.error(error.message);
+    }
+  };
+
+  const getMedicalReasonLabel = (reason: string | null | undefined) => {
+    const labels: Record<string, string> = {
+      acute: 'Akuter Arztbesuch',
+      specialist: 'Facharzttermin',
+      follow_up: 'Nachsorge',
+      pregnancy: 'Schwangerschaft',
+    };
+    return labels[reason || ''] || reason || '-';
   };
 
   const handleEditEntry = (entry: TimeEntryRow) => {
@@ -683,7 +789,11 @@ export function TimeTrackingView() {
                   {pendingLeaves.map(p => (
                     <li key={p.id} className="flex items-center gap-2">
                       <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
-                        {p.type === 'vacation' ? '🏖️ Urlaub' : p.type === 'sick' ? '🤒 Krankheit' : '📋 Sonstiges'}
+                        {p.type === 'vacation' ? '🏖️ Urlaub' : 
+                         p.type === 'sick' ? '🤒 Krankheit' : 
+                         p.type === 'medical' ? '🏥 Arzttermin' :
+                         p.type === 'overtime_reduction' ? '⏰ Überstundenabbau' :
+                         '📋 Sonstiges'}
                       </Badge>
                       <span>{format(parseISO(p.start_date), "dd.MM.yyyy")} - {format(parseISO(p.end_date), "dd.MM.yyyy")}</span>
                       <span className="text-muted-foreground">• Warten auf Genehmigung</span>
@@ -868,6 +978,219 @@ export function TimeTrackingView() {
                             <TableCell>{getStatusBadge(s.status)}</TableCell>
                           </TableRow>
                         ); 
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Medical Appointments Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Stethoscope className="h-5 w-5 text-purple-600" />
+                  Arzttermin melden
+                </CardTitle>
+                <CardDescription>
+                  Bezahlte Freistellung für akute Arztbesuche, Facharzttermine oder Nachsorge
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Datum</Label>
+                    <Input 
+                      type="date" 
+                      value={medicalDate} 
+                      onChange={e => setMedicalDate(e.target.value)} 
+                    />
+                  </div>
+                  <div>
+                    <Label>Von</Label>
+                    <Input 
+                      type="time" 
+                      value={medicalStartTime} 
+                      onChange={e => setMedicalStartTime(e.target.value)} 
+                    />
+                  </div>
+                  <div>
+                    <Label>Bis</Label>
+                    <Input 
+                      type="time" 
+                      value={medicalEndTime} 
+                      onChange={e => setMedicalEndTime(e.target.value)} 
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Art des Termins</Label>
+                  <Select value={medicalReason} onValueChange={setMedicalReason}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="acute">Akuter Arztbesuch (plötzliche Beschwerden)</SelectItem>
+                      <SelectItem value="specialist">Unaufschiebbarer Facharzttermin</SelectItem>
+                      <SelectItem value="follow_up">Nachsorge nach OP</SelectItem>
+                      <SelectItem value="pregnancy">Schwangerschaftsvorsorge</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Notizen</Label>
+                  <Textarea 
+                    value={medicalNotes} 
+                    onChange={e => setMedicalNotes(e.target.value)} 
+                    placeholder="Optional" 
+                  />
+                </div>
+                <Button onClick={handleReportMedical} className="w-full">
+                  Arzttermin einreichen
+                </Button>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Stethoscope className="h-5 w-5 text-purple-600" />
+                  Arzttermine {selectedMonth.getFullYear()}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {medicalLeaves.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Keine Arzttermine vorhanden</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Datum</TableHead>
+                        <TableHead>Zeit</TableHead>
+                        <TableHead>Art</TableHead>
+                        <TableHead>Dauer</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {medicalLeaves.map(m => (
+                        <TableRow key={m.id}>
+                          <TableCell>{format(parseISO(m.start_date), "dd.MM.yyyy")}</TableCell>
+                          <TableCell>
+                            {m.start_time && m.end_time ? `${m.start_time} - ${m.end_time}` : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {getMedicalReasonLabel(m.medical_reason)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{fmt(m.minutes_counted || 0)}</TableCell>
+                          <TableCell>{getStatusBadge(m.status)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Overtime Reduction Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Timer className="h-5 w-5 text-amber-600" />
+                  Überstundenabbau beantragen
+                </CardTitle>
+                <CardDescription>
+                  Mehrstunden als freie Tage nehmen statt Urlaub
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Info Box */}
+                <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                  <div className="flex justify-between">
+                    <span>Überstunden (aktueller Monat):</span>
+                    <span className={`font-mono font-bold ${monthlyTotals.difference >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                      {monthlyTotals.difference >= 0 ? '+' : ''}{fmt(monthlyTotals.difference)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Hinweis: Der Gesamtstand wird bei der Genehmigung geprüft.
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Von</Label>
+                    <Input 
+                      type="date" 
+                      value={overtimeStartDate} 
+                      onChange={e => setOvertimeStartDate(e.target.value)} 
+                    />
+                  </div>
+                  <div>
+                    <Label>Bis</Label>
+                    <Input 
+                      type="date" 
+                      value={overtimeEndDate} 
+                      onChange={e => setOvertimeEndDate(e.target.value)} 
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Anmerkung</Label>
+                  <Textarea 
+                    value={overtimeReason} 
+                    onChange={e => setOvertimeReason(e.target.value)} 
+                    placeholder="Optional" 
+                  />
+                </div>
+                <Button onClick={handleRequestOvertimeReduction} className="w-full">
+                  Überstundenabbau beantragen
+                </Button>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Timer className="h-5 w-5 text-amber-600" />
+                  Überstundenabbau {selectedMonth.getFullYear()}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {overtimeLeaves.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Keine Überstundenabbau-Anträge vorhanden</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Von</TableHead>
+                        <TableHead>Bis</TableHead>
+                        <TableHead>Tage</TableHead>
+                        <TableHead>Anmerkung</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {overtimeLeaves.map(o => {
+                        const d = eachDayOfInterval({ 
+                          start: parseISO(o.start_date), 
+                          end: parseISO(o.end_date) 
+                        }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length;
+                        return (
+                          <TableRow key={o.id}>
+                            <TableCell>{format(parseISO(o.start_date), "dd.MM.yyyy")}</TableCell>
+                            <TableCell>{format(parseISO(o.end_date), "dd.MM.yyyy")}</TableCell>
+                            <TableCell>{d}</TableCell>
+                            <TableCell>{o.reason || "-"}</TableCell>
+                            <TableCell>{getStatusBadge(o.status)}</TableCell>
+                          </TableRow>
+                        );
                       })}
                     </TableBody>
                   </Table>
