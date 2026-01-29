@@ -1086,7 +1086,7 @@ export function QuickNotesList({
           <div className="flex-1 min-w-0">
             {/* Title - larger */}
             {note.title && (
-              <h4 className="font-semibold text-base truncate mb-1">
+              <h4 className="font-semibold text-base break-words line-clamp-2 mb-1">
                 {note.title}
               </h4>
             )}

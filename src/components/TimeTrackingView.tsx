@@ -18,6 +18,7 @@ import { EmployeeInfoTab } from "./EmployeeInfoTab";
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from "date-fns";
 import { de } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Edit, Trash2, History, Calendar, Clock, AlertTriangle, Undo2, Stethoscope, Timer } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { VacationHistoryDialog } from "./VacationHistoryDialog";
 import { calculateVacationBalance } from "@/utils/vacationCalculations";
 
@@ -666,7 +667,22 @@ export function TimeTrackingView() {
                         <TableCell>{entry.pause_minutes || 0} Min</TableCell>
                         <TableCell>{fmt(gross)}</TableCell>
                         <TableCell>{fmt(entry.minutes || 0)}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{entry.notes || "-"}</TableCell>
+                        <TableCell className="max-w-[200px]">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="block truncate cursor-help">
+                                  {entry.notes || "-"}
+                                </span>
+                              </TooltipTrigger>
+                              {entry.notes && entry.notes.length > 30 && (
+                                <TooltipContent className="max-w-md whitespace-pre-wrap">
+                                  {entry.notes}
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             {entry.is_editable && entry.entry_type === 'work' && (
