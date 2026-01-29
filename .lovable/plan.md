@@ -1,207 +1,416 @@
 
+# Plan: Quick Notes Card UI-Fixes und Lösch-Bestätigungen
 
-# Plan: Quick Notes Cards - Feinabstimmung der UI
-
-## Übersicht der 4 Änderungen
+## Übersicht der 6 Änderungen
 
 | # | Problem | Lösung |
 |---|---------|--------|
-| 1 | Shared-Notizen werden nicht in Indikatoren angezeigt | `is_shared && owner` Prüfung korrigieren für geteilte Notizen von anderen |
-| 2 | Indikatoren sollen am unteren Rand der Card kleben | Position von `mt-3` auf `absolute bottom-2 left-3` ändern |
-| 3 | Expand-Pfeil losgelöst von Beschreibung | Pfeil inline im Text nach "..." eingliedern, nicht separat |
-| 4 | Hover-Icons überlagern Text | Icons nach unten links verschieben, neben "> Details" mit Trennstrich |
+| 1 | Details-Button unten rechts beim Hovern für Beschreibung | Entfernen - nur der inline "→" nach "..." für Beschreibungserweiterung |
+| 2 | Details-Button bei Indikatoren: zeigt "> Details" statt nur ">" | Nur ">" zeigen, beim Hover "→ Details" für Navigations-Links |
+| 3 | Elemente am unteren Rand der Card vereinheitlichen | Indikatoren, Hover-Icons und Details-Navigation in einer Zeile unten |
+| 4 | Fehler beim Wiederherstellen von archivierten/gelöschten Notizen | RLS-Problem beheben: `user_id` Filter bei UPDATE hinzufügen |
+| 5 | Aufgabe löschen: Bestätigungsdialog | AlertDialog vor dem Löschen von Aufgaben |
+| 6 | Notiz mit verknüpften Elementen löschen: erweiterte Bestätigung | Zusätzliche Optionen zum Löschen von Aufgabe/Entscheidung/Meeting |
 
 ---
 
-## 1. Shared-Indikator für geteilte Notizen anzeigen
+## 1. Details-Button für Beschreibung entfernen
 
-**Problem:** Bei der Notiz "Petitionen bearbeiten" (geteilt von Franziska) wird kein violettes Quadrat/Badge angezeigt.
+**Problem:** Zeilen 1389-1398 zeigen beim Hovern unten rechts einen grünen "→ Details" Button zum Erweitern der Beschreibung. Dieser ist überflüssig, da bereits ein inline-Pfeil in der Beschreibung existiert (Zeile 1030-1035).
 
-**Ursache (Zeile 1058):** Die Bedingung prüft nur auf `share_count > 0` (für eigene geteilte Notizen) ODER `is_shared && owner` (für mit mir geteilte). Da die Notiz von Franziska geteilt wurde, muss `is_shared` true sein und `owner` gesetzt.
-
-**Lösung:** Die Bedingung ist korrekt, aber die Darstellung zeigt das Quadrat nicht konsistent. Die Condition in Zeile 1035 muss erweitert werden:
+**Lösung:** Den Details-Button für die Beschreibungserweiterung komplett entfernen.
 
 ```typescript
-// Zeile 1035 - AKTUELL:
-{(hasLinkedItems || (note.share_count || 0) > 0 || (note.is_shared && note.owner)) && (
+// ENTFERNEN (Zeilen 1389-1403):
+{/* Details expand button - only when truncated and not expanded */}
+{needsTruncation && !isExpanded && (
+  <button ... >
+    <ArrowRight ... />
+    <span className="ml-0.5">Details</span>
+  </button>
+)}
 
-// Bleibt gleich, aber sicherstellen dass is_shared-Notizen immer erkannt werden
-const hasShared = (note.share_count || 0) > 0 || (note.is_shared === true);
-```
-
-Und in den Quadraten (Zeile 1057-1063):
-```typescript
-{/* Shared indicator as square - für BEIDE Fälle */}
-{((note.share_count || 0) > 0 || note.is_shared) && (
-  <div 
-    className="w-1.5 h-1.5 bg-violet-500" 
-    title={note.is_shared ? `Geteilt von ${note.owner?.display_name || 'Unbekannt'}` : "Geteilt"}
-  />
+{/* Vertical separator */}
+{note.user_id === user?.id && needsTruncation && !isExpanded && (
+  <div className="h-4 w-px bg-border mx-1" />
 )}
 ```
 
 ---
 
-## 2. Indikatoren am unteren Rand der Card positionieren
+## 2 & 3. Bottom-Bereich neu strukturieren: Eine Zeile mit Indikatoren, Details-Links, Quick-Icons
 
-**Problem:** Die Indikatoren haben nur `mt-3` Abstand, aber sollen am unteren Rand "kleben".
+**Neues Layout am unteren Rand der Card:**
 
-**Lösung:** Die Indikatoren-Sektion absolut am unteren Rand positionieren:
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ [■ ■ ■]    [→ Details-Links bei Hover]     [Hover Icons: ✏️ ☑️ 🗳️ 📅 ≡] │
+│   Links            Mitte                              Rechts           │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+**Ohne Hover:**
+- Links: Kleine farbige Quadrate (Task/Decision/Meeting/Shared)
+- Mitte: Leer
+- Rechts: Leer
+
+**Mit Hover:**
+- Links: Badges mit "→ Details" Button für Task/Entscheidung/JourFixe
+- Rechts: Quick-Action Icons
+
+**Neue Struktur (Zeilen 1043-1134 und 1384-1526 zusammenführen):**
 
 ```typescript
-// Zeile 1036 - AKTUELL:
-<div className="flex items-center gap-2 mt-3">
-
-// NACHHER: Absolute Positionierung unten links
-{(hasLinkedItems || hasShared) && (
-  <div className="absolute bottom-2 left-3 flex items-center gap-2">
-    {/* Small squares */}
-    <div className="flex items-center gap-1.5 group-hover:hidden">
-      {/* ... squares ... */}
+{/* BOTTOM BAR - Unified bottom section */}
+{(hasLinkedItems || hasShared || note.user_id === user?.id) && (
+  <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between gap-2">
+    {/* LEFT: Status indicators and badges */}
+    <div className="flex items-center gap-2 flex-1 min-w-0">
+      {/* Small squares - visible when NOT hovering card */}
+      <div className="flex items-center gap-1.5 group-hover:hidden">
+        {note.task_id && (
+          <div className="w-1.5 h-1.5 bg-blue-500" title="Aufgabe" />
+        )}
+        {note.decision_id && (
+          <div className="w-1.5 h-1.5 bg-purple-500" title="Entscheidung" />
+        )}
+        {note.meeting_id && (
+          <div className="w-1.5 h-1.5 bg-emerald-500" title="Jour Fixe" />
+        )}
+        {hasShared && (
+          <div className="w-1.5 h-1.5 bg-violet-500" title="Geteilt" />
+        )}
+      </div>
+      
+      {/* Full badges with "→ Details" - visible on card hover */}
+      <div className="hidden group-hover:flex items-center gap-1.5 flex-wrap">
+        {note.task_id && (
+          <NoteLinkedBadge type="task" id={note.task_id} label="Aufgabe" />
+        )}
+        {note.decision_id && (
+          <NoteLinkedBadge type="decision" id={note.decision_id} label="Entscheidung" />
+        )}
+        {note.meeting_id && (
+          <NoteLinkedBadge type="meeting" id={note.meeting_id} 
+            label={note.meetings?.meeting_date 
+              ? `JF: ${format(new Date(note.meetings.meeting_date), "dd.MM.", { locale: de })}`
+              : "Jour Fixe"
+            } />
+        )}
+        {/* Shared badges */}
+        {/* ... shared badge logic remains the same ... */}
+      </div>
     </div>
     
-    {/* Full badges on hover */}
-    <div className="hidden group-hover:flex items-center gap-1.5 flex-wrap">
-      {/* ... badges ... */}
-    </div>
+    {/* RIGHT: Quick action icons - only on hover, only for own notes */}
+    {note.user_id === user?.id && (
+      <div className={cn(
+        "flex items-center gap-1 flex-shrink-0",
+        "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+      )}>
+        {/* Edit, Task, Decision, Follow-up, Jour Fixe icons */}
+        <TooltipProvider>
+          {/* ... existing tooltip-wrapped buttons ... */}
+        </TooltipProvider>
+        
+        {/* Drag Handle - LAST */}
+        {dragHandleProps && (
+          <div {...dragHandleProps} className="cursor-grab p-1 hover:bg-muted/80 rounded-full">
+            <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+        )}
+      </div>
+    )}
   </div>
 )}
-```
-
-**Zusätzlich:** Die Card braucht etwas mehr Padding unten für die Indikatoren:
-```typescript
-// Zeile 988
-<div className="p-3 pb-8 rounded-lg border...">
 ```
 
 ---
 
-## 3. Expand-Pfeil inline in Beschreibung eingliedern
+## 4. Archiv/Papierkorb Wiederherstellung: RLS-Fehler beheben
 
-**Problem:** Der Pfeil steht losgelöst neben der Beschreibung. Er soll direkt nach "...nicht auf Beschwerden reagieren..." erscheinen.
+**Problem:** Bei `handleRestore` und `handleRestoreFromArchive` in `NotesArchive.tsx` fehlt möglicherweise die korrekte RLS-Handhabung oder ein SELECT nach dem UPDATE.
 
-**Aktuelle Struktur (Zeile 1007-1021):**
-```typescript
-<div className="flex items-start">
-  <RichTextDisplay content={note.content} className="line-clamp-2" />
-  {needsTruncation && (
-    <button className="ml-0.5">
-      <span>...</span>
-      <ArrowRight />
-    </button>
-  )}
-</div>
-```
-
-**Problem:** `RichTextDisplay` ist ein Block-Element und der Button steht daneben.
-
-**Lösung:** Den Pfeil INNERHALB des Textflusses anzeigen, nicht als separates Element:
+**Aktuelle Implementierung (Zeilen 150-163 und 172-191):**
 
 ```typescript
-{/* Description with INLINE expand arrow after text */}
-{isExpanded ? (
-  // ... expanded view ...
-) : (
-  <div className="text-sm text-muted-foreground/70">
-    <span className="line-clamp-2">
-      {getPreviewText(note.content, 150)}
-      {needsTruncation && (
-        <button 
-          className="inline-flex items-center text-primary hover:underline ml-0"
-          onClick={(e) => toggleNoteExpand(note.id, e)}
-        >
-          <ArrowRight className="h-3.5 w-3.5 inline" strokeWidth={2.5} />
-        </button>
-      )}
-    </span>
-  </div>
-)}
-```
-
-Dabei wird `getPreviewText` angepasst um den Text bis zur Zeichengrenze zu liefern:
-```typescript
-const getPreviewText = (content: string, maxLength = 150) => {
-  const text = content.replace(/<[^>]*>/g, '').trim();
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength).trim() + '...';
+const handleRestore = async (noteId: string) => {
+  const { error } = await supabase
+    .from("quick_notes")
+    .update({ deleted_at: null, permanent_delete_at: null })
+    .eq("id", noteId)
+    .eq("user_id", user.id);  // ✅ user_id ist vorhanden
+  ...
 };
 ```
 
-**Visuelles Ergebnis:**
-```
-"...nicht auf Beschwerden reagieren..."→
-                                       ↑ Pfeil direkt nach den drei Punkten
+**Lösung:** Fehlerbehandlung verbessern und SELECT hinzufügen um sicherzustellen, dass Update erfolgreich war:
+
+```typescript
+const handleRestore = async (noteId: string) => {
+  if (!user?.id) {
+    toast.error("Nicht angemeldet");
+    return;
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from("quick_notes")
+      .update({ deleted_at: null, permanent_delete_at: null })
+      .eq("id", noteId)
+      .eq("user_id", user.id)
+      .select();  // ← WICHTIG: SELECT hinzufügen für RLS-Validierung
+
+    if (error) throw error;
+    
+    if (!data || data.length === 0) {
+      toast.error("Keine Berechtigung zum Wiederherstellen dieser Notiz");
+      return;
+    }
+    
+    // Optimistic UI update
+    setNotes(prev => prev.filter(n => n.id !== noteId));
+    
+    toast.success("Notiz wiederhergestellt");
+    onRestore?.();
+  } catch (error) {
+    console.error("Error restoring note:", error);
+    toast.error("Fehler beim Wiederherstellen");
+    // Reload on error to ensure consistent state
+    loadDeletedNotes();
+  }
+};
+
+const handleRestoreFromArchive = async (noteId: string) => {
+  if (!user?.id) {
+    toast.error("Nicht angemeldet");
+    return;
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from("quick_notes")
+      .update({ is_archived: false, archived_at: null })
+      .eq("id", noteId)
+      .eq("user_id", user.id)
+      .select();  // ← Bereits vorhanden, aber Fehlerbehandlung verbessern
+
+    if (error) throw error;
+    
+    if (!data || data.length === 0) {
+      toast.error("Keine Berechtigung zum Wiederherstellen dieser Notiz");
+      return;
+    }
+    
+    // Optimistic state update
+    setArchivedNotes(prev => prev.filter(n => n.id !== noteId));
+    
+    toast.success("Notiz aus Archiv wiederhergestellt");
+    onRestore?.();
+  } catch (error) {
+    console.error("Error restoring from archive:", error);
+    toast.error("Fehler beim Wiederherstellen");
+    loadArchivedNotes();
+  }
+};
 ```
 
 ---
 
-## 4. Hover-Icons nach unten links, neben "> Details"
+## 5. Aufgabe löschen: Bestätigungsdialog
 
-**Problem:** Die Hover-Icons (Zeile 1376-1499) sind oben rechts und überlagern Text/Menü.
+**Problem:** `removeTaskFromNote` löscht die Aufgabe direkt ohne Bestätigung (Zeilen 620-654).
 
-**Neue Positionierung:** Unten links, neben dem "Details"-Indikator, getrennt mit vertikalem Strich.
+**Lösung:** AlertDialog State hinzufügen und vor dem Löschen anzeigen.
 
-**Aktuelle Position (Zeile 1378-1379):**
+**Neue State-Variablen:**
 ```typescript
-<div className={cn(
-  "absolute top-2 right-8 flex items-center gap-1",
-  ...
-)}>
+const [confirmDeleteTaskNote, setConfirmDeleteTaskNote] = useState<QuickNote | null>(null);
 ```
 
-**Neue Position:**
+**Angepasster Flow:**
 ```typescript
-{/* Hover Quick Actions + Details - bottom right of card */}
-<div className={cn(
-  "absolute bottom-2 right-3 flex items-center gap-1",
-  "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-)}>
-  {/* Details expand button */}
-  {needsTruncation && !isExpanded && (
-    <button 
-      className="text-xs text-primary font-medium flex items-center"
-      onClick={(e) => toggleNoteExpand(note.id, e)}
-    >
-      <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
-      <span className="ml-0.5">Details</span>
-    </button>
-  )}
+// Statt sofortigem Löschen:
+// onClick={() => removeTaskFromNote(note)}
+// 
+// Jetzt:
+// onClick={() => setConfirmDeleteTaskNote(note)}
+
+// AlertDialog hinzufügen:
+<AlertDialog 
+  open={!!confirmDeleteTaskNote} 
+  onOpenChange={(open) => !open && setConfirmDeleteTaskNote(null)}
+>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Aufgabe entfernen?</AlertDialogTitle>
+      <AlertDialogDescription>
+        Die verknüpfte Aufgabe wird unwiderruflich gelöscht. Die Notiz selbst bleibt erhalten.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+      <AlertDialogAction 
+        onClick={() => {
+          if (confirmDeleteTaskNote) removeTaskFromNote(confirmDeleteTaskNote);
+          setConfirmDeleteTaskNote(null);
+        }}
+        className="bg-destructive text-destructive-foreground"
+      >
+        Aufgabe löschen
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+---
+
+## 6. Notiz mit verknüpften Elementen löschen: Erweiterte Bestätigung
+
+**Problem:** `handleDelete` löscht die Notiz ohne Warnung, wenn Task/Decision/Meeting verknüpft sind.
+
+**Lösung:** 
+1. Prüfen ob Notiz verknüpfte Elemente hat
+2. Dialog mit Checkboxen für jedes verknüpfte Element anzeigen
+3. Benutzer kann wählen, welche verknüpften Elemente auch gelöscht werden sollen
+
+**Neue State-Variablen:**
+```typescript
+const [confirmDeleteLinkedNote, setConfirmDeleteLinkedNote] = useState<QuickNote | null>(null);
+const [deleteLinkedTask, setDeleteLinkedTask] = useState(true);
+const [deleteLinkedDecision, setDeleteLinkedDecision] = useState(true);
+const [deleteLinkedMeeting, setDeleteLinkedMeeting] = useState(false); // Default: Meeting nicht löschen
+```
+
+**Angepasster handleDelete:**
+```typescript
+const handleDeleteWithConfirmation = (note: QuickNote) => {
+  const hasLinks = note.task_id || note.decision_id || note.meeting_id;
   
-  {/* Vertical separator */}
-  {note.user_id === user?.id && needsTruncation && !isExpanded && (
-    <div className="h-4 w-px bg-border mx-1" />
-  )}
+  if (hasLinks) {
+    // Reset checkboxes
+    setDeleteLinkedTask(!!note.task_id);
+    setDeleteLinkedDecision(!!note.decision_id);
+    setDeleteLinkedMeeting(false); // Default: Meeting nicht löschen
+    setConfirmDeleteLinkedNote(note);
+  } else {
+    // Direkt löschen ohne zusätzliche Bestätigung
+    handleDelete(note.id);
+  }
+};
+
+const handleDeleteNoteWithLinks = async () => {
+  if (!confirmDeleteLinkedNote || !user?.id) return;
   
-  {/* Quick action icons */}
-  {note.user_id === user?.id && (
-    <>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted/80 rounded-full" onClick={...}>
-              <Pencil className="h-3 w-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Bearbeiten</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      
-      {/* ... Task, Decision, Follow-up, Jour Fixe icons ... */}
-      
-      {/* Drag Handle - LAST */}
-      {dragHandleProps && (
-        <div {...dragHandleProps} className="cursor-grab p-1 hover:bg-muted/80 rounded-full">
-          <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+  const note = confirmDeleteLinkedNote;
+  
+  try {
+    // 1. Delete linked task if selected
+    if (note.task_id && deleteLinkedTask) {
+      await supabase.from('tasks').delete().eq('id', note.task_id);
+    }
+    
+    // 2. Delete linked decision if selected  
+    if (note.decision_id && deleteLinkedDecision) {
+      await supabase.from('decisions').delete().eq('id', note.decision_id);
+    }
+    
+    // 3. Remove from meeting if selected (not delete the meeting itself)
+    if (note.meeting_id && deleteLinkedMeeting) {
+      // Just remove the link, don't delete the meeting
+      await supabase
+        .from("quick_notes")
+        .update({ meeting_id: null, added_to_meeting_at: null })
+        .eq("id", note.id)
+        .eq("user_id", user.id);
+    }
+    
+    // 4. Move note to trash
+    await handleDelete(note.id);
+    
+    setConfirmDeleteLinkedNote(null);
+  } catch (error) {
+    console.error("Error deleting note with links:", error);
+    toast.error("Fehler beim Löschen");
+  }
+};
+```
+
+**AlertDialog mit Checkboxen:**
+```typescript
+<AlertDialog 
+  open={!!confirmDeleteLinkedNote} 
+  onOpenChange={(open) => !open && setConfirmDeleteLinkedNote(null)}
+>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Notiz mit Verknüpfungen löschen?</AlertDialogTitle>
+      <AlertDialogDescription>
+        Diese Notiz hat verknüpfte Elemente. Was soll mit ihnen geschehen?
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    
+    <div className="space-y-3 py-4">
+      {confirmDeleteLinkedNote?.task_id && (
+        <div className="flex items-center gap-3">
+          <Checkbox 
+            id="delete-task" 
+            checked={deleteLinkedTask} 
+            onCheckedChange={(checked) => setDeleteLinkedTask(!!checked)} 
+          />
+          <label htmlFor="delete-task" className="text-sm flex items-center gap-2">
+            <CheckSquare className="h-4 w-4 text-blue-600" />
+            Verknüpfte Aufgabe auch löschen
+          </label>
         </div>
       )}
-    </>
-  )}
-</div>
+      
+      {confirmDeleteLinkedNote?.decision_id && (
+        <div className="flex items-center gap-3">
+          <Checkbox 
+            id="delete-decision" 
+            checked={deleteLinkedDecision} 
+            onCheckedChange={(checked) => setDeleteLinkedDecision(!!checked)} 
+          />
+          <label htmlFor="delete-decision" className="text-sm flex items-center gap-2">
+            <Vote className="h-4 w-4 text-purple-600" />
+            Verknüpfte Entscheidung auch löschen
+          </label>
+        </div>
+      )}
+      
+      {confirmDeleteLinkedNote?.meeting_id && (
+        <div className="flex items-center gap-3">
+          <Checkbox 
+            id="delete-meeting" 
+            checked={deleteLinkedMeeting} 
+            onCheckedChange={(checked) => setDeleteLinkedMeeting(!!checked)} 
+          />
+          <label htmlFor="delete-meeting" className="text-sm flex items-center gap-2">
+            <CalendarIcon className="h-4 w-4 text-emerald-600" />
+            Vom Jour Fixe entfernen
+          </label>
+        </div>
+      )}
+    </div>
+    
+    <AlertDialogFooter>
+      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+      <AlertDialogAction 
+        onClick={handleDeleteNoteWithLinks}
+        className="bg-destructive text-destructive-foreground"
+      >
+        Löschen
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
 ```
 
 ---
 
-## Visuelle Darstellung
+## Visuelle Darstellung des neuen Card-Layouts
 
 **Ohne Hover:**
 ```
@@ -211,8 +420,7 @@ const getPreviewText = (content: string, maxLength = 150) => {
 │ Beschreibung mit maximal zwei Zeilen und dann nicht auf               │
 │ Beschwerden reagieren...→                                              │
 │                                                                         │
-│                                                                         │
-│ ■ ■ ■ ■  (Quadrate unten links am Rand)                               │
+│ ■ ■ ■ ■                                                                │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -224,22 +432,36 @@ const getPreviewText = (content: string, maxLength = 150) => {
 │ Beschreibung mit maximal zwei Zeilen und dann nicht auf               │
 │ Beschwerden reagieren...→                                              │
 │                                                                         │
-│ [Aufgabe→] [Entsch.→] [JF:28.01.→] [Geteilt von Franziska]            │
-│                           [→ Details | ✏️ ☑️ 🗳️ 🕐 📅 ≡]              │
+│ [Aufgabe→] [Entscheidung→] [JF:28.01.→] [Geteilt]   [✏️ ☑️ 🗳️ 🕐 📅 ≡] │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Zusammenfassung der Änderungen
+## Zusammenfassung der Dateien
 
-| Datei | Zeilen | Änderung |
-|-------|--------|----------|
-| `QuickNotesList.tsx` | 1035-1063 | Shared-Indikator Bedingung für beide Fälle |
-| `QuickNotesList.tsx` | 1036 | Indikatoren `absolute bottom-2 left-3` |
-| `QuickNotesList.tsx` | 988 | Card Padding erhöhen `pb-8` |
-| `QuickNotesList.tsx` | 1007-1021 | Expand-Pfeil inline nach Text |
-| `QuickNotesList.tsx` | 1376-1499 | Icons nach `bottom-2 right-3`, mit `|` vor "> Details" |
+| Datei | Änderungen |
+|-------|------------|
+| `src/components/shared/QuickNotesList.tsx` | Punkte 1-3, 5-6: UI-Struktur, AlertDialogs |
+| `src/components/shared/NotesArchive.tsx` | Punkt 4: Restore-Fehler beheben |
+
+---
+
+## Zusätzliche Imports für QuickNotesList.tsx
+
+```typescript
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+```
 
 ---
 
@@ -247,9 +469,9 @@ const getPreviewText = (content: string, maxLength = 150) => {
 
 | Änderung | Zeit |
 |----------|------|
-| Shared-Indikator für beide Fälle | 5 Min |
-| Indikatoren absolut unten | 10 Min |
-| Expand-Pfeil inline | 15 Min |
-| Hover-Icons unten links mit Separator | 15 Min |
-| **Gesamt** | **~45 Min** |
-
+| Details-Button entfernen | 5 Min |
+| Bottom-Bar neu strukturieren | 20 Min |
+| Archiv/Papierkorb Restore-Fix | 10 Min |
+| Aufgabe-Lösch-Bestätigung | 15 Min |
+| Verknüpfte-Elemente-Lösch-Dialog | 25 Min |
+| **Gesamt** | **~75 Min** |
