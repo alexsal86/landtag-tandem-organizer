@@ -13,11 +13,11 @@ interface MyWorkNotesListProps {
 export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
   const [globalShareOpen, setGlobalShareOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [archiveRefreshTrigger, setArchiveRefreshTrigger] = useState(0);
+  const [localRefreshTrigger, setLocalRefreshTrigger] = useState(0);
 
   const handleArchiveRestore = () => {
-    // Trigger refresh of the notes list
-    setArchiveRefreshTrigger(prev => prev + 1);
+    // Trigger refresh of the notes list when restoring from archive/trash
+    setLocalRefreshTrigger(prev => prev + 1);
   };
 
   return (
@@ -51,7 +51,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
         </CardHeader>
         <CardContent className="p-0">
           <QuickNotesList 
-            refreshTrigger={refreshTrigger} 
+            refreshTrigger={(refreshTrigger || 0) + localRefreshTrigger} 
             showHeader={false}
             maxHeight="none"
           />
@@ -66,7 +66,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
       <NotesArchiveDialog
         open={archiveOpen}
         onOpenChange={setArchiveOpen}
-        refreshTrigger={archiveRefreshTrigger}
+        refreshTrigger={localRefreshTrigger}
         onRestore={handleArchiveRestore}
       />
     </>
