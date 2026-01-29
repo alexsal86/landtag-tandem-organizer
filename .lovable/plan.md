@@ -1,442 +1,235 @@
 
-# Plan: Zeiterfassung - Fehlerbehebungen und UI-Erweiterungen
+# Plan: Zeiterfassung - Kritische Fehler beheben
 
-## Übersicht der Probleme und Lösungen
+## Zusammenfassung der Probleme
 
 | Problem | Ursache | Lösung |
 |---------|---------|--------|
-| Formatierung zeigt `188:6.000000000001819` | Fließkomma-Ungenauigkeiten bei `dailyHours * 60` | `Math.round()` bei ALLEN Minutenberechnungen anwenden |
-| Feiertage 1.1.2026 / 6.1.2026 nicht eingetragen | Edge Function `sync-holidays` nicht deployed (404) | Edge Function deployen, dann manuell aufrufen |
-| UI für Arzttermine fehlt | Nicht implementiert | Neues Formular + Tabelle in "Urlaub & Krankmeldungen" Tab |
-| UI für Überstundenabbau fehlt | Nicht implementiert | Neues Formular + Tabelle in "Urlaub & Krankmeldungen" Tab |
+| **Netto = Brutto** | DB-Trigger `time_entries_calculate_net` wurde nie erstellt | Trigger erstellen + bestehende Daten korrigieren |
+| **Feiertage fehlen** (01.01., 06.01.) | Hook überspringt Feiertage wenn Arbeitseintrag existiert | Logik umkehren: Feiertage haben Priorität |
+| **Urlaub fehlt** (02.01.) | Hook überspringt Urlaub wenn Arbeitseintrag existiert | Logik umkehren: Urlaub hat Priorität |
 
 ---
 
-## 1. Formatierungsproblem beheben
+## 1. Datenbank-Trigger erstellen
 
-**Ursache im Detail:**
+**Problem:** Die Funktion `ensure_net_minutes` existiert, aber der Trigger wurde nie erstellt.
 
-Das Problem entsteht durch Fließkomma-Arithmetik:
-```typescript
-// employee_settings hat z.B. hours_per_month: 171, days_per_month: 20
-const dailyHours = 171 / 20;  // = 8.55
-const dailyMinutes = dailyHours * 60;  // = 513.0000000000001 (nicht 513!)
-```
+**SQL-Migration:**
+```sql
+-- Trigger erstellen (falls noch nicht vorhanden)
+DROP TRIGGER IF EXISTS time_entries_calculate_net ON time_entries;
 
-Wenn dann `fmt(monthlyTotals.target)` aufgerufen wird, passiert:
-```typescript
-// monthlyTotals.target = workingDays * dailyHours * 60
-// z.B. 22 * 8.55 * 60 = 11286.0000000000018
+CREATE TRIGGER time_entries_calculate_net
+BEFORE INSERT OR UPDATE ON time_entries
+FOR EACH ROW EXECUTE FUNCTION ensure_net_minutes();
 
-// In fmt():
-Math.abs(m) % 60  // = 6.0000000000018 statt 6
-```
-
-**Lösung in `TimeTrackingView.tsx`:**
-
-### A. `dailyMinutes` korrekt runden (Zeile 145)
-```typescript
-// VORHER:
-const dailyMinutes = Math.round(dailyHours * 60);  // bereits korrekt
-
-// Aber: dailyHours selbst ist problematisch!
-const dailyHours = employeeSettings 
-  ? employeeSettings.hours_per_month / employeeSettings.days_per_month 
-  : 8;
-```
-
-### B. `monthlyTotals` Berechnung korrigieren (Zeile 184-194)
-```typescript
-const monthlyTotals = useMemo(() => {
-  const worked = entries.reduce((s, e) => s + (e.minutes || 0), 0);
-  const sick = sickLeaves.reduce((s, l) => {
-    if (l.status !== "approved") return s;
-    const days = eachDayOfInterval({ start: parseISO(l.start_date), end: parseISO(l.end_date) })
-      .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6).length;
-    return s + days * dailyMinutes;  // ← dailyMinutes statt dailyHours * 60
-  }, 0);
-  const workingDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
-    .filter(d => d.getDay() !== 0 && d.getDay() !== 6 && 
-      !holidays.some(h => h.holiday_date === format(d, "yyyy-MM-dd"))).length;
-  const target = workingDays * dailyMinutes;  // ← dailyMinutes statt dailyHours * 60
-  return { worked, sick, target, difference: worked + sick - target, workingDays };
-}, [entries, sickLeaves, holidays, monthStart, monthEnd, dailyMinutes]);  // ← dailyMinutes als Dependency
-```
-
-### C. `projectionTotals` Berechnung korrigieren (Zeile 196-210)
-```typescript
-const projectionTotals = useMemo(() => {
-  // ... 
-  const targetSoFar = workedDaysSoFar * dailyMinutes;  // ← dailyMinutes statt dailyHours * 60
-  // ...
-  const sickSoFar = sickLeaves.filter(l => l.status === "approved").reduce((s, l) => {
-    const days = eachDayOfInterval({ start: parseISO(l.start_date), end: parseISO(l.end_date) })
-      .filter(d => d >= monthStart && d <= effectiveEndDate && d.getDay() !== 0 && d.getDay() !== 6).length;
-    return s + days * dailyMinutes;  // ← dailyMinutes statt dailyHours * 60
-  }, 0);
-  // ...
-}, [entries, sickLeaves, holidays, monthStart, monthEnd, selectedMonth, dailyMinutes]);  // ← dailyMinutes
+-- Bestehende Einträge korrigieren
+UPDATE time_entries
+SET minutes = ROUND(EXTRACT(EPOCH FROM (ended_at - started_at))/60) - COALESCE(pause_minutes, 0)
+WHERE started_at IS NOT NULL 
+  AND ended_at IS NOT NULL;
 ```
 
 ---
 
-## 2. Edge Function `sync-holidays` deployen und testen
+## 2. Hook `useCombinedTimeEntries` korrigieren
 
-**Problem:** Die Edge Function existiert im Code, ist aber nicht deployed (404-Fehler beim Aufruf).
+**Aktuelles (falsches) Verhalten:**
+1. Arbeitseinträge werden ZUERST hinzugefügt
+2. Feiertage/Urlaub werden ÜBERSPRUNGEN wenn Arbeitseintrag existiert
 
-**Lösung:**
-1. Edge Function mit dem Deploy-Tool deployen
-2. Manuell für 2025 und 2026 aufrufen
-3. Datenbankeinträge verifizieren
+**Neues (korrektes) Verhalten:**
+1. **Priorität 1:** Feiertage - werden IMMER angezeigt (kein Arbeiten an Feiertagen)
+2. **Priorität 2:** Urlaub/Krankheit - werden angezeigt (statt Arbeit)
+3. **Priorität 3:** Arbeitseinträge - NUR wenn kein Feiertag/Urlaub an diesem Tag
 
-**Nach dem Deployment wird die Funktion automatisch beim Laden der TimeTrackingView aufgerufen:**
+**Geänderte Logik in `useCombinedTimeEntries.ts`:**
+
 ```typescript
-// Zeile 121 - bereits implementiert:
-supabase.functions.invoke('sync-holidays', { body: { year } }).catch(console.error);
-```
-
----
-
-## 3. UI für Arzttermine (medical) hinzufügen
-
-**Neue States:**
-```typescript
-const [medicalDate, setMedicalDate] = useState("");
-const [medicalStartTime, setMedicalStartTime] = useState("");
-const [medicalEndTime, setMedicalEndTime] = useState("");
-const [medicalReason, setMedicalReason] = useState<string>("acute");
-const [medicalNotes, setMedicalNotes] = useState("");
-```
-
-**Neue Handler-Funktion:**
-```typescript
-const handleReportMedical = async () => {
-  if (!user || !medicalDate || !medicalStartTime || !medicalEndTime) {
-    toast.error("Bitte alle Felder ausfüllen");
-    return;
-  }
-  
-  // Minuten berechnen
-  const [startH, startM] = medicalStartTime.split(':').map(Number);
-  const [endH, endM] = medicalEndTime.split(':').map(Number);
-  const minutesCounted = (endH * 60 + endM) - (startH * 60 + startM);
-  
-  if (minutesCounted <= 0) {
-    toast.error("Endzeit muss nach Startzeit liegen");
-    return;
-  }
-  
-  try {
-    await supabase.from("leave_requests").insert({
-      user_id: user.id,
-      type: "medical",
-      start_date: medicalDate,
-      end_date: medicalDate,
-      medical_reason: medicalReason,
-      start_time: medicalStartTime,
-      end_time: medicalEndTime,
-      minutes_counted: minutesCounted,
-      reason: medicalNotes || null,
-      status: "pending",
-    });
-    toast.success("Arzttermin eingereicht");
-    setMedicalDate("");
-    setMedicalStartTime("");
-    setMedicalEndTime("");
-    setMedicalReason("acute");
-    setMedicalNotes("");
-    loadData();
-  } catch (error: any) {
-    toast.error(error.message);
-  }
-};
-```
-
-**Neue UI-Komponente (nach Krankmeldung):**
-```typescript
-<Card>
-  <CardHeader>
-    <CardTitle className="flex items-center gap-2">
-      <span>🏥</span>
-      Arzttermin melden
-    </CardTitle>
-    <CardDescription>
-      Bezahlte Freistellung für akute Arztbesuche, Facharzttermine oder Nachsorge
-    </CardDescription>
-  </CardHeader>
-  <CardContent className="space-y-4">
-    <div className="grid grid-cols-3 gap-4">
-      <div>
-        <Label>Datum</Label>
-        <Input type="date" value={medicalDate} onChange={e => setMedicalDate(e.target.value)} />
-      </div>
-      <div>
-        <Label>Von</Label>
-        <Input type="time" value={medicalStartTime} onChange={e => setMedicalStartTime(e.target.value)} />
-      </div>
-      <div>
-        <Label>Bis</Label>
-        <Input type="time" value={medicalEndTime} onChange={e => setMedicalEndTime(e.target.value)} />
-      </div>
-    </div>
-    <div>
-      <Label>Art des Termins</Label>
-      <Select value={medicalReason} onValueChange={setMedicalReason}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="acute">Akuter Arztbesuch (plötzliche Beschwerden)</SelectItem>
-          <SelectItem value="specialist">Unaufschiebbarer Facharzttermin</SelectItem>
-          <SelectItem value="follow_up">Nachsorge nach OP</SelectItem>
-          <SelectItem value="pregnancy">Schwangerschaftsvorsorge</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-    <div>
-      <Label>Notizen</Label>
-      <Textarea value={medicalNotes} onChange={e => setMedicalNotes(e.target.value)} placeholder="Optional" />
-    </div>
-    <Button onClick={handleReportMedical}>Arzttermin einreichen</Button>
-  </CardContent>
-</Card>
-```
-
-**Tabelle für Arzttermine (in separater Card):**
-```typescript
-<Card>
-  <CardHeader>
-    <CardTitle>Arzttermine {selectedMonth.getFullYear()}</CardTitle>
-  </CardHeader>
-  <CardContent>
-    {medicalLeaves.length === 0 ? (
-      <p className="text-sm text-muted-foreground">Keine Arzttermine vorhanden</p>
-    ) : (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Datum</TableHead>
-            <TableHead>Zeit</TableHead>
-            <TableHead>Art</TableHead>
-            <TableHead>Dauer</TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {medicalLeaves.map(m => (
-            <TableRow key={m.id}>
-              <TableCell>{format(parseISO(m.start_date), "dd.MM.yyyy")}</TableCell>
-              <TableCell>{m.start_time} - {m.end_time}</TableCell>
-              <TableCell>
-                <Badge variant="outline">
-                  {m.medical_reason === 'acute' ? 'Akut' :
-                   m.medical_reason === 'specialist' ? 'Facharzt' :
-                   m.medical_reason === 'follow_up' ? 'Nachsorge' :
-                   m.medical_reason === 'pregnancy' ? 'Schwangerschaft' : m.medical_reason}
-                </Badge>
-              </TableCell>
-              <TableCell>{fmt(m.minutes_counted || 0)}</TableCell>
-              <TableCell>{getStatusBadge(m.status)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    )}
-  </CardContent>
-</Card>
-```
-
----
-
-## 4. UI für Überstundenabbau hinzufügen
-
-**Neue States:**
-```typescript
-const [overtimeStartDate, setOvertimeStartDate] = useState("");
-const [overtimeEndDate, setOvertimeEndDate] = useState("");
-const [overtimeReason, setOvertimeReason] = useState("");
-```
-
-**Überstundensaldo berechnen (vereinfacht für MVP):**
-```typescript
-const overtimeBalance = useMemo(() => {
-  // Vereinfachte Berechnung: Gesamt-Differenz aller Monate
-  // Für eine vollständige Implementierung müssten alle Einträge über alle Monate geladen werden
-  return monthlyTotals.difference;  // Positive Zahl = Überstunden vorhanden
-}, [monthlyTotals]);
-```
-
-**Neue Handler-Funktion:**
-```typescript
-const handleRequestOvertimeReduction = async () => {
-  if (!user || !overtimeStartDate || !overtimeEndDate) {
-    toast.error("Bitte beide Felder ausfüllen");
-    return;
-  }
-  
-  // Arbeitstage berechnen
-  const days = eachDayOfInterval({ 
-    start: parseISO(overtimeStartDate), 
-    end: parseISO(overtimeEndDate) 
-  }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length;
-  
-  const requiredMinutes = days * dailyMinutes;
-  
-  // Hinweis: Vollständige Überstundenprüfung erfordert Laden aller historischen Daten
-  // Für MVP zeigen wir nur einen Hinweis
-  
-  try {
-    await supabase.from("leave_requests").insert({
-      user_id: user.id,
-      type: "overtime_reduction",
-      start_date: overtimeStartDate,
-      end_date: overtimeEndDate,
-      reason: overtimeReason || null,
-      status: "pending",
-    });
-    toast.success("Überstundenabbau beantragt");
-    setOvertimeStartDate("");
-    setOvertimeEndDate("");
-    setOvertimeReason("");
-    loadData();
-  } catch (error: any) {
-    toast.error(error.message);
-  }
-};
-```
-
-**Neue UI-Komponente:**
-```typescript
-<Card>
-  <CardHeader>
-    <CardTitle className="flex items-center gap-2">
-      <span>⏰</span>
-      Überstundenabbau beantragen
-    </CardTitle>
-    <CardDescription>
-      Mehrstunden als freie Tage nehmen statt Urlaub
-    </CardDescription>
-  </CardHeader>
-  <CardContent className="space-y-4">
-    {/* Info-Box mit aktuellem Stand */}
-    <div className="p-3 rounded-lg bg-muted/50 text-sm">
-      <div className="flex justify-between">
-        <span>Überstunden (aktueller Monat):</span>
-        <span className={`font-mono font-bold ${monthlyTotals.difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-          {monthlyTotals.difference >= 0 ? '+' : ''}{fmt(monthlyTotals.difference)}
-        </span>
-      </div>
-      <p className="text-xs text-muted-foreground mt-1">
-        Hinweis: Der Gesamtstand wird bei der Genehmigung geprüft.
-      </p>
-    </div>
+export function useCombinedTimeEntries({...}): CombinedTimeEntry[] {
+  return useMemo(() => {
+    const combined: CombinedTimeEntry[] = [];
+    const config = typeConfig;
     
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <Label>Von</Label>
-        <Input type="date" value={overtimeStartDate} onChange={e => setOvertimeStartDate(e.target.value)} />
-      </div>
-      <div>
-        <Label>Bis</Label>
-        <Input type="date" value={overtimeEndDate} onChange={e => setOvertimeEndDate(e.target.value)} />
-      </div>
-    </div>
-    <div>
-      <Label>Anmerkung</Label>
-      <Textarea value={overtimeReason} onChange={e => setOvertimeReason(e.target.value)} placeholder="Optional" />
-    </div>
-    <Button onClick={handleRequestOvertimeReduction}>Überstundenabbau beantragen</Button>
-  </CardContent>
-</Card>
+    // Hilfsfunktionen für Datum-Checks
+    const holidayDates = new Set(
+      holidays
+        .filter(h => {
+          const d = parseISO(h.holiday_date);
+          return d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6;
+        })
+        .map(h => h.holiday_date)
+    );
+    
+    const vacationDates = new Set<string>();
+    vacationLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      try {
+        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+          .forEach(day => vacationDates.add(format(day, 'yyyy-MM-dd')));
+      } catch (e) {}
+    });
+    
+    const sickDates = new Set<string>();
+    sickLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      try {
+        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+          .forEach(day => sickDates.add(format(day, 'yyyy-MM-dd')));
+      } catch (e) {}
+    });
+    
+    const overtimeDates = new Set<string>();
+    overtimeLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      try {
+        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+          .forEach(day => overtimeDates.add(format(day, 'yyyy-MM-dd')));
+      } catch (e) {}
+    });
+
+    // 1. PRIORITÄT: Feiertage (IMMER anzeigen)
+    holidays.forEach(holiday => {
+      const holidayDate = parseISO(holiday.holiday_date);
+      if (holidayDate < monthStart || holidayDate > monthEnd) return;
+      if (holidayDate.getDay() === 0 || holidayDate.getDay() === 6) return;
+      
+      combined.push({
+        id: `holiday-${holiday.id}`,
+        work_date: holiday.holiday_date,
+        started_at: null,
+        ended_at: null,
+        minutes: dailyMinutes,
+        pause_minutes: 0,
+        notes: holiday.name,
+        entry_type: 'holiday',
+        is_editable: false,
+        is_deletable: false,
+        holiday_id: holiday.id,
+        type_label: config.holiday.label,
+        type_icon: config.holiday.icon,
+        type_class: config.holiday.className,
+      });
+    });
+
+    // 2. PRIORITÄT: Krankmeldungen (nur wenn KEIN Feiertag)
+    sickLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+        .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+        .forEach(day => {
+          const dateStr = format(day, 'yyyy-MM-dd');
+          if (holidayDates.has(dateStr)) return; // Feiertag hat Vorrang
+          if (combined.some(c => c.work_date === dateStr)) return; // Bereits eingetragen
+          
+          combined.push({...sick entry...});
+        });
+    });
+
+    // 3. PRIORITÄT: Urlaub (nur wenn KEIN Feiertag und KEINE Krankheit)
+    vacationLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+        .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+        .forEach(day => {
+          const dateStr = format(day, 'yyyy-MM-dd');
+          if (holidayDates.has(dateStr)) return; // Feiertag hat Vorrang
+          if (sickDates.has(dateStr)) return; // Krankheit hat Vorrang
+          if (combined.some(c => c.work_date === dateStr)) return;
+          
+          combined.push({...vacation entry...});
+        });
+    });
+
+    // 4. PRIORITÄT: Überstundenabbau
+    overtimeLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+        .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+        .forEach(day => {
+          const dateStr = format(day, 'yyyy-MM-dd');
+          if (holidayDates.has(dateStr)) return;
+          if (sickDates.has(dateStr)) return;
+          if (vacationDates.has(dateStr)) return;
+          if (combined.some(c => c.work_date === dateStr)) return;
+          
+          combined.push({...overtime entry...});
+        });
+    });
+
+    // 5. PRIORITÄT: Arzttermine (können parallel zu Arbeit existieren)
+    medicalLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      const dateStr = leave.start_date;
+      const date = parseISO(dateStr);
+      if (date < monthStart || date > monthEnd) return;
+      // Arzttermine werden IMMER hinzugefügt (können zusätzlich zur Arbeit sein)
+      combined.push({...medical entry...});
+    });
+
+    // 6. PRIORITÄT: Arbeitseinträge (NUR wenn kein Feiertag/Urlaub/Krankheit/Überstundenabbau)
+    entries.forEach(e => {
+      const dateStr = e.work_date;
+      
+      // WICHTIG: Arbeitseinträge an Feiertagen/Urlaub/Krankheit NICHT anzeigen
+      if (holidayDates.has(dateStr)) {
+        console.warn(`Arbeitseintrag an Feiertag ignoriert: ${dateStr}`);
+        return;
+      }
+      if (vacationDates.has(dateStr)) {
+        console.warn(`Arbeitseintrag an Urlaubstag ignoriert: ${dateStr}`);
+        return;
+      }
+      if (sickDates.has(dateStr)) {
+        console.warn(`Arbeitseintrag an Krankheitstag ignoriert: ${dateStr}`);
+        return;
+      }
+      if (overtimeDates.has(dateStr)) {
+        console.warn(`Arbeitseintrag an Überstundenabbau-Tag ignoriert: ${dateStr}`);
+        return;
+      }
+      
+      combined.push({...work entry...});
+    });
+
+    combined.sort((a, b) => new Date(b.work_date).getTime() - new Date(a.work_date).getTime());
+    return combined;
+  }, [...]);
+}
 ```
 
-**Tabelle für Überstundenabbau:**
-```typescript
-<Card>
-  <CardHeader>
-    <CardTitle>Überstundenabbau {selectedMonth.getFullYear()}</CardTitle>
-  </CardHeader>
-  <CardContent>
-    {overtimeLeaves.length === 0 ? (
-      <p className="text-sm text-muted-foreground">Keine Überstundenabbau-Anträge vorhanden</p>
-    ) : (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Von</TableHead>
-            <TableHead>Bis</TableHead>
-            <TableHead>Tage</TableHead>
-            <TableHead>Anmerkung</TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {overtimeLeaves.map(o => {
-            const d = eachDayOfInterval({ start: parseISO(o.start_date), end: parseISO(o.end_date) })
-              .filter(d => d.getDay() !== 0 && d.getDay() !== 6).length;
-            return (
-              <TableRow key={o.id}>
-                <TableCell>{format(parseISO(o.start_date), "dd.MM.yyyy")}</TableCell>
-                <TableCell>{format(parseISO(o.end_date), "dd.MM.yyyy")}</TableCell>
-                <TableCell>{d}</TableCell>
-                <TableCell>{o.reason || "-"}</TableCell>
-                <TableCell>{getStatusBadge(o.status)}</TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    )}
-  </CardContent>
-</Card>
+---
+
+## 3. Visuelle Darstellung nach der Korrektur
+
+**Vor der Korrektur (aktuell):**
+```
+01.01.2026  Arbeit   08:00  16:24  30 Min  8:24  8:24  Feiertag, System erkennt...
+02.01.2026  Arbeit   08:00  16:24  30 Min  8:24  8:24  Urlaub, System verrechnet...
+06.01.2026  Arbeit   08:00  16:24  30 Min  8:24  8:24  Feiertag, System erkennt...
+```
+
+**Nach der Korrektur:**
+```
+01.01.2026  🎉 Feiertag    -      -     0 Min  8:33  8:33  Neujahr
+02.01.2026  🏖️ Urlaub      -      -     0 Min  8:33  8:33  Weihnachten
+06.01.2026  🎉 Feiertag    -      -     0 Min  8:33  8:33  Heilige Drei Könige
+07.01.2026  Arbeit   08:43  17:09  30 Min  8:26  7:56  -  ← Netto jetzt korrekt!
 ```
 
 ---
 
 ## Zusammenfassung der Änderungen
 
-| Datei | Änderungen |
-|-------|------------|
-| `src/components/TimeTrackingView.tsx` | 1) Formatierung korrigieren (dailyMinutes verwenden), 2) UI für Arzttermine, 3) UI für Überstundenabbau |
-| `supabase/functions/sync-holidays/index.ts` | Edge Function deployen |
+| Datei | Änderung |
+|-------|----------|
+| **SQL-Migration** | 1) Trigger `time_entries_calculate_net` erstellen, 2) Bestehende Einträge korrigieren |
+| `src/hooks/useCombinedTimeEntries.ts` | Prioritätslogik umkehren: Feiertage > Urlaub > Krankheit > Arbeit |
 
 ---
 
-## Zusätzlich benötigt: Import für Select-Komponente
+## Wichtige Hinweise
 
-```typescript
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-```
-
----
-
-## Layout-Struktur im "Urlaub & Krankmeldungen" Tab
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│ Ausstehende Anträge (falls vorhanden)                                   │
-└─────────────────────────────────────────────────────────────────────────┘
-
-┌───────────────────────────┐  ┌───────────────────────────┐
-│ Urlaub beantragen         │  │ Urlaubskonto 2026         │
-└───────────────────────────┘  └───────────────────────────┘
-
-┌───────────────────────────┐  ┌───────────────────────────┐
-│ Krankmeldung              │  │ Krankmeldungen 2026       │
-└───────────────────────────┘  └───────────────────────────┘
-
-┌───────────────────────────┐  ┌───────────────────────────┐
-│ Arzttermin melden 🏥      │  │ Arzttermine 2026          │
-│ - Datum, Von, Bis         │  │ (Tabelle)                 │
-│ - Art des Termins         │  │                           │
-│ - Notizen                 │  │                           │
-└───────────────────────────┘  └───────────────────────────┘
-
-┌───────────────────────────┐  ┌───────────────────────────┐
-│ Überstundenabbau ⏰       │  │ Überstundenabbau 2026     │
-│ - Überstunden-Info        │  │ (Tabelle)                 │
-│ - Von, Bis                │  │                           │
-│ - Anmerkung               │  │                           │
-└───────────────────────────┘  └───────────────────────────┘
-```
+1. **Bestehende Arbeitseinträge** an Feiertagen/Urlaubstagen werden **nicht gelöscht**, aber **nicht mehr angezeigt** in der kombinierten Liste
+2. Der Admin sollte prüfen, ob diese Einträge manuell gelöscht werden sollen
+3. Neue Einträge an Feiertagen/Urlaubstagen können weiterhin erstellt werden (für Sonderfälle), aber die Anzeige priorisiert Feiertage/Urlaub
 
 ---
 
@@ -444,8 +237,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 | Änderung | Zeit |
 |----------|------|
-| Formatierung korrigieren | 10 Min |
-| Edge Function deployen | 5 Min |
-| UI Arzttermine | 25 Min |
-| UI Überstundenabbau | 20 Min |
-| **Gesamt** | **~60 Min** |
+| SQL-Migration (Trigger + Datenkorrektur) | 5 Min |
+| Hook-Logik umschreiben | 20 Min |
+| Testen | 10 Min |
+| **Gesamt** | **~35 Min** |
