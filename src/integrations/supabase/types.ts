@@ -4493,9 +4493,13 @@ export type Database = {
         Row: {
           created_at: string
           end_date: string
+          end_time: string | null
           id: string
+          medical_reason: string | null
+          minutes_counted: number | null
           reason: string | null
           start_date: string
+          start_time: string | null
           status: Database["public"]["Enums"]["leave_status"]
           type: Database["public"]["Enums"]["leave_type"]
           updated_at: string
@@ -4504,9 +4508,13 @@ export type Database = {
         Insert: {
           created_at?: string
           end_date: string
+          end_time?: string | null
           id?: string
+          medical_reason?: string | null
+          minutes_counted?: number | null
           reason?: string | null
           start_date: string
+          start_time?: string | null
           status?: Database["public"]["Enums"]["leave_status"]
           type: Database["public"]["Enums"]["leave_type"]
           updated_at?: string
@@ -4515,9 +4523,13 @@ export type Database = {
         Update: {
           created_at?: string
           end_date?: string
+          end_time?: string | null
           id?: string
+          medical_reason?: string | null
+          minutes_counted?: number | null
           reason?: string | null
           start_date?: string
+          start_time?: string | null
           status?: Database["public"]["Enums"]["leave_status"]
           type?: Database["public"]["Enums"]["leave_type"]
           updated_at?: string
@@ -8921,7 +8933,12 @@ export type Database = {
         | "rejected"
         | "cancel_requested"
         | "cancelled"
-      leave_type: "vacation" | "sick" | "other"
+      leave_type:
+        | "vacation"
+        | "sick"
+        | "other"
+        | "medical"
+        | "overtime_reduction"
       user_status_type:
         | "online"
         | "meeting"
@@ -9065,7 +9082,13 @@ export const Constants = {
         "cancel_requested",
         "cancelled",
       ],
-      leave_type: ["vacation", "sick", "other"],
+      leave_type: [
+        "vacation",
+        "sick",
+        "other",
+        "medical",
+        "overtime_reduction",
+      ],
       user_status_type: [
         "online",
         "meeting",
