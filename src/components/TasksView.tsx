@@ -977,64 +977,131 @@ export function TasksView() {
         .eq('id', taskId);
 
       if (error) {
-        throw new Error(`Status-Update fehlgeschlagen: ${error.message}`);
+        // Check for network errors
+        const isNetworkError = error.message?.includes('Failed to fetch') || 
+                               error.message?.includes('NetworkError') ||
+                               error.message?.includes('TypeError');
+        
+        if (isNetworkError) {
+          console.warn('Network interruption, verifying task status...', error);
+          
+          // Verify after delay
+          setTimeout(async () => {
+            const { data: freshTask } = await supabase
+              .from('tasks')
+              .select('*')
+              .eq('id', taskId)
+              .single();
+            
+            if (!freshTask) {
+              // Task was deleted (archived successfully)
+              setTasks(prev => prev.filter(t => t.id !== taskId));
+              toast({
+                title: "Status aktualisiert",
+                description: "Aufgabe wurde archiviert."
+              });
+            } else if (freshTask.status === newStatus) {
+              // Status update was successful
+              loadTasks();
+              toast({
+                title: "Status aktualisiert",
+                description: newStatus === "completed" 
+                  ? "Aufgabe wurde als erledigt markiert."
+                  : "Aufgabe wurde als offen markiert."
+              });
+            } else {
+              // Update didn't go through, revert UI
+              setTasks(prev => prev.map(t => 
+                t.id === taskId ? { ...t, status: originalStatus } : t
+              ));
+            }
+            
+            setProcessingTaskIds(prev => {
+              const next = new Set(prev);
+              next.delete(taskId);
+              return next;
+            });
+          }, 500);
+          
+          return; // Don't proceed, let verification handle it
+        }
+        
+        throw error;
       }
 
       // If task is completed, archive it
       if (newStatus === "completed") {
-        try {
-          const { error: archiveError } = await supabase
-            .from('archived_tasks')
-            .insert({
-              task_id: taskId,
-              user_id: user.id,
-              title: task.title,
-              description: task.description,
-              priority: task.priority,
-              category: task.category,
-              assigned_to: task.assignedTo || '',
-              progress: 100,
-              due_date: task.dueDate,
-              completed_at: new Date().toISOString(),
-              auto_delete_after_days: null,
-            } as any);
+        const { error: archiveError } = await supabase
+          .from('archived_tasks')
+          .insert({
+            task_id: taskId,
+            user_id: user.id,
+            title: task.title,
+            description: task.description,
+            priority: task.priority,
+            category: task.category,
+            assigned_to: task.assignedTo || '',
+            progress: 100,
+            due_date: task.dueDate,
+            completed_at: new Date().toISOString(),
+            auto_delete_after_days: null,
+          } as any);
 
-          if (archiveError) {
-            throw new Error(`Archivierung fehlgeschlagen: ${archiveError.message}`);
-          }
-
-          // Delete the task from the tasks table
-          const { error: deleteError } = await supabase
-            .from('tasks')
-            .delete()
-            .eq('id', taskId);
-
-          if (deleteError) {
-            console.warn('Task archived but not deleted:', deleteError);
-            // Don't throw - archive was successful
+        if (archiveError) {
+          const isNetworkError = archiveError.message?.includes('Failed to fetch') || 
+                                 archiveError.message?.includes('NetworkError');
+          
+          if (isNetworkError) {
+            // Verify after delay
+            setTimeout(async () => {
+              const { data: archived } = await supabase
+                .from('archived_tasks')
+                .select('id')
+                .eq('task_id', taskId)
+                .single();
+              
+              if (archived) {
+                // Archive succeeded, delete task
+                await supabase.from('tasks').delete().eq('id', taskId);
+                setTasks(prev => prev.filter(t => t.id !== taskId));
+                setShowUnicorn(true);
+                toast({
+                  title: "Status aktualisiert",
+                  description: "Aufgabe wurde archiviert."
+                });
+              }
+              loadTasks();
+              
+              setProcessingTaskIds(prev => {
+                const next = new Set(prev);
+                next.delete(taskId);
+                return next;
+              });
+            }, 500);
+            return;
           }
           
-          // Mark notifications as read (don't await - fire and forget)
-          void supabase
-            .from('notifications')
-            .update({ is_read: true })
-            .eq('user_id', user.id)
-            .eq('navigation_context', 'tasks');
-            
-          // Trigger unicorn animation
-          setShowUnicorn(true);
-          
-        } catch (archiveErr: any) {
-          // Rollback the status update in the database
+          // Real error - rollback
           await supabase
             .from('tasks')
             .update({ status: originalStatus, progress: originalProgress })
             .eq('id', taskId);
-          throw archiveErr;
+          throw archiveError;
         }
+
+        // Delete task from tasks table
+        await supabase.from('tasks').delete().eq('id', taskId);
+        
+        // Fire and forget: mark notifications as read
+        void supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', user.id)
+          .eq('navigation_context', 'tasks');
+          
+        setShowUnicorn(true);
       }
 
-      // Reload tasks after successful operation
       loadTasks();
       
       toast({
@@ -1047,19 +1114,28 @@ export function TasksView() {
     } catch (error: any) {
       console.error('Error updating task:', error);
       
-      // Rollback UI on error
+      // Check for network errors in catch
+      const isNetworkError = error?.message?.includes('Failed to fetch') || 
+                             error?.message?.includes('NetworkError');
+      
+      if (isNetworkError) {
+        setTimeout(() => loadTasks(), 500);
+        setProcessingTaskIds(prev => {
+          const next = new Set(prev);
+          next.delete(taskId);
+          return next;
+        });
+        return;
+      }
+      
+      // Rollback UI on real error
       setTasks(prev => prev.map(t => 
         t.id === taskId ? { ...t, status: originalStatus } : t
       ));
       
-      // More descriptive error message for network errors
-      const errorMessage = error.message?.includes('fetch') 
-        ? "Netzwerkfehler - bitte Internetverbindung prüfen und erneut versuchen."
-        : error.message || "Status konnte nicht aktualisiert werden.";
-      
       toast({
         title: "Fehler",
-        description: errorMessage,
+        description: error.message || "Status konnte nicht aktualisiert werden.",
         variant: "destructive"
       });
     } finally {
