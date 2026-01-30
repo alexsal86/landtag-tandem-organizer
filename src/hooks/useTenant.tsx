@@ -53,6 +53,16 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log('🏢 Fetching tenant memberships for user:', user.id);
       
+      // Clean up legacy global key (one-time migration)
+      const legacyKey = 'currentTenantId';
+      if (localStorage.getItem(legacyKey)) {
+        localStorage.removeItem(legacyKey);
+        console.log('🧹 Cleaned up legacy tenant storage key');
+      }
+      
+      // User-specific storage key for tenant isolation
+      const tenantStorageKey = `currentTenantId_${user.id}`;
+      
       // Fetch user's tenant memberships with tenant details
       const { data: membershipData, error: membershipError } = await supabase
         .from('user_tenant_memberships')
@@ -78,30 +88,38 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
       setMemberships(membershipsWithTenants);
       setTenants(tenantsData);
 
-      console.log('🏢 Available tenants:', tenantsData);
+      console.log('🏢 Available tenants for user:', tenantsData.map(t => t.name));
 
-      // Set current tenant from localStorage or default to first tenant
-      const savedTenantId = localStorage.getItem('currentTenantId');
+      // Set current tenant from user-specific localStorage or default to first tenant
+      const savedTenantId = localStorage.getItem(tenantStorageKey);
       let currentTenantToSet = null;
 
       if (savedTenantId) {
+        // Only use if tenant exists in user's available tenants
         currentTenantToSet = tenantsData.find(t => t.id === savedTenantId) || null;
-        console.log('🏢 Restored tenant from localStorage:', currentTenantToSet);
+        
+        if (currentTenantToSet) {
+          console.log('🏢 Restored tenant from localStorage:', currentTenantToSet.name);
+        } else {
+          // Stored tenant is not accessible - remove it
+          console.warn('⚠️ Stored tenant not accessible for this user, clearing localStorage');
+          localStorage.removeItem(tenantStorageKey);
+        }
       }
 
+      // Fallback to first available tenant
       if (!currentTenantToSet && tenantsData.length > 0) {
         currentTenantToSet = tenantsData[0];
-        console.log('🏢 Using first available tenant:', currentTenantToSet);
+        console.log('🏢 Using first available tenant:', currentTenantToSet.name);
       }
 
       setCurrentTenant(currentTenantToSet);
       if (currentTenantToSet) {
-        localStorage.setItem('currentTenantId', currentTenantToSet.id);
+        localStorage.setItem(tenantStorageKey, currentTenantToSet.id);
         console.log('🏢 Current tenant set to:', currentTenantToSet.name);
       } else {
         console.warn('⚠️ No tenant available for user - user may need tenant assignment');
-        // Clear any stale tenant ID from localStorage to prevent issues
-        localStorage.removeItem('currentTenantId');
+        localStorage.removeItem(tenantStorageKey);
       }
     } catch (error) {
       console.error('Error in fetchTenants:', error);
@@ -111,10 +129,14 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const switchTenant = (tenantId: string) => {
+    if (!user) return;
+    
     const tenant = tenants.find(t => t.id === tenantId);
     if (tenant) {
       setCurrentTenant(tenant);
-      localStorage.setItem('currentTenantId', tenantId);
+      // Use user-specific key for tenant isolation
+      localStorage.setItem(`currentTenantId_${user.id}`, tenantId);
+      console.log('🏢 Switched to tenant:', tenant.name);
     }
   };
 

@@ -46,6 +46,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         details: { user_id: user.id }
       });
     }
+    
+    // Clear tenant selection on logout to prevent cross-user tenant leakage
+    // Remove both legacy global key and user-specific key
+    localStorage.removeItem('currentTenantId');
+    if (user?.id) {
+      localStorage.removeItem(`currentTenantId_${user.id}`);
+    }
+    
     await supabase.auth.signOut();
   };
 
