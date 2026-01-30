@@ -1,328 +1,231 @@
 
-# Plan: Zeiterfassung für Team - 5 Korrekturen
+# Plan: Monatssoll-Berechnung korrigieren & Admin-Zeiterfassungsübersicht
 
-## Zusammenfassung der gefundenen Probleme
+## Zusammenfassung der Probleme
 
-### Problem 1: Berechnung der täglichen Arbeitszeit falsch
-**Aktuell (Zeile 158, TimeTrackingView.tsx):**
-```typescript
-const dailyHours = employeeSettings.hours_per_month / employeeSettings.days_per_month
-```
-**Richtig sollte sein:**
-```typescript
-const dailyHours = employeeSettings.hours_per_week / employeeSettings.days_per_week
-```
-Bei 39,5 Stunden und 5 Tagen ergibt das 7,9 Stunden (7 Std. 54 Min.) pro Tag.
+### Problem 1: Monatssoll-Berechnung falsch
+**Aktueller Zustand:**
+- Die Datenbank speichert `hours_per_month = 171` als statischen Wert
+- Das entspricht `39.5h/Woche * 52 Wochen / 12 Monate = 171h` (Durchschnitt)
+- **Aber:** Für Januar 2026 gibt es nur 20 Arbeitstage (abzüglich Wochenenden und Feiertagen)
+- Korrektes Soll: `7.9h/Tag × 20 Tage = 158 Stunden`
 
-### Problem 2: Pause wird nicht von Bruttozeit abgezogen
-**Ursache:** Es gibt zwei konkurrierende Datenbank-Trigger:
-1. `trg_time_entries_set_minutes` → Berechnet `minutes = Bruttozeit` (ohne Pause)
-2. `time_entries_calculate_net` → Sollte `minutes = Bruttozeit - Pause` berechnen
+**Lösung:**
+- Das Monatssoll muss **dynamisch** berechnet werden:
+  1. `dailyHours = hours_per_week / days_per_week` (z.B. 39.5 / 5 = 7.9h)
+  2. `monthlyTarget = dailyHours × tatsächliche Arbeitstage im Monat`
+  3. Arbeitstage = Kalendertage - Wochenenden - Feiertage
 
-Der erste Trigger überschreibt den zweiten. Aktuelle Daten zeigen:
-- `gross_minutes = 570`, `pause_minutes = 30`, aber `minutes = 570` (sollte 540 sein)
+**Betroffene Dateien:**
+- `TimeTrackingView.tsx` - bereits korrekt (Zeile 210-211 berechnet dynamisch)
+- `MyWorkTimeTrackingTab.tsx` - **FALSCH** (Zeile 114: `hours_per_month / days_per_month`)
+- `EmployeeInfoTab.tsx` - zeigt statischen Wert (info-only, aber irreführend)
 
-### Problem 3: Überstundenabbau/Arzttermine werden als "Sonstiges" angezeigt
-**Ursache (Zeile 27+1339, EmployeesView.tsx):**
-```typescript
-type LeaveType = "vacation" | "sick" | "other"; // Fehlt: medical, overtime_reduction
+### Problem 2: Neue Admin-Zeiterfassungsübersicht
 
-// Zeile 1340:
-{req.type === "vacation" ? "Urlaub" : req.type === "sick" ? "Krank" : "Sonstiges"}
-```
-Die Typen `medical` und `overtime_reduction` werden nicht erkannt und fallen auf "Sonstiges" zurück.
-
-### Problem 4: "Failed to fetch" bei Ablehnung von Anträgen
-**Ursache (Zeile 707-758):** Die `handleLeaveAction` Funktion hat keine Fehlerbehandlung für Netzwerkunterbrechungen, die das resiliente Mutation-Pattern erfordert.
-
-### Problem 5: Abgeordneter kann Zeiteinträge nicht bearbeiten
-**Ursache:** 
-- RLS-Policies erlauben Admin-Zugriff (`is_admin_of(user_id)`)
-- Aber Frontend-Code filtert auf `.eq("user_id", user.id)` (Zeile 399)
-- Es fehlt eine Admin-Bearbeitungsfunktion in der UI
+Eine umfassende Übersicht für den Abgeordneten (Admin) fehlt, die:
+1. Alle Mitarbeiter-Zeiteinträge anzeigt
+2. Abwesenheitshistorie (Urlaub, Krankheit, Überstundenabbau, Arzttermine) mit Entscheidungen zeigt
+3. Direkte Bearbeitung aller Zeiteinträge ermöglicht
+4. Überstundenkorrekturen (z.B. auf Null setzen) ermöglicht
+5. Monatliche Übersichten pro Mitarbeiter bietet
 
 ---
 
 ## Technische Änderungen
 
-### Änderung 1: SQL-Migration - Trigger-Konflikt beheben
+### Änderung 1: MyWorkTimeTrackingTab.tsx - dailyHours korrigieren
 
-Der `trg_time_entries_set_minutes` Trigger muss entfernt werden, da `time_entries_calculate_net` die korrekte Logik hat:
-
-```sql
--- Entferne den alten Trigger der die Bruttozeit berechnet
-DROP TRIGGER IF EXISTS trg_time_entries_set_minutes ON public.time_entries;
-
--- Aktualisiere den ensure_net_minutes Trigger um auch Endzeit-Validierung zu machen
-CREATE OR REPLACE FUNCTION public.ensure_net_minutes()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $function$
-BEGIN
-  IF NEW.started_at IS NOT NULL AND NEW.ended_at IS NOT NULL THEN
-    -- Validierung: Endzeit muss nach Startzeit liegen
-    IF NEW.ended_at < NEW.started_at THEN
-      RAISE EXCEPTION 'ended_at cannot be earlier than started_at';
-    END IF;
-    -- Berechne Nettozeit = Brutto - Pause
-    NEW.minutes := ROUND(EXTRACT(EPOCH FROM (NEW.ended_at - NEW.started_at))/60) 
-                   - COALESCE(NEW.pause_minutes, 0);
-  END IF;
-  RETURN NEW;
-END;
-$function$;
-
--- Korrigiere alle existierenden Einträge (einmalig)
-UPDATE time_entries 
-SET minutes = ROUND(EXTRACT(EPOCH FROM (ended_at - started_at))/60) - COALESCE(pause_minutes, 0)
-WHERE started_at IS NOT NULL AND ended_at IS NOT NULL;
-```
-
-### Änderung 2: TimeTrackingView.tsx - Tägliche Arbeitszeit korrekt berechnen
-
-**Datei:** `src/components/TimeTrackingView.tsx`
-**Zeile 158:**
+**Datei:** `src/components/my-work/MyWorkTimeTrackingTab.tsx`
+**Zeile 112-115:**
 
 ```typescript
-// ALT:
-const dailyHours = employeeSettings ? employeeSettings.hours_per_month / employeeSettings.days_per_month : 8;
+// ALT (falsch):
+const dailyHours = useMemo(() => {
+  if (!employeeSettings) return 8;
+  return employeeSettings.hours_per_month / employeeSettings.days_per_month;
+}, [employeeSettings]);
 
-// NEU:
-const dailyHours = employeeSettings ? employeeSettings.hours_per_week / employeeSettings.days_per_week : 7.9;
+// NEU (korrekt):
+const dailyHours = useMemo(() => {
+  if (!employeeSettings) return 7.9;
+  // Tägliche Arbeitszeit = Wochenstunden / Arbeitstage pro Woche
+  return employeeSettings.hours_per_week / (employeeSettings.days_per_week || 5);
+}, [employeeSettings]);
 ```
 
-### Änderung 3: EmployeesView.tsx - Antragstypen korrekt anzeigen
-
-**Datei:** `src/components/EmployeesView.tsx`
-
-**Zeile 27 - Type erweitern:**
+**Zusätzlich:** Interface erweitern (Zeile 28-32):
 ```typescript
-type LeaveType = "vacation" | "sick" | "other" | "medical" | "overtime_reduction";
+interface EmployeeSettingsRow {
+  hours_per_week: number;
+  hours_per_month: number;
+  days_per_month: number;
+  days_per_week: number; // NEU
+}
 ```
 
-**Zeile 1338-1341 - Anzeige erweitern:**
-```tsx
-<TableCell>
-  <Badge variant="outline" className={
-    req.type === "medical" ? "bg-purple-50 text-purple-700 border-purple-200" :
-    req.type === "overtime_reduction" ? "bg-amber-50 text-amber-700 border-amber-200" :
-    undefined
-  }>
-    {req.type === "vacation" ? "Urlaub" : 
-     req.type === "sick" ? "Krank" : 
-     req.type === "medical" ? "🏥 Arzttermin" :
-     req.type === "overtime_reduction" ? "⏰ Überstundenabbau" :
-     "Sonstiges"}
-  </Badge>
-</TableCell>
-```
-
-**Zeile 376-379 - Aggregation für neue Typen:**
+**Query anpassen (Zeile 84):**
 ```typescript
-const initAgg = (): LeaveAgg => ({
-  counts: { vacation: 0, sick: 0, other: 0, medical: 0, overtime_reduction: 0 },
-  approved: { vacation: 0, sick: 0, other: 0, medical: 0, overtime_reduction: 0 },
-  pending: { vacation: 0, sick: 0, other: 0, medical: 0, overtime_reduction: 0 },
-  lastDates: {},
-});
+supabase.from("employee_settings")
+  .select("hours_per_week, hours_per_month, days_per_month, days_per_week")
+  .eq("user_id", user.id).single(),
 ```
 
-### Änderung 4: EmployeesView.tsx - Resilientes Mutation-Pattern für Anträge
+### Änderung 2: Neue Komponente AdminTimeTrackingView
 
-**Datei:** `src/components/EmployeesView.tsx`
-**Zeilen 707-758:**
+**Neue Datei:** `src/components/AdminTimeTrackingView.tsx`
 
+Diese umfassende Admin-Übersicht enthält:
+
+**2.1 Mitarbeiter-Auswahl mit Tabs:**
+- Dropdown oder Tabs zur Auswahl des Mitarbeiters
+- Schnellübersicht mit Soll/Ist pro Monat
+- Überstundensaldo-Anzeige
+
+**2.2 Monats-Zeittabelle:**
+- Alle Zeiteinträge des ausgewählten Mitarbeiters für den Monat
+- Bearbeitungs-Button pro Zeile (öffnet `AdminTimeEntryEditor`)
+- Anzeige von: Datum, Start, Ende, Brutto, Pause, Netto, Notizen, Bearbeitet-Badge
+- Farbliche Hervorhebung: Feiertage grün, Krankheit orange, Urlaub blau
+
+**2.3 Abwesenheitshistorie:**
+- Tabelle mit allen Anträgen des Mitarbeiters
+- Spalten: Typ, Zeitraum, Status, Entscheidung durch, Entscheidungsdatum
+- Filter nach Jahr
+- Badge-Farben: Urlaub 🏖️ blau, Krank 🤒 orange, Arzttermin 🏥 lila, Überstundenabbau ⏰ amber
+
+**2.4 Saldo-Korrektur-Funktion:**
 ```typescript
-const handleLeaveAction = async (leaveId: string, action: "approved" | "rejected") => {
-  const leaveRequest = pendingLeaves.find(req => req.id === leaveId);
-  
-  // Optimistic update
-  const previousLeaves = [...pendingLeaves];
-  setPendingLeaves(prev => prev.filter(l => l.id !== leaveId));
-  
-  try {
-    const { error } = await supabase
-      .from("leave_requests")
-      .update({ status: action })
-      .eq("id", leaveId);
-
-    if (error) throw error;
-
-    if (leaveRequest && action === "approved") {
-      await createVacationCalendarEntry(leaveRequest, leaveRequest.user_id);
-    } else if (leaveRequest && action === "rejected") {
-      // Kalendereintrag löschen bei Ablehnung
-      const { data: userProfile } = await supabase
-        .from("profiles")
-        .select("display_name")
-        .eq("user_id", leaveRequest.user_id)
-        .single();
-      
-      const userName = userProfile?.display_name || "Mitarbeiter";
-      await supabase
-        .from("appointments")
-        .delete()
-        .eq("title", `Anfrage Urlaub von ${userName}`)
-        .eq("start_time", new Date(leaveRequest.start_date).toISOString())
-        .eq("category", "vacation_request");
-    }
-
-    toast({
-      title: action === "approved" ? "Antrag genehmigt" : "Antrag abgelehnt",
-    });
-    
-    // Reload data ohne page reload
-    loadData();
-  } catch (error: any) {
-    // "Failed to fetch" Handling - Netzwerk-Problem
-    if (error?.message?.includes('Failed to fetch')) {
-      // Warte kurz und prüfe den tatsächlichen Status
-      await new Promise(r => setTimeout(r, 500));
-      const { data: checkData } = await supabase
-        .from("leave_requests")
-        .select("status")
-        .eq("id", leaveId)
-        .single();
-      
-      if (checkData?.status === action) {
-        // Operation war erfolgreich
-        toast({ title: action === "approved" ? "Antrag genehmigt" : "Antrag abgelehnt" });
-        loadData();
-        return;
-      }
-    }
-    
-    // Rollback bei echtem Fehler
-    setPendingLeaves(previousLeaves);
-    toast({
-      title: "Fehler",
-      description: error?.message ?? "Antrag konnte nicht aktualisiert werden.",
-      variant: "destructive",
-    });
-  }
+// Beispiel: Überstunden auf Null korrigieren
+const handleOvertimeCorrection = async (userId: string, correctionMinutes: number, reason: string) => {
+  // Erstellt einen speziellen Korrektur-Eintrag
+  await supabase.from("time_entry_corrections").insert({
+    user_id: userId,
+    correction_date: format(new Date(), "yyyy-MM-dd"),
+    correction_minutes: correctionMinutes, // negativ = Stunden abziehen
+    reason: reason,
+    created_by: adminUserId,
+  });
 };
 ```
 
-### Änderung 5: time_entries Tabelle - Spalte für Admin-Bearbeitung hinzufügen
-
-**SQL-Migration:**
+**2.5 SQL-Migration für Korrekturtabelle:**
 ```sql
--- Spalten für Admin-Bearbeitung
-ALTER TABLE time_entries 
-ADD COLUMN IF NOT EXISTS edited_by uuid REFERENCES auth.users(id),
-ADD COLUMN IF NOT EXISTS edited_at timestamptz,
-ADD COLUMN IF NOT EXISTS edit_reason text;
+CREATE TABLE IF NOT EXISTS public.time_entry_corrections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) NOT NULL,
+  correction_date date NOT NULL DEFAULT CURRENT_DATE,
+  correction_minutes integer NOT NULL, -- positiv = hinzufügen, negativ = abziehen
+  reason text NOT NULL,
+  created_by uuid REFERENCES auth.users(id) NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
 
--- Index für Performance
-CREATE INDEX IF NOT EXISTS idx_time_entries_edited_by ON time_entries(edited_by) WHERE edited_by IS NOT NULL;
+-- RLS
+ALTER TABLE time_entry_corrections ENABLE ROW LEVEL SECURITY;
+
+-- Nur Admins können Korrekturen erstellen/lesen
+CREATE POLICY "Admins can manage corrections" ON time_entry_corrections
+  FOR ALL USING (public.is_admin(auth.uid()));
+
+-- Mitarbeiter können eigene Korrekturen sehen
+CREATE POLICY "Users can view own corrections" ON time_entry_corrections
+  FOR SELECT USING (user_id = auth.uid());
 ```
 
-### Änderung 6: TimeTrackingView.tsx - Admin-Bearbeitungsfunktion
+### Änderung 3: Integration in EmployeesView
 
-**Neue Funktion und UI-Erweiterung:**
+**Datei:** `src/components/EmployeesView.tsx`
 
-```typescript
-// Neue Prop für Admin-Modus
-interface TimeTrackingViewProps {
-  userId?: string; // Falls als Admin für anderen User angezeigt
-  isAdminView?: boolean;
-}
-
-// Neue Funktion für Admin-Update (nach handleUpdateEntry)
-const handleAdminUpdateEntry = async (entryId: string, entryData: {
-  work_date: string;
-  started_at: string;
-  ended_at: string;
-  pause_minutes: number;
-  notes: string;
-  edit_reason: string;
-}) => {
-  if (!user) return;
-  
-  const start = new Date(`${entryData.work_date}T${entryData.started_at}`);
-  const end = new Date(`${entryData.work_date}T${entryData.ended_at}`);
-  
-  if (end <= start) {
-    toast.error("Endzeit muss nach Startzeit liegen");
-    return;
-  }
-  
-  const gross = Math.round((end.getTime() - start.getTime()) / 60000);
-  
-  try {
-    const { error } = await supabase
-      .from("time_entries")
-      .update({
-        work_date: entryData.work_date,
-        started_at: start.toISOString(),
-        ended_at: end.toISOString(),
-        pause_minutes: entryData.pause_minutes,
-        notes: entryData.notes,
-        edited_by: user.id,
-        edited_at: new Date().toISOString(),
-        edit_reason: entryData.edit_reason,
-      })
-      .eq("id", entryId);
-      // KEIN .eq("user_id", user.id) - RLS prüft is_admin_of()
-
-    if (error) throw error;
-    
-    toast.success("Eintrag vom Administrator bearbeitet");
-    loadData();
-  } catch (error: any) {
-    toast.error(error.message);
-  }
-};
-```
-
-**UI-Erweiterung in der Tabelle:**
+**Neuer Button im Header (nach Zeile 1297):**
 ```tsx
-// Neue Spalte in TableHeader
-<TableHead>Bearbeitet von</TableHead>
-
-// Neue Zelle in TableRow (nach Notizen)
-<TableCell>
-  {entry.edited_by && entry.edited_at && (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Badge variant="outline" className="bg-blue-50 text-blue-700">
-            ✏️ Bearbeitet
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Bearbeitet am {format(parseISO(entry.edited_at), "dd.MM.yyyy HH:mm")}</p>
-          {entry.edit_reason && <p>Grund: {entry.edit_reason}</p>}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )}
-</TableCell>
+<Button 
+  variant="outline" 
+  onClick={() => navigate("/employee?tab=timetracking")}
+  className="flex items-center gap-2"
+>
+  <Clock className="h-4 w-4" />
+  Zeiterfassung
+</Button>
 ```
 
-### Änderung 7: Neue Komponente AdminTimeEntryEditor
+**Oder: Neuer Tab in der Ansicht:**
+```tsx
+<Tabs defaultValue="overview">
+  <TabsList>
+    <TabsTrigger value="overview">Übersicht</TabsTrigger>
+    <TabsTrigger value="timetracking">Zeiterfassung</TabsTrigger>
+  </TabsList>
+  <TabsContent value="overview">
+    {/* Bestehende Mitarbeiterliste */}
+  </TabsContent>
+  <TabsContent value="timetracking">
+    <AdminTimeTrackingView />
+  </TabsContent>
+</Tabs>
+```
 
-**Neue Datei:** `src/components/AdminTimeEntryEditor.tsx`
+### Änderung 4: Admin-Zeiteinträge bearbeiten (bereits vorhanden, erweitern)
 
-Diese Komponente ermöglicht dem Abgeordneten, Zeiteinträge anderer Mitarbeiter zu bearbeiten:
+**Datei:** `src/components/AdminTimeEntryEditor.tsx`
 
-```typescript
-interface AdminTimeEntryEditorProps {
-  entry: TimeEntryRow & { 
-    user_name: string;
-    edited_by?: string;
-    edited_at?: string;
-    edit_reason?: string;
-  };
-  onSave: (data: AdminEditData) => Promise<void>;
-  onClose: () => void;
-}
+Zusätzliche Features:
+- Löschen-Button mit Bestätigung
+- Historie der Änderungen anzeigen
+- Duplikat-Prüfung (falls bereits Eintrag an diesem Tag existiert)
 
-// Dialog mit:
-// - Anzeige des Mitarbeiternamens
-// - Bearbeitungsfelder (Datum, Start, Ende, Pause, Notizen)
-// - Pflichtfeld "Grund der Änderung"
-// - Hinweis "Diese Änderung wird protokolliert"
+### Änderung 5: EmployeeInfoTab - Dynamisches Monatssoll anzeigen
+
+**Datei:** `src/components/EmployeeInfoTab.tsx`
+
+Statt statisches `hours_per_month` zu zeigen, Hinweis ergänzen:
+
+```tsx
+<Card>
+  <CardHeader className="pb-2">
+    <CardTitle className="text-sm text-muted-foreground">
+      Stunden/Monat (Durchschnitt)
+    </CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="text-2xl font-semibold">
+      {employeeSettings.hours_per_month}h
+    </div>
+    <div className="text-xs text-muted-foreground">
+      Tatsächliches Soll variiert je nach Arbeitstagen im Monat
+    </div>
+  </CardContent>
+</Card>
+```
+
+---
+
+## Struktur der AdminTimeTrackingView
+
+```text
+AdminTimeTrackingView
+├── Header
+│   ├── Mitarbeiter-Dropdown
+│   └── Monat-Navigation (← Januar 2026 →)
+│
+├── Übersichtskarten
+│   ├── Soll (dynamisch berechnet)
+│   ├── Ist (gearbeitete Stunden)
+│   ├── Saldo (+/- Überstunden)
+│   └── Abwesenheiten (Tage)
+│
+├── Tabs
+│   ├── "Zeiteinträge"
+│   │   └── Tabelle mit allen Einträgen + Bearbeiten-Button
+│   ├── "Abwesenheiten"
+│   │   └── Tabelle mit Urlaub/Krank/Arzt/Überstundenabbau + Status
+│   └── "Korrekturen"
+│       ├── Bisherige Korrekturen anzeigen
+│       └── "Korrektur hinzufügen" Button
+│
+└── Dialoge
+    ├── AdminTimeEntryEditor (bearbeiten)
+    └── CorrectionDialog (Saldo korrigieren)
 ```
 
 ---
@@ -331,20 +234,19 @@ interface AdminTimeEntryEditorProps {
 
 | # | Datei/Ressource | Problem | Lösung |
 |---|-----------------|---------|--------|
-| 1 | SQL-Migration | Zwei Trigger-Konflikte | Alten Trigger löschen, korrekten Trigger behalten |
-| 2 | `TimeTrackingView.tsx` | dailyHours falsch berechnet | `hours_per_week / days_per_week` verwenden |
-| 3 | `EmployeesView.tsx` | medical/overtime_reduction als "Sonstiges" | LeaveType erweitern, Labels anpassen |
-| 4 | `EmployeesView.tsx` | "Failed to fetch" Fehler | Resilientes Mutation-Pattern implementieren |
-| 5 | SQL-Migration | Admin-Bearbeitung nicht nachvollziehbar | Spalten `edited_by`, `edited_at`, `edit_reason` hinzufügen |
-| 6 | `TimeTrackingView.tsx` | Admin kann nicht bearbeiten | `handleAdminUpdateEntry` ohne user_id Filter |
-| 7 | Neue Komponente | UI für Admin-Bearbeitung | `AdminTimeEntryEditor.tsx` erstellen |
+| 1 | `MyWorkTimeTrackingTab.tsx` | dailyHours falsch berechnet | `hours_per_week / days_per_week` verwenden |
+| 2 | SQL-Migration | Keine Korrektur-Tabelle | `time_entry_corrections` erstellen |
+| 3 | Neue Komponente | Admin fehlt Überblick | `AdminTimeTrackingView.tsx` erstellen |
+| 4 | `EmployeesView.tsx` | Kein Zugang zur Admin-Zeiterfassung | Tab/Button hinzufügen |
+| 5 | `EmployeeInfoTab.tsx` | Statischer Wert irreführend | Hinweis "variiert je Monat" |
+| 6 | `AdminTimeEntryEditor.tsx` | Basis vorhanden | Erweitern um Löschen + Historie |
 
 ---
 
 ## Erwartete Ergebnisse
 
-1. **Tägliche Arbeitszeit:** Bei 39,5h/Woche und 5 Tagen = 7,9h (7:54) pro Tag
-2. **Nettozeit:** Pause wird korrekt abgezogen (z.B. 9:30 Brutto - 0:30 Pause = 9:00 Netto)
-3. **Antragstypen:** "🏥 Arzttermin" und "⏰ Überstundenabbau" werden deutlich angezeigt
-4. **Ablehnung:** Keine "Failed to fetch" Fehler mehr, optimistisches Update mit Rollback
-5. **Admin-Bearbeitung:** Abgeordneter kann alle Einträge bearbeiten, Änderungen werden protokolliert und für den Mitarbeiter sichtbar markiert
+1. **Korrektes Monatssoll:** Januar 2026 zeigt 158 Stunden statt 171
+2. **Admin-Übersicht:** Abgeordneter hat zentrale Anlaufstelle für alle Zeiterfassungsdaten
+3. **Abwesenheits-Transparenz:** Historie aller Anträge mit Entscheidungen sichtbar
+4. **Saldo-Korrektur:** Überstunden können administrativ auf beliebigen Wert korrigiert werden
+5. **Audit-Trail:** Alle Änderungen werden protokolliert und sind nachvollziehbar
