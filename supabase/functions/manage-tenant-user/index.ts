@@ -139,10 +139,11 @@ serve(async (req) => {
           throw new Error(`Failed to create user: ${createError.message}`);
         }
 
-        // Create profile
+        // Create profile with tenant_id (required by NOT NULL constraint)
         const { error: profileError } = await supabaseAdmin.from('profiles').insert({
           user_id: newUser.user.id,
-          display_name: displayName
+          display_name: displayName,
+          tenant_id: tenantId
         });
         if (profileError) console.error('Profile creation error:', profileError);
 
