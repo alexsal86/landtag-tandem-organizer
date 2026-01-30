@@ -985,7 +985,7 @@ export function TasksView() {
         if (isNetworkError) {
           console.warn('Network interruption, verifying task status...', error);
           
-          // Verify after delay
+          // Bei Netzwerkfehler UND Erledigt-Markierung: Nach Verzoegerung verifizieren und Archivierung nachholen
           setTimeout(async () => {
             const { data: freshTask } = await supabase
               .from('tasks')
@@ -996,18 +996,52 @@ export function TasksView() {
             if (!freshTask) {
               // Task was deleted (archived successfully)
               setTasks(prev => prev.filter(t => t.id !== taskId));
+              setShowUnicorn(true);
+              toast({
+                title: "Status aktualisiert",
+                description: "Aufgabe wurde archiviert."
+              });
+            } else if (freshTask.status === 'completed' && newStatus === 'completed') {
+              // Status wurde auf completed gesetzt - jetzt Archivierung pruefen und nachholen
+              const { data: existingArchive } = await supabase
+                .from('archived_tasks')
+                .select('id')
+                .eq('task_id', taskId)
+                .maybeSingle();
+              
+              if (!existingArchive) {
+                // Archiv-Eintrag fehlt - jetzt erstellen
+                await supabase.from('archived_tasks').insert({
+                  task_id: taskId,
+                  user_id: user.id,
+                  title: freshTask.title,
+                  description: freshTask.description,
+                  priority: freshTask.priority,
+                  category: freshTask.category,
+                  assigned_to: freshTask.assigned_to || '',
+                  progress: 100,
+                  due_date: freshTask.due_date,
+                  completed_at: new Date().toISOString(),
+                  auto_delete_after_days: null,
+                } as any);
+                
+                // Task loeschen
+                await supabase.from('tasks').delete().eq('id', taskId);
+              }
+              
+              // UI aktualisieren
+              setTasks(prev => prev.filter(t => t.id !== taskId));
+              setShowUnicorn(true);
               toast({
                 title: "Status aktualisiert",
                 description: "Aufgabe wurde archiviert."
               });
             } else if (freshTask.status === newStatus) {
-              // Status update was successful
+              // Non-completed status update was successful
               loadTasks();
               toast({
                 title: "Status aktualisiert",
-                description: newStatus === "completed" 
-                  ? "Aufgabe wurde als erledigt markiert."
-                  : "Aufgabe wurde als offen markiert."
+                description: "Aufgabe wurde als offen markiert."
               });
             } else {
               // Update didn't go through, revert UI

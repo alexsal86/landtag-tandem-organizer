@@ -272,7 +272,50 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         title: "Aufgabe wiederhergestellt",
         description: "Die Aufgabe wurde erfolgreich aktiviert und ist wieder in der Aufgabenliste verfügbar.",
       });
-    } catch (error) {
+    } catch (error: any) {
+      const isNetworkError = error?.message?.includes('Failed to fetch') || 
+                             error?.message?.includes('NetworkError') ||
+                             error?.message?.includes('TypeError');
+      
+      if (isNetworkError) {
+        // Bei Netzwerkfehler: Nach Verzoegerung verifizieren
+        setTimeout(async () => {
+          // Pruefen ob Task wiederhergestellt wurde
+          const { data: restoredTask } = await supabase
+            .from('tasks')
+            .select('id')
+            .eq('id', task.task_id)
+            .maybeSingle();
+          
+          if (restoredTask) {
+            // Erfolgreich wiederhergestellt - UI aktualisieren
+            setArchivedTasks(prev => prev.filter(t => t.id !== task.id));
+            
+            const restored: Task = {
+              id: task.task_id,
+              title: task.title,
+              description: task.description,
+              priority: task.priority,
+              status: 'todo',
+              dueDate: task.due_date,
+              category: task.category,
+              assignedTo: Array.isArray(task.assigned_to) ? task.assigned_to.join(',') : (task.assigned_to || ''),
+              progress: task.progress || 0,
+            };
+            
+            if (onTaskRestored) {
+              onTaskRestored(restored);
+            }
+            
+            toast({
+              title: "Aufgabe wiederhergestellt",
+              description: "Die Aufgabe wurde erfolgreich aktiviert."
+            });
+          }
+        }, 500);
+        return;
+      }
+      
       console.error('Error restoring archived task:', error);
       toast({
         title: "Fehler",
