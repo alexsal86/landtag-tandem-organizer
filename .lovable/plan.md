@@ -1,333 +1,151 @@
 
-# Plan: Aufgaben-Speicherung und Archivierung - Vollständige Behebung
+# Plan: Checkbox-Archivierung und Archiv-Wiederherstellung beheben
 
-## Problem-Analyse
+## Problem-Zusammenfassung
 
-Nach tiefgehender Untersuchung wurde festgestellt, dass das Problem durch **"Failed to fetch" Fehler** verursacht wird. Diese Fehler treten auf, wenn:
-- Die HTTP-Anfrage gesendet wird
-- React die Komponente re-rendert oder unmountet bevor die Antwort zurückkommt
-- Die Anfrage als "abgebrochen" markiert wird
+### Problem 1: Aufgabe verschwindet nicht nach Checkbox-Klick
+Wenn eine Aufgabe als erledigt markiert wird (Checkbox), passiert folgendes:
+1. Die Aufgabe wird optimistisch auf `status: "completed"` gesetzt
+2. Die Aufgabe wird in `archived_tasks` eingefuegt
+3. Die Aufgabe wird aus `tasks` geloescht
+4. `loadTasks()` wird aufgerufen, aber...
+5. **Die Aufgabe wird NICHT sofort aus der UI entfernt** - sie wartet auf das Nachladen
 
-**Wichtig**: Bei "Failed to fetch" wurden die Daten oft bereits gespeichert! Dies erklärt, warum die Änderungen nach einem Seiten-Reload sichtbar sind.
+**Ursache**: Der Code ruft `loadTasks()` auf (Zeile 1105), loescht die Aufgabe aber nicht aus dem lokalen State. Das Nachladen ist asynchron und die UI zeigt weiterhin die alte Liste.
 
-## Bewährtes Muster aus dem Projekt
-
-In `EventPlanningView.tsx` (Zeilen 1360-1388) existiert bereits eine robuste Lösung:
-- Bei Netzwerk-Fehlern wird **kein Fehler-Toast** angezeigt
-- Nach 500ms wird der aktuelle Stand vom Server geholt
-- Nur bei echten Datenbank-Fehlern (z.B. RLS-Verletzung) wird ein Fehler angezeigt
+### Problem 2: Archiv-Wiederherstellung zeigt Fehler
+Beim Wiederherstellen einer Aufgabe aus dem Archiv:
+1. Es wird geprueft, ob die Aufgabe mit `task_id` noch existiert
+2. Falls nicht, wird eine neue Aufgabe mit `tenant_id: currentTenant?.id` erstellt
+3. **Problem**: Wenn `currentTenant` leer oder `undefined` ist, wird eine leere `tenant_id` geschrieben
+4. Die RLS-Policy fuer `tasks` erfordert `tenant_id = ANY (get_user_tenant_ids(auth.uid()))`
+5. Eine leere `tenant_id` kann die RLS-Pruefung fehlschlagen lassen
 
 ---
 
-## Technische Änderungen
+## Technische Aenderungen
 
-### 1. TaskDetailSidebar.tsx - handleSave verbessern
-
-**Datei**: `src/components/TaskDetailSidebar.tsx`
-**Zeilen**: 203-264
-
-Die neue Implementierung unterscheidet zwischen echten Fehlern und Netzwerk-Abbrüchen:
-
-```typescript
-const handleSave = async () => {
-  if (!task) return;
-
-  setSaving(true);
-  
-  try {
-    const { error } = await supabase
-      .from('tasks')
-      .update({
-        title: editFormData.title,
-        description: editFormData.description,
-        priority: editFormData.priority,
-        status: editFormData.status,
-        due_date: editFormData.dueDate,
-        category: editFormData.category,
-        assigned_to: editFormData.assignedTo || '',
-        progress: editFormData.progress,
-      })
-      .eq('id', task.id);
-
-    if (error) {
-      // Check if this is a network error (request was sent but connection interrupted)
-      const isNetworkError = error.message?.includes('Failed to fetch') || 
-                             error.message?.includes('NetworkError') ||
-                             error.message?.includes('TypeError');
-      
-      if (isNetworkError) {
-        // Network interruption - data might have been saved, verify after delay
-        console.warn('Network interruption during save, verifying...', error);
-        
-        setTimeout(async () => {
-          // Verify the save by fetching fresh data
-          const { data: freshTask } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('id', task.id)
-            .single();
-          
-          if (freshTask) {
-            // Check if our changes were actually saved
-            const savedCorrectly = freshTask.title === editFormData.title &&
-                                   freshTask.description === editFormData.description;
-            
-            if (savedCorrectly) {
-              toast({
-                title: "Aufgabe gespeichert",
-                description: "Die Änderungen wurden erfolgreich gespeichert.",
-              });
-              
-              const updatedTask: Task = { ...task, ...editFormData as Task };
-              setEditFormData(updatedTask);
-              try { onTaskUpdate(updatedTask); } catch (e) {}
-            }
-          }
-        }, 500);
-        
-        return; // No error toast for network interruptions
-      }
-      
-      // Real database error - show error toast
-      throw error;
-    }
-    
-    // Success - show toast immediately
-    const updatedTask: Task = { ...task, ...editFormData as Task };
-    
-    toast({
-      title: "Aufgabe gespeichert",
-      description: "Die Änderungen wurden erfolgreich gespeichert.",
-    });
-    
-    setEditFormData(updatedTask);
-    try { onTaskUpdate(updatedTask); } catch (e) {}
-    
-  } catch (error: any) {
-    // Check for network errors in the catch block too
-    const isNetworkError = error?.message?.includes('Failed to fetch') || 
-                           error?.message?.includes('NetworkError') ||
-                           error?.message?.includes('TypeError');
-    
-    if (isNetworkError) {
-      // Verify after delay instead of showing error
-      setTimeout(async () => {
-        const { data: freshTask } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('id', task.id)
-          .single();
-        
-        if (freshTask && freshTask.title === editFormData.title) {
-          toast({
-            title: "Aufgabe gespeichert",
-            description: "Die Änderungen wurden erfolgreich gespeichert.",
-          });
-          const updatedTask: Task = { ...task, ...editFormData as Task };
-          setEditFormData(updatedTask);
-          try { onTaskUpdate(updatedTask); } catch (e) {}
-        }
-      }, 500);
-      return;
-    }
-    
-    console.error('Error saving task:', error);
-    toast({
-      title: "Fehler",
-      description: "Aufgabe konnte nicht gespeichert werden.",
-      variant: "destructive",
-    });
-  } finally {
-    setSaving(false);
-  }
-};
-```
-
-### 2. TasksView.tsx - toggleTaskStatus verbessern
+### Aenderung 1: TasksView.tsx - Aufgabe nach Archivierung sofort aus UI entfernen
 
 **Datei**: `src/components/TasksView.tsx`
-**Zeilen**: 950-1072
+**Zeilen**: 1090-1106
 
-Gleiche Logik anwenden:
+Nach dem erfolgreichen Loeschen der Aufgabe aus der Datenbank muss der lokale State sofort aktualisiert werden, anstatt auf `loadTasks()` zu warten:
 
 ```typescript
-const toggleTaskStatus = async (taskId: string) => {
-  if (processingTaskIds.has(taskId)) return;
-  
-  const task = tasks.find(t => t.id === taskId);
-  if (!task || !user) return;
+// Nach Zeile 1093: Delete task from tasks table
+await supabase.from('tasks').delete().eq('id', taskId);
 
-  const newStatus = task.status === "completed" ? "todo" : "completed";
-  const originalStatus = task.status;
-  const originalProgress = task.progress || 0;
-  
-  // Optimistic update
-  setTasks(prev => prev.map(t => 
-    t.id === taskId ? { ...t, status: newStatus } : t
-  ));
-  
-  setProcessingTaskIds(prev => new Set(prev).add(taskId));
-  
-  try {
-    const updateData = { 
-      status: newStatus,
-      progress: newStatus === "completed" ? 100 : originalProgress
-    };
+// SOFORT aus lokalem State entfernen (NEU)
+setTasks(prev => prev.filter(t => t.id !== taskId));
 
-    const { error } = await supabase
-      .from('tasks')
-      .update(updateData)
-      .eq('id', taskId);
+// Fire and forget: mark notifications as read
+void supabase
+  .from('notifications')
+  .update({ is_read: true })
+  // ...
+```
 
-    if (error) {
-      // Check for network errors
-      const isNetworkError = error.message?.includes('Failed to fetch') || 
-                             error.message?.includes('NetworkError') ||
-                             error.message?.includes('TypeError');
+Zusaetzlich muss der `loadTasks()` Aufruf bedingt gemacht werden, da die UI bereits aktualisiert ist:
+
+```typescript
+// loadTasks() nur aufrufen wenn Task NICHT geloescht wurde
+if (newStatus !== "completed") {
+  loadTasks();
+}
+```
+
+### Aenderung 2: TaskArchiveModal.tsx - Bessere tenant_id Behandlung
+
+**Datei**: `src/components/TaskArchiveModal.tsx`
+**Zeilen**: 204-223
+
+Das Problem ist, dass `currentTenant?.id` moeglicherweise undefined ist. Die Loesung:
+
+1. Den `tenant_id` aus der archivierten Aufgabe laden (falls gespeichert)
+2. Oder vom User-Profil holen
+3. Fallback auf den ersten verfuegbaren Tenant des Users
+
+```typescript
+// Hole tenant_id sicher
+let tenantId = currentTenant?.id;
+
+if (!tenantId) {
+  // Fallback: Hole vom User's Tenant-Zuordnung
+  const { data: tenantData } = await supabase
+    .from('tenant_users')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  
+  tenantId = tenantData?.tenant_id;
+}
+
+if (!tenantId) {
+  throw new Error('Kein Tenant gefunden - bitte Admin kontaktieren');
+}
+
+// Dann insert mit valider tenant_id
+const { error: insertError } = await supabase
+  .from('tasks')
+  .insert({
+    id: task.task_id,
+    user_id: user.id,
+    tenant_id: tenantId, // Jetzt garantiert vorhanden
+    // ...
+  });
+```
+
+### Aenderung 3: Netzwerkfehler-Behandlung verbessern
+
+Die Verifizierung nach Netzwerkfehlern in `toggleTaskStatus` (Zeilen 1054-1081) hat eine Luecke: Wenn das Archivieren erfolgreich war, aber der Netzwerkfehler beim Loeschen auftritt, wird die Aufgabe nicht aus dem State entfernt.
+
+```typescript
+if (isNetworkError) {
+  setTimeout(async () => {
+    // Pruefe ob Aufgabe archiviert wurde
+    const { data: archived } = await supabase
+      .from('archived_tasks')
+      .select('id')
+      .eq('task_id', taskId)
+      .single();
+    
+    if (archived) {
+      // Archiv erfolgreich - entferne aus UI
+      setTasks(prev => prev.filter(t => t.id !== taskId));
       
-      if (isNetworkError) {
-        console.warn('Network interruption, verifying task status...', error);
-        
-        // Verify after delay
-        setTimeout(async () => {
-          const { data: freshTask } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('id', taskId)
-            .single();
-          
-          if (!freshTask) {
-            // Task was deleted (archived successfully)
-            setTasks(prev => prev.filter(t => t.id !== taskId));
-            toast({
-              title: "Status aktualisiert",
-              description: "Aufgabe wurde archiviert."
-            });
-          } else if (freshTask.status === newStatus) {
-            // Status update was successful
-            loadTasks();
-            toast({
-              title: "Status aktualisiert",
-              description: newStatus === "completed" 
-                ? "Aufgabe wurde als erledigt markiert."
-                : "Aufgabe wurde als offen markiert."
-            });
-          } else {
-            // Update didn't go through, revert UI
-            setTasks(prev => prev.map(t => 
-              t.id === taskId ? { ...t, status: originalStatus } : t
-            ));
-          }
-        }, 500);
-        
-        return; // Don't proceed, let verification handle it
-      }
-      
-      throw error;
-    }
-
-    // If completing task, archive it
-    if (newStatus === "completed") {
-      const { error: archiveError } = await supabase
-        .from('archived_tasks')
-        .insert({
-          task_id: taskId,
-          user_id: user.id,
-          title: task.title,
-          description: task.description,
-          priority: task.priority,
-          category: task.category,
-          assigned_to: task.assignedTo || '',
-          progress: 100,
-          due_date: task.dueDate,
-          completed_at: new Date().toISOString(),
-          auto_delete_after_days: null,
-        } as any);
-
-      if (archiveError) {
-        const isNetworkError = archiveError.message?.includes('Failed to fetch');
-        
-        if (isNetworkError) {
-          // Verify after delay
-          setTimeout(() => loadTasks(), 500);
-          return;
-        }
-        
-        // Real error - rollback
-        await supabase
-          .from('tasks')
-          .update({ status: originalStatus, progress: originalProgress })
-          .eq('id', taskId);
-        throw archiveError;
-      }
-
-      // Delete task from tasks table
+      // Versuche nochmal zu loeschen (falls es beim ersten Mal fehlschlug)
       await supabase.from('tasks').delete().eq('id', taskId);
       
-      // Fire and forget: mark notifications as read
-      void supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', user.id)
-        .eq('navigation_context', 'tasks');
-        
       setShowUnicorn(true);
+      toast({ title: "Status aktualisiert", description: "Aufgabe wurde archiviert." });
+    } else {
+      // Archiv fehlgeschlagen - revert
+      setTasks(prev => prev.map(t => 
+        t.id === taskId ? { ...t, status: originalStatus } : t
+      ));
     }
-
-    loadTasks();
-    
-    toast({
-      title: "Status aktualisiert",
-      description: newStatus === "completed" 
-        ? "Aufgabe wurde als erledigt markiert und archiviert."
-        : "Aufgabe wurde als offen markiert."
-    });
-    
-  } catch (error: any) {
-    console.error('Error updating task:', error);
-    
-    // Check for network errors in catch
-    const isNetworkError = error?.message?.includes('Failed to fetch') || 
-                           error?.message?.includes('NetworkError');
-    
-    if (isNetworkError) {
-      setTimeout(() => loadTasks(), 500);
-      return;
-    }
-    
-    // Rollback UI on real error
-    setTasks(prev => prev.map(t => 
-      t.id === taskId ? { ...t, status: originalStatus } : t
-    ));
-    
-    toast({
-      title: "Fehler",
-      description: error.message || "Status konnte nicht aktualisiert werden.",
-      variant: "destructive"
-    });
-  } finally {
-    setProcessingTaskIds(prev => {
-      const next = new Set(prev);
-      next.delete(taskId);
-      return next;
-    });
-  }
-};
+  }, 500);
+  return;
+}
 ```
 
 ---
 
-## Zusammenfassung der Änderungen
+## Zusammenfassung der Aenderungen
 
-| Datei | Änderung |
-|-------|----------|
-| `TaskDetailSidebar.tsx` | Netzwerk-Fehler erkennen, nach 500ms verifizieren, nur bei echten Fehlern Toast anzeigen |
-| `TasksView.tsx` | Gleiche Logik: bei Netzwerk-Abbruch Serverstand verifizieren statt Fehler anzeigen |
+| Datei | Zeilen | Aenderung |
+|-------|--------|-----------|
+| `TasksView.tsx` | 1093-1106 | `setTasks(prev => prev.filter(t => t.id !== taskId))` nach erfolgreichem Loeschen |
+| `TasksView.tsx` | 1105 | `loadTasks()` nur aufrufen wenn `newStatus !== "completed"` |
+| `TasksView.tsx` | 1054-1081 | Netzwerkfehler-Behandlung: UI sofort aktualisieren wenn Archiv erfolgreich |
+| `TaskArchiveModal.tsx` | 204-223 | `tenant_id` sicher aus `tenant_users` holen falls `currentTenant` undefined |
 
 ---
 
 ## Erwartete Ergebnisse
 
-1. **Aufgaben speichern**: Bei erfolgreicher Speicherung erscheint der Erfolgs-Toast; bei Netzwerk-Abbrüchen wird nach 500ms verifiziert ob die Speicherung erfolgreich war
-2. **Checkbox-Archivierung**: Aufgaben werden korrekt archiviert; bei Netzwerk-Abbrüchen wird der Serverstand verifiziert statt einen Fehler anzuzeigen
-3. **Keine falschen Fehlermeldungen**: "Failed to fetch" Fehler werden nicht mehr als Fehlermeldungen angezeigt
+1. **Checkbox-Klick**: Aufgabe verschwindet **sofort** aus der Liste nach erfolgreichem Archivieren
+2. **Archiv-Wiederherstellung**: Funktioniert zuverlaessig, auch wenn `currentTenant` nicht geladen ist
+3. **Netzwerkfehler**: Bei Unterbrechungen wird der Status verifiziert und die UI korrekt aktualisiert
