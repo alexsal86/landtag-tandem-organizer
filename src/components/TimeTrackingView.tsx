@@ -15,9 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { EmployeeInfoTab } from "./EmployeeInfoTab";
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getYear } from "date-fns";
 import { de } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Edit, Trash2, History, Calendar, Clock, AlertTriangle, Undo2, Stethoscope, Timer } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit, Trash2, History, Calendar, Clock, AlertTriangle, Undo2, Stethoscope, Timer, TrendingUp } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { VacationHistoryDialog } from "./VacationHistoryDialog";
 import { calculateVacationBalance } from "@/utils/vacationCalculations";
@@ -122,6 +122,10 @@ export function TimeTrackingView() {
   const [overtimeStartDate, setOvertimeStartDate] = useState("");
   const [overtimeEndDate, setOvertimeEndDate] = useState("");
   const [overtimeReason, setOvertimeReason] = useState("");
+  
+  // Yearly balance state
+  const [yearlyBalance, setYearlyBalance] = useState<number>(0);
+  const [loadingYearlyBalance, setLoadingYearlyBalance] = useState(false);
 
   const monthStart = startOfMonth(selectedMonth);
   const monthEnd = endOfMonth(selectedMonth);
@@ -157,6 +161,52 @@ export function TimeTrackingView() {
       setPendingLeaves(pending.data || []);
     } catch (error: any) { toast.error("Fehler: " + error.message); } finally { setLoading(false); }
   };
+
+  // Load yearly balance
+  const loadYearlyBalance = async () => {
+    if (!user || !employeeSettings) return;
+    setLoadingYearlyBalance(true);
+    try {
+      const currentYear = getYear(selectedMonth);
+      const yearStart = new Date(currentYear, 0, 1);
+      const today = new Date();
+      
+      const [entriesRes, leavesRes, holidaysRes, correctionsRes] = await Promise.all([
+        supabase.from("time_entries").select("minutes").eq("user_id", user.id).gte("work_date", format(yearStart, "yyyy-MM-dd")).lte("work_date", format(today, "yyyy-MM-dd")),
+        supabase.from("leave_requests").select("type, start_date, end_date").eq("user_id", user.id).eq("status", "approved").gte("start_date", format(yearStart, "yyyy-MM-dd")).lte("end_date", format(today, "yyyy-MM-dd")),
+        supabase.from("public_holidays").select("holiday_date").gte("holiday_date", format(yearStart, "yyyy-MM-dd")).lte("holiday_date", format(today, "yyyy-MM-dd")),
+        supabase.from("time_entry_corrections").select("correction_minutes").eq("user_id", user.id),
+      ]);
+      
+      const dailyMin = Math.round((employeeSettings.hours_per_week / employeeSettings.days_per_week) * 60);
+      const holidayDates = new Set((holidaysRes.data || []).map(h => h.holiday_date));
+      
+      const allDays = eachDayOfInterval({ start: yearStart, end: today });
+      const workDays = allDays.filter(d => d.getDay() !== 0 && d.getDay() !== 6 && !holidayDates.has(format(d, "yyyy-MM-dd")));
+      const targetMinutes = workDays.length * dailyMin;
+      
+      const absenceDates = new Set<string>();
+      (leavesRes.data || []).forEach(leave => {
+        try {
+          eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+            .filter(d => d <= today)
+            .forEach(d => absenceDates.add(format(d, 'yyyy-MM-dd')));
+        } catch {}
+      });
+      
+      const workedMinutes = (entriesRes.data || []).reduce((sum, e) => sum + (e.minutes || 0), 0);
+      const creditMinutes = [...absenceDates].filter(d => !holidayDates.has(d)).filter(d => { const date = parseISO(d); return date.getDay() !== 0 && date.getDay() !== 6; }).length * dailyMin;
+      const correctionsTotal = (correctionsRes.data || []).reduce((sum, c) => sum + c.correction_minutes, 0);
+      
+      setYearlyBalance(workedMinutes + creditMinutes - targetMinutes + correctionsTotal);
+    } catch (error) {
+      console.error("Error loading yearly balance:", error);
+    } finally {
+      setLoadingYearlyBalance(false);
+    }
+  };
+
+  useEffect(() => { if (user && employeeSettings) loadYearlyBalance(); }, [user, employeeSettings, selectedMonth]);
 
   // Tägliche Arbeitszeit = Wochenstunden / Arbeitstage pro Woche
   // z.B. 39,5h / 5 Tage = 7,9h (7 Std. 54 Min.) pro Tag
@@ -645,6 +695,22 @@ export function TimeTrackingView() {
           <TabsTrigger value="employee-info">Mitarbeiter-Info</TabsTrigger>
         </TabsList>
         <TabsContent value="time-tracking" className="space-y-6">
+          {/* Yearly balance card */}
+          <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Mein Überstundensaldo {getYear(selectedMonth)}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-3xl font-bold ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
+                {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Gesamtsaldo bis heute (inkl. Korrekturen)</p>
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="h-full">
               <CardHeader>
