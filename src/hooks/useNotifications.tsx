@@ -150,17 +150,25 @@ export const useNotifications = () => {
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
 
-    // Optimistic update
-    const previousNotifications = notifications;
+    // Check if there are any unread notifications locally first
+    const hasUnread = notifications.some(n => !n.is_read);
+    if (!hasUnread) {
+      // Nothing to do - no unread notifications
+      return;
+    }
+
+    // Store previous state for potential rollback
+    const previousNotifications = [...notifications];
     const previousUnreadCount = unreadCount;
     
+    // Optimistic update
     setNotifications(prev => 
       prev.map(n => ({ ...n, is_read: true }))
     );
     setUnreadCount(0);
 
     try {
-      // First get the IDs of unread notifications
+      // First get the IDs of unread notifications from database
       const { data: unreadNotifications, error: fetchError } = await supabase
         .from('notifications')
         .select('id')
@@ -169,8 +177,9 @@ export const useNotifications = () => {
 
       if (fetchError) throw fetchError;
 
+      // If database says no unread notifications, optimistic update is already correct
       if (!unreadNotifications || unreadNotifications.length === 0) {
-        return; // Nothing to update
+        return;
       }
 
       // Update by ID list to avoid potential RLS issues
