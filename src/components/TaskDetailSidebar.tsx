@@ -205,9 +205,6 @@ export function TaskDetailSidebar({
 
     setSaving(true);
     
-    // Store success flag outside try-catch to prevent interference from other errors
-    let saveSuccessful = false;
-    
     try {
       const { error } = await supabase
         .from('tasks')
@@ -223,10 +220,90 @@ export function TaskDetailSidebar({
         })
         .eq('id', task.id);
 
-      if (error) throw error;
+      if (error) {
+        // Check if this is a network error (request was sent but connection interrupted)
+        const isNetworkError = error.message?.includes('Failed to fetch') || 
+                               error.message?.includes('NetworkError') ||
+                               error.message?.includes('TypeError');
+        
+        if (isNetworkError) {
+          // Network interruption - data might have been saved, verify after delay
+          console.warn('Network interruption during save, verifying...', error);
+          
+          setTimeout(async () => {
+            // Verify the save by fetching fresh data
+            const { data: freshTask } = await supabase
+              .from('tasks')
+              .select('*')
+              .eq('id', task.id)
+              .single();
+            
+            if (freshTask) {
+              // Check if our changes were actually saved
+              const savedCorrectly = freshTask.title === editFormData.title &&
+                                     freshTask.description === editFormData.description;
+              
+              if (savedCorrectly) {
+                toast({
+                  title: "Aufgabe gespeichert",
+                  description: "Die Änderungen wurden erfolgreich gespeichert.",
+                });
+                
+                const updatedTask: Task = { ...task, ...editFormData as Task };
+                setEditFormData(updatedTask);
+                try { onTaskUpdate(updatedTask); } catch (e) {}
+              }
+            }
+          }, 500);
+          
+          setSaving(false);
+          return; // No error toast for network interruptions
+        }
+        
+        // Real database error - show error toast
+        throw error;
+      }
       
-      saveSuccessful = true;
-    } catch (error) {
+      // Success - show toast immediately
+      const updatedTask: Task = { ...task, ...editFormData as Task };
+      
+      toast({
+        title: "Aufgabe gespeichert",
+        description: "Die Änderungen wurden erfolgreich gespeichert.",
+      });
+      
+      setEditFormData(updatedTask);
+      try { onTaskUpdate(updatedTask); } catch (e) {}
+      
+    } catch (error: any) {
+      // Check for network errors in the catch block too
+      const isNetworkError = error?.message?.includes('Failed to fetch') || 
+                             error?.message?.includes('NetworkError') ||
+                             error?.message?.includes('TypeError');
+      
+      if (isNetworkError) {
+        // Verify after delay instead of showing error
+        setTimeout(async () => {
+          const { data: freshTask } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('id', task.id)
+            .single();
+          
+          if (freshTask && freshTask.title === editFormData.title) {
+            toast({
+              title: "Aufgabe gespeichert",
+              description: "Die Änderungen wurden erfolgreich gespeichert.",
+            });
+            const updatedTask: Task = { ...task, ...editFormData as Task };
+            setEditFormData(updatedTask);
+            try { onTaskUpdate(updatedTask); } catch (e) {}
+          }
+        }, 500);
+        setSaving(false);
+        return;
+      }
+      
       console.error('Error saving task:', error);
       toast({
         title: "Fehler",
@@ -235,31 +312,6 @@ export function TaskDetailSidebar({
       });
     } finally {
       setSaving(false);
-    }
-    
-    // Only show success and update state if save was successful
-    // This is OUTSIDE the try-catch to prevent other errors from affecting our toast
-    if (saveSuccessful) {
-      const updatedTask: Task = {
-        ...task,
-        ...editFormData as Task,
-      };
-
-      // Show success toast IMMEDIATELY
-      toast({
-        title: "Aufgabe gespeichert",
-        description: "Die Änderungen wurden erfolgreich gespeichert.",
-      });
-      
-      // Update states after toast is shown
-      setEditFormData(updatedTask);
-      
-      // Wrap callback to prevent any errors from affecting us
-      try {
-        onTaskUpdate(updatedTask);
-      } catch (e) {
-        console.error('Error in onTaskUpdate callback:', e);
-      }
     }
   };
 
