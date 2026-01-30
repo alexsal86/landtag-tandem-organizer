@@ -956,6 +956,7 @@ export function TasksView() {
 
     const newStatus = task.status === "completed" ? "todo" : "completed";
     const originalStatus = task.status;
+    const originalProgress = task.progress || 0;
     
     // Optimistic update
     setTasks(prev => prev.map(t => 
@@ -965,9 +966,9 @@ export function TasksView() {
     setProcessingTaskIds(prev => new Set(prev).add(taskId));
     
     try {
-      const updateData: any = { 
+      const updateData = { 
         status: newStatus,
-        progress: newStatus === "completed" ? 100 : task.progress || 0
+        progress: newStatus === "completed" ? 100 : originalProgress
       };
 
       const { error } = await supabase
@@ -975,55 +976,65 @@ export function TasksView() {
         .update(updateData)
         .eq('id', taskId);
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(`Status-Update fehlgeschlagen: ${error.message}`);
+      }
 
       // If task is completed, archive it
       if (newStatus === "completed") {
-        const { error: archiveError } = await supabase
-          .from('archived_tasks')
-          .insert({
-            task_id: taskId,
-            user_id: user.id,
-            title: task.title,
-            description: task.description,
-            priority: task.priority,
-            category: task.category,
-            assigned_to: task.assignedTo || '',
-            progress: 100,
-            due_date: task.dueDate,
-            completed_at: new Date().toISOString(),
-            auto_delete_after_days: null,
-          } as any);
+        try {
+          const { error: archiveError } = await supabase
+            .from('archived_tasks')
+            .insert({
+              task_id: taskId,
+              user_id: user.id,
+              title: task.title,
+              description: task.description,
+              priority: task.priority,
+              category: task.category,
+              assigned_to: task.assignedTo || '',
+              progress: 100,
+              due_date: task.dueDate,
+              completed_at: new Date().toISOString(),
+              auto_delete_after_days: null,
+            } as any);
 
-        if (archiveError) {
-          console.error('Error archiving task:', archiveError);
-          // Throw to trigger rollback - archiving failed
-          throw new Error('Archivierung fehlgeschlagen: ' + archiveError.message);
-        }
+          if (archiveError) {
+            throw new Error(`Archivierung fehlgeschlagen: ${archiveError.message}`);
+          }
 
-        // Delete the task from the tasks table
-        const { error: deleteError } = await supabase
-          .from('tasks')
-          .delete()
-          .eq('id', taskId);
+          // Delete the task from the tasks table
+          const { error: deleteError } = await supabase
+            .from('tasks')
+            .delete()
+            .eq('id', taskId);
 
-        if (deleteError) {
-          console.error('Error deleting completed task:', deleteError);
-          // Task is archived but not deleted - this is okay, just log it
-          // We don't throw here because the archive was successful
-        }
-        
-        // Mark task-related notifications as read
-        await supabase
-          .from('notifications')
-          .update({ is_read: true })
-          .eq('user_id', user.id)
-          .eq('navigation_context', 'tasks');
+          if (deleteError) {
+            console.warn('Task archived but not deleted:', deleteError);
+            // Don't throw - archive was successful
+          }
           
-        // Trigger unicorn animation
-        setShowUnicorn(true);
+          // Mark notifications as read (don't await - fire and forget)
+          void supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('user_id', user.id)
+            .eq('navigation_context', 'tasks');
+            
+          // Trigger unicorn animation
+          setShowUnicorn(true);
+          
+        } catch (archiveErr: any) {
+          // Rollback the status update in the database
+          await supabase
+            .from('tasks')
+            .update({ status: originalStatus, progress: originalProgress })
+            .eq('id', taskId);
+          throw archiveErr;
+        }
       }
 
+      // Reload tasks after successful operation
       loadTasks();
       
       toast({
@@ -1032,15 +1043,23 @@ export function TasksView() {
           ? "Aufgabe wurde als erledigt markiert und archiviert."
           : "Aufgabe wurde als offen markiert."
       });
+      
     } catch (error: any) {
       console.error('Error updating task:', error);
-      // Rollback on error
+      
+      // Rollback UI on error
       setTasks(prev => prev.map(t => 
         t.id === taskId ? { ...t, status: originalStatus } : t
       ));
+      
+      // More descriptive error message for network errors
+      const errorMessage = error.message?.includes('fetch') 
+        ? "Netzwerkfehler - bitte Internetverbindung prüfen und erneut versuchen."
+        : error.message || "Status konnte nicht aktualisiert werden.";
+      
       toast({
         title: "Fehler",
-        description: error.message || "Status konnte nicht aktualisiert werden.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
