@@ -731,6 +731,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                       <TableRow>
                         <TableHead>Benutzer</TableHead>
                         <TableHead className="text-right">Rolle</TableHead>
+                        <TableHead className="w-16"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -768,6 +769,56 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                 ))}
                               </SelectContent>
                             </Select>
+                          </TableCell>
+                          <TableCell>
+                            {p.user_id !== user?.id && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Benutzer löschen?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {p.display_name} wird unwiderruflich aus dem System entfernt.
+                                      Alle zugehörigen Daten (Zeiteinträge, Nachrichten, etc.) werden gelöscht.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      className="bg-destructive text-destructive-foreground"
+                                      onClick={async () => {
+                                        try {
+                                          const { data, error } = await supabase.functions.invoke('manage-tenant-user', {
+                                            body: {
+                                              action: 'deleteUser',
+                                              userId: p.user_id,
+                                              tenantId: currentTenant?.id
+                                            }
+                                          });
+                                          if (error || !data?.success) {
+                                            throw new Error(data?.error || 'Löschen fehlgeschlagen');
+                                          }
+                                          toast({ title: "Benutzer gelöscht" });
+                                          loadData();
+                                        } catch (err: any) {
+                                          toast({ title: "Fehler", description: err.message, variant: "destructive" });
+                                        }
+                                      }}
+                                    >
+                                      Unwiderruflich löschen
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
