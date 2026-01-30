@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -17,13 +18,19 @@ export function AuditLogViewer() {
   const [offset, setOffset] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [ipFilter, setIpFilter] = useState("");
+  const { currentTenant } = useTenant();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['audit-logs', offset, searchTerm, ipFilter],
+    queryKey: ['audit-logs', offset, searchTerm, ipFilter, currentTenant?.id],
     queryFn: async () => {
+      if (!currentTenant?.id) {
+        return { logs: [], totalCount: 0 };
+      }
+
       let query = supabase
         .from('audit_log_entries')
         .select('*', { count: 'exact' })
+        .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false })
         .range(offset, offset + LIMIT - 1);
 
@@ -47,6 +54,7 @@ export function AuditLogViewer() {
         totalCount: count || 0 
       };
     },
+    enabled: !!currentTenant?.id,
   });
 
   const handleExport = () => {

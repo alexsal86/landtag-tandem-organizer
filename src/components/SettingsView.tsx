@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar, Mail, Activity, ClipboardList } from "lucide-react";
+import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar, Mail, Activity, ClipboardList, Eye, EyeOff } from "lucide-react";
 import { NotificationSettings } from "./NotificationSettings";
 import { ExternalCalendarSettings } from "./ExternalCalendarSettings";
 import { TwoFactorSettings } from "./TwoFactorSettings";
@@ -15,6 +15,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +37,13 @@ export function SettingsView() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   
+  // Password change state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  
   // My Work Settings
   const { badgeDisplayMode, updateBadgeDisplayMode, isLoading: myWorkSettingsLoading } = useMyWorkSettings();
 
@@ -53,6 +62,53 @@ export function SettingsView() {
     };
     loadUserData();
   }, [user]);
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Fehler",
+        description: "Die Passwörter stimmen nicht überein.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (newPassword.length < 8) {
+      toast({
+        title: "Fehler",
+        description: "Das Passwort muss mindestens 8 Zeichen haben.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Passwort geändert",
+        description: "Ihr Passwort wurde erfolgreich aktualisiert.",
+      });
+      
+      setPasswordDialogOpen(false);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error('Password change error:', error);
+      toast({
+        title: "Fehler",
+        description: error.message || "Passwort konnte nicht geändert werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   const handleSaveSettings = () => {
     toast({
@@ -287,7 +343,11 @@ export function SettingsView() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => setPasswordDialogOpen(true)}
+              >
                 <Shield className="h-4 w-4 mr-2" />
                 Passwort ändern
               </Button>
@@ -325,6 +385,72 @@ export function SettingsView() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Password Change Dialog */}
+        <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Passwort ändern</DialogTitle>
+              <DialogDescription>
+                Geben Sie ein neues Passwort ein. Das Passwort muss mindestens 8 Zeichen lang sein.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Neues Passwort</Label>
+                <div className="relative">
+                  <Input 
+                    id="new-password"
+                    type={showPassword ? "text" : "password"} 
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Mindestens 8 Zeichen"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Passwort bestätigen</Label>
+                <Input 
+                  id="confirm-password"
+                  type={showPassword ? "text" : "password"} 
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Passwort wiederholen"
+                />
+              </div>
+              {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                <p className="text-sm text-destructive">Die Passwörter stimmen nicht überein.</p>
+              )}
+              {newPassword && newPassword.length > 0 && newPassword.length < 8 && (
+                <p className="text-sm text-destructive">Das Passwort muss mindestens 8 Zeichen haben.</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setPasswordDialogOpen(false);
+                setNewPassword("");
+                setConfirmPassword("");
+              }}>
+                Abbrechen
+              </Button>
+              <Button 
+                onClick={handleChangePassword} 
+                disabled={changingPassword || newPassword.length < 8 || newPassword !== confirmPassword}
+              >
+                {changingPassword ? "Speichern..." : "Passwort speichern"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* External Calendar Settings - Full Width */}
         <div className="mt-6">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useTenant } from './useTenant';
 import { toast } from 'sonner';
 
 export interface StatusOption {
@@ -44,6 +45,7 @@ export interface OnlineUser {
 
 export const useUserStatus = () => {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [currentStatus, setCurrentStatus] = useState<UserStatus | null>(null);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
@@ -75,13 +77,12 @@ export const useUserStatus = () => {
     };
 
     const handleActivity = () => {
-      if (Date.now() - lastActivity > 1000) { // Throttle to 1 second
+      if (Date.now() - lastActivity > 1000) {
         resetAwayTimer();
         updateLastActivity();
       }
     };
 
-    // Listen for user activity
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
     events.forEach(event => {
       document.addEventListener(event, handleActivity, true);
@@ -166,13 +167,22 @@ export const useUserStatus = () => {
     };
   }, [user]);
 
-  // Set up presence tracking for online users
+  // Set up presence tracking for online users - TENANT SPECIFIC
   useEffect(() => {
-    if (!user) return;
+    if (!user || !currentTenant?.id) return;
+
+    // Cleanup previous channel if tenant changed
+    if (presenceChannel) {
+      presenceChannel.unsubscribe();
+      setPresenceChannel(null);
+    }
 
     const setupPresence = async () => {
-      // Create a unique channel for user presence
-      const channel = supabase.channel('user_presence', {
+      // TENANT-SPECIFIC channel name for isolation
+      const channelName = `user_presence_${currentTenant.id}`;
+      console.log('🏢 Setting up presence channel:', channelName);
+      
+      const channel = supabase.channel(channelName, {
         config: {
           presence: {
             key: user.id,
@@ -180,7 +190,6 @@ export const useUserStatus = () => {
         },
       });
 
-      // Track presence events
       channel
         .on('presence', { event: 'sync' }, () => {
           const presenceState = channel.presenceState();
@@ -204,23 +213,20 @@ export const useUserStatus = () => {
           updateUsersWithStatus(onlineUsersList);
         })
         .on('presence', { event: 'join' }, ({ newPresences }) => {
-          console.log('User joined:', newPresences);
+          console.log('User joined tenant presence:', newPresences);
         })
         .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-          console.log('User left:', leftPresences);
+          console.log('User left tenant presence:', leftPresences);
         });
 
-      // Subscribe and track own presence
       channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          // Get user profile for presence data
           const { data: profile } = await supabase
             .from('profiles')
             .select('display_name, avatar_url')
             .eq('user_id', user.id)
             .single();
 
-          // Track current user's presence
           await channel.track({
             user_id: user.id,
             display_name: profile?.display_name || user.email,
@@ -236,13 +242,12 @@ export const useUserStatus = () => {
 
     setupPresence();
 
-    // Cleanup function
     return () => {
       if (presenceChannel) {
         presenceChannel.unsubscribe();
       }
     };
-  }, [user?.id]);
+  }, [user?.id, currentTenant?.id]);
 
   // Update presence when status changes
   useEffect(() => {
@@ -267,10 +272,9 @@ export const useUserStatus = () => {
     }
   }, [currentStatus, presenceChannel, user]);
 
-  // Function to update usersWithStatus based on online users and their statuses
+  // Function to update usersWithStatus based on online users and their statuses - TENANT FILTERED
   const updateUsersWithStatus = async (onlineUsersList: OnlineUser[]) => {
     try {
-      // Get all statuses for online users
       const onlineUserIds = onlineUsersList.map(u => u.user_id);
       
       if (onlineUserIds.length === 0) {
@@ -278,12 +282,13 @@ export const useUserStatus = () => {
         return;
       }
 
+      // Only fetch statuses for users in the same tenant
       const { data: statuses } = await supabase
         .from('user_status')
         .select('*')
+        .eq('tenant_id', currentTenant?.id)
         .in('user_id', onlineUserIds);
 
-      // Combine online users with their statuses
       const usersWithStatusData = onlineUsersList.map(onlineUser => ({
         user_id: onlineUser.user_id,
         display_name: onlineUser.display_name,
@@ -306,7 +311,7 @@ export const useUserStatus = () => {
     statusUntil?: Date,
     notificationsEnabled?: boolean
   ) => {
-    if (!user) return;
+    if (!user || !currentTenant?.id) return;
 
     try {
       const statusOption = statusOptions.find(opt => 
@@ -315,6 +320,7 @@ export const useUserStatus = () => {
 
       const statusData = {
         user_id: user.id,
+        tenant_id: currentTenant.id,
         status_type: statusType,
         custom_message: customMessage || null,
         emoji: emoji || statusOption?.emoji || null,
@@ -355,7 +361,6 @@ export const useUserStatus = () => {
     }
   };
 
-  // Mapping von deutschen Status-Namen auf englische Enum-Werte
   const statusNameMapping: Record<string, UserStatus['status_type']> = {
     'online': 'online',
     'abwesend': 'away',
@@ -371,17 +376,12 @@ export const useUserStatus = () => {
 
     try {
       const normalizedName = statusName.toLowerCase();
-      
-      // Versuche, den deutschen Namen auf einen englischen Enum-Wert zu mappen
       const mappedStatusType = statusNameMapping[normalizedName];
-      
-      // Finde die Status-Option für Emoji und Farbe
       const statusOption = statusOptions.find(opt => 
         opt.name.toLowerCase() === normalizedName
       );
 
       if (mappedStatusType) {
-        // Bekannter Status-Typ (deutsch oder englisch)
         await updateStatus(
           mappedStatusType,
           undefined,
@@ -390,10 +390,9 @@ export const useUserStatus = () => {
           mappedStatusType !== 'meeting' && mappedStatusType !== 'break'
         );
       } else {
-        // Unbekannter Status → als Custom behandeln
         await updateStatus(
           'custom',
-          statusName, // Original-Name als Custom-Message
+          statusName,
           statusOption?.emoji || null,
           undefined,
           true
@@ -427,7 +426,6 @@ export const useUserStatus = () => {
       };
     }
 
-    // Fallback
     const fallbacks = {
       online: { emoji: '🟢', color: 'hsl(142, 76%, 36%)', label: 'Online' },
       meeting: { emoji: '🔴', color: 'hsl(0, 84%, 60%)', label: 'In Besprechung' },
@@ -443,7 +441,7 @@ export const useUserStatus = () => {
     currentStatus,
     statusOptions,
     onlineUsers,
-    usersWithStatus, // Now only contains online users
+    usersWithStatus,
     loading,
     isAwayTimerActive,
     updateStatus,

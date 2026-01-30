@@ -141,6 +141,7 @@ export type Database = {
           id: string
           setting_key: string
           setting_value: string | null
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -148,6 +149,7 @@ export type Database = {
           id?: string
           setting_key: string
           setting_value?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -155,9 +157,18 @@ export type Database = {
           id?: string
           setting_key?: string
           setting_value?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointment_categories: {
         Row: {
@@ -971,6 +982,7 @@ export type Database = {
           id: string
           ip_address: string | null
           payload: Json | null
+          tenant_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -978,6 +990,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           payload?: Json | null
+          tenant_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -985,9 +998,18 @@ export type Database = {
           id?: string
           ip_address?: string | null
           payload?: Json | null
+          tenant_id?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       calendar_sync_settings: {
         Row: {
