@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, parseISO } from "date-fns";
 import { AlertCircle, UserCircle } from "lucide-react";
+
+export type EntryType = 'work' | 'vacation' | 'sick' | 'overtime_reduction';
 
 export interface AdminEditData {
   work_date: string;
@@ -15,6 +18,7 @@ export interface AdminEditData {
   pause_minutes: number;
   notes: string;
   edit_reason: string;
+  new_type?: EntryType;
 }
 
 interface TimeEntryForEdit {
@@ -29,6 +33,7 @@ interface TimeEntryForEdit {
   edited_by?: string | null;
   edited_at?: string | null;
   edit_reason?: string | null;
+  leave_id?: string;
 }
 
 interface AdminTimeEntryEditorProps {
@@ -36,15 +41,28 @@ interface AdminTimeEntryEditorProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (entryId: string, data: AdminEditData) => Promise<void>;
+  onTypeChange?: (entryId: string, newType: EntryType, reason: string, leaveId?: string) => Promise<void>;
   isLoading?: boolean;
+  currentEntryType?: EntryType;
+  allowTypeChange?: boolean;
 }
+
+const entryTypeLabels: Record<EntryType, { icon: string; label: string }> = {
+  work: { icon: "📋", label: "Arbeit" },
+  vacation: { icon: "🏖️", label: "Urlaub" },
+  sick: { icon: "🤒", label: "Krankheit" },
+  overtime_reduction: { icon: "⏰", label: "Überstundenabbau" },
+};
 
 export function AdminTimeEntryEditor({
   entry,
   isOpen,
   onClose,
   onSave,
+  onTypeChange,
   isLoading = false,
+  currentEntryType = 'work',
+  allowTypeChange = false,
 }: AdminTimeEntryEditorProps) {
   const [workDate, setWorkDate] = useState(entry.work_date);
   const [startTime, setStartTime] = useState(
@@ -58,10 +76,29 @@ export function AdminTimeEntryEditor({
   );
   const [notes, setNotes] = useState(entry.notes || "");
   const [editReason, setEditReason] = useState("");
+  const [selectedType, setSelectedType] = useState<EntryType>(currentEntryType);
+
+  // Reset state when entry changes
+  useEffect(() => {
+    setWorkDate(entry.work_date);
+    setStartTime(entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "");
+    setEndTime(entry.ended_at ? format(parseISO(entry.ended_at), "HH:mm") : "");
+    setPauseMinutes((entry.pause_minutes || 30).toString());
+    setNotes(entry.notes || "");
+    setEditReason("");
+    setSelectedType(currentEntryType);
+  }, [entry, currentEntryType]);
 
   const handleSave = async () => {
     if (!editReason.trim()) {
       return; // Grund ist Pflichtfeld
+    }
+
+    // If type changed, handle that separately
+    if (allowTypeChange && selectedType !== currentEntryType && onTypeChange) {
+      await onTypeChange(entry.id, selectedType, editReason, entry.leave_id);
+      onClose();
+      return;
     }
 
     await onSave(entry.id, {
@@ -97,6 +134,35 @@ export function AdminTimeEntryEditor({
   };
 
   const preview = calculatePreview();
+  const isTypeChanged = allowTypeChange && selectedType !== currentEntryType;
+  const showTimeFields = selectedType === 'work' && currentEntryType === 'work';
+
+  const getTypeChangeWarning = () => {
+    if (!isTypeChanged) return null;
+    
+    if (selectedType === 'vacation' && currentEntryType === 'work') {
+      return 'Achtung: Der Arbeitseintrag wird gelöscht und ein Urlaubstag wird vom Kontingent abgezogen.';
+    }
+    if (selectedType === 'overtime_reduction' && currentEntryType === 'vacation') {
+      return 'Der Urlaubstag wird zurückgegeben und stattdessen Überstunden reduziert.';
+    }
+    if (selectedType === 'overtime_reduction' && currentEntryType === 'work') {
+      return 'Der Arbeitseintrag wird zu Überstundenabbau umgewandelt. Die Arbeitszeit wird entfernt.';
+    }
+    if (selectedType === 'sick' && currentEntryType === 'vacation') {
+      return 'Der Urlaubstag wird zurückgegeben und als Krankheitstag erfasst.';
+    }
+    if (selectedType === 'work' && currentEntryType !== 'work') {
+      return 'Die Abwesenheit wird entfernt. Der Mitarbeiter muss die Arbeitszeit manuell erfassen.';
+    }
+    if (selectedType === 'vacation' && currentEntryType === 'sick') {
+      return 'Der Krankheitstag wird zu Urlaub umgewandelt. Ein Urlaubstag wird abgezogen.';
+    }
+    if (selectedType === 'vacation' && currentEntryType === 'overtime_reduction') {
+      return 'Der Überstundenabbau wird zu Urlaub umgewandelt. Ein Urlaubstag wird abgezogen.';
+    }
+    return `Der Eintrag wird von ${entryTypeLabels[currentEntryType].label} zu ${entryTypeLabels[selectedType].label} umgewandelt.`;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -117,6 +183,34 @@ export function AdminTimeEntryEditor({
         )}
 
         <div className="grid gap-4 py-4">
+          {allowTypeChange && (
+            <div className="grid gap-2">
+              <Label>Eintragstyp</Label>
+              <Select value={selectedType} onValueChange={(v) => setSelectedType(v as EntryType)}>
+                <SelectTrigger>
+                  <SelectValue>
+                    {entryTypeLabels[selectedType].icon} {entryTypeLabels[selectedType].label}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(entryTypeLabels).map(([type, { icon, label }]) => (
+                    <SelectItem key={type} value={type}>
+                      {icon} {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {isTypeChanged && (
+                <Alert variant="default" className="bg-amber-50 border-amber-200">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-800">
+                    {getTypeChangeWarning()}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-2">
             <Label htmlFor="work_date">Datum</Label>
             <Input
@@ -124,60 +218,72 @@ export function AdminTimeEntryEditor({
               type="date"
               value={workDate}
               onChange={(e) => setWorkDate(e.target.value)}
+              disabled={isTypeChanged && selectedType !== 'work'}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="start_time">Startzeit</Label>
-              <Input
-                id="start_time"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="end_time">Endzeit</Label>
-              <Input
-                id="end_time"
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="pause">Pause (Minuten)</Label>
-            <Input
-              id="pause"
-              type="number"
-              min="0"
-              max="120"
-              value={pauseMinutes}
-              onChange={(e) => setPauseMinutes(e.target.value)}
-            />
-          </div>
-
-          {preview && !("error" in preview) && (
-            <div className="bg-muted/50 rounded-md p-3 text-sm">
-              <div className="flex justify-between">
-                <span>Brutto:</span>
-                <span className="font-medium">{preview.gross} Std.</span>
+          {showTimeFields && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="start_time">Startzeit</Label>
+                  <Input
+                    id="start_time"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="end_time">Endzeit</Label>
+                  <Input
+                    id="end_time"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="flex justify-between mt-1">
-                <span>Netto (abzgl. Pause):</span>
-                <span className="font-medium text-primary">{preview.net} Std.</span>
+
+              <div className="grid gap-2">
+                <Label htmlFor="pause">Pause (Minuten)</Label>
+                <Input
+                  id="pause"
+                  type="number"
+                  min="0"
+                  max="120"
+                  value={pauseMinutes}
+                  onChange={(e) => setPauseMinutes(e.target.value)}
+                />
               </div>
-            </div>
+
+              {preview && !("error" in preview) && (
+                <div className="bg-muted/50 rounded-md p-3 text-sm">
+                  <div className="flex justify-between">
+                    <span>Brutto:</span>
+                    <span className="font-medium">{preview.gross} Std.</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span>Netto (abzgl. Pause):</span>
+                    <span className="font-medium text-primary">{preview.net} Std.</span>
+                  </div>
+                </div>
+              )}
+
+              {preview && "error" in preview && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{preview.error}</AlertDescription>
+                </Alert>
+              )}
+            </>
           )}
 
-          {preview && "error" in preview && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{preview.error}</AlertDescription>
-            </Alert>
+          {!showTimeFields && isTypeChanged && (
+            <div className="bg-muted/50 rounded-md p-3 text-sm text-muted-foreground">
+              <p>Bei Änderung zu {entryTypeLabels[selectedType].label} werden die Zeitangaben nicht benötigt.</p>
+              <p className="mt-1">Der Mitarbeiter erhält eine Gutschrift für den vollen Arbeitstag.</p>
+            </div>
           )}
 
           <div className="grid gap-2">
@@ -199,7 +305,9 @@ export function AdminTimeEntryEditor({
               id="edit_reason"
               value={editReason}
               onChange={(e) => setEditReason(e.target.value)}
-              placeholder="z.B. Korrektur der Endzeit, Pausenzeit angepasst..."
+              placeholder={isTypeChanged 
+                ? "z.B. Nachträgliche Korrektur, Mitarbeiter war krank..." 
+                : "z.B. Korrektur der Endzeit, Pausenzeit angepasst..."}
               rows={2}
               required
             />
@@ -219,9 +327,9 @@ export function AdminTimeEntryEditor({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={isLoading || !editReason.trim() || (preview && "error" in preview)}
+            disabled={isLoading || !editReason.trim() || (showTimeFields && preview && "error" in preview)}
           >
-            {isLoading ? "Speichern..." : "Änderung speichern"}
+            {isLoading ? "Speichern..." : isTypeChanged ? "Typ ändern" : "Änderung speichern"}
           </Button>
         </DialogFooter>
       </DialogContent>

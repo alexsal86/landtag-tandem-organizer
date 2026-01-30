@@ -147,7 +147,7 @@ export function useCombinedTimeEntries({
           work_date: holiday.holiday_date,
           started_at: null,
           ended_at: null,
-          minutes: dailyMinutes,
+          minutes: 0, // Feiertage reduzieren das Soll, keine Gutschrift nötig
           pause_minutes: 0,
           notes: holiday.name,
           entry_type: 'holiday',
