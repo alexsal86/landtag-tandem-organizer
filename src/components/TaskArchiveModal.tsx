@@ -202,13 +202,31 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
 
         if (updateError) throw updateError;
       } else {
+        // Hole tenant_id sicher - Fallback auf user_tenant_memberships falls currentTenant undefined
+        let tenantId = currentTenant?.id;
+        
+        if (!tenantId) {
+          const { data: membershipData } = await supabase
+            .from('user_tenant_memberships')
+            .select('tenant_id')
+            .eq('user_id', user.id)
+            .limit(1)
+            .maybeSingle();
+          
+          tenantId = membershipData?.tenant_id;
+        }
+        
+        if (!tenantId) {
+          throw new Error('Kein Tenant gefunden - bitte Admin kontaktieren');
+        }
+        
         // Create new task with the original ID if it doesn't exist
         const { error: insertError } = await supabase
           .from('tasks')
           .insert({
             id: task.task_id, // Use the original task ID
             user_id: user.id,
-            tenant_id: currentTenant?.id || '', // Use current tenant ID
+            tenant_id: tenantId, // Jetzt garantiert vorhanden
             title: task.title,
             description: task.description,
             priority: task.priority,

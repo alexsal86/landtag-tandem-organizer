@@ -1092,6 +1092,9 @@ export function TasksView() {
         // Delete task from tasks table
         await supabase.from('tasks').delete().eq('id', taskId);
         
+        // SOFORT aus lokalem State entfernen - nicht auf loadTasks() warten
+        setTasks(prev => prev.filter(t => t.id !== taskId));
+        
         // Fire and forget: mark notifications as read
         void supabase
           .from('notifications')
@@ -1100,9 +1103,10 @@ export function TasksView() {
           .eq('navigation_context', 'tasks');
           
         setShowUnicorn(true);
+      } else {
+        // Nur bei Status-Wechsel ohne Archivierung neu laden
+        loadTasks();
       }
-
-      loadTasks();
       
       toast({
         title: "Status aktualisiert",
