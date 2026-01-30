@@ -69,12 +69,17 @@ export const TaskDecisionResponse = ({
         .eq('id', decisionId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Don't throw - just log and keep default options as fallback
+        console.error('Error loading decision options (using defaults):', error);
+        return;
+      }
       if (data?.response_options && Array.isArray(data.response_options)) {
         setResponseOptions(data.response_options as unknown as ResponseOption[]);
       }
     } catch (error) {
-      console.error('Error loading decision options:', error);
+      console.error('Error loading decision options (using defaults):', error);
+      // Keep default options on error - don't fail
     }
   };
 
@@ -104,12 +109,17 @@ export const TaskDecisionResponse = ({
     setIsLoading(true);
     try {
       // Check if response already exists
-      const { data: existingResponse } = await supabase
+      const { data: existingResponse, error: checkError } = await supabase
         .from('task_decision_responses')
         .select('id')
         .eq('participant_id', participantId)
         .eq('decision_id', decisionId)
         .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking existing response:', checkError);
+        throw new Error('Antwort konnte nicht überprüft werden');
+      }
 
       if (existingResponse) {
         // UPDATE existing response
@@ -122,7 +132,10 @@ export const TaskDecisionResponse = ({
           })
           .eq('id', existingResponse.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating response:', error);
+          throw new Error('Antwort konnte nicht aktualisiert werden');
+        }
       } else {
         // INSERT new response
         const { error } = await supabase
@@ -134,7 +147,10 @@ export const TaskDecisionResponse = ({
             comment: comment || null,
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error inserting response:', error);
+          throw new Error('Antwort konnte nicht gespeichert werden');
+        }
       }
 
       // Check if all participants have responded
@@ -221,11 +237,11 @@ export const TaskDecisionResponse = ({
       setIsQuestionDialogOpen(false);
       setShowEdit(false);
       onResponseSubmitted();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting response:', error);
       toast({
         title: "Fehler",
-        description: "Antwort konnte nicht gespeichert werden.",
+        description: error?.message || "Antwort konnte nicht gespeichert werden.",
         variant: "destructive",
       });
     } finally {
