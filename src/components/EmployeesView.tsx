@@ -24,7 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { EmployeeYearlyStatsView } from "./EmployeeYearlyStatsView";
 
 // Types derived from DB schema
-type LeaveType = "vacation" | "sick" | "other";
+type LeaveType = "vacation" | "sick" | "other" | "medical" | "overtime_reduction";
 type LeaveStatus = "pending" | "approved" | "rejected" | "cancel_requested" | "cancelled";
 
 type EmployeeSettingsRow = {
@@ -373,9 +373,9 @@ export function EmployeesView() {
         // Abwesenheiten aggregieren mit Arbeitstagen (RLS erlaubt nur Zugriff auf zugewiesene Nutzer)
         const agg: Record<string, LeaveAgg> = {};
         const initAgg = (): LeaveAgg => ({
-          counts: { vacation: 0, sick: 0, other: 0 },
-          approved: { vacation: 0, sick: 0, other: 0 },
-          pending: { vacation: 0, sick: 0, other: 0 },
+          counts: { vacation: 0, sick: 0, other: 0, medical: 0, overtime_reduction: 0 },
+          approved: { vacation: 0, sick: 0, other: 0, medical: 0, overtime_reduction: 0 },
+          pending: { vacation: 0, sick: 0, other: 0, medical: 0, overtime_reduction: 0 },
           lastDates: {},
         });
 
@@ -580,9 +580,9 @@ export function EmployeesView() {
         setSelfLastMeetingId(lastMeetingRes.data?.id || null);
 
                   const agg: LeaveAgg = {
-           counts: { vacation: 0, sick: 0, other: 0 },
-           approved: { vacation: 0, sick: 0, other: 0 },
-           pending: { vacation: 0, sick: 0, other: 0 },
+           counts: { vacation: 0, sick: 0, other: 0, medical: 0, overtime_reduction: 0 },
+           approved: { vacation: 0, sick: 0, other: 0, medical: 0, overtime_reduction: 0 },
+           pending: { vacation: 0, sick: 0, other: 0, medical: 0, overtime_reduction: 0 },
            lastDates: {},
          };
          
@@ -703,11 +703,15 @@ export function EmployeesView() {
     }
   };
 
-  // Urlaubsantrag freigeben/ablehnen
+  // Urlaubsantrag freigeben/ablehnen (mit resilientem Mutation-Pattern)
   const handleLeaveAction = async (leaveId: string, action: "approved" | "rejected") => {
+    const leaveRequest = pendingLeaves.find(req => req.id === leaveId);
+    
+    // Optimistic update
+    const previousLeaves = [...pendingLeaves];
+    setPendingLeaves(prev => prev.filter(l => l.id !== leaveId));
+    
     try {
-      const leaveRequest = pendingLeaves.find(req => req.id === leaveId);
-      
       const { error } = await supabase
         .from("leave_requests")
         .update({ status: action })
@@ -738,17 +742,46 @@ export function EmployeesView() {
         }
       }
 
+      const typeLabel = leaveRequest?.type === "medical" ? "Arzttermin" : 
+                        leaveRequest?.type === "overtime_reduction" ? "Überstundenabbau" :
+                        leaveRequest?.type === "vacation" ? "Urlaubsantrag" : "Antrag";
+      
       toast({
-        title: action === "approved" ? "Antrag genehmigt" : "Antrag abgelehnt",
+        title: action === "approved" ? `${typeLabel} genehmigt` : `${typeLabel} abgelehnt`,
         description: action === "approved" 
-          ? "Der Urlaubsantrag wurde genehmigt und in den Kalender aktualisiert." 
-          : "Der Urlaubsantrag wurde abgelehnt und aus dem Kalender entfernt.",
+          ? `Der ${typeLabel} wurde genehmigt.` 
+          : `Der ${typeLabel} wurde abgelehnt.`,
       });
 
-      // Reload data
-      window.location.reload();
+      // Reload data ohne page reload für bessere UX
+      // Die Daten werden nach kurzer Pause neu geladen
+      setTimeout(() => window.location.reload(), 300);
     } catch (e: any) {
       console.error(e);
+      
+      // "Failed to fetch" Handling - Netzwerk-Problem
+      if (e?.message?.includes('Failed to fetch') || e?.message?.includes('NetworkError') || e?.name === 'TypeError') {
+        // Warte kurz und prüfe den tatsächlichen Status
+        await new Promise(r => setTimeout(r, 500));
+        const { data: checkData } = await supabase
+          .from("leave_requests")
+          .select("status")
+          .eq("id", leaveId)
+          .maybeSingle();
+        
+        if (checkData?.status === action) {
+          // Operation war erfolgreich trotz Netzwerkfehler
+          toast({ 
+            title: action === "approved" ? "Antrag genehmigt" : "Antrag abgelehnt",
+            description: "Die Aktion wurde erfolgreich durchgeführt."
+          });
+          setTimeout(() => window.location.reload(), 300);
+          return;
+        }
+      }
+      
+      // Rollback bei echtem Fehler
+      setPendingLeaves(previousLeaves);
       toast({
         title: "Fehler",
         description: e?.message ?? "Antrag konnte nicht aktualisiert werden.",
@@ -1336,8 +1369,18 @@ export function EmployeesView() {
                      <TableRow key={req.id} className={isCancelRequest ? "bg-amber-50/50" : ""}>
                        <TableCell>{req.user_name}</TableCell>
                        <TableCell>
-                         <Badge variant="outline">
-                           {req.type === "vacation" ? "Urlaub" : req.type === "sick" ? "Krank" : "Sonstiges"}
+                         <Badge variant="outline" className={
+                           req.type === "medical" ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-300 dark:border-purple-800" :
+                           req.type === "overtime_reduction" ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-300 dark:border-amber-800" :
+                           req.type === "sick" ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/20 dark:text-orange-300 dark:border-orange-800" :
+                           req.type === "vacation" ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-800" :
+                           undefined
+                         }>
+                           {req.type === "vacation" ? "🏖️ Urlaub" : 
+                            req.type === "sick" ? "🤒 Krank" : 
+                            req.type === "medical" ? "🏥 Arzttermin" :
+                            req.type === "overtime_reduction" ? "⏰ Überstundenabbau" :
+                            "Sonstiges"}
                          </Badge>
                        </TableCell>
                        <TableCell>

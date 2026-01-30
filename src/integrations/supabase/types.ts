@@ -8143,6 +8143,9 @@ export type Database = {
       time_entries: {
         Row: {
           created_at: string
+          edit_reason: string | null
+          edited_at: string | null
+          edited_by: string | null
           ended_at: string | null
           id: string
           minutes: number
@@ -8156,6 +8159,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          edit_reason?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           ended_at?: string | null
           id?: string
           minutes: number
@@ -8169,6 +8175,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          edit_reason?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           ended_at?: string | null
           id?: string
           minutes?: number

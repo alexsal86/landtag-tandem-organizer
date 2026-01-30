@@ -9,6 +9,9 @@ interface TimeEntryRow {
   minutes: number | null;
   pause_minutes?: number;
   notes: string | null;
+  edited_by?: string | null;
+  edited_at?: string | null;
+  edit_reason?: string | null;
 }
 
 interface LeaveRow {
@@ -48,6 +51,9 @@ export interface CombinedTimeEntry {
   type_label: string | null;
   type_icon: string;
   type_class: string;
+  edited_by?: string | null;
+  edited_at?: string | null;
+  edit_reason?: string | null;
 }
 
 interface UseCombinedTimeEntriesParams {
@@ -345,6 +351,9 @@ export function useCombinedTimeEntries({
         type_label: config.work.label,
         type_icon: config.work.icon,
         type_class: config.work.className,
+        edited_by: e.edited_by,
+        edited_at: e.edited_at,
+        edit_reason: e.edit_reason,
       });
     });
 
