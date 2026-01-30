@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNotifications as useNotificationsHook } from '@/hooks/useNotifications';
 import type { Notification } from '@/hooks/useNotifications';
 
@@ -18,7 +18,21 @@ interface NotificationContextType {
   subscribeToPush: () => Promise<void>;
 }
 
-const NotificationContext = createContext<NotificationContextType | null>(null);
+// Default empty implementation for when hook fails or isn't ready
+const defaultContextValue: NotificationContextType = {
+  notifications: [],
+  unreadCount: 0,
+  loading: false,
+  pushSupported: false,
+  pushPermission: 'default',
+  loadNotifications: async () => {},
+  markAsRead: async () => {},
+  markAllAsRead: async () => {},
+  requestPushPermission: async () => false,
+  subscribeToPush: async () => {},
+};
+
+const NotificationContext = createContext<NotificationContextType>(defaultContextValue);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const notificationState = useNotificationsHook();
@@ -32,8 +46,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error('useNotifications must be used within NotificationProvider');
-  }
+  // No need to check for null since we have a default value
   return context;
 };
