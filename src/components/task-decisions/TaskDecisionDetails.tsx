@@ -7,12 +7,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { UserBadge } from "@/components/ui/user-badge";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { Check, X, MessageCircle, Send, Archive, History, Paperclip, Vote } from "lucide-react";
+import { Check, X, MessageCircle, Send, Archive, History, Paperclip, Vote, CheckCircle2, XCircle, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ResponseHistoryTimeline } from "./ResponseHistoryTimeline";
 import { DecisionFileUpload } from "./DecisionFileUpload";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
+import { cn } from "@/lib/utils";
 
 interface Participant {
   id: string;
@@ -318,6 +319,37 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                   ({summary.pending} ausstehend)
                 </span>
               </div>
+              
+              {/* Result badge when all have responded */}
+              {summary.pending === 0 && summary.total > 0 && (
+                <div className="mt-3 pt-3 border-t">
+                  {summary.questionCount > 0 ? (
+                    <Badge 
+                      variant="outline" 
+                      className="text-sm text-orange-600 border-orange-600 bg-orange-50 dark:bg-orange-950"
+                    >
+                      <HelpCircle className="h-3.5 w-3.5 mr-1" />
+                      Rückfragen offen
+                    </Badge>
+                  ) : summary.yesCount > summary.noCount ? (
+                    <Badge 
+                      variant="outline" 
+                      className="text-sm text-green-600 border-green-600 bg-green-50 dark:bg-green-950"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                      Angenommen
+                    </Badge>
+                  ) : (
+                    <Badge 
+                      variant="outline" 
+                      className="text-sm text-red-600 border-red-600 bg-red-50 dark:bg-red-950"
+                    >
+                      <XCircle className="h-3.5 w-3.5 mr-1" />
+                      Abgelehnt
+                    </Badge>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
