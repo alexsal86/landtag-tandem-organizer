@@ -336,15 +336,7 @@ export function AdminTimeTrackingView() {
         );
         const monthTarget = monthWorkDays.length * dailyMin;
         
-        // Worked minutes in this month
-        const monthWorked = (yearEntries || [])
-          .filter(e => {
-            const d = parseISO(e.work_date);
-            return d.getMonth() === m && d.getFullYear() === currentYear;
-          })
-          .reduce((sum, e) => sum + (e.minutes || 0), 0);
-        
-        // Absence dates in this month
+        // Calculate absence dates for this month FIRST (needed for worked filter)
         const monthAbsenceDates = new Set<string>();
         (yearLeaves || []).forEach(leave => {
           if (['sick', 'vacation', 'overtime_reduction', 'medical'].includes(leave.type)) {
@@ -355,6 +347,21 @@ export function AdminTimeTrackingView() {
             } catch {}
           }
         });
+        
+        // Worked minutes in this month - EXCLUDE holidays and absence days
+        const monthWorked = (yearEntries || [])
+          .filter(e => {
+            const d = parseISO(e.work_date);
+            const dateStr = format(d, 'yyyy-MM-dd');
+            // Exclude: other months, holidays, and absence days (to avoid double counting with credits)
+            return d.getMonth() === m && 
+                   d.getFullYear() === currentYear &&
+                   !holidayDates.has(dateStr) &&
+                   !monthAbsenceDates.has(dateStr);
+          })
+          .reduce((sum, e) => sum + (e.minutes || 0), 0);
+        
+        // monthAbsenceDates already calculated above (before worked calculation)
         
         // Credit minutes for this month
         const monthCredit = [...monthAbsenceDates]
