@@ -8199,6 +8199,36 @@ export type Database = {
           },
         ]
       }
+      time_entry_corrections: {
+        Row: {
+          correction_date: string
+          correction_minutes: number
+          created_at: string | null
+          created_by: string
+          id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          correction_date?: string
+          correction_minutes: number
+          created_at?: string | null
+          created_by: string
+          id?: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          correction_date?: string
+          correction_minutes?: number
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       time_entry_history: {
         Row: {
           change_type: string

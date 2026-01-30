@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { startOfYear, endOfYear, eachDayOfInterval, isWeekend, formatDistanceToNow, differenceInDays, format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Calendar, AlertCircle, History, BarChart3, RefreshCcw, Check, X, Undo2 } from "lucide-react";
+import { Calendar, AlertCircle, History, BarChart3, RefreshCcw, Check, X, Undo2, Clock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EmployeeMeetingRequestDialog } from "./EmployeeMeetingRequestDialog";
@@ -22,6 +23,7 @@ import { EmployeeMeetingHistory } from "./EmployeeMeetingHistory";
 import { EmployeeMeetingRequestManager } from "./EmployeeMeetingRequestManager";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { EmployeeYearlyStatsView } from "./EmployeeYearlyStatsView";
+import { AdminTimeTrackingView } from "./admin/AdminTimeTrackingView";
 
 // Types derived from DB schema
 type LeaveType = "vacation" | "sick" | "other" | "medical" | "overtime_reduction";
@@ -1306,7 +1308,20 @@ export function EmployeesView() {
         </div>
       </header>
 
-      <section className="px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+      <Tabs defaultValue="overview" className="px-4 sm:px-6">
+        <TabsList className="mb-4">
+          <TabsTrigger value="overview">
+            <Calendar className="h-4 w-4 mr-2" />
+            Übersicht
+          </TabsTrigger>
+          <TabsTrigger value="timetracking">
+            <Clock className="h-4 w-4 mr-2" />
+            Zeiterfassung
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Mitarbeiter</CardTitle>
@@ -1725,40 +1740,46 @@ export function EmployeesView() {
         </section>
 
         {/* Meeting History Section */}
-        <section className="px-4 sm:px-6 pb-6">
+        <section className="pb-6">
           <EmployeeMeetingHistory showFilters={true} />
         </section>
-        
-        {selectedEmployee && (
-          <EmployeeMeetingScheduler
-            employeeId={selectedEmployee.id}
-            employeeName={selectedEmployee.name}
-            open={schedulerOpen}
-            onOpenChange={setSchedulerOpen}
-            onScheduled={() => {
-              setSchedulerOpen(false);
-              setSelectedEmployee(null);
-              // Reload data after scheduling
-              window.location.reload();
-            }}
-          />
-        )}
+        </TabsContent>
 
-        {/* Request Manager Dialog */}
-        <Dialog open={requestManagerOpen} onOpenChange={setRequestManagerOpen}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Gesprächsanfragen verwalten</DialogTitle>
-            </DialogHeader>
-            <EmployeeMeetingRequestManager />
-          </DialogContent>
-        </Dialog>
-        {/* Yearly Stats Dialog */}
-        <EmployeeYearlyStatsView
-          isOpen={yearlyStatsOpen}
-          onClose={() => setYearlyStatsOpen(false)}
+        <TabsContent value="timetracking">
+          <AdminTimeTrackingView />
+        </TabsContent>
+      </Tabs>
+        
+      {selectedEmployee && (
+        <EmployeeMeetingScheduler
+          employeeId={selectedEmployee.id}
+          employeeName={selectedEmployee.name}
+          open={schedulerOpen}
+          onOpenChange={setSchedulerOpen}
+          onScheduled={() => {
+            setSchedulerOpen(false);
+            setSelectedEmployee(null);
+            // Reload data after scheduling
+            window.location.reload();
+          }}
         />
-      </main>
+      )}
+
+      {/* Request Manager Dialog */}
+      <Dialog open={requestManagerOpen} onOpenChange={setRequestManagerOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gesprächsanfragen verwalten</DialogTitle>
+          </DialogHeader>
+          <EmployeeMeetingRequestManager />
+        </DialogContent>
+      </Dialog>
+      {/* Yearly Stats Dialog */}
+      <EmployeeYearlyStatsView
+        isOpen={yearlyStatsOpen}
+        onClose={() => setYearlyStatsOpen(false)}
+      />
+    </main>
     );
 }
 
