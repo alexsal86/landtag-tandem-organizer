@@ -226,13 +226,22 @@ export function TaskDetailSidebar({
         ...editFormData as Task,
       };
 
-      onTaskUpdate(updatedTask);
+      // Update local form data first
       setEditFormData(updatedTask);
-
+      
+      // Show success toast BEFORE calling onTaskUpdate
       toast({
         title: "Aufgabe gespeichert",
         description: "Die Änderungen wurden erfolgreich gespeichert.",
       });
+
+      // Call onTaskUpdate in a try-catch to prevent it from affecting our flow
+      try {
+        onTaskUpdate(updatedTask);
+      } catch (callbackError) {
+        console.error('Error in onTaskUpdate callback:', callbackError);
+        // Don't show error toast here - save was successful
+      }
     } catch (error) {
       console.error('Error saving task:', error);
       toast({
