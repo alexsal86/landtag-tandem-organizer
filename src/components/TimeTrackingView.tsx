@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -123,9 +124,17 @@ export function TimeTrackingView() {
   const [overtimeEndDate, setOvertimeEndDate] = useState("");
   const [overtimeReason, setOvertimeReason] = useState("");
   
-  // Yearly balance state
+  // Yearly balance state with monthly breakdown
   const [yearlyBalance, setYearlyBalance] = useState<number>(0);
+  const [yearlyBreakdown, setYearlyBreakdown] = useState<{
+    month: Date;
+    workedMinutes: number;
+    creditMinutes: number;
+    targetMinutes: number;
+    balance: number;
+  }[]>([]);
   const [loadingYearlyBalance, setLoadingYearlyBalance] = useState(false);
+  const [showBreakdownDialog, setShowBreakdownDialog] = useState(false);
 
   const monthStart = startOfMonth(selectedMonth);
   const monthEnd = endOfMonth(selectedMonth);
@@ -162,7 +171,7 @@ export function TimeTrackingView() {
     } catch (error: any) { toast.error("Fehler: " + error.message); } finally { setLoading(false); }
   };
 
-  // Load yearly balance
+  // Load yearly balance with monthly breakdown
   const loadYearlyBalance = async () => {
     if (!user || !employeeSettings) return;
     setLoadingYearlyBalance(true);
@@ -172,7 +181,7 @@ export function TimeTrackingView() {
       const today = new Date();
       
       const [entriesRes, leavesRes, holidaysRes, correctionsRes] = await Promise.all([
-        supabase.from("time_entries").select("minutes").eq("user_id", user.id).gte("work_date", format(yearStart, "yyyy-MM-dd")).lte("work_date", format(today, "yyyy-MM-dd")),
+        supabase.from("time_entries").select("minutes, work_date").eq("user_id", user.id).gte("work_date", format(yearStart, "yyyy-MM-dd")).lte("work_date", format(today, "yyyy-MM-dd")),
         supabase.from("leave_requests").select("type, start_date, end_date").eq("user_id", user.id).eq("status", "approved").gte("start_date", format(yearStart, "yyyy-MM-dd")).lte("end_date", format(today, "yyyy-MM-dd")),
         supabase.from("public_holidays").select("holiday_date").gte("holiday_date", format(yearStart, "yyyy-MM-dd")).lte("holiday_date", format(today, "yyyy-MM-dd")),
         supabase.from("time_entry_corrections").select("correction_minutes").eq("user_id", user.id),
@@ -181,24 +190,78 @@ export function TimeTrackingView() {
       const dailyMin = Math.round((employeeSettings.hours_per_week / employeeSettings.days_per_week) * 60);
       const holidayDates = new Set((holidaysRes.data || []).map(h => h.holiday_date));
       
-      const allDays = eachDayOfInterval({ start: yearStart, end: today });
-      const workDays = allDays.filter(d => d.getDay() !== 0 && d.getDay() !== 6 && !holidayDates.has(format(d, "yyyy-MM-dd")));
-      const targetMinutes = workDays.length * dailyMin;
+      // Build per-month data
+      const monthlyBreakdown: {
+        month: Date;
+        workedMinutes: number;
+        creditMinutes: number;
+        targetMinutes: number;
+        balance: number;
+      }[] = [];
       
-      const absenceDates = new Set<string>();
-      (leavesRes.data || []).forEach(leave => {
-        try {
-          eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
-            .filter(d => d <= today)
-            .forEach(d => absenceDates.add(format(d, 'yyyy-MM-dd')));
-        } catch {}
-      });
+      const currentMonthIndex = today.getMonth();
       
-      const workedMinutes = (entriesRes.data || []).reduce((sum, e) => sum + (e.minutes || 0), 0);
-      const creditMinutes = [...absenceDates].filter(d => !holidayDates.has(d)).filter(d => { const date = parseISO(d); return date.getDay() !== 0 && date.getDay() !== 6; }).length * dailyMin;
+      for (let m = 0; m <= currentMonthIndex; m++) {
+        const mStart = new Date(currentYear, m, 1);
+        const mEnd = endOfMonth(mStart);
+        const mEffectiveEnd = mEnd > today ? today : mEnd;
+        
+        // Work days in this month
+        const monthDays = eachDayOfInterval({ start: mStart, end: mEffectiveEnd });
+        const monthWorkDays = monthDays.filter(d => 
+          d.getDay() !== 0 && d.getDay() !== 6 && !holidayDates.has(format(d, "yyyy-MM-dd"))
+        );
+        const monthTarget = monthWorkDays.length * dailyMin;
+        
+        // Worked minutes in this month
+        const monthWorked = (entriesRes.data || [])
+          .filter(e => {
+            const d = parseISO(e.work_date);
+            return d.getMonth() === m && d.getFullYear() === currentYear;
+          })
+          .reduce((sum, e) => sum + (e.minutes || 0), 0);
+        
+        // Absence dates in this month
+        const monthAbsenceDates = new Set<string>();
+        (leavesRes.data || []).forEach(leave => {
+          if (['sick', 'vacation', 'overtime_reduction', 'medical'].includes(leave.type)) {
+            try {
+              eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+                .filter(d => d.getMonth() === m && d.getFullYear() === currentYear && d <= mEffectiveEnd)
+                .forEach(d => monthAbsenceDates.add(format(d, 'yyyy-MM-dd')));
+            } catch {}
+          }
+        });
+        
+        // Credit minutes for this month
+        const monthCredit = [...monthAbsenceDates]
+          .filter(d => !holidayDates.has(d))
+          .filter(d => {
+            const date = parseISO(d);
+            return date.getDay() !== 0 && date.getDay() !== 6;
+          })
+          .length * dailyMin;
+        
+        const monthBalance = monthWorked + monthCredit - monthTarget;
+        
+        monthlyBreakdown.push({
+          month: mStart,
+          workedMinutes: monthWorked,
+          creditMinutes: monthCredit,
+          targetMinutes: monthTarget,
+          balance: monthBalance,
+        });
+      }
+      
+      setYearlyBreakdown(monthlyBreakdown);
+      
+      // Corrections total
       const correctionsTotal = (correctionsRes.data || []).reduce((sum, c) => sum + c.correction_minutes, 0);
       
-      setYearlyBalance(workedMinutes + creditMinutes - targetMinutes + correctionsTotal);
+      // Total balance = sum of monthly balances + corrections
+      const totalBalance = monthlyBreakdown.reduce((sum, mb) => sum + mb.balance, 0) + correctionsTotal;
+      setYearlyBalance(totalBalance);
+      
     } catch (error) {
       console.error("Error loading yearly balance:", error);
     } finally {
@@ -695,19 +758,70 @@ export function TimeTrackingView() {
           <TabsTrigger value="employee-info">Mitarbeiter-Info</TabsTrigger>
         </TabsList>
         <TabsContent value="time-tracking" className="space-y-6">
-          {/* Yearly balance card */}
+          {/* Yearly balance card with breakdown */}
           <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Mein Überstundensaldo {getYear(selectedMonth)}
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Mein Überstundensaldo {getYear(selectedMonth)}
+                </CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowBreakdownDialog(true)}
+                  className="text-xs"
+                >
+                  Aufschlüsselung
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className={`text-3xl font-bold ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
                 {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Gesamtsaldo bis heute (inkl. Korrekturen)</p>
+              <p className="text-xs text-muted-foreground mt-1">Summe aller Monate bis heute</p>
+              {yearlyBreakdown.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {yearlyBreakdown.map((mb, idx) => (
+                    <TooltipProvider key={idx}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge 
+                            variant={mb.balance >= 0 ? "default" : "destructive"}
+                            className={`cursor-help ${mb.balance >= 0 ? "bg-green-100 text-green-700 hover:bg-green-200" : ""}`}
+                          >
+                            {format(mb.month, "MMM", { locale: de })}: {mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                          <div className="space-y-1">
+                            <div className="font-medium">{format(mb.month, "MMMM yyyy", { locale: de })}</div>
+                            <div className="flex justify-between gap-4">
+                              <span>Soll:</span>
+                              <span>{fmt(mb.targetMinutes)}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span>Gearbeitet:</span>
+                              <span>{fmt(mb.workedMinutes)}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span>Gutschriften:</span>
+                              <span>+{fmt(mb.creditMinutes)}</span>
+                            </div>
+                            <div className="flex justify-between gap-4 font-medium border-t pt-1">
+                              <span>Saldo:</span>
+                              <span className={mb.balance >= 0 ? "text-green-600" : "text-destructive"}>
+                                {mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}
+                              </span>
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1476,6 +1590,79 @@ export function TimeTrackingView() {
           <EmployeeInfoTab employeeSettings={employeeSettings} />
         </TabsContent>
       </Tabs>
+      {/* Yearly breakdown dialog */}
+      <Dialog open={showBreakdownDialog} onOpenChange={setShowBreakdownDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Überstunden-Aufschlüsselung {getYear(selectedMonth)}</DialogTitle>
+            <DialogDescription>
+              Monatliche Entwicklung deines Überstundensaldos
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <ScrollArea className="h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Monat</TableHead>
+                    <TableHead className="text-right">Soll</TableHead>
+                    <TableHead className="text-right">Gearbeitet</TableHead>
+                    <TableHead className="text-right">Gutschriften</TableHead>
+                    <TableHead className="text-right">Saldo</TableHead>
+                    <TableHead className="text-right">Kumuliert</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {yearlyBreakdown.map((mb, idx) => {
+                    const cumulative = yearlyBreakdown.slice(0, idx + 1).reduce((sum, m) => sum + m.balance, 0);
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">
+                          {format(mb.month, "MMMM", { locale: de })}
+                        </TableCell>
+                        <TableCell className="text-right">{fmt(mb.targetMinutes)}</TableCell>
+                        <TableCell className="text-right">{fmt(mb.workedMinutes)}</TableCell>
+                        <TableCell className="text-right text-blue-600">+{fmt(mb.creditMinutes)}</TableCell>
+                        <TableCell className={`text-right font-medium ${mb.balance >= 0 ? "text-green-600" : "text-destructive"}`}>
+                          {mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}
+                        </TableCell>
+                        <TableCell className={`text-right font-bold ${cumulative >= 0 ? "text-green-600" : "text-destructive"}`}>
+                          {cumulative >= 0 ? "+" : ""}{fmt(cumulative)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  <TableRow className="bg-muted/50 font-bold">
+                    <TableCell colSpan={4}>Gesamt {getYear(selectedMonth)}</TableCell>
+                    <TableCell className={`text-right ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
+                      {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
+                    </TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </ScrollArea>
+            
+            <div className="bg-muted/50 rounded-md p-3 text-sm">
+              <p className="font-medium mb-1">Legende:</p>
+              <ul className="text-muted-foreground space-y-1 text-xs">
+                <li><strong>Soll:</strong> Arbeitstage im Monat × tägliche Arbeitszeit (ohne Feiertage)</li>
+                <li><strong>Gearbeitet:</strong> Tatsächlich erfasste Arbeitszeit</li>
+                <li><strong>Gutschriften:</strong> Urlaub, Krankheit, Überstundenabbau</li>
+                <li><strong>Saldo:</strong> Gearbeitet + Gutschriften − Soll</li>
+                <li><strong>Kumuliert:</strong> Laufende Summe aller Monats-Salden</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBreakdownDialog(false)}>
+              Schließen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
