@@ -10,8 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Building2, Plus, Edit, Trash2, Users } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -24,34 +27,66 @@ interface TenantWithStats {
   user_count: number;
 }
 
+interface UserWithTenants {
+  id: string;
+  email: string;
+  display_name: string;
+  avatar_url?: string;
+  created_at: string;
+  tenants: Array<{ id: string; name: string; role: string }>;
+}
+
+const ROLE_OPTIONS = [
+  { value: "abgeordneter", label: "Abgeordneter (Admin)" },
+  { value: "bueroleitung", label: "Büroleitung" },
+  { value: "mitarbeiter", label: "Mitarbeiter" },
+  { value: "praktikant", label: "Praktikant" },
+];
+
 export function SuperadminTenantManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Tenant states
   const [tenants, setTenants] = useState<TenantWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<TenantWithStats | null>(null);
   
-  // Form state
+  // Tenant form state
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formIsActive, setFormIsActive] = useState(true);
+
+  // User states
+  const [allUsers, setAllUsers] = useState<UserWithTenants[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [selectedTenantFilter, setSelectedTenantFilter] = useState<string>("all");
+  
+  // Create user form
+  const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserRole, setNewUserRole] = useState("mitarbeiter");
+  const [newUserTenantId, setNewUserTenantId] = useState("");
+  const [createdUserPassword, setCreatedUserPassword] = useState<string | null>(null);
+  const [passwordCopied, setPasswordCopied] = useState(false);
+  
+  // Assign tenant dialog
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assigningUser, setAssigningUser] = useState<UserWithTenants | null>(null);
+  const [assignTenantId, setAssignTenantId] = useState("");
+  const [assignRole, setAssignRole] = useState("mitarbeiter");
 
   // Superadmin-Check (hardcoded für mail@alexander-salomon.de)
   const isSuperadmin = user?.email === "mail@alexander-salomon.de";
 
   const loadTenants = async () => {
     try {
-      // Lade Tenants mit User-Count
+      setLoading(true);
       const { data, error } = await supabase
         .from("tenants")
-        .select(`
-          id,
-          name,
-          description,
-          is_active,
-          created_at
-        `)
+        .select(`id, name, description, is_active, created_at`)
         .order("name");
 
       if (error) throw error;
@@ -81,13 +116,33 @@ export function SuperadminTenantManagement() {
     }
   };
 
+  const loadAllUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const { data, error } = await supabase.functions.invoke('manage-tenant-user', {
+        body: { action: 'listAllUsers' }
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      setAllUsers(data.users || []);
+    } catch (error: any) {
+      console.error("Error loading users:", error);
+      toast({ title: "Fehler", description: error.message || "Benutzer konnten nicht geladen werden", variant: "destructive" });
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (isSuperadmin) {
       loadTenants();
+      loadAllUsers();
     }
   }, [isSuperadmin]);
 
-  const handleSave = async () => {
+  const handleSaveTenant = async () => {
     if (!formName.trim()) {
       toast({ title: "Fehler", description: "Name ist erforderlich", variant: "destructive" });
       return;
@@ -95,7 +150,6 @@ export function SuperadminTenantManagement() {
 
     try {
       if (editingTenant) {
-        // Update
         const { error } = await supabase
           .from("tenants")
           .update({
@@ -109,7 +163,6 @@ export function SuperadminTenantManagement() {
         if (error) throw error;
         toast({ title: "Gespeichert", description: "Tenant wurde aktualisiert" });
       } else {
-        // Create
         const { error } = await supabase
           .from("tenants")
           .insert({
@@ -124,14 +177,15 @@ export function SuperadminTenantManagement() {
       }
 
       setDialogOpen(false);
-      resetForm();
+      resetTenantForm();
       loadTenants();
     } catch (error: any) {
+      console.error("Save tenant error:", error);
       toast({ title: "Fehler", description: error.message, variant: "destructive" });
     }
   };
 
-  const handleDelete = async (tenant: TenantWithStats) => {
+  const handleDeleteTenant = async (tenant: TenantWithStats) => {
     if (tenant.user_count > 0) {
       toast({ 
         title: "Nicht möglich", 
@@ -140,8 +194,6 @@ export function SuperadminTenantManagement() {
       });
       return;
     }
-
-    if (!confirm(`Tenant "${tenant.name}" wirklich löschen?`)) return;
 
     try {
       const { error } = await supabase
@@ -157,13 +209,102 @@ export function SuperadminTenantManagement() {
     }
   };
 
-  const openCreateDialog = () => {
+  const handleCreateUser = async () => {
+    if (!newUserEmail.trim() || !newUserName.trim() || !newUserTenantId) {
+      toast({ title: "Fehler", description: "Alle Felder sind erforderlich", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-tenant-user', {
+        body: {
+          action: 'createUser',
+          email: newUserEmail.trim(),
+          displayName: newUserName.trim(),
+          role: newUserRole,
+          tenantId: newUserTenantId
+        }
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      setCreatedUserPassword(data.user.password);
+      toast({ title: "Benutzer erstellt", description: `${newUserEmail} wurde erfolgreich angelegt` });
+      
+      // Reload data
+      loadTenants();
+      loadAllUsers();
+    } catch (error: any) {
+      console.error("Create user error:", error);
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleAssignTenant = async () => {
+    if (!assigningUser || !assignTenantId) {
+      toast({ title: "Fehler", description: "Tenant ist erforderlich", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-tenant-user', {
+        body: {
+          action: 'assignTenant',
+          userId: assigningUser.id,
+          tenantId: assignTenantId,
+          role: assignRole
+        }
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      toast({ title: "Zugewiesen", description: `${assigningUser.display_name} wurde dem Tenant zugewiesen` });
+      setAssignDialogOpen(false);
+      setAssigningUser(null);
+      loadTenants();
+      loadAllUsers();
+    } catch (error: any) {
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteUser = async (userToDelete: UserWithTenants) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-tenant-user', {
+        body: {
+          action: 'deleteUser',
+          userId: userToDelete.id
+        }
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      toast({ title: "Gelöscht", description: `${userToDelete.display_name} wurde entfernt` });
+      loadTenants();
+      loadAllUsers();
+    } catch (error: any) {
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const copyPassword = () => {
+    if (createdUserPassword) {
+      navigator.clipboard.writeText(createdUserPassword);
+      setPasswordCopied(true);
+      setTimeout(() => setPasswordCopied(false), 2000);
+    }
+  };
+
+  const openCreateTenantDialog = () => {
     setEditingTenant(null);
-    resetForm();
+    resetTenantForm();
     setDialogOpen(true);
   };
 
-  const openEditDialog = (tenant: TenantWithStats) => {
+  const openEditTenantDialog = (tenant: TenantWithStats) => {
     setEditingTenant(tenant);
     setFormName(tenant.name);
     setFormDescription(tenant.description || "");
@@ -171,12 +312,33 @@ export function SuperadminTenantManagement() {
     setDialogOpen(true);
   };
 
-  const resetForm = () => {
+  const openAssignDialog = (userToAssign: UserWithTenants) => {
+    setAssigningUser(userToAssign);
+    setAssignTenantId("");
+    setAssignRole("mitarbeiter");
+    setAssignDialogOpen(true);
+  };
+
+  const resetTenantForm = () => {
     setFormName("");
     setFormDescription("");
     setFormIsActive(true);
     setEditingTenant(null);
   };
+
+  const resetCreateUserForm = () => {
+    setNewUserEmail("");
+    setNewUserName("");
+    setNewUserRole("mitarbeiter");
+    setNewUserTenantId("");
+    setCreatedUserPassword(null);
+    setPasswordCopied(false);
+  };
+
+  // Filter users by selected tenant
+  const filteredUsers = selectedTenantFilter === "all" 
+    ? allUsers 
+    : allUsers.filter(u => u.tenants.some(t => t.id === selectedTenantFilter));
 
   if (!isSuperadmin) {
     return (
@@ -190,91 +352,334 @@ export function SuperadminTenantManagement() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Tenant-Verwaltung
-          </CardTitle>
-          <CardDescription>
-            Verwaltung aller Mandanten im System
-          </CardDescription>
-        </div>
-        <Button onClick={openCreateDialog}>
-          <Plus className="h-4 w-4 mr-2" />
-          Neuer Tenant
-        </Button>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="h-5 w-5" />
+          System-Verwaltung
+        </CardTitle>
+        <CardDescription>
+          Verwaltung aller Mandanten und Benutzer im System
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="text-center py-8 text-muted-foreground">Laden...</div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Beschreibung</TableHead>
-                <TableHead className="text-center">Benutzer</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                <TableHead>Erstellt</TableHead>
-                <TableHead className="text-right">Aktionen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tenants.map((tenant) => (
-                <TableRow key={tenant.id}>
-                  <TableCell className="font-medium">{tenant.name}</TableCell>
-                  <TableCell className="text-muted-foreground max-w-xs truncate">
-                    {tenant.description || "—"}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="secondary" className="gap-1">
-                      <Users className="h-3 w-3" />
-                      {tenant.user_count}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant={tenant.is_active ? "default" : "outline"}>
-                      {tenant.is_active ? "Aktiv" : "Inaktiv"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {format(new Date(tenant.created_at), "dd.MM.yyyy", { locale: de })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-1 justify-end">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEditDialog(tenant)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(tenant)}
-                        disabled={tenant.user_count > 0}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {tenants.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    Keine Tenants vorhanden
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
+        <Tabs defaultValue="tenants" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="tenants">Tenants</TabsTrigger>
+            <TabsTrigger value="users">Benutzer</TabsTrigger>
+            <TabsTrigger value="create-user">Neuer Benutzer</TabsTrigger>
+          </TabsList>
 
-        {/* Create/Edit Dialog */}
+          {/* TAB: Tenants */}
+          <TabsContent value="tenants" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-muted-foreground">
+                {tenants.length} Tenant(s) vorhanden
+              </div>
+              <Button onClick={openCreateTenantDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                Neuer Tenant
+              </Button>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Laden...</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Beschreibung</TableHead>
+                    <TableHead className="text-center">Benutzer</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead>Erstellt</TableHead>
+                    <TableHead className="text-right">Aktionen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tenants.map((tenant) => (
+                    <TableRow key={tenant.id}>
+                      <TableCell className="font-medium">{tenant.name}</TableCell>
+                      <TableCell className="text-muted-foreground max-w-xs truncate">
+                        {tenant.description || "—"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary" className="gap-1">
+                          <Users className="h-3 w-3" />
+                          {tenant.user_count}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={tenant.is_active ? "default" : "outline"}>
+                          {tenant.is_active ? "Aktiv" : "Inaktiv"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {format(new Date(tenant.created_at), "dd.MM.yyyy", { locale: de })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditTenantDialog(tenant)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={tenant.user_count > 0}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Tenant löschen?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tenant "{tenant.name}" wird unwiderruflich gelöscht.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground"
+                                  onClick={() => handleDeleteTenant(tenant)}
+                                >
+                                  Löschen
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {tenants.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        Keine Tenants vorhanden
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </TabsContent>
+
+          {/* TAB: Users */}
+          <TabsContent value="users" className="space-y-4">
+            <div className="flex justify-between items-center gap-4">
+              <Select value={selectedTenantFilter} onValueChange={setSelectedTenantFilter}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Alle Tenants" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Tenants</SelectItem>
+                  {tenants.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" onClick={loadAllUsers} disabled={usersLoading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${usersLoading ? 'animate-spin' : ''}`} />
+                Aktualisieren
+              </Button>
+            </div>
+
+            {usersLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Laden...</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>E-Mail</TableHead>
+                    <TableHead>Tenant(s)</TableHead>
+                    <TableHead>Rolle</TableHead>
+                    <TableHead className="text-right">Aktionen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((u) => (
+                    <TableRow key={u.id}>
+                      <TableCell className="font-medium">{u.display_name}</TableCell>
+                      <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {u.tenants.length > 0 ? (
+                            u.tenants.map(t => (
+                              <Badge key={t.id} variant="outline" className="text-xs">
+                                {t.name}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-muted-foreground text-sm">Kein Tenant</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {u.tenants[0]?.role ? (
+                          <Badge variant="secondary">
+                            {ROLE_OPTIONS.find(r => r.value === u.tenants[0].role)?.label || u.tenants[0].role}
+                          </Badge>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openAssignDialog(u)}
+                          >
+                            <UserPlus className="h-4 w-4 mr-1" />
+                            Zuweisen
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                disabled={u.email === user?.email}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Benutzer löschen?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {u.display_name} ({u.email}) wird unwiderruflich aus dem System entfernt.
+                                  Alle zugehörigen Daten werden gelöscht.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground"
+                                  onClick={() => handleDeleteUser(u)}
+                                >
+                                  Unwiderruflich löschen
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredUsers.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        Keine Benutzer gefunden
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </TabsContent>
+
+          {/* TAB: Create User */}
+          <TabsContent value="create-user">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5" />
+                  Neuen Benutzer erstellen
+                </CardTitle>
+                <CardDescription>
+                  Der Benutzer wird automatisch dem gewählten Tenant zugewiesen.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {createdUserPassword ? (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                      <p className="text-green-800 dark:text-green-200 font-medium mb-2">
+                        ✓ Benutzer erfolgreich erstellt!
+                      </p>
+                      <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+                        Bitte notieren Sie das generierte Passwort:
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 p-2 bg-white dark:bg-gray-900 rounded border font-mono">
+                          {createdUserPassword}
+                        </code>
+                        <Button variant="outline" size="sm" onClick={copyPassword}>
+                          {passwordCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                    <Button onClick={resetCreateUserForm}>
+                      Weiteren Benutzer erstellen
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>E-Mail *</Label>
+                        <Input
+                          type="email"
+                          value={newUserEmail}
+                          onChange={(e) => setNewUserEmail(e.target.value)}
+                          placeholder="benutzer@beispiel.de"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Name *</Label>
+                        <Input
+                          value={newUserName}
+                          onChange={(e) => setNewUserName(e.target.value)}
+                          placeholder="Max Mustermann"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Tenant *</Label>
+                        <Select value={newUserTenantId} onValueChange={setNewUserTenantId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Tenant auswählen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {tenants.map(t => (
+                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Rolle</Label>
+                        <Select value={newUserRole} onValueChange={setNewUserRole}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ROLE_OPTIONS.map(r => (
+                              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button onClick={handleCreateUser} disabled={!newUserEmail || !newUserName || !newUserTenantId}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Benutzer erstellen
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Tenant Create/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -312,8 +717,55 @@ export function SuperadminTenantManagement() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Abbrechen
               </Button>
-              <Button onClick={handleSave}>
+              <Button onClick={handleSaveTenant}>
                 {editingTenant ? "Speichern" : "Erstellen"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign Tenant Dialog */}
+        <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Tenant zuweisen: {assigningUser?.display_name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid gap-2">
+                <Label>Tenant *</Label>
+                <Select value={assignTenantId} onValueChange={setAssignTenantId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tenant auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Rolle</Label>
+                <Select value={assignRole} onValueChange={setAssignRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_OPTIONS.map(r => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleAssignTenant} disabled={!assignTenantId}>
+                Zuweisen
               </Button>
             </div>
           </DialogContent>
