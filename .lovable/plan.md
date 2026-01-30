@@ -1,15 +1,25 @@
 
-# Plan: Admin-Eintragstyp-Konvertierung & Feiertags-Logik korrigieren
+# Plan: Admin-Eintragstyp-Konvertierung & Feiertags-Logik ✅
 
-## Zusammenfassung der Anforderungen
+## Status: IMPLEMENTIERT
 
-### 1. Abwesenheitseinträge bearbeitbar machen
-**Problem:** In der Admin-Zeittabelle werden Urlaub/Krankheit/Überstundenabbau angezeigt, aber der Bearbeiten-Button ist nur für `entry_type === 'work'` verfügbar (Zeile 676).
+### Umgesetzte Änderungen:
 
-**Lösung:** Auch Abwesenheitseinträge (vacation, sick, overtime_reduction) bearbeitbar machen mit erweitertem Editor.
+1. **Feiertage aus Gutschrift entfernt** ✅
+   - `useCombinedTimeEntries.ts`: Feiertage mit `minutes: 0`
+   - `TimeTrackingView.tsx`: `holidayMinutes` → `holidayCount` (nur zur Anzeige)
+   - `AdminTimeTrackingView.tsx`: `creditMinutes` ohne 'holiday'
 
-### 2. Typwechsel ermöglichen (z.B. Urlaub → Überstundenabbau)
-**Problem:** Es gibt keine Möglichkeit, den Typ eines Eintrags zu ändern.
+2. **Admin kann Abwesenheiten bearbeiten** ✅
+   - Bearbeiten-Button für vacation, sick, overtime_reduction aktiviert
+   - `editingCombinedEntry` State hinzugefügt
+
+3. **Typwechsel ermöglicht** ✅
+   - `AdminTimeEntryEditor.tsx`: Typ-Dropdown mit Warnhinweisen
+   - `handleTypeChange` Funktion in AdminTimeTrackingView
+   - Arbeit ↔ Abwesenheit Konvertierung implementiert
+
+---
 
 **Lösung:** 
 - Neuer Dropdown im `AdminTimeEntryEditor` für Eintragstyp

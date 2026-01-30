@@ -25,7 +25,7 @@ import {
   ChevronLeft, ChevronRight, Clock, Calendar, TrendingUp, Gift,
   Edit, AlertCircle, CheckCircle, XCircle, Undo2, Plus
 } from "lucide-react";
-import { AdminTimeEntryEditor, AdminEditData } from "@/components/AdminTimeEntryEditor";
+import { AdminTimeEntryEditor, AdminEditData, EntryType } from "@/components/AdminTimeEntryEditor";
 
 interface Employee {
   user_id: string;
@@ -92,8 +92,9 @@ export function AdminTimeTrackingView() {
   const [corrections, setCorrections] = useState<Correction[]>([]);
   const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
   
-  // Editor state
+  // Editor state - supports both time entries and combined entries (for absences)
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [editingCombinedEntry, setEditingCombinedEntry] = useState<CombinedTimeEntry | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   
   // Correction dialog state
@@ -281,10 +282,10 @@ export function AdminTimeTrackingView() {
     [combinedEntries]
   );
 
-  // Credit minutes (absences that count towards target)
+  // Credit minutes (absences that count towards target - WITHOUT holidays, they reduce the target)
   const creditMinutes = useMemo(() => 
     combinedEntries
-      .filter(e => ['sick', 'vacation', 'holiday', 'overtime_reduction', 'medical'].includes(e.entry_type))
+      .filter(e => ['sick', 'vacation', 'overtime_reduction', 'medical'].includes(e.entry_type))
       .reduce((sum, e) => sum + (e.minutes || 0), 0),
     [combinedEntries]
   );
@@ -339,6 +340,84 @@ export function AdminTimeTrackingView() {
       loadMonthData();
     } catch (error: any) {
       toast.error(error.message || "Fehler beim Speichern");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle type change for combined entries (work <-> absence conversions)
+  const handleTypeChange = async (
+    entryId: string,
+    newType: EntryType,
+    reason: string,
+    leaveId?: string
+  ) => {
+    if (!user || !selectedUserId) return;
+    setIsSaving(true);
+
+    try {
+      const entry = editingCombinedEntry;
+      if (!entry) throw new Error("Kein Eintrag ausgewählt");
+
+      const originalType = entry.entry_type;
+
+      if (originalType === 'work' && newType !== 'work') {
+        // Work → Absence: Delete time_entry, create leave_request
+        const { error: deleteError } = await supabase
+          .from("time_entries")
+          .delete()
+          .eq("id", entryId);
+        if (deleteError) throw deleteError;
+
+        const { error: insertError } = await supabase
+          .from("leave_requests")
+          .insert({
+            user_id: selectedUserId,
+            type: newType,
+            start_date: entry.work_date,
+            end_date: entry.work_date,
+            status: "approved",
+            reason: `Admin-Umwandlung: ${reason}`,
+          });
+        if (insertError) throw insertError;
+
+        const typeLabels: Record<string, string> = {
+          vacation: 'Urlaub',
+          sick: 'Krankheit',
+          overtime_reduction: 'Überstundenabbau',
+        };
+        toast.success(`Eintrag zu ${typeLabels[newType]} umgewandelt`);
+
+      } else if (originalType !== 'work' && newType === 'work') {
+        // Absence → Work: Delete leave_request
+        if (leaveId) {
+          const { error } = await supabase
+            .from("leave_requests")
+            .delete()
+            .eq("id", leaveId);
+          if (error) throw error;
+        }
+        toast.info("Abwesenheit entfernt. Mitarbeiter muss Arbeitszeit manuell erfassen.");
+
+      } else if (originalType !== 'work' && newType !== 'work' && originalType !== newType) {
+        // Absence → different Absence (e.g., vacation → overtime_reduction)
+        if (leaveId) {
+          const { error } = await supabase
+            .from("leave_requests")
+            .update({
+              type: newType,
+              reason: `Umgewandelt von ${originalType}: ${reason}`,
+            })
+            .eq("id", leaveId);
+          if (error) throw error;
+        }
+        toast.success("Eintragstyp geändert");
+      }
+
+      setEditingCombinedEntry(null);
+      loadMonthData();
+    } catch (error: any) {
+      toast.error(error.message || "Fehler bei der Typänderung");
     } finally {
       setIsSaving(false);
     }
@@ -673,13 +752,18 @@ export function AdminTimeTrackingView() {
                               )}
                             </TableCell>
                             <TableCell>
-                              {entry.is_editable && entry.entry_type === 'work' && (
+                              {(entry.entry_type === 'work' || ['vacation', 'sick', 'overtime_reduction'].includes(entry.entry_type)) && (
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
                                   onClick={() => {
-                                    const original = timeEntries.find(e => e.id === entry.id);
-                                    if (original) handleEditEntry(original);
+                                    // For work entries, also find the original time entry
+                                    if (entry.entry_type === 'work') {
+                                      const original = timeEntries.find(e => e.id === entry.id);
+                                      if (original) setEditingEntry(original);
+                                    }
+                                    // Always set the combined entry for type change support
+                                    setEditingCombinedEntry(entry);
                                   }}
                                 >
                                   <Edit className="h-4 w-4" />
@@ -801,17 +885,33 @@ export function AdminTimeTrackingView() {
         </TabsContent>
       </Tabs>
 
-      {/* Edit entry dialog */}
-      {editingEntry && (
+      {/* Edit entry dialog - supports both work entries and absences with type change */}
+      {editingCombinedEntry && (
         <AdminTimeEntryEditor
           entry={{
-            ...editingEntry,
+            id: editingEntry?.id || editingCombinedEntry.id,
+            work_date: editingCombinedEntry.work_date,
+            started_at: editingEntry?.started_at || editingCombinedEntry.started_at,
+            ended_at: editingEntry?.ended_at || editingCombinedEntry.ended_at,
+            minutes: editingEntry?.minutes || editingCombinedEntry.minutes,
+            pause_minutes: editingEntry?.pause_minutes || editingCombinedEntry.pause_minutes || 0,
+            notes: editingEntry?.notes || editingCombinedEntry.notes,
             user_name: selectedEmployee?.display_name || "Mitarbeiter",
+            edited_by: editingEntry?.edited_by,
+            edited_at: editingEntry?.edited_at,
+            edit_reason: editingEntry?.edit_reason,
+            leave_id: editingCombinedEntry.leave_id,
           }}
-          isOpen={!!editingEntry}
-          onClose={() => setEditingEntry(null)}
+          isOpen={!!editingCombinedEntry}
+          onClose={() => {
+            setEditingEntry(null);
+            setEditingCombinedEntry(null);
+          }}
           onSave={handleSaveEntry}
+          onTypeChange={handleTypeChange}
           isLoading={isSaving}
+          currentEntryType={editingCombinedEntry.entry_type as EntryType}
+          allowTypeChange={true}
         />
       )}
 

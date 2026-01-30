@@ -254,15 +254,14 @@ export function TimeTrackingView() {
       .filter(d => !holidayDates.has(d) && !sickDates.has(d) && !vacationDates.has(d))
       .length * dailyMinutes;
     
-    // Feiertage im Monat (nur Werktage)
-    const holidayMinutes = [...holidayDates]
+    // Feiertage reduzieren das Soll, werden NICHT als Gutschrift gezählt
+    const holidayCount = [...holidayDates]
       .filter(d => {
         try {
           const date = parseISO(d);
           return date >= monthStart && date <= monthEnd && date.getDay() !== 0 && date.getDay() !== 6;
         } catch { return false; }
-      })
-      .length * dailyMinutes;
+      }).length;
     
     // Arzttermine (mit tatsächlicher Dauer, falls erfasst)
     const medicalMinutes = medicalLeaves
@@ -275,8 +274,8 @@ export function TimeTrackingView() {
       })
       .reduce((s, l) => s + (l.minutes_counted || dailyMinutes), 0);
     
-    // Gesamte Gutschrift
-    const totalCredit = sickMinutes + vacationMinutes + overtimeMinutes + holidayMinutes + medicalMinutes;
+    // Gesamte Gutschrift (OHNE Feiertage - diese reduzieren bereits das Soll)
+    const totalCredit = sickMinutes + vacationMinutes + overtimeMinutes + medicalMinutes;
     
     // Arbeitstage im Monat (ohne Wochenenden und Feiertage)
     const workingDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
@@ -292,7 +291,7 @@ export function TimeTrackingView() {
       sickMinutes,
       vacationMinutes,
       overtimeMinutes,
-      holidayMinutes,
+      holidayCount, // Anzahl der Feiertage (nur zur Anzeige, keine Minuten)
       medicalMinutes,
       target,
       difference: totalActual - target,
@@ -322,7 +321,7 @@ export function TimeTrackingView() {
           return parseISO(e.work_date) <= today;
         } catch { return false; }
       })
-      .filter(e => ['sick', 'vacation', 'holiday', 'overtime_reduction', 'medical'].includes(e.entry_type))
+      .filter(e => ['sick', 'vacation', 'overtime_reduction', 'medical'].includes(e.entry_type))
       .reduce((s, e) => s + (e.minutes || 0), 0);
     
     // Gearbeitete Minuten bis heute (nur echte Arbeit)
@@ -673,10 +672,10 @@ export function TimeTrackingView() {
                         </TooltipTrigger>
                         <TooltipContent side="left" className="max-w-xs">
                           <div className="space-y-1 text-xs">
-                            {monthlyTotals.holidayMinutes > 0 && (
+                            {monthlyTotals.holidayCount > 0 && (
                               <div className="flex justify-between gap-4">
                                 <span>🎉 Feiertage:</span>
-                                <span className="font-mono">{fmt(monthlyTotals.holidayMinutes)}</span>
+                                <span className="font-mono">{monthlyTotals.holidayCount} Tage (kein Soll)</span>
                               </div>
                             )}
                             {monthlyTotals.sickMinutes > 0 && (
