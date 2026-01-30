@@ -111,9 +111,17 @@ export function AdminTimeTrackingView() {
   const [newEntryType, setNewEntryType] = useState<EntryType>("work");
   const [newEntryReason, setNewEntryReason] = useState("");
   
-  // Yearly balance state
+  // Yearly balance state with monthly breakdown
   const [yearlyBalance, setYearlyBalance] = useState<number>(0);
+  const [yearlyBreakdown, setYearlyBreakdown] = useState<{
+    month: Date;
+    workedMinutes: number;
+    creditMinutes: number;
+    targetMinutes: number;
+    balance: number;
+  }[]>([]);
   const [loadingYearlyBalance, setLoadingYearlyBalance] = useState(false);
+  const [showBreakdownDialog, setShowBreakdownDialog] = useState(false);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -254,7 +262,7 @@ export function AdminTimeTrackingView() {
     return labels[type] || type;
   };
 
-  // Load yearly balance for the selected employee
+  // Load yearly balance for the selected employee with monthly breakdown
   const loadYearlyBalance = async () => {
     if (!selectedUserId || !selectedEmployee) return;
     setLoadingYearlyBalance(true);
@@ -296,48 +304,81 @@ export function AdminTimeTrackingView() {
         .select("correction_minutes")
         .eq("user_id", selectedUserId);
       
-      // Calculate
+      // Calculate per-month breakdown
       const dailyMin = Math.round((selectedEmployee.hours_per_week / selectedEmployee.days_per_week) * 60);
       const holidayDates = new Set((yearHolidays || []).map(h => h.holiday_date));
       
-      // Calculate work days until today (excluding weekends and holidays)
-      const allDays = eachDayOfInterval({ start: yearStart, end: effectiveEnd });
-      const workDays = allDays.filter(d => 
-        d.getDay() !== 0 && d.getDay() !== 6 && !holidayDates.has(format(d, "yyyy-MM-dd"))
-      );
-      const targetMinutes = workDays.length * dailyMin;
+      // Build per-month data
+      const monthlyBreakdown: {
+        month: Date;
+        workedMinutes: number;
+        creditMinutes: number;
+        targetMinutes: number;
+        balance: number;
+      }[] = [];
       
-      // Calculate absence dates (credits)
-      const absenceDates = new Set<string>();
-      (yearLeaves || []).forEach(leave => {
-        if (['sick', 'vacation', 'overtime_reduction', 'medical'].includes(leave.type)) {
-          try {
-            eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
-              .filter(d => d <= effectiveEnd)
-              .forEach(d => absenceDates.add(format(d, 'yyyy-MM-dd')));
-          } catch {}
-        }
-      });
+      const currentMonthIndex = effectiveEnd.getMonth();
       
-      // Worked minutes (actual work only)
-      const workedMinutes = (yearEntries || [])
-        .reduce((sum, e) => sum + (e.minutes || 0), 0);
+      for (let m = 0; m <= currentMonthIndex; m++) {
+        const mStart = new Date(currentYear, m, 1);
+        const mEnd = endOfMonth(mStart);
+        const mEffectiveEnd = mEnd > effectiveEnd ? effectiveEnd : mEnd;
+        
+        // Work days in this month
+        const monthDays = eachDayOfInterval({ start: mStart, end: mEffectiveEnd });
+        const monthWorkDays = monthDays.filter(d => 
+          d.getDay() !== 0 && d.getDay() !== 6 && !holidayDates.has(format(d, "yyyy-MM-dd"))
+        );
+        const monthTarget = monthWorkDays.length * dailyMin;
+        
+        // Worked minutes in this month
+        const monthWorked = (yearEntries || [])
+          .filter(e => {
+            const d = parseISO(e.work_date);
+            return d.getMonth() === m && d.getFullYear() === currentYear;
+          })
+          .reduce((sum, e) => sum + (e.minutes || 0), 0);
+        
+        // Absence dates in this month
+        const monthAbsenceDates = new Set<string>();
+        (yearLeaves || []).forEach(leave => {
+          if (['sick', 'vacation', 'overtime_reduction', 'medical'].includes(leave.type)) {
+            try {
+              eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+                .filter(d => d.getMonth() === m && d.getFullYear() === currentYear && d <= mEffectiveEnd)
+                .forEach(d => monthAbsenceDates.add(format(d, 'yyyy-MM-dd')));
+            } catch {}
+          }
+        });
+        
+        // Credit minutes for this month
+        const monthCredit = [...monthAbsenceDates]
+          .filter(d => !holidayDates.has(d))
+          .filter(d => {
+            const date = parseISO(d);
+            return date.getDay() !== 0 && date.getDay() !== 6;
+          })
+          .length * dailyMin;
+        
+        const monthBalance = monthWorked + monthCredit - monthTarget;
+        
+        monthlyBreakdown.push({
+          month: mStart,
+          workedMinutes: monthWorked,
+          creditMinutes: monthCredit,
+          targetMinutes: monthTarget,
+          balance: monthBalance,
+        });
+      }
       
-      // Credit minutes (absences on work days, not holidays)
-      const creditMinutes = [...absenceDates]
-        .filter(d => !holidayDates.has(d))
-        .filter(d => {
-          const date = parseISO(d);
-          return date.getDay() !== 0 && date.getDay() !== 6;
-        })
-        .length * dailyMin;
+      setYearlyBreakdown(monthlyBreakdown);
       
-      // Corrections total
+      // Corrections total (applied to total)
       const correctionsTotal = (yearCorrections || []).reduce((sum, c) => sum + c.correction_minutes, 0);
       
-      // Total balance
-      const balance = workedMinutes + creditMinutes - targetMinutes + correctionsTotal;
-      setYearlyBalance(balance);
+      // Total balance = sum of monthly balances + corrections
+      const totalBalance = monthlyBreakdown.reduce((sum, mb) => sum + mb.balance, 0) + correctionsTotal;
+      setYearlyBalance(totalBalance);
       
     } catch (error) {
       console.error("Error loading yearly balance:", error);
@@ -764,21 +805,79 @@ export function AdminTimeTrackingView() {
         </div>
       </div>
 
-      {/* Yearly balance card */}
+      {/* Yearly balance card with breakdown button */}
       <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Überstundensaldo {getYear(currentMonth)}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Überstundensaldo {getYear(currentMonth)}
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowBreakdownDialog(true)}
+              className="text-xs"
+            >
+              Aufschlüsselung anzeigen
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className={`text-3xl font-bold ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
-            {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
+          <div className="flex items-baseline gap-4">
+            <div className={`text-3xl font-bold ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
+              {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
+            </div>
+            {totalCorrectionMinutes !== 0 && (
+              <span className="text-sm text-muted-foreground">
+                (inkl. {totalCorrectionMinutes >= 0 ? "+" : ""}{fmt(totalCorrectionMinutes)} Korrekturen)
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Gesamtsaldo bis heute (inkl. Korrekturen)
+            Summe aller Monate bis heute
           </p>
+          {yearlyBreakdown.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {yearlyBreakdown.map((mb, idx) => (
+                <TooltipProvider key={idx}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge 
+                        variant={mb.balance >= 0 ? "default" : "destructive"}
+                        className={`cursor-help ${mb.balance >= 0 ? "bg-green-100 text-green-700 hover:bg-green-200" : ""}`}
+                      >
+                        {format(mb.month, "MMM", { locale: de })}: {mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      <div className="space-y-1">
+                        <div className="font-medium">{format(mb.month, "MMMM yyyy", { locale: de })}</div>
+                        <div className="flex justify-between gap-4">
+                          <span>Soll:</span>
+                          <span>{fmt(mb.targetMinutes)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span>Gearbeitet:</span>
+                          <span>{fmt(mb.workedMinutes)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span>Gutschriften:</span>
+                          <span>+{fmt(mb.creditMinutes)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4 font-medium border-t pt-1">
+                          <span>Saldo:</span>
+                          <span className={mb.balance >= 0 ? "text-green-600" : "text-destructive"}>
+                            {mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}
+                          </span>
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1316,6 +1415,90 @@ export function AdminTimeTrackingView() {
             </Button>
             <Button onClick={handleCreateEntry} disabled={isSaving}>
               {isSaving ? "Erstellen..." : "Eintrag erstellen"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Yearly breakdown dialog */}
+      <Dialog open={showBreakdownDialog} onOpenChange={setShowBreakdownDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Überstunden-Aufschlüsselung {getYear(currentMonth)}</DialogTitle>
+            <DialogDescription>
+              Monatliche Entwicklung des Überstundensaldos für {selectedEmployee?.display_name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <ScrollArea className="h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Monat</TableHead>
+                    <TableHead className="text-right">Soll</TableHead>
+                    <TableHead className="text-right">Gearbeitet</TableHead>
+                    <TableHead className="text-right">Gutschriften</TableHead>
+                    <TableHead className="text-right">Saldo</TableHead>
+                    <TableHead className="text-right">Kumuliert</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {yearlyBreakdown.map((mb, idx) => {
+                    const cumulative = yearlyBreakdown.slice(0, idx + 1).reduce((sum, m) => sum + m.balance, 0);
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">
+                          {format(mb.month, "MMMM", { locale: de })}
+                        </TableCell>
+                        <TableCell className="text-right">{fmt(mb.targetMinutes)}</TableCell>
+                        <TableCell className="text-right">{fmt(mb.workedMinutes)}</TableCell>
+                        <TableCell className="text-right text-blue-600">+{fmt(mb.creditMinutes)}</TableCell>
+                        <TableCell className={`text-right font-medium ${mb.balance >= 0 ? "text-green-600" : "text-destructive"}`}>
+                          {mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}
+                        </TableCell>
+                        <TableCell className={`text-right font-bold ${cumulative >= 0 ? "text-green-600" : "text-destructive"}`}>
+                          {cumulative >= 0 ? "+" : ""}{fmt(cumulative)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {totalCorrectionMinutes !== 0 && (
+                    <TableRow className="border-t-2">
+                      <TableCell colSpan={4} className="font-medium">
+                        Korrekturen (gesamt)
+                      </TableCell>
+                      <TableCell className={`text-right font-medium ${totalCorrectionMinutes >= 0 ? "text-green-600" : "text-destructive"}`}>
+                        {totalCorrectionMinutes >= 0 ? "+" : ""}{fmt(totalCorrectionMinutes)}
+                      </TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
+                  )}
+                  <TableRow className="bg-muted/50 font-bold">
+                    <TableCell colSpan={4}>Gesamt {getYear(currentMonth)}</TableCell>
+                    <TableCell className={`text-right ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
+                      {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
+                    </TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </ScrollArea>
+            
+            <div className="bg-muted/50 rounded-md p-3 text-sm">
+              <p className="font-medium mb-1">Legende:</p>
+              <ul className="text-muted-foreground space-y-1 text-xs">
+                <li><strong>Soll:</strong> Arbeitstage im Monat × tägliche Arbeitszeit (ohne Feiertage)</li>
+                <li><strong>Gearbeitet:</strong> Tatsächlich erfasste Arbeitszeit</li>
+                <li><strong>Gutschriften:</strong> Urlaub, Krankheit, Überstundenabbau (zählen als gearbeitet)</li>
+                <li><strong>Saldo:</strong> Gearbeitet + Gutschriften − Soll</li>
+                <li><strong>Kumuliert:</strong> Laufende Summe aller Monats-Salden</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBreakdownDialog(false)}>
+              Schließen
             </Button>
           </DialogFooter>
         </DialogContent>
