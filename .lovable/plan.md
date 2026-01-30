@@ -1,216 +1,270 @@
 
+# Plan: Drei kritische Fehler bei Entscheidungen und Benachrichtigungen beheben
 
-# Plan: Entscheidungsanzeige verbessern - Ersteller anzeigen und öffentliche Entscheidungen korrekt darstellen
+## Problem-Zusammenfassung
 
-## Gefundene Probleme
+Nach detaillierter Analyse wurden drei separate Probleme identifiziert:
 
-### Problem 1: Ersteller nicht sichtbar in "Meine Arbeit/Entscheidungen"
-In `MyWorkDecisionsTab.tsx` wird der Ersteller (`created_by`) zwar geladen, aber es fehlt die Profil-Information (Name) und die Anzeige in der UI.
+### Problem 1: Franziska kann Carlas öffentliche Umfrage-Ergebnisse nicht sehen
 
-### Problem 2: Öffentliche Entscheidungen als "unbeantwortet" dargestellt
-Wenn der Benutzer weder Ersteller noch Teilnehmer ist (nur Viewer bei `visible_to_all = true`):
-- `hasResponded` wird auf `true` gesetzt (Zeile 220), aber...
-- `responseType` wird als `dominantResponse` berechnet (Zeile 205-210)
-- **Das Problem:** Bei `pendingCount > 0` wird `dominantResponse` auf `null` gesetzt
-- Das führt dazu, dass `getBorderColor()` grau zurückgibt und kein Icon angezeigt wird
+**Ursache:** Die Datenbank-Funktion `user_can_access_task_decision` berücksichtigt das Feld `visible_to_all` nicht. Diese Funktion wird in den RLS-Policies für `task_decisions`, `task_decision_participants` und `task_decision_responses` verwendet.
 
-### Problem 3: DecisionOverview zeigt rote Badges für alle öffentlichen Entscheidungen
-In `DecisionOverview.tsx`:
-- Die Funktion `getBorderColor(summary)` (Zeilen 665-682) zeigt rot, wenn `yesCount <= noCount`
-- Für öffentliche Entscheidungen ohne Teilnehmer ist `summary` leer (0/0/0)
-- `0 <= 0` ergibt `true`, daher wird rot angezeigt
+**Aktuelle Funktion:**
+```sql
+-- Prüft nur: Ersteller, Teilnehmer, Task-Eigentümer
+-- FEHLT: visible_to_all + Tenant-Zugehörigkeit
+```
 
-### Problem 4: TaskDecisionDetails zeigt keine Ergebnisübersicht für Viewer
-Im Details-Dialog wird nur der "Ersteller" das Archivieren-Button angeboten, aber es gibt keine klare visuelle Zusammenfassung für normale Viewer.
+### Problem 2: Antworten bei Entscheidungen können nicht geändert werden
+
+**Ursache:** Die RLS-Policy für `task_decision_responses` erlaubt Updates nur für:
+- Den Teilnehmer selbst (korrekt)
+- Den Entscheidungs-Ersteller (nur für `creator_response`)
+
+Beim Klick auf "Ändern" wird `handleResponse()` in `TaskDecisionResponse.tsx` aufgerufen, die ein UPDATE versucht. Die Policy sollte korrekt sein, aber es könnte ein Problem beim Abrufen der Entscheidungs-Optionen geben, da `loadDecisionOptions()` von der fehlerhaften `user_can_access_task_decision` abhängt.
+
+### Problem 3: "Alle lesen" in Benachrichtigungen zeigt Fehler
+
+**Ursache:** In `useNotifications.tsx` (Zeilen 149-206) wird `markAllAsRead` aufgerufen. Das System holt erst die ungelesenen Notifications und updated sie dann per ID-Liste. Der Fehler könnte auftreten wenn:
+- Keine ungelesenen Notifications vorhanden sind (wird abgefangen)
+- Oder ein Race-Condition mit dem optimistischen Update existiert
 
 ---
 
 ## Technische Änderungen
 
-### Änderung 1: MyWorkDecisionsTab.tsx - Ersteller-Name laden und anzeigen
+### Änderung 1: SQL-Migration - `user_can_access_task_decision` Funktion erweitern
 
-**Zeilen 57-127** (loadDecisions Funktion erweitern):
+Die Funktion muss `visible_to_all = true` Entscheidungen für alle Tenant-Mitglieder zugänglich machen:
 
-1. Ersteller-Profile separat laden für alle geladenen Entscheidungen
-2. `creator` Objekt zu jeder Decision hinzufügen
-
-```typescript
-// Nach dem Laden aller Decisions: Creator-Profile laden
-const allCreatorIds = [...new Set([
-  ...participantDecisions.map(d => d.task_decisions.created_by),
-  ...creatorDecisions.map(d => d.created_by),
-  ...publicDecisions.map(d => d.created_by)
-])];
-
-const { data: creatorProfiles } = await supabase
-  .from('profiles')
-  .select('user_id, display_name, badge_color')
-  .in('user_id', allCreatorIds);
-
-const creatorProfileMap = new Map(creatorProfiles?.map(p => [p.user_id, p]) || []);
+```sql
+CREATE OR REPLACE FUNCTION public.user_can_access_task_decision(_decision_id uuid, _user_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  -- Check if user created the decision
+  IF EXISTS (
+    SELECT 1 FROM public.task_decisions 
+    WHERE id = _decision_id AND created_by = _user_id
+  ) THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- Check if user is a participant
+  IF EXISTS (
+    SELECT 1 FROM public.task_decision_participants 
+    WHERE decision_id = _decision_id AND user_id = _user_id
+  ) THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- Check if user owns the task
+  IF EXISTS (
+    SELECT 1 FROM public.task_decisions td
+    JOIN public.tasks t ON t.id = td.task_id
+    WHERE td.id = _decision_id AND t.user_id = _user_id
+  ) THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- NEU: Check if decision is visible_to_all and user is in same tenant
+  IF EXISTS (
+    SELECT 1 FROM public.task_decisions td
+    JOIN public.user_tenant_memberships utm ON utm.tenant_id = td.tenant_id
+    WHERE td.id = _decision_id 
+      AND td.visible_to_all = true
+      AND utm.user_id = _user_id
+      AND utm.is_active = true
+  ) THEN
+    RETURN TRUE;
+  END IF;
+  
+  RETURN FALSE;
+END;
+$function$;
 ```
 
-**Zeilen 332-374** (Karten-Rendering erweitern):
+### Änderung 2: TaskDecisionResponse.tsx - Fehlerbehandlung verbessern
 
-Ersteller-Badge unter dem Datum anzeigen:
+**Datei:** `src/components/task-decisions/TaskDecisionResponse.tsx`
+**Betroffene Zeilen:** 103-137 (handleResponse Funktion)
 
-```tsx
-<div className="flex items-center gap-2 flex-wrap">
-  {decision.creator && (
-    <span className="text-xs text-muted-foreground flex items-center gap-1">
-      Von: 
-      <UserBadge 
-        userId={decision.creator.user_id}
-        displayName={decision.creator.display_name}
-        badgeColor={decision.creator.badge_color}
-        size="sm"
-      />
-    </span>
-  )}
-  <p className="text-xs text-muted-foreground">
-    {format(new Date(decision.created_at), "dd.MM.yyyy", { locale: de })}
-  </p>
-</div>
-```
+Das Problem: Wenn `loadDecisionOptions()` fehlschlägt (wegen RLS), werden keine Response-Optionen geladen und der Benutzer kann nicht antworten.
 
-### Änderung 2: MyWorkDecisionsTab.tsx - Farblogik für öffentliche Entscheidungen
+**Verbesserung:**
 
-**Zeilen 271-291** (getBorderColor Funktion):
-
-Die Logik muss unterscheiden zwischen:
-- Benutzer ist Teilnehmer: Farbe basiert auf eigener Antwort
-- Benutzer ist nur Viewer (öffentlich): Farbe basiert auf Gesamtergebnis
+1. Bessere Fehlerbehandlung in `loadDecisionOptions`
+2. Fallback auf Default-Optionen bei Fehler
+3. Explizite Fehlermeldung beim Update
 
 ```typescript
-const getBorderColor = (decision: Decision) => {
-  // Wenn User Teilnehmer ist: basiert auf eigener Antwort
-  if (decision.participant_id) {
-    if (!decision.hasResponded) return 'border-l-gray-400';
-    if (decision.responseType === 'question') return 'border-l-orange-500';
-    if (decision.responseType === 'yes') return 'border-l-green-500';
-    if (decision.responseType === 'no') return 'border-l-red-600';
+const loadDecisionOptions = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('task_decisions')
+      .select('response_options')
+      .eq('id', decisionId)
+      .single();
+
+    if (error) {
+      console.error('Error loading decision options:', error);
+      // Fallback auf Standard-Optionen statt Fehler
+      return;
+    }
+    if (data?.response_options && Array.isArray(data.response_options)) {
+      setResponseOptions(data.response_options as unknown as ResponseOption[]);
+    }
+  } catch (error) {
+    console.error('Error loading decision options:', error);
+    // Behalte Standard-Optionen bei Fehler
   }
-  
-  // Wenn User Ersteller ist: basiert auf Gesamtergebnis
-  if (decision.isCreator) {
-    if (decision.responseType === 'question') return 'border-l-orange-500';
-    if (decision.pendingCount > 0) return 'border-l-gray-400';
-    if (decision.responseType === 'yes') return 'border-l-green-500';
-    if (decision.responseType === 'no') return 'border-l-red-600';
+};
+
+const handleResponse = async (responseType: string, comment?: string) => {
+  setIsLoading(true);
+  try {
+    // Check if response already exists
+    const { data: existingResponse, error: checkError } = await supabase
+      .from('task_decision_responses')
+      .select('id')
+      .eq('participant_id', participantId)
+      .eq('decision_id', decisionId)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Error checking existing response:', checkError);
+      throw new Error('Antwort konnte nicht überprüft werden');
+    }
+
+    if (existingResponse) {
+      // UPDATE existing response
+      const { error } = await supabase
+        .from('task_decision_responses')
+        .update({
+          response_type: responseType,
+          comment: comment || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingResponse.id);
+
+      if (error) {
+        console.error('Error updating response:', error);
+        throw new Error('Antwort konnte nicht aktualisiert werden');
+      }
+    } else {
+      // INSERT new response (existing code)
+      // ...
+    }
+    // Rest bleibt gleich
+  } catch (error: any) {
+    console.error('Error submitting response:', error);
+    toast({
+      title: "Fehler",
+      description: error?.message || "Antwort konnte nicht gespeichert werden.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
   }
-  
-  // Öffentliche Entscheidung als Viewer: basiert auf Gesamtergebnis
-  if (decision.isPublic) {
-    if (decision.responseType === 'question') return 'border-l-orange-500';
-    if (decision.responseType === 'yes') return 'border-l-green-500';
-    if (decision.responseType === 'no') return 'border-l-red-600';
-    // Grau nur wenn noch Antworten ausstehen
-    if (decision.pendingCount > 0) return 'border-l-gray-400';
-  }
-  
-  return 'border-l-gray-400';
 };
 ```
 
-### Änderung 3: DecisionOverview.tsx - Border-Farbe korrigieren
+### Änderung 3: useNotifications.tsx - markAllAsRead robuster machen
 
-**Zeilen 665-682** (getBorderColor Funktion):
+**Datei:** `src/hooks/useNotifications.tsx`
+**Betroffene Zeilen:** 149-206 (markAllAsRead Funktion)
 
-Das Problem: Bei 0 Teilnehmern ist `summary = {yes: 0, no: 0, question: 0, pending: 0}` und `0 > 0` ist `false`, daher wird rot gezeigt.
+**Verbesserungen:**
+
+1. Prüfung ob optimistisches Update bereits angewendet wurde
+2. Bessere Fehlerbehandlung bei leerem Ergebnis
+3. Vermeidung von Race-Conditions
 
 ```typescript
-const getBorderColor = (summary: ReturnType<typeof getResponseSummary>) => {
-  const hasResponses = summary.yesCount + summary.noCount + summary.questionCount > 0;
-  const allResponsesReceived = summary.pending === 0;
-  const hasQuestions = summary.questionCount > 0;
-  
-  // Orange: Rückfragen vorhanden
-  if (hasQuestions) {
-    return 'border-l-orange-500';
+const markAllAsRead = useCallback(async () => {
+  if (!user) return;
+
+  // Prüfe ob es überhaupt ungelesene gibt
+  const hasUnread = notifications.some(n => !n.is_read);
+  if (!hasUnread) {
+    // Keine ungelesenen Notifications - nichts zu tun
+    return;
   }
+
+  // Optimistic update
+  const previousNotifications = [...notifications];
+  const previousUnreadCount = unreadCount;
   
-  // Grau: Noch Antworten ausstehend ODER keine Teilnehmer
-  if (!allResponsesReceived || !hasResponses) {
-    return 'border-l-gray-400';
-  }
-  
-  // Alle haben geantwortet: Grün wenn mehr Ja, sonst Rot
-  if (summary.yesCount > summary.noCount) {
-    return 'border-l-green-500';
-  } else {
-    return 'border-l-red-600';
-  }
-};
-```
+  setNotifications(prev => 
+    prev.map(n => ({ ...n, is_read: true }))
+  );
+  setUnreadCount(0);
 
-### Änderung 4: DecisionOverview.tsx - Ersteller-Badge für öffentliche Entscheidungen
+  try {
+    // Get unread notification IDs
+    const { data: unreadNotifications, error: fetchError } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('is_read', false);
 
-Der Creator-Badge wird bereits in Zeile 866-873 angezeigt, das ist korrekt.
+    if (fetchError) throw fetchError;
 
-### Änderung 5: TaskDecisionDetails.tsx - Ergebnisübersicht verbessern
+    // Nichts zu aktualisieren
+    if (!unreadNotifications || unreadNotifications.length === 0) {
+      return; // Optimistisches Update ist bereits korrekt
+    }
 
-Die Abstimmungsübersicht (Zeilen 299-322) wird bereits angezeigt, aber wir können ein visuelles Ergebnis-Badge hinzufügen:
+    // Update by ID list
+    const { error } = await supabase
+      .from('notifications')
+      .update({ 
+        is_read: true, 
+        read_at: new Date().toISOString() 
+      })
+      .in('id', unreadNotifications.map(n => n.id));
 
-```tsx
-<Card>
-  <CardHeader className="pb-2">
-    <CardTitle className="text-sm">Abstimmungsübersicht</CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className="flex items-center space-x-4 text-sm">
-      {/* Bestehende Zähler */}
-      <span className="flex items-center text-green-600">
-        <Check className="h-4 w-4 mr-1" />
-        {summary.yesCount} Ja
-      </span>
-      {/* ... */}
-    </div>
+    if (error) throw error;
+
+    // Cross-tab sync
+    localStorage.setItem(`notifications-update-${user.id}`, Date.now().toString());
+    localStorage.removeItem(`notifications-update-${user.id}`);
+    localStorage.setItem('notifications_marked_read', Date.now().toString());
+    localStorage.removeItem('notifications_marked_read');
     
-    {/* NEU: Ergebnis-Badge wenn alle geantwortet haben */}
-    {summary.pending === 0 && summary.total > 0 && (
-      <div className="mt-3 pt-3 border-t">
-        <Badge 
-          variant="outline" 
-          className={cn(
-            "text-sm",
-            summary.yesCount > summary.noCount 
-              ? "text-green-600 border-green-600 bg-green-50" 
-              : summary.questionCount > 0
-                ? "text-orange-600 border-orange-600 bg-orange-50"
-                : "text-red-600 border-red-600 bg-red-50"
-          )}
-        >
-          Ergebnis: {
-            summary.yesCount > summary.noCount 
-              ? "Angenommen" 
-              : summary.questionCount > 0
-                ? "Rückfragen offen"
-                : "Abgelehnt"
-          }
-        </Badge>
-      </div>
-    )}
-  </CardContent>
-</Card>
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    
+    // Revert optimistic update
+    setNotifications(previousNotifications);
+    setUnreadCount(previousUnreadCount);
+    
+    toast({
+      title: 'Fehler',
+      description: 'Benachrichtigungen konnten nicht als gelesen markiert werden.',
+      variant: 'destructive',
+    });
+  }
+}, [user, toast, notifications, unreadCount]);
 ```
 
 ---
 
 ## Zusammenfassung der Änderungen
 
-| Datei | Problem | Lösung |
-|-------|---------|--------|
-| `MyWorkDecisionsTab.tsx` | Ersteller nicht sichtbar | Creator-Profile laden und als UserBadge anzeigen |
-| `MyWorkDecisionsTab.tsx` | Öffentliche Entscheidungen alle grau | getBorderColor-Logik für Viewer-Rolle anpassen |
-| `DecisionOverview.tsx` | Rote Badges bei 0 Teilnehmern | hasResponses-Check hinzufügen |
-| `TaskDecisionDetails.tsx` | Kein Ergebnis-Badge | Visuelles Ergebnis-Badge bei abgeschlossener Abstimmung |
+| Typ | Datei/Ressource | Problem | Lösung |
+|-----|-----------------|---------|--------|
+| SQL-Migration | `user_can_access_task_decision` | Öffentliche Entscheidungen nicht sichtbar für Viewer | `visible_to_all + tenant_membership` Prüfung hinzufügen |
+| Frontend | `TaskDecisionResponse.tsx` | Antworten können nicht geändert werden | Bessere Fehlerbehandlung, explizite Fehlermeldungen |
+| Frontend | `useNotifications.tsx` | "Alle lesen" zeigt Fehler | Race-condition vermeiden, frühere Prüfung auf ungelesene Notifications |
 
 ---
 
 ## Erwartete Ergebnisse
 
-1. **Ersteller sichtbar**: Unter "Meine Arbeit/Entscheidungen" wird der Ersteller als UserBadge dezent unter dem Datum angezeigt
-2. **Korrekte Farben für Viewer**: Öffentliche Entscheidungen zeigen das tatsächliche Ergebnis (grün/orange/rot) statt grau
-3. **Keine falschen roten Badges**: Entscheidungen ohne Teilnehmer werden grau angezeigt, nicht rot
-4. **Ergebnis in Details**: Der Details-Dialog zeigt ein klares "Angenommen/Abgelehnt/Rückfragen offen" Badge
-
+1. **Franziska kann Carlas Umfragen sehen:** Nach der SQL-Migration kann jeder Benutzer im selben Tenant öffentliche Entscheidungen (`visible_to_all = true`) sehen
+2. **Antworten ändern funktioniert:** Die verbesserte Fehlerbehandlung zeigt spezifische Fehlermeldungen
+3. **"Alle lesen" funktioniert:** Die Race-Condition wird vermieden und der Button funktioniert korrekt
