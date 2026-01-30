@@ -1,611 +1,508 @@
 
-# Plan: Typ-Konvertierung reparieren, Admin-Zeiteinträge & Überstunden-Gesamtsaldo
+# Plan: Überstunden-Berechnung korrigieren, Tenant-Login stabilisieren & Superadmin-Tenant-Verwaltung
 
-## Zusammenfassung der Probleme
+## Teil 1: Überstunden-Berechnung korrigieren
 
-### Problem 1: Typ-Konvertierung löscht Einträge / Failed to Fetch
-**Ursache gefunden:** Der `handleTypeChange`-Handler hat mehrere kritische Fehler:
+### Ursache des Problems
+Die `loadYearlyBalance`-Funktion in `AdminTimeTrackingView.tsx` und `TimeTrackingView.tsx` filtert Zeiteinträge **nicht** korrekt:
+- Zeiteinträge an Feiertagen werden fälschlicherweise zur Arbeitszeit gezählt
+- Zeiteinträge an Abwesenheitstagen (mit genehmigter Abwesenheit) werden ZUSÄTZLICH zur Gutschrift gezählt
 
-1. **Falsche Entry-ID bei Abwesenheiten:** Die `entry.id` für Abwesenheiten ist z.B. `vacation-abc123-2026-01-16`. Der Code versucht dann, diese ID direkt bei `leave_requests` zu löschen/updaten, aber die echte `leave_id` ist nur `abc123`.
+### Lösung
 
-2. **leaveId-Parameter wird nicht korrekt verwendet:** Die `leaveId` wird zwar als Parameter übergeben, aber der Code extrahiert sie nicht richtig.
+**Datei: `src/components/admin/AdminTimeTrackingView.tsx` (loadYearlyBalance Funktion)**
 
-3. **Network-Fehler ohne Rollback:** Bei "Failed to Fetch" wird die Operation möglicherweise serverseitig ausgeführt, aber der Client bekommt keinen Erfolg zurück.
-
-**Beispiel des Bugs (Zeile 393-399):**
 ```typescript
-if (leaveId) {
-  const { error } = await supabase
-    .from("leave_requests")
-    .delete()
-    .eq("id", leaveId);  // leaveId ist korrekt, ABER...
+// AKTUELL (Zeile 340-345):
+const monthWorked = (yearEntries || [])
+  .filter(e => {
+    const d = parseISO(e.work_date);
+    return d.getMonth() === m && d.getFullYear() === currentYear;
+  })
+  .reduce((sum, e) => sum + (e.minutes || 0), 0);
+
+// NEU - Filter auch Feiertage und Abwesenheitstage aus:
+const monthWorked = (yearEntries || [])
+  .filter(e => {
+    const d = parseISO(e.work_date);
+    const dateStr = format(d, 'yyyy-MM-dd');
+    // Ausschließen: anderer Monat, Feiertage, Abwesenheitstage
+    return d.getMonth() === m && 
+           d.getFullYear() === currentYear &&
+           !holidayDates.has(dateStr) &&
+           !allAbsenceDates.has(dateStr);
+  })
+  .reduce((sum, e) => sum + (e.minutes || 0), 0);
 ```
 
-Das Problem ist, dass bei der Konvertierung Abwesenheit → Abwesenheit der Code `entry.leave_id` verwendet, aber bei mehrtägigen Abwesenheiten wird die ID mit Datum erweitert (z.B. `vacation-abc123-2026-01-16`), und der `leave_id` Wert im CombinedTimeEntry ist korrekt nur `abc123`.
+**Zusätzlich benötigt: Set aller Abwesenheitstage vorab berechnen:**
 
-**Aktueller Hook (useCombinedTimeEntries.ts, Zeile 195):**
 ```typescript
-leave_id: leave.id,  // ← Korrekt die echte UUID
+// Vor der Monats-Schleife alle Abwesenheitsdaten sammeln
+const allAbsenceDates = new Set<string>();
+(yearLeaves || []).forEach(leave => {
+  if (['sick', 'vacation', 'overtime_reduction', 'medical'].includes(leave.type)) {
+    try {
+      eachDayOfInterval({ 
+        start: parseISO(leave.start_date), 
+        end: parseISO(leave.end_date) 
+      }).forEach(d => allAbsenceDates.add(format(d, 'yyyy-MM-dd')));
+    } catch {}
+  }
+});
 ```
 
-**Aber im Editor (AdminTimeEntryEditor.tsx, Zeile 99):**
-```typescript
-await onTypeChange(entry.id, selectedType, editReason, entry.leave_id);
-```
+**Gleiche Änderung in `TimeTrackingView.tsx` (loadYearlyBalance)**
 
-Das ist korrekt, ABER `entry.leave_id` wird in AdminTimeTrackingView nicht immer richtig durchgereicht (Zeile 903).
+### Erwartetes Ergebnis für Franziska Januar 2026
 
-**Lösung:** Den `leave_id`-Parameter konsistent verwenden und Netzwerkfehler resilient behandeln.
-
-### Problem 2: Admin kann keine neuen Zeiteinträge erstellen
-**Aktueller Stand:** Der Admin kann nur bestehende Einträge bearbeiten, aber nicht für einen Mitarbeiter einen neuen Zeiteintrag anlegen.
-
-**Lösung:** Button "Zeiteintrag hinzufügen" mit Dialog für:
-- Datum
-- Start/Endzeit
-- Pause
-- Notizen
-- Optional: Eintragstyp (Arbeit/Urlaub/Krankheit)
-
-### Problem 3: Kumulativer Überstundensaldo fehlt
-**Aktueller Stand:** Es wird nur der Monatssaldo angezeigt, nicht die Gesamtsumme aller Überstunden über alle Monate.
-
-**Lösung:** 
-- Berechnung des Jahres- oder Gesamtsaldos durch Aggregation aller Monate
-- Anzeige als prominente Karte in beiden Ansichten (Mitarbeiter + Admin)
+| Metrik | Vorher (falsch) | Nachher (korrekt) |
+|--------|-----------------|-------------------|
+| Gearbeitete Minuten | 9599 | 7703 (ohne Feiertage 1.1./6.1. und Abwesenheitstage) |
+| Soll (20 Arbeitstage × 474 Min) | 9480 | 9480 |
+| Gutschrift (5 Tage × 474 Min) | 2370 | 2370 |
+| **Saldo** | falsch positiv | ca. +593 Min (~9:53h) |
 
 ---
 
-## Technische Änderungen
+## Teil 2: Tenant-Login stabilisieren (Erwin)
 
-### Änderung 1: handleTypeChange reparieren
+### Ursache
+1. Erwin hat **keine employee_settings** → NaN-Berechnungen in Time-Tracking
+2. Einige Komponenten setzen gültige Daten voraus
 
-**Datei:** `src/components/admin/AdminTimeTrackingView.tsx`
+### Lösung
 
-**Problem-Bereich (Zeile 348-424):**
+**Datei: `src/hooks/useTenant.tsx`**
+
+Besseres Fehler-Handling wenn Tenant geladen wird aber keine Daten vorhanden:
+
 ```typescript
-const handleTypeChange = async (
-  entryId: string,
-  newType: EntryType,
-  reason: string,
-  leaveId?: string  // ← Wird nicht konsequent genutzt
-) => {
+// Nach fetchTenants, wenn kein Tenant verfügbar
+if (!currentTenantToSet && tenantsData.length === 0) {
+  console.error('❌ User hat keine Tenant-Zugehörigkeit');
+  // Benutzer freundlich informieren statt leere Seite
+}
 ```
 
-**Lösung:** Robustere ID-Extraktion und resilientes Error-Handling:
+**Datei: `src/components/TimeTrackingView.tsx` und `AdminTimeTrackingView.tsx`**
 
-```typescript
-const handleTypeChange = async (
-  entryId: string,
-  newType: EntryType,
-  reason: string,
-  leaveId?: string
-) => {
-  if (!user || !selectedUserId) return;
-  setIsSaving(true);
+Bereits implementiert durch Safe-Fallbacks (`hours_per_week || 39.5`), aber wir sollten auch einen expliziten Hinweis anzeigen, wenn für den eingeloggten User keine Settings existieren.
 
-  const entry = editingCombinedEntry;
-  if (!entry) {
-    toast.error("Kein Eintrag ausgewählt");
-    setIsSaving(false);
-    return;
-  }
+---
 
-  const originalType = entry.entry_type;
+## Teil 3: Superadmin-Tenant-Verwaltung
+
+### Konzept
+
+1. **Neues Superadmin-Konzept:** Hardcoded Email `mail@alexander-salomon.de` ODER neues Feld `is_superadmin` in user_roles
+
+2. **Neue Komponente:** `SuperadminTenantManagement.tsx`
+
+3. **Neue Unter-Seite in Admin:** "System & Sicherheit" → "Tenants" (nur für Superadmin)
+
+### Implementierung
+
+**Neue Datei: `src/components/administration/SuperadminTenantManagement.tsx`**
+
+```tsx
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/components/ui/use-toast";
+import { Building2, Plus, Edit, Trash2, Users, Calendar } from "lucide-react";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
+
+interface TenantWithStats {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  user_count: number;
+}
+
+export function SuperadminTenantManagement() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [tenants, setTenants] = useState<TenantWithStats[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<TenantWithStats | null>(null);
   
-  // Extrahiere die korrekte leave_id (direkt verwenden, wenn vorhanden)
-  const actualLeaveId = leaveId || entry.leave_id;
-  
-  // Bei Arbeitseintrag ist die ID direkt die UUID
-  const actualWorkEntryId = originalType === 'work' ? entryId : null;
+  // Form state
+  const [formName, setFormName] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formIsActive, setFormIsActive] = useState(true);
 
-  try {
-    if (originalType === 'work' && newType !== 'work') {
-      // Arbeit → Abwesenheit
-      if (!actualWorkEntryId) throw new Error("Keine gültige Arbeitszeit-ID");
-      
-      // 1. time_entry löschen
-      const { error: deleteError } = await supabase
-        .from("time_entries")
-        .delete()
-        .eq("id", actualWorkEntryId);
-      
-      // Resilient handling: Wenn "Failed to fetch", prüfen ob trotzdem gelöscht
-      if (deleteError && !deleteError.message?.includes('fetch')) {
-        throw deleteError;
-      }
+  // Superadmin-Check (hardcoded für mail@alexander-salomon.de)
+  const isSuperadmin = user?.email === "mail@alexander-salomon.de";
 
-      // 2. leave_request erstellen
-      const { error: insertError } = await supabase
-        .from("leave_requests")
-        .insert({
-          user_id: selectedUserId,
-          type: newType,
-          start_date: entry.work_date,
-          end_date: entry.work_date,
-          status: "approved",
-          reason: `Admin-Umwandlung: ${reason}`,
-        });
-      
-      if (insertError && !insertError.message?.includes('fetch')) {
-        throw insertError;
-      }
+  const loadTenants = async () => {
+    try {
+      // Lade Tenants mit User-Count
+      const { data, error } = await supabase
+        .from("tenants")
+        .select(`
+          id,
+          name,
+          description,
+          is_active,
+          created_at
+        `)
+        .order("name");
 
-      toast.success(`Eintrag zu ${getTypeLabel(newType)} umgewandelt`);
+      if (error) throw error;
 
-    } else if (originalType !== 'work' && newType === 'work') {
-      // Abwesenheit → Arbeit
-      if (!actualLeaveId) throw new Error("Keine gültige Abwesenheits-ID");
-      
-      const { error } = await supabase
-        .from("leave_requests")
-        .delete()
-        .eq("id", actualLeaveId);
-      
-      if (error && !error.message?.includes('fetch')) {
-        throw error;
-      }
-      
-      toast.info("Abwesenheit entfernt. Mitarbeiter muss Arbeitszeit manuell erfassen.");
+      // User-Counts laden
+      const { data: memberships } = await supabase
+        .from("user_tenant_memberships")
+        .select("tenant_id")
+        .eq("is_active", true);
 
-    } else if (originalType !== 'work' && newType !== 'work' && originalType !== newType) {
-      // Abwesenheit → andere Abwesenheit
-      if (!actualLeaveId) throw new Error("Keine gültige Abwesenheits-ID");
-      
-      const { error } = await supabase
-        .from("leave_requests")
-        .update({
-          type: newType,
-          reason: `Umgewandelt von ${getTypeLabel(originalType)}: ${reason}`,
-        })
-        .eq("id", actualLeaveId);
-      
-      if (error && !error.message?.includes('fetch')) {
-        throw error;
-      }
-      
-      toast.success("Eintragstyp geändert");
+      const countMap = new Map<string, number>();
+      (memberships || []).forEach(m => {
+        countMap.set(m.tenant_id, (countMap.get(m.tenant_id) || 0) + 1);
+      });
+
+      const tenantsWithStats = (data || []).map(t => ({
+        ...t,
+        user_count: countMap.get(t.id) || 0,
+      }));
+
+      setTenants(tenantsWithStats);
+    } catch (error) {
+      console.error("Error loading tenants:", error);
+      toast({ title: "Fehler", description: "Tenants konnten nicht geladen werden", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-
-    // Schließe Dialog und lade Daten neu
-    setEditingCombinedEntry(null);
-    setEditingEntry(null);
-    
-    // Verzögertes Neuladen für resilientes Handling
-    setTimeout(() => loadMonthData(), 500);
-    
-  } catch (error: any) {
-    console.error("Type change error:", error);
-    toast.error(error.message || "Fehler bei der Typänderung");
-    // Bei Netzwerkfehlern trotzdem Daten neu laden
-    if (error.message?.includes('fetch')) {
-      setTimeout(() => loadMonthData(), 500);
-    }
-  } finally {
-    setIsSaving(false);
-  }
-};
-
-const getTypeLabel = (type: string): string => {
-  const labels: Record<string, string> = {
-    work: 'Arbeit',
-    vacation: 'Urlaub',
-    sick: 'Krankheit',
-    overtime_reduction: 'Überstundenabbau',
   };
-  return labels[type] || type;
-};
-```
 
-### Änderung 2: Admin kann neue Zeiteinträge erstellen
-
-**Datei:** `src/components/admin/AdminTimeTrackingView.tsx`
-
-**Neue States:**
-```typescript
-const [createEntryDialogOpen, setCreateEntryDialogOpen] = useState(false);
-const [newEntryDate, setNewEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
-const [newEntryStartTime, setNewEntryStartTime] = useState("09:00");
-const [newEntryEndTime, setNewEntryEndTime] = useState("17:00");
-const [newEntryPause, setNewEntryPause] = useState("30");
-const [newEntryNotes, setNewEntryNotes] = useState("");
-const [newEntryType, setNewEntryType] = useState<EntryType>("work");
-const [newEntryReason, setNewEntryReason] = useState("");
-```
-
-**Neue Funktion handleCreateEntry:**
-```typescript
-const handleCreateEntry = async () => {
-  if (!user || !selectedUserId) return;
-  
-  try {
-    if (newEntryType === 'work') {
-      // Arbeitszeit-Eintrag erstellen
-      const start = new Date(`${newEntryDate}T${newEntryStartTime}`);
-      const end = new Date(`${newEntryDate}T${newEntryEndTime}`);
-      
-      if (end <= start) {
-        toast.error("Endzeit muss nach Startzeit liegen");
-        return;
-      }
-      
-      const grossMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
-      const pause = parseInt(newEntryPause) || 0;
-      const netMinutes = grossMinutes - pause;
-      
-      const { error } = await supabase.from("time_entries").insert({
-        user_id: selectedUserId,
-        work_date: newEntryDate,
-        started_at: start.toISOString(),
-        ended_at: end.toISOString(),
-        minutes: netMinutes,
-        pause_minutes: pause,
-        notes: newEntryNotes || null,
-        edited_by: user.id,
-        edited_at: new Date().toISOString(),
-        edit_reason: newEntryReason || "Admin-Eintrag",
-      });
-      
-      if (error) throw error;
-      toast.success("Zeiteintrag erstellt");
-    } else {
-      // Abwesenheit erstellen
-      const { error } = await supabase.from("leave_requests").insert({
-        user_id: selectedUserId,
-        type: newEntryType,
-        start_date: newEntryDate,
-        end_date: newEntryDate,
-        status: "approved",
-        reason: newEntryReason || `Admin-Eintrag: ${getTypeLabel(newEntryType)}`,
-      });
-      
-      if (error) throw error;
-      toast.success(`${getTypeLabel(newEntryType)} erstellt`);
+  useEffect(() => {
+    if (isSuperadmin) {
+      loadTenants();
     }
-    
-    setCreateEntryDialogOpen(false);
-    resetNewEntryForm();
-    loadMonthData();
-  } catch (error: any) {
-    toast.error(error.message || "Fehler beim Erstellen");
-  }
-};
+  }, [isSuperadmin]);
 
-const resetNewEntryForm = () => {
-  setNewEntryDate(format(new Date(), "yyyy-MM-dd"));
-  setNewEntryStartTime("09:00");
-  setNewEntryEndTime("17:00");
-  setNewEntryPause("30");
-  setNewEntryNotes("");
-  setNewEntryType("work");
-  setNewEntryReason("");
-};
-```
+  const handleSave = async () => {
+    if (!formName.trim()) {
+      toast({ title: "Fehler", description: "Name ist erforderlich", variant: "destructive" });
+      return;
+    }
 
-**Button in der Aktionskarte:**
-```tsx
-<Card>
-  <CardHeader className="pb-2">
-    <CardTitle className="text-sm font-medium text-muted-foreground">
-      Aktionen
-    </CardTitle>
-  </CardHeader>
-  <CardContent className="space-y-2">
-    <Button 
-      variant="default" 
-      size="sm" 
-      onClick={() => setCreateEntryDialogOpen(true)}
-      className="w-full"
-    >
-      <Plus className="h-4 w-4 mr-2" />
-      Eintrag erstellen
-    </Button>
-    <Button 
-      variant="outline" 
-      size="sm" 
-      onClick={() => setCorrectionDialogOpen(true)}
-      className="w-full"
-    >
-      <TrendingUp className="h-4 w-4 mr-2" />
-      Korrektur hinzufügen
-    </Button>
-  </CardContent>
-</Card>
-```
+    try {
+      if (editingTenant) {
+        // Update
+        const { error } = await supabase
+          .from("tenants")
+          .update({
+            name: formName.trim(),
+            description: formDescription.trim() || null,
+            is_active: formIsActive,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", editingTenant.id);
 
-**Dialog für neuen Eintrag:**
-```tsx
-<Dialog open={createEntryDialogOpen} onOpenChange={setCreateEntryDialogOpen}>
-  <DialogContent className="sm:max-w-[500px]">
-    <DialogHeader>
-      <DialogTitle>Eintrag für {selectedEmployee?.display_name} erstellen</DialogTitle>
-      <DialogDescription>
-        Erstellen Sie einen neuen Zeit- oder Abwesenheitseintrag.
-      </DialogDescription>
-    </DialogHeader>
-    
-    <div className="space-y-4 py-4">
-      <div className="grid gap-2">
-        <Label>Eintragstyp</Label>
-        <Select value={newEntryType} onValueChange={(v) => setNewEntryType(v as EntryType)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="work">📋 Arbeit</SelectItem>
-            <SelectItem value="vacation">🏖️ Urlaub</SelectItem>
-            <SelectItem value="sick">🤒 Krankheit</SelectItem>
-            <SelectItem value="overtime_reduction">⏰ Überstundenabbau</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div className="grid gap-2">
-        <Label>Datum</Label>
-        <Input
-          type="date"
-          value={newEntryDate}
-          onChange={(e) => setNewEntryDate(e.target.value)}
-        />
-      </div>
-      
-      {newEntryType === 'work' && (
-        <>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>Start</Label>
-              <Input
-                type="time"
-                value={newEntryStartTime}
-                onChange={(e) => setNewEntryStartTime(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Ende</Label>
-              <Input
-                type="time"
-                value={newEntryEndTime}
-                onChange={(e) => setNewEntryEndTime(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <div className="grid gap-2">
-            <Label>Pause (Minuten)</Label>
-            <Input
-              type="number"
-              min="0"
-              max="120"
-              value={newEntryPause}
-              onChange={(e) => setNewEntryPause(e.target.value)}
-            />
-          </div>
-        </>
-      )}
-      
-      <div className="grid gap-2">
-        <Label>Notizen/Grund</Label>
-        <Textarea
-          value={newEntryReason}
-          onChange={(e) => setNewEntryReason(e.target.value)}
-          placeholder={newEntryType === 'work' 
-            ? "z.B. Nachträgliche Erfassung..." 
-            : "z.B. Nachträgliche Genehmigung..."}
-          rows={2}
-        />
-      </div>
-      
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Dieser Eintrag wird als Admin-Eintrag gekennzeichnet und ist für den Mitarbeiter sichtbar.
-        </AlertDescription>
-      </Alert>
-    </div>
+        if (error) throw error;
+        toast({ title: "Gespeichert", description: "Tenant wurde aktualisiert" });
+      } else {
+        // Create
+        const { error } = await supabase
+          .from("tenants")
+          .insert({
+            name: formName.trim(),
+            description: formDescription.trim() || null,
+            is_active: formIsActive,
+            settings: {},
+          });
 
-    <DialogFooter>
-      <Button variant="outline" onClick={() => setCreateEntryDialogOpen(false)}>
-        Abbrechen
-      </Button>
-      <Button onClick={handleCreateEntry}>
-        Eintrag erstellen
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
-```
-
-### Änderung 3: Kumulativer Überstundensaldo (Gesamtsaldo)
-
-**Datei:** `src/components/admin/AdminTimeTrackingView.tsx`
-
-**Neue Query zum Laden des Jahressaldos:**
-```typescript
-const [yearlyBalance, setYearlyBalance] = useState<number>(0);
-const [loadingYearlyBalance, setLoadingYearlyBalance] = useState(false);
-
-const loadYearlyBalance = async () => {
-  if (!selectedUserId || !selectedEmployee) return;
-  setLoadingYearlyBalance(true);
-  
-  try {
-    const currentYear = getYear(currentMonth);
-    const yearStart = new Date(currentYear, 0, 1);
-    const yearEnd = new Date(currentYear, 11, 31);
-    
-    // Lade alle Zeiteinträge des Jahres
-    const { data: yearEntries } = await supabase
-      .from("time_entries")
-      .select("minutes, work_date")
-      .eq("user_id", selectedUserId)
-      .gte("work_date", format(yearStart, "yyyy-MM-dd"))
-      .lte("work_date", format(yearEnd, "yyyy-MM-dd"));
-    
-    // Lade alle Abwesenheiten des Jahres
-    const { data: yearLeaves } = await supabase
-      .from("leave_requests")
-      .select("type, start_date, end_date, status, minutes_counted")
-      .eq("user_id", selectedUserId)
-      .eq("status", "approved")
-      .gte("start_date", format(yearStart, "yyyy-MM-dd"))
-      .lte("end_date", format(yearEnd, "yyyy-MM-dd"));
-    
-    // Lade alle Feiertage des Jahres
-    const { data: yearHolidays } = await supabase
-      .from("public_holidays")
-      .select("holiday_date, name")
-      .gte("holiday_date", format(yearStart, "yyyy-MM-dd"))
-      .lte("holiday_date", format(yearEnd, "yyyy-MM-dd"));
-    
-    // Lade alle Korrekturen
-    const { data: yearCorrections } = await supabase
-      .from("time_entry_corrections")
-      .select("correction_minutes")
-      .eq("user_id", selectedUserId);
-    
-    // Berechnung
-    const dailyMinutes = Math.round((selectedEmployee.hours_per_week / selectedEmployee.days_per_week) * 60);
-    const holidayDates = new Set((yearHolidays || []).map(h => h.holiday_date));
-    
-    // Arbeitstage im Jahr berechnen (ohne Wochenenden und Feiertage)
-    const allDays = eachDayOfInterval({ start: yearStart, end: new Date() > yearEnd ? yearEnd : new Date() });
-    const workDays = allDays.filter(d => 
-      d.getDay() !== 0 && d.getDay() !== 6 && !holidayDates.has(format(d, "yyyy-MM-dd"))
-    );
-    const targetMinutes = workDays.length * dailyMinutes;
-    
-    // Gearbeitete Minuten (ohne Feiertage/Abwesenheiten)
-    const absenceDates = new Set<string>();
-    (yearLeaves || []).forEach(leave => {
-      if (['sick', 'vacation', 'overtime_reduction'].includes(leave.type)) {
-        try {
-          eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
-            .forEach(d => absenceDates.add(format(d, 'yyyy-MM-dd')));
-        } catch {}
+        if (error) throw error;
+        toast({ title: "Erstellt", description: "Neuer Tenant wurde angelegt" });
       }
-    });
-    
-    const workedMinutes = (yearEntries || [])
-      .filter(e => !holidayDates.has(e.work_date) && !absenceDates.has(e.work_date))
-      .reduce((sum, e) => sum + (e.minutes || 0), 0);
-    
-    // Gutschriften (Abwesenheiten zählen als gearbeitet)
-    const creditMinutes = [...absenceDates]
-      .filter(d => !holidayDates.has(d))
-      .filter(d => {
-        const date = parseISO(d);
-        return date.getDay() !== 0 && date.getDay() !== 6;
-      })
-      .length * dailyMinutes;
-    
-    // Korrekturen
-    const correctionsTotal = (yearCorrections || []).reduce((sum, c) => sum + c.correction_minutes, 0);
-    
-    // Gesamtsaldo
-    const balance = workedMinutes + creditMinutes - targetMinutes + correctionsTotal;
-    setYearlyBalance(balance);
-    
-  } catch (error) {
-    console.error("Error loading yearly balance:", error);
-  } finally {
-    setLoadingYearlyBalance(false);
+
+      setDialogOpen(false);
+      resetForm();
+      loadTenants();
+    } catch (error: any) {
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async (tenant: TenantWithStats) => {
+    if (tenant.user_count > 0) {
+      toast({ 
+        title: "Nicht möglich", 
+        description: `Tenant hat noch ${tenant.user_count} Benutzer. Bitte erst alle Benutzer entfernen.`,
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (!confirm(`Tenant "${tenant.name}" wirklich löschen?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from("tenants")
+        .delete()
+        .eq("id", tenant.id);
+
+      if (error) throw error;
+      toast({ title: "Gelöscht", description: "Tenant wurde entfernt" });
+      loadTenants();
+    } catch (error: any) {
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const openCreateDialog = () => {
+    setEditingTenant(null);
+    resetForm();
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (tenant: TenantWithStats) => {
+    setEditingTenant(tenant);
+    setFormName(tenant.name);
+    setFormDescription(tenant.description || "");
+    setFormIsActive(tenant.is_active);
+    setDialogOpen(true);
+  };
+
+  const resetForm = () => {
+    setFormName("");
+    setFormDescription("");
+    setFormIsActive(true);
+    setEditingTenant(null);
+  };
+
+  if (!isSuperadmin) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center text-muted-foreground">
+          Keine Berechtigung für diesen Bereich.
+        </CardContent>
+      </Card>
+    );
   }
-};
 
-// In useEffect aufrufen wenn selectedUserId sich ändert
-useEffect(() => {
-  if (selectedUserId) {
-    loadYearlyBalance();
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Tenant-Verwaltung
+          </CardTitle>
+          <CardDescription>
+            Verwaltung aller Mandanten im System
+          </CardDescription>
+        </div>
+        <Button onClick={openCreateDialog}>
+          <Plus className="h-4 w-4 mr-2" />
+          Neuer Tenant
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="text-center py-8 text-muted-foreground">Laden...</div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Beschreibung</TableHead>
+                <TableHead className="text-center">Benutzer</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                <TableHead>Erstellt</TableHead>
+                <TableHead className="text-right">Aktionen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tenants.map((tenant) => (
+                <TableRow key={tenant.id}>
+                  <TableCell className="font-medium">{tenant.name}</TableCell>
+                  <TableCell className="text-muted-foreground max-w-xs truncate">
+                    {tenant.description || "—"}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="secondary" className="gap-1">
+                      <Users className="h-3 w-3" />
+                      {tenant.user_count}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant={tenant.is_active ? "default" : "outline"}>
+                      {tenant.is_active ? "Aktiv" : "Inaktiv"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {format(new Date(tenant.created_at), "dd.MM.yyyy", { locale: de })}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex gap-1 justify-end">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditDialog(tenant)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(tenant)}
+                        disabled={tenant.user_count > 0}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {tenants.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    Keine Tenants vorhanden
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+
+        {/* Create/Edit Dialog */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingTenant ? "Tenant bearbeiten" : "Neuer Tenant"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid gap-2">
+                <Label>Name *</Label>
+                <Input
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="z.B. Büro Mustermann"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Beschreibung</Label>
+                <Textarea
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                  placeholder="Optionale Beschreibung..."
+                  rows={2}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Aktiv</Label>
+                <Switch
+                  checked={formIsActive}
+                  onCheckedChange={setFormIsActive}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleSave}>
+                {editingTenant ? "Speichern" : "Erstellen"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+### Integration in AdminSidebar
+
+**Datei: `src/components/administration/AdminSidebar.tsx`**
+
+Neue Sub-Item hinzufügen:
+
+```typescript
+// In adminMenuItems unter "security":
+children: [
+  { id: "general", label: "Allgemein", icon: Settings },
+  { id: "login", label: "Login-Anpassung", icon: LogIn },
+  { id: "tenants", label: "Tenants", icon: Building2, superAdminOnly: true }, // NEU
+  { id: "roles", label: "Rechte & Rollen", icon: UserCheck, superAdminOnly: true },
+  { id: "auditlogs", label: "Audit-Logs", icon: History },
+  { id: "archiving", label: "Archivierung", icon: Archive },
+],
+```
+
+### Integration in Administration.tsx
+
+**Datei: `src/pages/Administration.tsx`**
+
+Import hinzufügen:
+```typescript
+import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
+```
+
+Im `renderContent` Switch-Case:
+```typescript
+case "tenants":
+  if (!isSuperAdmin) return null;
+  // Zusätzlich: nur für echten Superadmin (mail@alexander-salomon.de)
+  if (user?.email !== "mail@alexander-salomon.de") {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center text-muted-foreground">
+          Nur für System-Administratoren zugänglich.
+        </CardContent>
+      </Card>
+    );
   }
-}, [selectedUserId, currentMonth]);
+  return <SuperadminTenantManagement />;
 ```
 
-**Neue Karte für Gesamtsaldo:**
-```tsx
-<Card className="md:col-span-2 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-  <CardHeader className="pb-2">
-    <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
-      <TrendingUp className="h-4 w-4" />
-      Überstundensaldo {getYear(currentMonth)}
-    </CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className={`text-3xl font-bold ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
-      {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
-    </div>
-    <p className="text-xs text-muted-foreground mt-1">
-      Gesamtsaldo bis heute (inkl. Korrekturen)
-    </p>
-  </CardContent>
-</Card>
+### Sicherheits-Überlegung
+
+Aktuell wird `isSuperAdmin` auf Client-Seite durch die Rolle "abgeordneter" bestimmt. Für die Tenant-Verwaltung sollten wir eine **noch strengere Prüfung** verwenden:
+
+```typescript
+// Echter Superadmin = hardcoded Email ODER zukünftig is_superadmin-Flag
+const isSystemSuperadmin = user?.email === "mail@alexander-salomon.de";
 ```
 
-### Änderung 4: Gesamtsaldo auch für Mitarbeiter anzeigen
-
-**Datei:** `src/components/TimeTrackingView.tsx`
-
-Ähnliche Logik wie oben, aber als prominente Karte am Anfang der Seite:
-
-```tsx
-<Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-  <CardHeader className="pb-2">
-    <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
-      <TrendingUp className="h-4 w-4" />
-      Mein Überstundensaldo {getYear(selectedMonth)}
-    </CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className={`text-3xl font-bold ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
-      {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
-    </div>
-    <p className="text-xs text-muted-foreground mt-1">
-      Gesamtsaldo bis heute
-    </p>
-  </CardContent>
-</Card>
-```
-
-### Änderung 5: Admin-Einträge beim Mitarbeiter kennzeichnen
-
-**Datei:** `src/components/TimeTrackingView.tsx`
-
-In der Zeittabelle Admin-Einträge hervorheben:
-
-```tsx
-{entry.edited_by && (
-  <TooltipProvider>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-          👤 Admin-Eintrag
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>Bearbeitet am {entry.edited_at && format(parseISO(entry.edited_at), "dd.MM.yyyy HH:mm")}</p>
-        {entry.edit_reason && <p>Grund: {entry.edit_reason}</p>}
-      </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
-)}
-```
+Dieser Ansatz ist sicherer als nur Role-Check, da er nur einer spezifischen Person Zugriff gibt.
 
 ---
 
 ## Zusammenfassung der Änderungen
 
-| # | Datei | Problem | Lösung |
-|---|-------|---------|--------|
-| 1 | `AdminTimeTrackingView.tsx` | Typ-Konvertierung löscht Einträge | Korrekte leave_id verwenden, resilientes Error-Handling |
-| 2 | `AdminTimeTrackingView.tsx` | Admin kann keine neuen Einträge erstellen | Dialog + Handler für neue Einträge |
-| 3 | `AdminTimeTrackingView.tsx` | Kein Gesamtsaldo sichtbar | Jahressaldo-Berechnung + Anzeige |
-| 4 | `TimeTrackingView.tsx` | Mitarbeiter sieht keinen Gesamtsaldo | Jahressaldo-Anzeige auch für Mitarbeiter |
-| 5 | `TimeTrackingView.tsx` | Admin-Einträge nicht erkennbar | Badge "Admin-Eintrag" mit Tooltip |
+| # | Datei | Änderung |
+|---|-------|----------|
+| 1 | `AdminTimeTrackingView.tsx` | Zeiteinträge an Feiertagen/Abwesenheitstagen ausfiltern |
+| 2 | `TimeTrackingView.tsx` | Gleiche Filterlogik |
+| 3 | `SuperadminTenantManagement.tsx` | **NEUE DATEI** - Tenant-Verwaltung |
+| 4 | `AdminSidebar.tsx` | Neues Menu-Item "Tenants" (superAdminOnly) |
+| 5 | `Administration.tsx` | Import + Switch-Case für Tenants |
 
 ---
 
 ## Erwartete Ergebnisse
 
-1. **Typ-Konvertierung funktioniert zuverlässig** - Kein Datenverlust, korrekte ID-Verwendung
-2. **Admin kann neue Einträge erstellen** - Arbeitszeit oder Abwesenheit für beliebiges Datum
-3. **Gesamtsaldo sichtbar** - Beide Seiten (Admin + Mitarbeiter) sehen den kumulativen Überstundensaldo
-4. **Transparenz** - Mitarbeiter sieht, welche Einträge vom Admin stammen
+1. **Überstunden korrekt:** Zeiteinträge an Feiertagen/Abwesenheitstagen werden nicht mehr zur Arbeitszeit gezählt
+2. **Superadmin-Seite:** mail@alexander-salomon.de kann Tenants anlegen, bearbeiten, löschen und User-Counts sehen
+3. **Transparenz:** Die Tenant-Übersicht zeigt klar, wie viele Benutzer pro Tenant existieren
