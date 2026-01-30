@@ -23,7 +23,17 @@ interface AppointmentData {
 
 export const DashboardGreetingSection = () => {
   const { user } = useAuth();
-  const { currentTenant } = useTenant();
+  const { currentTenant, loading: tenantLoading } = useTenant();
+  
+  // Show skeleton while tenant is loading
+  if (tenantLoading) {
+    return <div className="animate-pulse h-32 bg-muted rounded-lg mb-6" />;
+  }
+  
+  // Don't render without tenant
+  if (!currentTenant?.id) {
+    return null;
+  }
   const [userName, setUserName] = useState<string>('');
   const [weatherKarlsruhe, setWeatherKarlsruhe] = useState<{ temp: number; condition: string; icon: string } | null>(null);
   const [weatherStuttgart, setWeatherStuttgart] = useState<{ temp: number; condition: string; icon: string } | null>(null);

@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { AppNavigation, getNavigationGroups } from "@/components/AppNavigation";
 import { Dashboard } from "@/components/Dashboard";
 
@@ -37,10 +38,14 @@ import { SubNavigation } from "@/components/layout/SubNavigation";
 import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { currentTenant, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
   const location = useLocation();
   const { documentId } = useParams();
+  
+  // Wait for both auth AND tenant to be loaded before rendering
+  const loading = authLoading || (user && tenantLoading);
   
   // Determine active section from URL
   const getActiveSectionFromPath = (pathname: string) => {
@@ -93,10 +98,11 @@ const Index = () => {
 
   useEffect(() => {
     // Allow access to knowledge section without authentication (demo mode)
-    if (!loading && !user && activeSection !== 'knowledge') {
+    // Only redirect when auth is fully loaded (not when tenant is still loading)
+    if (!authLoading && !user && activeSection !== 'knowledge') {
       navigate("/auth");
     }
-  }, [user, loading, navigate, activeSection]);
+  }, [user, authLoading, navigate, activeSection]);
 
   if (loading) {
     return (
