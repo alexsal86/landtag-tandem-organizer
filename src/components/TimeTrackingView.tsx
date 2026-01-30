@@ -187,7 +187,10 @@ export function TimeTrackingView() {
         supabase.from("time_entry_corrections").select("correction_minutes").eq("user_id", user.id),
       ]);
       
-      const dailyMin = Math.round((employeeSettings.hours_per_week / employeeSettings.days_per_week) * 60);
+      // Safe calculation with fallback to prevent NaN
+      const hoursPerWeek = employeeSettings.hours_per_week || 39.5;
+      const daysPerWeek = employeeSettings.days_per_week || 5;
+      const dailyMin = Math.round((hoursPerWeek / daysPerWeek) * 60);
       const holidayDates = new Set((holidaysRes.data || []).map(h => h.holiday_date));
       
       // Build per-month data
@@ -273,7 +276,10 @@ export function TimeTrackingView() {
 
   // Tägliche Arbeitszeit = Wochenstunden / Arbeitstage pro Woche
   // z.B. 39,5h / 5 Tage = 7,9h (7 Std. 54 Min.) pro Tag
-  const dailyHours = employeeSettings ? employeeSettings.hours_per_week / employeeSettings.days_per_week : 7.9;
+  // Safe calculation with fallback to prevent NaN when settings are incomplete
+  const hoursPerWeek = employeeSettings?.hours_per_week || 39.5;
+  const daysPerWeek = employeeSettings?.days_per_week || 5;
+  const dailyHours = hoursPerWeek / daysPerWeek;
   const dailyMinutes = Math.round(dailyHours * 60);
   
   // Combined time entries with leaves and holidays
