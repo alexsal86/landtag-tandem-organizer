@@ -30,6 +30,9 @@ interface TimeEntryRow {
   minutes: number | null;
   pause_minutes?: number;
   notes: string | null;
+  edited_by?: string | null;
+  edited_at?: string | null;
+  edit_reason?: string | null;
 }
 
 interface EmployeeSettingsRow {
@@ -135,7 +138,7 @@ export function TimeTrackingView() {
       supabase.functions.invoke('sync-holidays', { body: { year } }).catch(console.error);
       
       const [e, s, v, sick, medical, overtime, h, pending] = await Promise.all([
-        supabase.from("time_entries").select("*").eq("user_id", user.id).gte("work_date", format(monthStart, "yyyy-MM-dd")).lte("work_date", format(monthEnd, "yyyy-MM-dd")).order("work_date", { ascending: false }),
+        supabase.from("time_entries").select("*, edited_by, edited_at, edit_reason").eq("user_id", user.id).gte("work_date", format(monthStart, "yyyy-MM-dd")).lte("work_date", format(monthEnd, "yyyy-MM-dd")).order("work_date", { ascending: false }),
         supabase.from("employee_settings").select("*, carry_over_expires_at").eq("user_id", user.id).single(),
         supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "vacation").in("status", ["approved", "pending", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
         supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "sick").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
@@ -155,7 +158,9 @@ export function TimeTrackingView() {
     } catch (error: any) { toast.error("Fehler: " + error.message); } finally { setLoading(false); }
   };
 
-  const dailyHours = employeeSettings ? employeeSettings.hours_per_month / employeeSettings.days_per_month : 8;
+  // Tägliche Arbeitszeit = Wochenstunden / Arbeitstage pro Woche
+  // z.B. 39,5h / 5 Tage = 7,9h (7 Std. 54 Min.) pro Tag
+  const dailyHours = employeeSettings ? employeeSettings.hours_per_week / employeeSettings.days_per_week : 7.9;
   const dailyMinutes = Math.round(dailyHours * 60);
   
   // Combined time entries with leaves and holidays
@@ -668,20 +673,42 @@ export function TimeTrackingView() {
                         <TableCell>{fmt(gross)}</TableCell>
                         <TableCell>{fmt(entry.minutes || 0)}</TableCell>
                         <TableCell className="max-w-[200px]">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="block truncate cursor-help">
-                                  {entry.notes || "-"}
-                                </span>
-                              </TooltipTrigger>
-                              {entry.notes && entry.notes.length > 30 && (
-                                <TooltipContent className="max-w-md whitespace-pre-wrap">
-                                  {entry.notes}
-                                </TooltipContent>
-                              )}
-                            </Tooltip>
-                          </TooltipProvider>
+                          <div className="flex items-center gap-2">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="block truncate cursor-help">
+                                    {entry.notes || "-"}
+                                  </span>
+                                </TooltipTrigger>
+                                {entry.notes && entry.notes.length > 30 && (
+                                  <TooltipContent className="max-w-md whitespace-pre-wrap">
+                                    {entry.notes}
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </TooltipProvider>
+                            {entry.edited_by && entry.edited_at && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-800 shrink-0">
+                                      ✏️
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="font-medium">Bearbeitet von Admin</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {format(parseISO(entry.edited_at), "dd.MM.yyyy HH:mm")}
+                                    </p>
+                                    {entry.edit_reason && (
+                                      <p className="text-xs mt-1">Grund: {entry.edit_reason}</p>
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
