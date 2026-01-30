@@ -1,187 +1,233 @@
 
+# Plan: Aufgaben-Speicherung und Checkbox-Archivierung reparieren
 
-# Plan: 5 Fehler in Aufgaben und Notizen beheben
+## Zusammenfassung
 
-## Übersicht der Probleme
+Da die Datenbank-Logs zeigen, dass **keine neuen Fehler** nach dem letzten Deployment auftreten (die Fehler `text @>` und `created_at does not exist` sind von **vor** den Änderungen), liegt das Problem wahrscheinlich an:
 
-| # | Problem | Ursache | Lösung |
-|---|---------|---------|--------|
-| 1 | Fehlermeldung beim Speichern (Änderungen werden trotzdem gespeichert) | onTaskUpdate-Callback führt zu Re-Render-Problemen oder es wird ein Toast angezeigt bevor die UI aktualisiert ist | Fehlerbehandlung verbessern |
-| 2 | Checkbox-Fehler beim Erledigen, keine Archivierung | Zwei DB-Fehler: (a) `text @>` Operator ungültig für TEXT-Spalte, (b) `task_decision_participants.created_at` existiert nicht | Falsche `.cs.` Operatoren durch `.eq.` und `.ilike.` ersetzen; Query für `created_at` auf `invited_at` umstellen |
-| 3 | HTML wird als Text angezeigt in Aufgaben-Details | `Textarea` statt Rich-Text-Editor/Display | Textarea durch SimpleRichTextEditor ersetzen |
-| 4 | HTML-Vorschau in Meine Notizen zeigt HTML-Tags | Vorschau-Funktion entfernt Tags korrekt, aber HTML-Entitäten werden nicht dekodiert | HTML-Content vor Tag-Entfernung erst durch temporäres Element parsen |
-| 5 | Pfeil `→` sichtbar ohne Hover | Designentscheidung: Pfeil wird bei `hasLinkedItems` ohne Hover angezeigt | Pfeil nur auf Hover sichtbar machen |
+1. **Browser-Cache**: Die alte Version wird noch verwendet
+2. **Fehlerbehandlung**: Toast-Nachrichten werden falsch angezeigt
+3. **Race Conditions**: Bei schnellen Klicks oder Netzwerkproblemen
 
 ---
 
-## Detaillierte Analyse
+## Identifizierte Probleme
 
-### Problem 1: Fehlermeldung beim Speichern
+### Problem 1: Fehlermeldung beim Speichern (obwohl es funktioniert)
 
-Die `handleSave` Funktion in `TaskDetailSidebar.tsx` (Zeile 202-244) funktioniert korrekt. Das Problem könnte sein:
-- Der Toast erscheint als "Fehler", obwohl die Speicherung erfolgreich ist
-- Das UI wird nicht korrekt aktualisiert nach dem Speichern
+In `TaskDetailSidebar.tsx` wird nach dem erfolgreichen Speichern `onTaskUpdate(updatedTask)` aufgerufen. Wenn dieser Callback eine Exception wirft (z.B. wegen eines anderen Problems auf der Seite), wird der catch-Block ausgeführt und zeigt "Fehler" an, obwohl die Daten bereits gespeichert wurden.
 
-Ich muss die Konsolenausgabe prüfen oder den Fehler reproduzieren. Die wahrscheinlichste Ursache ist ein Seiteneffekt bei `onTaskUpdate`.
+**Lösung**: Fehlerbehandlung verbessern - Toast erst nach onTaskUpdate anzeigen, mit try-catch um den Callback.
 
-### Problem 2: Checkbox-Fehler beim Erledigen
+### Problem 2: Checkbox-Archivierung schlägt fehl
 
-**Gefundene DB-Fehler in den Analytics-Logs:**
-```
-ERROR: operator does not exist: text @> unknown
-ERROR: column task_decision_participants.created_at does not exist
-```
+Die `toggleTaskStatus` Funktion in `TasksView.tsx` (Zeile 950-1048) macht ein **optimistisches Update**, aber:
+- Der `archiveError` wird nur geloggt, nicht geworfen (Zeile 997-999)
+- Der `deleteError` wird auch nur geloggt (Zeile 1007-1009)
+- Die Toast-Nachricht "Status aktualisiert" erscheint auch wenn das Archivieren fehlschlägt
 
-**Ursachen:**
-1. In `useMyWorkNewCounts.tsx` Zeile 94:
-   ```typescript
-   .or(`assigned_to.cs.{${user.id}},user_id.eq.${user.id}`)
-   ```
-   Der `.cs.` Operator ist für ARRAY-Spalten, aber `assigned_to` ist TEXT.
+**Lösung**: Fehlerbehandlung verbessern - bei Archivierungs-/Löschfehler auch Rollback und Fehlermeldung anzeigen.
 
-2. In `useMyWorkNewCounts.tsx` Zeile 104:
-   ```typescript
-   .gt('created_at', decisionsLastVisit);
-   ```
-   Die Tabelle `task_decision_participants` hat keine `created_at` Spalte, nur `invited_at`.
+### Problem 3: Veraltete Version im Browser
 
-Diese Fehler verursachen, dass die Seite nicht korrekt lädt und andere Operationen fehlschlagen können.
+Die alten DB-Fehler in den Logs deuten darauf hin, dass der Benutzer möglicherweise noch die alte Version verwendet.
 
-### Problem 3: HTML in Aufgaben-Details
-
-In `TaskDetailSidebar.tsx` Zeile 620-627:
-```typescript
-<Textarea
-  id="description"
-  value={editFormData.description || ''}
-  onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
-  rows={3}
-/>
-```
-
-Es wird ein einfaches Textarea verwendet. Die Lösung ist, `SimpleRichTextEditor` zu verwenden (wie bei Quick Notes).
-
-### Problem 4: HTML-Vorschau in Meine Notizen
-
-In `QuickNotesList.tsx` Zeile 1072-1076:
-```typescript
-const getPreviewText = (content: string, maxLength = 150) => {
-  const text = content.replace(/<[^>]*>/g, '').trim();
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength).trim() + '...';
-};
-```
-
-Diese Funktion entfernt nur HTML-Tags mit Regex, dekodiert aber keine HTML-Entitäten wie `&lt;`, `&gt;`, `&nbsp;` etc. Wenn der Editor HTML-Entitäten speichert, werden diese als Klartext angezeigt.
-
-### Problem 5: Pfeil `→` ohne Hover sichtbar
-
-In `QuickNotesList.tsx` Zeile 1217-1218:
-```typescript
-{hasLinkedItems && (
-  <span className="text-sm text-muted-foreground group-hover:hidden">→</span>
-)}
-```
-
-Der Pfeil ist immer sichtbar wenn `hasLinkedItems` wahr ist und wird nur beim Hover ausgeblendet. Das sollte umgekehrt sein: nur beim Hover sichtbar.
+**Lösung**: Benutzer sollte die Seite hart neu laden (Ctrl+Shift+R) oder den Cache leeren.
 
 ---
 
-## Lösung
+## Technische Änderungen
 
-### 1. useMyWorkNewCounts.tsx - DB-Query korrigieren
+### 1. TaskDetailSidebar.tsx - Zeile 203-246 (handleSave)
 
-**Zeile 94:** `.cs.` durch `.eq.` und `.ilike.` ersetzen:
 ```typescript
-// VORHER:
-.or(`assigned_to.cs.{${user.id}},user_id.eq.${user.id}`)
+const handleSave = async () => {
+  if (!task) return;
 
-// NACHHER:
-.or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-```
+  setSaving(true);
+  try {
+    const { error } = await supabase
+      .from('tasks')
+      .update({
+        title: editFormData.title,
+        description: editFormData.description,
+        priority: editFormData.priority,
+        status: editFormData.status,
+        due_date: editFormData.dueDate,
+        category: editFormData.category,
+        assigned_to: editFormData.assignedTo || '',
+        progress: editFormData.progress,
+      })
+      .eq('id', task.id);
 
-**Zeile 104:** `created_at` durch `invited_at` ersetzen:
-```typescript
-// VORHER:
-.gt('created_at', decisionsLastVisit);
+    if (error) throw error;
 
-// NACHHER:
-.gt('invited_at', decisionsLastVisit);
-```
+    const updatedTask: Task = {
+      ...task,
+      ...editFormData as Task,
+    };
 
-### 2. TaskDetailSidebar.tsx - Rich-Text-Editor einbauen
+    // Update local form data first
+    setEditFormData(updatedTask);
+    
+    // Show success toast BEFORE calling onTaskUpdate
+    toast({
+      title: "Aufgabe gespeichert",
+      description: "Die Änderungen wurden erfolgreich gespeichert.",
+    });
 
-**Import hinzufügen:**
-```typescript
-import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-```
-
-**Textarea durch Editor ersetzen (Zeile 620-627):**
-```typescript
-<div>
-  <Label htmlFor="description">Beschreibung</Label>
-  <SimpleRichTextEditor
-    content={editFormData.description || ''}
-    onChange={(html) => setEditFormData(prev => ({ ...prev, description: html }))}
-    placeholder="Beschreibung eingeben..."
-  />
-</div>
-```
-
-### 3. QuickNotesList.tsx - HTML-Vorschau korrigieren
-
-**Zeile 1072-1076 - getPreviewText verbessern:**
-```typescript
-const getPreviewText = (content: string, maxLength = 150) => {
-  // Create a temporary element to properly decode HTML entities
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = content;
-  const text = tempDiv.textContent || tempDiv.innerText || '';
-  const trimmedText = text.trim();
-  if (trimmedText.length <= maxLength) return trimmedText;
-  return trimmedText.substring(0, maxLength).trim() + '...';
+    // Call onTaskUpdate in a try-catch to prevent it from affecting our flow
+    try {
+      onTaskUpdate(updatedTask);
+    } catch (callbackError) {
+      console.error('Error in onTaskUpdate callback:', callbackError);
+      // Don't show error toast here - save was successful
+    }
+  } catch (error) {
+    console.error('Error saving task:', error);
+    toast({
+      title: "Fehler",
+      description: "Aufgabe konnte nicht gespeichert werden.",
+      variant: "destructive",
+    });
+  } finally {
+    setSaving(false);
+  }
 };
 ```
 
-### 4. QuickNotesList.tsx - Pfeil nur auf Hover
+### 2. TasksView.tsx - Zeile 950-1048 (toggleTaskStatus)
 
-**Zeile 1215-1219 - Pfeil mit Hover-Visibility:**
+Die Archivierungs- und Löschfehler werden jetzt korrekt behandelt:
+
 ```typescript
-{/* RIGHT: Icons on hover only */}
-<div className="flex items-center gap-1 flex-shrink-0">
-  {/* Simple "→" - visible on hover when linked items exist */}
-  {hasLinkedItems && (
-    <span className="text-sm text-muted-foreground hidden group-hover:inline">→</span>
-  )}
+const toggleTaskStatus = async (taskId: string) => {
+  // Prevent double clicks
+  if (processingTaskIds.has(taskId)) return;
   
-  {/* Rest bleibt gleich */}
-```
+  const task = tasks.find(t => t.id === taskId);
+  if (!task || !user) return;
 
-Oder alternativ den Pfeil komplett entfernen, da der "Details"-Button bereits auf Hover erscheint:
-```typescript
-{/* Remove the arrow entirely - Details button shows on hover */}
+  const newStatus = task.status === "completed" ? "todo" : "completed";
+  
+  // Optimistic update
+  setTasks(prev => prev.map(t => 
+    t.id === taskId ? { ...t, status: newStatus } : t
+  ));
+  
+  setProcessingTaskIds(prev => new Set(prev).add(taskId));
+  
+  try {
+    const updateData: any = { 
+      status: newStatus,
+      progress: newStatus === "completed" ? 100 : task.progress || 0
+    };
+
+    const { error } = await supabase
+      .from('tasks')
+      .update(updateData)
+      .eq('id', taskId);
+
+    if (error) throw error;
+
+    // If task is completed, archive it
+    if (newStatus === "completed") {
+      const { error: archiveError } = await supabase
+        .from('archived_tasks')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          category: task.category,
+          assigned_to: task.assignedTo || '',
+          progress: 100,
+          due_date: task.dueDate,
+          completed_at: new Date().toISOString(),
+          auto_delete_after_days: null,
+        } as any);
+
+      if (archiveError) {
+        console.error('Error archiving task:', archiveError);
+        // Throw to trigger rollback - archiving failed
+        throw new Error('Archivierung fehlgeschlagen: ' + archiveError.message);
+      }
+
+      // Delete the task from the tasks table
+      const { error: deleteError } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (deleteError) {
+        console.error('Error deleting completed task:', deleteError);
+        // Task is archived but not deleted - this is okay, just log it
+        // We don't throw here because the archive was successful
+      }
+      
+      // Mark task-related notifications as read
+      await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', user.id)
+        .eq('navigation_context', 'tasks');
+        
+      // Trigger unicorn animation
+      setShowUnicorn(true);
+    }
+
+    loadTasks();
+    
+    toast({
+      title: "Status aktualisiert",
+      description: newStatus === "completed" 
+        ? "Aufgabe wurde als erledigt markiert und archiviert."
+        : "Aufgabe wurde als offen markiert."
+    });
+  } catch (error: any) {
+    console.error('Error updating task:', error);
+    // Rollback on error
+    setTasks(prev => prev.map(t => 
+      t.id === taskId ? { ...t, status: task.status } : t
+    ));
+    toast({
+      title: "Fehler",
+      description: error.message || "Status konnte nicht aktualisiert werden.",
+      variant: "destructive"
+    });
+  } finally {
+    setProcessingTaskIds(prev => {
+      const next = new Set(prev);
+      next.delete(taskId);
+      return next;
+    });
+  }
+};
 ```
 
 ---
 
 ## Zusammenfassung der Änderungen
 
-| Datei | Zeile | Änderung |
-|-------|-------|----------|
-| `src/hooks/useMyWorkNewCounts.tsx` | 94 | `.cs.` durch `.eq.` und `.ilike.` ersetzen |
-| `src/hooks/useMyWorkNewCounts.tsx` | 104 | `created_at` → `invited_at` |
-| `src/components/TaskDetailSidebar.tsx` | 2 | Import SimpleRichTextEditor |
-| `src/components/TaskDetailSidebar.tsx` | 620-627 | Textarea → SimpleRichTextEditor |
-| `src/components/shared/QuickNotesList.tsx` | 1072-1076 | getPreviewText mit DOM-Parser |
-| `src/components/shared/QuickNotesList.tsx` | 1217-1218 | Pfeil entfernen oder auf Hover beschränken |
+| Datei | Änderung |
+|-------|----------|
+| `src/components/TaskDetailSidebar.tsx` | Toast vor `onTaskUpdate` anzeigen; `onTaskUpdate` in try-catch wrappen |
+| `src/components/TasksView.tsx` | Bei Archivierungsfehler Exception werfen und Rollback durchführen; Fehlermeldung mit Details anzeigen |
+
+---
+
+## Wichtiger Hinweis für den Benutzer
+
+Nach der Implementierung dieser Änderungen sollte der Benutzer:
+1. Die Seite **hart neu laden** (Ctrl+Shift+R oder Cmd+Shift+R auf Mac)
+2. Alternativ: Browser-Cache leeren
+3. Falls die Probleme bestehen bleiben, prüfen ob es spezifische Fehlermeldungen in der Browser-Konsole gibt (F12 → Console)
 
 ---
 
 ## Erwartete Ergebnisse
 
-1. **Aufgaben bearbeiten:** Keine Fehlermeldung mehr, reibungsloses Speichern
-2. **Checkbox zum Erledigen:** Aufgabe wird korrekt archiviert und aus der Liste entfernt
-3. **Aufgaben-Details:** Rich-Text-Editor zum Bearbeiten der Beschreibung
-4. **Notizen-Vorschau:** HTML wird korrekt als lesbarer Text dargestellt
-5. **Notizen-Pfeil:** Nur sichtbar beim Hovern oder komplett entfernt
-
+1. **Aufgaben bearbeiten**: Erfolgs-Toast wird angezeigt, wenn die Daten erfolgreich gespeichert wurden - unabhängig von nachfolgenden UI-Updates
+2. **Checkbox-Archivierung**: Bei Fehlern wird ein Rollback durchgeführt und eine aussagekräftige Fehlermeldung angezeigt
+3. **Checkbox-Status**: Wird korrekt zurückgesetzt wenn die Archivierung fehlschlägt
