@@ -201,32 +201,143 @@ export function TimeTrackingView() {
   }, [employeeSettings, vacationLeaves, selectedMonth]);
 
   const monthlyTotals = useMemo(() => {
-    const worked = entries.reduce((s, e) => s + (e.minutes || 0), 0);
-    const sick = sickLeaves.reduce((s, l) => {
-      if (l.status !== "approved") return s;
-      const days = eachDayOfInterval({ start: parseISO(l.start_date), end: parseISO(l.end_date) }).filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6).length;
-      return s + Math.round(days * dailyMinutes);
+    // Datum-Sets für Ausschluss erstellen
+    const holidayDates = new Set(holidays.map(h => h.holiday_date));
+    
+    const sickDates = new Set<string>();
+    sickLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      try {
+        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+          .forEach(d => sickDates.add(format(d, 'yyyy-MM-dd')));
+      } catch (e) { console.error('Error processing sick dates:', e); }
+    });
+    
+    const vacationDates = new Set<string>();
+    vacationLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      try {
+        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+          .forEach(d => vacationDates.add(format(d, 'yyyy-MM-dd')));
+      } catch (e) { console.error('Error processing vacation dates:', e); }
+    });
+    
+    const overtimeDates = new Set<string>();
+    overtimeLeaves.filter(l => l.status === 'approved').forEach(leave => {
+      try {
+        eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+          .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
+          .forEach(d => overtimeDates.add(format(d, 'yyyy-MM-dd')));
+      } catch (e) { console.error('Error processing overtime dates:', e); }
+    });
+    
+    // NUR echte Arbeitstage zählen (keine Feiertage/Urlaub/Krank/Überstundenabbau)
+    const worked = entries.reduce((s, e) => {
+      const dateStr = e.work_date;
+      if (holidayDates.has(dateStr)) return s;
+      if (sickDates.has(dateStr)) return s;
+      if (vacationDates.has(dateStr)) return s;
+      if (overtimeDates.has(dateStr)) return s;
+      return s + (e.minutes || 0);
     }, 0);
-    const workingDays = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(d => d.getDay() !== 0 && d.getDay() !== 6 && !holidays.some(h => h.holiday_date === format(d, "yyyy-MM-dd"))).length;
+    
+    // Gutschriften berechnen (ohne Doppelzählung bei Feiertagen)
+    const sickMinutes = [...sickDates]
+      .filter(d => !holidayDates.has(d))
+      .length * dailyMinutes;
+    
+    const vacationMinutes = [...vacationDates]
+      .filter(d => !holidayDates.has(d) && !sickDates.has(d))
+      .length * dailyMinutes;
+    
+    const overtimeMinutes = [...overtimeDates]
+      .filter(d => !holidayDates.has(d) && !sickDates.has(d) && !vacationDates.has(d))
+      .length * dailyMinutes;
+    
+    // Feiertage im Monat (nur Werktage)
+    const holidayMinutes = [...holidayDates]
+      .filter(d => {
+        try {
+          const date = parseISO(d);
+          return date >= monthStart && date <= monthEnd && date.getDay() !== 0 && date.getDay() !== 6;
+        } catch { return false; }
+      })
+      .length * dailyMinutes;
+    
+    // Arzttermine (mit tatsächlicher Dauer, falls erfasst)
+    const medicalMinutes = medicalLeaves
+      .filter(l => l.status === 'approved')
+      .filter(l => {
+        try {
+          const d = parseISO(l.start_date);
+          return d >= monthStart && d <= monthEnd;
+        } catch { return false; }
+      })
+      .reduce((s, l) => s + (l.minutes_counted || dailyMinutes), 0);
+    
+    // Gesamte Gutschrift
+    const totalCredit = sickMinutes + vacationMinutes + overtimeMinutes + holidayMinutes + medicalMinutes;
+    
+    // Arbeitstage im Monat (ohne Wochenenden und Feiertage)
+    const workingDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
+      .filter(d => d.getDay() !== 0 && d.getDay() !== 6 && !holidayDates.has(format(d, "yyyy-MM-dd")))
+      .length;
+    
     const target = Math.round(workingDays * dailyMinutes);
-    return { worked, sick, target, difference: worked + sick - target, workingDays };
-  }, [entries, sickLeaves, holidays, monthStart, monthEnd, dailyMinutes]);
+    const totalActual = worked + totalCredit;
+    
+    return {
+      worked,
+      credit: totalCredit,
+      sickMinutes,
+      vacationMinutes,
+      overtimeMinutes,
+      holidayMinutes,
+      medicalMinutes,
+      target,
+      difference: totalActual - target,
+      workingDays,
+      totalActual,
+    };
+  }, [entries, sickLeaves, vacationLeaves, overtimeLeaves, medicalLeaves, holidays, monthStart, monthEnd, dailyMinutes]);
 
   const projectionTotals = useMemo(() => {
     const today = new Date();
     const isCurrentMonth = today.getFullYear() === selectedMonth.getFullYear() && today.getMonth() === selectedMonth.getMonth();
     if (!isCurrentMonth) return null;
+    
     const effectiveEndDate = today > monthEnd ? monthEnd : today;
-    const workedDaysSoFar = eachDayOfInterval({ start: monthStart, end: effectiveEndDate }).filter(d => d.getDay() !== 0 && d.getDay() !== 6 && !holidays.some(h => h.holiday_date === format(d, "yyyy-MM-dd"))).length;
+    const holidayDates = new Set(holidays.map(h => h.holiday_date));
+    
+    // Arbeitstage bis heute
+    const workedDaysSoFar = eachDayOfInterval({ start: monthStart, end: effectiveEndDate })
+      .filter(d => d.getDay() !== 0 && d.getDay() !== 6 && !holidayDates.has(format(d, "yyyy-MM-dd")))
+      .length;
     const targetSoFar = Math.round(workedDaysSoFar * dailyMinutes);
-    const workedSoFar = entries.filter(e => parseISO(e.work_date) <= today).reduce((s, e) => s + (e.minutes || 0), 0);
-    const sickSoFar = sickLeaves.filter(l => l.status === "approved").reduce((s, l) => {
-      const days = eachDayOfInterval({ start: parseISO(l.start_date), end: parseISO(l.end_date) }).filter(d => d >= monthStart && d <= effectiveEndDate && d.getDay() !== 0 && d.getDay() !== 6).length;
-      return s + Math.round(days * dailyMinutes);
-    }, 0);
-    const actualSoFar = workedSoFar + sickSoFar;
-    return { workedDaysSoFar, targetSoFar, actualSoFar, differenceSoFar: actualSoFar - targetSoFar };
-  }, [entries, sickLeaves, holidays, monthStart, monthEnd, selectedMonth, dailyMinutes]);
+    
+    // Gutschriften bis heute aus combinedEntries
+    const creditSoFar = combinedEntries
+      .filter(e => {
+        try {
+          return parseISO(e.work_date) <= today;
+        } catch { return false; }
+      })
+      .filter(e => ['sick', 'vacation', 'holiday', 'overtime_reduction', 'medical'].includes(e.entry_type))
+      .reduce((s, e) => s + (e.minutes || 0), 0);
+    
+    // Gearbeitete Minuten bis heute (nur echte Arbeit)
+    const workedSoFar = combinedEntries
+      .filter(e => {
+        try {
+          return parseISO(e.work_date) <= today && e.entry_type === 'work';
+        } catch { return false; }
+      })
+      .reduce((s, e) => s + (e.minutes || 0), 0);
+    
+    const actualSoFar = workedSoFar + creditSoFar;
+    
+    return { workedDaysSoFar, targetSoFar, actualSoFar, differenceSoFar: actualSoFar - targetSoFar, workedSoFar, creditSoFar };
+  }, [combinedEntries, holidays, monthStart, monthEnd, selectedMonth, dailyMinutes]);
 
   const validateDailyLimit = async (workDate: string, grossMin: number, excludeId?: string) => {
     if (!user) return;
@@ -552,13 +663,56 @@ export function TimeTrackingView() {
                       <span className="text-muted-foreground">Gearbeitet:</span>
                       <span className="font-mono">{fmt(monthlyTotals.worked)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Krankheitstage:</span>
-                      <span className="font-mono">{fmt(monthlyTotals.sick)}</span>
-                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex justify-between cursor-help">
+                            <span className="text-muted-foreground">Gutschriften:</span>
+                            <span className="font-mono text-blue-600">+{fmt(monthlyTotals.credit)}</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-xs">
+                          <div className="space-y-1 text-xs">
+                            {monthlyTotals.holidayMinutes > 0 && (
+                              <div className="flex justify-between gap-4">
+                                <span>🎉 Feiertage:</span>
+                                <span className="font-mono">{fmt(monthlyTotals.holidayMinutes)}</span>
+                              </div>
+                            )}
+                            {monthlyTotals.sickMinutes > 0 && (
+                              <div className="flex justify-between gap-4">
+                                <span>🤒 Krankheit:</span>
+                                <span className="font-mono">{fmt(monthlyTotals.sickMinutes)}</span>
+                              </div>
+                            )}
+                            {monthlyTotals.vacationMinutes > 0 && (
+                              <div className="flex justify-between gap-4">
+                                <span>🏖️ Urlaub:</span>
+                                <span className="font-mono">{fmt(monthlyTotals.vacationMinutes)}</span>
+                              </div>
+                            )}
+                            {monthlyTotals.overtimeMinutes > 0 && (
+                              <div className="flex justify-between gap-4">
+                                <span>⏰ Überstundenabbau:</span>
+                                <span className="font-mono">{fmt(monthlyTotals.overtimeMinutes)}</span>
+                              </div>
+                            )}
+                            {monthlyTotals.medicalMinutes > 0 && (
+                              <div className="flex justify-between gap-4">
+                                <span>🏥 Arzttermine:</span>
+                                <span className="font-mono">{fmt(monthlyTotals.medicalMinutes)}</span>
+                              </div>
+                            )}
+                            {monthlyTotals.credit === 0 && (
+                              <p className="text-muted-foreground">Keine Gutschriften in diesem Monat</p>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <div className="flex justify-between border-t pt-1 mt-1">
                       <span className="font-medium">Gesamt (Ist):</span>
-                      <span className="font-mono font-bold">{fmt(monthlyTotals.worked + monthlyTotals.sick)}</span>
+                      <span className="font-mono font-bold">{fmt(monthlyTotals.totalActual)}</span>
                     </div>
                   </div>
                 </div>
@@ -580,7 +734,7 @@ export function TimeTrackingView() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Status:</span>
-                      <span className="font-mono">{Math.round((monthlyTotals.worked + monthlyTotals.sick) / monthlyTotals.target * 100)}% erfüllt</span>
+                      <span className="font-mono">{monthlyTotals.target > 0 ? Math.round(monthlyTotals.totalActual / monthlyTotals.target * 100) : 0}% erfüllt</span>
                     </div>
                   </div>
                 </div>
@@ -596,8 +750,12 @@ export function TimeTrackingView() {
                         <span className="font-mono">{fmt(projectionTotals.targetSoFar)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Ist bis heute:</span>
-                        <span className="font-mono">{fmt(projectionTotals.actualSoFar)}</span>
+                        <span className="text-muted-foreground">Gearbeitet:</span>
+                        <span className="font-mono">{fmt(projectionTotals.workedSoFar || 0)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">+ Gutschriften:</span>
+                        <span className="font-mono text-blue-600">+{fmt(projectionTotals.creditSoFar || 0)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className={projectionTotals.differenceSoFar >= 0 ? "text-green-600" : "text-red-600"}>Differenz:</span>
