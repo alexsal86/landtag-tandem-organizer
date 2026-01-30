@@ -663,17 +663,21 @@ export const DecisionOverview = () => {
   };
 
   const getBorderColor = (summary: ReturnType<typeof getResponseSummary>) => {
+    const hasResponses = summary.yesCount + summary.noCount + summary.questionCount > 0;
     const allResponsesReceived = summary.pending === 0;
     const hasQuestions = summary.questionCount > 0;
     
+    // Orange: Rückfragen vorhanden
     if (hasQuestions) {
       return 'border-l-orange-500';
     }
     
-    if (!allResponsesReceived) {
+    // Grau: Noch Antworten ausstehend ODER keine Teilnehmer/Antworten
+    if (!allResponsesReceived || !hasResponses) {
       return 'border-l-gray-400';
     }
     
+    // Alle haben geantwortet: Grün wenn mehr Ja, sonst Rot
     if (summary.yesCount > summary.noCount) {
       return 'border-l-green-500';
     } else {

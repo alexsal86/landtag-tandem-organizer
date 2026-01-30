@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import { UserBadge } from "@/components/ui/user-badge";
 import { Check, X, MessageCircle, Clock, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +13,12 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
+
+interface CreatorProfile {
+  user_id: string;
+  display_name: string | null;
+  badge_color: string | null;
+}
 
 interface Decision {
   id: string;
@@ -26,6 +33,7 @@ interface Decision {
   pendingCount: number;
   responseType?: 'yes' | 'no' | 'question' | null;
   isPublic?: boolean;
+  creator?: CreatorProfile;
 }
 
 export function MyWorkDecisionsTab() {
@@ -244,6 +252,26 @@ export function MyWorkDecisionsTab() {
         }
       });
 
+      // Load creator profiles for all decisions
+      const allCreatorIds = [...new Set(Array.from(allDecisions.values()).map(d => d.created_by))];
+      const { data: creatorProfiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, badge_color')
+        .in('user_id', allCreatorIds);
+
+      const creatorProfileMap = new Map<string, CreatorProfile>(
+        creatorProfiles?.map(p => [p.user_id, p]) || []
+      );
+
+      // Add creator info to all decisions
+      allDecisions.forEach((decision, id) => {
+        decision.creator = creatorProfileMap.get(decision.created_by) || {
+          user_id: decision.created_by,
+          display_name: null,
+          badge_color: null,
+        };
+      });
+
       // Sort: unanswered first, then by date
       const sorted = Array.from(allDecisions.values()).sort((a, b) => {
         if (!a.hasResponded && b.hasResponded) return -1;
@@ -269,24 +297,33 @@ export function MyWorkDecisionsTab() {
   };
 
   const getBorderColor = (decision: Decision) => {
-    // Konsistent mit DecisionOverview:
-    // Grau: Noch Antworten ausstehend (von Teilnehmern)
-    if (!decision.hasResponded) {
+    // Wenn User Teilnehmer ist: Farbe basiert auf eigener Antwort
+    if (decision.participant_id) {
+      if (!decision.hasResponded) return 'border-l-gray-400';
+      if (decision.responseType === 'question') return 'border-l-orange-500';
+      if (decision.responseType === 'yes') return 'border-l-green-500';
+      if (decision.responseType === 'no') return 'border-l-red-600';
       return 'border-l-gray-400';
     }
-    // Gelb: User hat Frage gestellt
-    if (decision.responseType === 'question') {
-      return 'border-l-orange-500';
+    
+    // Wenn User Ersteller ist: basiert auf Gesamtergebnis
+    if (decision.isCreator) {
+      if (decision.responseType === 'question') return 'border-l-orange-500';
+      if (decision.pendingCount > 0) return 'border-l-gray-400';
+      if (decision.responseType === 'yes') return 'border-l-green-500';
+      if (decision.responseType === 'no') return 'border-l-red-600';
+      return 'border-l-gray-400';
     }
-    // Grün: User hat mit Ja geantwortet
-    if (decision.responseType === 'yes') {
-      return 'border-l-green-500';
+    
+    // Öffentliche Entscheidung als Viewer: basiert auf Gesamtergebnis
+    if (decision.isPublic) {
+      if (decision.responseType === 'question') return 'border-l-orange-500';
+      if (decision.responseType === 'yes') return 'border-l-green-500';
+      if (decision.responseType === 'no') return 'border-l-red-600';
+      // Grau wenn noch Antworten ausstehen oder keine Antworten
+      if (decision.pendingCount > 0) return 'border-l-gray-400';
     }
-    // Rot: User hat mit Nein geantwortet
-    if (decision.responseType === 'no') {
-      return 'border-l-red-600';
-    }
-    // Grau: Keine Antwort
+    
     return 'border-l-gray-400';
   };
 
@@ -366,9 +403,23 @@ export function MyWorkDecisionsTab() {
                       className="text-xs line-clamp-1 mt-0.5" 
                     />
                   )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {format(new Date(decision.created_at), "dd.MM.yyyy", { locale: de })}
-                  </p>
+                  <div className="flex items-center gap-2 flex-wrap mt-1">
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(decision.created_at), "dd.MM.yyyy", { locale: de })}
+                    </p>
+                    {decision.creator && !decision.isCreator && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <span>·</span>
+                        <span>Von:</span>
+                        <UserBadge 
+                          userId={decision.creator.user_id}
+                          displayName={decision.creator.display_name}
+                          badgeColor={decision.creator.badge_color}
+                          size="sm"
+                        />
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
