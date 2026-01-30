@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useDashboardLayout, type WidgetSize } from '@/hooks/useDashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/hooks/useTenant';
 import { DashboardWidget } from './DashboardWidget';
 import { DashboardGreetingSection } from './dashboard/DashboardGreetingSection';
 import { DashboardCoverImage } from './dashboard/DashboardCoverImage';
@@ -64,6 +65,7 @@ export const CustomizableDashboard: React.FC = () => {
   } = useDashboardLayout();
   
   const { user } = useAuth();
+  const { currentTenant, loading: tenantLoading } = useTenant();
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -226,10 +228,20 @@ export const CustomizableDashboard: React.FC = () => {
     }
   }, [isEditMode]);
 
-  if (loading) {
+  // Wait for both dashboard layout AND tenant to be loaded
+  if (loading || tenantLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg text-muted-foreground">Dashboard wird geladen...</div>
+      </div>
+    );
+  }
+  
+  // Don't render without a valid tenant
+  if (!currentTenant) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg text-muted-foreground">Kein Mandant zugewiesen</div>
       </div>
     );
   }

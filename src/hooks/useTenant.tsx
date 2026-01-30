@@ -75,6 +75,10 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (membershipError) {
         console.error('❌ Error fetching tenant memberships:', membershipError);
+        setTenants([]);
+        setCurrentTenant(null);
+        setMemberships([]);
+        setLoading(false);
         return;
       }
 
