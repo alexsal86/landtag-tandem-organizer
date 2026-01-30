@@ -1,113 +1,226 @@
 
-# Plan: Tenant-Isolation beim Login/Logout korrigieren
+# Plan: Tenant-Isolation beim Login vollständig korrigieren
 
 ## Problemanalyse
 
-Das System zeigt den falschen Tenant an, wenn sich ein anderer Benutzer einloggt. Die Ursache:
+Nach eingehender Untersuchung wurden mehrere Ursachen für das Tenant-Isolationsproblem identifiziert:
 
-1. **localStorage wird beim Logout nicht gelöscht:** Die `currentTenantId` bleibt im Browser gespeichert
-2. **Beim Benutzerwechsel wird der alte Tenant-Wert verwendet:** Auch wenn der neue Benutzer keinen Zugriff auf diesen Tenant hat
-3. **Fehlende User-ID-Validierung:** Das System prüft nicht, ob der localStorage-Tenant zum aktuell eingeloggten Benutzer gehört
+### 1. Index.tsx wartet nicht auf Tenant-Ladezustand
+
+```text
++-------------------+
+| User loggt sich   |
+| ein (Erwin)       |
++--------+----------+
+         |
+         v
++--------+----------+
+| AuthProvider      |
+| loading = true    |
+| user = null       |
++--------+----------+
+         |
+         v (Auth-State wird gesetzt)
++--------+----------+
+| AuthProvider      |
+| loading = false   |
+| user = Erwin      |
++--------+----------+
+         |
+         v
++--------+----------+
+| Index.tsx         |
+| Rendert Dashboard |  <-- PROBLEM: TenantProvider ladt noch!
+| (ohne Tenant!)    |
++--------+----------+
+         |
+         v
++--------+----------+
+| TenantProvider    |
+| loading = true    |
+| currentTenant =   |
+| null              |
++--------+----------+
+```
+
+**Aktuelles Verhalten in Index.tsx (Zeilen 94-107):**
+- Prüft nur `loading` vom Auth-Hook
+- Wartet NICHT auf `currentTenant` vom Tenant-Hook
+
+### 2. Dashboard-Komponenten zeigen nichts ohne Tenant
+
+- `DashboardGreetingSection` (Zeile 81): `if (!user?.id || !currentTenant?.id) return;`
+- Viele andere Komponenten prüfen `currentTenant?.id` und geben früh zurück
+
+### 3. Timing-Problem beim Benutzerwechsel
+
+Wenn vorher ein anderer Benutzer eingeloggt war, zeigt die Seite kurz das alte Layout, bevor der Auth-Wechsel erkannt wird.
+
+---
 
 ## Technische Lösung
 
-### 1. localStorage beim Logout löschen
+### Teil 1: Index.tsx - Auf Tenant-Loading warten
 
-**Datei: `src/hooks/useAuth.tsx`**
+**Datei:** `src/pages/Index.tsx`
 
-In der `signOut`-Funktion den localStorage-Eintrag entfernen:
+Änderungen:
+1. `useTenant` Hook importieren
+2. Auf `tenant.loading` zusätzlich zum `auth.loading` warten
+3. Ladezustand auch für Tenant anzeigen
 
 ```typescript
-const signOut = async () => {
-  // Log logout before signing out
-  if (user?.email) {
-    logAuditEvent({ 
-      action: AuditActions.LOGOUT, 
-      email: user.email,
-      details: { user_id: user.id }
-    });
+import { useTenant } from "@/hooks/useTenant";
+
+const Index = () => {
+  const { user, loading: authLoading } = useAuth();
+  const { currentTenant, loading: tenantLoading } = useTenant();
+  
+  // ...
+  
+  // Wait for both auth AND tenant to be loaded
+  const loading = authLoading || (user && tenantLoading);
+  
+  useEffect(() => {
+    // Only redirect to auth when both auth is done and no user
+    if (!authLoading && !user && activeSection !== 'knowledge') {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate, activeSection]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
   
-  // Clear tenant selection on logout to prevent cross-user tenant leakage
-  localStorage.removeItem('currentTenantId');
-  
-  await supabase.auth.signOut();
+  // ...
 };
 ```
 
-### 2. User-spezifischen localStorage-Key verwenden
+### Teil 2: CustomizableDashboard - Tenant-Prüfung hinzufügen
 
-**Datei: `src/hooks/useTenant.tsx`**
-
-Statt eines globalen Keys einen benutzerspezifischen Key verwenden:
+**Datei:** `src/components/CustomizableDashboard.tsx`
 
 ```typescript
-// Vorher (global - unsicher bei Benutzerwechsel):
-const savedTenantId = localStorage.getItem('currentTenantId');
+import { useTenant } from "@/hooks/useTenant";
 
-// Nachher (benutzerspezifisch - sicher):
-const tenantStorageKey = `currentTenantId_${user.id}`;
-const savedTenantId = localStorage.getItem(tenantStorageKey);
-```
-
-Alle Stellen anpassen, die `localStorage.getItem/setItem/removeItem` für `currentTenantId` verwenden.
-
-### 3. Zusätzliche Validierung hinzufügen
-
-**Datei: `src/hooks/useTenant.tsx`**
-
-Sicherstellen, dass der gespeicherte Tenant tatsächlich in den verfügbaren Tenants existiert:
-
-```typescript
-// Bestehende Logik verbessern:
-const tenantStorageKey = `currentTenantId_${user.id}`;
-const savedTenantId = localStorage.getItem(tenantStorageKey);
-let currentTenantToSet = null;
-
-if (savedTenantId) {
-  // NUR verwenden wenn der Tenant in den verfügbaren Tenants des Users existiert
-  currentTenantToSet = tenantsData.find(t => t.id === savedTenantId) || null;
+export const CustomizableDashboard: React.FC = () => {
+  const { currentTenant, loading: tenantLoading } = useTenant();
   
-  if (!currentTenantToSet) {
-    // Gespeicherter Tenant ist ungültig - entfernen
-    console.warn('⚠️ Stored tenant not accessible, clearing localStorage');
-    localStorage.removeItem(tenantStorageKey);
+  // Show loading while tenant is being fetched
+  if (tenantLoading || !currentTenant) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg text-muted-foreground">Dashboard wird geladen...</div>
+      </div>
+    );
   }
-}
-
-// Fallback auf ersten verfügbaren Tenant
-if (!currentTenantToSet && tenantsData.length > 0) {
-  currentTenantToSet = tenantsData[0];
-  console.log('🏢 Using first available tenant:', currentTenantToSet);
-}
+  
+  // ... rest of component
+};
 ```
 
-### 4. Alte globale localStorage-Einträge aufräumen
+### Teil 3: DashboardGreetingSection - Besserer Ladezustand
 
-Bei der Migration auch den alten globalen Key entfernen:
+**Datei:** `src/components/dashboard/DashboardGreetingSection.tsx`
 
 ```typescript
-// In fetchTenants, am Anfang:
-// Clean up legacy global key (one-time migration)
-const legacyKey = 'currentTenantId';
-if (localStorage.getItem(legacyKey)) {
-  localStorage.removeItem(legacyKey);
-  console.log('🧹 Cleaned up legacy tenant storage key');
-}
+export const DashboardGreetingSection = () => {
+  const { user } = useAuth();
+  const { currentTenant, loading: tenantLoading } = useTenant();
+  
+  // Show loading state while tenant is loading
+  if (tenantLoading) {
+    return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
+  }
+  
+  // Early return without rendering if no tenant
+  if (!currentTenant?.id) {
+    return null;
+  }
+  
+  // ... rest of component
+};
 ```
+
+### Teil 4: useTenant.tsx - Robustere Logik
+
+**Datei:** `src/hooks/useTenant.tsx`
+
+Das Problem mit der `loading`-State-Verwaltung:
+- `loading` wird erst am Ende auf `false` gesetzt
+- Aber es gibt einen `return` in Zeile 77 bei Fehlern, wo `setLoading(false)` nie aufgerufen wird
+
+```typescript
+const fetchTenants = async () => {
+  if (!user) {
+    setTenants([]);
+    setCurrentTenant(null);
+    setMemberships([]);
+    setLoading(false);
+    return;
+  }
+
+  try {
+    // ...existing code...
+  } catch (error) {
+    console.error('Error in fetchTenants:', error);
+    // WICHTIG: Auch im Fehlerfall den Loading-State beenden
+    setTenants([]);
+    setCurrentTenant(null);
+    setMemberships([]);
+  } finally {
+    setLoading(false); // Wird bereits gemacht, aber sicherstellen
+  }
+};
+```
+
+---
 
 ## Zusammenfassung der Änderungen
 
-| Datei | Änderung |
-|-------|----------|
-| `src/hooks/useAuth.tsx` | `localStorage.removeItem('currentTenantId')` in `signOut()` |
-| `src/hooks/useTenant.tsx` | User-spezifischer Key `currentTenantId_${user.id}` |
-| `src/hooks/useTenant.tsx` | Validierung + Fallback-Logik verbessern |
-| `src/hooks/useTenant.tsx` | Legacy-Key aufräumen |
+| # | Datei | Änderung |
+|---|-------|----------|
+| 1 | `src/pages/Index.tsx` | `useTenant` importieren, kombiniertes `loading` verwenden |
+| 2 | `src/components/CustomizableDashboard.tsx` | `tenantLoading` und `currentTenant` prüfen |
+| 3 | `src/components/dashboard/DashboardGreetingSection.tsx` | Skeleton-Loading während Tenant-Ladung |
+| 4 | `src/hooks/useTenant.tsx` | Fehlerfall-Handling verbessern |
+
+---
 
 ## Erwartetes Verhalten nach der Korrektur
 
-1. **Logout:** Tenant-Auswahl wird gelöscht
-2. **Login neuer Benutzer:** System lädt nur die Tenants, auf die der Benutzer Zugriff hat
-3. **Tenant-Wechsel:** Wird pro Benutzer gespeichert
-4. **Sicherheit:** Kein "Tenant-Leaking" zwischen Benutzern möglich
+1. **Login als Erwin:**
+   - Ladebildschirm wird angezeigt, bis Auth UND Tenant geladen sind
+   - Erst dann wird das Dashboard von "Büro Erwin" angezeigt
+
+2. **Kein "Flackern" mehr:**
+   - Keine kurze Anzeige des falschen Tenants
+   - Sauberer Übergang vom Login zum Dashboard
+
+3. **Robustheit:**
+   - Fehler beim Laden der Tenants blockieren die App nicht
+   - Klare Fehlermeldungen bei Problemen
+
+---
+
+## Zusätzliche Empfehlung: Tenant-Header anzeigen
+
+Um die Transparenz zu erhöhen, könnte in der `AppHeader`-Komponente der aktuelle Tenant-Name angezeigt werden:
+
+```tsx
+// In AppHeader.tsx
+const { currentTenant } = useTenant();
+
+// Im Header-Bereich:
+{currentTenant && (
+  <Badge variant="outline" className="ml-2">
+    {currentTenant.name}
+  </Badge>
+)}
+```
+
+Dies würde Benutzern klar zeigen, in welchem Mandanten sie gerade arbeiten.
