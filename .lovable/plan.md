@@ -1,508 +1,617 @@
 
-# Plan: Überstunden-Berechnung korrigieren, Tenant-Login stabilisieren & Superadmin-Tenant-Verwaltung
+# Plan: Superadmin-Tenant-Verwaltung erweitern & RLS-Policies anpassen
 
-## Teil 1: Überstunden-Berechnung korrigieren
+## Zusammenfassung der Probleme
 
-### Ursache des Problems
-Die `loadYearlyBalance`-Funktion in `AdminTimeTrackingView.tsx` und `TimeTrackingView.tsx` filtert Zeiteinträge **nicht** korrekt:
-- Zeiteinträge an Feiertagen werden fälschlicherweise zur Arbeitszeit gezählt
-- Zeiteinträge an Abwesenheitstagen (mit genehmigter Abwesenheit) werden ZUSÄTZLICH zur Gutschrift gezählt
+1. **RLS-Fehler beim Erstellen von Tenants:** Es gibt keine INSERT-Policy für die `tenants`-Tabelle
+2. **Keine Benutzerübersicht pro Tenant:** Superadmin kann Benutzer nicht sehen
+3. **Keine Möglichkeit, Benutzer Tenants zuzuweisen:** Bestehende oder neue Benutzer können nicht zugewiesen werden
+4. **Keine Möglichkeit, Benutzer zu löschen:** Abgeordnete können ihre Mitarbeiter nicht entfernen
+5. **Edge Function `create-admin-user` weist keinen Tenant zu:** Neuer Benutzer wird ohne Tenant-Membership erstellt
 
-### Lösung
+---
 
-**Datei: `src/components/admin/AdminTimeTrackingView.tsx` (loadYearlyBalance Funktion)**
+## Teil 1: Datenbank-Änderungen
 
-```typescript
-// AKTUELL (Zeile 340-345):
-const monthWorked = (yearEntries || [])
-  .filter(e => {
-    const d = parseISO(e.work_date);
-    return d.getMonth() === m && d.getFullYear() === currentYear;
-  })
-  .reduce((sum, e) => sum + (e.minutes || 0), 0);
+### 1.1 Neue Funktion `is_superadmin` erstellen
 
-// NEU - Filter auch Feiertage und Abwesenheitstage aus:
-const monthWorked = (yearEntries || [])
-  .filter(e => {
-    const d = parseISO(e.work_date);
-    const dateStr = format(d, 'yyyy-MM-dd');
-    // Ausschließen: anderer Monat, Feiertage, Abwesenheitstage
-    return d.getMonth() === m && 
-           d.getFullYear() === currentYear &&
-           !holidayDates.has(dateStr) &&
-           !allAbsenceDates.has(dateStr);
-  })
-  .reduce((sum, e) => sum + (e.minutes || 0), 0);
+```sql
+CREATE OR REPLACE FUNCTION public.is_superadmin(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM auth.users
+    WHERE id = _user_id
+      AND email = 'mail@alexander-salomon.de'
+  )
+$$;
 ```
 
-**Zusätzlich benötigt: Set aller Abwesenheitstage vorab berechnen:**
+### 1.2 RLS-Policies für `tenants` erweitern
+
+```sql
+-- Superadmin kann alle Tenants sehen
+CREATE POLICY "Superadmin can view all tenants"
+ON public.tenants FOR SELECT
+TO authenticated
+USING (is_superadmin(auth.uid()));
+
+-- Superadmin kann Tenants erstellen
+CREATE POLICY "Superadmin can create tenants"
+ON public.tenants FOR INSERT
+TO authenticated
+WITH CHECK (is_superadmin(auth.uid()));
+
+-- Superadmin kann Tenants bearbeiten
+CREATE POLICY "Superadmin can update tenants"
+ON public.tenants FOR UPDATE
+TO authenticated
+USING (is_superadmin(auth.uid()));
+
+-- Superadmin kann Tenants löschen
+CREATE POLICY "Superadmin can delete tenants"
+ON public.tenants FOR DELETE
+TO authenticated
+USING (is_superadmin(auth.uid()));
+```
+
+### 1.3 RLS-Policies für `user_tenant_memberships` erweitern
+
+```sql
+-- Superadmin kann alle Memberships sehen
+CREATE POLICY "Superadmin can view all memberships"
+ON public.user_tenant_memberships FOR SELECT
+TO authenticated
+USING (is_superadmin(auth.uid()));
+
+-- Superadmin kann Memberships erstellen
+CREATE POLICY "Superadmin can create memberships"
+ON public.user_tenant_memberships FOR INSERT
+TO authenticated
+WITH CHECK (is_superadmin(auth.uid()));
+
+-- Superadmin kann Memberships bearbeiten/löschen
+CREATE POLICY "Superadmin can manage all memberships"
+ON public.user_tenant_memberships FOR ALL
+TO authenticated
+USING (is_superadmin(auth.uid()));
+```
+
+---
+
+## Teil 2: Neue Edge Function `manage-tenant-user`
+
+Diese Funktion ermöglicht es:
+- Superadmin: Benutzer erstellen UND einem Tenant zuweisen
+- Superadmin: Bestehende Benutzer einem Tenant zuweisen/entfernen
+- Abgeordneter: Benutzer in seinem Tenant löschen
+
+### Datei: `supabase/functions/manage-tenant-user/index.ts`
 
 ```typescript
-// Vor der Monats-Schleife alle Abwesenheitsdaten sammeln
-const allAbsenceDates = new Set<string>();
-(yearLeaves || []).forEach(leave => {
-  if (['sick', 'vacation', 'overtime_reduction', 'medical'].includes(leave.type)) {
-    try {
-      eachDayOfInterval({ 
-        start: parseISO(leave.start_date), 
-        end: parseISO(leave.end_date) 
-      }).forEach(d => allAbsenceDates.add(format(d, 'yyyy-MM-dd')));
-    } catch {}
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const SUPERADMIN_EMAIL = 'mail@alexander-salomon.de';
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
   }
-});
-```
 
-**Gleiche Änderung in `TimeTrackingView.tsx` (loadYearlyBalance)**
+  try {
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
 
-### Erwartetes Ergebnis für Franziska Januar 2026
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) throw new Error('No authorization header');
 
-| Metrik | Vorher (falsch) | Nachher (korrekt) |
-|--------|-----------------|-------------------|
-| Gearbeitete Minuten | 9599 | 7703 (ohne Feiertage 1.1./6.1. und Abwesenheitstage) |
-| Soll (20 Arbeitstage × 474 Min) | 9480 | 9480 |
-| Gutschrift (5 Tage × 474 Min) | 2370 | 2370 |
-| **Saldo** | falsch positiv | ca. +593 Min (~9:53h) |
+    const { data: { user } } = await supabaseAdmin.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+    if (!user) throw new Error('Authentication failed');
 
----
+    const isSuperadmin = user.email === SUPERADMIN_EMAIL;
 
-## Teil 2: Tenant-Login stabilisieren (Erwin)
+    // Get caller's tenant and role
+    const { data: callerMembership } = await supabaseAdmin
+      .from('user_tenant_memberships')
+      .select('tenant_id, role')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .single();
 
-### Ursache
-1. Erwin hat **keine employee_settings** → NaN-Berechnungen in Time-Tracking
-2. Einige Komponenten setzen gültige Daten voraus
+    const isAbgeordneter = callerMembership?.role === 'abgeordneter';
 
-### Lösung
+    const body = await req.json();
+    const { action } = body;
 
-**Datei: `src/hooks/useTenant.tsx`**
+    switch (action) {
+      case 'createUser': {
+        // Superadmin only
+        if (!isSuperadmin) throw new Error('Only superadmin can create users');
+        
+        const { email, displayName, role, tenantId } = body;
+        if (!email || !displayName || !tenantId) {
+          throw new Error('Email, displayName, and tenantId are required');
+        }
 
-Besseres Fehler-Handling wenn Tenant geladen wird aber keine Daten vorhanden:
+        const password = generatePassword();
 
-```typescript
-// Nach fetchTenants, wenn kein Tenant verfügbar
-if (!currentTenantToSet && tenantsData.length === 0) {
-  console.error('❌ User hat keine Tenant-Zugehörigkeit');
-  // Benutzer freundlich informieren statt leere Seite
-}
-```
+        // Create user
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          user_metadata: { display_name: displayName },
+          email_confirm: true
+        });
 
-**Datei: `src/components/TimeTrackingView.tsx` und `AdminTimeTrackingView.tsx`**
+        if (createError) throw new Error(`Failed to create user: ${createError.message}`);
 
-Bereits implementiert durch Safe-Fallbacks (`hours_per_week || 39.5`), aber wir sollten auch einen expliziten Hinweis anzeigen, wenn für den eingeloggten User keine Settings existieren.
+        // Create profile
+        await supabaseAdmin.from('profiles').insert({
+          user_id: newUser.user.id,
+          display_name: displayName
+        });
 
----
+        // Create tenant membership
+        await supabaseAdmin.from('user_tenant_memberships').insert({
+          user_id: newUser.user.id,
+          tenant_id: tenantId,
+          role: role || 'mitarbeiter',
+          is_active: true
+        });
 
-## Teil 3: Superadmin-Tenant-Verwaltung
-
-### Konzept
-
-1. **Neues Superadmin-Konzept:** Hardcoded Email `mail@alexander-salomon.de` ODER neues Feld `is_superadmin` in user_roles
-
-2. **Neue Komponente:** `SuperadminTenantManagement.tsx`
-
-3. **Neue Unter-Seite in Admin:** "System & Sicherheit" → "Tenants" (nur für Superadmin)
-
-### Implementierung
-
-**Neue Datei: `src/components/administration/SuperadminTenantManagement.tsx`**
-
-```tsx
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/components/ui/use-toast";
-import { Building2, Plus, Edit, Trash2, Users, Calendar } from "lucide-react";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
-
-interface TenantWithStats {
-  id: string;
-  name: string;
-  description: string | null;
-  is_active: boolean;
-  created_at: string;
-  user_count: number;
-}
-
-export function SuperadminTenantManagement() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [tenants, setTenants] = useState<TenantWithStats[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingTenant, setEditingTenant] = useState<TenantWithStats | null>(null);
-  
-  // Form state
-  const [formName, setFormName] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formIsActive, setFormIsActive] = useState(true);
-
-  // Superadmin-Check (hardcoded für mail@alexander-salomon.de)
-  const isSuperadmin = user?.email === "mail@alexander-salomon.de";
-
-  const loadTenants = async () => {
-    try {
-      // Lade Tenants mit User-Count
-      const { data, error } = await supabase
-        .from("tenants")
-        .select(`
-          id,
-          name,
-          description,
-          is_active,
-          created_at
-        `)
-        .order("name");
-
-      if (error) throw error;
-
-      // User-Counts laden
-      const { data: memberships } = await supabase
-        .from("user_tenant_memberships")
-        .select("tenant_id")
-        .eq("is_active", true);
-
-      const countMap = new Map<string, number>();
-      (memberships || []).forEach(m => {
-        countMap.set(m.tenant_id, (countMap.get(m.tenant_id) || 0) + 1);
-      });
-
-      const tenantsWithStats = (data || []).map(t => ({
-        ...t,
-        user_count: countMap.get(t.id) || 0,
-      }));
-
-      setTenants(tenantsWithStats);
-    } catch (error) {
-      console.error("Error loading tenants:", error);
-      toast({ title: "Fehler", description: "Tenants konnten nicht geladen werden", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isSuperadmin) {
-      loadTenants();
-    }
-  }, [isSuperadmin]);
-
-  const handleSave = async () => {
-    if (!formName.trim()) {
-      toast({ title: "Fehler", description: "Name ist erforderlich", variant: "destructive" });
-      return;
-    }
-
-    try {
-      if (editingTenant) {
-        // Update
-        const { error } = await supabase
-          .from("tenants")
-          .update({
-            name: formName.trim(),
-            description: formDescription.trim() || null,
-            is_active: formIsActive,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", editingTenant.id);
-
-        if (error) throw error;
-        toast({ title: "Gespeichert", description: "Tenant wurde aktualisiert" });
-      } else {
-        // Create
-        const { error } = await supabase
-          .from("tenants")
-          .insert({
-            name: formName.trim(),
-            description: formDescription.trim() || null,
-            is_active: formIsActive,
-            settings: {},
+        // Assign role
+        if (role && role !== 'none') {
+          await supabaseAdmin.from('user_roles').insert({
+            user_id: newUser.user.id,
+            role: role
           });
+        }
 
-        if (error) throw error;
-        toast({ title: "Erstellt", description: "Neuer Tenant wurde angelegt" });
+        // Create user status
+        await supabaseAdmin.from('user_status').insert({
+          user_id: newUser.user.id,
+          status_type: 'online',
+          notifications_enabled: true,
+          tenant_id: tenantId
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          user: { id: newUser.user.id, email, display_name: displayName, password }
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      setDialogOpen(false);
-      resetForm();
-      loadTenants();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      case 'assignTenant': {
+        // Superadmin only
+        if (!isSuperadmin) throw new Error('Only superadmin can assign tenants');
+        
+        const { userId, tenantId, role } = body;
+        if (!userId || !tenantId) throw new Error('userId and tenantId required');
+
+        // Check if membership exists
+        const { data: existing } = await supabaseAdmin
+          .from('user_tenant_memberships')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (existing) {
+          // Update
+          await supabaseAdmin
+            .from('user_tenant_memberships')
+            .update({ role: role || 'mitarbeiter', is_active: true })
+            .eq('id', existing.id);
+        } else {
+          // Insert
+          await supabaseAdmin.from('user_tenant_memberships').insert({
+            user_id: userId,
+            tenant_id: tenantId,
+            role: role || 'mitarbeiter',
+            is_active: true
+          });
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'removeTenantMembership': {
+        // Superadmin or Abgeordneter for own tenant
+        const { userId, tenantId } = body;
+        if (!userId || !tenantId) throw new Error('userId and tenantId required');
+
+        const canRemove = isSuperadmin || 
+          (isAbgeordneter && callerMembership?.tenant_id === tenantId);
+        
+        if (!canRemove) throw new Error('Insufficient permissions');
+
+        await supabaseAdmin
+          .from('user_tenant_memberships')
+          .update({ is_active: false })
+          .eq('user_id', userId)
+          .eq('tenant_id', tenantId);
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'deleteUser': {
+        // Superadmin or Abgeordneter for users in their tenant
+        const { userId, tenantId } = body;
+        if (!userId) throw new Error('userId required');
+
+        // Check if caller can delete this user
+        const canDelete = isSuperadmin || 
+          (isAbgeordneter && callerMembership?.tenant_id === tenantId);
+        
+        if (!canDelete) throw new Error('Insufficient permissions');
+
+        // Prevent self-deletion
+        if (userId === user.id) throw new Error('Cannot delete yourself');
+
+        // Delete user from auth (cascades to profiles, roles, etc.)
+        const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+        if (error) throw new Error(`Failed to delete user: ${error.message}`);
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'updateRole': {
+        // Superadmin or Abgeordneter for own tenant
+        const { userId, tenantId, role } = body;
+        
+        const canUpdate = isSuperadmin || 
+          (isAbgeordneter && callerMembership?.tenant_id === tenantId);
+        
+        if (!canUpdate) throw new Error('Insufficient permissions');
+
+        // Update membership role
+        await supabaseAdmin
+          .from('user_tenant_memberships')
+          .update({ role })
+          .eq('user_id', userId)
+          .eq('tenant_id', tenantId);
+
+        // Update user_roles
+        await supabaseAdmin.from('user_roles').upsert({
+          user_id: userId,
+          role: role
+        }, { onConflict: 'user_id' });
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      default:
+        throw new Error(`Unknown action: ${action}`);
     }
-  };
 
-  const handleDelete = async (tenant: TenantWithStats) => {
-    if (tenant.user_count > 0) {
-      toast({ 
-        title: "Nicht möglich", 
-        description: `Tenant hat noch ${tenant.user_count} Benutzer. Bitte erst alle Benutzer entfernen.`,
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    if (!confirm(`Tenant "${tenant.name}" wirklich löschen?`)) return;
-
-    try {
-      const { error } = await supabase
-        .from("tenants")
-        .delete()
-        .eq("id", tenant.id);
-
-      if (error) throw error;
-      toast({ title: "Gelöscht", description: "Tenant wurde entfernt" });
-      loadTenants();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
-    }
-  };
-
-  const openCreateDialog = () => {
-    setEditingTenant(null);
-    resetForm();
-    setDialogOpen(true);
-  };
-
-  const openEditDialog = (tenant: TenantWithStats) => {
-    setEditingTenant(tenant);
-    setFormName(tenant.name);
-    setFormDescription(tenant.description || "");
-    setFormIsActive(tenant.is_active);
-    setDialogOpen(true);
-  };
-
-  const resetForm = () => {
-    setFormName("");
-    setFormDescription("");
-    setFormIsActive(true);
-    setEditingTenant(null);
-  };
-
-  if (!isSuperadmin) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center text-muted-foreground">
-          Keine Berechtigung für diesen Bereich.
-        </CardContent>
-      </Card>
-    );
+  } catch (error) {
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: error instanceof Error ? error.message : String(error) 
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
+});
 
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Tenant-Verwaltung
-          </CardTitle>
-          <CardDescription>
-            Verwaltung aller Mandanten im System
-          </CardDescription>
-        </div>
-        <Button onClick={openCreateDialog}>
-          <Plus className="h-4 w-4 mr-2" />
-          Neuer Tenant
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="text-center py-8 text-muted-foreground">Laden...</div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Beschreibung</TableHead>
-                <TableHead className="text-center">Benutzer</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                <TableHead>Erstellt</TableHead>
-                <TableHead className="text-right">Aktionen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tenants.map((tenant) => (
-                <TableRow key={tenant.id}>
-                  <TableCell className="font-medium">{tenant.name}</TableCell>
-                  <TableCell className="text-muted-foreground max-w-xs truncate">
-                    {tenant.description || "—"}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="secondary" className="gap-1">
-                      <Users className="h-3 w-3" />
-                      {tenant.user_count}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant={tenant.is_active ? "default" : "outline"}>
-                      {tenant.is_active ? "Aktiv" : "Inaktiv"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {format(new Date(tenant.created_at), "dd.MM.yyyy", { locale: de })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-1 justify-end">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEditDialog(tenant)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(tenant)}
-                        disabled={tenant.user_count > 0}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {tenants.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    Keine Tenants vorhanden
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-
-        {/* Create/Edit Dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingTenant ? "Tenant bearbeiten" : "Neuer Tenant"}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid gap-2">
-                <Label>Name *</Label>
-                <Input
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="z.B. Büro Mustermann"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Beschreibung</Label>
-                <Textarea
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Optionale Beschreibung..."
-                  rows={2}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label>Aktiv</Label>
-                <Switch
-                  checked={formIsActive}
-                  onCheckedChange={setFormIsActive}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                Abbrechen
-              </Button>
-              <Button onClick={handleSave}>
-                {editingTenant ? "Speichern" : "Erstellen"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
-  );
+function generatePassword(): string {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+  let password = '';
+  for (let i = 0; i < 14; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
 }
 ```
 
-### Integration in AdminSidebar
+---
 
-**Datei: `src/components/administration/AdminSidebar.tsx`**
+## Teil 3: SuperadminTenantManagement erweitern
 
-Neue Sub-Item hinzufügen:
+### 3.1 Neue Tabs für erweiterte Verwaltung
+
+Die Komponente wird um folgende Tabs erweitert:
+- **Tenants**: Mandanten erstellen/bearbeiten/löschen (bestehend)
+- **Benutzer pro Tenant**: Liste aller Benutzer mit Tenant-Zugehörigkeit
+- **Benutzer zuweisen**: Bestehende Benutzer einem Tenant zuweisen
+- **Neuer Benutzer**: Benutzer erstellen und direkt Tenant zuweisen
+
+### 3.2 Neuer State und Funktionen
 
 ```typescript
-// In adminMenuItems unter "security":
-children: [
-  { id: "general", label: "Allgemein", icon: Settings },
-  { id: "login", label: "Login-Anpassung", icon: LogIn },
-  { id: "tenants", label: "Tenants", icon: Building2, superAdminOnly: true }, // NEU
-  { id: "roles", label: "Rechte & Rollen", icon: UserCheck, superAdminOnly: true },
-  { id: "auditlogs", label: "Audit-Logs", icon: History },
-  { id: "archiving", label: "Archivierung", icon: Archive },
-],
+// Zusätzliche States
+const [allUsers, setAllUsers] = useState<UserWithTenants[]>([]);
+const [selectedTenantForUsers, setSelectedTenantForUsers] = useState<string | null>(null);
+const [userDialogOpen, setUserDialogOpen] = useState(false);
+const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+const [newUserTenantId, setNewUserTenantId] = useState("");
+const [newUserEmail, setNewUserEmail] = useState("");
+const [newUserName, setNewUserName] = useState("");
+const [newUserRole, setNewUserRole] = useState("mitarbeiter");
+
+interface UserWithTenants {
+  id: string;
+  email: string;
+  display_name: string;
+  tenants: Array<{ id: string; name: string; role: string }>;
+}
 ```
 
-### Integration in Administration.tsx
+### 3.3 Benutzer laden (alle mit Tenant-Info)
 
-**Datei: `src/pages/Administration.tsx`**
-
-Import hinzufügen:
 ```typescript
-import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
+const loadAllUsers = async () => {
+  // Lade alle Profile
+  const { data: profiles } = await supabase.rpc('get_all_users_for_superadmin');
+  
+  // Alternative: Direct query via edge function
+  const { data } = await supabase.functions.invoke('manage-tenant-user', {
+    body: { action: 'listAllUsers' }
+  });
+  
+  setAllUsers(data.users);
+};
 ```
 
-Im `renderContent` Switch-Case:
+### 3.4 UI-Erweiterung
+
+```tsx
+<Tabs defaultValue="tenants">
+  <TabsList>
+    <TabsTrigger value="tenants">Tenants</TabsTrigger>
+    <TabsTrigger value="users">Benutzer</TabsTrigger>
+    <TabsTrigger value="create-user">Neuer Benutzer</TabsTrigger>
+  </TabsList>
+  
+  <TabsContent value="tenants">
+    {/* Bestehende Tenant-Tabelle */}
+  </TabsContent>
+  
+  <TabsContent value="users">
+    <div className="space-y-4">
+      {/* Tenant-Filter Dropdown */}
+      <Select value={selectedTenantForUsers} onValueChange={setSelectedTenantForUsers}>
+        <SelectTrigger className="w-64">
+          <SelectValue placeholder="Alle Tenants" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Alle Tenants</SelectItem>
+          {tenants.map(t => (
+            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      
+      {/* Benutzer-Tabelle */}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>E-Mail</TableHead>
+            <TableHead>Tenant(s)</TableHead>
+            <TableHead>Rolle</TableHead>
+            <TableHead>Aktionen</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredUsers.map(user => (
+            <TableRow key={user.id}>
+              <TableCell>{user.display_name}</TableCell>
+              <TableCell>{user.email}</TableCell>
+              <TableCell>
+                {user.tenants.map(t => (
+                  <Badge key={t.id} variant="outline" className="mr-1">
+                    {t.name}
+                  </Badge>
+                ))}
+              </TableCell>
+              <TableCell>
+                {user.tenants[0]?.role}
+              </TableCell>
+              <TableCell>
+                <Button variant="ghost" size="sm" onClick={() => openAssignDialog(user)}>
+                  Zuweisen
+                </Button>
+                <Button variant="ghost" size="sm" className="text-destructive" 
+                  onClick={() => confirmDeleteUser(user)}>
+                  Löschen
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  </TabsContent>
+  
+  <TabsContent value="create-user">
+    {/* Formular zum Erstellen eines neuen Benutzers mit Tenant-Auswahl */}
+    <Card>
+      <CardHeader>
+        <CardTitle>Neuen Benutzer erstellen</CardTitle>
+        <CardDescription>
+          Der Benutzer wird automatisch dem gewählten Tenant zugewiesen.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-2">
+          <Label>Tenant *</Label>
+          <Select value={newUserTenantId} onValueChange={setNewUserTenantId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Tenant auswählen" />
+            </SelectTrigger>
+            <SelectContent>
+              {tenants.map(t => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {/* E-Mail, Name, Rolle Felder */}
+        <Button onClick={handleCreateUserWithTenant}>
+          Benutzer erstellen
+        </Button>
+      </CardContent>
+    </Card>
+  </TabsContent>
+</Tabs>
+```
+
+---
+
+## Teil 4: Abgeordneter kann Mitarbeiter löschen
+
+### 4.1 Erweiterung der Team-Verwaltung in Administration.tsx
+
+In der bestehenden `Administration.tsx` unter dem Abschnitt "Team" einen Löschen-Button hinzufügen:
+
+```tsx
+// Bei jedem Benutzer in der Tabelle
+<AlertDialog>
+  <AlertDialogTrigger asChild>
+    <Button variant="ghost" size="icon" className="text-destructive">
+      <Trash2 className="h-4 w-4" />
+    </Button>
+  </AlertDialogTrigger>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Benutzer löschen?</AlertDialogTitle>
+      <AlertDialogDescription>
+        {profile.display_name} wird unwiderruflich aus dem System entfernt.
+        Alle zugehörigen Daten (Zeiteinträge, Nachrichten, etc.) werden gelöscht.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+      <AlertDialogAction 
+        className="bg-destructive text-destructive-foreground"
+        onClick={() => handleDeleteUser(profile.user_id)}
+      >
+        Unwiderruflich löschen
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+### 4.2 Handler-Funktion
+
 ```typescript
-case "tenants":
-  if (!isSuperAdmin) return null;
-  // Zusätzlich: nur für echten Superadmin (mail@alexander-salomon.de)
-  if (user?.email !== "mail@alexander-salomon.de") {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center text-muted-foreground">
-          Nur für System-Administratoren zugänglich.
-        </CardContent>
-      </Card>
-    );
+const handleDeleteUser = async (userId: string) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('manage-tenant-user', {
+      body: {
+        action: 'deleteUser',
+        userId,
+        tenantId: currentTenant?.id
+      }
+    });
+    
+    if (error || !data.success) {
+      throw new Error(data?.error || 'Löschen fehlgeschlagen');
+    }
+    
+    toast({ title: 'Benutzer gelöscht' });
+    loadData();
+  } catch (error: any) {
+    toast({ 
+      title: 'Fehler', 
+      description: error.message, 
+      variant: 'destructive' 
+    });
   }
-  return <SuperadminTenantManagement />;
+};
 ```
-
-### Sicherheits-Überlegung
-
-Aktuell wird `isSuperAdmin` auf Client-Seite durch die Rolle "abgeordneter" bestimmt. Für die Tenant-Verwaltung sollten wir eine **noch strengere Prüfung** verwenden:
-
-```typescript
-// Echter Superadmin = hardcoded Email ODER zukünftig is_superadmin-Flag
-const isSystemSuperadmin = user?.email === "mail@alexander-salomon.de";
-```
-
-Dieser Ansatz ist sicherer als nur Role-Check, da er nur einer spezifischen Person Zugriff gibt.
 
 ---
 
 ## Zusammenfassung der Änderungen
 
-| # | Datei | Änderung |
-|---|-------|----------|
-| 1 | `AdminTimeTrackingView.tsx` | Zeiteinträge an Feiertagen/Abwesenheitstagen ausfiltern |
-| 2 | `TimeTrackingView.tsx` | Gleiche Filterlogik |
-| 3 | `SuperadminTenantManagement.tsx` | **NEUE DATEI** - Tenant-Verwaltung |
-| 4 | `AdminSidebar.tsx` | Neues Menu-Item "Tenants" (superAdminOnly) |
-| 5 | `Administration.tsx` | Import + Switch-Case für Tenants |
+| # | Bereich | Änderung |
+|---|---------|----------|
+| 1 | Datenbank | `is_superadmin()` Funktion erstellen |
+| 2 | Datenbank | RLS-Policies für `tenants` erweitern (INSERT, UPDATE, DELETE für Superadmin) |
+| 3 | Datenbank | RLS-Policies für `user_tenant_memberships` erweitern |
+| 4 | Edge Function | Neue `manage-tenant-user` Funktion für alle Benutzeroperationen |
+| 5 | Frontend | `SuperadminTenantManagement.tsx` mit Tabs für Tenants/Benutzer/Neuer Benutzer |
+| 6 | Frontend | `Administration.tsx` erweitern um Löschen-Button für Abgeordnete |
 
 ---
 
 ## Erwartete Ergebnisse
 
-1. **Überstunden korrekt:** Zeiteinträge an Feiertagen/Abwesenheitstagen werden nicht mehr zur Arbeitszeit gezählt
-2. **Superadmin-Seite:** mail@alexander-salomon.de kann Tenants anlegen, bearbeiten, löschen und User-Counts sehen
-3. **Transparenz:** Die Tenant-Übersicht zeigt klar, wie viele Benutzer pro Tenant existieren
+1. **Superadmin kann Tenants erstellen** - RLS erlaubt INSERT für Superadmin
+2. **Superadmin sieht alle Benutzer** - Mit Tenant-Zugehörigkeit und Rolle
+3. **Superadmin kann Benutzer erstellen** - Mit direkter Tenant-Zuweisung
+4. **Superadmin kann Benutzer zuweisen** - Bestehende Benutzer zu Tenants hinzufügen
+5. **Abgeordneter kann Mitarbeiter löschen** - Mit Bestätigungsdialog
+6. **Transparenz** - Klare Übersicht wer zu welchem Tenant gehört
+
+---
+
+## Technische Details
+
+### Datenbank-Migration erforderlich
+
+```sql
+-- 1. is_superadmin Funktion
+CREATE OR REPLACE FUNCTION public.is_superadmin(_user_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM auth.users 
+    WHERE id = _user_id AND email = 'mail@alexander-salomon.de'
+  )
+$$;
+
+-- 2. Tenant Policies
+CREATE POLICY "Superadmin can view all tenants" ON public.tenants 
+  FOR SELECT USING (is_superadmin(auth.uid()));
+CREATE POLICY "Superadmin can create tenants" ON public.tenants 
+  FOR INSERT WITH CHECK (is_superadmin(auth.uid()));
+CREATE POLICY "Superadmin can update all tenants" ON public.tenants 
+  FOR UPDATE USING (is_superadmin(auth.uid()));
+CREATE POLICY "Superadmin can delete tenants" ON public.tenants 
+  FOR DELETE USING (is_superadmin(auth.uid()));
+
+-- 3. Membership Policies
+CREATE POLICY "Superadmin can view all memberships" ON public.user_tenant_memberships
+  FOR SELECT USING (is_superadmin(auth.uid()));
+CREATE POLICY "Superadmin can manage all memberships" ON public.user_tenant_memberships
+  FOR ALL USING (is_superadmin(auth.uid()));
+```
+
+### Neue Edge Function
+
+- Datei: `supabase/functions/manage-tenant-user/index.ts`
+- Aktionen: `createUser`, `assignTenant`, `removeTenantMembership`, `deleteUser`, `updateRole`, `listAllUsers`
+
+### Frontend-Änderungen
+
+- `SuperadminTenantManagement.tsx`: Erweitern mit Tabs
+- `Administration.tsx`: Löschen-Button für Mitarbeiter
