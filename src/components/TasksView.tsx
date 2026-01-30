@@ -955,6 +955,7 @@ export function TasksView() {
     if (!task || !user) return;
 
     const newStatus = task.status === "completed" ? "todo" : "completed";
+    const originalStatus = task.status;
     
     // Optimistic update
     setTasks(prev => prev.map(t => 
@@ -996,6 +997,8 @@ export function TasksView() {
 
         if (archiveError) {
           console.error('Error archiving task:', archiveError);
+          // Throw to trigger rollback - archiving failed
+          throw new Error('Archivierung fehlgeschlagen: ' + archiveError.message);
         }
 
         // Delete the task from the tasks table
@@ -1006,6 +1009,8 @@ export function TasksView() {
 
         if (deleteError) {
           console.error('Error deleting completed task:', deleteError);
+          // Task is archived but not deleted - this is okay, just log it
+          // We don't throw here because the archive was successful
         }
         
         // Mark task-related notifications as read
@@ -1031,11 +1036,11 @@ export function TasksView() {
       console.error('Error updating task:', error);
       // Rollback on error
       setTasks(prev => prev.map(t => 
-        t.id === taskId ? { ...t, status: task.status } : t
+        t.id === taskId ? { ...t, status: originalStatus } : t
       ));
       toast({
         title: "Fehler",
-        description: "Status konnte nicht aktualisiert werden.",
+        description: error.message || "Status konnte nicht aktualisiert werden.",
         variant: "destructive"
       });
     } finally {
