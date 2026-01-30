@@ -204,6 +204,10 @@ export function TaskDetailSidebar({
     if (!task) return;
 
     setSaving(true);
+    
+    // Store success flag outside try-catch to prevent interference from other errors
+    let saveSuccessful = false;
+    
     try {
       const { error } = await supabase
         .from('tasks')
@@ -220,28 +224,8 @@ export function TaskDetailSidebar({
         .eq('id', task.id);
 
       if (error) throw error;
-
-      const updatedTask: Task = {
-        ...task,
-        ...editFormData as Task,
-      };
-
-      // Update local form data first
-      setEditFormData(updatedTask);
       
-      // Show success toast BEFORE calling onTaskUpdate
-      toast({
-        title: "Aufgabe gespeichert",
-        description: "Die Änderungen wurden erfolgreich gespeichert.",
-      });
-
-      // Call onTaskUpdate in a try-catch to prevent it from affecting our flow
-      try {
-        onTaskUpdate(updatedTask);
-      } catch (callbackError) {
-        console.error('Error in onTaskUpdate callback:', callbackError);
-        // Don't show error toast here - save was successful
-      }
+      saveSuccessful = true;
     } catch (error) {
       console.error('Error saving task:', error);
       toast({
@@ -251,6 +235,31 @@ export function TaskDetailSidebar({
       });
     } finally {
       setSaving(false);
+    }
+    
+    // Only show success and update state if save was successful
+    // This is OUTSIDE the try-catch to prevent other errors from affecting our toast
+    if (saveSuccessful) {
+      const updatedTask: Task = {
+        ...task,
+        ...editFormData as Task,
+      };
+
+      // Show success toast IMMEDIATELY
+      toast({
+        title: "Aufgabe gespeichert",
+        description: "Die Änderungen wurden erfolgreich gespeichert.",
+      });
+      
+      // Update states after toast is shown
+      setEditFormData(updatedTask);
+      
+      // Wrap callback to prevent any errors from affecting us
+      try {
+        onTaskUpdate(updatedTask);
+      } catch (e) {
+        console.error('Error in onTaskUpdate callback:', e);
+      }
     }
   };
 
