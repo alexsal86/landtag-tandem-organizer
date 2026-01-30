@@ -708,7 +708,7 @@ export function TasksView() {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
-        .or(`user_id.eq.${user.id},assigned_to.cs.{${user.id}},assigned_to.ilike.%${user.id}%`)
+        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
