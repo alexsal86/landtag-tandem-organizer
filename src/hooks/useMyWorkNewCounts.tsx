@@ -91,7 +91,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
       const { count: newTaskCount } = await supabase
         .from('tasks')
         .select('*', { count: 'exact', head: true })
-        .or(`assigned_to.cs.{${user.id}},user_id.eq.${user.id}`)
+        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
         .neq('status', 'completed')
         .gt('created_at', tasksLastVisit);
 
@@ -101,7 +101,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
         .select('*, task_decisions!inner(*)', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .in('task_decisions.status', ['active', 'open'])
-        .gt('created_at', decisionsLastVisit);
+        .gt('invited_at', decisionsLastVisit);
 
       // Count new responses to user's own decisions
       const { data: userDecisions } = await supabase
