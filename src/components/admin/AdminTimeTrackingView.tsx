@@ -15,13 +15,14 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useCombinedTimeEntries, CombinedTimeEntry } from "@/hooks/useCombinedTimeEntries";
 import { 
   format, parseISO, startOfMonth, endOfMonth, addMonths, subMonths, 
   eachDayOfInterval, isWeekend, getYear 
 } from "date-fns";
 import { de } from "date-fns/locale";
 import { 
-  ChevronLeft, ChevronRight, Clock, Calendar, TrendingUp, 
+  ChevronLeft, ChevronRight, Clock, Calendar, TrendingUp, Gift,
   Edit, AlertCircle, CheckCircle, XCircle, Undo2, Plus
 } from "lucide-react";
 import { AdminTimeEntryEditor, AdminEditData } from "@/components/AdminTimeEntryEditor";
@@ -55,6 +56,10 @@ interface LeaveRequest {
   start_date: string;
   end_date: string;
   reason: string | null;
+  medical_reason?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  minutes_counted?: number | null;
   created_at: string;
 }
 
@@ -70,7 +75,8 @@ interface Correction {
 }
 
 interface PublicHoliday {
-  date: string;
+  id: string;
+  holiday_date: string;
   name: string;
 }
 
@@ -174,6 +180,7 @@ export function AdminTimeTrackingView() {
     if (!selectedUserId) return;
     
     try {
+      const year = currentMonth.getFullYear();
       const [entriesRes, leavesRes, correctionsRes, holidaysRes] = await Promise.all([
         supabase
           .from("time_entries")
@@ -184,8 +191,10 @@ export function AdminTimeTrackingView() {
           .order("work_date", { ascending: true }),
         supabase
           .from("leave_requests")
-          .select("id, user_id, type, status, start_date, end_date, reason, created_at")
+          .select("id, user_id, type, status, start_date, end_date, reason, medical_reason, start_time, end_time, minutes_counted, created_at")
           .eq("user_id", selectedUserId)
+          .gte("start_date", `${year}-01-01`)
+          .lte("end_date", `${year}-12-31`)
           .order("start_date", { ascending: false }),
         supabase
           .from("time_entry_corrections")
@@ -194,7 +203,7 @@ export function AdminTimeTrackingView() {
           .order("created_at", { ascending: false }),
         supabase
           .from("public_holidays")
-          .select("holiday_date, name")
+          .select("id, holiday_date, name")
           .gte("holiday_date", format(monthStart, "yyyy-MM-dd"))
           .lte("holiday_date", format(monthEnd, "yyyy-MM-dd")),
       ]);
@@ -202,8 +211,7 @@ export function AdminTimeTrackingView() {
       setTimeEntries(entriesRes.data || []);
       setLeaveRequests(leavesRes.data || []);
       setCorrections(correctionsRes.data || []);
-      // Map holiday_date to date for consistency
-      setHolidays((holidaysRes.data || []).map((h: any) => ({ date: h.holiday_date, name: h.name })));
+      setHolidays(holidaysRes.data || []);
     } catch (error) {
       console.error("Error loading month data:", error);
     }
@@ -219,10 +227,43 @@ export function AdminTimeTrackingView() {
     return selectedEmployee.hours_per_week / (selectedEmployee.days_per_week || 5);
   }, [selectedEmployee]);
 
+  const dailyMinutes = Math.round(dailyHours * 60);
+
+  // Filter leaves by type for combined entries
+  const sickLeaves = useMemo(() => 
+    leaveRequests.filter(l => l.type === 'sick'),
+    [leaveRequests]
+  );
+  const vacationLeaves = useMemo(() => 
+    leaveRequests.filter(l => l.type === 'vacation'),
+    [leaveRequests]
+  );
+  const medicalLeaves = useMemo(() => 
+    leaveRequests.filter(l => l.type === 'medical'),
+    [leaveRequests]
+  );
+  const overtimeLeaves = useMemo(() => 
+    leaveRequests.filter(l => l.type === 'overtime_reduction'),
+    [leaveRequests]
+  );
+
+  // Combined entries using the same hook as employee view
+  const combinedEntries = useCombinedTimeEntries({
+    entries: timeEntries,
+    sickLeaves,
+    vacationLeaves,
+    medicalLeaves,
+    overtimeLeaves,
+    holidays: holidays.map(h => ({ id: h.id, holiday_date: h.holiday_date, name: h.name })),
+    monthStart,
+    monthEnd,
+    dailyMinutes,
+  });
+
   // Calculate workdays in month (excluding weekends and holidays)
   const workdaysInMonth = useMemo(() => {
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-    const holidayDates = new Set(holidays.map(h => h.date));
+    const holidayDates = new Set(holidays.map(h => h.holiday_date));
     return days.filter(d => !isWeekend(d) && !holidayDates.has(format(d, "yyyy-MM-dd"))).length;
   }, [monthStart, monthEnd, holidays]);
 
@@ -232,10 +273,20 @@ export function AdminTimeTrackingView() {
     [dailyHours, workdaysInMonth]
   );
 
-  // Worked minutes this month
+  // Worked minutes this month (ONLY actual work, not absences)
   const workedMinutes = useMemo(() => 
-    timeEntries.reduce((sum, e) => sum + (e.minutes || 0), 0),
-    [timeEntries]
+    combinedEntries
+      .filter(e => e.entry_type === 'work')
+      .reduce((sum, e) => sum + (e.minutes || 0), 0),
+    [combinedEntries]
+  );
+
+  // Credit minutes (absences that count towards target)
+  const creditMinutes = useMemo(() => 
+    combinedEntries
+      .filter(e => ['sick', 'vacation', 'holiday', 'overtime_reduction', 'medical'].includes(e.entry_type))
+      .reduce((sum, e) => sum + (e.minutes || 0), 0),
+    [combinedEntries]
   );
 
   // Corrections total for this user (all time)
@@ -372,7 +423,8 @@ export function AdminTimeTrackingView() {
     );
   }
 
-  const balanceMinutes = workedMinutes - monthlyTargetMinutes + totalCorrectionMinutes;
+  const totalActual = workedMinutes + creditMinutes;
+  const balanceMinutes = totalActual - monthlyTargetMinutes + totalCorrectionMinutes;
 
   return (
     <div className="space-y-6">
@@ -406,8 +458,7 @@ export function AdminTimeTrackingView() {
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -427,13 +478,13 @@ export function AdminTimeTrackingView() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Ist
+              Gearbeitet
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{fmt(workedMinutes)}</div>
             <p className="text-xs text-muted-foreground">
-              {timeEntries.length} Einträge
+              {combinedEntries.filter(e => e.entry_type === 'work').length} Arbeitstage
             </p>
           </CardContent>
         </Card>
@@ -441,19 +492,77 @@ export function AdminTimeTrackingView() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Gift className="h-4 w-4" />
+              Gutschriften
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-help">
+                    <div className="text-2xl font-bold text-blue-600">+{fmt(creditMinutes)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Urlaub, Krankheit, Feiertage
+                    </p>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <div className="space-y-1 text-xs">
+                    {combinedEntries.filter(e => e.entry_type === 'holiday').length > 0 && (
+                      <div className="flex justify-between gap-4">
+                        <span>🎉 Feiertage:</span>
+                        <span>{combinedEntries.filter(e => e.entry_type === 'holiday').length} Tage</span>
+                      </div>
+                    )}
+                    {combinedEntries.filter(e => e.entry_type === 'sick').length > 0 && (
+                      <div className="flex justify-between gap-4">
+                        <span>🤒 Krankheit:</span>
+                        <span>{combinedEntries.filter(e => e.entry_type === 'sick').length} Tage</span>
+                      </div>
+                    )}
+                    {combinedEntries.filter(e => e.entry_type === 'vacation').length > 0 && (
+                      <div className="flex justify-between gap-4">
+                        <span>🏖️ Urlaub:</span>
+                        <span>{combinedEntries.filter(e => e.entry_type === 'vacation').length} Tage</span>
+                      </div>
+                    )}
+                    {combinedEntries.filter(e => e.entry_type === 'overtime_reduction').length > 0 && (
+                      <div className="flex justify-between gap-4">
+                        <span>⏰ Überstundenabbau:</span>
+                        <span>{combinedEntries.filter(e => e.entry_type === 'overtime_reduction').length} Tage</span>
+                      </div>
+                    )}
+                    {combinedEntries.filter(e => e.entry_type === 'medical').length > 0 && (
+                      <div className="flex justify-between gap-4">
+                        <span>🏥 Arzttermine:</span>
+                        <span>{combinedEntries.filter(e => e.entry_type === 'medical').length}</span>
+                      </div>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              Saldo (inkl. Korrekturen)
+              Saldo
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${balanceMinutes >= 0 ? "text-green-600" : "text-destructive"}`}>
               {balanceMinutes >= 0 ? "+" : ""}{fmt(balanceMinutes)}
             </div>
-            {totalCorrectionMinutes !== 0 && (
-              <p className="text-xs text-muted-foreground">
-                Korrekturen: {totalCorrectionMinutes >= 0 ? "+" : ""}{fmt(totalCorrectionMinutes)}
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground">
+              Gesamt-Ist: {fmt(totalActual)}
+              {totalCorrectionMinutes !== 0 && (
+                <span className="block">Korrekturen: {totalCorrectionMinutes >= 0 ? "+" : ""}{fmt(totalCorrectionMinutes)}</span>
+              )}
+            </p>
           </CardContent>
         </Card>
 
@@ -489,11 +598,11 @@ export function AdminTimeTrackingView() {
           <Card>
             <CardHeader>
               <CardTitle>Zeiteinträge {format(currentMonth, "MMMM yyyy", { locale: de })}</CardTitle>
-              <CardDescription>Alle Zeiteinträge des Mitarbeiters für diesen Monat</CardDescription>
+              <CardDescription>Alle Einträge inkl. Abwesenheiten für diesen Monat</CardDescription>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[400px]">
-                {timeEntries.length === 0 ? (
+                {combinedEntries.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p>Keine Einträge in diesem Monat</p>
@@ -503,6 +612,7 @@ export function AdminTimeTrackingView() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Datum</TableHead>
+                        <TableHead>Typ</TableHead>
                         <TableHead>Start</TableHead>
                         <TableHead>Ende</TableHead>
                         <TableHead>Brutto</TableHead>
@@ -514,15 +624,24 @@ export function AdminTimeTrackingView() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {timeEntries.map(entry => {
+                      {combinedEntries.map(entry => {
                         const grossMinutes = entry.started_at && entry.ended_at
                           ? Math.round((new Date(entry.ended_at).getTime() - new Date(entry.started_at).getTime()) / 60000)
-                          : 0;
+                          : entry.minutes || 0;
                         
                         return (
-                          <TableRow key={entry.id}>
+                          <TableRow key={entry.id} className={entry.type_class}>
                             <TableCell className="font-medium">
                               {format(parseISO(entry.work_date), "EEE, dd.MM.", { locale: de })}
+                            </TableCell>
+                            <TableCell>
+                              {entry.type_label ? (
+                                <Badge variant="outline" className="text-xs whitespace-nowrap">
+                                  {entry.type_icon} {entry.type_label}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">Arbeit</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               {entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "-"}
@@ -537,7 +656,7 @@ export function AdminTimeTrackingView() {
                               {entry.notes || "-"}
                             </TableCell>
                             <TableCell>
-                              {entry.edited_by && (
+                              {entry.edited_by && entry.entry_type === 'work' && (
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -554,13 +673,18 @@ export function AdminTimeTrackingView() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleEditEntry(entry)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
+                              {entry.is_editable && entry.entry_type === 'work' && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    const original = timeEntries.find(e => e.id === entry.id);
+                                    if (original) handleEditEntry(original);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         );
