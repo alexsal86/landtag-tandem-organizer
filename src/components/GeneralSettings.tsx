@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Upload, Save, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/hooks/useTenant";
 import { DashboardDefaultCover } from "./administration/DashboardDefaultCover";
 
 interface AppSettings {
@@ -17,6 +17,7 @@ interface AppSettings {
 
 export function GeneralSettings() {
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
   const [settings, setSettings] = useState<AppSettings>({
     app_name: "LandtagsOS",
     app_subtitle: "Koordinationssystem",
@@ -26,36 +27,41 @@ export function GeneralSettings() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Load current settings
+  // Load current settings for this tenant
   useEffect(() => {
+    if (!currentTenant?.id) return;
+    
     const loadSettings = async () => {
       try {
+        // First try tenant-specific settings
         const { data, error } = await supabase
           .from('app_settings')
           .select('setting_key, setting_value')
+          .eq('tenant_id', currentTenant.id)
           .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
 
         if (error) throw error;
 
-        const settingsMap = data?.reduce((acc, item) => {
-          const key = item.setting_key as keyof AppSettings;
-          acc[key] = item.setting_value || '';
-          return acc;
-        }, {
-          app_name: '',
-          app_subtitle: '',
-          app_logo_url: ''
-        } as AppSettings) || {
-          app_name: '',
-          app_subtitle: '',
-          app_logo_url: ''
-        };
+        if (data && data.length > 0) {
+          const settingsMap = data.reduce((acc, item) => {
+            const key = item.setting_key as keyof AppSettings;
+            acc[key] = item.setting_value || '';
+            return acc;
+          }, {} as AppSettings);
 
-        setSettings({
-          app_name: settingsMap.app_name || "LandtagsOS",
-          app_subtitle: settingsMap.app_subtitle || "Koordinationssystem", 
-          app_logo_url: settingsMap.app_logo_url || ""
-        });
+          setSettings({
+            app_name: settingsMap.app_name || "LandtagsOS",
+            app_subtitle: settingsMap.app_subtitle || "Koordinationssystem", 
+            app_logo_url: settingsMap.app_logo_url || ""
+          });
+        } else {
+          // No tenant-specific settings - use defaults
+          setSettings({
+            app_name: "LandtagsOS",
+            app_subtitle: "Koordinationssystem",
+            app_logo_url: ""
+          });
+        }
       } catch (error) {
         console.error('Error loading settings:', error);
         toast({
@@ -69,13 +75,12 @@ export function GeneralSettings() {
     };
 
     loadSettings();
-  }, [toast]);
+  }, [toast, currentTenant?.id]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type - allow common image formats including SVG
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       toast({
@@ -86,7 +91,6 @@ export function GeneralSettings() {
       return;
     }
 
-    // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast({
         title: "Fehler", 
@@ -99,9 +103,7 @@ export function GeneralSettings() {
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `app-logo-${Date.now()}.${fileExt}`;
-      
-      console.log('Starting file upload:', fileName, 'Size:', file.size);
+      const fileName = `app-logo-${currentTenant?.id}-${Date.now()}.${fileExt}`;
       
       const { data, error } = await supabase.storage
         .from('avatars')
@@ -110,18 +112,11 @@ export function GeneralSettings() {
           upsert: false
         });
 
-      if (error) {
-        console.error('Upload error:', error);
-        throw error;
-      }
-
-      console.log('Upload successful:', data);
+      if (error) throw error;
 
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
-
-      console.log('Public URL:', urlData.publicUrl);
 
       setSettings(prev => ({ ...prev, app_logo_url: urlData.publicUrl }));
       
@@ -129,7 +124,7 @@ export function GeneralSettings() {
         title: "Erfolgreich",
         description: "Logo wurde hochgeladen."
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading file:', error);
       toast({
         title: "Fehler",
@@ -142,18 +137,34 @@ export function GeneralSettings() {
   };
 
   const saveSettings = async () => {
+    if (!currentTenant?.id) {
+      toast({
+        title: "Fehler",
+        description: "Kein Mandant ausgewählt.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       const updates = [
-        { setting_key: 'app_name', setting_value: settings.app_name },
-        { setting_key: 'app_subtitle', setting_value: settings.app_subtitle },
-        { setting_key: 'app_logo_url', setting_value: settings.app_logo_url }
+        { tenant_id: currentTenant.id, setting_key: 'app_name', setting_value: settings.app_name },
+        { tenant_id: currentTenant.id, setting_key: 'app_subtitle', setting_value: settings.app_subtitle },
+        { tenant_id: currentTenant.id, setting_key: 'app_logo_url', setting_value: settings.app_logo_url }
       ];
 
       for (const update of updates) {
+        // Delete existing if any, then insert
+        await supabase
+          .from('app_settings')
+          .delete()
+          .eq('tenant_id', currentTenant.id)
+          .eq('setting_key', update.setting_key);
+
         const { error } = await supabase
           .from('app_settings')
-          .upsert(update, { onConflict: 'setting_key' });
+          .insert(update);
         
         if (error) throw error;
       }
@@ -163,7 +174,6 @@ export function GeneralSettings() {
         description: "Einstellungen wurden erfolgreich gespeichert."
       });
 
-      // Reload the page to show updated navigation
       setTimeout(() => {
         window.location.reload();
       }, 1000);

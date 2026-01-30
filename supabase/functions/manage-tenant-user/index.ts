@@ -350,6 +350,43 @@ serve(async (req) => {
         });
       }
 
+      case 'initializeTenant': {
+        // Superadmin only - initialize default settings for a new tenant
+        if (!isSuperadmin) {
+          throw new Error('Only superadmin can initialize tenants');
+        }
+
+        const { tenantId } = body;
+        if (!tenantId) {
+          throw new Error('tenantId is required');
+        }
+
+        console.log(`Initializing tenant: ${tenantId}`);
+
+        // Default app settings for new tenant
+        const defaultSettings = [
+          { tenant_id: tenantId, setting_key: 'app_name', setting_value: 'LandtagsOS' },
+          { tenant_id: tenantId, setting_key: 'app_subtitle', setting_value: 'Koordinationssystem' },
+          { tenant_id: tenantId, setting_key: 'app_logo_url', setting_value: '' },
+          { tenant_id: tenantId, setting_key: 'default_dashboard_cover_url', setting_value: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1920' },
+          { tenant_id: tenantId, setting_key: 'default_dashboard_cover_position', setting_value: 'center' },
+        ];
+
+        const { error: settingsError } = await supabaseAdmin
+          .from('app_settings')
+          .insert(defaultSettings);
+
+        if (settingsError) {
+          console.error('Error creating default settings:', settingsError);
+          // Don't throw - settings might already exist or not be critical
+        }
+
+        console.log(`Tenant ${tenantId} initialized successfully`);
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }

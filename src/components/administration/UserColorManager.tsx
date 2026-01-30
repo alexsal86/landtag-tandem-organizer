@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserBadge } from "@/components/ui/user-badge";
@@ -25,13 +26,38 @@ export const UserColorManager = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
 
   const loadUsers = async () => {
+    if (!currentTenant?.id) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
+      // First get user IDs that belong to this tenant
+      const { data: memberships, error: membershipError } = await supabase
+        .from('user_tenant_memberships')
+        .select('user_id')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true);
+
+      if (membershipError) throw membershipError;
+
+      if (!memberships || memberships.length === 0) {
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
+
+      const userIds = memberships.map(m => m.user_id);
+
+      // Then get profiles for those users
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, display_name, badge_color')
+        .in('user_id', userIds)
         .order('display_name');
 
       if (error) throw error;
@@ -50,7 +76,7 @@ export const UserColorManager = () => {
 
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [currentTenant?.id]);
 
   const updateUserColor = async (userId: string, color: string | null) => {
     setUpdating(userId);

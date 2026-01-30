@@ -163,17 +163,34 @@ export function SuperadminTenantManagement() {
         if (error) throw error;
         toast({ title: "Gespeichert", description: "Tenant wurde aktualisiert" });
       } else {
-        const { error } = await supabase
+        // Create new tenant
+        const { data: newTenant, error } = await supabase
           .from("tenants")
           .insert({
             name: formName.trim(),
             description: formDescription.trim() || null,
             is_active: formIsActive,
             settings: {},
-          });
+          })
+          .select('id')
+          .single();
 
         if (error) throw error;
-        toast({ title: "Erstellt", description: "Neuer Tenant wurde angelegt" });
+
+        // Initialize tenant with default settings
+        if (newTenant) {
+          console.log('Initializing new tenant:', newTenant.id);
+          const { error: initError } = await supabase.functions.invoke('manage-tenant-user', {
+            body: { action: 'initializeTenant', tenantId: newTenant.id }
+          });
+          
+          if (initError) {
+            console.error('Error initializing tenant:', initError);
+            // Don't fail the whole operation, just log
+          }
+        }
+
+        toast({ title: "Erstellt", description: "Neuer Tenant wurde angelegt und initialisiert" });
       }
 
       setDialogOpen(false);
