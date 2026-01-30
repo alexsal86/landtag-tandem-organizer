@@ -44,6 +44,7 @@ import { ConfigurableTypeSettings } from "@/components/administration/Configurab
 import { MeetingTemplateParticipantsEditor } from "@/components/meetings/MeetingTemplateParticipantsEditor";
 import { AnnualTasksView } from "@/components/AnnualTasksView";
 import { AdminSidebar } from "@/components/administration/AdminSidebar";
+import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -776,6 +777,18 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
               </CardContent>
             </Card>
           );
+        case "tenants":
+          // Only for system superadmin (mail@alexander-salomon.de)
+          if (user?.email !== "mail@alexander-salomon.de") {
+            return (
+              <Card>
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  Nur für System-Administratoren zugänglich.
+                </CardContent>
+              </Card>
+            );
+          }
+          return <SuperadminTenantManagement />;
         case "auditlogs":
           return <AuditLogViewer />;
         case "archiving":

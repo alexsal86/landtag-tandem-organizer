@@ -99,7 +99,9 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.setItem('currentTenantId', currentTenantToSet.id);
         console.log('🏢 Current tenant set to:', currentTenantToSet.name);
       } else {
-        console.warn('⚠️ No tenant available for user');
+        console.warn('⚠️ No tenant available for user - user may need tenant assignment');
+        // Clear any stale tenant ID from localStorage to prevent issues
+        localStorage.removeItem('currentTenantId');
       }
     } catch (error) {
       console.error('Error in fetchTenants:', error);

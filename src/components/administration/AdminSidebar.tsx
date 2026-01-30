@@ -73,6 +73,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     children: [
       { id: "general", label: "Allgemein", icon: Settings },
       { id: "login", label: "Login-Anpassung", icon: LogIn },
+      { id: "tenants", label: "Tenants", icon: Building2, superAdminOnly: true },
       { id: "roles", label: "Rechte & Rollen", icon: UserCheck, superAdminOnly: true },
       { id: "auditlogs", label: "Audit-Logs", icon: History },
       { id: "archiving", label: "Archivierung", icon: Archive },
