@@ -3,6 +3,7 @@ import { X, Save, User, MessageCircle, Send, Edit2, Check, Trash2, Calendar, Clo
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -619,11 +620,11 @@ export function TaskDetailSidebar({
 
             <div>
               <Label htmlFor="description">Beschreibung</Label>
-              <Textarea
-                id="description"
-                value={editFormData.description || ''}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
-                rows={3}
+              <SimpleRichTextEditor
+                initialContent={editFormData.description || ''}
+                onChange={(html) => setEditFormData(prev => ({ ...prev, description: html }))}
+                placeholder="Beschreibung eingeben..."
+                minHeight="80px"
               />
             </div>
 

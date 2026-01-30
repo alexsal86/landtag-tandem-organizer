@@ -1068,9 +1068,12 @@ export function QuickNotesList({
     const hasLinkedItems = note.task_id || note.decision_id || note.meeting_id;
     const hasShared = (note.share_count || 0) > 0 || note.is_shared === true;
     
-    // Helper to get preview text with inline "..."
+    // Helper to get preview text with inline "..." - properly decode HTML entities
     const getPreviewText = (content: string, maxLength = 150) => {
-      const text = content.replace(/<[^>]*>/g, '').trim();
+      // Create a temporary element to properly decode HTML entities
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = content;
+      const text = (tempDiv.textContent || tempDiv.innerText || '').trim();
       if (text.length <= maxLength) return text;
       return text.substring(0, maxLength).trim() + '...';
     };
@@ -1213,9 +1216,9 @@ export function QuickNotesList({
             
             {/* RIGHT: "→" (default) / "↓/↑ Details | Icons" (hover) */}
             <div className="flex items-center gap-1 flex-shrink-0">
-              {/* Simple "→" - visible when NOT hovering, only if linked items exist */}
+              {/* Simple "→" - only visible on hover when linked items exist */}
               {hasLinkedItems && (
-                <span className="text-sm text-muted-foreground group-hover:hidden">→</span>
+                <span className="text-sm text-muted-foreground hidden group-hover:inline group-hover:opacity-0">→</span>
               )}
               
               {/* "↓/↑ Details" + separator + icons - visible on hover */}
