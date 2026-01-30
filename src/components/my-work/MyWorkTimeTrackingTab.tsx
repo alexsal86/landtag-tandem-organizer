@@ -29,6 +29,7 @@ interface EmployeeSettingsRow {
   hours_per_week: number;
   hours_per_month: number;
   days_per_month: number;
+  days_per_week: number;
 }
 
 export function MyWorkTimeTrackingTab() {
@@ -81,7 +82,7 @@ export function MyWorkTimeTrackingTab() {
 
       // Load settings and entries
       const [settingsRes, weekEntriesRes, monthEntriesRes] = await Promise.all([
-        supabase.from("employee_settings").select("hours_per_week, hours_per_month, days_per_month").eq("user_id", user.id).single(),
+        supabase.from("employee_settings").select("hours_per_week, hours_per_month, days_per_month, days_per_week").eq("user_id", user.id).single(),
         supabase.from("time_entries").select("*").eq("user_id", user.id)
           .gte("work_date", format(weekStart, "yyyy-MM-dd"))
           .lte("work_date", format(weekEnd, "yyyy-MM-dd"))
@@ -110,8 +111,9 @@ export function MyWorkTimeTrackingTab() {
   }, [employeeSettings]);
 
   const dailyHours = useMemo(() => {
-    if (!employeeSettings) return 8;
-    return employeeSettings.hours_per_month / employeeSettings.days_per_month;
+    if (!employeeSettings) return 7.9;
+    // Tägliche Arbeitszeit = Wochenstunden / Arbeitstage pro Woche
+    return employeeSettings.hours_per_week / (employeeSettings.days_per_week || 5);
   }, [employeeSettings]);
 
   const validateDailyLimit = async (workDate: string, grossMin: number) => {

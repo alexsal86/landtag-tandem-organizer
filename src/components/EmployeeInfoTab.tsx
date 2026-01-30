@@ -114,12 +114,15 @@ export function EmployeeInfoTab({ employeeSettings }: EmployeeInfoTabProps) {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">
-              Stunden/Monat (Soll)
+              Stunden/Monat (Durchschnitt)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold">
               {employeeSettings.hours_per_month}h
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Tatsächliches Soll variiert je nach Arbeitstagen im Monat
             </div>
           </CardContent>
         </Card>
