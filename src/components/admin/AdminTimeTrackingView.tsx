@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -244,12 +245,14 @@ export function AdminTimeTrackingView() {
     [employees, selectedUserId]
   );
 
-  const dailyHours = useMemo(() => {
-    if (!selectedEmployee) return 7.9;
-    return selectedEmployee.hours_per_week / (selectedEmployee.days_per_week || 5);
-  }, [selectedEmployee]);
-
+  // Safe calculation with fallback to prevent NaN when settings are incomplete
+  const hoursPerWeek = selectedEmployee?.hours_per_week || 39.5;
+  const daysPerWeek = selectedEmployee?.days_per_week || 5;
+  const dailyHours = hoursPerWeek / daysPerWeek;
   const dailyMinutes = Math.round(dailyHours * 60);
+  
+  // Check if employee has incomplete settings
+  const hasIncompleteSettings = selectedEmployee && (!selectedEmployee.hours_per_week || !selectedEmployee.days_per_week);
 
   // Helper function for type labels
   const getTypeLabel = (type: string): string => {
@@ -304,8 +307,10 @@ export function AdminTimeTrackingView() {
         .select("correction_minutes")
         .eq("user_id", selectedUserId);
       
-      // Calculate per-month breakdown
-      const dailyMin = Math.round((selectedEmployee.hours_per_week / selectedEmployee.days_per_week) * 60);
+      // Calculate per-month breakdown with safe fallbacks
+      const hpw = selectedEmployee.hours_per_week || 39.5;
+      const dpw = selectedEmployee.days_per_week || 5;
+      const dailyMin = Math.round((hpw / dpw) * 60);
       const holidayDates = new Set((yearHolidays || []).map(h => h.holiday_date));
       
       // Build per-month data
@@ -804,6 +809,18 @@ export function AdminTimeTrackingView() {
           </Button>
         </div>
       </div>
+
+      {/* Warning if employee settings are incomplete */}
+      {hasIncompleteSettings && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>{selectedEmployee?.display_name}</strong> hat keine vollständigen Arbeitszeit-Einstellungen. 
+            Die Berechnungen verwenden Standardwerte (39,5h/Woche, 5 Tage). 
+            Bitte die Einstellungen im Team-Bereich vervollständigen.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Yearly balance card with breakdown button */}
       <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
