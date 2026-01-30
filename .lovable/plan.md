@@ -1,47 +1,38 @@
 
+# Plan: Aufgaben-Speicherung und Archivierung - Vollständige Behebung
 
-# Plan: Vollständige Behebung der Aufgaben-Fehler
+## Problem-Analyse
 
-## Zusammenfassung
+Nach tiefgehender Untersuchung wurde festgestellt, dass das Problem durch **"Failed to fetch" Fehler** verursacht wird. Diese Fehler treten auf, wenn:
+- Die HTTP-Anfrage gesendet wird
+- React die Komponente re-rendert oder unmountet bevor die Antwort zurückkommt
+- Die Anfrage als "abgebrochen" markiert wird
 
-Nach tiefgehender Analyse wurde festgestellt, dass die Fehler durch eine Kombination aus veraltetem Browser-Cache und Hintergrund-Queries verursacht werden, die während der Aufgaben-Operationen Exceptions werfen.
+**Wichtig**: Bei "Failed to fetch" wurden die Daten oft bereits gespeichert! Dies erklärt, warum die Änderungen nach einem Seiten-Reload sichtbar sind.
 
-## Identifizierte Probleme
+## Bewährtes Muster aus dem Projekt
 
-### Problem 1: Fehler beim Speichern von Aufgaben
-Der Toast "Fehler" erscheint, obwohl die Daten gespeichert werden. Dies liegt daran, dass:
-- Im Hintergrund laufende Queries (z.B. `useMyWorkNewCounts`) Fehler werfen
-- Diese Fehler das React-Rendering beeinflussen und den Eindruck erwecken, dass das Speichern fehlgeschlagen ist
-
-### Problem 2: "Failed to fetch" beim Archivieren
-Dies ist ein clientseitiger Netzwerkfehler, der auftritt wenn:
-- Der optimistische UI-Update passiert, aber die Server-Anfrage fehlschlägt
-- Es gibt keine ausreichende Fehlerbehandlung für Netzwerk-Timeouts
-
-### Problem 3: Veraltete Queries in Hintergrund-Hooks
-Die DB-Logs zeigen:
-- `operator does not exist: text @> unknown` - Ein alter `.cs.{}` Operator wird noch verwendet
-- `column task_decision_participants.created_at does not exist` - Eine falsche Spalte wird abgefragt
+In `EventPlanningView.tsx` (Zeilen 1360-1388) existiert bereits eine robuste Lösung:
+- Bei Netzwerk-Fehlern wird **kein Fehler-Toast** angezeigt
+- Nach 500ms wird der aktuelle Stand vom Server geholt
+- Nur bei echten Datenbank-Fehlern (z.B. RLS-Verletzung) wird ein Fehler angezeigt
 
 ---
 
 ## Technische Änderungen
 
-### 1. TaskDetailSidebar.tsx - Robustere Speicherlogik
+### 1. TaskDetailSidebar.tsx - handleSave verbessern
 
-Die aktuelle `handleSave` Funktion hat bereits eine Verbesserung. Jedoch muss zusätzlich sichergestellt werden, dass der Toast **vor** allen React-State-Updates angezeigt wird und die Funktion **nicht** durch externe Fehler beeinflusst wird.
+**Datei**: `src/components/TaskDetailSidebar.tsx`
+**Zeilen**: 203-264
 
-**Datei:** `src/components/TaskDetailSidebar.tsx`
-**Zeilen:** 203-255
+Die neue Implementierung unterscheidet zwischen echten Fehlern und Netzwerk-Abbrüchen:
 
 ```typescript
 const handleSave = async () => {
   if (!task) return;
 
   setSaving(true);
-  
-  // Store success flag outside try-catch to prevent interference
-  let saveSuccessful = false;
   
   try {
     const { error } = await supabase
@@ -58,10 +49,88 @@ const handleSave = async () => {
       })
       .eq('id', task.id);
 
-    if (error) throw error;
+    if (error) {
+      // Check if this is a network error (request was sent but connection interrupted)
+      const isNetworkError = error.message?.includes('Failed to fetch') || 
+                             error.message?.includes('NetworkError') ||
+                             error.message?.includes('TypeError');
+      
+      if (isNetworkError) {
+        // Network interruption - data might have been saved, verify after delay
+        console.warn('Network interruption during save, verifying...', error);
+        
+        setTimeout(async () => {
+          // Verify the save by fetching fresh data
+          const { data: freshTask } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('id', task.id)
+            .single();
+          
+          if (freshTask) {
+            // Check if our changes were actually saved
+            const savedCorrectly = freshTask.title === editFormData.title &&
+                                   freshTask.description === editFormData.description;
+            
+            if (savedCorrectly) {
+              toast({
+                title: "Aufgabe gespeichert",
+                description: "Die Änderungen wurden erfolgreich gespeichert.",
+              });
+              
+              const updatedTask: Task = { ...task, ...editFormData as Task };
+              setEditFormData(updatedTask);
+              try { onTaskUpdate(updatedTask); } catch (e) {}
+            }
+          }
+        }, 500);
+        
+        return; // No error toast for network interruptions
+      }
+      
+      // Real database error - show error toast
+      throw error;
+    }
     
-    saveSuccessful = true;
-  } catch (error) {
+    // Success - show toast immediately
+    const updatedTask: Task = { ...task, ...editFormData as Task };
+    
+    toast({
+      title: "Aufgabe gespeichert",
+      description: "Die Änderungen wurden erfolgreich gespeichert.",
+    });
+    
+    setEditFormData(updatedTask);
+    try { onTaskUpdate(updatedTask); } catch (e) {}
+    
+  } catch (error: any) {
+    // Check for network errors in the catch block too
+    const isNetworkError = error?.message?.includes('Failed to fetch') || 
+                           error?.message?.includes('NetworkError') ||
+                           error?.message?.includes('TypeError');
+    
+    if (isNetworkError) {
+      // Verify after delay instead of showing error
+      setTimeout(async () => {
+        const { data: freshTask } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('id', task.id)
+          .single();
+        
+        if (freshTask && freshTask.title === editFormData.title) {
+          toast({
+            title: "Aufgabe gespeichert",
+            description: "Die Änderungen wurden erfolgreich gespeichert.",
+          });
+          const updatedTask: Task = { ...task, ...editFormData as Task };
+          setEditFormData(updatedTask);
+          try { onTaskUpdate(updatedTask); } catch (e) {}
+        }
+      }, 500);
+      return;
+    }
+    
     console.error('Error saving task:', error);
     toast({
       title: "Fehler",
@@ -71,41 +140,18 @@ const handleSave = async () => {
   } finally {
     setSaving(false);
   }
-  
-  // Only show success and update state if save was successful
-  if (saveSuccessful) {
-    const updatedTask: Task = {
-      ...task,
-      ...editFormData as Task,
-    };
-
-    // Show success toast IMMEDIATELY
-    toast({
-      title: "Aufgabe gespeichert",
-      description: "Die Änderungen wurden erfolgreich gespeichert.",
-    });
-    
-    // Update states after toast is shown
-    setEditFormData(updatedTask);
-    
-    // Wrap callback to prevent any errors from affecting us
-    try {
-      onTaskUpdate(updatedTask);
-    } catch (e) {
-      console.error('Error in onTaskUpdate callback:', e);
-    }
-  }
 };
 ```
 
-### 2. TasksView.tsx - Bessere Netzwerk-Fehlerbehandlung beim Archivieren
+### 2. TasksView.tsx - toggleTaskStatus verbessern
 
-**Datei:** `src/components/TasksView.tsx`
-**Zeilen:** 950-1053
+**Datei**: `src/components/TasksView.tsx`
+**Zeilen**: 950-1072
+
+Gleiche Logik anwenden:
 
 ```typescript
 const toggleTaskStatus = async (taskId: string) => {
-  // Prevent double clicks
   if (processingTaskIds.has(taskId)) return;
   
   const task = tasks.find(t => t.id === taskId);
@@ -113,6 +159,7 @@ const toggleTaskStatus = async (taskId: string) => {
 
   const newStatus = task.status === "completed" ? "todo" : "completed";
   const originalStatus = task.status;
+  const originalProgress = task.progress || 0;
   
   // Optimistic update
   setTasks(prev => prev.map(t => 
@@ -124,7 +171,7 @@ const toggleTaskStatus = async (taskId: string) => {
   try {
     const updateData = { 
       status: newStatus,
-      progress: newStatus === "completed" ? 100 : task.progress || 0
+      progress: newStatus === "completed" ? 100 : originalProgress
     };
 
     const { error } = await supabase
@@ -133,66 +180,100 @@ const toggleTaskStatus = async (taskId: string) => {
       .eq('id', taskId);
 
     if (error) {
-      throw new Error(`Status-Update fehlgeschlagen: ${error.message}`);
+      // Check for network errors
+      const isNetworkError = error.message?.includes('Failed to fetch') || 
+                             error.message?.includes('NetworkError') ||
+                             error.message?.includes('TypeError');
+      
+      if (isNetworkError) {
+        console.warn('Network interruption, verifying task status...', error);
+        
+        // Verify after delay
+        setTimeout(async () => {
+          const { data: freshTask } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('id', taskId)
+            .single();
+          
+          if (!freshTask) {
+            // Task was deleted (archived successfully)
+            setTasks(prev => prev.filter(t => t.id !== taskId));
+            toast({
+              title: "Status aktualisiert",
+              description: "Aufgabe wurde archiviert."
+            });
+          } else if (freshTask.status === newStatus) {
+            // Status update was successful
+            loadTasks();
+            toast({
+              title: "Status aktualisiert",
+              description: newStatus === "completed" 
+                ? "Aufgabe wurde als erledigt markiert."
+                : "Aufgabe wurde als offen markiert."
+            });
+          } else {
+            // Update didn't go through, revert UI
+            setTasks(prev => prev.map(t => 
+              t.id === taskId ? { ...t, status: originalStatus } : t
+            ));
+          }
+        }, 500);
+        
+        return; // Don't proceed, let verification handle it
+      }
+      
+      throw error;
     }
 
-    // If task is completed, archive it
+    // If completing task, archive it
     if (newStatus === "completed") {
-      try {
-        const { error: archiveError } = await supabase
-          .from('archived_tasks')
-          .insert({
-            task_id: taskId,
-            user_id: user.id,
-            title: task.title,
-            description: task.description,
-            priority: task.priority,
-            category: task.category,
-            assigned_to: task.assignedTo || '',
-            progress: 100,
-            due_date: task.dueDate,
-            completed_at: new Date().toISOString(),
-            auto_delete_after_days: null,
-          });
+      const { error: archiveError } = await supabase
+        .from('archived_tasks')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          category: task.category,
+          assigned_to: task.assignedTo || '',
+          progress: 100,
+          due_date: task.dueDate,
+          completed_at: new Date().toISOString(),
+          auto_delete_after_days: null,
+        } as any);
 
-        if (archiveError) {
-          throw new Error(`Archivierung fehlgeschlagen: ${archiveError.message}`);
-        }
-
-        // Delete the task from the tasks table
-        const { error: deleteError } = await supabase
-          .from('tasks')
-          .delete()
-          .eq('id', taskId);
-
-        if (deleteError) {
-          console.warn('Task archived but not deleted:', deleteError);
-          // Don't throw - archive was successful
+      if (archiveError) {
+        const isNetworkError = archiveError.message?.includes('Failed to fetch');
+        
+        if (isNetworkError) {
+          // Verify after delay
+          setTimeout(() => loadTasks(), 500);
+          return;
         }
         
-        // Mark notifications as read (don't await - fire and forget)
-        supabase
-          .from('notifications')
-          .update({ is_read: true })
-          .eq('user_id', user.id)
-          .eq('navigation_context', 'tasks')
-          .then(() => {})
-          .catch(e => console.warn('Failed to mark notifications:', e));
-          
-        // Trigger unicorn animation
-        setShowUnicorn(true);
-        
-      } catch (archiveErr: any) {
-        // Rollback the status update
+        // Real error - rollback
         await supabase
           .from('tasks')
-          .update({ status: originalStatus, progress: task.progress || 0 })
+          .update({ status: originalStatus, progress: originalProgress })
           .eq('id', taskId);
-        throw archiveErr;
+        throw archiveError;
       }
+
+      // Delete task from tasks table
+      await supabase.from('tasks').delete().eq('id', taskId);
+      
+      // Fire and forget: mark notifications as read
+      void supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', user.id)
+        .eq('navigation_context', 'tasks');
+        
+      setShowUnicorn(true);
     }
 
-    // Reload tasks after successful operation
     loadTasks();
     
     toast({
@@ -205,19 +286,23 @@ const toggleTaskStatus = async (taskId: string) => {
   } catch (error: any) {
     console.error('Error updating task:', error);
     
-    // Rollback on error
+    // Check for network errors in catch
+    const isNetworkError = error?.message?.includes('Failed to fetch') || 
+                           error?.message?.includes('NetworkError');
+    
+    if (isNetworkError) {
+      setTimeout(() => loadTasks(), 500);
+      return;
+    }
+    
+    // Rollback UI on real error
     setTasks(prev => prev.map(t => 
       t.id === taskId ? { ...t, status: originalStatus } : t
     ));
     
-    // More descriptive error message
-    const errorMessage = error.message?.includes('fetch') 
-      ? "Netzwerkfehler - bitte Internetverbindung prüfen und erneut versuchen."
-      : error.message || "Status konnte nicht aktualisiert werden.";
-    
     toast({
       title: "Fehler",
-      description: errorMessage,
+      description: error.message || "Status konnte nicht aktualisiert werden.",
       variant: "destructive"
     });
   } finally {
@@ -230,38 +315,19 @@ const toggleTaskStatus = async (taskId: string) => {
 };
 ```
 
-### 3. useMyWorkNewCounts.tsx - Verbleibende Query-Fehler beheben
-
-Obwohl die Hauptqueries bereits korrigiert wurden, gibt es noch eine Stelle in Zeile 120, die `created_at` auf `task_decision_responses` verwendet. Die `task_decision_responses` Tabelle muss geprüft werden.
-
-**Datei:** `src/hooks/useMyWorkNewCounts.tsx`
-**Zeile:** 120
-
-**Prüfung erforderlich:** Welche Spalten hat `task_decision_responses`?
-
-Falls `created_at` nicht existiert, muss die Query angepasst werden.
-
 ---
 
 ## Zusammenfassung der Änderungen
 
 | Datei | Änderung |
 |-------|----------|
-| `TaskDetailSidebar.tsx` | Speicher-Flag außerhalb try-catch; Toast vor State-Updates |
-| `TasksView.tsx` | Expliziter Rollback bei Archiv-Fehler; Server-Rollback; Netzwerk-Fehler-Erkennung |
-| `useMyWorkNewCounts.tsx` | Query-Spalte prüfen und ggf. korrigieren |
-
----
-
-## Wichtig: Browser-Cache
-
-Nach der Implementierung **muss** die Seite mit `Ctrl+Shift+R` (Windows) oder `Cmd+Shift+R` (Mac) neu geladen werden, um sicherzustellen, dass der neue Code verwendet wird.
+| `TaskDetailSidebar.tsx` | Netzwerk-Fehler erkennen, nach 500ms verifizieren, nur bei echten Fehlern Toast anzeigen |
+| `TasksView.tsx` | Gleiche Logik: bei Netzwerk-Abbruch Serverstand verifizieren statt Fehler anzeigen |
 
 ---
 
 ## Erwartete Ergebnisse
 
-1. **Aufgaben speichern:** Erfolgs-Toast wird zuverlässig angezeigt
-2. **Checkbox-Archivierung:** Aufgaben werden korrekt archiviert; bei Netzwerkproblemen erscheint eine klare Fehlermeldung und die Checkbox wird zurückgesetzt
-3. **Keine Hintergrund-Fehler:** Die korrigierten Queries verursachen keine DB-Fehler mehr
-
+1. **Aufgaben speichern**: Bei erfolgreicher Speicherung erscheint der Erfolgs-Toast; bei Netzwerk-Abbrüchen wird nach 500ms verifiziert ob die Speicherung erfolgreich war
+2. **Checkbox-Archivierung**: Aufgaben werden korrekt archiviert; bei Netzwerk-Abbrüchen wird der Serverstand verifiziert statt einen Fehler anzuzeigen
+3. **Keine falschen Fehlermeldungen**: "Failed to fetch" Fehler werden nicht mehr als Fehlermeldungen angezeigt
