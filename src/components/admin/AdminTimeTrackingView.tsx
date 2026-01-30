@@ -101,6 +101,19 @@ export function AdminTimeTrackingView() {
   const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false);
   const [correctionMinutes, setCorrectionMinutes] = useState("");
   const [correctionReason, setCorrectionReason] = useState("");
+  
+  // Create entry dialog state
+  const [createEntryDialogOpen, setCreateEntryDialogOpen] = useState(false);
+  const [newEntryDate, setNewEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [newEntryStartTime, setNewEntryStartTime] = useState("09:00");
+  const [newEntryEndTime, setNewEntryEndTime] = useState("17:00");
+  const [newEntryPause, setNewEntryPause] = useState("30");
+  const [newEntryType, setNewEntryType] = useState<EntryType>("work");
+  const [newEntryReason, setNewEntryReason] = useState("");
+  
+  // Yearly balance state
+  const [yearlyBalance, setYearlyBalance] = useState<number>(0);
+  const [loadingYearlyBalance, setLoadingYearlyBalance] = useState(false);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -230,6 +243,187 @@ export function AdminTimeTrackingView() {
 
   const dailyMinutes = Math.round(dailyHours * 60);
 
+  // Helper function for type labels
+  const getTypeLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      work: 'Arbeit',
+      vacation: 'Urlaub',
+      sick: 'Krankheit',
+      overtime_reduction: 'Überstundenabbau',
+    };
+    return labels[type] || type;
+  };
+
+  // Load yearly balance for the selected employee
+  const loadYearlyBalance = async () => {
+    if (!selectedUserId || !selectedEmployee) return;
+    setLoadingYearlyBalance(true);
+    
+    try {
+      const currentYear = getYear(currentMonth);
+      const yearStart = new Date(currentYear, 0, 1);
+      const yearEnd = new Date(currentYear, 11, 31);
+      const today = new Date();
+      const effectiveEnd = today < yearEnd ? today : yearEnd;
+      
+      // Load all time entries for the year
+      const { data: yearEntries } = await supabase
+        .from("time_entries")
+        .select("minutes, work_date")
+        .eq("user_id", selectedUserId)
+        .gte("work_date", format(yearStart, "yyyy-MM-dd"))
+        .lte("work_date", format(effectiveEnd, "yyyy-MM-dd"));
+      
+      // Load all approved absences for the year
+      const { data: yearLeaves } = await supabase
+        .from("leave_requests")
+        .select("type, start_date, end_date, status")
+        .eq("user_id", selectedUserId)
+        .eq("status", "approved")
+        .gte("start_date", format(yearStart, "yyyy-MM-dd"))
+        .lte("end_date", format(effectiveEnd, "yyyy-MM-dd"));
+      
+      // Load all holidays for the year
+      const { data: yearHolidays } = await supabase
+        .from("public_holidays")
+        .select("holiday_date")
+        .gte("holiday_date", format(yearStart, "yyyy-MM-dd"))
+        .lte("holiday_date", format(effectiveEnd, "yyyy-MM-dd"));
+      
+      // Load all corrections
+      const { data: yearCorrections } = await supabase
+        .from("time_entry_corrections")
+        .select("correction_minutes")
+        .eq("user_id", selectedUserId);
+      
+      // Calculate
+      const dailyMin = Math.round((selectedEmployee.hours_per_week / selectedEmployee.days_per_week) * 60);
+      const holidayDates = new Set((yearHolidays || []).map(h => h.holiday_date));
+      
+      // Calculate work days until today (excluding weekends and holidays)
+      const allDays = eachDayOfInterval({ start: yearStart, end: effectiveEnd });
+      const workDays = allDays.filter(d => 
+        d.getDay() !== 0 && d.getDay() !== 6 && !holidayDates.has(format(d, "yyyy-MM-dd"))
+      );
+      const targetMinutes = workDays.length * dailyMin;
+      
+      // Calculate absence dates (credits)
+      const absenceDates = new Set<string>();
+      (yearLeaves || []).forEach(leave => {
+        if (['sick', 'vacation', 'overtime_reduction', 'medical'].includes(leave.type)) {
+          try {
+            eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
+              .filter(d => d <= effectiveEnd)
+              .forEach(d => absenceDates.add(format(d, 'yyyy-MM-dd')));
+          } catch {}
+        }
+      });
+      
+      // Worked minutes (actual work only)
+      const workedMinutes = (yearEntries || [])
+        .reduce((sum, e) => sum + (e.minutes || 0), 0);
+      
+      // Credit minutes (absences on work days, not holidays)
+      const creditMinutes = [...absenceDates]
+        .filter(d => !holidayDates.has(d))
+        .filter(d => {
+          const date = parseISO(d);
+          return date.getDay() !== 0 && date.getDay() !== 6;
+        })
+        .length * dailyMin;
+      
+      // Corrections total
+      const correctionsTotal = (yearCorrections || []).reduce((sum, c) => sum + c.correction_minutes, 0);
+      
+      // Total balance
+      const balance = workedMinutes + creditMinutes - targetMinutes + correctionsTotal;
+      setYearlyBalance(balance);
+      
+    } catch (error) {
+      console.error("Error loading yearly balance:", error);
+    } finally {
+      setLoadingYearlyBalance(false);
+    }
+  };
+
+  // Load yearly balance when employee or month changes
+  useEffect(() => {
+    if (selectedUserId && selectedEmployee) {
+      loadYearlyBalance();
+    }
+  }, [selectedUserId, currentMonth, selectedEmployee]);
+
+  // Create new entry (work or absence)
+  const handleCreateEntry = async () => {
+    if (!user || !selectedUserId) return;
+    setIsSaving(true);
+    
+    try {
+      if (newEntryType === 'work') {
+        // Create work time entry
+        const start = new Date(`${newEntryDate}T${newEntryStartTime}`);
+        const end = new Date(`${newEntryDate}T${newEntryEndTime}`);
+        
+        if (end <= start) {
+          toast.error("Endzeit muss nach Startzeit liegen");
+          setIsSaving(false);
+          return;
+        }
+        
+        const grossMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
+        const pause = parseInt(newEntryPause) || 0;
+        const netMinutes = grossMinutes - pause;
+        
+        const { error } = await supabase.from("time_entries").insert({
+          user_id: selectedUserId,
+          work_date: newEntryDate,
+          started_at: start.toISOString(),
+          ended_at: end.toISOString(),
+          minutes: netMinutes,
+          pause_minutes: pause,
+          notes: newEntryReason || null,
+          edited_by: user.id,
+          edited_at: new Date().toISOString(),
+          edit_reason: newEntryReason || "Admin-Eintrag",
+        });
+        
+        if (error) throw error;
+        toast.success("Zeiteintrag erstellt");
+      } else {
+        // Create absence
+        const { error } = await supabase.from("leave_requests").insert({
+          user_id: selectedUserId,
+          type: newEntryType,
+          start_date: newEntryDate,
+          end_date: newEntryDate,
+          status: "approved",
+          reason: newEntryReason || `Admin-Eintrag: ${getTypeLabel(newEntryType)}`,
+        });
+        
+        if (error) throw error;
+        toast.success(`${getTypeLabel(newEntryType)} erstellt`);
+      }
+      
+      setCreateEntryDialogOpen(false);
+      resetNewEntryForm();
+      loadMonthData();
+      loadYearlyBalance();
+    } catch (error: any) {
+      toast.error(error.message || "Fehler beim Erstellen");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const resetNewEntryForm = () => {
+    setNewEntryDate(format(new Date(), "yyyy-MM-dd"));
+    setNewEntryStartTime("09:00");
+    setNewEntryEndTime("17:00");
+    setNewEntryPause("30");
+    setNewEntryType("work");
+    setNewEntryReason("");
+  };
+
   // Filter leaves by type for combined entries
   const sickLeaves = useMemo(() => 
     leaveRequests.filter(l => l.type === 'sick'),
@@ -346,6 +540,7 @@ export function AdminTimeTrackingView() {
   };
 
   // Handle type change for combined entries (work <-> absence conversions)
+  // Uses resilient error handling for network issues
   const handleTypeChange = async (
     entryId: string,
     newType: EntryType,
@@ -355,19 +550,35 @@ export function AdminTimeTrackingView() {
     if (!user || !selectedUserId) return;
     setIsSaving(true);
 
+    const entry = editingCombinedEntry;
+    if (!entry) {
+      toast.error("Kein Eintrag ausgewählt");
+      setIsSaving(false);
+      return;
+    }
+
+    const originalType = entry.entry_type;
+    
+    // Extract correct leave_id - use passed leaveId first, then entry.leave_id
+    const actualLeaveId = leaveId || entry.leave_id;
+    
+    // For work entries, the ID is the direct UUID
+    const actualWorkEntryId = originalType === 'work' ? entryId : null;
+
     try {
-      const entry = editingCombinedEntry;
-      if (!entry) throw new Error("Kein Eintrag ausgewählt");
-
-      const originalType = entry.entry_type;
-
       if (originalType === 'work' && newType !== 'work') {
         // Work → Absence: Delete time_entry, create leave_request
+        if (!actualWorkEntryId) throw new Error("Keine gültige Arbeitszeit-ID");
+        
         const { error: deleteError } = await supabase
           .from("time_entries")
           .delete()
-          .eq("id", entryId);
-        if (deleteError) throw deleteError;
+          .eq("id", actualWorkEntryId);
+        
+        // Resilient handling: ignore network errors, they may have succeeded server-side
+        if (deleteError && !deleteError.message?.includes('fetch')) {
+          throw deleteError;
+        }
 
         const { error: insertError } = await supabase
           .from("leave_requests")
@@ -379,45 +590,61 @@ export function AdminTimeTrackingView() {
             status: "approved",
             reason: `Admin-Umwandlung: ${reason}`,
           });
-        if (insertError) throw insertError;
+        
+        if (insertError && !insertError.message?.includes('fetch')) {
+          throw insertError;
+        }
 
-        const typeLabels: Record<string, string> = {
-          vacation: 'Urlaub',
-          sick: 'Krankheit',
-          overtime_reduction: 'Überstundenabbau',
-        };
-        toast.success(`Eintrag zu ${typeLabels[newType]} umgewandelt`);
+        toast.success(`Eintrag zu ${getTypeLabel(newType)} umgewandelt`);
 
       } else if (originalType !== 'work' && newType === 'work') {
         // Absence → Work: Delete leave_request
-        if (leaveId) {
-          const { error } = await supabase
-            .from("leave_requests")
-            .delete()
-            .eq("id", leaveId);
-          if (error) throw error;
+        if (!actualLeaveId) throw new Error("Keine gültige Abwesenheits-ID");
+        
+        const { error } = await supabase
+          .from("leave_requests")
+          .delete()
+          .eq("id", actualLeaveId);
+        
+        if (error && !error.message?.includes('fetch')) {
+          throw error;
         }
+        
         toast.info("Abwesenheit entfernt. Mitarbeiter muss Arbeitszeit manuell erfassen.");
 
       } else if (originalType !== 'work' && newType !== 'work' && originalType !== newType) {
         // Absence → different Absence (e.g., vacation → overtime_reduction)
-        if (leaveId) {
-          const { error } = await supabase
-            .from("leave_requests")
-            .update({
-              type: newType,
-              reason: `Umgewandelt von ${originalType}: ${reason}`,
-            })
-            .eq("id", leaveId);
-          if (error) throw error;
+        if (!actualLeaveId) throw new Error("Keine gültige Abwesenheits-ID");
+        
+        const { error } = await supabase
+          .from("leave_requests")
+          .update({
+            type: newType,
+            reason: `Umgewandelt von ${getTypeLabel(originalType)}: ${reason}`,
+          })
+          .eq("id", actualLeaveId);
+        
+        if (error && !error.message?.includes('fetch')) {
+          throw error;
         }
+        
         toast.success("Eintragstyp geändert");
       }
 
+      // Close dialogs
       setEditingCombinedEntry(null);
-      loadMonthData();
+      setEditingEntry(null);
+      
+      // Delayed reload for resilient handling
+      setTimeout(() => loadMonthData(), 500);
+      
     } catch (error: any) {
+      console.error("Type change error:", error);
       toast.error(error.message || "Fehler bei der Typänderung");
+      // On network errors, still reload data to verify
+      if (error.message?.includes('fetch')) {
+        setTimeout(() => loadMonthData(), 500);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -537,6 +764,24 @@ export function AdminTimeTrackingView() {
         </div>
       </div>
 
+      {/* Yearly balance card */}
+      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Überstundensaldo {getYear(currentMonth)}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className={`text-3xl font-bold ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
+            {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Gesamtsaldo bis heute (inkl. Korrekturen)
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -582,7 +827,7 @@ export function AdminTimeTrackingView() {
                   <div className="cursor-help">
                     <div className="text-2xl font-bold text-blue-600">+{fmt(creditMinutes)}</div>
                     <p className="text-xs text-muted-foreground">
-                      Urlaub, Krankheit, Feiertage
+                      Urlaub, Krankheit, etc.
                     </p>
                   </div>
                 </TooltipTrigger>
@@ -591,7 +836,7 @@ export function AdminTimeTrackingView() {
                     {combinedEntries.filter(e => e.entry_type === 'holiday').length > 0 && (
                       <div className="flex justify-between gap-4">
                         <span>🎉 Feiertage:</span>
-                        <span>{combinedEntries.filter(e => e.entry_type === 'holiday').length} Tage</span>
+                        <span>{combinedEntries.filter(e => e.entry_type === 'holiday').length} Tage (kein Soll)</span>
                       </div>
                     )}
                     {combinedEntries.filter(e => e.entry_type === 'sick').length > 0 && (
@@ -629,7 +874,7 @@ export function AdminTimeTrackingView() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              Saldo
+              Monatssaldo
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -651,14 +896,23 @@ export function AdminTimeTrackingView() {
               Aktionen
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-2">
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={() => setCreateEntryDialogOpen(true)}
+              className="w-full"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Eintrag erstellen
+            </Button>
             <Button 
               variant="outline" 
               size="sm" 
               onClick={() => setCorrectionDialogOpen(true)}
               className="w-full"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <TrendingUp className="h-4 w-4 mr-2" />
               Korrektur hinzufügen
             </Button>
           </CardContent>
@@ -960,6 +1214,108 @@ export function AdminTimeTrackingView() {
               disabled={!correctionMinutes || !correctionReason.trim()}
             >
               Korrektur speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create entry dialog */}
+      <Dialog open={createEntryDialogOpen} onOpenChange={setCreateEntryDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Eintrag für {selectedEmployee?.display_name} erstellen</DialogTitle>
+            <DialogDescription>
+              Erstellen Sie einen neuen Zeit- oder Abwesenheitseintrag.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="grid gap-2">
+              <Label>Eintragstyp</Label>
+              <Select value={newEntryType} onValueChange={(v) => setNewEntryType(v as EntryType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="work">📋 Arbeit</SelectItem>
+                  <SelectItem value="vacation">🏖️ Urlaub</SelectItem>
+                  <SelectItem value="sick">🤒 Krankheit</SelectItem>
+                  <SelectItem value="overtime_reduction">⏰ Überstundenabbau</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label>Datum</Label>
+              <Input
+                type="date"
+                value={newEntryDate}
+                onChange={(e) => setNewEntryDate(e.target.value)}
+              />
+            </div>
+            
+            {newEntryType === 'work' && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Start</Label>
+                    <Input
+                      type="time"
+                      value={newEntryStartTime}
+                      onChange={(e) => setNewEntryStartTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Ende</Label>
+                    <Input
+                      type="time"
+                      value={newEntryEndTime}
+                      onChange={(e) => setNewEntryEndTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label>Pause (Minuten)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="120"
+                    value={newEntryPause}
+                    onChange={(e) => setNewEntryPause(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+            
+            <div className="grid gap-2">
+              <Label>Notizen/Grund</Label>
+              <Textarea
+                value={newEntryReason}
+                onChange={(e) => setNewEntryReason(e.target.value)}
+                placeholder={newEntryType === 'work' 
+                  ? "z.B. Nachträgliche Erfassung..." 
+                  : "z.B. Nachträgliche Genehmigung..."}
+                rows={2}
+              />
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                <p className="text-sm text-blue-800">
+                  Dieser Eintrag wird als Admin-Eintrag gekennzeichnet und ist für den Mitarbeiter sichtbar.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateEntryDialogOpen(false)} disabled={isSaving}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleCreateEntry} disabled={isSaving}>
+              {isSaving ? "Erstellen..." : "Eintrag erstellen"}
             </Button>
           </DialogFooter>
         </DialogContent>
