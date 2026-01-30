@@ -133,17 +133,79 @@ export function MyWorkTasksTab() {
   };
 
   const handleToggleComplete = async (taskId: string) => {
+    const task = [...assignedTasks, ...createdTasks].find(t => t.id === taskId);
+    if (!task || !user) return;
+    
     try {
-      const { error } = await supabase
+      // 1. Status aendern
+      const { error: updateError } = await supabase
         .from("tasks")
-        .update({ status: "completed" })
+        .update({ status: "completed", progress: 100 })
         .eq("id", taskId);
 
-      if (error) throw error;
-      toast({ title: "Aufgabe erledigt" });
-      loadTasks();
-    } catch (error) {
+      const isNetworkError = updateError?.message?.includes('Failed to fetch') || 
+                             updateError?.message?.includes('NetworkError') ||
+                             updateError?.message?.includes('TypeError');
+
+      if (updateError && !isNetworkError) {
+        throw updateError;
+      }
+
+      // 2. Archivieren
+      const { error: archiveError } = await supabase
+        .from('archived_tasks')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          category: 'personal', // Fallback
+          assigned_to: task.assigned_to || '',
+          progress: 100,
+          due_date: task.due_date,
+          completed_at: new Date().toISOString(),
+          auto_delete_after_days: null,
+        });
+
+      if (archiveError && !archiveError.message?.includes('Failed to fetch')) {
+        throw archiveError;
+      }
+
+      // 3. Task loeschen
+      await supabase.from('tasks').delete().eq('id', taskId);
+      
+      // 4. UI sofort aktualisieren
+      setAssignedTasks(prev => prev.filter(t => t.id !== taskId));
+      setCreatedTasks(prev => prev.filter(t => t.id !== taskId));
+      
+      toast({ title: "Aufgabe erledigt und archiviert" });
+      
+    } catch (error: any) {
       console.error("Error completing task:", error);
+      
+      // Bei Netzwerkfehler: Nach Verzoegerung verifizieren
+      const isNetworkError = error?.message?.includes('Failed to fetch') || 
+                             error?.message?.includes('NetworkError');
+      
+      if (isNetworkError) {
+        setTimeout(async () => {
+          const { data: freshTask } = await supabase
+            .from('tasks')
+            .select('status')
+            .eq('id', taskId)
+            .maybeSingle();
+          
+          if (!freshTask || freshTask.status === 'completed') {
+            // Erfolgreich - UI aktualisieren
+            setAssignedTasks(prev => prev.filter(t => t.id !== taskId));
+            setCreatedTasks(prev => prev.filter(t => t.id !== taskId));
+            toast({ title: "Aufgabe erledigt" });
+          }
+        }, 500);
+        return;
+      }
+      
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
