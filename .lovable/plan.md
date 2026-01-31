@@ -1,6 +1,5 @@
 
-
-# Plan: Meeting-Agenda Korrekturen (Teil 3)
+# Plan: Meeting-Agenda Korrekturen (Teil 4)
 
 ## Zusammenfassung der identifizierten Probleme
 
@@ -8,84 +7,72 @@ Nach eingehender Codeanalyse wurden folgende technische Ursachen identifiziert:
 
 ---
 
-## 1. Sekunden in Agenda-Titel noch vorhanden
+## 1. Kalender-Zeiten werden um eine Stunde verschoben
 
-**Ursache (MeetingsView.tsx Zeilen 3213-3214):**
+**Ursache (MeetingsView.tsx Zeilen 724-725):**
 ```typescript
-Agenda: {selectedMeeting.title} am {format(...)}
-{selectedMeeting.meeting_time && ` um ${selectedMeeting.meeting_time} Uhr`}
+start_time: `${meetingDateStr}T${newMeetingTime}:00`,
+end_time: `${meetingDateStr}T${endHour}:${timeMinute}:00`,
 ```
 
-Das `selectedMeeting.meeting_time` wird direkt verwendet, ohne die Sekunden zu entfernen. In anderen Stellen wird bereits `substring(0, 5)` verwendet, aber hier fehlt es.
+Das Problem: Der Zeitstring `2026-02-01T20:00:00` wird OHNE Zeitzone gesendet. PostgreSQL interpretiert dies als UTC. Der Browser zeigt es dann in lokaler Zeit (CET = UTC+1) an, daher 21:00 statt 20:00.
 
-**Lösung:**
+**Datenbank-Beweis:**
+- Meeting: `meeting_time: 20:00:00`
+- Appointment: `start_time: 2026-02-01 20:00:00+00` (UTC!)
+
+Die Datenbank speichert den Appointment korrekt als 20:00 UTC, aber das Meeting meint eigentlich 20:00 Ortszeit (CET).
+
+**Lösung:** Die lokale Zeitzone explizit mitgeben, damit PostgreSQL weiß, dass es sich um lokale Zeit handelt:
+
 ```typescript
-{selectedMeeting.meeting_time && ` um ${selectedMeeting.meeting_time.substring(0, 5)} Uhr`}
+// Timezone offset holen
+const now = new Date();
+const timezoneOffset = -now.getTimezoneOffset(); // Minuten
+const tzHours = Math.floor(Math.abs(timezoneOffset) / 60).toString().padStart(2, '0');
+const tzMinutes = (Math.abs(timezoneOffset) % 60).toString().padStart(2, '0');
+const tzSign = timezoneOffset >= 0 ? '+' : '-';
+const tzString = `${tzSign}${tzHours}:${tzMinutes}`;
+
+// Mit Zeitzone speichern
+start_time: `${meetingDateStr}T${newMeetingTime}:00${tzString}`,
+end_time: `${meetingDateStr}T${endHour}:${timeMinute}:00${tzString}`,
 ```
 
 ---
 
-## 2. Stern-Markierung vor Meeting-Start und ohne Gruppierung
+## 2. Termine mit Stern werden an den Anfang gruppiert
 
-**Problem A:** In der Preview (bevor das Meeting gestartet ist) fehlen `meetingId` und `allowStarring` Props in SystemAgendaItem (Zeilen 3264-3270):
-
+**Ursache (UpcomingAppointmentsSection.tsx Zeilen 311-318):**
 ```typescript
-<SystemAgendaItem 
-  systemType={item.system_type}
-  meetingDate={selectedMeeting?.meeting_date}
-  linkedQuickNotes={linkedQuickNotes}
-  isEmbedded={true}
-  defaultCollapsed={...}
-  // FEHLT: meetingId und allowStarring
-/>
+const renderWeekSection = (title: string, weekAppointments: Appointment[]) => {
+  // ...
+  // Sort starred items to top  <--- DAS IST DAS PROBLEM!
+  const sortedAppointments = [...weekAppointments].sort((a, b) => {
+    const aStarred = starredIds.has(a.id);
+    const bStarred = starredIds.has(b.id);
+    if (aStarred && !bStarred) return -1;
+    if (!aStarred && bStarred) return 1;
+    return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+  });
 ```
 
-**Problem B:** `UpcomingAppointmentsSection` gruppiert markierte Termine nach oben.
+Der Code sortiert explizit markierte Termine nach oben! Das muss entfernt werden.
 
-**Aktuelle Logik fehlt** - die Appointments werden nur nach Zeit sortiert (Zeile 131), keine Gruppierung nach Sternen. Aber sie werden optisch hervorgehoben mit `bg-amber-50`.
-
-**Lösung A:** Props hinzufügen in Zeilen 3264-3270:
+**Lösung:** Die Sortierung auf rein chronologisch ändern:
 ```typescript
-<SystemAgendaItem 
-  systemType={item.system_type}
-  meetingDate={selectedMeeting?.meeting_date}
-  meetingId={selectedMeeting?.id}
-  allowStarring={true}
-  linkedQuickNotes={linkedQuickNotes}
-  isEmbedded={true}
-  defaultCollapsed={...}
-/>
+const sortedAppointments = [...weekAppointments].sort((a, b) => 
+  new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+);
 ```
 
-**Lösung B:** Die Sterne-Hervorhebung ist bereits korrekt implementiert - markierte Termine bleiben in chronologischer Reihenfolge mit visueller Hervorhebung. Das ist bereits das gewünschte Verhalten.
+Die visuelle Hervorhebung (gelber Hintergrund `bg-amber-50`) bleibt erhalten, aber die Reihenfolge ändert sich nicht.
 
 ---
 
-## 3. Fokus-Modus: Lange Punkte beginnen in der Mitte
+## 3. PageUp/PageDown und d/u funktionieren nicht im Fokus-Modus
 
-**Ursache (FocusModeView.tsx Zeilen 181-186):**
-```typescript
-itemRefs.current[focusedItemIndex]?.scrollIntoView({
-  behavior: 'smooth',
-  block: 'center'
-});
-```
-
-Das Problem: `block: 'center'` zentriert das Element vertikal. Bei langen Punkten bedeutet das, dass der Anfang nicht sichtbar ist.
-
-**Lösung:** Statt `center` zu `start` ändern und scrollIntoView mit passendem offset verwenden:
-
-```typescript
-itemRefs.current[focusedItemIndex]?.scrollIntoView({
-  behavior: 'smooth',
-  block: 'start'
-});
-```
-
-**Zusätzlich:** Tastenkürzel für Intra-Item-Scroll hinzufügen:
-- `PageDown` / `d` - Im Punkt nach unten scrollen
-- `PageUp` / `u` - Im Punkt nach oben scrollen
-
+**Ursache (FocusModeView.tsx Zeilen 125-135):**
 ```typescript
 case 'PageDown':
 case 'd':
@@ -99,170 +86,178 @@ case 'u':
   break;
 ```
 
-Und in der Legende entsprechend erweitern.
+Das Problem: `window.scrollBy` scrollt das Hauptfenster, aber der Fokus-Modus hat einen eigenen `overflow-auto` Container (Zeile 250: `<main className="flex-1 overflow-auto">`). Das Fenster scrollt nicht, sondern der Container muss scrollen!
+
+**Lösung:** Den Container-Ref verwenden und diesen scrollen:
+```typescript
+const mainContainerRef = useRef<HTMLDivElement>(null);
+
+// In handleKeyDown:
+case 'PageDown':
+case 'd':
+  e.preventDefault();
+  mainContainerRef.current?.scrollBy({ top: 200, behavior: 'smooth' });
+  break;
+case 'PageUp':
+case 'u':
+  e.preventDefault();
+  mainContainerRef.current?.scrollBy({ top: -200, behavior: 'smooth' });
+  break;
+
+// In JSX:
+<main ref={mainContainerRef} className="flex-1 overflow-auto py-8">
+```
 
 ---
 
-## 4. Teammitglieder können bei Meeting-Erstellung nicht ausgewählt werden
+## 4. Teilnehmer können nicht ausgewählt werden
 
-**Ursache:** Die `UserSelector`-Komponente (Zeilen 52-107) lädt Benutzer über `user_tenant_memberships`. Das funktioniert korrekt, ABER das Problem ist das Timing.
+**Ursache (Network Request zeigt 400 Fehler):**
+```
+GET /user_tenant_memberships?select=user_id,is_active,profiles:user_id(...)
+Status: 400
+Error: "Could not find a relationship between 'user_tenant_memberships' and 'user_id'"
+```
 
-**Problem:** Die UserSelector-Komponente wird im Dialog für "Neues Meeting" gerendert, BEVOR `currentTenant` vollständig geladen ist. Der useEffect in UserSelector hat zwar `currentTenant?.id` als Dependency, aber wenn der Wert initial `undefined` ist und dann schnell zu einer ID wechselt, kann das Renew übersehen werden.
+Der aktuelle Query in `UserSelector.tsx` versucht einen Join über `profiles:user_id()`, aber es gibt keine Foreign-Key-Beziehung von `user_tenant_memberships.user_id` zu `profiles.user_id` (nur zu `auth.users`).
 
-**Lösung in UserSelector.tsx:** 
-1. Einen initialen Fetch auch bei erstem Mount auslösen
-2. Debug-Logging zur Überprüfung der geladenen Daten hinzufügen
+**Lösung:** Die Query in zwei Schritten aufteilen:
 
 ```typescript
-useEffect(() => {
-  // Immer aufrufen, aber fetchUsers prüft intern auf currentTenant?.id
-  fetchUsers();
-}, [currentTenant?.id]);
-
 const fetchUsers = async () => {
   if (!currentTenant?.id) {
-    console.log('UserSelector: No tenant available yet');
+    console.log('UserSelector: No tenant available yet, waiting...');
+    setLoading(false);
     return;
   }
-  // ... rest of fetch logic
-};
-```
-
-**Zusätzlich:** MeetingParticipantsManager in Card-Bearbeitungsmodus integrieren (Zeilen 2528-2537):
-
-```typescript
-<div className="space-y-1.5">
-  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-    <Users className="h-3 w-3" />
-    Teilnehmer
-  </label>
-  <MeetingParticipantsManager
-    participants={editingMeetingParticipants || []}
-    onAddParticipant={(userId, role) => {
-      // Add participant logic
-    }}
-    onUpdateParticipant={(participantId, updates) => {
-      // Update participant logic
-    }}
-    onRemoveParticipant={(participantId) => {
-      // Remove participant logic
-    }}
-  />
-</div>
-```
-
-Dazu benötigen wir neuen State:
-```typescript
-const [editingMeetingParticipants, setEditingMeetingParticipants] = useState<MeetingParticipant[]>([]);
-```
-
-Und beim Start des Editierens laden:
-```typescript
-const loadMeetingParticipants = async (meetingId: string) => {
-  const { data, error } = await supabase
-    .from('meeting_participants')
-    .select('*, profiles:user_id(user_id, display_name, avatar_url)')
-    .eq('meeting_id', meetingId);
   
-  if (!error && data) {
-    setEditingMeetingParticipants(data.map(p => ({
-      id: p.id,
-      user_id: p.user_id,
-      role: p.role,
-      status: p.status,
-      user: p.profiles
-    })));
+  setLoading(true);
+  console.log('UserSelector: Fetching users for tenant:', currentTenant.id);
+  try {
+    // Step 1: Get all active tenant memberships
+    const { data: memberships, error: membershipError } = await supabase
+      .from('user_tenant_memberships')
+      .select('user_id')
+      .eq('tenant_id', currentTenant.id)
+      .eq('is_active', true);
+
+    if (membershipError) throw membershipError;
+    if (!memberships || memberships.length === 0) {
+      setUsers([]);
+      return;
+    }
+
+    // Step 2: Get profiles for these user IDs
+    const userIds = memberships.map(m => m.user_id);
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('user_id, display_name, avatar_url')
+      .in('user_id', userIds);
+
+    if (profilesError) throw profilesError;
+
+    const usersData: User[] = (profiles || []).map(profile => ({
+      id: profile.user_id,
+      display_name: profile.display_name || 'Unbekannt',
+      avatar_url: profile.avatar_url
+    }));
+
+    usersData.sort((a, b) => a.display_name.localeCompare(b.display_name));
+    setUsers(usersData);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+  } finally {
+    setLoading(false);
   }
 };
-
-// In onClick für Edit-Button:
-setEditingMeeting(meeting);
-if (meeting.id) loadMeetingParticipants(meeting.id);
 ```
 
 ---
 
-## 5. Meetings werden nicht im Kalender eingetragen
+## 5. Zuweisung von Punkten im Fokus-Modus
 
-**Ursache (Zeilen 690-707):** `createMeeting` speichert das Meeting in der `meetings`-Tabelle, aber erstellt KEINEN Eintrag in der `appointments`-Tabelle.
+**Aktuelle Situation:** Der Fokus-Modus zeigt zugewiesene Benutzer an (Zeilen 344-352), aber es gibt keine Möglichkeit, Punkte zuzuweisen.
 
-**Problem:** Es gibt keine Verknüpfung zwischen `meetings` und `appointments`. Das `updateMeeting` versucht zwar, einen Appointment zu aktualisieren (Zeilen 2061-2078), aber es gibt keinen zu aktualisieren, weil er nie erstellt wurde!
-
-```typescript
-await supabase
-  .from('appointments')
-  .update(appointmentUpdate)
-  .eq('meeting_id', meetingId);  // Kein Match, weil nie erstellt!
-```
-
-**Lösung 1:** In `createMeeting` auch einen Appointment erstellen:
+**Lösung:** Ein neues Tastenkürzel `a` (für "assign") hinzufügen, das einen kleinen Dialog öffnet:
 
 ```typescript
-// Nach dem Meeting-Insert (Zeile 710):
-if (data.id) {
-  // Create corresponding appointment in calendar
-  const meetingDateStr = format(newMeeting.meeting_date, 'yyyy-MM-dd');
-  const appointmentData = {
-    title: newMeeting.title,
-    description: newMeeting.description || null,
-    location: newMeeting.location || null,
-    start_time: `${meetingDateStr}T${newMeetingTime}:00`,
-    end_time: `${meetingDateStr}T${String(parseInt(newMeetingTime.split(':')[0]) + 1).padStart(2, '0')}:${newMeetingTime.split(':')[1]}:00`,
-    category: 'meeting',
-    status: 'planned',
-    user_id: user.id,
-    tenant_id: currentTenant?.id,
-    meeting_id: data.id  // Wichtig: Verknüpfung!
-  };
-  
-  await supabase.from('appointments').insert(appointmentData);
-}
-```
+// Neuer State
+const [showAssignDialog, setShowAssignDialog] = useState(false);
 
-**Hinweis:** Die `appointments`-Tabelle braucht eine `meeting_id` Spalte für die Verknüpfung. Diese scheint bereits zu existieren (da `updateMeeting` darauf filtert).
+// In handleKeyDown:
+case 'a':
+  e.preventDefault();
+  setShowAssignDialog(true);
+  break;
 
-**Lösung 2:** Auch für zukünftige wiederkehrende Meetings (Zeilen 816-854) den Appointment erstellen.
-
----
-
-## 6. Uhrzeit in "Meine Arbeit" Jour Fixe Tab stimmt nicht
-
-**Ursache (MyWorkJourFixeTab.tsx Zeilen 200-203):**
-```typescript
-<div className="flex items-center gap-1 text-xs text-muted-foreground">
-  <Clock className="h-3 w-3" />
-  {format(meetingDate, "HH:mm", { locale: de })} Uhr
-</div>
-```
-
-Das Problem: `meetingDate` wird aus `meeting.meeting_date` abgeleitet (Zeile 170), aber `meeting_date` ist nur ein DATUM (ohne Zeit)! Die `meeting_time` wird gar nicht geladen (Zeile 71: select enthält nicht `meeting_time`).
-
-**Lösung:**
-1. `meeting_time` in den Select aufnehmen (Zeile 71 und 84):
-```typescript
-.select("id, title, meeting_date, meeting_time, status, description")
-```
-
-2. Interface erweitern (Zeile 14-20):
-```typescript
-interface Meeting {
-  id: string;
-  title: string;
-  meeting_date: string;
-  meeting_time?: string | null;
-  status: string;
-  description?: string | null;
-}
-```
-
-3. Anzeige anpassen (Zeilen 200-203):
-```typescript
-{meeting.meeting_time && (
-  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-    <Clock className="h-3 w-3" />
-    {meeting.meeting_time.substring(0, 5)} Uhr
+// Neuer Dialog nach dem Ergebnis-Block:
+{isFocused && (
+  <div className="mt-4 pt-4 border-t">
+    {/* Assignment section */}
+    <div className="flex items-center gap-2 mb-4">
+      <Users className="h-4 w-4 text-muted-foreground" />
+      <span className="text-sm font-medium">Zuweisung:</span>
+      {item.assigned_to && item.assigned_to.length > 0 ? (
+        <span className="text-sm text-muted-foreground">
+          {item.assigned_to.map(getDisplayName).join(', ')}
+        </span>
+      ) : (
+        <span className="text-sm text-muted-foreground italic">Nicht zugewiesen</span>
+      )}
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        className="h-6 text-xs"
+        onClick={() => setShowAssignDialog(true)}
+      >
+        Ändern
+      </Button>
+    </div>
+    
+    {/* Existing result textarea */}
+    ...
   </div>
 )}
+```
+
+Für den Zuweisungs-Dialog wird ein `Select` mit den Profilen verwendet:
+```typescript
+<Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+  <DialogContent className="max-w-sm">
+    <DialogHeader>
+      <DialogTitle>Punkt zuweisen</DialogTitle>
+    </DialogHeader>
+    <Select
+      value={currentItem?.assigned_to?.[0] || ''}
+      onValueChange={(value) => {
+        if (currentItem?.id && currentItemGlobalIndex !== -1) {
+          onUpdateItem(currentItemGlobalIndex, 'assigned_to', value ? [value] : null);
+        }
+        setShowAssignDialog(false);
+      }}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Teammitglied auswählen" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="">Nicht zugewiesen</SelectItem>
+        {profiles.map(profile => (
+          <SelectItem key={profile.user_id} value={profile.user_id}>
+            {profile.display_name || 'Unbekannt'}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </DialogContent>
+</Dialog>
+```
+
+Und in der Tastenkürzel-Legende:
+```typescript
+<div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">a</kbd>
+  <span className="text-sm">Punkt zuweisen</span>
+</div>
 ```
 
 ---
@@ -271,23 +266,18 @@ interface Meeting {
 
 | # | Datei | Änderung |
 |---|-------|----------|
-| 1 | `MeetingsView.tsx` | Zeile 3214: Sekunden aus Agenda-Titel entfernen |
-| 2 | `MeetingsView.tsx` | Zeilen 3264-3270: `meetingId` und `allowStarring` Props hinzufügen |
-| 3 | `FocusModeView.tsx` | `block: 'start'` statt `'center'` + Intra-Item-Scroll |
-| 4 | `UserSelector.tsx` | Fetch bei Tenant-Wechsel sicherstellen |
-| 5 | `MeetingsView.tsx` | MeetingParticipantsManager in Card-Edit integrieren |
-| 6 | `MeetingsView.tsx` | Appointment bei Meeting-Erstellung erstellen |
-| 7 | `MyWorkJourFixeTab.tsx` | `meeting_time` laden und korrekt anzeigen |
+| 1 | `MeetingsView.tsx` | Zeitzone beim Appointment-Insert hinzufügen |
+| 2 | `UpcomingAppointmentsSection.tsx` | Stern-Sortierung entfernen (nur chronologisch) |
+| 3 | `FocusModeView.tsx` | Container-Ref für PageUp/PageDown Scroll |
+| 4 | `UserSelector.tsx` | Query in zwei Schritte aufteilen (kein Join) |
+| 5 | `FocusModeView.tsx` | Zuweisungs-Dialog und `a`-Tastenkürzel |
 
 ---
 
 ## Erwartete Ergebnisse
 
-1. **Keine Sekunden im Agenda-Titel** - `10:00 Uhr` statt `10:00:00 Uhr`
-2. **Stern-Markierung in Preview möglich** - Props korrekt übergeben
-3. **Fokus-Modus: Punkte beginnen oben** - Scroll zu `start` statt `center`
-4. **Intra-Item-Navigation** - Mit PageDown/d und PageUp/u
-5. **Teammitglieder auswählbar** - Bei Erstellung UND Bearbeitung
-6. **Meetings im Kalender** - Automatische Appointment-Erstellung
-7. **Korrekte Uhrzeit in Meine Arbeit** - `meeting_time` wird angezeigt
-
+1. **Kalender-Zeit korrekt** - 20:00 Uhr bleibt 20:00 Uhr im Kalender
+2. **Stern-Termine bleiben chronologisch** - Nur visuelle Hervorhebung, keine Umordnung
+3. **PageUp/PageDown funktioniert** - Scrollt innerhalb langer Punkte im Fokus-Modus
+4. **Teilnehmer auswählbar** - UserSelector lädt Tenant-Mitglieder korrekt
+5. **Zuweisung im Fokus-Modus** - Mit `a`-Taste Punkte zuweisen
