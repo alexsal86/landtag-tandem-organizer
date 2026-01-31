@@ -5645,6 +5645,7 @@ export type Database = {
           is_recurring_instance: boolean | null
           location: string | null
           meeting_date: string
+          meeting_time: string | null
           parent_meeting_id: string | null
           recurrence_rule: Json | null
           status: string
@@ -5661,6 +5662,7 @@ export type Database = {
           is_recurring_instance?: boolean | null
           location?: string | null
           meeting_date: string
+          meeting_time?: string | null
           parent_meeting_id?: string | null
           recurrence_rule?: Json | null
           status?: string
@@ -5677,6 +5679,7 @@ export type Database = {
           is_recurring_instance?: boolean | null
           location?: string | null
           meeting_date?: string
+          meeting_time?: string | null
           parent_meeting_id?: string | null
           recurrence_rule?: Json | null
           status?: string
@@ -7349,6 +7352,65 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      starred_appointments: {
+        Row: {
+          appointment_id: string | null
+          created_at: string | null
+          external_event_id: string | null
+          id: string
+          meeting_id: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string | null
+          external_event_id?: string | null
+          id?: string
+          meeting_id?: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          appointment_id?: string | null
+          created_at?: string | null
+          external_event_id?: string | null
+          id?: string
+          meeting_id?: string | null
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "starred_appointments_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "starred_appointments_external_event_id_fkey"
+            columns: ["external_event_id"]
+            isOneToOne: false
+            referencedRelation: "external_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "starred_appointments_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "starred_appointments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subtasks: {
         Row: {

@@ -11,8 +11,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff } from "lucide-react";
+import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -83,11 +84,13 @@ interface Meeting {
   title: string;
   description?: string;
   meeting_date: string | Date;
+  meeting_time?: string;
   location?: string;
   status: string;
   template_id?: string;
   created_at?: string;
   updated_at?: string;
+  lastUpdate?: number;
 }
 
 interface MeetingTemplate {
@@ -368,10 +371,12 @@ export function MeetingsView() {
 
   const loadTasks = async () => {
     try {
+      // Only load tasks that user created or is assigned to
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .eq('status', 'todo')
+        .or(`created_by.eq.${user?.id},assigned_to.ilike.%${user?.id}%`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -970,180 +975,147 @@ export function MeetingsView() {
   const archiveMeeting = async (meeting: Meeting) => {
     try {
       console.log('=== ARCHIVE MEETING STARTED ===');
-      console.log('Meeting to archive:', meeting);
-      console.log('User ID:', user?.id);
       
-      if (!meeting) {
-        console.log('ERROR: No meeting provided');
-        throw new Error('Kein Meeting angegeben');
-      }
-      
-      if (!meeting.id) {
-        console.log('ERROR: No meeting ID provided');
-        throw new Error('Meeting hat keine ID');
-      }
-      
-      if (!user?.id) {
-        console.log('ERROR: No user ID');
-        throw new Error('Benutzer nicht angemeldet');
-      }
+      if (!meeting?.id) throw new Error('Meeting hat keine ID');
+      if (!user?.id) throw new Error('Benutzer nicht angemeldet');
 
-      console.log('Step 1: Getting agenda items...');
-      // First, get all agenda items with their results and assignments
+      // Step 1: Get agenda items
       const { data: agendaItemsData, error: agendaError } = await supabase
         .from('meeting_agenda_items')
         .select('*')
         .eq('meeting_id', meeting.id);
 
-      console.log('Agenda items data:', agendaItemsData);
-      console.log('Agenda error:', agendaError);
-
       if (agendaError) throw agendaError;
 
-      // CARRYOVER PROCESSING - Handle items marked for carryover FIRST
+      // Step 2: Process carryover items FIRST
       const carryoverItems = agendaItemsData?.filter(item => item.carry_over_to_next) || [];
       if (carryoverItems.length > 0) {
-        console.log('Processing carryover items...');
-        await processCarryoverItems(meeting, carryoverItems);
+        try {
+          await processCarryoverItems(meeting, carryoverItems);
+        } catch (carryoverError) {
+          console.error('Carryover error (non-fatal):', carryoverError);
+        }
       }
 
-      console.log('Step 2: Creating follow-up task...');
-      // Create follow-up task
-      const followUpTaskData = {
-        user_id: user.id,
-        title: `Nachbereitung ${meeting.title} vom ${format(new Date(), 'dd.MM.yyyy')}`,
-        description: `Nachbereitung der Besprechung "${meeting.title}"`,
-        priority: 'medium',
-        category: 'personal',
-        status: 'todo',
-        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-      };
-
-      const { data: followUpTask, error: taskError } = await supabase
-        .from('tasks')
-        .insert({
-          ...followUpTaskData,
-          tenant_id: currentTenant?.id || ''
-        })
-        .select()
-        .single();
-
-      if (taskError) throw taskError;
-
-      console.log('Step 3: Processing agenda items for tasks and subtasks...');
-      // Process agenda items for task updates and subtask creation
-      const subtasksToCreate = [];
+      // Step 3: Create standalone tasks for items with assigned_to AND result_text
+      const itemsWithAssignment = agendaItemsData?.filter(item => 
+        item.assigned_to && item.result_text?.trim() && !item.task_id
+      ) || [];
       
-      if (agendaItemsData) {
+      for (const item of itemsWithAssignment) {
+        try {
+          const assignedUserId = Array.isArray(item.assigned_to) 
+            ? item.assigned_to[0] 
+            : item.assigned_to;
+          
+          const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Ergebnis:**\n${item.result_text}${item.description ? `\n\n**Details:**\n${item.description}` : ''}${item.notes ? `\n\n**Notizen:**\n${item.notes}` : ''}`;
+          
+          await supabase
+            .from('tasks')
+            .insert({
+              user_id: user.id,
+              title: item.title,
+              description: taskDescription,
+              priority: 'medium',
+              category: 'meeting',
+              status: 'todo',
+              assigned_to: assignedUserId,
+              tenant_id: currentTenant?.id || '',
+              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              source_meeting_id: meeting.id
+            });
+          
+          console.log(`Created task for assigned item: ${item.title}`);
+        } catch (taskCreateError) {
+          console.error('Error creating task for assigned item (non-fatal):', taskCreateError);
+        }
+      }
+
+      // Step 4: Create follow-up task with subtasks for remaining items
+      let followUpTask = null;
+      try {
+        const { data: createdTask, error: taskError } = await supabase
+          .from('tasks')
+          .insert({
+            user_id: user.id,
+            title: `Nachbereitung ${meeting.title} vom ${format(new Date(), 'dd.MM.yyyy')}`,
+            description: `Nachbereitung der Besprechung "${meeting.title}"`,
+            priority: 'medium',
+            category: 'personal',
+            status: 'todo',
+            tenant_id: currentTenant?.id || '',
+            due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          })
+          .select()
+          .single();
+
+        if (taskError) throw taskError;
+        followUpTask = createdTask;
+      } catch (followUpError) {
+        console.error('Error creating follow-up task (non-fatal):', followUpError);
+      }
+
+      // Step 5: Create subtasks for items with results but no assignment
+      if (followUpTask && agendaItemsData) {
+        const subtasksToCreate = [];
+        
         for (const item of agendaItemsData) {
-          if (item.result_text && item.result_text.trim()) {
-            if (item.task_id) {
-              // Update existing task with results
-              console.log(`Updating existing task ${item.task_id} with result`);
-              const { data: existingTask, error: taskError } = await supabase
+          // Skip items that already have tasks or were assigned (already created standalone tasks)
+          if (item.task_id || (item.assigned_to && item.result_text?.trim())) continue;
+          
+          if (item.result_text?.trim()) {
+            let description = item.title;
+            if (item.description?.trim()) description += `: ${item.description}`;
+            if (item.notes?.trim()) description += (item.description ? ' - ' : ': ') + item.notes;
+            
+            subtasksToCreate.push({
+              task_id: followUpTask.id,
+              user_id: user.id,
+              description: description,
+              result_text: item.result_text || '',
+              checklist_item_title: item.title,
+              assigned_to: user.id,
+              is_completed: false,
+              order_index: subtasksToCreate.length,
+              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+            });
+          }
+          
+          // Update existing linked tasks with results
+          if (item.task_id && item.result_text?.trim()) {
+            try {
+              const { data: existingTask } = await supabase
                 .from('tasks')
                 .select('description')
                 .eq('id', item.task_id)
                 .maybeSingle();
 
-              if (!taskError && existingTask) {
-                const currentDescription = existingTask.description || '';
+              if (existingTask) {
                 const meetingResult = `\n\n--- Ergänzung aus Besprechung "${meeting.title}": ---\n${item.result_text}`;
-                
                 await supabase
                   .from('tasks')
                   .update({
-                    description: currentDescription + meetingResult,
+                    description: (existingTask.description || '') + meetingResult,
                     updated_at: new Date().toISOString()
                   })
                   .eq('id', item.task_id);
               }
-            } else {
-              // Create new subtask for items without existing task
-              console.log(`Creating new subtask for agenda item: ${item.title}`);
-              const assignedUserId = item.assigned_to || user.id;
-              
-              // Prepare description with title and content
-              let description = item.title;
-              if (item.description && item.description.trim()) {
-                description += `: ${item.description}`;
-              }
-              if (item.notes && item.notes.trim()) {
-                description += (item.description ? ' - ' : ': ') + item.notes;
-              }
-              
-              subtasksToCreate.push({
-                task_id: followUpTask.id,
-                user_id: user.id,
-                description: description,
-                result_text: item.result_text || '',
-                checklist_item_title: item.title,
-                assigned_to: assignedUserId,
-                is_completed: false,
-                order_index: subtasksToCreate.length,
-                due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-              });
+            } catch (updateError) {
+              console.error('Error updating linked task (non-fatal):', updateError);
             }
+          }
+        }
+        
+        if (subtasksToCreate.length > 0) {
+          try {
+            await supabase.from('subtasks').insert(subtasksToCreate);
+          } catch (subtaskError) {
+            console.error('Error creating subtasks (non-fatal):', subtaskError);
           }
         }
       }
 
-      console.log('Step 4: Creating subtasks...');
-      if (subtasksToCreate.length > 0) {
-        console.log(`Creating ${subtasksToCreate.length} new subtasks`);
-        const { data: createdSubtasks, error: subtaskError } = await supabase
-          .from('subtasks')
-          .insert(subtasksToCreate)
-          .select();
-
-        if (subtaskError) {
-          console.error('Error creating subtasks:', subtaskError);
-          throw subtaskError;
-        }
-
-        // Copy documents from agenda items to subtasks
-        console.log('Step 5: Copying documents to subtasks...');
-        for (let i = 0; i < agendaItemsData.length; i++) {
-          const item = agendaItemsData[i];
-          if (item.result_text && item.result_text.trim() && !item.task_id) {
-            const subtaskIndex = subtasksToCreate.findIndex(st => 
-              st.description.includes(item.result_text)
-            );
-            
-            if (subtaskIndex !== -1 && createdSubtasks[subtaskIndex]) {
-              const subtaskId = createdSubtasks[subtaskIndex].id;
-              
-              // Get documents attached to this agenda item
-              const { data: agendaDocuments } = await supabase
-                .from('meeting_agenda_documents')
-                .select('*')
-                .eq('meeting_agenda_item_id', item.id);
-
-              if (agendaDocuments && agendaDocuments.length > 0) {
-                // Copy documents to task_documents for the new subtask
-                const taskDocuments = agendaDocuments.map(doc => ({
-                  task_id: followUpTask.id, // Link to main task, not subtask directly
-                  user_id: user.id,
-                  file_name: doc.file_name,
-                  file_path: doc.file_path,
-                  file_type: doc.file_type,
-                  file_size: doc.file_size
-                }));
-
-                const { error: docError } = await supabase
-                  .from('task_documents')
-                  .insert(taskDocuments);
-
-                if (docError) {
-                  console.error('Error copying documents:', docError);
-                }
-              }
-            }
-          }
-        }
-      }
-
-      console.log('Step 6: Archiving meeting...');
+      // Step 6: Archiving meeting
       // Archive the meeting
       const { data: archiveData, error: archiveError } = await supabase
         .from('meetings')
@@ -1764,8 +1736,40 @@ export function MeetingsView() {
           .delete()
           .eq('id', item.id);
 
+        // Resilient pattern: ignore network errors that don't prevent DB deletion
         if (error) {
-          // Rollback on error
+          const errorMessage = error.message || '';
+          const isNetworkError = errorMessage.includes('Failed to fetch') || 
+                                 errorMessage.includes('NetworkError') ||
+                                 errorMessage.includes('TypeError');
+          
+          if (!isNetworkError) {
+            // Rollback only on real errors
+            setAgendaItems(previousItems);
+            console.error('Delete error:', error);
+            toast({
+              title: "Fehler beim Löschen",
+              description: "Der Agenda-Punkt konnte nicht gelöscht werden.",
+              variant: "destructive",
+            });
+            return;
+          }
+          // For network errors, stay optimistic
+          console.log('Network error during delete, staying optimistic');
+        }
+
+        toast({
+          title: "Punkt gelöscht",
+          description: "Der Agenda-Punkt wurde erfolgreich gelöscht.",
+        });
+      } catch (error: any) {
+        const errorMessage = error?.message || '';
+        const isNetworkError = errorMessage.includes('Failed to fetch') || 
+                               errorMessage.includes('NetworkError') ||
+                               errorMessage.includes('TypeError');
+        
+        if (!isNetworkError) {
+          // Rollback only on real errors
           setAgendaItems(previousItems);
           console.error('Delete error:', error);
           toast({
@@ -1773,22 +1777,7 @@ export function MeetingsView() {
             description: "Der Agenda-Punkt konnte nicht gelöscht werden.",
             variant: "destructive",
           });
-          return;
         }
-
-        toast({
-          title: "Punkt gelöscht",
-          description: "Der Agenda-Punkt wurde erfolgreich gelöscht.",
-        });
-      } catch (error) {
-        // Rollback on error
-        setAgendaItems(previousItems);
-        console.error('Delete error:', error);
-        toast({
-          title: "Fehler beim Löschen",
-          description: "Der Agenda-Punkt konnte nicht gelöscht werden.",
-          variant: "destructive",
-        });
       }
     }
   };
@@ -1984,47 +1973,62 @@ export function MeetingsView() {
   };
 
   // Helper functions for meeting management
-  const updateMeeting = async (meetingId: string, updates: Partial<Meeting>) => {
+  const updateMeeting = async (meetingId: string, updates: Partial<Meeting>, meetingTimeOverride?: string) => {
+    // Optimistic update FIRST
+    const optimisticUpdates = { ...updates };
+    setMeetings(prev => prev.map(m => 
+      m.id === meetingId ? { ...m, ...optimisticUpdates } : m
+    ));
+    if (selectedMeeting?.id === meetingId) {
+      setSelectedMeeting(prev => prev ? { ...prev, ...optimisticUpdates } : prev);
+    }
+
     try {
       // Format meeting_date to string if it's a Date object
-      const formattedUpdates = {
+      const formattedUpdates: any = {
         ...updates,
         meeting_date: updates.meeting_date instanceof Date 
           ? format(updates.meeting_date, 'yyyy-MM-dd')
           : updates.meeting_date
       };
+      
+      // Include meeting_time if provided
+      const timeToUse = meetingTimeOverride || newMeetingTime;
+      if (timeToUse) {
+        formattedUpdates.meeting_time = timeToUse;
+      }
 
       const { error } = await supabase
         .from('meetings')
         .update(formattedUpdates)
         .eq('id', meetingId);
 
-      if (error) throw error;
-
-      // Update local state
-      setMeetings(meetings.map(m => 
-        m.id === meetingId ? { ...m, ...updates } : m
-      ));
-
-      // Update selected meeting if it's the current one
-      if (selectedMeeting?.id === meetingId) {
-        setSelectedMeeting({ ...selectedMeeting, ...updates });
+      if (error) {
+        const errorMsg = error.message || '';
+        const isNetworkError = errorMsg.includes('Failed to fetch') || 
+                               errorMsg.includes('NetworkError');
+        if (!isNetworkError) throw error;
+        // For network errors, stay optimistic
+        console.log('Network error during update, staying optimistic');
       }
 
       // Update corresponding appointment in calendar
+      const appointmentUpdate: any = {
+        title: updates.title,
+        description: updates.description,
+        location: updates.location,
+      };
+      
+      if (updates.meeting_date) {
+        const dateStr = format(new Date(updates.meeting_date), 'yyyy-MM-dd');
+        appointmentUpdate.start_time = `${dateStr}T${timeToUse}:00`;
+        const endHour = String(parseInt(timeToUse.split(':')[0]) + 1).padStart(2, '0');
+        appointmentUpdate.end_time = `${dateStr}T${endHour}:${timeToUse.split(':')[1]}:00`;
+      }
+
       await supabase
         .from('appointments')
-        .update({
-          title: updates.title,
-          description: updates.description,
-          location: updates.location,
-          start_time: updates.meeting_date ? 
-            `${format(new Date(updates.meeting_date), 'yyyy-MM-dd')}T${newMeetingTime}:00` : 
-            undefined,
-          end_time: updates.meeting_date ? 
-            `${format(new Date(updates.meeting_date), 'yyyy-MM-dd')}T${String(parseInt(newMeetingTime.split(':')[0]) + 1).padStart(2, '0')}:${newMeetingTime.split(':')[1]}:00` : 
-            undefined,
-        })
+        .update(appointmentUpdate)
         .eq('meeting_id', meetingId);
 
       toast({
@@ -2032,6 +2036,8 @@ export function MeetingsView() {
         description: "Das Meeting wurde erfolgreich aktualisiert.",
       });
     } catch (error) {
+      // Rollback on real error
+      await loadMeetings();
       toast({
         title: "Fehler",
         description: "Das Meeting konnte nicht aktualisiert werden.",
@@ -2160,13 +2166,14 @@ export function MeetingsView() {
             Verwalten Sie Ihre wöchentlichen Besprechungen und Agenda-Punkte
           </p>
         </div>
-        <Dialog open={isNewMeetingOpen} onOpenChange={setIsNewMeetingOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Neues Meeting
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Dialog open={isNewMeetingOpen} onOpenChange={setIsNewMeetingOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Neues Meeting
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Neues Meeting erstellen</DialogTitle>
@@ -2361,11 +2368,15 @@ export function MeetingsView() {
             </div>
           </DialogContent>
         </Dialog>
+          <Button variant="outline" onClick={() => setShowArchive(true)}>
+            <Archive className="h-4 w-4 mr-2" />
+            Archiv
+          </Button>
+        </div>
       </div>
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xl font-semibold">Nächste Besprechungen</h2>
-          <Button variant="link" className="text-primary px-0" onClick={() => setShowArchive(true)}>Archiv</Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {upcomingMeetings.map((meeting) => (
@@ -2424,19 +2435,25 @@ export function MeetingsView() {
                     ) : (
                       <>
                         <CardTitle className="text-base">{meeting.title}</CardTitle>
-                        <CardDescription>
+                        {meeting.description && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{meeting.description}</p>
+                        )}
+                        <CardDescription className="mt-2 space-y-1">
                           <div className="flex items-center gap-2">
-                            <CalendarIcon className="h-4 w-4" />
-                            {format(new Date(meeting.meeting_date), 'PPP', { locale: de })}
+                            <CalendarIcon className="h-3.5 w-3.5" />
+                            <span>{format(new Date(meeting.meeting_date), 'EEEE, d. MMMM yyyy', { locale: de })}</span>
                           </div>
-                          {meeting.location && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <Users className="h-4 w-4" />
-                              <span className="text-xs">{meeting.location}</span>
+                          {meeting.meeting_time && (
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>{meeting.meeting_time} Uhr</span>
                             </div>
                           )}
-                          {meeting.description && (
-                            <p className="text-xs mt-1 text-muted-foreground">{meeting.description}</p>
+                          {meeting.location && (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-3.5 w-3.5" />
+                              <span>{meeting.location}</span>
+                            </div>
                           )}
                         </CardDescription>
                       </>
@@ -2528,14 +2545,28 @@ export function MeetingsView() {
               <Button variant="outline" onClick={stopMeeting}>
                 Besprechung unterbrechen
               </Button>
-              <Button variant="default" onClick={() => {
-                console.log('=== ARCHIVE BUTTON CLICKED ===');
-                console.log('Active Meeting:', activeMeeting);
-                alert('Button wurde geklickt!'); // Einfacher Test
-                archiveMeeting(activeMeeting);
-              }}>
-                Besprechung beenden und archivieren
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="default">
+                    Besprechung beenden und archivieren
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Besprechung archivieren</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Sind Sie sicher, dass Sie die Besprechung "{activeMeeting.title}" beenden und archivieren möchten? 
+                      Es werden automatisch Aufgaben für zugewiesene Punkte erstellt.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => archiveMeeting(activeMeeting)}>
+                      Archivieren
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
           
@@ -3063,7 +3094,8 @@ export function MeetingsView() {
             <>
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">
-                  Agenda: {selectedMeeting.title}
+                  Agenda: {selectedMeeting.title} am {format(new Date(selectedMeeting.meeting_date), "EEEE, d. MMMM", { locale: de })}
+                  {selectedMeeting.meeting_time && ` um ${selectedMeeting.meeting_time} Uhr`}
                 </h2>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={addAgendaItem}>
@@ -3218,6 +3250,24 @@ export function MeetingsView() {
                                          </Button>
                                        </div>
 
+                                       {/* Notes field for main agenda items (not sub-items) */}
+                                       {!(item.parentLocalKey || item.parent_id) && (
+                                         <Collapsible>
+                                           <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                                             <StickyNote className="h-3.5 w-3.5" />
+                                             <span>{item.notes ? 'Notizen bearbeiten' : 'Notizen hinzufügen'}</span>
+                                             {item.notes && <Badge variant="outline" className="text-xs">vorhanden</Badge>}
+                                           </CollapsibleTrigger>
+                                           <CollapsibleContent className="mt-2">
+                                             <Textarea
+                                               value={item.notes || ''}
+                                               onChange={(e) => updateAgendaItem(index, 'notes', e.target.value)}
+                                               placeholder="Vorbereitungsnotizen, Hintergrundinformationen, Gesprächspunkte..."
+                                               className="min-h-[80px]"
+                                             />
+                                           </CollapsibleContent>
+                                         </Collapsible>
+                                       )}
 
                                        {(item.parentLocalKey || item.parent_id) && (
                                          <>
@@ -3449,8 +3499,10 @@ export function MeetingsView() {
                 <Card className="mt-4">
                   <CardContent className="p-4">
                     <UpcomingAppointmentsSection 
-                      meetingDate={selectedMeeting.meeting_date} 
+                      meetingDate={selectedMeeting.meeting_date}
+                      meetingId={selectedMeeting.id}
                       defaultCollapsed={true}
+                      allowStarring={true}
                     />
                   </CardContent>
                 </Card>

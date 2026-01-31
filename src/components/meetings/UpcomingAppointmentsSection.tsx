@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, ChevronDown, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, ChevronDown, ChevronRight, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
-import { format, addDays, startOfDay, endOfDay, isWithinInterval, isSameWeek, addWeeks } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
+import { format, addDays, startOfDay, endOfDay, isSameWeek, addWeeks } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface Appointment {
   id: string;
@@ -20,57 +23,53 @@ interface Appointment {
   calendarColor?: string;
 }
 
+interface StarredAppointment {
+  id: string;
+  appointment_id?: string;
+  external_event_id?: string;
+  meeting_id: string;
+}
+
 interface UpcomingAppointmentsSectionProps {
   meetingDate: Date | string;
+  meetingId?: string;
   className?: string;
   defaultCollapsed?: boolean;
+  allowStarring?: boolean;
 }
 
 export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionProps> = ({
   meetingDate,
+  meetingId,
   className = '',
-  defaultCollapsed = false
+  defaultCollapsed = false,
+  allowStarring = false
 }) => {
   const { currentTenant } = useTenant();
+  const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(!defaultCollapsed);
 
   const baseDate = typeof meetingDate === 'string' ? new Date(meetingDate) : meetingDate;
 
   useEffect(() => {
-    console.log('📅 UpcomingAppointmentsSection useEffect triggered');
-    console.log('- currentTenant:', currentTenant);
-    console.log('- currentTenant?.id:', currentTenant?.id);
-    console.log('- meetingDate:', meetingDate);
-    console.log('- baseDate:', baseDate);
-    
     if (currentTenant?.id) {
-      console.log('✅ Tenant ID found, loading appointments...');
       loadAppointments();
-    } else {
-      console.log('❌ No tenant ID, skipping appointment load');
+      if (meetingId && allowStarring) {
+        loadStarredAppointments();
+      }
     }
-  }, [currentTenant?.id, meetingDate]);
+  }, [currentTenant?.id, meetingDate, meetingId, allowStarring]);
 
   const loadAppointments = async () => {
-    console.log('📅 loadAppointments called');
-    console.log('- currentTenant?.id:', currentTenant?.id);
-    
-    if (!currentTenant?.id) {
-      console.log('❌ No tenant ID in loadAppointments, returning');
-      return;
-    }
+    if (!currentTenant?.id) return;
 
     setLoading(true);
     try {
       const startDate = startOfDay(baseDate);
       const endDate = endOfDay(addDays(baseDate, 14));
-
-      console.log('📅 Query parameters:');
-      console.log('- tenant_id:', currentTenant.id);
-      console.log('- startDate:', startDate.toISOString());
-      console.log('- endDate:', endDate.toISOString());
 
       // Load internal appointments
       const { data: internalData, error: internalError } = await supabase
@@ -103,9 +102,6 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         .gte('start_time', startDate.toISOString())
         .lte('start_time', endDate.toISOString());
 
-      console.log('📅 Internal appointments:', internalData?.length || 0);
-      console.log('📅 External events:', externalData?.length || 0);
-
       if (externalError) {
         console.error('Error loading external events:', externalError);
       }
@@ -132,12 +128,90 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
       const allAppointments = [...internalAppointments, ...externalAppointments]
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
-      console.log('📅 Total combined appointments:', allAppointments.length);
       setAppointments(allAppointments);
     } catch (error) {
       console.error('Error loading appointments:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStarredAppointments = async () => {
+    if (!meetingId || !user?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('starred_appointments')
+        .select('id, appointment_id, external_event_id')
+        .eq('meeting_id', meetingId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      const ids = new Set<string>();
+      data?.forEach(item => {
+        if (item.appointment_id) ids.add(item.appointment_id);
+        if (item.external_event_id) ids.add(item.external_event_id);
+      });
+      setStarredIds(ids);
+    } catch (error) {
+      console.error('Error loading starred appointments:', error);
+    }
+  };
+
+  const toggleStar = async (apt: Appointment) => {
+    if (!meetingId || !user?.id || !currentTenant?.id) return;
+
+    const isCurrentlyStarred = starredIds.has(apt.id);
+
+    // Optimistic update
+    setStarredIds(prev => {
+      const newSet = new Set(prev);
+      if (isCurrentlyStarred) {
+        newSet.delete(apt.id);
+      } else {
+        newSet.add(apt.id);
+      }
+      return newSet;
+    });
+
+    try {
+      if (isCurrentlyStarred) {
+        // Remove star
+        await supabase
+          .from('starred_appointments')
+          .delete()
+          .eq('meeting_id', meetingId)
+          .eq('user_id', user.id)
+          .or(`appointment_id.eq.${apt.id},external_event_id.eq.${apt.id}`);
+      } else {
+        // Add star
+        const insertData: any = {
+          meeting_id: meetingId,
+          user_id: user.id,
+          tenant_id: currentTenant.id
+        };
+        
+        if (apt.isExternal) {
+          insertData.external_event_id = apt.id;
+        } else {
+          insertData.appointment_id = apt.id;
+        }
+
+        await supabase.from('starred_appointments').insert(insertData);
+      }
+    } catch (error) {
+      console.error('Error toggling star:', error);
+      // Rollback on error
+      setStarredIds(prev => {
+        const newSet = new Set(prev);
+        if (isCurrentlyStarred) {
+          newSet.add(apt.id);
+        } else {
+          newSet.delete(apt.id);
+        }
+        return newSet;
+      });
     }
   };
 
@@ -156,11 +230,6 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
     return `${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`;
   };
 
-  const formatAppointmentDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return format(date, 'EEEE, d. MMM', { locale: de });
-  };
-
   const getCategoryColor = (category?: string) => {
     switch (category) {
       case 'meeting': return 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300';
@@ -171,46 +240,82 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
     }
   };
 
-  const renderAppointment = (apt: Appointment) => (
-    <div 
-      key={apt.id} 
-      className="flex items-start gap-3 py-2 px-3 rounded-md hover:bg-muted/50 transition-colors"
-      style={apt.isExternal && apt.calendarColor ? { borderLeft: `3px solid ${apt.calendarColor}` } : undefined}
-    >
-      <div className="flex flex-col items-center min-w-[50px] text-xs text-muted-foreground">
-        <span className="font-medium">{format(new Date(apt.start_time), 'EEE', { locale: de })}</span>
-        <span className="text-lg font-bold text-foreground">{format(new Date(apt.start_time), 'd')}</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-medium text-sm truncate">{apt.title}</div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-          <span className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {formatAppointmentTime(apt.start_time, apt.end_time)}
-          </span>
-          {apt.location && (
-            <span className="flex items-center gap-1 truncate">
-              <MapPin className="h-3 w-3" />
-              {apt.location}
+  const renderAppointment = (apt: Appointment) => {
+    const isStarred = starredIds.has(apt.id);
+    
+    return (
+      <div 
+        key={apt.id} 
+        className={cn(
+          "flex items-start gap-3 py-2 px-3 rounded-md transition-colors",
+          isStarred ? "bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50" : "hover:bg-muted/50"
+        )}
+        style={apt.isExternal && apt.calendarColor ? { borderLeft: `3px solid ${apt.calendarColor}` } : undefined}
+      >
+        {allowStarring && meetingId && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleStar(apt);
+            }}
+          >
+            <Star 
+              className={cn(
+                "h-4 w-4 transition-colors",
+                isStarred ? "fill-amber-400 text-amber-400" : "text-muted-foreground"
+              )} 
+            />
+          </Button>
+        )}
+        <div className="flex flex-col items-center min-w-[50px] text-xs text-muted-foreground">
+          <span className="font-medium">{format(new Date(apt.start_time), 'EEE', { locale: de })}</span>
+          <span className="text-lg font-bold text-foreground">{format(new Date(apt.start_time), 'd')}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className={cn("font-medium text-sm truncate", isStarred && "text-amber-700 dark:text-amber-300")}>
+            {apt.title}
+          </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {formatAppointmentTime(apt.start_time, apt.end_time)}
             </span>
+            {apt.location && (
+              <span className="flex items-center gap-1 truncate">
+                <MapPin className="h-3 w-3" />
+                {apt.location}
+              </span>
+            )}
+          </div>
+          {apt.isExternal && apt.calendarName && (
+            <div className="text-xs text-muted-foreground mt-0.5 italic">
+              📅 {apt.calendarName}
+            </div>
           )}
         </div>
-        {apt.isExternal && apt.calendarName && (
-          <div className="text-xs text-muted-foreground mt-0.5 italic">
-            📅 {apt.calendarName}
-          </div>
+        {apt.category && (
+          <Badge variant="secondary" className={`text-xs shrink-0 ${getCategoryColor(apt.category)}`}>
+            {apt.isExternal ? 'Extern' : apt.category}
+          </Badge>
         )}
       </div>
-      {apt.category && (
-        <Badge variant="secondary" className={`text-xs shrink-0 ${getCategoryColor(apt.category)}`}>
-          {apt.isExternal ? 'Extern' : apt.category}
-        </Badge>
-      )}
-    </div>
-  );
+    );
+  };
 
   const renderWeekSection = (title: string, weekAppointments: Appointment[]) => {
     if (weekAppointments.length === 0) return null;
+    
+    // Sort starred items to top
+    const sortedAppointments = [...weekAppointments].sort((a, b) => {
+      const aStarred = starredIds.has(a.id);
+      const bStarred = starredIds.has(b.id);
+      if (aStarred && !bStarred) return -1;
+      if (!aStarred && bStarred) return 1;
+      return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+    });
     
     return (
       <div className="space-y-1">
@@ -218,11 +323,13 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
           {title}
         </h5>
         <div className="space-y-0.5">
-          {weekAppointments.map(renderAppointment)}
+          {sortedAppointments.map(renderAppointment)}
         </div>
       </div>
     );
   };
+
+  const starredCount = appointments.filter(apt => starredIds.has(apt.id)).length;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className={className}>
@@ -236,9 +343,17 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         <span className="text-sm font-medium">
           Kommende Termine (nächste 2 Wochen)
         </span>
-        <Badge variant="outline" className="ml-auto text-xs">
-          {appointments.length}
-        </Badge>
+        <div className="ml-auto flex items-center gap-2">
+          {starredCount > 0 && (
+            <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-300">
+              <Star className="h-3 w-3 mr-1 fill-amber-400" />
+              {starredCount}
+            </Badge>
+          )}
+          <Badge variant="outline" className="text-xs">
+            {appointments.length}
+          </Badge>
+        </div>
       </CollapsibleTrigger>
 
       <CollapsibleContent className="mt-2">
