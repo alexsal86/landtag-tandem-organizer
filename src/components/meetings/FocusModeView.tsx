@@ -1,0 +1,421 @@
+import { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { 
+  X, Keyboard, ChevronDown, ChevronUp, CheckCircle, 
+  ArrowUp, ArrowDown, CornerDownRight, StickyNote,
+  Maximize2, Users
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
+
+interface AgendaItem {
+  id?: string;
+  title: string;
+  description?: string;
+  assigned_to?: string[] | null;
+  notes?: string | null;
+  is_completed: boolean;
+  result_text?: string | null;
+  carry_over_to_next?: boolean;
+  order_index: number;
+  parent_id?: string | null;
+  parentLocalKey?: string;
+}
+
+interface Meeting {
+  id?: string;
+  title: string;
+  meeting_date: string | Date;
+  meeting_time?: string;
+}
+
+interface Profile {
+  user_id: string;
+  display_name: string | null;
+}
+
+interface FocusModeViewProps {
+  meeting: Meeting;
+  agendaItems: AgendaItem[];
+  profiles: Profile[];
+  onClose: () => void;
+  onUpdateItem: (index: number, field: keyof AgendaItem, value: any) => void;
+  onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => void;
+}
+
+export function FocusModeView({
+  meeting,
+  agendaItems,
+  profiles,
+  onClose,
+  onUpdateItem,
+  onUpdateResult
+}: FocusModeViewProps) {
+  const [focusedItemIndex, setFocusedItemIndex] = useState(0);
+  const [showLegend, setShowLegend] = useState(false);
+  const [showResultInput, setShowResultInput] = useState(false);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Filter to only show main items (not sub-items) for navigation
+  const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
+  const completedCount = mainItems.filter(item => item.is_completed).length;
+  const totalCount = mainItems.length;
+  const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+  // Get current focused item
+  const currentItem = mainItems[focusedItemIndex];
+  const currentItemGlobalIndex = agendaItems.findIndex(item => item.id === currentItem?.id);
+
+  // Get sub-items for current focused item
+  const subItems = agendaItems.filter(item => 
+    item.parent_id === currentItem?.id || item.parentLocalKey === currentItem?.id
+  );
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't capture if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        if (e.key === 'Escape') {
+          (e.target as HTMLElement).blur();
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowDown':
+        case 'j':
+          e.preventDefault();
+          setFocusedItemIndex(prev => Math.min(prev + 1, mainItems.length - 1));
+          break;
+        case 'ArrowUp':
+        case 'k':
+          e.preventDefault();
+          setFocusedItemIndex(prev => Math.max(prev - 1, 0));
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (currentItem?.id && currentItemGlobalIndex !== -1) {
+            onUpdateItem(currentItemGlobalIndex, 'is_completed', !currentItem.is_completed);
+          }
+          break;
+        case ' ':
+          e.preventDefault();
+          setShowResultInput(true);
+          break;
+        case 'r':
+          e.preventDefault();
+          setShowResultInput(true);
+          break;
+        case 'c':
+          e.preventDefault();
+          if (currentItem?.id) {
+            onUpdateResult(currentItem.id, 'carry_over_to_next', !currentItem.carry_over_to_next);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          onClose();
+          break;
+        case '?':
+          e.preventDefault();
+          setShowLegend(true);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusedItemIndex, mainItems.length, currentItem, currentItemGlobalIndex, onUpdateItem, onUpdateResult, onClose]);
+
+  // Auto-scroll to focused item
+  useEffect(() => {
+    if (itemRefs.current[focusedItemIndex]) {
+      itemRefs.current[focusedItemIndex]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }, [focusedItemIndex]);
+
+  const getDisplayName = (userId: string) => {
+    const profile = profiles.find(p => p.user_id === userId);
+    return profile?.display_name || 'Unbekannt';
+  };
+
+  const formatMeetingDate = () => {
+    const date = new Date(meeting.meeting_date);
+    const dateStr = format(date, "EEEE, d. MMMM yyyy", { locale: de });
+    if (meeting.meeting_time) {
+      return `${dateStr} um ${meeting.meeting_time} Uhr`;
+    }
+    return dateStr;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      {/* Header */}
+      <header className="p-4 border-b bg-card shadow-sm">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold">{meeting.title}</h1>
+            <p className="text-sm text-muted-foreground">{formatMeetingDate()}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setShowLegend(true)}>
+              <Keyboard className="h-4 w-4 mr-2" />
+              Tastenkürzel
+            </Button>
+            <Button variant="outline" onClick={onClose}>
+              <X className="h-4 w-4 mr-2" />
+              Beenden
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Progress */}
+      <div className="border-b bg-muted/30 py-3">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex items-center gap-4">
+            <Progress value={progressPercent} className="flex-1 h-2" />
+            <span className="text-sm font-medium whitespace-nowrap">
+              {completedCount} von {totalCount} Punkten besprochen
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <main className="flex-1 overflow-auto py-8">
+        <div className="max-w-4xl mx-auto px-4 space-y-4">
+          {mainItems.map((item, index) => {
+            const itemSubItems = agendaItems.filter(sub => 
+              sub.parent_id === item.id || sub.parentLocalKey === item.id
+            );
+            const isFocused = index === focusedItemIndex;
+            const globalIndex = agendaItems.findIndex(i => i.id === item.id);
+
+            return (
+              <div
+                key={item.id || index}
+                ref={el => itemRefs.current[index] = el}
+                className={cn(
+                  "p-6 rounded-xl border transition-all duration-300",
+                  isFocused && "ring-2 ring-primary bg-primary/5 scale-[1.01] shadow-lg",
+                  item.is_completed && "bg-muted/50",
+                  !isFocused && !item.is_completed && "bg-card hover:bg-muted/30"
+                )}
+                onClick={() => setFocusedItemIndex(index)}
+              >
+                <div className="flex items-start gap-4">
+                  {/* Checkbox */}
+                  <Checkbox
+                    checked={item.is_completed}
+                    onCheckedChange={(checked) => {
+                      if (globalIndex !== -1) {
+                        onUpdateItem(globalIndex, 'is_completed', checked);
+                      }
+                    }}
+                    className="mt-1.5 h-5 w-5"
+                  />
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={cn(
+                        "text-lg font-semibold",
+                        item.is_completed && "line-through text-muted-foreground"
+                      )}>
+                        {index + 1}. {item.title}
+                      </span>
+                      {item.is_completed && (
+                        <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Besprochen
+                        </Badge>
+                      )}
+                      {item.carry_over_to_next && (
+                        <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-400">
+                          Übertragen
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    {item.description && (
+                      <p className="text-muted-foreground mt-2">{item.description}</p>
+                    )}
+
+                    {/* Notes */}
+                    {item.notes && (
+                      <div className="mt-2 p-3 bg-muted/50 rounded-lg border-l-2 border-primary/30">
+                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-1">
+                          <StickyNote className="h-3 w-3" />
+                          Notizen
+                        </div>
+                        <p className="text-sm">{item.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Assigned users */}
+                    {item.assigned_to && item.assigned_to.length > 0 && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          {item.assigned_to.map(getDisplayName).join(', ')}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Sub-items */}
+                    {itemSubItems.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <div className="text-sm font-medium text-muted-foreground">Unterpunkte:</div>
+                        {itemSubItems.map((sub, subIndex) => (
+                          <div 
+                            key={sub.id || subIndex}
+                            className="flex items-start gap-2 pl-4 border-l-2 border-muted"
+                          >
+                            <CornerDownRight className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                            <div className="flex-1">
+                              <span className={cn(
+                                "text-sm",
+                                sub.is_completed && "line-through text-muted-foreground"
+                              )}>
+                                {sub.title}
+                              </span>
+                              {sub.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5">{sub.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Result input (expanded for focused item) */}
+                    {isFocused && (
+                      <div className="mt-4 pt-4 border-t">
+                        <label className="text-sm font-medium block mb-2">Ergebnis / Notizen</label>
+                        <Textarea
+                          value={item.result_text || ''}
+                          onChange={(e) => {
+                            if (item.id) {
+                              onUpdateResult(item.id, 'result_text', e.target.value);
+                            }
+                          }}
+                          placeholder="Was wurde besprochen? Was sind die nächsten Schritte?"
+                          className="min-h-[100px]"
+                        />
+                        <div className="flex items-center gap-2 mt-3">
+                          <Checkbox
+                            id={`carryover-${item.id}`}
+                            checked={item.carry_over_to_next || false}
+                            onCheckedChange={(checked) => {
+                              if (item.id) {
+                                onUpdateResult(item.id, 'carry_over_to_next', checked);
+                              }
+                            }}
+                          />
+                          <label htmlFor={`carryover-${item.id}`} className="text-sm cursor-pointer">
+                            Auf nächste Besprechung übertragen
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </main>
+
+      {/* Navigation hint footer */}
+      <footer className="border-t bg-card py-3">
+        <div className="max-w-4xl mx-auto px-4 flex items-center justify-center gap-6 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">↑</kbd>
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">↓</kbd>
+            <span>Navigation</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Enter</kbd>
+            <span>Abhaken</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">?</kbd>
+            <span>Alle Kürzel</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Esc</kbd>
+            <span>Beenden</span>
+          </div>
+        </div>
+      </footer>
+
+      {/* Keyboard shortcuts legend */}
+      <Dialog open={showLegend} onOpenChange={setShowLegend}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Keyboard className="h-5 w-5" />
+              Tastenkürzel
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <div className="flex gap-1">
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">↓</kbd>
+                  <span className="text-muted-foreground">/</span>
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">j</kbd>
+                </div>
+                <span className="text-sm">Nächster Punkt</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <div className="flex gap-1">
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">↑</kbd>
+                  <span className="text-muted-foreground">/</span>
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">k</kbd>
+                </div>
+                <span className="text-sm">Vorheriger Punkt</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">Enter</kbd>
+                <span className="text-sm">Als besprochen markieren</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <div className="flex gap-1">
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">Space</kbd>
+                  <span className="text-muted-foreground">/</span>
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">r</kbd>
+                </div>
+                <span className="text-sm">Ergebnis eingeben</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">c</kbd>
+                <span className="text-sm">Übertragen toggle</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">?</kbd>
+                <span className="text-sm">Diese Hilfe anzeigen</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50 col-span-2">
+                <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">Esc</kbd>
+                <span className="text-sm">Fokus-Modus beenden</span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
