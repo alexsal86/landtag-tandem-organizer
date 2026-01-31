@@ -6,13 +6,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { 
   X, Keyboard, ChevronDown, ChevronUp, CheckCircle, 
   ArrowUp, ArrowDown, CornerDownRight, StickyNote,
-  Maximize2, Users
+  Maximize2, Users, Archive
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
+import { SystemAgendaItem } from './SystemAgendaItem';
 
 interface AgendaItem {
   id?: string;
@@ -26,6 +38,7 @@ interface AgendaItem {
   order_index: number;
   parent_id?: string | null;
   parentLocalKey?: string;
+  system_type?: string | null;
 }
 
 interface Meeting {
@@ -44,22 +57,32 @@ interface FocusModeViewProps {
   meeting: Meeting;
   agendaItems: AgendaItem[];
   profiles: Profile[];
+  linkedQuickNotes?: any[];
   onClose: () => void;
   onUpdateItem: (index: number, field: keyof AgendaItem, value: any) => void;
   onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => void;
+  onArchive: () => void;
 }
+
+// Helper function to format time without seconds
+const formatMeetingTime = (time: string | undefined) => {
+  if (!time) return null;
+  return time.substring(0, 5);
+};
 
 export function FocusModeView({
   meeting,
   agendaItems,
   profiles,
+  linkedQuickNotes = [],
   onClose,
   onUpdateItem,
-  onUpdateResult
+  onUpdateResult,
+  onArchive
 }: FocusModeViewProps) {
   const [focusedItemIndex, setFocusedItemIndex] = useState(0);
   const [showLegend, setShowLegend] = useState(false);
-  const [showResultInput, setShowResultInput] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Filter to only show main items (not sub-items) for navigation
@@ -102,16 +125,35 @@ export function FocusModeView({
         case 'Enter':
           e.preventDefault();
           if (currentItem?.id && currentItemGlobalIndex !== -1) {
-            onUpdateItem(currentItemGlobalIndex, 'is_completed', !currentItem.is_completed);
+            const isNowCompleted = !currentItem.is_completed;
+            onUpdateItem(currentItemGlobalIndex, 'is_completed', isNowCompleted);
+            
+            // If marking as completed, navigate to next or show archive dialog
+            if (isNowCompleted) {
+              // Check if all items will be completed after this update
+              const allCompletedAfter = mainItems.every((item, idx) => 
+                idx === focusedItemIndex ? true : item.is_completed
+              );
+              
+              if (allCompletedAfter) {
+                // All items completed - show archive dialog
+                setShowArchiveConfirm(true);
+              } else {
+                // Navigate to next item
+                setFocusedItemIndex(prev => Math.min(prev + 1, mainItems.length - 1));
+              }
+            }
           }
           break;
         case ' ':
-          e.preventDefault();
-          setShowResultInput(true);
-          break;
         case 'r':
           e.preventDefault();
-          setShowResultInput(true);
+          // Focus the result textarea
+          const textarea = document.querySelector(`#result-input-${currentItem?.id}`) as HTMLTextAreaElement;
+          if (textarea) {
+            textarea.focus();
+            textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
           break;
         case 'c':
           e.preventDefault();
@@ -153,7 +195,7 @@ export function FocusModeView({
     const date = new Date(meeting.meeting_date);
     const dateStr = format(date, "EEEE, d. MMMM yyyy", { locale: de });
     if (meeting.meeting_time) {
-      return `${dateStr} um ${meeting.meeting_time} Uhr`;
+      return `${dateStr} um ${formatMeetingTime(meeting.meeting_time)} Uhr`;
     }
     return dateStr;
   };
@@ -264,6 +306,29 @@ export function FocusModeView({
                       </div>
                     )}
 
+                    {/* System content: Upcoming Appointments */}
+                    {item.system_type === 'upcoming_appointments' && (
+                      <div className="mt-4">
+                        <UpcomingAppointmentsSection 
+                          meetingDate={meeting.meeting_date}
+                          meetingId={meeting.id}
+                          allowStarring={true}
+                          defaultCollapsed={false}
+                        />
+                      </div>
+                    )}
+
+                    {/* System content: Quick Notes */}
+                    {item.system_type === 'quick_notes' && linkedQuickNotes.length > 0 && (
+                      <div className="mt-4">
+                        <SystemAgendaItem 
+                          systemType="quick_notes"
+                          linkedQuickNotes={linkedQuickNotes}
+                          isEmbedded={true}
+                        />
+                      </div>
+                    )}
+
                     {/* Assigned users */}
                     {item.assigned_to && item.assigned_to.length > 0 && (
                       <div className="mt-3 flex items-center gap-2">
@@ -281,20 +346,47 @@ export function FocusModeView({
                         {itemSubItems.map((sub, subIndex) => (
                           <div 
                             key={sub.id || subIndex}
-                            className="flex items-start gap-2 pl-4 border-l-2 border-muted"
+                            className={cn(
+                              "pl-4 border-l-2",
+                              sub.system_type === 'upcoming_appointments' 
+                                ? "border-l-blue-500" 
+                                : sub.system_type === 'quick_notes'
+                                  ? "border-l-amber-500"
+                                  : "border-muted"
+                            )}
                           >
-                            <CornerDownRight className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                            <div className="flex-1">
-                              <span className={cn(
-                                "text-sm",
-                                sub.is_completed && "line-through text-muted-foreground"
-                              )}>
-                                {sub.title}
-                              </span>
-                              {sub.description && (
-                                <p className="text-xs text-muted-foreground mt-0.5">{sub.description}</p>
-                              )}
-                            </div>
+                            {/* Render system sub-items differently */}
+                            {sub.system_type === 'upcoming_appointments' ? (
+                              <UpcomingAppointmentsSection 
+                                meetingDate={meeting.meeting_date}
+                                meetingId={meeting.id}
+                                allowStarring={true}
+                                defaultCollapsed={false}
+                              />
+                            ) : sub.system_type === 'quick_notes' ? (
+                              <SystemAgendaItem 
+                                systemType="quick_notes"
+                                linkedQuickNotes={linkedQuickNotes}
+                                isEmbedded={true}
+                              />
+                            ) : (
+                              <>
+                                <div className="flex items-start gap-2">
+                                  <CornerDownRight className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                                  <div className="flex-1">
+                                    <span className={cn(
+                                      "text-sm",
+                                      sub.is_completed && "line-through text-muted-foreground"
+                                    )}>
+                                      {sub.title}
+                                    </span>
+                                    {sub.description && (
+                                      <p className="text-xs text-muted-foreground mt-0.5">{sub.description}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -305,6 +397,7 @@ export function FocusModeView({
                       <div className="mt-4 pt-4 border-t">
                         <label className="text-sm font-medium block mb-2">Ergebnis / Notizen</label>
                         <Textarea
+                          id={`result-input-${item.id}`}
                           value={item.result_text || ''}
                           onChange={(e) => {
                             if (item.id) {
@@ -349,6 +442,10 @@ export function FocusModeView({
           <div className="flex items-center gap-2">
             <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Enter</kbd>
             <span>Abhaken</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Space</kbd>
+            <span>Ergebnis</span>
           </div>
           <div className="flex items-center gap-2">
             <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">?</kbd>
@@ -416,6 +513,32 @@ export function FocusModeView({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Archive confirmation dialog */}
+      <AlertDialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Archive className="h-5 w-5" />
+              Alle Punkte besprochen!
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Sie haben alle Tagesordnungspunkte als besprochen markiert. 
+              Möchten Sie die Besprechung jetzt beenden und archivieren?
+              Es werden automatisch Aufgaben für zugewiesene Punkte erstellt.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Weiter bearbeiten</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowArchiveConfirm(false);
+              onArchive();
+            }}>
+              Archivieren
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

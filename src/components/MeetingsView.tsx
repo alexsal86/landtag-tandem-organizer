@@ -177,20 +177,21 @@ export function MeetingsView() {
     }
   }, [searchParams, meetings]);
 
-  // Load data on component mount
+  // Load data on component mount - now depends on currentTenant for proper profile loading
   useEffect(() => {
     console.log('=== MeetingsView useEffect triggered ===');
     console.log('User:', user);
-    if (user) {
+    console.log('CurrentTenant:', currentTenant?.id);
+    if (user && currentTenant?.id) {
       console.log('Loading meetings data...');
       loadMeetings();
       loadProfiles();
       loadTasks();
       loadMeetingTemplates();
     } else {
-      console.log('No user found, skipping data load');
+      console.log('No user or tenant found, skipping data load');
     }
-  }, [user]);
+  }, [user, currentTenant?.id]);
 
   // Auto-select the next upcoming meeting when meetings are loaded
   useEffect(() => {
@@ -2209,9 +2210,11 @@ export function MeetingsView() {
         meeting={activeMeeting}
         agendaItems={agendaItems}
         profiles={profiles}
+        linkedQuickNotes={linkedQuickNotes}
         onClose={() => setIsFocusMode(false)}
         onUpdateItem={updateAgendaItem}
         onUpdateResult={updateAgendaItemResult}
+        onArchive={() => archiveMeeting(activeMeeting)}
       />
     );
   }
@@ -2450,50 +2453,88 @@ export function MeetingsView() {
                     }
                   }}>
                     {editingMeeting?.id === meeting.id ? (
-                      <div className="space-y-2">
-                        <Input
-                          value={editingMeeting.title}
-                          onChange={(e) => setEditingMeeting({ ...editingMeeting, title: e.target.value })}
-                          className="font-semibold"
-                        />
-                         <Textarea
-                           value={editingMeeting.description || ''}
-                           onChange={(e) => setEditingMeeting({ ...editingMeeting, description: e.target.value })}
-                           placeholder="Beschreibung"
-                           className="text-sm"
-                         />
-                         <Input
-                           value={editingMeeting.location || ''}
-                           onChange={(e) => setEditingMeeting({ ...editingMeeting, location: e.target.value })}
-                           placeholder="Ort"
-                           className="text-sm"
-                         />
-                        <div className="grid grid-cols-2 gap-2">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" size="sm" className="justify-start text-left font-normal">
-                                <CalendarIcon className="mr-2 h-3 w-3" />
-                                {format(new Date(editingMeeting.meeting_date), "dd.MM.yyyy", { locale: de })}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={new Date(editingMeeting.meeting_date)}
-                                onSelect={(date) => date && setEditingMeeting({ ...editingMeeting, meeting_date: date })}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <TimePickerCombobox
-                            value={editingMeeting.meeting_time || '10:00'}
-                            onChange={(time) => setEditingMeeting({ ...editingMeeting, meeting_time: time })}
+                      <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <Edit className="h-3 w-3" />
+                            Titel
+                          </label>
+                          <Input
+                            value={editingMeeting.title}
+                            onChange={(e) => setEditingMeeting({ ...editingMeeting, title: e.target.value })}
+                            className="font-semibold"
                           />
                         </div>
-                        {/* Note: Participants are managed via MeetingParticipantsManager separately */}
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Teilnehmer können nach dem Speichern in der Detailansicht bearbeitet werden.
-                        </p>
+                        
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <FileText className="h-3 w-3" />
+                            Beschreibung
+                          </label>
+                          <Textarea
+                            value={editingMeeting.description || ''}
+                            onChange={(e) => setEditingMeeting({ ...editingMeeting, description: e.target.value })}
+                            placeholder="Beschreibung hinzufügen..."
+                            className="text-sm min-h-[60px]"
+                          />
+                        </div>
+                        
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <MapPin className="h-3 w-3" />
+                            Ort
+                          </label>
+                          <Input
+                            value={editingMeeting.location || ''}
+                            onChange={(e) => setEditingMeeting({ ...editingMeeting, location: e.target.value })}
+                            placeholder="Ort hinzufügen..."
+                            className="text-sm"
+                          />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                              <CalendarIcon className="h-3 w-3" />
+                              Datum
+                            </label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal">
+                                  {format(new Date(editingMeeting.meeting_date), "dd.MM.yyyy", { locale: de })}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={new Date(editingMeeting.meeting_date)}
+                                  onSelect={(date) => date && setEditingMeeting({ ...editingMeeting, meeting_date: date })}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                              <Clock className="h-3 w-3" />
+                              Uhrzeit
+                            </label>
+                            <TimePickerCombobox
+                              value={(editingMeeting.meeting_time || '10:00').substring(0, 5)}
+                              onChange={(time) => setEditingMeeting({ ...editingMeeting, meeting_time: time })}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <Users className="h-3 w-3" />
+                            Teilnehmer
+                          </label>
+                          <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                            Teilnehmer können nach dem Speichern in der Detailansicht bearbeitet werden.
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <>
@@ -2509,7 +2550,7 @@ export function MeetingsView() {
                           {meeting.meeting_time && (
                             <div className="flex items-center gap-2">
                               <Clock className="h-3.5 w-3.5" />
-                              <span>{meeting.meeting_time} Uhr</span>
+                              <span>{meeting.meeting_time.substring(0, 5)} Uhr</span>
                             </div>
                           )}
                           {meeting.location && (
@@ -2699,7 +2740,9 @@ export function MeetingsView() {
                          />
                         <div className="flex items-center gap-2">
                           <Select
-                            value={item.assigned_to || 'unassigned'}
+                            value={Array.isArray(item.assigned_to) && item.assigned_to.length > 0 
+                              ? item.assigned_to[0] 
+                              : 'unassigned'}
                             onValueChange={(value) => updateAgendaItem(
                               agendaItems.findIndex(i => i.id === item.id), 
                               'assigned_to', 
@@ -2731,6 +2774,8 @@ export function MeetingsView() {
                           <SystemAgendaItem 
                             systemType="upcoming_appointments" 
                             meetingDate={activeMeeting.meeting_date}
+                            meetingId={activeMeeting.id}
+                            allowStarring={true}
                             isEmbedded={true}
                           />
                         </div>
@@ -2844,12 +2889,14 @@ export function MeetingsView() {
                                        : "border-muted"
                                  )}>
                                    {/* Render system items differently */}
-                                   {subItem.system_type === 'upcoming_appointments' ? (
-                                     <SystemAgendaItem 
-                                       systemType="upcoming_appointments" 
-                                       meetingDate={activeMeeting.meeting_date}
-                                       isEmbedded={true}
-                                     />
+                                    {subItem.system_type === 'upcoming_appointments' ? (
+                                      <SystemAgendaItem 
+                                        systemType="upcoming_appointments" 
+                                        meetingDate={activeMeeting.meeting_date}
+                                        meetingId={activeMeeting.id}
+                                        allowStarring={true}
+                                        isEmbedded={true}
+                                      />
                                    ) : subItem.system_type === 'quick_notes' ? (
                                      <SystemAgendaItem 
                                        systemType="quick_notes"
@@ -2875,27 +2922,29 @@ export function MeetingsView() {
                                          <EyeOff className="h-3 w-3 text-muted-foreground" />
                                        </Button>
                                      )}
-                                     <Select
-                                       value={subItem.assigned_to || 'unassigned'}
-                                       onValueChange={(value) => {
-                                         const itemIndex = agendaItems.findIndex(i => i.id === subItem.id);
-                                         if (itemIndex !== -1) {
-                                           updateAgendaItem(itemIndex, 'assigned_to', value === 'unassigned' ? null : value);
-                                         }
-                                       }}
-                                     >
-                                       <SelectTrigger className="w-[140px] h-6 text-xs">
-                                         <SelectValue placeholder="Zuweisen" />
-                                       </SelectTrigger>
-                                       <SelectContent>
-                                         <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
-                                         {profiles.map((profile) => (
-                                           <SelectItem key={profile.user_id} value={profile.user_id}>
-                                             {profile.display_name || 'Unbekannter Benutzer'}
-                                           </SelectItem>
-                                         ))}
-                                       </SelectContent>
-                                     </Select>
+                                      <Select
+                                        value={Array.isArray(subItem.assigned_to) && subItem.assigned_to.length > 0 
+                                          ? subItem.assigned_to[0] 
+                                          : 'unassigned'}
+                                        onValueChange={(value) => {
+                                          const itemIndex = agendaItems.findIndex(i => i.id === subItem.id);
+                                          if (itemIndex !== -1) {
+                                            updateAgendaItem(itemIndex, 'assigned_to', value === 'unassigned' ? null : value);
+                                          }
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-[140px] h-6 text-xs">
+                                          <SelectValue placeholder="Zuweisen" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                                          {profiles.map((profile) => (
+                                            <SelectItem key={profile.user_id} value={profile.user_id}>
+                                              {profile.display_name || 'Unbekannter Benutzer'}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
                                    </div>
                                    {subItem.description && (
                                      <div className="mb-2 bg-muted/20 p-2 rounded border-l-2 border-primary/20">
