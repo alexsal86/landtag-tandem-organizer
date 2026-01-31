@@ -1,312 +1,111 @@
 
-# Plan: Umfassende Tenant-Isolation und Verbesserungen
+# Plan: Umfassende Überarbeitung des Meeting-Systems
 
 ## Zusammenfassung der identifizierten Probleme
 
-### 1. Globale Einstellungen ohne Tenant-Isolation
-
-| Tabelle | Problem | Auswirkung |
-|---------|---------|------------|
-| `app_settings` | Keine `tenant_id` Spalte | Alle Tenants sehen dieselben App-Namen, Logos, Dashboard-Cover |
-| `audit_log_entries` | Keine `tenant_id` Spalte | Alle Admins sehen alle Audit-Logs |
-| `meeting_templates` | RLS erlaubt alle auth. Benutzer | Vorlagen sind global sichtbar |
-| `task_decisions` | `visible_to_all = true` ohne Tenant-Check | Cross-Tenant Entscheidungen sichtbar |
-| `user_status` | RLS: "Users can view all statuses" | Anwesenheit aller Tenants sichtbar |
-
-### 2. Profile-Probleme
-
-- **Stephanie Schellin** hat kein Profil in `profiles` (nur `user_tenant_memberships`)
-- Ursache: Edge Function `manage-tenant-user` erstellt Profil, aber es gab einen Fehler
-- Profile ohne `display_name` werden in Team-Ansicht nicht angezeigt
-
-### 3. Kontakte-Fehler
-
-- `useInfiniteContacts` verwendet `currentTenant?.id || ''` als Fallback
-- Wenn Tenant noch nicht geladen ist, wird leerer String verwendet → RLS blockiert
-- Führt zu Dauerschleife bei Ladeversuchen
-
-### 4. UserColorManager zeigt alle Benutzer
-
-- Zeile 32-35: Lädt alle Profile ohne Tenant-Filter
-- Superadmin-Feature, aber zeigt trotzdem alle Benutzer
-
-### 5. Presence/Anwesenheit ohne Tenant-Isolation
-
-- `useUserStatus.tsx` Zeile 175: `supabase.channel('user_presence')` ist global
-- Alle Benutzer teilen denselben Presence-Channel
-- RLS auf `user_status`: `(auth.uid() IS NOT NULL)` erlaubt alle
-
-### 6. Fehlende Tenant-Standardwerte bei Erstellung
-
-- Beim Erstellen eines neuen Tenants werden keine Standard-Einstellungen angelegt
-- Neuer Tenant erbt implizit globale `app_settings`
-
-### 7. Passwort-Ändern nicht implementiert
-
-- Button in `SettingsView.tsx` (Zeile 290-293) hat keine Funktionalität
-- Supabase `updateUser({ password })` API wird nicht aufgerufen
+Nach eingehender Analyse des Codes und der Datenbankstruktur wurden folgende Probleme identifiziert:
 
 ---
 
-## Lösungsplan
+## 1. Meeting-Daten können nicht bearbeitet werden (Fehlermeldung erscheint)
 
-### Teil 1: Datenbank-Schema erweitern
+**Ursache:** Die `updateMeeting`-Funktion (Zeilen 1990-2041) aktualisiert erfolgreich die Datenbank, aber es gibt Timing-Probleme und fehlende Fehlerbehandlung. Die Uhrzeit wird nicht separat in der `meetings`-Tabelle gespeichert (nur `meeting_date` als DATE, nicht TIMESTAMP).
 
-#### 1.1 `app_settings` um `tenant_id` erweitern
+**Probleme im Detail:**
+- Die `meetings`-Tabelle hat `meeting_date` als `date` (nicht timestamp) - Uhrzeitinformationen gehen verloren
+- Die Fehlermeldung erscheint, aber die Änderungen werden übernommen = optimistisches Update fehlt teilweise
+- Bei Appointments wird versucht, `start_time` und `end_time` zu aktualisieren, aber die Zeit kommt aus `newMeetingTime`-State, der nicht meeting-spezifisch ist
 
-```sql
--- Spalte hinzufügen
-ALTER TABLE app_settings ADD COLUMN tenant_id UUID REFERENCES tenants(id);
+**Lösung:**
+- Schema erweitern: `meeting_time` Spalte zur `meetings`-Tabelle hinzufügen (oder `meeting_date` zu `timestamp` ändern)
+- `updateMeeting`-Funktion: lokalen State sofort optimistisch aktualisieren
+- Fehlerbehandlung verbessern mit spezifischen Fehlermeldungen
 
--- Index für Performance
-CREATE INDEX idx_app_settings_tenant ON app_settings(tenant_id);
+---
 
--- RLS-Policies anpassen
-DROP POLICY IF EXISTS "App settings are viewable by everyone" ON app_settings;
-DROP POLICY IF EXISTS "Authenticated users can view app settings" ON app_settings;
-DROP POLICY IF EXISTS "Admin users can manage app settings" ON app_settings;
-DROP POLICY IF EXISTS "Only admins can manage app settings" ON app_settings;
+## 2. Archiv-Button Position
 
--- Neue Policies
-CREATE POLICY "Users can view settings in their tenant or global"
-ON app_settings FOR SELECT
-USING (
-  tenant_id IS NULL 
-  OR tenant_id = ANY(get_user_tenant_ids(auth.uid()))
-);
+**Aktuelle Position:** Zeile 2368 - als Link unterhalb der Überschrift
 
-CREATE POLICY "Tenant admins can manage their settings"
-ON app_settings FOR ALL
-USING (
-  is_tenant_admin(auth.uid(), tenant_id)
-  OR (tenant_id IS NULL AND is_superadmin(auth.uid()))
-);
+**Lösung:** Button nach rechts neben "+ Neues Meeting" verschieben in der Header-Leiste (Zeile 2163-2169)
+
+---
+
+## 3. Agenda-Titel fehlt Datum und Uhrzeit
+
+**Aktuelle Anzeige (Zeile 3065-3067):**
+```tsx
+<h2 className="text-xl font-semibold">
+  Agenda: {selectedMeeting.title}
+</h2>
 ```
 
-#### 1.2 `audit_log_entries` um `tenant_id` erweitern
-
-```sql
-ALTER TABLE audit_log_entries ADD COLUMN tenant_id UUID REFERENCES tenants(id);
-CREATE INDEX idx_audit_log_tenant ON audit_log_entries(tenant_id);
-
--- RLS anpassen
-DROP POLICY IF EXISTS "Admin users can view audit logs" ON audit_log_entries;
-
-CREATE POLICY "Users can view audit logs in their tenant"
-ON audit_log_entries FOR SELECT
-TO authenticated
-USING (
-  is_superadmin(auth.uid())
-  OR (tenant_id = ANY(get_user_tenant_ids(auth.uid())) AND is_admin(auth.uid()))
-);
-```
-
-#### 1.3 `meeting_templates` RLS korrigieren
-
-```sql
--- Bestehende Policies entfernen
-DROP POLICY IF EXISTS "Authenticated users can create all meeting templates" ON meeting_templates;
-DROP POLICY IF EXISTS "Authenticated users can delete all meeting templates" ON meeting_templates;
-DROP POLICY IF EXISTS "Authenticated users can update all meeting templates" ON meeting_templates;
-DROP POLICY IF EXISTS "Authenticated users can view all meeting templates" ON meeting_templates;
-
--- Tenant-basierte Policies
-CREATE POLICY "Users can view templates in their tenant"
-ON meeting_templates FOR SELECT
-USING (tenant_id = ANY(get_user_tenant_ids(auth.uid())));
-
-CREATE POLICY "Tenant admins can manage templates"
-ON meeting_templates FOR ALL
-USING (is_tenant_admin(auth.uid(), tenant_id))
-WITH CHECK (is_tenant_admin(auth.uid(), tenant_id));
-```
-
-#### 1.4 `task_decisions` RLS korrigieren
-
-```sql
--- Problematische Policy entfernen
-DROP POLICY IF EXISTS "task_decisions_allow_authenticated" ON task_decisions;
-
--- visible_to_all muss tenant_id respektieren
-DROP POLICY IF EXISTS "Users can view decisions they're involved in" ON task_decisions;
-
-CREATE POLICY "Users can view decisions in their tenant"
-ON task_decisions FOR SELECT
-USING (
-  tenant_id = ANY(get_user_tenant_ids(auth.uid()))
-  AND (
-    created_by = auth.uid()
-    OR visible_to_all = true
-    OR EXISTS (
-      SELECT 1 FROM task_decision_participants
-      WHERE decision_id = task_decisions.id AND user_id = auth.uid()
-    )
-  )
-);
-```
-
-#### 1.5 `user_status` RLS korrigieren
-
-```sql
-DROP POLICY IF EXISTS "Users can view all statuses" ON user_status;
-
-CREATE POLICY "Users can view status in their tenant"
-ON user_status FOR SELECT
-USING (
-  tenant_id = ANY(get_user_tenant_ids(auth.uid()))
-  OR user_id = auth.uid()
-);
+**Lösung:**
+```tsx
+<h2 className="text-xl font-semibold">
+  Agenda: {selectedMeeting.title} am {format(selectedMeeting.meeting_date, "EEEE, d. MMMM 'um' HH:mm 'Uhr'", { locale: de })}
+</h2>
 ```
 
 ---
 
-### Teil 2: Frontend-Komponenten anpassen
+## 4. Aufgaben-Auswahl zeigt alle Tenant-Aufgaben
 
-#### 2.1 `GeneralSettings.tsx` - Tenant-spezifische Einstellungen
+**Aktuelle Logik (Zeile 369-376):** `loadTasks` lädt alle Aufgaben mit `status = 'todo'` ohne Benutzerfilter
 
-```typescript
-// Hook useTenant hinzufügen
-const { currentTenant } = useTenant();
-
-// Beim Laden: tenant-spezifische Settings laden
-const { data } = await supabase
-  .from('app_settings')
-  .select('setting_key, setting_value')
-  .eq('tenant_id', currentTenant?.id)
-  .in('setting_key', [...]);
-
-// Beim Speichern: tenant_id mitgeben
-await supabase.from('app_settings').upsert({
-  tenant_id: currentTenant?.id,
-  setting_key: key,
-  setting_value: value
-}, { onConflict: 'tenant_id,setting_key' });
-```
-
-#### 2.2 `AuditLogViewer.tsx` - Tenant-Filter
+**Lösung:** Filter hinzufügen für:
+- `created_by = auth.uid()` ODER
+- `assigned_to` enthält aktuellen Benutzer
 
 ```typescript
-const { currentTenant } = useTenant();
-
-let query = supabase
-  .from('audit_log_entries')
-  .select('*', { count: 'exact' })
-  .eq('tenant_id', currentTenant?.id)  // Filter hinzufügen
-  .order('created_at', { ascending: false });
-```
-
-#### 2.3 `UserColorManager.tsx` - Tenant-Filter
-
-```typescript
-const { currentTenant } = useTenant();
-
-// In loadUsers():
-const { data: memberships } = await supabase
-  .from('user_tenant_memberships')
-  .select('user_id')
-  .eq('tenant_id', currentTenant.id)
-  .eq('is_active', true);
-
-const { data } = await supabase
-  .from('profiles')
-  .select('user_id, display_name, badge_color')
-  .in('user_id', memberships.map(m => m.user_id))
-  .order('display_name');
-```
-
-#### 2.4 `useUserStatus.tsx` - Tenant-basierter Presence Channel
-
-```typescript
-const { currentTenant } = useTenant();
-
-// Tenant-spezifischer Channel-Name
-const channel = supabase.channel(`user_presence_${currentTenant?.id}`, {
-  config: {
-    presence: { key: user.id },
-  },
-});
-
-// Status-Abfrage mit Tenant-Filter
-const { data: statuses } = await supabase
-  .from('user_status')
-  .select('*')
-  .eq('tenant_id', currentTenant?.id)
-  .in('user_id', onlineUserIds);
-```
-
-#### 2.5 `useInfiniteContacts.tsx` - Robustere Tenant-Prüfung
-
-```typescript
-const buildQuery = useCallback((offset: number, limit: number) => {
-  // Früher Abbruch wenn kein Tenant
-  if (!currentTenant?.id) {
-    return null;
-  }
-  
-  let query = supabase
-    .from('contacts')
-    .select('*', { count: 'exact' })
-    .eq('tenant_id', currentTenant.id);  // Keine Fallback-String
+const loadTasks = async () => {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('status', 'todo')
+    .or(`created_by.eq.${user?.id},assigned_to.cs.{${user?.id}}`)
+    .order('created_at', { ascending: false });
   // ...
-}, [currentTenant?.id, ...]);
-
-const fetchContacts = useCallback(async (isLoadMore = false) => {
-  if (!user || !currentTenant?.id) {
-    setLoading(false);
-    return;
-  }
-  // ...
-}, [user, currentTenant?.id, ...]);
+};
 ```
 
 ---
 
-### Teil 3: Tenant-Erstellung mit Standardwerten
+## 5. Notizen zu Hauptagendapunkten fehlen
 
-#### 3.1 Edge Function erweitern
+**Aktuell:** Nur Unterpunkte haben Notizen- und Beschreibungsfelder (Zeilen 3222-3288)
 
-In `manage-tenant-user/index.ts` neue Action `initializeTenant`:
+**Lösung:** Auch für Hauptpunkte (ohne `parent_id`) ein Notizfeld hinzufügen:
+- Nach dem Titel-Input: Collapsible-Bereich für "Beschreibung/Notizen" zu Hauptpunkten hinzufügen
+- Nur in der Planungsphase (nicht im aktiven Meeting) sichtbar
 
+---
+
+## 6. Fehler beim Löschen von Agendapunkten
+
+**Ursache (Zeilen 1747-1793):** Die `deleteAgendaItem`-Funktion löscht optimistisch, zeigt aber eine Fehlermeldung wenn das Netzwerk verzögert antwortet (analog zum bekannten "Failed to fetch"-Muster)
+
+**Lösung:** Resilientes Lösch-Pattern implementieren:
 ```typescript
-case 'initializeTenant': {
-  const { tenantId } = body;
+const deleteAgendaItem = async (item: AgendaItem, index: number) => {
+  // Optimistisches Löschen
+  const previousItems = [...agendaItems];
+  setAgendaItems(items => items.filter((_, i) => i !== index));
   
-  // Standard app_settings für neuen Tenant
-  const defaultSettings = [
-    { tenant_id: tenantId, setting_key: 'app_name', setting_value: 'LandtagsOS' },
-    { tenant_id: tenantId, setting_key: 'app_subtitle', setting_value: 'Koordinationssystem' },
-    { tenant_id: tenantId, setting_key: 'app_logo_url', setting_value: '' },
-    { tenant_id: tenantId, setting_key: 'default_dashboard_cover_url', 
-      setting_value: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1920' },
-    { tenant_id: tenantId, setting_key: 'default_dashboard_cover_position', setting_value: 'center' },
-  ];
-  
-  await supabaseAdmin.from('app_settings').insert(defaultSettings);
-  
-  // Standard-Statusoptionen, Email-Templates etc. können hier auch erstellt werden
-  
-  return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
-}
-```
-
-#### 3.2 `SuperadminTenantManagement.tsx` - Nach Tenant-Erstellung initialisieren
-
-```typescript
-const handleSaveTenant = async () => {
-  // ... bestehender Code für INSERT ...
-  
-  if (!editingTenant) {
-    // Neuer Tenant - initialisieren
-    const { data: newTenant } = await supabase
-      .from("tenants")
-      .insert({ ... })
-      .select('id')
-      .single();
-    
-    if (newTenant) {
-      await supabase.functions.invoke('manage-tenant-user', {
-        body: { action: 'initializeTenant', tenantId: newTenant.id }
-      });
+  if (item.id) {
+    try {
+      const { error } = await supabase
+        .from('meeting_agenda_items')
+        .delete()
+        .eq('id', item.id);
+      
+      if (error && !error.message?.includes('Failed to fetch')) {
+        setAgendaItems(previousItems);
+        throw error;
+      }
+      // Bei "Failed to fetch" - optimistisch bleiben
+    } catch (error) {
+      // Nur bei echten Fehlern rollback
     }
   }
 };
@@ -314,194 +113,177 @@ const handleSaveTenant = async () => {
 
 ---
 
-### Teil 4: Stephanie's fehlendes Profil reparieren
+## 7. Stern-Markierung für Termine
 
-Einmaliger SQL-Befehl:
+**Anforderung:** In "Kommende Termine" sollen einzelne Termine mit einem Stern markiert werden können, um mehr Besprechungsbedarf zu signalisieren.
+
+**Lösung:**
+1. Schema erweitern: Neue Tabelle `starred_appointments`:
+   ```sql
+   CREATE TABLE starred_appointments (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     appointment_id UUID REFERENCES appointments(id) ON DELETE CASCADE,
+     meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
+     user_id UUID NOT NULL,
+     created_at TIMESTAMPTZ DEFAULT now()
+   );
+   ```
+2. In `UpcomingAppointmentsSection.tsx`: Star-Icon neben jedem Termin
+3. Markierte Termine visuell hervorheben (goldener Stern, Hintergrundfarbe)
+
+---
+
+## 8. Personen-Zuweisung zu Agendapunkten mit Aufgabenerstellung
+
+**Aktuelle Situation:** Im aktiven Meeting gibt es bereits eine Zuweisungs-Dropdown (Zeilen 2603-2622), aber keine automatische Aufgabenerstellung beim Archivieren
+
+**Lösung in `archiveMeeting` (ab Zeile 1038):**
+- Für jeden Agendapunkt mit `assigned_to` UND `result_text`: Eigene Aufgabe erstellen (nicht nur Subtask)
+- Aufgabe enthält:
+  - Titel: Agendapunkt-Titel
+  - Beschreibung: Ergebnis + Verweis auf Meeting + Link zum Archiv
+  - Zugewiesen an: `assigned_to`
+  - Referenz: `source_meeting_id`
+
+---
+
+## 9. Archivierungs-Popup und Fehler
+
+**Aktuell (Zeile 2531-2536):**
+```tsx
+onClick={() => {
+  console.log('=== ARCHIVE BUTTON CLICKED ===');
+  alert('Button wurde geklickt!'); // <-- Dieses Alert entfernen!
+  archiveMeeting(activeMeeting);
+}}
+```
+
+**Probleme:**
+- Debug-Alert muss entfernt werden
+- `archiveMeeting` hat potenzielle Fehlerquellen (Zeilen 970-1189):
+  - Fehler bei `followUpTask`-Erstellung blockiert den gesamten Prozess
+  - Fehler bei Subtask-Erstellung wird nicht ordentlich behandelt
+
+**Lösung:**
+1. Alert entfernen
+2. Archivierungs-Prozess robuster gestalten mit Try-Catch pro Schritt
+3. AlertDialog für Bestätigung vor dem Archivieren (optional)
+
+---
+
+## 10. Carryover-Punkte (auf nächste Besprechung übertragen)
+
+**Aktuelle Implementierung (Zeilen 1191-1297):** 
+- `processCarryoverItems` prüft ob es ein nächstes Meeting gibt
+- Falls ja: direkt übertragen mit `transferItemsToMeeting`
+- Falls nein: in `carryover_items` Tabelle speichern
+
+**Problem:** Die `carryover_items` werden nicht beim Erstellen eines neuen Meetings automatisch geladen und als "Offene Punkte aus letzter Besprechung" angezeigt
+
+**Lösung:**
+1. Beim Laden der Agenda prüfen ob es `carryover_items` für dieses Template gibt
+2. Diese als spezielle Agenda-Sektion "Offene Punkte aus letzter Besprechung" anzeigen
+3. UI zeigt: Ursprungs-Meeting-Titel, Datum, Inhalt des Punktes
+4. Trigger `handle_meeting_insert` (bereits vorhanden) fügt diese automatisch ein
+
+**Frontend-Änderung:**
+- Punkte mit `source_meeting_id IS NOT NULL` in eigener Sektion "Übertragene Punkte" anzeigen
+
+---
+
+## 11. Grafische und inhaltliche Verbesserungen
+
+### Meeting-Card Verbesserungen (Zeilen 2371-2512)
+
+**Aktuelle Card zeigt:**
+- Titel
+- Ort und Datum
+- Start/Bearbeiten-Button
+
+**Verbesserungen:**
+1. **Beschreibung unter Titel anzeigen** (wenn vorhanden)
+2. **Uhrzeit neben Datum anzeigen** (aus `meeting_time` wenn implementiert)
+3. **Teilnehmer als Avatare anzeigen** (wie bei Planung)
+4. **Icons passend machen:**
+   - CalendarIcon für Datum
+   - Clock für Uhrzeit
+   - MapPin für Ort
+   - Users für Teilnehmer
+
+### Teilnehmer-Feld in Card-Bearbeitung
+
+**Problem:** Das Teilnehmer-Feld fehlt bei der Inline-Bearbeitung der Meeting-Card
+
+**Lösung:** In den Bearbeitungs-Modus (Zeilen 2382-2471) den `MeetingParticipantsManager` integrieren
+
+### Weitere UI-Verbesserungen:
+
+1. **Visueller Fortschritt im aktiven Meeting:**
+   - Abgehakte Punkte durchgestrichen darstellen
+   - Fortschrittsbalken oben (X von Y Punkten besprochen)
+
+2. **Timer für Meeting-Dauer:**
+   - Anzeige der verstrichenen Zeit seit Meeting-Start
+
+3. **Exportfunktion:**
+   - Meeting-Protokoll als PDF exportieren
+
+4. **Tastaturnavigation:**
+   - Enter zum Speichern von Änderungen
+   - Tab zum Wechseln zwischen Feldern
+
+---
+
+## Technischer Implementierungsplan
+
+### Datenbank-Änderungen
 
 ```sql
-INSERT INTO profiles (user_id, display_name, tenant_id)
-SELECT 
-  '12119701-6263-4d8b-940f-c69397fd841d',
-  'Stephanie Schellin',
-  '5a65ce13-af54-439f-becf-e23e458627d9'
-WHERE NOT EXISTS (
-  SELECT 1 FROM profiles WHERE user_id = '12119701-6263-4d8b-940f-c69397fd841d'
+-- 1. Uhrzeit-Spalte für Meetings
+ALTER TABLE meetings ADD COLUMN meeting_time TIME;
+
+-- 2. Stern-Markierungen für Termine
+CREATE TABLE starred_appointments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  appointment_id UUID REFERENCES appointments(id) ON DELETE CASCADE,
+  meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(appointment_id, meeting_id, user_id)
 );
 
--- user_status auch erstellen
-INSERT INTO user_status (user_id, tenant_id, status_type)
-SELECT 
-  '12119701-6263-4d8b-940f-c69397fd841d',
-  '5a65ce13-af54-439f-becf-e23e458627d9',
-  'online'
-WHERE NOT EXISTS (
-  SELECT 1 FROM user_status WHERE user_id = '12119701-6263-4d8b-940f-c69397fd841d'
-);
+ALTER TABLE starred_appointments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their starred appointments"
+ON starred_appointments FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
 ```
 
----
+### Frontend-Änderungen
 
-### Teil 5: Passwort-Ändern implementieren
+| # | Datei | Änderung |
+|---|-------|----------|
+| 1 | `MeetingsView.tsx` | Alert entfernen, Archiv-Button nach oben, Uhrzeit in Agenda-Titel |
+| 2 | `MeetingsView.tsx` | `loadTasks` filtern auf eigene/zugewiesene Aufgaben |
+| 3 | `MeetingsView.tsx` | Notizen für Hauptpunkte in Planungsphase hinzufügen |
+| 4 | `MeetingsView.tsx` | Resilientes Löschen implementieren |
+| 5 | `MeetingsView.tsx` | Meeting-Card mit Beschreibung, Uhrzeit, Teilnehmern erweitern |
+| 6 | `MeetingsView.tsx` | Teilnehmer-Editor bei Card-Bearbeitung hinzufügen |
+| 7 | `MeetingsView.tsx` | Carryover-Punkte-Sektion anzeigen |
+| 8 | `MeetingsView.tsx` | `archiveMeeting` für Aufgabenerstellung bei Zuweisung erweitern |
+| 9 | `UpcomingAppointmentsSection.tsx` | Stern-Markierung für Termine |
 
-#### 5.1 `SettingsView.tsx` - Dialog und Funktionalität
+### Erwartete Ergebnisse
 
-```typescript
-const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-const [currentPassword, setCurrentPassword] = useState("");
-const [newPassword, setNewPassword] = useState("");
-const [confirmPassword, setConfirmPassword] = useState("");
-
-const handleChangePassword = async () => {
-  if (newPassword !== confirmPassword) {
-    toast.error("Passwörter stimmen nicht überein");
-    return;
-  }
-  
-  if (newPassword.length < 8) {
-    toast.error("Passwort muss mindestens 8 Zeichen haben");
-    return;
-  }
-  
-  try {
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-    
-    if (error) throw error;
-    
-    toast.success("Passwort wurde geändert");
-    setPasswordDialogOpen(false);
-    setNewPassword("");
-    setConfirmPassword("");
-  } catch (error: any) {
-    toast.error(error.message);
-  }
-};
-
-// Im JSX:
-<Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
-  <DialogTrigger asChild>
-    <Button variant="outline" className="w-full justify-start">
-      <Shield className="h-4 w-4 mr-2" />
-      Passwort ändern
-    </Button>
-  </DialogTrigger>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Passwort ändern</DialogTitle>
-    </DialogHeader>
-    <div className="space-y-4 py-4">
-      <div className="space-y-2">
-        <Label>Neues Passwort</Label>
-        <Input 
-          type="password" 
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Passwort bestätigen</Label>
-        <Input 
-          type="password" 
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-        />
-      </div>
-    </div>
-    <DialogFooter>
-      <Button onClick={handleChangePassword}>
-        Passwort speichern
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
-```
-
----
-
-### Teil 6: `useAppSettings` Tenant-aware machen
-
-```typescript
-// In useAppSettings.tsx
-import { useTenant } from "@/hooks/useTenant";
-
-export function AppSettingsProvider({ children }: { children: ReactNode }) {
-  const { currentTenant, loading: tenantLoading } = useTenant();
-  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
-
-  useEffect(() => {
-    if (tenantLoading || !currentTenant?.id) return;
-    
-    const loadSettings = async () => {
-      // Zuerst tenant-spezifische Settings versuchen
-      const { data: tenantData } = await supabase
-        .from('app_settings')
-        .select('setting_key, setting_value')
-        .eq('tenant_id', currentTenant.id)
-        .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
-
-      if (tenantData && tenantData.length > 0) {
-        // Tenant hat eigene Settings
-        const settingsMap = tenantData.reduce((acc, item) => {
-          acc[item.setting_key] = item.setting_value || '';
-          return acc;
-        }, {} as Record<string, string>);
-
-        setSettings({
-          app_name: settingsMap.app_name || 'LandtagsOS',
-          app_subtitle: settingsMap.app_subtitle || 'Koordinationssystem',
-          app_logo_url: settingsMap.app_logo_url || '',
-          isLoading: false,
-        });
-      } else {
-        // Fallback auf Defaults
-        setSettings({
-          app_name: 'LandtagsOS',
-          app_subtitle: 'Koordinationssystem', 
-          app_logo_url: '',
-          isLoading: false,
-        });
-      }
-    };
-
-    loadSettings();
-  }, [currentTenant?.id, tenantLoading]);
-
-  // ...
-}
-```
-
----
-
-## Zusammenfassung der Änderungen
-
-| # | Bereich | Änderung |
-|---|---------|----------|
-| 1 | DB | `app_settings` um `tenant_id` erweitern, RLS anpassen |
-| 2 | DB | `audit_log_entries` um `tenant_id` erweitern |
-| 3 | DB | `meeting_templates` RLS auf Tenant beschränken |
-| 4 | DB | `task_decisions` RLS korrigieren (visible_to_all + tenant) |
-| 5 | DB | `user_status` RLS auf Tenant beschränken |
-| 6 | DB | Stephanie's Profil manuell erstellen |
-| 7 | Frontend | `GeneralSettings.tsx` - Tenant-Filter |
-| 8 | Frontend | `AuditLogViewer.tsx` - Tenant-Filter |
-| 9 | Frontend | `UserColorManager.tsx` - Tenant-Filter |
-| 10 | Frontend | `useUserStatus.tsx` - Tenant-spezifischer Presence-Channel |
-| 11 | Frontend | `useInfiniteContacts.tsx` - Robustere Null-Checks |
-| 12 | Frontend | `useAppSettings.tsx` - Tenant-aware |
-| 13 | Edge Function | `initializeTenant` Action hinzufügen |
-| 14 | Frontend | `SuperadminTenantManagement.tsx` - Tenant-Init nach Erstellung |
-| 15 | Frontend | `SettingsView.tsx` - Passwort-Ändern implementieren |
-
----
-
-## Erwartete Ergebnisse
-
-1. **Büro Erwin hat eigene Einstellungen** - App-Name, Logo, Dashboard-Cover unabhängig
-2. **Audit-Logs sind getrennt** - Jeder Tenant sieht nur seine Logs
-3. **Vorlagen sind tenant-spezifisch** - Keine Cross-Tenant Sichtbarkeit
-4. **Anwesenheit ist isoliert** - Nur Teammitglieder desselben Tenants sichtbar
-5. **Kontakte laden korrekt** - Keine Endlosschleife bei leerem Tenant
-6. **Stephanie wird angezeigt** - Profil existiert mit korrektem tenant_id
-7. **Neue Tenants haben Defaults** - Standardwerte bei Erstellung
-8. **Benutzer können Passwort ändern** - Selbstständig über Einstellungen
+1. **Meetings bearbeitbar** - Alle Felder inkl. Uhrzeit und Teilnehmer änderbar
+2. **Archiv-Button** - Gut sichtbar in der Header-Zeile
+3. **Informativer Agenda-Titel** - Mit Datum und Uhrzeit
+4. **Relevante Aufgaben** - Nur eigene und zugewiesene sichtbar
+5. **Hauptpunkt-Notizen** - Vorbereitungsnotizen möglich
+6. **Fehlerfreies Löschen** - Keine falschen Fehlermeldungen
+7. **Stern-Termine** - Wichtige Termine hervorheben
+8. **Automatische Aufgaben** - Bei Zuweisung nach Meeting-Ende
+9. **Fehlerfreies Archivieren** - Kein Debug-Popup, robuster Prozess
+10. **Carryover-Übersicht** - Punkte aus vorheriger Besprechung sichtbar
+11. **Verbesserte UI** - Mehr Informationen, bessere Übersicht
