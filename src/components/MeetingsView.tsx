@@ -709,6 +709,41 @@ export function MeetingsView() {
 
       if (error) throw error;
 
+      // Create corresponding calendar appointment for this meeting
+      if (data.id && currentTenant?.id) {
+        try {
+          const meetingDateStr = format(newMeeting.meeting_date, 'yyyy-MM-dd');
+          const timeHour = parseInt(newMeetingTime.split(':')[0]);
+          const timeMinute = newMeetingTime.split(':')[1];
+          const endHour = String(timeHour + 1).padStart(2, '0');
+          
+          const appointmentData = {
+            title: newMeeting.title,
+            description: newMeeting.description || null,
+            location: newMeeting.location || null,
+            start_time: `${meetingDateStr}T${newMeetingTime}:00`,
+            end_time: `${meetingDateStr}T${endHour}:${timeMinute}:00`,
+            category: 'meeting',
+            status: 'planned',
+            user_id: user.id,
+            tenant_id: currentTenant.id,
+            meeting_id: data.id
+          };
+          
+          const { error: appointmentError } = await supabase
+            .from('appointments')
+            .insert(appointmentData);
+          
+          if (appointmentError) {
+            console.error('Error creating calendar appointment:', appointmentError);
+          } else {
+            console.log('✅ Calendar appointment created for meeting');
+          }
+        } catch (appointmentCreationError) {
+          console.error('Error creating appointment for meeting:', appointmentCreationError);
+        }
+      }
+
       // Add participants if any
       if (newMeetingParticipants.length > 0 && data.id) {
         const participantInserts = newMeetingParticipants.map(p => ({
@@ -3211,7 +3246,7 @@ export function MeetingsView() {
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">
                   Agenda: {selectedMeeting.title} am {format(new Date(selectedMeeting.meeting_date), "EEEE, d. MMMM", { locale: de })}
-                  {selectedMeeting.meeting_time && ` um ${selectedMeeting.meeting_time} Uhr`}
+                  {selectedMeeting.meeting_time && ` um ${selectedMeeting.meeting_time.substring(0, 5)} Uhr`}
                 </h2>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={addAgendaItem}>
@@ -3264,6 +3299,8 @@ export function MeetingsView() {
                                       <SystemAgendaItem 
                                         systemType={item.system_type as 'upcoming_appointments' | 'quick_notes'}
                                         meetingDate={selectedMeeting?.meeting_date}
+                                        meetingId={selectedMeeting?.id}
+                                        allowStarring={true}
                                         linkedQuickNotes={linkedQuickNotes}
                                         isEmbedded={true}
                                         defaultCollapsed={item.system_type === 'upcoming_appointments'}

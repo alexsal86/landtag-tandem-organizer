@@ -50,53 +50,42 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   }, [selectedUserId, users]);
 
   const fetchUsers = async () => {
+    // Don't fetch if no tenant is available yet
+    if (!currentTenant?.id) {
+      console.log('UserSelector: No tenant available yet, waiting...');
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
+    console.log('UserSelector: Fetching users for tenant:', currentTenant.id);
     try {
       let usersData: User[] = [];
 
-      // Try to get users from tenant memberships first
-      if (currentTenant?.id) {
-        const { data, error } = await supabase
-          .from('user_tenant_memberships')
-          .select(`
+      // Get users from tenant memberships
+      const { data, error } = await supabase
+        .from('user_tenant_memberships')
+        .select(`
+          user_id,
+          is_active,
+          profiles:user_id (
             user_id,
-            is_active,
-            profiles:user_id (
-              user_id,
-              display_name,
-              avatar_url
-            )
-          `)
-          .eq('tenant_id', currentTenant.id)
-          .eq('is_active', true);
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true);
 
-        if (!error && data && data.length > 0) {
-          usersData = data
-            .filter(membership => membership.profiles)
-            .map(membership => ({
-              id: (membership.profiles as any).user_id,
-              display_name: (membership.profiles as any).display_name || 'Unbekannt',
-              avatar_url: (membership.profiles as any).avatar_url
-            }));
-        }
-      }
-
-      // Fallback: if no tenant, load all profiles (only when no tenant is set)
-      if (usersData.length === 0 && !currentTenant?.id) {
-        console.log('UserSelector: Fallback to all profiles (no tenant)');
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, avatar_url');
-
-        if (!profilesError && profilesData) {
-          usersData = profilesData.map(p => ({
-            id: p.user_id,
-            display_name: p.display_name || 'Unbekannt',
-            avatar_url: p.avatar_url
+      if (!error && data && data.length > 0) {
+        usersData = data
+          .filter(membership => membership.profiles)
+          .map(membership => ({
+            id: (membership.profiles as any).user_id,
+            display_name: (membership.profiles as any).display_name || 'Unbekannt',
+            avatar_url: (membership.profiles as any).avatar_url
           }));
-        }
       }
-      // If tenant exists but no users found, keep empty list (tenant-strict mode)
 
       usersData.sort((a, b) => a.display_name.localeCompare(b.display_name));
       setUsers(usersData);

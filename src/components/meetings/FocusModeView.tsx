@@ -122,6 +122,18 @@ export function FocusModeView({
           e.preventDefault();
           setFocusedItemIndex(prev => Math.max(prev - 1, 0));
           break;
+        case 'PageDown':
+        case 'd':
+          e.preventDefault();
+          // Scroll within the current item (for long items)
+          window.scrollBy({ top: 200, behavior: 'smooth' });
+          break;
+        case 'PageUp':
+        case 'u':
+          e.preventDefault();
+          // Scroll within the current item (for long items)
+          window.scrollBy({ top: -200, behavior: 'smooth' });
+          break;
         case 'Enter':
           e.preventDefault();
           if (currentItem?.id && currentItemGlobalIndex !== -1) {
@@ -176,12 +188,12 @@ export function FocusModeView({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusedItemIndex, mainItems.length, currentItem, currentItemGlobalIndex, onUpdateItem, onUpdateResult, onClose]);
 
-  // Auto-scroll to focused item
+  // Auto-scroll to focused item - scroll to start so long items show their beginning
   useEffect(() => {
     if (itemRefs.current[focusedItemIndex]) {
       itemRefs.current[focusedItemIndex]?.scrollIntoView({
         behavior: 'smooth',
-        block: 'center'
+        block: 'start'
       });
     }
   }, [focusedItemIndex]);
@@ -484,6 +496,22 @@ export function FocusModeView({
                   <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">k</kbd>
                 </div>
                 <span className="text-sm">Vorheriger Punkt</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <div className="flex gap-1">
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">PgDn</kbd>
+                  <span className="text-muted-foreground">/</span>
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">d</kbd>
+                </div>
+                <span className="text-sm">Im Punkt nach unten</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <div className="flex gap-1">
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">PgUp</kbd>
+                  <span className="text-muted-foreground">/</span>
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">u</kbd>
+                </div>
+                <span className="text-sm">Im Punkt nach oben</span>
               </div>
               <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
                 <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">Enter</kbd>
