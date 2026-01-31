@@ -308,14 +308,10 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
   const renderWeekSection = (title: string, weekAppointments: Appointment[]) => {
     if (weekAppointments.length === 0) return null;
     
-    // Sort starred items to top
-    const sortedAppointments = [...weekAppointments].sort((a, b) => {
-      const aStarred = starredIds.has(a.id);
-      const bStarred = starredIds.has(b.id);
-      if (aStarred && !bStarred) return -1;
-      if (!aStarred && bStarred) return 1;
-      return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
-    });
+    // Keep chronological order, only add visual highlight for starred items (no grouping)
+    const sortedAppointments = [...weekAppointments].sort((a, b) => 
+      new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+    );
     
     return (
       <div className="space-y-1">
