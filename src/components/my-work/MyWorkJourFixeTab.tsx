@@ -15,6 +15,7 @@ interface Meeting {
   id: string;
   title: string;
   meeting_date: string;
+  meeting_time?: string | null;
   status: string;
   description?: string | null;
 }
@@ -68,7 +69,7 @@ export function MyWorkJourFixeTab() {
       // Load upcoming meetings
       const { data: upcoming, error: upcomingError } = await supabase
         .from("meetings")
-        .select("id, title, meeting_date, status, description")
+        .select("id, title, meeting_date, meeting_time, status, description")
         .eq("user_id", user.id)
         .neq("status", "archived")
         .gte("meeting_date", now)
@@ -83,7 +84,7 @@ export function MyWorkJourFixeTab() {
       
       const { data: past, error: pastError } = await supabase
         .from("meetings")
-        .select("id, title, meeting_date, status, description")
+        .select("id, title, meeting_date, meeting_time, status, description")
         .eq("user_id", user.id)
         .neq("status", "archived")
         .lt("meeting_date", now)
@@ -197,10 +198,12 @@ export function MyWorkJourFixeTab() {
                   <Calendar className="h-3 w-3" />
                   {format(meetingDate, "dd.MM.yyyy", { locale: de })}
                 </div>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  {format(meetingDate, "HH:mm", { locale: de })} Uhr
-                </div>
+                {meeting.meeting_time && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {meeting.meeting_time.substring(0, 5)} Uhr
+                  </div>
+                )}
               </div>
             </div>
             <Button
