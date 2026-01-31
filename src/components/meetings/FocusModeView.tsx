@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -83,7 +84,9 @@ export function FocusModeView({
   const [focusedItemIndex, setFocusedItemIndex] = useState(0);
   const [showLegend, setShowLegend] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const mainContainerRef = useRef<HTMLDivElement>(null);
 
   // Filter to only show main items (not sub-items) for navigation
   const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
@@ -125,14 +128,19 @@ export function FocusModeView({
         case 'PageDown':
         case 'd':
           e.preventDefault();
-          // Scroll within the current item (for long items)
-          window.scrollBy({ top: 200, behavior: 'smooth' });
+          // Scroll within the current item (for long items) - use container ref
+          mainContainerRef.current?.scrollBy({ top: 200, behavior: 'smooth' });
           break;
         case 'PageUp':
         case 'u':
           e.preventDefault();
-          // Scroll within the current item (for long items)
-          window.scrollBy({ top: -200, behavior: 'smooth' });
+          // Scroll within the current item (for long items) - use container ref
+          mainContainerRef.current?.scrollBy({ top: -200, behavior: 'smooth' });
+          break;
+        case 'a':
+          e.preventDefault();
+          // Open assignment dialog
+          setShowAssignDialog(true);
           break;
         case 'Enter':
           e.preventDefault();
@@ -247,7 +255,7 @@ export function FocusModeView({
       </div>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto py-8">
+      <main ref={mainContainerRef} className="flex-1 overflow-auto py-8">
         <div className="max-w-4xl mx-auto px-4 space-y-4">
           {mainItems.map((item, index) => {
             const itemSubItems = agendaItems.filter(sub => 
@@ -530,6 +538,10 @@ export function FocusModeView({
                 <span className="text-sm">Übertragen toggle</span>
               </div>
               <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">a</kbd>
+                <span className="text-sm">Punkt zuweisen</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
                 <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">?</kbd>
                 <span className="text-sm">Diese Hilfe anzeigen</span>
               </div>
@@ -567,6 +579,59 @@ export function FocusModeView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assignment dialog */}
+      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Punkt zuweisen
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Wählen Sie ein Teammitglied für: <strong>{currentItem?.title}</strong>
+            </p>
+            <Select
+              value={currentItem?.assigned_to?.[0] || ''}
+              onValueChange={(value) => {
+                if (currentItem?.id && currentItemGlobalIndex !== -1) {
+                  onUpdateItem(currentItemGlobalIndex, 'assigned_to', value ? [value] : null);
+                }
+                setShowAssignDialog(false);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Teammitglied auswählen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Nicht zugewiesen</SelectItem>
+                {profiles.map(profile => (
+                  <SelectItem key={profile.user_id} value={profile.user_id}>
+                    {profile.display_name || 'Unbekannt'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {currentItem?.assigned_to && currentItem.assigned_to.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  if (currentItem?.id && currentItemGlobalIndex !== -1) {
+                    onUpdateItem(currentItemGlobalIndex, 'assigned_to', null);
+                  }
+                  setShowAssignDialog(false);
+                }}
+              >
+                Zuweisung entfernen
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

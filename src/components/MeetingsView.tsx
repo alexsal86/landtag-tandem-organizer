@@ -717,12 +717,20 @@ export function MeetingsView() {
           const timeMinute = newMeetingTime.split(':')[1];
           const endHour = String(timeHour + 1).padStart(2, '0');
           
+          // Get timezone offset for correct time handling
+          const now = new Date();
+          const timezoneOffset = -now.getTimezoneOffset(); // in minutes
+          const tzHours = Math.floor(Math.abs(timezoneOffset) / 60).toString().padStart(2, '0');
+          const tzMinutes = (Math.abs(timezoneOffset) % 60).toString().padStart(2, '0');
+          const tzSign = timezoneOffset >= 0 ? '+' : '-';
+          const tzString = `${tzSign}${tzHours}:${tzMinutes}`;
+          
           const appointmentData = {
             title: newMeeting.title,
             description: newMeeting.description || null,
             location: newMeeting.location || null,
-            start_time: `${meetingDateStr}T${newMeetingTime}:00`,
-            end_time: `${meetingDateStr}T${endHour}:${timeMinute}:00`,
+            start_time: `${meetingDateStr}T${newMeetingTime}:00${tzString}`,
+            end_time: `${meetingDateStr}T${endHour}:${timeMinute}:00${tzString}`,
             category: 'meeting',
             status: 'planned',
             user_id: user.id,

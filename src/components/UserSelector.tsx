@@ -60,34 +60,46 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     setLoading(true);
     console.log('UserSelector: Fetching users for tenant:', currentTenant.id);
     try {
-      let usersData: User[] = [];
-
-      // Get users from tenant memberships
-      const { data, error } = await supabase
+      // Step 1: Get all active tenant memberships (separate query - no join)
+      const { data: memberships, error: membershipError } = await supabase
         .from('user_tenant_memberships')
-        .select(`
-          user_id,
-          is_active,
-          profiles:user_id (
-            user_id,
-            display_name,
-            avatar_url
-          )
-        `)
+        .select('user_id')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true);
 
-      if (!error && data && data.length > 0) {
-        usersData = data
-          .filter(membership => membership.profiles)
-          .map(membership => ({
-            id: (membership.profiles as any).user_id,
-            display_name: (membership.profiles as any).display_name || 'Unbekannt',
-            avatar_url: (membership.profiles as any).avatar_url
-          }));
+      if (membershipError) {
+        console.error('UserSelector: Error fetching memberships:', membershipError);
+        throw membershipError;
+      }
+      
+      if (!memberships || memberships.length === 0) {
+        console.log('UserSelector: No active memberships found');
+        setUsers([]);
+        return;
       }
 
+      // Step 2: Get profiles for these user IDs (separate query)
+      const userIds = memberships.map(m => m.user_id);
+      console.log('UserSelector: Fetching profiles for user IDs:', userIds);
+      
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('UserSelector: Error fetching profiles:', profilesError);
+        throw profilesError;
+      }
+
+      const usersData: User[] = (profilesData || []).map(profile => ({
+        id: profile.user_id,
+        display_name: profile.display_name || 'Unbekannt',
+        avatar_url: profile.avatar_url
+      }));
+
       usersData.sort((a, b) => a.display_name.localeCompare(b.display_name));
+      console.log('UserSelector: Loaded users:', usersData.length);
       setUsers(usersData);
     } catch (error) {
       console.error('Error fetching users:', error);
