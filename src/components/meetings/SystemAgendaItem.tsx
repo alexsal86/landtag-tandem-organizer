@@ -8,6 +8,8 @@ import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 interface SystemAgendaItemProps {
   systemType: 'upcoming_appointments' | 'quick_notes';
   meetingDate?: string | Date;
+  meetingId?: string;
+  allowStarring?: boolean;
   linkedQuickNotes?: any[];
   onUpdateNoteResult?: (noteId: string, result: string) => void;
   className?: string;
@@ -18,6 +20,8 @@ interface SystemAgendaItemProps {
 export function SystemAgendaItem({
   systemType,
   meetingDate,
+  meetingId,
+  allowStarring = false,
   linkedQuickNotes = [],
   onUpdateNoteResult,
   className,
@@ -42,6 +46,8 @@ export function SystemAgendaItem({
         )}
         <UpcomingAppointmentsSection 
           meetingDate={meetingDate} 
+          meetingId={meetingId}
+          allowStarring={allowStarring}
           className={isEmbedded ? "border-0 shadow-none bg-transparent" : "border-0 shadow-none"}
           defaultCollapsed={defaultCollapsed}
         />

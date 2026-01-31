@@ -1,12 +1,21 @@
-
-
 # Plan: Meeting-Agenda Korrekturen und Fokus-Modus
 
-## Zusammenfassung der identifizierten Probleme
+## ✅ IMPLEMENTIERT
 
-Nach eingehender Codeanalyse wurden folgende technische Ursachen identifiziert:
+Die folgenden Änderungen wurden umgesetzt:
+
+1. **meeting_time bei Erstellung speichern** - createMeeting enthält jetzt meeting_time
+2. **Edit-Modus verwendet editingMeeting.meeting_time** - nicht mehr newMeetingTime
+3. **loadMeetings filtert archivierte Meetings** - neq('status', 'archived')
+4. **loadProfiles nutzt Tenant-Filter** - nur user_tenant_memberships
+5. **loadTasks filtert nach user_id/assigned_to** - client-side Filter
+6. **updateAgendaItem speichert assigned_to als Array** - [value] statt value
+7. **SystemAgendaItem übergibt meetingId/allowStarring** - Props hinzugefügt
+8. **UserSelector entfernt Fallback bei Tenant** - nur Tenant-Mitglieder
+9. **Fokus-Modus implementiert** - FocusModeView mit Tastaturnavigation
 
 ---
+
 
 ## 1. Uhrzeit und Teilnehmer fehlen in Meeting-Details
 

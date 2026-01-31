@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive } from "lucide-react";
+import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,8 @@ import { MeetingParticipantsManager } from "@/components/meetings/MeetingPartici
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
 import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
+import { FocusModeView } from "@/components/meetings/FocusModeView";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface RecurrenceData {
   enabled: boolean;
@@ -145,6 +147,8 @@ export function MeetingsView() {
   const [activeMeeting, setActiveMeeting] = useState<Meeting | null>(null);
   const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [meetingParticipants, setMeetingParticipants] = useState<any[]>([]);
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Handle URL action parameter for QuickActions
@@ -348,10 +352,29 @@ export function MeetingsView() {
   };
 
   const loadProfiles = async () => {
+    if (!currentTenant?.id) return;
+    
     try {
+      // Get user IDs from tenant memberships first
+      const { data: memberships, error: membershipError } = await supabase
+        .from('user_tenant_memberships')
+        .select('user_id')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true);
+      
+      if (membershipError) throw membershipError;
+      
+      if (!memberships || memberships.length === 0) {
+        setProfiles([]);
+        return;
+      }
+      
+      const userIds = memberships.map(m => m.user_id);
+      
       const { data, error } = await supabase
         .from('profiles')
-        .select('user_id, display_name');
+        .select('user_id, display_name')
+        .in('user_id', userIds);
 
       if (error) throw error;
       
@@ -370,21 +393,33 @@ export function MeetingsView() {
   };
 
   const loadTasks = async () => {
+    if (!user?.id || !currentTenant?.id) return;
+    
     try {
-      // Only load tasks that user created or is assigned to
-      const { data, error } = await supabase
+      // Load all todo tasks for this tenant
+      const { data: allTenantTasks, error } = await supabase
         .from('tasks')
         .select('*')
+        .eq('tenant_id', currentTenant.id)
         .eq('status', 'todo')
-        .or(`created_by.eq.${user?.id},assigned_to.ilike.%${user?.id}%`)
         .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTasks(data || []);
+      
+      if (error) {
+        console.error('Error loading tasks:', error);
+        return;
+      }
+      
+      // Filter client-side for tasks created by user or assigned to user
+      const filteredTasks = (allTenantTasks || []).filter(task => 
+        task.user_id === user.id || 
+        (task.assigned_to && task.assigned_to.includes(user.id))
+      );
+      
+      setTasks(filteredTasks);
       
       // Load task documents for all tasks
-      if (data && data.length > 0) {
-        await loadTaskDocuments(data.map(task => task.id));
+      if (filteredTasks.length > 0) {
+        await loadTaskDocuments(filteredTasks.map(task => task.id));
       }
     } catch (error) {
       console.error('Error loading tasks:', error);
@@ -656,6 +691,7 @@ export function MeetingsView() {
         title: newMeeting.title,
         description: newMeeting.description || null,
         meeting_date: format(newMeeting.meeting_date, 'yyyy-MM-dd'),
+        meeting_time: newMeetingTime,
         location: newMeeting.location || null,
         status: newMeeting.status,
         user_id: user.id,
@@ -829,12 +865,14 @@ export function MeetingsView() {
       // Wait a moment for the trigger to complete, then load the items
       setTimeout(async () => {
         await loadAgendaItems(data.id);
-        // Reload all meetings to show the newly created ones
-        if (currentTenant) {
+        // Reload all meetings to show the newly created ones (filter out archived)
+        if (currentTenant && user) {
           const { data: allMeetings } = await supabase
             .from('meetings')
             .select('*')
             .eq('tenant_id', currentTenant.id)
+            .eq('user_id', user.id)
+            .neq('status', 'archived')
             .order('meeting_date', { ascending: false });
           
           if (allMeetings) {
@@ -1348,9 +1386,16 @@ export function MeetingsView() {
     if (updated[index].id && selectedMeeting?.id) {
       try {
         console.log('💾 Auto-saving agenda item change to database');
+        
+        // For assigned_to, convert to array format for database
+        let dbValue = value;
+        if (field === 'assigned_to') {
+          dbValue = value ? [value] : null;
+        }
+        
         await supabase
           .from('meeting_agenda_items')
-          .update({ [field]: value })
+          .update({ [field]: dbValue })
           .eq('id', updated[index].id);
           
         console.log('✅ Auto-save successful');
@@ -1992,8 +2037,8 @@ export function MeetingsView() {
           : updates.meeting_date
       };
       
-      // Include meeting_time if provided
-      const timeToUse = meetingTimeOverride || newMeetingTime;
+      // Include meeting_time from the editing meeting or override
+      const timeToUse = meetingTimeOverride || updates.meeting_time || editingMeeting?.meeting_time || '10:00';
       if (timeToUse) {
         formattedUpdates.meeting_time = timeToUse;
       }
@@ -2155,6 +2200,20 @@ export function MeetingsView() {
   // Show archive view if requested
   if (showArchive) {
     return <MeetingArchiveView onBack={() => setShowArchive(false)} />;
+  }
+
+  // Show focus mode if active
+  if (isFocusMode && activeMeeting) {
+    return (
+      <FocusModeView
+        meeting={activeMeeting}
+        agendaItems={agendaItems}
+        profiles={profiles}
+        onClose={() => setIsFocusMode(false)}
+        onUpdateItem={updateAgendaItem}
+        onUpdateResult={updateAgendaItemResult}
+      />
+    );
   }
 
   return (
@@ -2427,10 +2486,14 @@ export function MeetingsView() {
                             </PopoverContent>
                           </Popover>
                           <TimePickerCombobox
-                            value={newMeetingTime}
-                            onChange={setNewMeetingTime}
+                            value={editingMeeting.meeting_time || '10:00'}
+                            onChange={(time) => setEditingMeeting({ ...editingMeeting, meeting_time: time })}
                           />
                         </div>
+                        {/* Note: Participants are managed via MeetingParticipantsManager separately */}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Teilnehmer können nach dem Speichern in der Detailansicht bearbeitet werden.
+                        </p>
                       </div>
                     ) : (
                       <>
@@ -2542,6 +2605,10 @@ export function MeetingsView() {
               Aktive Besprechung: {activeMeeting.title}
             </h2>
             <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsFocusMode(true)}>
+                <Maximize2 className="h-4 w-4 mr-2" />
+                Fokus-Modus
+              </Button>
               <Button variant="outline" onClick={stopMeeting}>
                 Besprechung unterbrechen
               </Button>

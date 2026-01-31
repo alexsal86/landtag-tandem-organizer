@@ -81,9 +81,9 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         }
       }
 
-      // Fallback: if no tenant or no users found, load all profiles
-      if (usersData.length === 0) {
-        console.log('UserSelector: Fallback to all profiles');
+      // Fallback: if no tenant, load all profiles (only when no tenant is set)
+      if (usersData.length === 0 && !currentTenant?.id) {
+        console.log('UserSelector: Fallback to all profiles (no tenant)');
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('user_id, display_name, avatar_url');
@@ -96,6 +96,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
           }));
         }
       }
+      // If tenant exists but no users found, keep empty list (tenant-strict mode)
 
       usersData.sort((a, b) => a.display_name.localeCompare(b.display_name));
       setUsers(usersData);
