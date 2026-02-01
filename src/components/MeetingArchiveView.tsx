@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Calendar, MapPin, Users, Search, Trash2, FileText } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Search, Trash2, FileText, LayoutGrid, List } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +34,7 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
 
   useEffect(() => {
     if (user) {
@@ -153,17 +154,35 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-semibold">Besprechungsarchiv</h1>
-          <p className="text-muted-foreground">
-            {archivedMeetings.length} archivierte {archivedMeetings.length === 1 ? 'Besprechung' : 'Besprechungen'}
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-semibold">Besprechungsarchiv</h1>
+            <p className="text-muted-foreground">
+              {archivedMeetings.length} archivierte {archivedMeetings.length === 1 ? 'Besprechung' : 'Besprechungen'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('cards')}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+          >
+            <List className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -196,6 +215,85 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
             </div>
           </CardContent>
         </Card>
+      ) : viewMode === 'list' ? (
+        <div className="border rounded-lg divide-y bg-card">
+          {filteredMeetings.map((meeting) => (
+            <div 
+              key={meeting.id} 
+              className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer"
+              onClick={() => setSelectedMeetingId(meeting.id)}
+            >
+              <div className="flex items-center gap-4">
+                <div>
+                  <span className="font-medium">{meeting.title}</span>
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {format(new Date(meeting.meeting_date), 'PPP', { locale: de })}
+                    </span>
+                    {meeting.location && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {meeting.location}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedMeetingId(meeting.id);
+                  }}
+                >
+                  <FileText className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    restoreMeeting(meeting);
+                  }}
+                >
+                  Wiederherstellen
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Besprechung löschen</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Sind Sie sicher, dass Sie "{meeting.title}" endgültig löschen möchten? 
+                        Diese Aktion kann nicht rückgängig gemacht werden.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => deleteMeeting(meeting.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Löschen
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredMeetings.map((meeting) => (

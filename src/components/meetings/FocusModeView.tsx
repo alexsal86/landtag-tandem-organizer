@@ -106,6 +106,16 @@ export function FocusModeView({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // If assignment dialog is open, only allow Escape to close it
+      if (showAssignDialog) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setShowAssignDialog(false);
+        }
+        // Ignore all other keys when dialog is open
+        return;
+      }
+      
       // Don't capture if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         if (e.key === 'Escape') {
@@ -194,7 +204,7 @@ export function FocusModeView({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedItemIndex, mainItems.length, currentItem, currentItemGlobalIndex, onUpdateItem, onUpdateResult, onClose]);
+  }, [focusedItemIndex, mainItems.length, currentItem, currentItemGlobalIndex, onUpdateItem, onUpdateResult, onClose, showAssignDialog]);
 
   // Auto-scroll to focused item - scroll to start so long items show their beginning
   useEffect(() => {

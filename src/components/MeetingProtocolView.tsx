@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, MapPin, FileText, Printer } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, FileText, Printer, Star } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
@@ -30,6 +30,12 @@ interface Profile {
   display_name: string;
 }
 
+interface StarredAppointment {
+  id: string;
+  title: string;
+  start_time: string;
+}
+
 interface MeetingProtocolViewProps {
   meetingId: string;
   onBack: () => void;
@@ -40,6 +46,7 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [starredAppointments, setStarredAppointments] = useState<StarredAppointment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -75,9 +82,50 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
 
       if (profilesError) throw profilesError;
 
+      // Load starred appointments for this meeting
+      const { data: starredData } = await supabase
+        .from('starred_appointments')
+        .select('id, appointment_id, external_event_id')
+        .eq('meeting_id', meetingId);
+
+      const starredList: StarredAppointment[] = [];
+      if (starredData && starredData.length > 0) {
+        const appointmentIds = starredData.filter(s => s.appointment_id).map(s => s.appointment_id);
+        const externalEventIds = starredData.filter(s => s.external_event_id).map(s => s.external_event_id);
+
+        if (appointmentIds.length > 0) {
+          const { data: appointments } = await supabase
+            .from('appointments')
+            .select('id, title, start_time')
+            .in('id', appointmentIds);
+          if (appointments) {
+            starredList.push(...appointments.map(a => ({
+              id: a.id,
+              title: a.title,
+              start_time: a.start_time
+            })));
+          }
+        }
+
+        if (externalEventIds.length > 0) {
+          const { data: externalEvents } = await supabase
+            .from('external_events')
+            .select('id, title, start_time')
+            .in('id', externalEventIds);
+          if (externalEvents) {
+            starredList.push(...externalEvents.map(e => ({
+              id: e.id,
+              title: e.title,
+              start_time: e.start_time
+            })));
+          }
+        }
+      }
+
       setMeeting(meetingData);
       setAgendaItems(agendaData || []);
       setProfiles(profilesData || []);
+      setStarredAppointments(starredList);
     } catch (error) {
       console.error('Error loading meeting protocol:', error);
       toast({
@@ -218,6 +266,24 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
             </div>
           )}
         </div>
+
+        {/* Starred Appointments Section */}
+        {starredAppointments.length > 0 && (
+          <div className="space-y-4 mt-8 pt-6 border-t">
+            <h3 className="text-xl font-semibold">Markierte Termine zur Besprechung</h3>
+            <div className="space-y-2">
+              {starredAppointments.map(apt => (
+                <div key={apt.id} className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400 shrink-0" />
+                  <span className="font-medium">{apt.title}</span>
+                  <span className="text-sm text-muted-foreground">
+                    ({format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Protocol Footer */}
         <div className="border-t pt-6 mt-12 text-center text-sm text-muted-foreground">

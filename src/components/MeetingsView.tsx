@@ -27,6 +27,8 @@ import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { UserSelector } from "@/components/UserSelector";
 import { RecurrenceSelector } from "@/components/ui/recurrence-selector";
 import { MeetingParticipantsManager } from "@/components/meetings/MeetingParticipantsManager";
+import { InlineMeetingParticipantsEditor } from "@/components/meetings/InlineMeetingParticipantsEditor";
+import { MeetingParticipantAvatars } from "@/components/meetings/MeetingParticipantAvatars";
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
 import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
@@ -717,20 +719,16 @@ export function MeetingsView() {
           const timeMinute = newMeetingTime.split(':')[1];
           const endHour = String(timeHour + 1).padStart(2, '0');
           
-          // Get timezone offset for correct time handling
-          const now = new Date();
-          const timezoneOffset = -now.getTimezoneOffset(); // in minutes
-          const tzHours = Math.floor(Math.abs(timezoneOffset) / 60).toString().padStart(2, '0');
-          const tzMinutes = (Math.abs(timezoneOffset) % 60).toString().padStart(2, '0');
-          const tzSign = timezoneOffset >= 0 ? '+' : '-';
-          const tzString = `${tzSign}${tzHours}:${tzMinutes}`;
+          // Create Date objects in local time and convert to ISO for proper UTC handling
+          const localStartTime = new Date(`${meetingDateStr}T${newMeetingTime}:00`);
+          const localEndTime = new Date(localStartTime.getTime() + 60 * 60 * 1000); // +1 hour
           
           const appointmentData = {
             title: newMeeting.title,
             description: newMeeting.description || null,
             location: newMeeting.location || null,
-            start_time: `${meetingDateStr}T${newMeetingTime}:00${tzString}`,
-            end_time: `${meetingDateStr}T${endHour}:${timeMinute}:00${tzString}`,
+            start_time: localStartTime.toISOString(),
+            end_time: localEndTime.toISOString(),
             category: 'meeting',
             status: 'planned',
             user_id: user.id,
@@ -1195,6 +1193,83 @@ export function MeetingsView() {
             console.error('Error creating subtasks (non-fatal):', subtaskError);
           }
         }
+      }
+
+      // Step 5b: Create task for starred appointments
+      try {
+        const { data: starredAppts } = await supabase
+          .from('starred_appointments')
+          .select(`
+            id,
+            appointment_id,
+            external_event_id
+          `)
+          .eq('meeting_id', meeting.id);
+
+        if (starredAppts && starredAppts.length > 0) {
+          // Fetch appointment details
+          const appointmentIds = starredAppts.filter(s => s.appointment_id).map(s => s.appointment_id);
+          const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => s.external_event_id);
+          
+          let appointmentsList = '';
+          
+          if (appointmentIds.length > 0) {
+            const { data: appointments } = await supabase
+              .from('appointments')
+              .select('title, start_time')
+              .in('id', appointmentIds);
+            
+            if (appointments) {
+              appointmentsList += appointments.map(apt => 
+                `- ${apt.title} (${format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`
+              ).join('\n');
+            }
+          }
+          
+          if (externalEventIds.length > 0) {
+            const { data: externalEvents } = await supabase
+              .from('external_events')
+              .select('title, start_time')
+              .in('id', externalEventIds);
+            
+            if (externalEvents) {
+              if (appointmentsList) appointmentsList += '\n';
+              appointmentsList += externalEvents.map(evt => 
+                `- ${evt.title} (${format(new Date(evt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`
+              ).join('\n');
+            }
+          }
+          
+          if (appointmentsList) {
+            // Get all meeting participants
+            const { data: participants } = await supabase
+              .from('meeting_participants')
+              .select('user_id')
+              .eq('meeting_id', meeting.id);
+            
+            const participantIds = participants?.map(p => p.user_id) || [user.id];
+            
+            // Create one task for each participant
+            for (const participantId of participantIds) {
+              await supabase.from('tasks').insert({
+                user_id: user.id,
+                title: `Vorbereitung: Markierte Termine aus ${meeting.title}`,
+                description: `Folgende Termine wurden in der Besprechung als besonders wichtig markiert:\n\n${appointmentsList}`,
+                priority: 'medium',
+                category: 'meeting',
+                status: 'todo',
+                assigned_to: participantId,
+                tenant_id: currentTenant?.id || '',
+                due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+                source_meeting_id: meeting.id
+              });
+            }
+            
+            console.log(`Created starred appointments task for ${participantIds.length} participants`);
+          }
+        }
+      } catch (starredError) {
+        console.error('Error creating starred appointments tasks (non-fatal):', starredError);
       }
 
       // Step 6: Archiving meeting
@@ -2081,11 +2156,21 @@ export function MeetingsView() {
           : updates.meeting_date
       };
       
-      // Include meeting_time from the editing meeting or override
-      const timeToUse = meetingTimeOverride || updates.meeting_time || editingMeeting?.meeting_time || '10:00';
-      if (timeToUse) {
-        formattedUpdates.meeting_time = timeToUse;
+      // Include meeting_time - prioritize the value from updates/editingMeeting
+      // First check if updates has meeting_time, then check editingMeeting, then fetch from DB if needed
+      let timeToUse = meetingTimeOverride || updates.meeting_time?.substring(0, 5) || editingMeeting?.meeting_time?.substring(0, 5);
+      
+      // If still no time, fetch the current meeting to get its time
+      if (!timeToUse) {
+        const { data: currentMeeting } = await supabase
+          .from('meetings')
+          .select('meeting_time')
+          .eq('id', meetingId)
+          .single();
+        timeToUse = currentMeeting?.meeting_time?.substring(0, 5) || '10:00';
       }
+      
+      formattedUpdates.meeting_time = timeToUse;
 
       const { error } = await supabase
         .from('meetings')
@@ -2101,25 +2186,32 @@ export function MeetingsView() {
         console.log('Network error during update, staying optimistic');
       }
 
-      // Update corresponding appointment in calendar
-      const appointmentUpdate: any = {
-        title: updates.title,
-        description: updates.description,
-        location: updates.location,
-      };
-      
+      // Update corresponding appointment in calendar with proper timezone handling
       if (updates.meeting_date) {
         const dateStr = format(new Date(updates.meeting_date), 'yyyy-MM-dd');
-        appointmentUpdate.start_time = `${dateStr}T${timeToUse}:00`;
-        const endHour = String(parseInt(timeToUse.split(':')[0]) + 1).padStart(2, '0');
-        appointmentUpdate.end_time = `${dateStr}T${endHour}:${timeToUse.split(':')[1]}:00`;
+        const localStartTime = new Date(`${dateStr}T${timeToUse}:00`);
+        const localEndTime = new Date(localStartTime.getTime() + 60 * 60 * 1000);
+        
+        await supabase
+          .from('appointments')
+          .update({
+            title: updates.title,
+            description: updates.description,
+            location: updates.location,
+            start_time: localStartTime.toISOString(),
+            end_time: localEndTime.toISOString(),
+          })
+          .eq('meeting_id', meetingId);
+      } else {
+        await supabase
+          .from('appointments')
+          .update({
+            title: updates.title,
+            description: updates.description,
+            location: updates.location,
+          })
+          .eq('meeting_id', meetingId);
       }
-
-      await supabase
-        .from('appointments')
-        .update(appointmentUpdate)
-        .eq('meeting_id', meetingId);
-
       toast({
         title: "Meeting aktualisiert",
         description: "Das Meeting wurde erfolgreich aktualisiert.",
@@ -2574,9 +2666,11 @@ export function MeetingsView() {
                             <Users className="h-3 w-3" />
                             Teilnehmer
                           </label>
-                          <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                            Teilnehmer können nach dem Speichern in der Detailansicht bearbeitet werden.
-                          </p>
+                          {meeting.id && (
+                            <InlineMeetingParticipantsEditor
+                              meetingId={meeting.id}
+                            />
+                          )}
                         </div>
                       </div>
                     ) : (
@@ -2603,6 +2697,8 @@ export function MeetingsView() {
                             </div>
                           )}
                         </CardDescription>
+                        {/* Participant Avatars on Card */}
+                        <MeetingParticipantAvatars meetingId={meeting.id} />
                       </>
                     )}
                   </div>
