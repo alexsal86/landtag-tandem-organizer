@@ -19,12 +19,12 @@ import {
 import { 
   X, Keyboard, ChevronDown, ChevronUp, CheckCircle, 
   ArrowUp, ArrowDown, CornerDownRight, StickyNote,
-  Maximize2, Users, Archive
+  Maximize2, Users, Archive, Star
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
+import { FocusModeUpcomingAppointments, FocusModeUpcomingAppointmentsHandle } from './FocusModeUpcomingAppointments';
 import { SystemAgendaItem } from './SystemAgendaItem';
 
 interface AgendaItem {
@@ -85,8 +85,11 @@ export function FocusModeView({
   const [showLegend, setShowLegend] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [focusedAppointmentIndex, setFocusedAppointmentIndex] = useState(-1);
+  const [appointmentsCount, setAppointmentsCount] = useState(0);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const mainContainerRef = useRef<HTMLDivElement>(null);
+  const upcomingApptsRef = useRef<FocusModeUpcomingAppointmentsHandle>(null);
 
   // Filter to only show main items (not sub-items) for navigation
   const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
@@ -128,12 +131,47 @@ export function FocusModeView({
         case 'ArrowDown':
         case 'j':
           e.preventDefault();
-          setFocusedItemIndex(prev => Math.min(prev + 1, mainItems.length - 1));
+          // If we're in appointment navigation mode, move within appointments
+          if (currentItem?.system_type === 'upcoming_appointments' && focusedAppointmentIndex >= 0) {
+            setFocusedAppointmentIndex(prev => Math.min(prev + 1, appointmentsCount - 1));
+          } else {
+            setFocusedItemIndex(prev => Math.min(prev + 1, mainItems.length - 1));
+          }
           break;
         case 'ArrowUp':
         case 'k':
           e.preventDefault();
-          setFocusedItemIndex(prev => Math.max(prev - 1, 0));
+          // If we're in appointment navigation mode, move within appointments
+          if (currentItem?.system_type === 'upcoming_appointments' && focusedAppointmentIndex >= 0) {
+            setFocusedAppointmentIndex(prev => Math.max(prev - 1, 0));
+          } else {
+            setFocusedItemIndex(prev => Math.max(prev - 1, 0));
+          }
+          break;
+        case 'n':
+          e.preventDefault();
+          // Next appointment within system item
+          if (currentItem?.system_type === 'upcoming_appointments') {
+            if (focusedAppointmentIndex < 0) {
+              setFocusedAppointmentIndex(0);
+            } else {
+              setFocusedAppointmentIndex(prev => Math.min(prev + 1, appointmentsCount - 1));
+            }
+          }
+          break;
+        case 'p':
+          e.preventDefault();
+          // Previous appointment within system item
+          if (currentItem?.system_type === 'upcoming_appointments' && focusedAppointmentIndex >= 0) {
+            setFocusedAppointmentIndex(prev => Math.max(prev - 1, 0));
+          }
+          break;
+        case 's':
+          e.preventDefault();
+          // Toggle star for focused appointment
+          if (currentItem?.system_type === 'upcoming_appointments' && focusedAppointmentIndex >= 0) {
+            upcomingApptsRef.current?.toggleStarAtIndex(focusedAppointmentIndex);
+          }
           break;
         case 'PageDown':
         case 'd':
@@ -193,7 +231,12 @@ export function FocusModeView({
           break;
         case 'Escape':
           e.preventDefault();
-          onClose();
+          // If in appointment navigation mode, exit it first
+          if (focusedAppointmentIndex >= 0) {
+            setFocusedAppointmentIndex(-1);
+          } else {
+            onClose();
+          }
           break;
         case '?':
           e.preventDefault();
@@ -204,7 +247,7 @@ export function FocusModeView({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedItemIndex, mainItems.length, currentItem, currentItemGlobalIndex, onUpdateItem, onUpdateResult, onClose, showAssignDialog]);
+  }, [focusedItemIndex, mainItems.length, currentItem, currentItemGlobalIndex, onUpdateItem, onUpdateResult, onClose, showAssignDialog, focusedAppointmentIndex, appointmentsCount]);
 
   // Auto-scroll to focused item - scroll to start so long items show their beginning
   useEffect(() => {
@@ -339,11 +382,12 @@ export function FocusModeView({
                     {/* System content: Upcoming Appointments */}
                     {item.system_type === 'upcoming_appointments' && (
                       <div className="mt-4">
-                        <UpcomingAppointmentsSection 
+                        <FocusModeUpcomingAppointments 
+                          ref={isFocused ? upcomingApptsRef : undefined}
                           meetingDate={meeting.meeting_date}
                           meetingId={meeting.id}
-                          allowStarring={true}
-                          defaultCollapsed={false}
+                          focusedIndex={isFocused ? focusedAppointmentIndex : -1}
+                          onAppointmentsLoaded={isFocused ? setAppointmentsCount : undefined}
                         />
                       </div>
                     )}
@@ -387,11 +431,10 @@ export function FocusModeView({
                           >
                             {/* Render system sub-items differently */}
                             {sub.system_type === 'upcoming_appointments' ? (
-                              <UpcomingAppointmentsSection 
+                              <FocusModeUpcomingAppointments 
                                 meetingDate={meeting.meeting_date}
                                 meetingId={meeting.id}
-                                allowStarring={true}
-                                defaultCollapsed={false}
+                                focusedIndex={-1}
                               />
                             ) : sub.system_type === 'quick_notes' ? (
                               <SystemAgendaItem 
@@ -555,9 +598,31 @@ export function FocusModeView({
                 <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">?</kbd>
                 <span className="text-sm">Diese Hilfe anzeigen</span>
               </div>
-              <div className="flex items-center gap-3 p-2 rounded bg-muted/50 col-span-2">
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
                 <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">Esc</kbd>
                 <span className="text-sm">Fokus-Modus beenden</span>
+              </div>
+            </div>
+            
+            {/* Star navigation section */}
+            <div className="border-t pt-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Star className="h-4 w-4 text-amber-500" />
+                <span className="text-sm font-medium">Bei "Kommende Termine"</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-3 p-2 rounded bg-amber-50 dark:bg-amber-950/30">
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">n</kbd>
+                  <span className="text-sm">Nächster Termin</span>
+                </div>
+                <div className="flex items-center gap-3 p-2 rounded bg-amber-50 dark:bg-amber-950/30">
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">p</kbd>
+                  <span className="text-sm">Vorheriger Termin</span>
+                </div>
+                <div className="flex items-center gap-3 p-2 rounded bg-amber-50 dark:bg-amber-950/30 col-span-2">
+                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">s</kbd>
+                  <span className="text-sm">Stern setzen/entfernen</span>
+                </div>
               </div>
             </div>
           </div>
