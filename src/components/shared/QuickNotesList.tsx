@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -42,7 +42,7 @@ import {
   Pin, Trash2, StickyNote, MoreHorizontal, CheckSquare, Vote, 
   Calendar as CalendarIcon, Archive, Edit, ChevronDown, ChevronUp, Clock,
   Star, ArrowUp, ArrowDown, RotateCcw, Share2, Users, Globe, Hourglass,
-  Pencil, GripVertical, ListTree, History, ArrowRight
+  Pencil, GripVertical, ListTree, History, ArrowRight, Search, Palette, X
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { supabase } from "@/integrations/supabase/client";
@@ -141,6 +141,22 @@ export function QuickNotesList({
   const [deleteLinkedTask, setDeleteLinkedTask] = useState(true);
   const [deleteLinkedDecision, setDeleteLinkedDecision] = useState(true);
   const [deleteLinkedMeeting, setDeleteLinkedMeeting] = useState(false);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  
+  // Note colors for picker
+  const noteColors = [
+    { value: '#fef3c7', label: 'Gelb' },
+    { value: '#dbeafe', label: 'Blau' },
+    { value: '#dcfce7', label: 'Grün' },
+    { value: '#fce7f3', label: 'Rosa' },
+    { value: '#e9d5ff', label: 'Lila' },
+    { value: '#fed7aa', label: 'Orange' },
+    { value: '#f1f5f9', label: 'Grau' },
+    { value: null, label: 'Standard' }
+  ];
 
   const loadNotes = useCallback(async () => {
     if (!user) return;
@@ -375,7 +391,19 @@ export function QuickNotesList({
     return { groups, followUpNotes, scheduledFollowUps };
   }, []);
 
-  const { groups, followUpNotes, scheduledFollowUps } = groupNotesByPriority(notes);
+  // Filter notes by search query
+  const filteredNotes = useMemo(() => {
+    if (!searchQuery.trim()) return notes;
+    
+    const query = searchQuery.toLowerCase();
+    return notes.filter(note => 
+      note.title?.toLowerCase().includes(query) ||
+      note.content.toLowerCase().includes(query) ||
+      note.meetings?.title?.toLowerCase().includes(query)
+    );
+  }, [notes, searchQuery]);
+
+  const { groups, followUpNotes, scheduledFollowUps } = groupNotesByPriority(filteredNotes);
 
   // Action handlers
   const handleTogglePin = async (note: QuickNote) => {
@@ -503,6 +531,36 @@ export function QuickNotesList({
     } catch (error) {
       console.error("Error setting priority:", error);
       toast.error("Fehler beim Setzen der Priorität");
+    }
+  };
+
+  // Set note color
+  const handleSetColor = async (noteId: string, color: string | null) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("quick_notes")
+        .update({ color })
+        .eq("id", noteId)
+        .eq("user_id", user.id)
+        .select();
+
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("Keine Berechtigung zum Ändern dieser Notiz");
+        return;
+      }
+      
+      toast.success(color ? "Farbe gesetzt" : "Farbe entfernt");
+      loadNotes();
+    } catch (error) {
+      console.error("Error setting color:", error);
+      toast.error("Fehler beim Setzen der Farbe");
     }
   };
 
@@ -1081,8 +1139,11 @@ export function QuickNotesList({
     return (
       <div
         key={note.id}
-        className="p-3 pb-12 rounded-lg border transition-all hover:shadow-sm bg-card border-l-4 group relative"
-        style={{ borderLeftColor: note.color || "#3b82f6" }}
+        className="p-3 pb-12 rounded-lg border transition-all hover:shadow-sm border-l-4 group relative"
+        style={{ 
+          borderLeftColor: note.color || "#3b82f6",
+          backgroundColor: note.color ? `${note.color}20` : undefined // 20 = 12% opacity in hex
+        }}
         onClick={() => onNoteClick?.(note)}
       >
         <div className="flex items-start justify-between gap-2">
@@ -1502,6 +1563,39 @@ export function QuickNotesList({
                       </DropdownMenuSubContent>
                     </DropdownMenuPortal>
                   </DropdownMenuSub>
+
+                  {/* Color Submenu */}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Palette className="h-3 w-3 mr-2" />
+                      Farbe
+                      {note.color && (
+                        <span 
+                          className="ml-auto w-3 h-3 rounded-full border"
+                          style={{ backgroundColor: note.color }}
+                        />
+                      )}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        <div className="flex flex-wrap gap-1.5 p-2 max-w-[140px]">
+                          {noteColors.map((color) => (
+                            <button
+                              key={color.value || 'default'}
+                              onClick={() => handleSetColor(note.id, color.value)}
+                              className={cn(
+                                "w-6 h-6 rounded-full border-2 transition-all hover:scale-110",
+                                note.color === color.value ? "border-primary ring-2 ring-primary/30" : "border-transparent",
+                                !color.value && "bg-background border-border"
+                              )}
+                              style={color.value ? { backgroundColor: color.value } : undefined}
+                              title={color.label}
+                            />
+                          ))}
+                        </div>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
                   
                   {/* Share option - only for own notes */}
                   {note.user_id === user?.id && (
@@ -1645,9 +1739,37 @@ export function QuickNotesList({
 
   return (
     <>
+      {/* Search Bar */}
+      <div className="px-4 pt-3 pb-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Notizen durchsuchen..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 pl-8 pr-8 text-sm"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+        {searchQuery && (
+          <p className="text-xs text-muted-foreground mt-1.5">
+            {filteredNotes.length} von {notes.length} Notizen gefunden
+          </p>
+        )}
+      </div>
+      
       <ScrollArea style={{ height: maxHeight }}>
         <DragDropContext onDragEnd={handleNoteDragEnd}>
-          <div className="space-y-4 p-4">
+          <div className="space-y-4 p-4 pt-0">
             {/* Priority Groups */}
             {groups.map((group, index) => (
               <div key={group.level}>
