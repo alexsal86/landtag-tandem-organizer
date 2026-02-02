@@ -6920,20 +6920,24 @@ export type Database = {
           archived_at: string | null
           category: string | null
           color: string | null
+          color_full_card: boolean | null
           content: string
           created_at: string
+          decision_archived_info: Json | null
           decision_id: string | null
           deleted_at: string | null
           follow_up_date: string | null
           id: string
           is_archived: boolean | null
           is_pinned: boolean | null
+          meeting_archived_info: Json | null
           meeting_id: string | null
           meeting_result: string | null
           pending_for_jour_fixe: boolean | null
           permanent_delete_at: string | null
           priority_level: number | null
           tags: string[] | null
+          task_archived_info: Json | null
           task_id: string | null
           title: string | null
           updated_at: string
@@ -6944,20 +6948,24 @@ export type Database = {
           archived_at?: string | null
           category?: string | null
           color?: string | null
+          color_full_card?: boolean | null
           content: string
           created_at?: string
+          decision_archived_info?: Json | null
           decision_id?: string | null
           deleted_at?: string | null
           follow_up_date?: string | null
           id?: string
           is_archived?: boolean | null
           is_pinned?: boolean | null
+          meeting_archived_info?: Json | null
           meeting_id?: string | null
           meeting_result?: string | null
           pending_for_jour_fixe?: boolean | null
           permanent_delete_at?: string | null
           priority_level?: number | null
           tags?: string[] | null
+          task_archived_info?: Json | null
           task_id?: string | null
           title?: string | null
           updated_at?: string
@@ -6968,20 +6976,24 @@ export type Database = {
           archived_at?: string | null
           category?: string | null
           color?: string | null
+          color_full_card?: boolean | null
           content?: string
           created_at?: string
+          decision_archived_info?: Json | null
           decision_id?: string | null
           deleted_at?: string | null
           follow_up_date?: string | null
           id?: string
           is_archived?: boolean | null
           is_pinned?: boolean | null
+          meeting_archived_info?: Json | null
           meeting_id?: string | null
           meeting_result?: string | null
           pending_for_jour_fixe?: boolean | null
           permanent_delete_at?: string | null
           priority_level?: number | null
           tags?: string[] | null
+          task_archived_info?: Json | null
           task_id?: string | null
           title?: string | null
           updated_at?: string

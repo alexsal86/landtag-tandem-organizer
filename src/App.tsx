@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +10,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { MatrixClientProvider } from "@/contexts/MatrixClientContext";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { GlobalSearchCommand } from "@/components/GlobalSearchCommand";
+import { GlobalQuickNoteDialog } from "@/components/GlobalQuickNoteDialog";
 import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
 import CreateTask from "./pages/CreateTask";
@@ -35,19 +37,30 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TenantProvider>
-        <AppSettingsProvider>
-          <NotificationProvider>
-            <MatrixClientProvider>
-              <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <GlobalSearchCommand />
-                <Routes>
+// Inner component to use hooks
+const AppContent = () => {
+  const [quickNoteOpen, setQuickNoteOpen] = useState(false);
+
+  // Global keyboard shortcut: Cmd/Ctrl + Shift + N
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        setQuickNoteOpen(true);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  return (
+    <>
+      <Toaster />
+      <Sonner />
+      <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
+      <BrowserRouter>
+        <GlobalSearchCommand />
+        <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/dashboard" element={<Index />} />
                 <Route path="/mywork" element={<Index />} />
@@ -96,7 +109,20 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
-            </TooltipProvider>
+            </>
+          );
+        };
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <TenantProvider>
+        <AppSettingsProvider>
+          <NotificationProvider>
+            <MatrixClientProvider>
+              <TooltipProvider>
+                <AppContent />
+              </TooltipProvider>
             </MatrixClientProvider>
           </NotificationProvider>
         </AppSettingsProvider>

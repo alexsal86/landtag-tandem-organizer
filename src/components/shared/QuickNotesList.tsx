@@ -61,11 +61,15 @@ import { NoteLinkedBadge } from "@/components/shared/NoteLinkedBadge";
 import { NoteLinkedDetails } from "@/components/shared/NoteLinkedDetails";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 
+// Type for archived info from database (JSON)
+type ArchivedInfo = { id: string; title: string; archived_at: string } | null;
+
 export interface QuickNote {
   id: string;
   title: string | null;
   content: string;
   color: string | null;
+  color_full_card?: boolean;
   is_pinned: boolean;
   created_at: string;
   updated_at: string;
@@ -79,6 +83,10 @@ export interface QuickNote {
   is_shared?: boolean;
   share_count?: number;
   pending_for_jour_fixe?: boolean;
+  can_edit?: boolean; // For shared notes with edit permission
+  task_archived_info?: ArchivedInfo | unknown;
+  decision_archived_info?: ArchivedInfo | unknown;
+  meeting_archived_info?: ArchivedInfo | unknown;
   shared_with_users?: Array<{
     id: string;
     display_name: string | null;
@@ -138,6 +146,7 @@ export function QuickNotesList({
   // Confirmation dialogs state
   const [confirmDeleteTaskNote, setConfirmDeleteTaskNote] = useState<QuickNote | null>(null);
   const [confirmDeleteLinkedNote, setConfirmDeleteLinkedNote] = useState<QuickNote | null>(null);
+  const [confirmRemoveDecision, setConfirmRemoveDecision] = useState<QuickNote | null>(null);
   const [deleteLinkedTask, setDeleteLinkedTask] = useState(true);
   const [deleteLinkedDecision, setDeleteLinkedDecision] = useState(true);
   const [deleteLinkedMeeting, setDeleteLinkedMeeting] = useState(false);
@@ -167,8 +176,9 @@ export function QuickNotesList({
         supabase
           .from("quick_notes")
           .select(`
-            id, title, content, color, is_pinned, created_at, updated_at, user_id,
+            id, title, content, color, color_full_card, is_pinned, created_at, updated_at, user_id,
             is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
+            task_archived_info, decision_archived_info, meeting_archived_info,
             meetings!meeting_id(title, meeting_date)
           `)
           .eq("user_id", user.id)
@@ -178,7 +188,7 @@ export function QuickNotesList({
           .order("created_at", { ascending: false }),
         supabase
           .from("quick_note_shares")
-          .select("note_id")
+          .select("note_id, permission_type")
           .eq("shared_with_user_id", user.id),
         supabase
           .from("quick_note_global_shares")
@@ -236,8 +246,9 @@ export function QuickNotesList({
         const { data: individuallySharedData } = await supabase
           .from("quick_notes")
           .select(`
-            id, title, content, color, is_pinned, created_at, updated_at, user_id,
-            is_archived, task_id, meeting_id, priority_level, follow_up_date, pending_for_jour_fixe,
+            id, title, content, color, color_full_card, is_pinned, created_at, updated_at, user_id,
+            is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
+            task_archived_info, decision_archived_info, meeting_archived_info,
             meetings!meeting_id(title, meeting_date)
           `)
           .in("id", individualNoteIds)
@@ -251,11 +262,15 @@ export function QuickNotesList({
             .select("user_id, display_name, avatar_url")
             .in("user_id", ownerIds);
 
-          sharedNotes = individuallySharedData.map(note => ({
-            ...note,
-            is_shared: true,
-            owner: profiles?.find(p => p.user_id === note.user_id) || null
-          })) as QuickNote[];
+          sharedNotes = individuallySharedData.map(note => {
+            const shareInfo = individualShares?.find(s => s.note_id === note.id);
+            return {
+              ...note,
+              is_shared: true,
+              can_edit: shareInfo?.permission_type === 'edit',
+              owner: profiles?.find(p => p.user_id === note.user_id) || null
+            };
+          }) as QuickNote[];
         }
       }
 
@@ -561,6 +576,90 @@ export function QuickNotesList({
     } catch (error) {
       console.error("Error setting color:", error);
       toast.error("Fehler beim Setzen der Farbe");
+    }
+  };
+
+  // Set color full card mode
+  const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
+    if (!user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("quick_notes")
+        .update({ color_full_card: fullCard })
+        .eq("id", noteId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      
+      toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
+      loadNotes();
+    } catch (error) {
+      console.error("Error setting color mode:", error);
+      toast.error("Fehler beim Setzen des Farbmodus");
+    }
+  };
+
+  // Remove decision from note (archive the decision)
+  const removeDecisionFromNote = async (note: QuickNote) => {
+    if (!note.decision_id || !user?.id) return;
+    
+    try {
+      // Get decision title for archive info
+      const { data: decisionData } = await supabase
+        .from('task_decisions')
+        .select('title')
+        .eq('id', note.decision_id)
+        .single();
+      
+      // Archive the decision (using archived_at field)
+      await supabase
+        .from('task_decisions')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', note.decision_id);
+      
+      // Remove link from note and store archived info
+      const archivedInfo = decisionData ? {
+        id: note.decision_id,
+        title: decisionData.title,
+        archived_at: new Date().toISOString()
+      } : null;
+      
+      await supabase
+        .from("quick_notes")
+        .update({ 
+          decision_id: null,
+          decision_archived_info: archivedInfo
+        })
+        .eq("id", note.id)
+        .eq("user_id", user.id);
+      
+      toast.success("Entscheidungsanfrage zurückgenommen");
+      setConfirmRemoveDecision(null);
+      loadNotes();
+    } catch (error) {
+      console.error("Error removing decision:", error);
+      toast.error("Fehler beim Zurücknehmen der Entscheidung");
+    }
+  };
+
+  // Cleanup deleted link - called when linked item is not found
+  const cleanupDeletedLink = async (noteId: string, field: 'task_id' | 'decision_id' | 'meeting_id') => {
+    if (!user?.id) return;
+    
+    try {
+      await supabase
+        .from("quick_notes")
+        .update({ [field]: null })
+        .eq("id", noteId)
+        .eq("user_id", user.id);
+      
+      loadNotes();
+    } catch (error) {
+      console.error(`Error cleaning up ${field}:`, error);
     }
   };
 
@@ -930,16 +1029,21 @@ export function QuickNotesList({
           user_id: user.id
         });
 
-      // 2. Update the note with user_id filter for RLS compliance
-      const { data, error } = await supabase
+      // 2. Update the note - handle both own notes and shared notes with edit permission
+      let updateQuery = supabase
         .from("quick_notes")
         .update({ 
           title: editTitle.trim() || null,
           content: editContent.trim()
         })
-        .eq("id", editingNote.id)
-        .eq("user_id", user.id)
-        .select();
+        .eq("id", editingNote.id);
+      
+      // For own notes, add user_id filter; for shared notes with edit permission, RLS handles it
+      if (editingNote.user_id === user.id) {
+        updateQuery = updateQuery.eq("user_id", user.id);
+      }
+      
+      const { data, error } = await updateQuery.select();
 
       if (error) throw error;
       
@@ -1142,7 +1246,11 @@ export function QuickNotesList({
         className="p-3 pb-12 rounded-lg border transition-all hover:shadow-sm border-l-4 group relative"
         style={{ 
           borderLeftColor: note.color || "#3b82f6",
-          backgroundColor: note.color ? `${note.color}20` : undefined // 20 = 12% opacity in hex
+          backgroundColor: note.color && note.color_full_card 
+            ? `${note.color}40` // 25% opacity for full card
+            : note.color 
+              ? `${note.color}20` // 12% opacity for accent
+              : undefined
         }}
         onClick={() => onNoteClick?.(note)}
       >
@@ -1347,7 +1455,7 @@ export function QuickNotesList({
                         <TooltipContent side="top">{note.task_id ? "Aufgabe entfernen" : "Als Aufgabe"}</TooltipContent>
                       </Tooltip>
                       
-                      {/* Decision */}
+                      {/* Decision - toggle behavior */}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -1356,17 +1464,18 @@ export function QuickNotesList({
                             className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.decision_id && "text-purple-600")}
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (!note.decision_id) {
+                              if (note.decision_id) {
+                                setConfirmRemoveDecision(note);
+                              } else {
                                 setNoteForDecision(note);
                                 setDecisionCreatorOpen(true);
                               }
                             }}
-                            disabled={!!note.decision_id}
                           >
                             <Vote className="h-3 w-3" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="top">{note.decision_id ? "Entscheidung aktiv" : "Als Entscheidung"}</TooltipContent>
+                        <TooltipContent side="top">{note.decision_id ? "Entscheidung zurücknehmen" : "Als Entscheidung"}</TooltipContent>
                       </Tooltip>
                       
                       {/* Follow-up */}
@@ -1442,7 +1551,7 @@ export function QuickNotesList({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   {/* PRIMÄRE AKTIONEN */}
-                  {note.user_id === user?.id && (
+                  {(note.user_id === user?.id || note.can_edit) && (
                     <DropdownMenuItem onClick={() => openEditDialog(note)}>
                       <Pencil className="h-3 w-3 mr-2" />
                       Bearbeiten
@@ -1593,6 +1702,20 @@ export function QuickNotesList({
                             />
                           ))}
                         </div>
+                        {note.color && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <div className="px-2 py-1.5">
+                              <label className="flex items-center gap-2 text-xs cursor-pointer">
+                                <Checkbox 
+                                  checked={note.color_full_card ?? false}
+                                  onCheckedChange={(checked) => handleSetColorMode(note.id, !!checked)}
+                                />
+                                Ganze Card einfärben
+                              </label>
+                            </div>
+                          </>
+                        )}
                       </DropdownMenuSubContent>
                     </DropdownMenuPortal>
                   </DropdownMenuSub>
@@ -2067,6 +2190,32 @@ export function QuickNotesList({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Aufgabe löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Remove Decision Dialog */}
+      <AlertDialog 
+        open={!!confirmRemoveDecision} 
+        onOpenChange={(open) => !open && setConfirmRemoveDecision(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Entscheidungsanfrage zurücknehmen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Die Entscheidungsanfrage wird archiviert und von dieser Notiz entfernt. 
+              Bisherige Antworten bleiben im Archiv erhalten.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (confirmRemoveDecision) removeDecisionFromNote(confirmRemoveDecision);
+              }}
+            >
+              Zurücknehmen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

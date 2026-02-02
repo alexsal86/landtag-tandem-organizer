@@ -271,9 +271,12 @@ export const CustomizableDashboard: React.FC = () => {
       
       {/* Content Container */}
       <div className="p-6">
-        {/* Dynamic Greeting Section */}
-        <div className="mb-8">
-          <DashboardGreetingSection />
+        {/* News Section - MOVED UP */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-foreground mb-4">
+            Aktuelle Nachrichten
+          </h2>
+          <NewsWidget />
         </div>
 
         {/* Quick Actions - Full Width Separator */}
@@ -284,12 +287,9 @@ export const CustomizableDashboard: React.FC = () => {
           />
         </div>
 
-        {/* News Section */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground mb-4">
-            Aktuelle Nachrichten
-          </h2>
-          <NewsWidget />
+        {/* Dynamic Greeting Section - MOVED DOWN */}
+        <div className="mb-8">
+          <DashboardGreetingSection />
         </div>
 
       <Separator className="my-8" />
