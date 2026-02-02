@@ -1,379 +1,274 @@
 
-# Plan: Meeting-Korrekturen (Teil 5) - Umfassende Fehlerbehebung
+# Plan: Meeting-Korrekturen (Teil 6) - Umfassende Fehlerbehebung
 
-## Zusammenfassung der Probleme und Lösungen
-
----
-
-## 1. Kalender-Zeiten werden falsch gespeichert
-
-### Problem A: Zeitverschiebung bei Erstellung
-**Ursache:** Der Timezone-Offset-Code in Zeilen 720-726 hat einen Logikfehler. JavaScript's `getTimezoneOffset()` gibt die Differenz in Minuten von UTC zu lokaler Zeit zurück, aber mit umgekehrtem Vorzeichen! Wenn CET = UTC+1, dann gibt `getTimezoneOffset()` -60 zurück, nicht +60.
-
-Aktueller (falscher) Code:
-```typescript
-const timezoneOffset = -now.getTimezoneOffset(); // FALSCH: negiert nochmal!
-```
-
-Das Ergebnis: Bei CET (UTC+1) wird `+01:00` erzeugt, aber weil wir `-` verwenden, wird es zu `-01:00` oder die Zeit wird falsch interpretiert.
-
-**Datenbankbeweis:**
-- Meeting Test 7: `meeting_time: 14:00:00`
-- Appointment: `start_time: 2026-02-03 13:00:00+00` (14:00 CET = 13:00 UTC ist RICHTIG!)
-- ABER Test 6: `meeting_time: 21:30:00`, Appointment: `start_time: 09:00:00+00` (völlig falsch!)
-
-Das Problem ist, dass der Appointment bei Update auf `10:00` zurückgesetzt wird weil `timeToUse` den Fallback `'10:00'` nimmt.
-
-### Problem B: Zeit wird auf 10:00 zurückgesetzt bei Speichern
-**Ursache (Zeile 2085):**
-```typescript
-const timeToUse = meetingTimeOverride || updates.meeting_time || editingMeeting?.meeting_time || '10:00';
-```
-
-Wenn man die Card bearbeitet und speichert, wird `updateMeeting(meeting.id!, editingMeeting)` aufgerufen. Das `editingMeeting` enthält `meeting_time`, aber es muss korrekt übergeben werden.
-
-Das Problem: `updates` ist das `editingMeeting` Objekt, aber `meeting_time` könnte `null` oder `undefined` sein wenn es nicht explizit gesetzt wird.
-
-**Lösung:**
-1. Timezone-Berechnung vereinfachen - einfach ISO-String mit Offset verwenden:
-```typescript
-// Lokale Zeit als ISO-String mit Zeitzone
-const localDate = new Date(`${meetingDateStr}T${newMeetingTime}:00`);
-const startIso = localDate.toISOString();
-// Berechne Endzeit (1 Stunde später)
-const endDate = new Date(localDate.getTime() + 60 * 60 * 1000);
-const endIso = endDate.toISOString();
-```
-
-2. Bei `updateMeeting` sicherstellen, dass `meeting_time` IMMER aus dem editingMeeting gelesen wird:
-```typescript
-const timeToUse = editingMeeting?.meeting_time?.substring(0, 5) || meeting?.meeting_time?.substring(0, 5) || '10:00';
-```
-
-3. Auch bei Update Timezone korrekt behandeln.
+## Zusammenfassung der 9 identifizierten Probleme
 
 ---
 
-## 2. Teilnehmer in Card-Bearbeitung aktualisierbar machen
+## 1. Enter bei Zuweisung schließt Dialog UND markiert Punkt als besprochen
 
 ### Problem
-Aktuell zeigt die Card-Bearbeitung nur einen Platzhalter-Text (Zeilen 2572-2580):
-```typescript
-<p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-  Teilnehmer können nach dem Speichern in der Detailansicht bearbeitet werden.
-</p>
-```
+Im Fokus-Modus wird bei geöffnetem Zuweisungs-Dialog der Enter-Key sowohl vom Dialog als auch vom globalen handleKeyDown abgefangen. 
+
+### Ursache (FocusModeView.tsx Zeilen 111-119)
+Der aktuelle Code prüft `showAssignDialog` und gibt `return` zurück, ABER das Problem ist, dass der Select-Dialog selbst bei Enter-Auswahl das Event nicht stoppt, bevor es zum nächsten Render-Zyklus kommt.
+
+Das eigentliche Problem: Wenn man Enter im Select drückt, wird:
+1. Die Select-Option gewählt → Dialog wird geschlossen (`setShowAssignDialog(false)`)
+2. Im GLEICHEN Event-Zyklus ist `showAssignDialog` noch `true`, also wird der Guard passiert
+3. ABER im nächsten Tick ist `showAssignDialog` bereits `false` und der Event bubbled durch
 
 ### Lösung
-1. Neuen State für bearbeitete Teilnehmer:
+Das Problem ist subtiler - der Dialog schließt synchron bei onValueChange, aber das Keyboard-Event könnte danach noch feuern. Die Lösung ist, einen separaten State `dialogJustClosed` zu verwenden oder e.stopPropagation() im Select zu nutzen:
+
 ```typescript
-const [editingMeetingParticipants, setEditingMeetingParticipants] = useState<MeetingParticipant[]>([]);
+// In der Select onValueChange:
+onValueChange={(value) => {
+  if (currentItem?.id && currentItemGlobalIndex !== -1) {
+    onUpdateItem(currentItemGlobalIndex, 'assigned_to', value && value !== '__none__' ? [value] : null);
+  }
+  // Verzögert schließen damit keine weiteren Events durchkommen
+  setTimeout(() => setShowAssignDialog(false), 50);
+}}
 ```
 
-2. Beim Start der Bearbeitung Teilnehmer laden:
+ODER besser: Ein Ref nutzen das anzeigt, dass wir gerade einen Dialog geschlossen haben:
 ```typescript
-const loadEditingMeetingParticipants = async (meetingId: string) => {
-  const { data } = await supabase
-    .from('meeting_participants')
-    .select('*, user:profiles!user_id(user_id, display_name, avatar_url)')
-    .eq('meeting_id', meetingId);
-  // Transformieren und setzen
-};
-```
+const justClosedDialogRef = useRef(false);
 
-3. `MeetingParticipantsManager` in die Card-Bearbeitung integrieren statt Platzhalter-Text.
-
-4. Teilnehmer-Avatare auch im normalen Ansichtsmodus der Card anzeigen (unter dem Datum).
-
-5. Beim Speichern Teilnehmer-Änderungen anwenden.
-
----
-
-## 3. Fokus-Modus: Tastatur-Konflikte beim Zuweisungs-Dialog
-
-### Problem
-Wenn der Dialog offen ist, werden Pfeiltasten und Enter trotzdem von der globalen handleKeyDown-Funktion abgefangen (Zeilen 108-115).
-
-**Ursache:**
-```typescript
-if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-  return; // Nur für Input/Textarea!
-}
-```
-
-Der Dialog enthält aber ein `Select` Element, das weder Input noch Textarea ist.
-
-### Lösung
-Prüfen ob der Zuweisungs-Dialog offen ist:
-```typescript
-// Am Anfang von handleKeyDown:
-if (showAssignDialog) {
-  // Nur Escape erlauben um Dialog zu schließen
+// In handleKeyDown:
+if (showAssignDialog || justClosedDialogRef.current) {
   if (e.key === 'Escape') {
     e.preventDefault();
     setShowAssignDialog(false);
   }
-  return; // Alle anderen Keys ignorieren wenn Dialog offen
+  return;
 }
+
+// Beim Schließen des Dialogs:
+const handleDialogClose = (open: boolean) => {
+  if (!open) {
+    justClosedDialogRef.current = true;
+    setTimeout(() => { justClosedDialogRef.current = false; }, 100);
+  }
+  setShowAssignDialog(open);
+};
 ```
 
 ---
 
-## 4. Stern-Markierungen im Protokoll vermerken
+## 2. Tastatur-Navigation (n/p/s) für Termine funktioniert nicht
 
 ### Problem
-Die `MeetingProtocolView` zeigt keine Informationen über markierte Termine an.
+Die Tasten n, p und s sollen innerhalb des "Kommende Termine" Blocks navigieren und Sterne setzen, aber die Termine werden nicht fokussiert.
+
+### Ursache
+Der Code setzt `focusedAppointmentIndex` korrekt, ABER:
+1. Der initiale Wert ist `-1` (Zeile 88)
+2. Bei Taste `n` wird geprüft ob `focusedAppointmentIndex < 0` → dann auf 0 gesetzt
+3. ABER `appointmentsCount` ist 0, weil `onAppointmentsLoaded` nur aufgerufen wird wenn `isFocused` (Zeile 390-391)
+
+Das Problem ist, dass `onAppointmentsLoaded` nur bei fokussierten Items übergeben wird - aber der Callback kommt erst NACH dem Render, und die Tastenkürzel brauchen die Count schon vorher.
+
+Außerdem: In FocusModeUpcomingAppointments wird der `ref` nur übergeben wenn `isFocused` (Zeile 386):
+```typescript
+ref={isFocused ? upcomingApptsRef : undefined}
+```
+
+Das bedeutet, wenn man n drückt und der Block fokussiert ist, sollte es funktionieren. Aber der `focusedAppointmentIndex` startet bei -1 und muss auf 0 gesetzt werden.
 
 ### Lösung
-1. Starred appointments für das Meeting laden:
+Mehrere Korrekturen:
+
+1. Beim Fokussieren auf ein "upcoming_appointments" Item automatisch den Index initialisieren:
 ```typescript
-const loadStarredAppointments = async () => {
-  const { data } = await supabase
-    .from('starred_appointments')
-    .select(`
-      id,
-      appointment_id,
-      external_event_id,
-      appointments:appointment_id(id, title, start_time),
-      external_events:external_event_id(id, title, start_time)
-    `)
-    .eq('meeting_id', meetingId);
+// Im useEffect nach focusedItemIndex-Change:
+useEffect(() => {
+  // Reset appointment index when changing agenda items
+  setFocusedAppointmentIndex(-1);
+  
+  // If switching to upcoming_appointments, preload the count
+  if (currentItem?.system_type === 'upcoming_appointments') {
+    // The count will be set by onAppointmentsLoaded callback
+  }
+}, [focusedItemIndex]);
+```
+
+2. Den `n`-Key-Handler korrigieren um bei erstem Drücken automatisch auf 0 zu gehen:
+```typescript
+case 'n':
+  e.preventDefault();
+  if (currentItem?.system_type === 'upcoming_appointments') {
+    if (focusedAppointmentIndex < 0) {
+      setFocusedAppointmentIndex(0);
+    } else if (appointmentsCount > 0) {
+      setFocusedAppointmentIndex(prev => Math.min(prev + 1, appointmentsCount - 1));
+    }
+  }
+  break;
+```
+
+3. Der `ref` sollte IMMER übergeben werden (nicht nur bei fokus), damit `toggleStarAtIndex` funktioniert:
+```typescript
+<FocusModeUpcomingAppointments 
+  ref={upcomingApptsRef}  // IMMER ref übergeben
+  meetingDate={meeting.meeting_date}
+  meetingId={meeting.id}
+  focusedIndex={isFocused ? focusedAppointmentIndex : -1}
+  onAppointmentsLoaded={setAppointmentsCount}  // IMMER callback
+/>
+```
+
+---
+
+## 3. Teilnehmer-Auswahl in Details funktioniert nicht
+
+### Problem
+Der `InlineMeetingParticipantsEditor` zeigt die Teilnehmer an und erlaubt Hinzufügen, aber die Datenbank wird nicht aktualisiert.
+
+### Ursache
+Nach Prüfung der DB: Das Meeting "Test 7" (ID: 2d01ae3d-3c2c-4188-b777-ac86e4099dca) hat KEINE Teilnehmer in `meeting_participants`.
+
+Das bedeutet: Entweder wurden nie Teilnehmer hinzugefügt, oder die Insert-Operation schlägt fehl.
+
+Nach Code-Review des `InlineMeetingParticipantsEditor`: Die Insert-Operation sieht korrekt aus (Zeilen 67-76). Aber das Problem könnte sein:
+
+1. **RLS-Policy** blockiert das Insert
+2. Die `meetingId` ist `undefined` beim Aufruf
+
+Ich muss prüfen wie der Editor aufgerufen wird:
+
+In MeetingsView.tsx wird `InlineMeetingParticipantsEditor` verwendet mit:
+```typescript
+<InlineMeetingParticipantsEditor meetingId={editingMeeting.id!} />
+```
+
+Das Problem: `editingMeeting.id` könnte `undefined` sein wenn man ein neues Meeting erstellt vs. ein bestehendes bearbeitet.
+
+### Lösung
+1. Prüfen dass `meetingId` immer vorhanden ist bevor der Editor gerendert wird
+2. Error-Handling und Console-Logs hinzufügen um das Problem zu diagnostizieren:
+
+```typescript
+const handleAddParticipant = async (user: { id: string; display_name: string }) => {
+  if (!meetingId) {
+    console.error('InlineMeetingParticipantsEditor: No meetingId provided!');
+    return;
+  }
+  if (participants.some(p => p.user_id === user.id)) {
+    console.log('User already participant');
+    return;
+  }
+
+  console.log('Adding participant:', user.id, 'to meeting:', meetingId);
+  
+  const { data, error } = await supabase
+    .from('meeting_participants')
+    .insert({
+      meeting_id: meetingId,
+      user_id: user.id,
+      role: 'participant',
+      status: 'pending'
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding participant:', error);
+    return;
+  }
+  
+  console.log('Participant added successfully:', data);
+  // ... rest
+};
+```
+
+3. Sicherstellen dass der Editor nur gerendert wird wenn `editingMeeting?.id` existiert:
+```typescript
+{editingMeeting?.id ? (
+  <InlineMeetingParticipantsEditor meetingId={editingMeeting.id} />
+) : (
+  <p className="text-xs text-muted-foreground">Speichern Sie zuerst um Teilnehmer hinzuzufügen.</p>
+)}
+```
+
+---
+
+## 4. Teilnehmer in "Meine Arbeit" Jour fixe Tab anzeigen
+
+### Problem
+Die `MyWorkJourFixeTab` zeigt keine Teilnehmer bei den Meetings an.
+
+### Lösung
+Erweitern des Meeting-Queries und UI:
+
+```typescript
+// Interface erweitern
+interface Meeting {
+  id: string;
+  title: string;
+  meeting_date: string;
+  meeting_time?: string | null;
+  status: string;
+  description?: string | null;
+  participants?: { user_id: string; user: { display_name: string | null; avatar_url: string | null } }[];
+}
+
+// Query erweitern
+const { data: upcoming, error: upcomingError } = await supabase
+  .from("meetings")
+  .select(`
+    id, title, meeting_date, meeting_time, status, description,
+    participants:meeting_participants(
+      user_id,
+      user:profiles!user_id(display_name, avatar_url)
+    )
+  `)
+  .eq("user_id", user.id)
+  // ...rest
+```
+
+Da der Join möglicherweise nicht funktioniert (wie beim UserSelector), alternative Lösung mit separatem Query:
+```typescript
+// Nach dem Laden der Meetings:
+const loadParticipantsForMeetings = async (meetingIds: string[]) => {
+  if (meetingIds.length === 0) return;
+  
+  const { data: participants } = await supabase
+    .from('meeting_participants')
+    .select('meeting_id, user_id')
+    .in('meeting_id', meetingIds);
+  
+  if (!participants) return;
+  
+  const userIds = [...new Set(participants.map(p => p.user_id))];
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('user_id, display_name, avatar_url')
+    .in('user_id', userIds);
+  
+  // Combine and set state
   // ...
 };
 ```
 
-2. Neue Sektion "Besprochene Termine" im Protokoll nach den Tagesordnungspunkten:
+UI mit Avataren:
 ```typescript
-{starredAppointments.length > 0 && (
-  <div className="space-y-4 mt-8">
-    <h3 className="text-xl font-semibold">Markierte Termine zur Besprechung</h3>
-    {starredAppointments.map(apt => (
-      <div key={apt.id} className="flex items-center gap-2">
-        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-        <span>{apt.title}</span>
-        <span className="text-muted-foreground">
-          ({format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm')})
-        </span>
-      </div>
-    ))}
-  </div>
-)}
-```
-
----
-
-## 5. Gebündelte Aufgabe für markierte Termine erstellen
-
-### Problem
-Nach Beendigung der Besprechung sollen markierte Termine als eine Aufgabe an alle Teilnehmer zugewiesen werden.
-
-### Lösung
-In `archiveMeeting` (nach Step 5, vor Step 6) hinzufügen:
-
-```typescript
-// Step 5b: Create task for starred appointments
-const { data: starredAppts } = await supabase
-  .from('starred_appointments')
-  .select(`
-    id,
-    appointment_id,
-    external_event_id,
-    appointments:appointment_id(title, start_time),
-    external_events:external_event_id(title, start_time)
-  `)
-  .eq('meeting_id', meeting.id);
-
-if (starredAppts && starredAppts.length > 0) {
-  // Get all meeting participants
-  const { data: participants } = await supabase
-    .from('meeting_participants')
-    .select('user_id')
-    .eq('meeting_id', meeting.id);
-  
-  const participantIds = participants?.map(p => p.user_id) || [user.id];
-  
-  // Build task description with all starred appointments
-  const appointmentsList = starredAppts.map(s => {
-    const apt = s.appointments || s.external_events;
-    return `- ${apt?.title} (${format(new Date(apt?.start_time), 'dd.MM.yyyy HH:mm')})`;
-  }).join('\n');
-  
-  // Create one task for each participant
-  for (const userId of participantIds) {
-    await supabase.from('tasks').insert({
-      user_id: user.id,
-      title: `Vorbereitung: Markierte Termine aus ${meeting.title}`,
-      description: `Folgende Termine wurden in der Besprechung als besonders wichtig markiert:\n\n${appointmentsList}`,
-      priority: 'medium',
-      category: 'meeting',
-      status: 'todo',
-      assigned_to: userId,
-      tenant_id: currentTenant?.id,
-      due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 Tage
-      source_meeting_id: meeting.id
-    });
-  }
-}
-```
-
----
-
-## 6. Tastatur-Auswahl für Sterne
-
-### Umsetzung
-Ja, das ist möglich! Im Fokus-Modus bei "Kommende Termine" System-Item:
-- Neues Tastenkürzel `s` für "Stern toggle"
-- Fokussierter Termin innerhalb der Liste mit `n`/`p` (next/previous) navigierbar
-
-**Implementierung in FocusModeView:**
-```typescript
-// State für fokussierten Termin innerhalb des System-Items
-const [focusedAppointmentIndex, setFocusedAppointmentIndex] = useState(0);
-
-// Keyboard shortcuts:
-case 'n': // Next appointment within system item
-  if (currentItem?.system_type === 'upcoming_appointments') {
-    setFocusedAppointmentIndex(prev => prev + 1);
-  }
-  break;
-case 'p': // Previous appointment
-  if (currentItem?.system_type === 'upcoming_appointments') {
-    setFocusedAppointmentIndex(prev => Math.max(0, prev - 1));
-  }
-  break;
-case 's': // Toggle star
-  if (currentItem?.system_type === 'upcoming_appointments') {
-    toggleStarForFocusedAppointment();
-  }
-  break;
-```
-
-Legende erweitern:
-```
-s → Stern für markierten Termin setzen/entfernen (bei "Kommende Termine")
-n/p → Im Termin-Block navigieren
-```
-
----
-
-## 7. Archivseite: Abstand und Ansichts-Toggle
-
-### Problem A: Fehlender Abstand
-Die `MeetingArchiveView` hat direkt `<div className="space-y-6">` ohne Container-Padding.
-
-### Lösung
-Standard-Container wie andere Seiten verwenden:
-```typescript
-<div className="p-6 space-y-6">
-```
-
-### Problem B: Keine Ansichts-Auswahl
-Aktuell nur Card-Ansicht vorhanden (Zeilen 200-287).
-
-### Lösung
-1. State für Ansichtsmodus:
-```typescript
-const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
-```
-
-2. Toggle-Button in der Header-Zeile:
-```typescript
-<div className="flex items-center gap-2">
-  <Button
-    variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
-    size="sm"
-    onClick={() => setViewMode('cards')}
-  >
-    <LayoutGrid className="h-4 w-4" />
-  </Button>
-  <Button
-    variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-    size="sm"
-    onClick={() => setViewMode('list')}
-  >
-    <List className="h-4 w-4" />
-  </Button>
-</div>
-```
-
-3. Listen-Ansicht als Alternative:
-```typescript
-{viewMode === 'list' ? (
-  <div className="border rounded-lg divide-y">
-    {filteredMeetings.map(meeting => (
-      <div key={meeting.id} className="flex items-center justify-between p-4 hover:bg-muted/50">
-        <div className="flex items-center gap-4">
-          <div>
-            <span className="font-medium">{meeting.title}</span>
-            <p className="text-sm text-muted-foreground">
-              {format(new Date(meeting.meeting_date), 'PPP', { locale: de })}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Action buttons */}
-        </div>
-      </div>
-    ))}
-  </div>
-) : (
-  /* Existing card grid */
-)}
-```
-
----
-
-## Zusammenfassung der Änderungen
-
-| # | Datei | Änderung |
-|---|-------|----------|
-| 1 | `MeetingsView.tsx` | Timezone-Berechnung korrigieren mit ISO-Strings |
-| 2 | `MeetingsView.tsx` | `timeToUse` Logik in updateMeeting korrigieren |
-| 3 | `MeetingsView.tsx` | Teilnehmer-State und -Bearbeitung in Card |
-| 4 | `MeetingsView.tsx` | Teilnehmer-Avatare auf Card anzeigen |
-| 5 | `FocusModeView.tsx` | `showAssignDialog`-Check in handleKeyDown |
-| 6 | `MeetingProtocolView.tsx` | Starred appointments laden und anzeigen |
-| 7 | `MeetingsView.tsx` | Aufgabe für starred appointments in archiveMeeting |
-| 8 | `FocusModeView.tsx` | Tastenkürzel s/n/p für Stern-Navigation |
-| 9 | `MeetingArchiveView.tsx` | Container-Padding hinzufügen |
-| 10 | `MeetingArchiveView.tsx` | Ansichts-Toggle (List/Cards) implementieren |
-
----
-
-## Technische Details
-
-### Timezone-Korrektur (Detail)
-```typescript
-// VORHER (falsch):
-const timezoneOffset = -now.getTimezoneOffset();
-start_time: `${meetingDateStr}T${newMeetingTime}:00${tzString}`
-
-// NACHHER (korrekt):
-// Erstelle ein Date-Objekt in lokaler Zeit
-const localDateTime = new Date(`${meetingDateStr}T${newMeetingTime}:00`);
-// Konvertiere zu ISO-String (wird automatisch zu UTC mit korrektem Offset)
-const start_time = localDateTime.toISOString();
-const end_time = new Date(localDateTime.getTime() + 60 * 60 * 1000).toISOString();
-```
-
-### Participant Avatar Display (Detail)
-```typescript
-// In der Card-Ansicht nach dem Ort/Datum:
 {meeting.participants && meeting.participants.length > 0 && (
-  <div className="flex items-center gap-1 mt-2">
-    <Users className="h-3.5 w-3.5 text-muted-foreground" />
-    <div className="flex -space-x-2">
-      {meeting.participants.slice(0, 5).map(p => (
-        <Avatar key={p.user_id} className="h-6 w-6 border-2 border-background">
+  <div className="flex items-center gap-1 ml-6 mt-1">
+    <Users className="h-3 w-3 text-muted-foreground" />
+    <div className="flex -space-x-1">
+      {meeting.participants.slice(0, 3).map(p => (
+        <Avatar key={p.user_id} className="h-5 w-5 border border-background">
           <AvatarImage src={p.user?.avatar_url} />
-          <AvatarFallback className="text-xs">
+          <AvatarFallback className="text-[8px]">
             {getInitials(p.user?.display_name)}
           </AvatarFallback>
         </Avatar>
       ))}
-      {meeting.participants.length > 5 && (
-        <span className="text-xs text-muted-foreground ml-2">
-          +{meeting.participants.length - 5}
+      {meeting.participants.length > 3 && (
+        <span className="text-xs text-muted-foreground ml-1">
+          +{meeting.participants.length - 3}
         </span>
       )}
     </div>
@@ -383,15 +278,316 @@ const end_time = new Date(localDateTime.getTime() + 60 * 60 * 1000).toISOString(
 
 ---
 
+## 5. Nach Archivierung zeigt alte Agenda statt leere Ansicht
+
+### Problem
+Nach `archiveMeeting` wird `setActiveMeeting(null)` aufgerufen (Zeile 1289), aber die UI zeigt noch die alte Agenda.
+
+### Ursache
+Der State wird korrekt auf `null` gesetzt, aber möglicherweise:
+1. Die Komponente wird nicht neu gerendert
+2. Es gibt einen anderen State der die Ansicht steuert
+
+Nach Code-Review: Die Steuerung erfolgt über `activeMeeting`. Wenn `activeMeeting` null ist, sollte die normale Meeting-Liste angezeigt werden.
+
+Das Problem könnte sein, dass `loadMeetings()` (Zeile 1293) asynchron ist und ein Re-Render vor dem Nullsetzen auslöst.
+
+### Lösung
+Die Reihenfolge und Timing korrigieren:
+
+```typescript
+// Step 7: Reset ALL related state BEFORE reloading
+console.log('Step 7: Resetting all meeting state...');
+setActiveMeeting(null);
+setActiveMeetingId(null);
+setAgendaItems([]);  // WICHTIG: Auch Agenda zurücksetzen!
+setLinkedQuickNotes([]);
+setShowFocusMode(false);  // Falls Fokus-Modus aktiv war
+
+console.log('Step 8: Reloading meetings...');
+await loadMeetings();
+```
+
+---
+
+## 6. Nachbereitung enthält keine zugewiesene Person und kein Ergebnis
+
+### Problem
+Die Nachbereitungs-Aufgabe für "Test 7" hat keine Subtasks mit den Ergebnissen.
+
+### Ursache (Datenbank-Analyse)
+Die Agenda-Items zeigen:
+- "Begrüßung" hat `assigned_to: [ff0e6d83...]` UND `result_text: "Das ist eine Besprechungsnotiz..."` 
+- Dies sollte in Step 3 (Zeilen 1081-1112) eine standalone-Aufgabe erstellen
+
+ABER: Die Prüfung ist:
+```typescript
+const itemsWithAssignment = agendaItemsData?.filter(item => 
+  item.assigned_to && item.result_text?.trim() && !item.task_id
+) || [];
+```
+
+Das Problem: `assigned_to` ist ein Array `[ff0e6d83...]`, und die Prüfung `item.assigned_to` ist truthy. Das sollte funktionieren.
+
+**Eigentliches Problem gefunden:** Die DB zeigt `assigned_to: [[ff0e6d83...]]` - ein DOPPELT verschachteltes Array! 
+
+Das passiert weil im FocusModeView die Zuweisung so gemacht wird:
+```typescript
+onUpdateItem(currentItemGlobalIndex, 'assigned_to', value ? [value] : null);
+```
+
+Und dann wird das nochmal als Array gespeichert. Die DB enthält `[[userId]]` statt `[userId]`.
+
+### Lösung
+1. Die Zuweisung korrigieren - kein doppeltes Array:
+```typescript
+// In FocusModeView beim onUpdateItem:
+// Wenn value bereits ein Array ist, nicht nochmal wrappen
+onUpdateItem(currentItemGlobalIndex, 'assigned_to', value ? [value] : null);
+
+// In MeetingsView updateAgendaItem:
+// Sicherstellen dass assigned_to immer ein flaches Array ist
+const normalizedValue = field === 'assigned_to' && Array.isArray(value) 
+  ? value.flat() // Flatten falls doppelt verschachtelt
+  : value;
+```
+
+2. In archiveMeeting das doppelte Array berücksichtigen:
+```typescript
+const assignedUserId = Array.isArray(item.assigned_to) 
+  ? (Array.isArray(item.assigned_to[0]) ? item.assigned_to[0][0] : item.assigned_to[0])
+  : item.assigned_to;
+```
+
+---
+
+## 7. Aufgabe für markierte Termine wurde nicht erstellt
+
+### Problem
+Die DB zeigt 3 starred_appointments für Meeting "Test 7", aber keine Task mit "Vorbereitung: Markierte Termine".
+
+### Ursache
+In `archiveMeeting` Step 5b (Zeilen 1198-1273) wird die Aufgabe erstellt. Der Code sieht korrekt aus.
+
+Mögliche Ursachen:
+1. Die `meeting_participants` Tabelle ist leer → `participantIds = [user.id]`
+2. Das Insert schlägt fehl wegen fehlender Spalte `source_meeting_id` in `tasks` (wie die DB-Abfrage zeigte!)
+
+**Problem gefunden:** Die Tabelle `tasks` hat KEINE Spalte `source_meeting_id`! Der Insert-Versuch schlägt stillschweigend fehl.
+
+### Lösung
+1. Die `source_meeting_id` aus dem Insert entfernen (oder Spalte zur DB hinzufügen):
+```typescript
+await supabase.from('tasks').insert({
+  user_id: user.id,
+  title: `Vorbereitung: Markierte Termine aus ${meeting.title}`,
+  description: `Folgende Termine wurden...`,
+  priority: 'medium',
+  category: 'meeting',
+  status: 'todo',
+  assigned_to: participantId,
+  tenant_id: currentTenant?.id || '',
+  due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+  // source_meeting_id ENTFERNEN
+});
+```
+
+2. Besseres Error-Handling:
+```typescript
+const { error: taskError } = await supabase.from('tasks').insert({...});
+if (taskError) {
+  console.error('Error creating starred appointment task:', taskError);
+}
+```
+
+---
+
+## 8. Carryover-Items werden nicht in neue Meetings integriert
+
+### Problem
+Punkte die auf "nächste Besprechung übertragen" markiert wurden, erscheinen nicht in der neuen Besprechung.
+
+### Ursache
+Die DB zeigt 3 Einträge in `carryover_items` für template_id `0d526661...`. Diese sollten beim Erstellen eines neuen Meetings mit diesem Template geladen werden.
+
+ABER: Es gibt KEINE Funktion die `carryover_items` lädt und in neue Meetings integriert!
+
+Die Funktion `processCarryoverItems` wird bei ARCHIVIERUNG aufgerufen:
+- Wenn ein next Meeting existiert → `transferItemsToMeeting()` (direkt übertragen)
+- Wenn kein next Meeting existiert → `storeCarryoverItems()` (in Tabelle speichern)
+
+Aber wenn später ein neues Meeting erstellt wird, werden die gespeicherten Items NICHT geladen.
+
+### Lösung
+Eine neue Funktion `loadAndApplyCarryoverItems` erstellen und nach Meeting-Erstellung aufrufen:
+
+```typescript
+const loadAndApplyCarryoverItems = async (meetingId: string, templateId: string) => {
+  if (!user) return;
+  
+  try {
+    // Find pending carryover items for this template
+    const { data: pendingItems, error } = await supabase
+      .from('carryover_items')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('template_id', templateId);
+    
+    if (error || !pendingItems || pendingItems.length === 0) return;
+    
+    console.log(`📋 Found ${pendingItems.length} carryover items to apply`);
+    
+    // Get current max order_index for the new meeting
+    const { data: existingItems } = await supabase
+      .from('meeting_agenda_items')
+      .select('order_index')
+      .eq('meeting_id', meetingId)
+      .order('order_index', { ascending: false })
+      .limit(1);
+    
+    let nextOrderIndex = (existingItems?.[0]?.order_index || 0) + 1;
+    
+    // Insert carryover items into the new meeting
+    for (const item of pendingItems) {
+      await supabase.from('meeting_agenda_items').insert({
+        meeting_id: meetingId,
+        title: item.title,
+        description: item.description,
+        notes: item.notes,
+        result_text: item.result_text,
+        assigned_to: item.assigned_to,
+        order_index: nextOrderIndex++,
+        source_meeting_id: item.original_meeting_id,
+        original_meeting_date: item.original_meeting_date,
+        original_meeting_title: item.original_meeting_title,
+        carryover_notes: `Übertragen von: ${item.original_meeting_title} (${item.original_meeting_date})`
+      });
+    }
+    
+    // Delete the applied carryover items
+    const itemIds = pendingItems.map(i => i.id);
+    await supabase.from('carryover_items').delete().in('id', itemIds);
+    
+    toast({
+      title: "Übertragene Punkte hinzugefügt",
+      description: `${pendingItems.length} Punkt(e) aus vorherigen Besprechungen wurden übernommen.`
+    });
+    
+    // Reload agenda items
+    await loadAgendaItems(meetingId);
+  } catch (error) {
+    console.error('Error applying carryover items:', error);
+  }
+};
+```
+
+Aufruf nach createMeeting (nach Zeile 924):
+```typescript
+// Apply any pending carryover items
+if (data.template_id) {
+  await loadAndApplyCarryoverItems(data.id, data.template_id);
+}
+```
+
+---
+
+## 9. Was brauchen wir noch an Funktionen?
+
+### Bereits implementiert:
+- Meeting-Erstellung mit Vorlage
+- Agenda-Verwaltung (Punkte, Unterpunkte, System-Items)
+- Fokus-Modus mit Tastaturnavigation
+- Teilnehmer-Verwaltung
+- Stern-Markierungen für Termine
+- Protokoll-Ansicht
+- Archivierung mit Aufgaben-Erstellung
+- Carryover-System (mit diesem Fix komplett)
+
+### Potenzielle Erweiterungen:
+1. **E-Mail-Benachrichtigungen** für Teilnehmer bei Meeting-Einladung/Änderung
+2. **Kalender-Export** (ICS) für Meetings
+3. **Teilnehmer-Bestätigung** (Zusage/Absage per UI)
+4. **Protokoll-Versand** per E-Mail nach Archivierung
+5. **Vorlagen-Bearbeitung** direkt aus Meeting-Ansicht
+6. **Meeting-Duplikation** für schnelle Wiederholung
+7. **Statistiken** (durchschnittliche Dauer, häufigste Themen)
+
+---
+
+## Zusammenfassung der Änderungen
+
+| # | Datei | Änderung |
+|---|-------|----------|
+| 1 | `FocusModeView.tsx` | justClosedDialogRef für Enter-Konflikt |
+| 2 | `FocusModeView.tsx` | n/p/s Tastatur-Navigation korrigieren, ref immer übergeben |
+| 3 | `InlineMeetingParticipantsEditor.tsx` | Error-Logging und Validierung |
+| 3b | `MeetingsView.tsx` | Bedingtes Rendering wenn ID vorhanden |
+| 4 | `MyWorkJourFixeTab.tsx` | Teilnehmer laden und anzeigen |
+| 5 | `MeetingsView.tsx` | agendaItems und showFocusMode bei Archivierung zurücksetzen |
+| 6 | `MeetingsView.tsx` | assigned_to Array-Normalisierung |
+| 7 | `MeetingsView.tsx` | source_meeting_id aus Task-Insert entfernen |
+| 8 | `MeetingsView.tsx` | loadAndApplyCarryoverItems Funktion hinzufügen |
+
+---
+
+## Technische Details
+
+### Enter-Konflikt Lösung (Detail)
+```typescript
+// Neuer Ref am Anfang der Komponente:
+const justClosedDialogRef = useRef(false);
+
+// In handleKeyDown:
+if (showAssignDialog || justClosedDialogRef.current) {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    setShowAssignDialog(false);
+  }
+  // Alle anderen Tasten blockieren
+  return;
+}
+
+// Dialog onOpenChange:
+<Dialog 
+  open={showAssignDialog} 
+  onOpenChange={(open) => {
+    if (!open) {
+      justClosedDialogRef.current = true;
+      setTimeout(() => { justClosedDialogRef.current = false; }, 150);
+    }
+    setShowAssignDialog(open);
+  }}
+>
+```
+
+### Teilnehmer in MyWork (Detail)
+```typescript
+// State für Teilnehmer-Map
+const [meetingParticipants, setMeetingParticipants] = useState<Record<string, {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}[]>>({});
+
+// Nach loadMeetings:
+useEffect(() => {
+  const allMeetingIds = [...upcomingMeetings, ...pastMeetings].map(m => m.id);
+  if (allMeetingIds.length > 0) {
+    loadParticipantsForMeetings(allMeetingIds);
+  }
+}, [upcomingMeetings, pastMeetings]);
+```
+
+---
+
 ## Erwartete Ergebnisse
 
-1. **Kalender-Zeit korrekt** - Meeting um 21:30 erscheint um 21:30 im Kalender
-2. **Keine Zeit-Reset** - Bearbeiten ohne Änderungen behält die Zeit bei
-3. **Teilnehmer bearbeitbar** - In der Card direkt Teilnehmer hinzufügen/entfernen
-4. **Teilnehmer sichtbar** - Avatare auf der Meeting-Card
-5. **Dialog-Tasten isoliert** - Pfeiltasten/Enter funktionieren im Zuweisungs-Dialog
-6. **Protokoll mit Sternen** - Markierte Termine werden im Protokoll gelistet
-7. **Automatische Aufgaben** - Nach Archivierung erhalten alle Teilnehmer eine Aufgabe
-8. **Tastatur-Sterne** - Mit s/n/p Termine navigieren und markieren
-9. **Archiv-Abstand** - Korrektes Padding wie andere Seiten
-10. **Ansichts-Toggle** - Wechsel zwischen Listen- und Card-Ansicht
+1. Enter bei Zuweisung schließt nur den Dialog
+2. n/p/s navigieren und markieren Termine korrekt
+3. Teilnehmer werden zur Datenbank hinzugefügt
+4. Teilnehmer-Avatare in Meine Arbeit sichtbar
+5. Nach Archivierung erscheint die Meeting-Liste
+6. Nachbereitungs-Aufgaben enthalten zugewiesene Person und Ergebnis
+7. Aufgabe für markierte Termine wird erstellt
+8. Übertragene Punkte erscheinen in neuen Besprechungen
+9. Feature-Übersicht dokumentiert
