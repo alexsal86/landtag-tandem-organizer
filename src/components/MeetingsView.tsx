@@ -904,9 +904,15 @@ export function MeetingsView() {
         }
       }
       
-      // Wait a moment for the trigger to complete, then load the items
+      // Wait a moment for the trigger to complete, then load the items and apply carryover
       setTimeout(async () => {
         await loadAgendaItems(data.id);
+        
+        // Apply any pending carryover items for this template
+        if (data.template_id) {
+          await loadAndApplyCarryoverItems(data.id, data.template_id);
+        }
+        
         // Reload all meetings to show the newly created ones (filter out archived)
         if (currentTenant && user) {
           const { data: allMeetings } = await supabase
@@ -1084,13 +1090,18 @@ export function MeetingsView() {
       
       for (const item of itemsWithAssignment) {
         try {
-          const assignedUserId = Array.isArray(item.assigned_to) 
-            ? item.assigned_to[0] 
-            : item.assigned_to;
+          // Handle potentially double-nested arrays from FocusModeView assignment
+          let assignedUserId: string | null = null;
+          if (Array.isArray(item.assigned_to)) {
+            const flattened = item.assigned_to.flat();
+            assignedUserId = flattened[0] as string || null;
+          } else if (typeof item.assigned_to === 'string') {
+            assignedUserId = item.assigned_to;
+          }
           
           const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Ergebnis:**\n${item.result_text}${item.description ? `\n\n**Details:**\n${item.description}` : ''}${item.notes ? `\n\n**Notizen:**\n${item.notes}` : ''}`;
           
-          await supabase
+          const { error: taskInsertError } = await supabase
             .from('tasks')
             .insert({
               user_id: user.id,
@@ -1101,9 +1112,12 @@ export function MeetingsView() {
               status: 'todo',
               assigned_to: assignedUserId,
               tenant_id: currentTenant?.id || '',
-              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-              source_meeting_id: meeting.id
+              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
             });
+          
+          if (taskInsertError) {
+            console.error('Error inserting task for assigned item:', taskInsertError);
+          }
           
           console.log(`Created task for assigned item: ${item.title}`);
         } catch (taskCreateError) {
@@ -1251,7 +1265,7 @@ export function MeetingsView() {
             
             // Create one task for each participant
             for (const participantId of participantIds) {
-              await supabase.from('tasks').insert({
+              const { error: starredTaskError } = await supabase.from('tasks').insert({
                 user_id: user.id,
                 title: `Vorbereitung: Markierte Termine aus ${meeting.title}`,
                 description: `Folgende Termine wurden in der Besprechung als besonders wichtig markiert:\n\n${appointmentsList}`,
@@ -1260,9 +1274,12 @@ export function MeetingsView() {
                 status: 'todo',
                 assigned_to: participantId,
                 tenant_id: currentTenant?.id || '',
-                due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-                source_meeting_id: meeting.id
+                due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
               });
+              
+              if (starredTaskError) {
+                console.error('Error creating starred appointments task:', starredTaskError);
+              }
             }
             
             console.log(`Created starred appointments task for ${participantIds.length} participants`);
@@ -1285,9 +1302,14 @@ export function MeetingsView() {
       
       if (archiveError) throw archiveError;
       
-      console.log('Step 7: Setting active meeting to null...');
+      // Step 7: Reset ALL related state BEFORE reloading
+      console.log('Step 7: Resetting all meeting state...');
       setActiveMeeting(null);
       setActiveMeetingId(null);
+      setAgendaItems([]);  // Clear agenda items
+      setLinkedQuickNotes([]);  // Clear linked notes
+      setSelectedMeeting(null);  // Clear selected meeting
+      setIsFocusMode(false);  // Exit focus mode if active
       
       console.log('Step 8: Reloading meetings...');
       await loadMeetings(); // Reload to update UI
@@ -1425,6 +1447,68 @@ export function MeetingsView() {
     }
   };
 
+  const loadAndApplyCarryoverItems = async (meetingId: string, templateId: string) => {
+    if (!user) return;
+    
+    try {
+      // Find pending carryover items for this template
+      const { data: pendingItems, error } = await supabase
+        .from('carryover_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('template_id', templateId);
+      
+      if (error || !pendingItems || pendingItems.length === 0) return;
+      
+      console.log(`📋 Found ${pendingItems.length} carryover items to apply`);
+      
+      // Get current max order_index for the new meeting
+      const { data: existingItems } = await supabase
+        .from('meeting_agenda_items')
+        .select('order_index')
+        .eq('meeting_id', meetingId)
+        .order('order_index', { ascending: false })
+        .limit(1);
+      
+      let nextOrderIndex = (existingItems?.[0]?.order_index || 0) + 1;
+      
+      // Insert carryover items into the new meeting
+      for (const item of pendingItems) {
+        const { error: insertError } = await supabase.from('meeting_agenda_items').insert({
+          meeting_id: meetingId,
+          title: item.title,
+          description: item.description,
+          notes: item.notes,
+          result_text: item.result_text,
+          assigned_to: item.assigned_to,
+          order_index: nextOrderIndex++,
+          source_meeting_id: item.original_meeting_id,
+          original_meeting_date: item.original_meeting_date,
+          original_meeting_title: item.original_meeting_title,
+          carryover_notes: `Übertragen von: ${item.original_meeting_title} (${item.original_meeting_date})`
+        });
+        
+        if (insertError) {
+          console.error('Error inserting carryover item:', insertError);
+        }
+      }
+      
+      // Delete the applied carryover items
+      const itemIds = pendingItems.map(i => i.id);
+      await supabase.from('carryover_items').delete().in('id', itemIds);
+      
+      toast({
+        title: "Übertragene Punkte hinzugefügt",
+        description: `${pendingItems.length} Punkt(e) aus vorherigen Besprechungen wurden übernommen.`
+      });
+      
+      // Reload agenda items
+      await loadAgendaItems(meetingId);
+    } catch (error) {
+      console.error('Error applying carryover items:', error);
+    }
+  };
+
   const updateAgendaItemResult = async (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => {
     // Update local state immediately for responsive UI
     setAgendaItems(items => 
@@ -1497,8 +1581,14 @@ export function MeetingsView() {
   const updateAgendaItem = async (index: number, field: keyof AgendaItem, value: any) => {
     console.log('🔧 UPDATE AGENDA ITEM:', { index, field, value });
     
+    // Normalize assigned_to to prevent double-nested arrays
+    let normalizedValue = value;
+    if (field === 'assigned_to' && Array.isArray(value)) {
+      normalizedValue = value.flat(); // Flatten in case of [[userId]]
+    }
+    
     const updated = [...agendaItems];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index] = { ...updated[index], [field]: normalizedValue };
     setAgendaItems(updated);
     
     // Auto-save if item has an ID and we have a selected meeting
@@ -1506,10 +1596,12 @@ export function MeetingsView() {
       try {
         console.log('💾 Auto-saving agenda item change to database');
         
-        // For assigned_to, convert to array format for database
-        let dbValue = value;
+        // For assigned_to, ensure it's a flat array for database
+        let dbValue = normalizedValue;
         if (field === 'assigned_to') {
-          dbValue = value ? [value] : null;
+          dbValue = normalizedValue && Array.isArray(normalizedValue) && normalizedValue.length > 0 
+            ? normalizedValue.flat() 
+            : null;
         }
         
         await supabase

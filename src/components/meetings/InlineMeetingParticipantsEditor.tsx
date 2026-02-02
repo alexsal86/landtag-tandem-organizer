@@ -62,8 +62,17 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
   };
 
   const handleAddParticipant = async (user: { id: string; display_name: string }) => {
-    if (participants.some(p => p.user_id === user.id)) return;
+    if (!meetingId) {
+      console.error('InlineMeetingParticipantsEditor: No meetingId provided!');
+      return;
+    }
+    if (participants.some(p => p.user_id === user.id)) {
+      console.log('User already a participant');
+      return;
+    }
 
+    console.log('Adding participant:', user.id, 'to meeting:', meetingId);
+    
     const { data, error } = await supabase
       .from('meeting_participants')
       .insert({
@@ -75,7 +84,13 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       .select()
       .single();
 
-    if (!error && data) {
+    if (error) {
+      console.error('Error adding participant:', error);
+      return;
+    }
+    
+    if (data) {
+      console.log('Participant added successfully:', data);
       setParticipants(prev => [...prev, {
         ...data,
         user: { display_name: user.display_name, avatar_url: null }
