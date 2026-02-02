@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2 } from "lucide-react";
+import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,7 @@ import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppoi
 import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
 import { FocusModeView } from "@/components/meetings/FocusModeView";
+import { MultiUserAssignSelect } from "@/components/meetings/MultiUserAssignSelect";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface RecurrenceData {
@@ -1094,16 +1095,28 @@ export function MeetingsView() {
       
       for (const item of itemsWithAssignment) {
         try {
-          // Handle potentially double-nested arrays from FocusModeView assignment
+          // Handle assigned_to as array - tasks table only accepts single string, use first assignee
           let assignedUserId: string | null = null;
           if (Array.isArray(item.assigned_to)) {
-            const flattened = item.assigned_to.flat();
-            assignedUserId = flattened[0] as string || null;
+            const flattened = item.assigned_to.flat().filter(Boolean) as string[];
+            assignedUserId = flattened[0] || null;
           } else if (typeof item.assigned_to === 'string') {
             assignedUserId = item.assigned_to;
           }
           
-          const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Ergebnis:**\n${item.result_text}${item.description ? `\n\n**Details:**\n${item.description}` : ''}${item.notes ? `\n\n**Notizen:**\n${item.notes}` : ''}`;
+          // Build description with all assignees listed if multiple
+          const assigneeNames = Array.isArray(item.assigned_to) 
+            ? item.assigned_to.flat().filter(Boolean).map(id => {
+                const profile = profiles.find(p => p.user_id === id);
+                return profile?.display_name || 'Unbekannt';
+              }).join(', ')
+            : '';
+          
+          const multiAssigneeNote = assigneeNames && item.assigned_to && item.assigned_to.length > 1
+            ? `\n\n**Zuständige:** ${assigneeNames}`
+            : '';
+          
+          const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Ergebnis:**\n${item.result_text}${item.description ? `\n\n**Details:**\n${item.description}` : ''}${item.notes ? `\n\n**Notizen:**\n${item.notes}` : ''}${multiAssigneeNote}`;
           
           const { error: taskInsertError } = await supabase
             .from('tasks')
@@ -2785,10 +2798,39 @@ export function MeetingsView() {
                             />
                           )}
                         </div>
+                        
+                        {/* Public/Private Toggle */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <Globe className="h-3 w-3" />
+                            Sichtbarkeit
+                          </label>
+                          <div className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md">
+                            <Checkbox 
+                              id={`edit_is_public_${meeting.id}`}
+                              checked={editingMeeting?.is_public || false}
+                              onCheckedChange={(checked) => setEditingMeeting({ 
+                                ...editingMeeting!, 
+                                is_public: !!checked 
+                              })}
+                            />
+                            <label htmlFor={`edit_is_public_${meeting.id}`} className="text-sm cursor-pointer">
+                              Öffentlich für alle Teammitglieder
+                            </label>
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <>
-                        <CardTitle className="text-base">{meeting.title}</CardTitle>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          {meeting.title}
+                          {meeting.is_public && (
+                            <Badge variant="outline" className="text-xs font-normal">
+                              <Globe className="h-3 w-3 mr-1" />
+                              Öffentlich
+                            </Badge>
+                          )}
+                        </CardTitle>
                         {meeting.description && (
                           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{meeting.description}</p>
                         )}
@@ -2991,28 +3033,16 @@ export function MeetingsView() {
                            placeholder="Agenda-Punkt Titel"
                          />
                         <div className="flex items-center gap-2">
-                          <Select
-                            value={Array.isArray(item.assigned_to) && item.assigned_to.length > 0 
-                              ? item.assigned_to[0] 
-                              : 'unassigned'}
-                            onValueChange={(value) => updateAgendaItem(
+                          <MultiUserAssignSelect
+                            assignedTo={item.assigned_to}
+                            profiles={profiles}
+                            onChange={(userIds) => updateAgendaItem(
                               agendaItems.findIndex(i => i.id === item.id), 
                               'assigned_to', 
-                              value === 'unassigned' ? null : value
+                              userIds.length > 0 ? userIds : null
                             )}
-                          >
-                            <SelectTrigger className="w-[180px]">
-                              <SelectValue placeholder="Bearbeiter zuweisen" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
-                              {profiles.map((profile) => (
-                                <SelectItem key={profile.user_id} value={profile.user_id}>
-                                  {profile.display_name || 'Unbekannter Benutzer'}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            size="sm"
+                          />
                         </div>
                       </div>
                       
@@ -3174,29 +3204,17 @@ export function MeetingsView() {
                                          <EyeOff className="h-3 w-3 text-muted-foreground" />
                                        </Button>
                                      )}
-                                      <Select
-                                        value={Array.isArray(subItem.assigned_to) && subItem.assigned_to.length > 0 
-                                          ? subItem.assigned_to[0] 
-                                          : 'unassigned'}
-                                        onValueChange={(value) => {
+                                      <MultiUserAssignSelect
+                                        assignedTo={subItem.assigned_to}
+                                        profiles={profiles}
+                                        onChange={(userIds) => {
                                           const itemIndex = agendaItems.findIndex(i => i.id === subItem.id);
                                           if (itemIndex !== -1) {
-                                            updateAgendaItem(itemIndex, 'assigned_to', value === 'unassigned' ? null : value);
+                                            updateAgendaItem(itemIndex, 'assigned_to', userIds.length > 0 ? userIds : null);
                                           }
                                         }}
-                                      >
-                                        <SelectTrigger className="w-[140px] h-6 text-xs">
-                                          <SelectValue placeholder="Zuweisen" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
-                                          {profiles.map((profile) => (
-                                            <SelectItem key={profile.user_id} value={profile.user_id}>
-                                              {profile.display_name || 'Unbekannter Benutzer'}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                        size="sm"
+                                      />
                                    </div>
                                    {subItem.description && (
                                      <div className="mb-2 bg-muted/20 p-2 rounded border-l-2 border-primary/20">

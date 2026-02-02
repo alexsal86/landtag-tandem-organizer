@@ -148,6 +148,13 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
 
   const handleRoleChange = async (participantId: string, newRole: 'organizer' | 'participant' | 'optional') => {
     const participant = participants.find(p => p.id === participantId);
+    const previousRole = participant?.role || 'participant';
+    
+    // Optimistic UI: Update local state FIRST
+    setParticipants(prev => prev.map(p => 
+      p.id === participantId ? { ...p, role: newRole } : p
+    ));
+    
     const { error } = await supabase
       .from('meeting_participants')
       .update({ role: newRole })
@@ -155,6 +162,10 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
 
     if (error) {
       console.error('❌ Error updating participant role:', error);
+      // Revert on error
+      setParticipants(prev => prev.map(p => 
+        p.id === participantId ? { ...p, role: previousRole } : p
+      ));
       toast({
         title: "Fehler",
         description: "Rolle konnte nicht geändert werden.",
@@ -164,9 +175,10 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
     }
     
     console.log('✅ Role updated for', participant?.user?.display_name, 'to', newRole);
-    setParticipants(prev => prev.map(p => 
-      p.id === participantId ? { ...p, role: newRole } : p
-    ));
+    toast({
+      title: "Rolle geändert",
+      description: `${participant?.user?.display_name || 'Teilnehmer'} ist jetzt ${roleLabels[newRole].label}.`,
+    });
   };
 
   const handleRemoveParticipant = async (participantId: string) => {
