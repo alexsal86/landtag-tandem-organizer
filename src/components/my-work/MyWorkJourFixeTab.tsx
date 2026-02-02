@@ -4,12 +4,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { format, isToday, isPast } from "date-fns";
 import { de } from "date-fns/locale";
+
+interface MeetingParticipant {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
 
 interface Meeting {
   id: string;
@@ -43,6 +50,9 @@ export function MyWorkJourFixeTab() {
   const [expandedMeetingId, setExpandedMeetingId] = useState<string | null>(null);
   const [agendaItems, setAgendaItems] = useState<Record<string, AgendaItem[]>>({});
   const [loadingAgenda, setLoadingAgenda] = useState<string | null>(null);
+  
+  // State for meeting participants
+  const [meetingParticipants, setMeetingParticipants] = useState<Record<string, MeetingParticipant[]>>({});
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -53,6 +63,20 @@ export function MyWorkJourFixeTab() {
       navigate('/meetings?action=create-meeting');
     }
   }, [searchParams, setSearchParams, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      loadMeetings();
+    }
+  }, [user]);
+
+  // Load participants when meetings are loaded
+  useEffect(() => {
+    const allMeetingIds = [...upcomingMeetings, ...pastMeetings].map(m => m.id);
+    if (allMeetingIds.length > 0) {
+      loadParticipantsForMeetings(allMeetingIds);
+    }
+  }, [upcomingMeetings, pastMeetings]);
 
   useEffect(() => {
     if (user) {
@@ -103,6 +127,45 @@ export function MyWorkJourFixeTab() {
     }
   };
 
+  const loadParticipantsForMeetings = async (meetingIds: string[]) => {
+    if (meetingIds.length === 0) return;
+    
+    try {
+      const { data: participants, error: participantsError } = await supabase
+        .from('meeting_participants')
+        .select('meeting_id, user_id')
+        .in('meeting_id', meetingIds);
+      
+      if (participantsError || !participants || participants.length === 0) return;
+      
+      const userIds = [...new Set(participants.map(p => p.user_id))];
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', userIds);
+      
+      if (profilesError) return;
+      
+      // Group participants by meeting with profile data
+      const participantsByMeeting: Record<string, MeetingParticipant[]> = {};
+      participants.forEach(p => {
+        const profile = profiles?.find(prof => prof.user_id === p.user_id);
+        if (!participantsByMeeting[p.meeting_id]) {
+          participantsByMeeting[p.meeting_id] = [];
+        }
+        participantsByMeeting[p.meeting_id].push({
+          user_id: p.user_id,
+          display_name: profile?.display_name || null,
+          avatar_url: profile?.avatar_url || null
+        });
+      });
+      
+      setMeetingParticipants(participantsByMeeting);
+    } catch (error) {
+      console.error('Error loading participants:', error);
+    }
+  };
+
   const loadAgendaForMeeting = async (meetingId: string) => {
     // Already loaded
     if (agendaItems[meetingId]) return;
@@ -125,6 +188,16 @@ export function MyWorkJourFixeTab() {
     }
   };
 
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return '?';
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   const getSystemItemIcon = (systemType: string | null | undefined) => {
     if (systemType === 'quick_notes') return <StickyNote className="h-3 w-3 text-amber-500" />;
     if (systemType === 'upcoming_appointments') return <Calendar className="h-3 w-3 text-blue-500" />;
@@ -143,6 +216,7 @@ export function MyWorkJourFixeTab() {
     const isExpanded = expandedMeetingId === meeting.id;
     const meetingAgenda = agendaItems[meeting.id] || [];
     const isLoadingThisAgenda = loadingAgenda === meeting.id;
+    const participants = meetingParticipants[meeting.id] || [];
     
     // Get only main items (no parent)
     const mainItems = meetingAgenda
@@ -202,6 +276,27 @@ export function MyWorkJourFixeTab() {
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     {meeting.meeting_time.substring(0, 5)} Uhr
+                  </div>
+                )}
+                {/* Participants avatars */}
+                {participants.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Users className="h-3 w-3 text-muted-foreground" />
+                    <div className="flex -space-x-1">
+                      {participants.slice(0, 3).map(p => (
+                        <Avatar key={p.user_id} className="h-5 w-5 border border-background">
+                          <AvatarImage src={p.avatar_url || undefined} />
+                          <AvatarFallback className="text-[8px]">
+                            {getInitials(p.display_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {participants.length > 3 && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          +{participants.length - 3}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

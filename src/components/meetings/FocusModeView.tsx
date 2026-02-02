@@ -90,6 +90,8 @@ export function FocusModeView({
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const upcomingApptsRef = useRef<FocusModeUpcomingAppointmentsHandle>(null);
+  // Ref to track when dialog just closed to prevent Enter from marking items
+  const justClosedDialogRef = useRef(false);
 
   // Filter to only show main items (not sub-items) for navigation
   const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
@@ -106,16 +108,25 @@ export function FocusModeView({
     item.parent_id === currentItem?.id || item.parentLocalKey === currentItem?.id
   );
 
+  // Handle dialog close with protection against subsequent Enter key
+  const handleAssignDialogClose = (open: boolean) => {
+    if (!open) {
+      justClosedDialogRef.current = true;
+      setTimeout(() => { justClosedDialogRef.current = false; }, 150);
+    }
+    setShowAssignDialog(open);
+  };
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // If assignment dialog is open, only allow Escape to close it
-      if (showAssignDialog) {
+      // If assignment dialog is open OR just closed, block keyboard events
+      if (showAssignDialog || justClosedDialogRef.current) {
         if (e.key === 'Escape') {
           e.preventDefault();
           setShowAssignDialog(false);
         }
-        // Ignore all other keys when dialog is open
+        // Ignore all other keys when dialog is open or just closed
         return;
       }
       
@@ -383,11 +394,11 @@ export function FocusModeView({
                     {item.system_type === 'upcoming_appointments' && (
                       <div className="mt-4">
                         <FocusModeUpcomingAppointments 
-                          ref={isFocused ? upcomingApptsRef : undefined}
+                          ref={upcomingApptsRef}
                           meetingDate={meeting.meeting_date}
                           meetingId={meeting.id}
                           focusedIndex={isFocused ? focusedAppointmentIndex : -1}
-                          onAppointmentsLoaded={isFocused ? setAppointmentsCount : undefined}
+                          onAppointmentsLoaded={setAppointmentsCount}
                         />
                       </div>
                     )}
