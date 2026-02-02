@@ -135,6 +135,16 @@ export function ConfigurableTypeSettings({
   const handleSave = async () => {
     if (!editingItem?.label.trim()) return;
 
+    // Optimistic UI: Update state immediately
+    const previousItems = [...items];
+    const updatedItems = items.map(item => 
+      item.id === editingItem.id 
+        ? { ...item, label: editingItem.label, color: editingItem.color, icon: editingItem.icon }
+        : item
+    );
+    setItems(updatedItems);
+    setEditingItem(null);
+
     try {
       const updateData: any = {
         name: editingItem.label.toLowerCase().replace(/\s+/g, '_'),
@@ -149,10 +159,13 @@ export function ConfigurableTypeSettings({
       }
 
       const { error } = await supabase.from(tableName).update(updateData).eq('id', editingItem.id);
-      if (error) throw error;
+      
+      if (error) {
+        // Rollback on error
+        setItems(previousItems);
+        throw error;
+      }
 
-      await loadItems();
-      setEditingItem(null);
       toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich aktualisiert.` });
     } catch (error: any) {
       console.error(`Error updating ${entityName}:`, error);
@@ -174,11 +187,22 @@ export function ConfigurableTypeSettings({
   };
 
   const toggleActive = async (id: string, isActive: boolean) => {
+    // Optimistic UI: Update state immediately
+    const previousItems = [...items];
+    const updatedItems = items.map(item => 
+      item.id === id ? { ...item, is_active: !isActive } : item
+    );
+    setItems(updatedItems);
+
     try {
       const { error } = await supabase.from(tableName).update({ is_active: !isActive }).eq('id', id);
-      if (error) throw error;
+      
+      if (error) {
+        // Rollback on error
+        setItems(previousItems);
+        throw error;
+      }
 
-      await loadItems();
       toast({ title: "Erfolg", description: `${entityName} wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
     } catch (error: any) {
       console.error(`Error toggling ${entityName}:`, error);
