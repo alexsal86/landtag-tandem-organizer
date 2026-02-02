@@ -280,7 +280,11 @@ export const TaskDecisionResponse = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setShowEdit(true)}
+            onClick={() => {
+              // Pre-fill editor with existing comment
+              setQuestionComment(currentResponse?.comment || "");
+              setShowEdit(true);
+            }}
             className="text-xs"
           >
             <Edit2 className="h-3 w-3 mr-1" />

@@ -180,8 +180,11 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
         description: "Entscheidung wurde aktualisiert.",
       });
 
-      onUpdated();
-      onClose();
+      // Call callbacks after toast with slight delay to ensure toast is visible
+      setTimeout(() => {
+        onUpdated();
+        onClose();
+      }, 100);
     } catch (error) {
       console.error('Error updating decision:', error);
       toast({
