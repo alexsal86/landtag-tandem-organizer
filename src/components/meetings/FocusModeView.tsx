@@ -277,6 +277,27 @@ export function FocusModeView({
         case 'Enter':
           e.preventDefault();
           if (currentNavigable && currentGlobalIndex !== -1) {
+            // Check if current is a main item with uncompleted sub-items
+            if (!currentNavigable.isSubItem) {
+              const subItems = agendaItems.filter(sub => 
+                (sub.parent_id === currentItem.id || sub.parentLocalKey === currentItem.id) &&
+                !sub.system_type
+              );
+              
+              // If has sub-items, navigate to first uncompleted sub-item instead of completing parent
+              if (subItems.length > 0) {
+                const firstUncompletedSub = subItems.find(sub => !sub.is_completed);
+                if (firstUncompletedSub) {
+                  const subNavIndex = allNavigableItems.findIndex(n => n.item.id === firstUncompletedSub.id);
+                  if (subNavIndex !== -1) {
+                    setFlatFocusIndex(subNavIndex);
+                    return; // Don't complete the parent
+                  }
+                }
+              }
+            }
+            
+            // Standard behavior: toggle completion
             const isNowCompleted = !currentItem.is_completed;
             handleItemComplete(currentNavigable, isNowCompleted);
             
