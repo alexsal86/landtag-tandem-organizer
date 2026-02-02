@@ -8994,6 +8994,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_for_audit_logs: { Args: { _user_id: string }; Returns: boolean }
       is_admin_of: { Args: { employee: string }; Returns: boolean }
+      is_meeting_participant: {
+        Args: { p_meeting_id: string }
+        Returns: boolean
+      }
       is_message_recipient: {
         Args: { message_id_param: string; user_id_param: string }
         Returns: boolean
