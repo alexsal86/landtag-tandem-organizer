@@ -24,7 +24,7 @@ type ConfigurableType = {
 
 interface ConfigurableTypeSettingsProps {
   title: string;
-  tableName: 'task_categories' | 'todo_categories' | 'case_file_types' | 'document_categories' | 'appointment_categories' | 'appointment_statuses' | 'appointment_locations';
+  tableName: 'task_categories' | 'todo_categories' | 'case_file_types' | 'document_categories' | 'appointment_categories' | 'appointment_statuses' | 'appointment_locations' | 'task_statuses';
   entityName: string;
   deleteWarning?: string;
   hasIcon?: boolean;

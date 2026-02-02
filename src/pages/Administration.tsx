@@ -939,16 +939,26 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
           return <TopicSettings />;
         case "tasks":
           return (
-            <ConfigurableTypeSettings
-              title="Aufgaben-Kategorien"
-              tableName="task_categories"
-              entityName="Kategorie"
-              hasIcon={true}
-              hasColor={true}
-              defaultIcon="CheckSquare"
-              defaultColor="#3b82f6"
-              deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten?"
-            />
+            <div className="space-y-6">
+              <ConfigurableTypeSettings
+                title="Aufgaben-Kategorien"
+                tableName="task_categories"
+                entityName="Kategorie"
+                hasIcon={true}
+                hasColor={true}
+                defaultIcon="CheckSquare"
+                defaultColor="#3b82f6"
+                deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten?"
+              />
+              <ConfigurableTypeSettings
+                title="Aufgaben-Status"
+                tableName="task_statuses"
+                entityName="Status"
+                hasIcon={false}
+                hasColor={false}
+                deleteWarning="Sind Sie sicher, dass Sie diesen Status löschen möchten?"
+              />
+            </div>
           );
         case "todos":
           return (

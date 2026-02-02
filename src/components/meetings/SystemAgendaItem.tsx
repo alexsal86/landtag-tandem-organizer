@@ -32,8 +32,8 @@ export function SystemAgendaItem({
     return (
       <div className={cn(
         "relative",
-        "border-l-4 border-blue-500 rounded-lg overflow-hidden",
-        isEmbedded && "bg-card border border-border",
+        !isEmbedded && "border-l-4 border-blue-500 rounded-lg overflow-hidden",
+        isEmbedded && "bg-muted/20 rounded-md",
         className
       )}>
         {!isEmbedded && (
@@ -48,7 +48,7 @@ export function SystemAgendaItem({
           meetingDate={meetingDate} 
           meetingId={meetingId}
           allowStarring={allowStarring}
-          className={isEmbedded ? "border-0 shadow-none bg-transparent" : "border-0 shadow-none"}
+          className={isEmbedded ? "border-0 shadow-none bg-transparent p-2" : "border-0 shadow-none"}
           defaultCollapsed={defaultCollapsed}
         />
       </div>
@@ -56,6 +56,36 @@ export function SystemAgendaItem({
   }
 
   if (systemType === 'quick_notes') {
+    // Embedded mode: compact without Card wrapper
+    if (isEmbedded) {
+      return (
+        <div className={cn("bg-muted/20 rounded-md p-3", className)}>
+          {linkedQuickNotes.length > 0 ? (
+            <div className="space-y-2">
+              {linkedQuickNotes.map((note) => (
+                <div key={note.id} className="p-2 bg-background rounded border">
+                  {note.title && (
+                    <h4 className="font-semibold text-sm mb-1">{note.title}</h4>
+                  )}
+                  <RichTextDisplay content={note.content} className="text-sm" />
+                  {note.meeting_result && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Ergebnis: {note.meeting_result}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Keine Notizen vorhanden.
+            </p>
+          )}
+        </div>
+      );
+    }
+    
+    // Full mode: with Card wrapper
     return (
       <Card className={cn(
         "border-l-4 border-amber-500",

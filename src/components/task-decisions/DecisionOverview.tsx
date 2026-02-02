@@ -10,6 +10,7 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
 import { DecisionEditDialog } from "./DecisionEditDialog";
+import { DecisionViewerComment } from "./DecisionViewerComment";
 import { UserBadge } from "@/components/ui/user-badge";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle } from "lucide-react";
@@ -406,14 +407,20 @@ export const DecisionOverview = () => {
   const sendCreatorResponse = async (responseId: string) => {
     const responseText = creatorResponses[responseId];
     
-    if (!responseText?.trim()) return;
+    if (!responseText?.trim()) {
+      console.warn('No response text for responseId:', responseId);
+      return;
+    }
 
+    console.log('Sending creator response:', { responseId, responseText: responseText.substring(0, 50) });
     setIsLoading(true);
+    
     try {
       // Get response details first to find participant
-      const { data: responseData } = await supabase
+      const { data: responseData, error: fetchError } = await supabase
         .from('task_decision_responses')
         .select(`
+          id,
           participant_id,
           decision_id,
           task_decision_participants!inner(user_id),
@@ -422,12 +429,24 @@ export const DecisionOverview = () => {
         .eq('id', responseId)
         .single();
 
-      const { error } = await supabase
-        .from('task_decision_responses')
-        .update({ creator_response: responseText })
-        .eq('id', responseId);
+      if (fetchError) {
+        console.error('Error fetching response data:', fetchError);
+        throw fetchError;
+      }
 
-      if (error) throw error;
+      // Update the creator_response field
+      const { data: updateResult, error: updateError } = await supabase
+        .from('task_decision_responses')
+        .update({ creator_response: responseText.trim() })
+        .eq('id', responseId)
+        .select('id, creator_response');
+
+      console.log('Update result:', { updateResult, updateError });
+
+      if (updateError) {
+        console.error('Error updating creator response:', updateError);
+        throw updateError;
+      }
 
       // Notify the participant about the creator's response
       if (responseData) {
@@ -859,6 +878,18 @@ export const DecisionOverview = () => {
                       participantId={decision.participant_id}
                       onResponseSubmitted={handleResponseSubmitted}
                       hasResponded={decision.hasResponded}
+                    />
+                  </div>
+                )}
+                
+                {/* Viewer comment option for non-participants */}
+                {!decision.isParticipant && decision.visible_to_all && (
+                  <div onClick={(e) => e.stopPropagation()} className="mt-2 border-t pt-2">
+                    <DecisionViewerComment
+                      decisionId={decision.id}
+                      creatorId={decision.created_by}
+                      decisionTitle={decision.title}
+                      onCommentSubmitted={handleResponseSubmitted}
                     />
                   </div>
                 )}

@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe } from "lucide-react";
+import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -3170,23 +3170,41 @@ export function MeetingsView() {
                                        ? "border-l-amber-500"
                                        : "border-muted"
                                  )}>
-                                   {/* Render system items differently */}
-                                    {subItem.system_type === 'upcoming_appointments' ? (
-                                      <SystemAgendaItem 
-                                        systemType="upcoming_appointments" 
-                                        meetingDate={activeMeeting.meeting_date}
-                                        meetingId={activeMeeting.id}
-                                        allowStarring={true}
-                                        isEmbedded={true}
-                                      />
-                                   ) : subItem.system_type === 'quick_notes' ? (
-                                     <SystemAgendaItem 
-                                       systemType="quick_notes"
-                                       linkedQuickNotes={linkedQuickNotes}
-                                       onUpdateNoteResult={updateQuickNoteResult}
-                                       isEmbedded={true}
-                                     />
-                                   ) : (
+                                   {/* Render system items with proper numbering and header */}
+                                     {subItem.system_type === 'upcoming_appointments' ? (
+                                       <div className="space-y-2">
+                                         <div className="flex items-center gap-2 mb-2">
+                                           <span className="text-xs font-medium text-muted-foreground">
+                                             {index + 1}.{subIndex + 1}
+                                           </span>
+                                           <CalendarDays className="h-4 w-4 text-blue-500" />
+                                           <span className="text-sm font-medium">Kommende Termine</span>
+                                         </div>
+                                         <SystemAgendaItem 
+                                           systemType="upcoming_appointments" 
+                                           meetingDate={activeMeeting.meeting_date}
+                                           meetingId={activeMeeting.id}
+                                           allowStarring={true}
+                                           isEmbedded={true}
+                                         />
+                                       </div>
+                                    ) : subItem.system_type === 'quick_notes' ? (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <span className="text-xs font-medium text-muted-foreground">
+                                            {index + 1}.{subIndex + 1}
+                                          </span>
+                                          <StickyNote className="h-4 w-4 text-amber-500" />
+                                          <span className="text-sm font-medium">Meine Notizen</span>
+                                        </div>
+                                        <SystemAgendaItem 
+                                          systemType="quick_notes"
+                                          linkedQuickNotes={linkedQuickNotes}
+                                          onUpdateNoteResult={updateQuickNoteResult}
+                                          isEmbedded={true}
+                                        />
+                                      </div>
+                                    ) : (
                                    <>
                                    <div className="flex items-center gap-2 mb-2">
                                      <span className="text-xs font-medium text-muted-foreground">
