@@ -5642,6 +5642,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_public: boolean | null
           is_recurring_instance: boolean | null
           location: string | null
           meeting_date: string
@@ -5659,6 +5660,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_public?: boolean | null
           is_recurring_instance?: boolean | null
           location?: string | null
           meeting_date: string
@@ -5676,6 +5678,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_public?: boolean | null
           is_recurring_instance?: boolean | null
           location?: string | null
           meeting_date?: string

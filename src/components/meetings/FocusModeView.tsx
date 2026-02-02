@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -54,6 +54,13 @@ interface Profile {
   display_name: string | null;
 }
 
+interface NavigableItem {
+  item: AgendaItem;
+  isSubItem: boolean;
+  parentItem: AgendaItem | null;
+  globalIndex: number; // Index in agendaItems array
+}
+
 interface FocusModeViewProps {
   meeting: Meeting;
   agendaItems: AgendaItem[];
@@ -81,7 +88,7 @@ export function FocusModeView({
   onUpdateResult,
   onArchive
 }: FocusModeViewProps) {
-  const [focusedItemIndex, setFocusedItemIndex] = useState(0);
+  const [flatFocusIndex, setFlatFocusIndex] = useState(0);
   const [showLegend, setShowLegend] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
@@ -93,20 +100,52 @@ export function FocusModeView({
   // Ref to track when dialog just closed to prevent Enter from marking items
   const justClosedDialogRef = useRef(false);
 
-  // Filter to only show main items (not sub-items) for navigation
+  // Build flat list of all navigable items (main items + sub-items)
+  const allNavigableItems: NavigableItem[] = useMemo(() => {
+    const result: NavigableItem[] = [];
+    
+    // Get main items (no parent)
+    const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
+    
+    mainItems.forEach((mainItem) => {
+      const globalIndex = agendaItems.findIndex(i => i.id === mainItem.id);
+      result.push({ 
+        item: mainItem, 
+        isSubItem: false, 
+        parentItem: null,
+        globalIndex 
+      });
+      
+      // Get sub-items for this main item (excluding system sub-items which render inline)
+      const subItems = agendaItems.filter(sub => 
+        (sub.parent_id === mainItem.id || sub.parentLocalKey === mainItem.id) &&
+        !sub.system_type
+      );
+      
+      subItems.forEach(subItem => {
+        const subGlobalIndex = agendaItems.findIndex(i => i.id === subItem.id);
+        result.push({ 
+          item: subItem, 
+          isSubItem: true, 
+          parentItem: mainItem,
+          globalIndex: subGlobalIndex 
+        });
+      });
+    });
+    
+    return result;
+  }, [agendaItems]);
+
+  // Get current focused navigable item
+  const currentNavigable = allNavigableItems[flatFocusIndex];
+  const currentItem = currentNavigable?.item;
+  const currentGlobalIndex = currentNavigable?.globalIndex ?? -1;
+
+  // Calculate progress based on main items only
   const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
   const completedCount = mainItems.filter(item => item.is_completed).length;
   const totalCount = mainItems.length;
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-
-  // Get current focused item
-  const currentItem = mainItems[focusedItemIndex];
-  const currentItemGlobalIndex = agendaItems.findIndex(item => item.id === currentItem?.id);
-
-  // Get sub-items for current focused item
-  const subItems = agendaItems.filter(item => 
-    item.parent_id === currentItem?.id || item.parentLocalKey === currentItem?.id
-  );
 
   // Handle dialog close with protection against subsequent Enter key
   const handleAssignDialogClose = (open: boolean) => {
@@ -115,6 +154,38 @@ export function FocusModeView({
       setTimeout(() => { justClosedDialogRef.current = false; }, 150);
     }
     setShowAssignDialog(open);
+  };
+
+  // Auto-complete parent when all sub-items are completed
+  const handleItemComplete = (navigable: NavigableItem, isCompleted: boolean) => {
+    // Update the item itself
+    onUpdateItem(navigable.globalIndex, 'is_completed', isCompleted);
+    
+    // If this is a sub-item being marked complete, check if all siblings are now complete
+    if (navigable.isSubItem && navigable.parentItem && isCompleted) {
+      const parentItem = navigable.parentItem;
+      const allSubItems = agendaItems.filter(sub => 
+        sub.parent_id === parentItem.id || sub.parentLocalKey === parentItem.id
+      );
+      
+      // Check if all sub-items will be completed after this update
+      const allSubsWillBeCompleted = allSubItems.every(sub => 
+        sub.id === navigable.item.id ? true : sub.is_completed
+      );
+      
+      if (allSubsWillBeCompleted && !parentItem.is_completed) {
+        const parentGlobalIndex = agendaItems.findIndex(i => i.id === parentItem.id);
+        if (parentGlobalIndex !== -1) {
+          onUpdateItem(parentGlobalIndex, 'is_completed', true);
+        }
+      }
+    }
+  };
+
+  // Check if all items are completed
+  const checkAllCompleted = () => {
+    const mainItemsAfter = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
+    return mainItemsAfter.every(item => item.is_completed);
   };
 
   // Keyboard navigation
@@ -146,7 +217,8 @@ export function FocusModeView({
           if (currentItem?.system_type === 'upcoming_appointments' && focusedAppointmentIndex >= 0) {
             setFocusedAppointmentIndex(prev => Math.min(prev + 1, appointmentsCount - 1));
           } else {
-            setFocusedItemIndex(prev => Math.min(prev + 1, mainItems.length - 1));
+            setFlatFocusIndex(prev => Math.min(prev + 1, allNavigableItems.length - 1));
+            setFocusedAppointmentIndex(-1); // Reset appointment navigation
           }
           break;
         case 'ArrowUp':
@@ -156,16 +228,17 @@ export function FocusModeView({
           if (currentItem?.system_type === 'upcoming_appointments' && focusedAppointmentIndex >= 0) {
             setFocusedAppointmentIndex(prev => Math.max(prev - 1, 0));
           } else {
-            setFocusedItemIndex(prev => Math.max(prev - 1, 0));
+            setFlatFocusIndex(prev => Math.max(prev - 1, 0));
+            setFocusedAppointmentIndex(-1); // Reset appointment navigation
           }
           break;
         case 'n':
           e.preventDefault();
-          // Next appointment within system item
+          // Next appointment within system item OR next navigable item
           if (currentItem?.system_type === 'upcoming_appointments') {
             if (focusedAppointmentIndex < 0) {
               setFocusedAppointmentIndex(0);
-            } else {
+            } else if (appointmentsCount > 0) {
               setFocusedAppointmentIndex(prev => Math.min(prev + 1, appointmentsCount - 1));
             }
           }
@@ -187,13 +260,13 @@ export function FocusModeView({
         case 'PageDown':
         case 'd':
           e.preventDefault();
-          // Scroll within the current item (for long items) - use container ref
+          // Scroll within the current item (for long items)
           mainContainerRef.current?.scrollBy({ top: 200, behavior: 'smooth' });
           break;
         case 'PageUp':
         case 'u':
           e.preventDefault();
-          // Scroll within the current item (for long items) - use container ref
+          // Scroll within the current item (for long items)
           mainContainerRef.current?.scrollBy({ top: -200, behavior: 'smooth' });
           break;
         case 'a':
@@ -203,24 +276,20 @@ export function FocusModeView({
           break;
         case 'Enter':
           e.preventDefault();
-          if (currentItem?.id && currentItemGlobalIndex !== -1) {
+          if (currentNavigable && currentGlobalIndex !== -1) {
             const isNowCompleted = !currentItem.is_completed;
-            onUpdateItem(currentItemGlobalIndex, 'is_completed', isNowCompleted);
+            handleItemComplete(currentNavigable, isNowCompleted);
             
             // If marking as completed, navigate to next or show archive dialog
             if (isNowCompleted) {
-              // Check if all items will be completed after this update
-              const allCompletedAfter = mainItems.every((item, idx) => 
-                idx === focusedItemIndex ? true : item.is_completed
-              );
-              
-              if (allCompletedAfter) {
-                // All items completed - show archive dialog
-                setShowArchiveConfirm(true);
-              } else {
-                // Navigate to next item
-                setFocusedItemIndex(prev => Math.min(prev + 1, mainItems.length - 1));
-              }
+              // Use setTimeout to check after state update
+              setTimeout(() => {
+                if (checkAllCompleted()) {
+                  setShowArchiveConfirm(true);
+                } else {
+                  setFlatFocusIndex(prev => Math.min(prev + 1, allNavigableItems.length - 1));
+                }
+              }, 50);
             }
           }
           break;
@@ -258,17 +327,24 @@ export function FocusModeView({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedItemIndex, mainItems.length, currentItem, currentItemGlobalIndex, onUpdateItem, onUpdateResult, onClose, showAssignDialog, focusedAppointmentIndex, appointmentsCount]);
+  }, [flatFocusIndex, allNavigableItems.length, currentItem, currentGlobalIndex, currentNavigable, onUpdateItem, onUpdateResult, onClose, showAssignDialog, focusedAppointmentIndex, appointmentsCount]);
 
-  // Auto-scroll to focused item - scroll to start so long items show their beginning
+  // Auto-scroll to focused item
   useEffect(() => {
-    if (itemRefs.current[focusedItemIndex]) {
-      itemRefs.current[focusedItemIndex]?.scrollIntoView({
+    if (itemRefs.current[flatFocusIndex]) {
+      itemRefs.current[flatFocusIndex]?.scrollIntoView({
         behavior: 'smooth',
         block: 'start'
       });
     }
-  }, [focusedItemIndex]);
+  }, [flatFocusIndex]);
+
+  // Reset appointment focus when leaving upcoming_appointments item
+  useEffect(() => {
+    if (currentItem?.system_type !== 'upcoming_appointments') {
+      setFocusedAppointmentIndex(-1);
+    }
+  }, [currentItem?.system_type]);
 
   const getDisplayName = (userId: string) => {
     const profile = profiles.find(p => p.user_id === userId);
@@ -282,6 +358,195 @@ export function FocusModeView({
       return `${dateStr} um ${formatMeetingTime(meeting.meeting_time)} Uhr`;
     }
     return dateStr;
+  };
+
+  // Render a single navigable item
+  const renderNavigableItem = (navigable: NavigableItem, navIndex: number) => {
+    const { item, isSubItem, parentItem } = navigable;
+    const isFocused = navIndex === flatFocusIndex;
+    
+    // Get system sub-items to render inline (only for main items)
+    const systemSubItems = !isSubItem ? agendaItems.filter(sub => 
+      (sub.parent_id === item.id || sub.parentLocalKey === item.id) &&
+      sub.system_type
+    ) : [];
+    
+    // Get regular sub-items for display (only for main items that are NOT sub-items themselves)
+    const regularSubItems = !isSubItem ? agendaItems.filter(sub => 
+      (sub.parent_id === item.id || sub.parentLocalKey === item.id) &&
+      !sub.system_type
+    ) : [];
+
+    return (
+      <div
+        key={item.id || navIndex}
+        ref={el => itemRefs.current[navIndex] = el}
+        className={cn(
+          "p-6 rounded-xl border transition-all duration-300",
+          isSubItem && "ml-8 border-l-4 border-l-primary/30",
+          isFocused && "ring-2 ring-primary bg-primary/5 scale-[1.01] shadow-lg",
+          item.is_completed && "bg-muted/50",
+          !isFocused && !item.is_completed && "bg-card hover:bg-muted/30"
+        )}
+        onClick={() => setFlatFocusIndex(navIndex)}
+      >
+        <div className="flex items-start gap-4">
+          {/* Checkbox */}
+          <Checkbox
+            checked={item.is_completed}
+            onCheckedChange={(checked) => {
+              handleItemComplete(navigable, !!checked);
+            }}
+            className="mt-1.5 h-5 w-5"
+          />
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              {isSubItem && (
+                <CornerDownRight className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className={cn(
+                isSubItem ? "text-base" : "text-lg font-semibold",
+                item.is_completed && "line-through text-muted-foreground"
+              )}>
+                {!isSubItem && `${allNavigableItems.filter((n, i) => !n.isSubItem && i <= navIndex).length}. `}
+                {item.title}
+              </span>
+              {item.is_completed && (
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Besprochen
+                </Badge>
+              )}
+              {item.carry_over_to_next && (
+                <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-400">
+                  Übertragen
+                </Badge>
+              )}
+            </div>
+
+            {/* Description */}
+            {item.description && (
+              <p className="text-muted-foreground mt-2">{item.description}</p>
+            )}
+
+            {/* Notes */}
+            {item.notes && (
+              <div className="mt-2 p-3 bg-muted/50 rounded-lg border-l-2 border-primary/30">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-1">
+                  <StickyNote className="h-3 w-3" />
+                  Notizen
+                </div>
+                <p className="text-sm">{item.notes}</p>
+              </div>
+            )}
+
+            {/* System content: Upcoming Appointments */}
+            {item.system_type === 'upcoming_appointments' && (
+              <div className="mt-4">
+                <FocusModeUpcomingAppointments 
+                  ref={upcomingApptsRef}
+                  meetingDate={meeting.meeting_date}
+                  meetingId={meeting.id}
+                  focusedIndex={isFocused ? focusedAppointmentIndex : -1}
+                  onAppointmentsLoaded={setAppointmentsCount}
+                />
+              </div>
+            )}
+
+            {/* System content: Quick Notes */}
+            {item.system_type === 'quick_notes' && linkedQuickNotes.length > 0 && (
+              <div className="mt-4">
+                <SystemAgendaItem 
+                  systemType="quick_notes"
+                  linkedQuickNotes={linkedQuickNotes}
+                  isEmbedded={true}
+                />
+              </div>
+            )}
+
+            {/* Assigned users */}
+            {item.assigned_to && item.assigned_to.length > 0 && (
+              <div className="mt-3 flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {item.assigned_to.flat().map(getDisplayName).join(', ')}
+                </span>
+              </div>
+            )}
+
+            {/* Show sub-item count for main items (sub-items shown separately in flat list) */}
+            {!isSubItem && regularSubItems.length > 0 && (
+              <div className="mt-3 text-sm text-muted-foreground">
+                {regularSubItems.filter(s => s.is_completed).length} von {regularSubItems.length} Unterpunkten besprochen
+              </div>
+            )}
+
+            {/* System sub-items (render inline) */}
+            {systemSubItems.map((sub, subIndex) => (
+              <div 
+                key={sub.id || subIndex}
+                className={cn(
+                  "mt-4 pl-4 border-l-2",
+                  sub.system_type === 'upcoming_appointments' 
+                    ? "border-l-blue-500" 
+                    : sub.system_type === 'quick_notes'
+                      ? "border-l-amber-500"
+                      : "border-muted"
+                )}
+              >
+                {sub.system_type === 'upcoming_appointments' ? (
+                  <FocusModeUpcomingAppointments 
+                    meetingDate={meeting.meeting_date}
+                    meetingId={meeting.id}
+                    focusedIndex={-1}
+                  />
+                ) : sub.system_type === 'quick_notes' ? (
+                  <SystemAgendaItem 
+                    systemType="quick_notes"
+                    linkedQuickNotes={linkedQuickNotes}
+                    isEmbedded={true}
+                  />
+                ) : null}
+              </div>
+            ))}
+
+            {/* Result input (expanded for focused item) */}
+            {isFocused && (
+              <div className="mt-4 pt-4 border-t">
+                <label className="text-sm font-medium block mb-2">Ergebnis / Notizen</label>
+                <Textarea
+                  id={`result-input-${item.id}`}
+                  value={item.result_text || ''}
+                  onChange={(e) => {
+                    if (item.id) {
+                      onUpdateResult(item.id, 'result_text', e.target.value);
+                    }
+                  }}
+                  placeholder="Was wurde besprochen? Was sind die nächsten Schritte?"
+                  className="min-h-[100px]"
+                />
+                <div className="flex items-center gap-2 mt-3">
+                  <Checkbox
+                    id={`carryover-${item.id}`}
+                    checked={item.carry_over_to_next || false}
+                    onCheckedChange={(checked) => {
+                      if (item.id) {
+                        onUpdateResult(item.id, 'carry_over_to_next', checked);
+                      }
+                    }}
+                  />
+                  <label htmlFor={`carryover-${item.id}`} className="text-sm cursor-pointer">
+                    Auf nächste Besprechung übertragen
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -321,197 +586,7 @@ export function FocusModeView({
       {/* Main content */}
       <main ref={mainContainerRef} className="flex-1 overflow-auto py-8">
         <div className="max-w-4xl mx-auto px-4 space-y-4">
-          {mainItems.map((item, index) => {
-            const itemSubItems = agendaItems.filter(sub => 
-              sub.parent_id === item.id || sub.parentLocalKey === item.id
-            );
-            const isFocused = index === focusedItemIndex;
-            const globalIndex = agendaItems.findIndex(i => i.id === item.id);
-
-            return (
-              <div
-                key={item.id || index}
-                ref={el => itemRefs.current[index] = el}
-                className={cn(
-                  "p-6 rounded-xl border transition-all duration-300",
-                  isFocused && "ring-2 ring-primary bg-primary/5 scale-[1.01] shadow-lg",
-                  item.is_completed && "bg-muted/50",
-                  !isFocused && !item.is_completed && "bg-card hover:bg-muted/30"
-                )}
-                onClick={() => setFocusedItemIndex(index)}
-              >
-                <div className="flex items-start gap-4">
-                  {/* Checkbox */}
-                  <Checkbox
-                    checked={item.is_completed}
-                    onCheckedChange={(checked) => {
-                      if (globalIndex !== -1) {
-                        onUpdateItem(globalIndex, 'is_completed', checked);
-                      }
-                    }}
-                    className="mt-1.5 h-5 w-5"
-                  />
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={cn(
-                        "text-lg font-semibold",
-                        item.is_completed && "line-through text-muted-foreground"
-                      )}>
-                        {index + 1}. {item.title}
-                      </span>
-                      {item.is_completed && (
-                        <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Besprochen
-                        </Badge>
-                      )}
-                      {item.carry_over_to_next && (
-                        <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-400">
-                          Übertragen
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Description */}
-                    {item.description && (
-                      <p className="text-muted-foreground mt-2">{item.description}</p>
-                    )}
-
-                    {/* Notes */}
-                    {item.notes && (
-                      <div className="mt-2 p-3 bg-muted/50 rounded-lg border-l-2 border-primary/30">
-                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-1">
-                          <StickyNote className="h-3 w-3" />
-                          Notizen
-                        </div>
-                        <p className="text-sm">{item.notes}</p>
-                      </div>
-                    )}
-
-                    {/* System content: Upcoming Appointments */}
-                    {item.system_type === 'upcoming_appointments' && (
-                      <div className="mt-4">
-                        <FocusModeUpcomingAppointments 
-                          ref={upcomingApptsRef}
-                          meetingDate={meeting.meeting_date}
-                          meetingId={meeting.id}
-                          focusedIndex={isFocused ? focusedAppointmentIndex : -1}
-                          onAppointmentsLoaded={setAppointmentsCount}
-                        />
-                      </div>
-                    )}
-
-                    {/* System content: Quick Notes */}
-                    {item.system_type === 'quick_notes' && linkedQuickNotes.length > 0 && (
-                      <div className="mt-4">
-                        <SystemAgendaItem 
-                          systemType="quick_notes"
-                          linkedQuickNotes={linkedQuickNotes}
-                          isEmbedded={true}
-                        />
-                      </div>
-                    )}
-
-                    {/* Assigned users */}
-                    {item.assigned_to && item.assigned_to.length > 0 && (
-                      <div className="mt-3 flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          {item.assigned_to.map(getDisplayName).join(', ')}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Sub-items */}
-                    {itemSubItems.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        <div className="text-sm font-medium text-muted-foreground">Unterpunkte:</div>
-                        {itemSubItems.map((sub, subIndex) => (
-                          <div 
-                            key={sub.id || subIndex}
-                            className={cn(
-                              "pl-4 border-l-2",
-                              sub.system_type === 'upcoming_appointments' 
-                                ? "border-l-blue-500" 
-                                : sub.system_type === 'quick_notes'
-                                  ? "border-l-amber-500"
-                                  : "border-muted"
-                            )}
-                          >
-                            {/* Render system sub-items differently */}
-                            {sub.system_type === 'upcoming_appointments' ? (
-                              <FocusModeUpcomingAppointments 
-                                meetingDate={meeting.meeting_date}
-                                meetingId={meeting.id}
-                                focusedIndex={-1}
-                              />
-                            ) : sub.system_type === 'quick_notes' ? (
-                              <SystemAgendaItem 
-                                systemType="quick_notes"
-                                linkedQuickNotes={linkedQuickNotes}
-                                isEmbedded={true}
-                              />
-                            ) : (
-                              <>
-                                <div className="flex items-start gap-2">
-                                  <CornerDownRight className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                                  <div className="flex-1">
-                                    <span className={cn(
-                                      "text-sm",
-                                      sub.is_completed && "line-through text-muted-foreground"
-                                    )}>
-                                      {sub.title}
-                                    </span>
-                                    {sub.description && (
-                                      <p className="text-xs text-muted-foreground mt-0.5">{sub.description}</p>
-                                    )}
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Result input (expanded for focused item) */}
-                    {isFocused && (
-                      <div className="mt-4 pt-4 border-t">
-                        <label className="text-sm font-medium block mb-2">Ergebnis / Notizen</label>
-                        <Textarea
-                          id={`result-input-${item.id}`}
-                          value={item.result_text || ''}
-                          onChange={(e) => {
-                            if (item.id) {
-                              onUpdateResult(item.id, 'result_text', e.target.value);
-                            }
-                          }}
-                          placeholder="Was wurde besprochen? Was sind die nächsten Schritte?"
-                          className="min-h-[100px]"
-                        />
-                        <div className="flex items-center gap-2 mt-3">
-                          <Checkbox
-                            id={`carryover-${item.id}`}
-                            checked={item.carry_over_to_next || false}
-                            onCheckedChange={(checked) => {
-                              if (item.id) {
-                                onUpdateResult(item.id, 'carry_over_to_next', checked);
-                              }
-                            }}
-                          />
-                          <label htmlFor={`carryover-${item.id}`} className="text-sm cursor-pointer">
-                            Auf nächste Besprechung übertragen
-                          </label>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {allNavigableItems.map((navigable, index) => renderNavigableItem(navigable, index))}
         </div>
       </main>
 
@@ -667,7 +742,7 @@ export function FocusModeView({
       </AlertDialog>
 
       {/* Assignment dialog */}
-      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+      <Dialog open={showAssignDialog} onOpenChange={handleAssignDialogClose}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -680,12 +755,12 @@ export function FocusModeView({
               Wählen Sie ein Teammitglied für: <strong>{currentItem?.title}</strong>
             </p>
             <Select
-              value={currentItem?.assigned_to?.[0] || ''}
+              value={currentItem?.assigned_to?.flat()[0] || ''}
               onValueChange={(value) => {
-                if (currentItem?.id && currentItemGlobalIndex !== -1) {
-                  onUpdateItem(currentItemGlobalIndex, 'assigned_to', value ? [value] : null);
+                if (currentItem?.id && currentGlobalIndex !== -1) {
+                  onUpdateItem(currentGlobalIndex, 'assigned_to', value && value !== '__none__' ? [value] : null);
                 }
-                setShowAssignDialog(false);
+                handleAssignDialogClose(false);
               }}
             >
               <SelectTrigger>
@@ -706,10 +781,10 @@ export function FocusModeView({
                 size="sm"
                 className="w-full"
                 onClick={() => {
-                  if (currentItem?.id && currentItemGlobalIndex !== -1) {
-                    onUpdateItem(currentItemGlobalIndex, 'assigned_to', null);
+                  if (currentItem?.id && currentGlobalIndex !== -1) {
+                    onUpdateItem(currentGlobalIndex, 'assigned_to', null);
                   }
-                  setShowAssignDialog(false);
+                  handleAssignDialogClose(false);
                 }}
               >
                 Zuweisung entfernen

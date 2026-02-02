@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Calendar, MapPin, Users, Search, Trash2, FileText, LayoutGrid, List } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Search, Trash2, FileText, LayoutGrid, List, Globe, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -21,6 +22,8 @@ interface ArchivedMeeting {
   status: string;
   created_at: string;
   updated_at: string;
+  user_id: string;
+  is_public?: boolean;
 }
 
 interface MeetingArchiveViewProps {
@@ -29,6 +32,7 @@ interface MeetingArchiveViewProps {
 
 export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [archivedMeetings, setArchivedMeetings] = useState<ArchivedMeeting[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,20 +44,68 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
     if (user) {
       loadArchivedMeetings();
     }
-  }, [user]);
+  }, [user, currentTenant?.id]);
 
   const loadArchivedMeetings = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // 1. Load meetings where user is the creator
+      const { data: ownMeetings, error: ownError } = await supabase
         .from('meetings')
         .select('*')
         .eq('user_id', user?.id)
         .eq('status', 'archived')
         .order('meeting_date', { ascending: false });
 
-      if (error) throw error;
-      setArchivedMeetings(data || []);
+      if (ownError) throw ownError;
+      
+      // 2. Load meetings where user is a participant
+      const { data: participantMeetings, error: participantError } = await supabase
+        .from('meeting_participants')
+        .select('meeting_id, meetings(*)')
+        .eq('user_id', user?.id);
+
+      if (participantError) {
+        console.error('Error loading participant meetings:', participantError);
+      }
+      
+      const participantArchivedMeetings = (participantMeetings || [])
+        .filter(p => p.meetings && p.meetings.status === 'archived')
+        .map(p => p.meetings);
+      
+      // 3. Load public archived meetings from the same tenant (excluding already loaded)
+      const existingMeetingIds = new Set([
+        ...(ownMeetings || []).map(m => m.id),
+        ...participantArchivedMeetings.map(m => m?.id).filter(Boolean)
+      ]);
+      
+      let publicMeetings: any[] = [];
+      if (currentTenant?.id) {
+        const { data: publicData, error: publicError } = await supabase
+          .from('meetings')
+          .select('*')
+          .eq('status', 'archived')
+          .eq('is_public', true)
+          .eq('tenant_id', currentTenant.id);
+        
+        if (publicError) {
+          console.error('Error loading public meetings:', publicError);
+        } else {
+          publicMeetings = (publicData || []).filter(m => !existingMeetingIds.has(m.id));
+        }
+      }
+      
+      // Combine and deduplicate
+      const allMeetingsMap = new Map();
+      [...(ownMeetings || []), ...participantArchivedMeetings, ...publicMeetings]
+        .filter(Boolean)
+        .forEach(m => allMeetingsMap.set(m.id, m));
+      
+      const allMeetings = Array.from(allMeetingsMap.values())
+        .sort((a, b) => new Date(b.meeting_date).getTime() - new Date(a.meeting_date).getTime());
+      
+      setArchivedMeetings(allMeetings);
     } catch (error) {
       console.error('Error loading archived meetings:', error);
       toast({
@@ -64,6 +116,10 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const canManageMeeting = (meeting: ArchivedMeeting) => {
+    return meeting.user_id === user?.id;
   };
 
   const deleteMeeting = async (meetingId: string) => {
@@ -126,13 +182,18 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
     meeting.location?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'archived':
-        return <Badge variant="secondary">Archiviert</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+  const getStatusBadge = (meeting: ArchivedMeeting) => {
+    return (
+      <div className="flex items-center gap-1">
+        <Badge variant="secondary">Archiviert</Badge>
+        {meeting.is_public ? (
+          <Badge variant="outline" className="text-xs">
+            <Globe className="h-3 w-3 mr-1" />
+            Öffentlich
+          </Badge>
+        ) : null}
+      </div>
+    );
   };
 
   // Show protocol view if a meeting is selected
@@ -225,7 +286,15 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
             >
               <div className="flex items-center gap-4">
                 <div>
-                  <span className="font-medium">{meeting.title}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{meeting.title}</span>
+                    {meeting.is_public && (
+                      <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                    {!canManageMeeting(meeting) && (
+                      <Badge variant="outline" className="text-xs">Nur Ansicht</Badge>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
@@ -251,45 +320,49 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
                 >
                   <FileText className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    restoreMeeting(meeting);
-                  }}
-                >
-                  Wiederherstellen
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
+                {canManageMeeting(meeting) && (
+                  <>
                     <Button 
                       variant="ghost" 
-                      size="sm"
-                      onClick={(e) => e.stopPropagation()}
+                      size="sm" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        restoreMeeting(meeting);
+                      }}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      Wiederherstellen
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Besprechung löschen</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Sind Sie sicher, dass Sie "{meeting.title}" endgültig löschen möchten? 
-                        Diese Aktion kann nicht rückgängig gemacht werden.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={() => deleteMeeting(meeting.id)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Löschen
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Besprechung löschen</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Sind Sie sicher, dass Sie "{meeting.title}" endgültig löschen möchten? 
+                            Diese Aktion kann nicht rückgängig gemacht werden.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => deleteMeeting(meeting.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Löschen
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -305,12 +378,17 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <CardTitle className="text-lg">{meeting.title}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-lg">{meeting.title}</CardTitle>
+                      {meeting.is_public && (
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
                     <CardDescription className="mt-1">
                       {meeting.description}
                     </CardDescription>
                   </div>
-                  {getStatusBadge(meeting.status)}
+                  {getStatusBadge(meeting)}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -323,6 +401,13 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
                     <MapPin className="h-4 w-4" />
                     {meeting.location}
                   </div>
+                )}
+                
+                {!canManageMeeting(meeting) && (
+                  <Badge variant="outline" className="text-xs">
+                    <Lock className="h-3 w-3 mr-1" />
+                    Nur Ansicht
+                  </Badge>
                 )}
                 
                 <div className="flex gap-2 pt-2">
@@ -338,46 +423,50 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
                     <FileText className="h-4 w-4 mr-2" />
                     Protokoll
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      restoreMeeting(meeting);
-                    }}
-                    className="flex-1"
-                  >
-                    Wiederherstellen
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                  {canManageMeeting(meeting) && (
+                    <>
                       <Button 
                         variant="outline" 
-                        size="sm"
-                        onClick={(e) => e.stopPropagation()}
+                        size="sm" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          restoreMeeting(meeting);
+                        }}
+                        className="flex-1"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        Wiederherstellen
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Besprechung löschen</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Sind Sie sicher, dass Sie "{meeting.title}" endgültig löschen möchten? 
-                          Diese Aktion kann nicht rückgängig gemacht werden.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => deleteMeeting(meeting.id)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Löschen
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Besprechung löschen</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Sind Sie sicher, dass Sie "{meeting.title}" endgültig löschen möchten? 
+                              Diese Aktion kann nicht rückgängig gemacht werden.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => deleteMeeting(meeting.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Löschen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
