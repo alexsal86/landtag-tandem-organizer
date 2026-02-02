@@ -92,6 +92,7 @@ interface Meeting {
   location?: string;
   status: string;
   template_id?: string;
+  is_public?: boolean;
   created_at?: string;
   updated_at?: string;
   lastUpdate?: number;
@@ -134,7 +135,8 @@ export function MeetingsView() {
     description: "",
     meeting_date: new Date(),
     location: "Stuttgart",
-    status: "planned"
+    status: "planned",
+    is_public: false
   });
   const [newMeetingTime, setNewMeetingTime] = useState<string>("10:00");
   const [newMeetingParticipants, setNewMeetingParticipants] = useState<NewMeetingParticipant[]>([]);
@@ -700,6 +702,7 @@ export function MeetingsView() {
         user_id: user.id,
         tenant_id: currentTenant?.id,
         template_id: newMeeting.template_id || null,
+        is_public: newMeeting.is_public || false,
         recurrence_rule: newMeetingRecurrence.enabled ? newMeetingRecurrence : null
       };
 
@@ -935,7 +938,8 @@ export function MeetingsView() {
         description: "",
         meeting_date: new Date(),
         location: "",
-        status: "planned"
+        status: "planned",
+        is_public: false
       });
       setNewMeetingParticipants([]);
       setNewMeetingRecurrence({
@@ -2637,6 +2641,23 @@ export function MeetingsView() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Public Meeting Option */}
+              <div className="flex items-center space-x-2 p-3 border rounded-lg bg-muted/30">
+                <Checkbox 
+                  id="is_public" 
+                  checked={newMeeting.is_public || false}
+                  onCheckedChange={(checked) => setNewMeeting({ ...newMeeting, is_public: !!checked })}
+                />
+                <div className="flex-1">
+                  <label htmlFor="is_public" className="text-sm font-medium cursor-pointer">
+                    Öffentliches Meeting
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Alle Teammitglieder können dieses Meeting sehen (nur lesen)
+                  </p>
+                </div>
               </div>
 
               {/* Recurrence Section */}
