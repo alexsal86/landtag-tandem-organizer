@@ -1,175 +1,266 @@
 
+# Plan: Globale Team-Mitteilungen (System-Banner)
 
-# Plan: Warme Card-Farben + Bugfix "Ganze Card einfaerben"
+## Uebersicht
 
-## Verstaendnis
+Eine neue Funktion fuer globale Mitteilungen an das gesamte Team, die als auffaelliges Banner ueber dem Header angezeigt werden.
 
-Du moechtest:
-- **Rand (border-left)**: Intensive, kraeftige Farben ✓
-- **Card-Hintergrund**: Weiche, warme Toene wie der Pfirsich im Screenshot
+## Architektur
 
-Das Problem: Aktuell wird dieselbe Farbe fuer beides verwendet, nur mit 31% Opacity fuer den Hintergrund. Das ergibt bei intensiven Farben wie `#fbbf24` (Gold) keinen warmen Pfirsich-Ton.
+```text
++--------------------------------------------------+
+|  GLOBALES BANNER (ueber gesamter App)            |
+|  [Rot/Orange/Gelb/Blau je nach Prioritaet]       |
+|  Nachricht hier...                    [X erledigt]|
++--------------------------------------------------+
+|  Header (AppHeader.tsx)                          |
++--------------------------------------------------+
+|  Navigation | Hauptinhalt                        |
++--------------------------------------------------+
+```
 
 ---
 
-## Loesung: Separate Hintergrundfarben
+## 1. Datenbank-Schema
 
-Statt Opacity-Berechnung fuehren wir **explizite warme Hintergrundfarben** pro Farbton ein:
+### Neue Tabelle: `team_announcements`
 
-### Neue Farbpalette mit zwei Werten
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| id | uuid | Primary Key |
+| tenant_id | uuid | Mandanten-Zuordnung (FK zu tenants) |
+| author_id | uuid | Ersteller (FK zu auth.users) |
+| title | text | Kurzer Titel der Mitteilung |
+| message | text | Vollstaendiger Nachrichtentext |
+| priority | text | 'critical', 'warning', 'info', 'success' |
+| starts_at | timestamptz | Ab wann anzeigen (NULL = sofort) |
+| expires_at | timestamptz | Bis wann anzeigen (NULL = unbegrenzt) |
+| is_active | boolean | Manuelles Aktivieren/Deaktivieren |
+| created_at | timestamptz | Erstellungszeitpunkt |
+| updated_at | timestamptz | Letztes Update |
 
-```typescript
-const noteColors = [
-  { value: '#f59e0b', bg: '#fef3c7', label: 'Gold' },      // Rand: amber-500, BG: amber-100
-  { value: '#3b82f6', bg: '#dbeafe', label: 'Blau' },      // Rand: blue-500, BG: blue-100
-  { value: '#22c55e', bg: '#dcfce7', label: 'Grün' },      // Rand: green-500, BG: green-100
-  { value: '#ec4899', bg: '#fce7f3', label: 'Pink' },      // Rand: pink-500, BG: pink-100
-  { value: '#8b5cf6', bg: '#ede9fe', label: 'Lila' },      // Rand: violet-500, BG: violet-100
-  { value: '#f97316', bg: '#fed7aa', label: 'Orange' },    // Rand: orange-500, BG: orange-200 (wie im Bild!)
-  { value: '#06b6d4', bg: '#cffafe', label: 'Türkis' },    // Rand: cyan-500, BG: cyan-100
-  { value: '#ef4444', bg: '#fee2e2', label: 'Rot' },       // Rand: red-500, BG: red-100
-  { value: null, bg: null, label: 'Standard' }
-];
-```
+### Neue Tabelle: `team_announcement_dismissals`
 
-### Visuelle Wirkung
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| id | uuid | Primary Key |
+| announcement_id | uuid | FK zu team_announcements |
+| user_id | uuid | Wer hat als erledigt markiert |
+| dismissed_at | timestamptz | Wann als erledigt markiert |
 
-| Farbe | Rand (intensiv) | Hintergrund (warm) |
-|-------|-----------------|-------------------|
-| Gold | `#f59e0b` | `#fef3c7` (warmes Creme-Gelb) |
-| Blau | `#3b82f6` | `#dbeafe` (sanftes Himmelblau) |
-| Grün | `#22c55e` | `#dcfce7` (zartes Mintgruen) |
-| Pink | `#ec4899` | `#fce7f3` (weiches Rosa) |
-| Lila | `#8b5cf6` | `#ede9fe` (helles Lavendel) |
-| Orange | `#f97316` | `#fed7aa` (warmer Pfirsich - wie im Bild!) |
-| Tuerkis | `#06b6d4` | `#cffafe` (zartes Aqua) |
-| Rot | `#ef4444` | `#fee2e2` (sanftes Rosarot) |
+### Farbschema nach Prioritaet
+
+| Prioritaet | Farbe | Hex-Codes | Verwendungszweck |
+|------------|-------|-----------|------------------|
+| critical | Rot | BG: #fee2e2, Border: #ef4444, Text: #991b1b | Dringende, kritische Meldungen |
+| warning | Orange | BG: #fed7aa, Border: #f97316, Text: #9a3412 | Wichtige Hinweise, Fristen |
+| info | Blau | BG: #dbeafe, Border: #3b82f6, Text: #1e40af | Allgemeine Informationen |
+| success | Gruen | BG: #dcfce7, Border: #22c55e, Text: #166534 | Positive Nachrichten, Erfolge |
 
 ---
 
-## Implementierung
+## 2. RLS-Policies
 
-### 1. Farbpalette erweitern (Zeilen 159-169)
+```sql
+-- Lesen: Alle authentifizierten Benutzer im gleichen Tenant
+CREATE POLICY "Users can read announcements in their tenant"
+ON team_announcements FOR SELECT
+TO authenticated
+USING (
+  tenant_id IN (SELECT tenant_id FROM user_tenant_memberships WHERE user_id = auth.uid() AND is_active = true)
+);
 
-```typescript
-const noteColors = [
-  { value: '#f59e0b', bg: '#fef3c7', label: 'Gold' },
-  { value: '#3b82f6', bg: '#dbeafe', label: 'Blau' },
-  { value: '#22c55e', bg: '#dcfce7', label: 'Grün' },
-  { value: '#ec4899', bg: '#fce7f3', label: 'Pink' },
-  { value: '#8b5cf6', bg: '#ede9fe', label: 'Lila' },
-  { value: '#f97316', bg: '#fed7aa', label: 'Orange' },
-  { value: '#06b6d4', bg: '#cffafe', label: 'Türkis' },
-  { value: '#ef4444', bg: '#fee2e2', label: 'Rot' },
-  { value: null, bg: null, label: 'Standard' }
-];
+-- Erstellen/Bearbeiten: Nur abgeordneter und bueroleitung
+CREATE POLICY "Admins can manage announcements"
+ON team_announcements FOR ALL
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM user_roles 
+    WHERE user_id = auth.uid() 
+    AND role IN ('abgeordneter', 'bueroleitung')
+  )
+);
+
+-- Dismissals: Benutzer koennen nur eigene erstellen
+CREATE POLICY "Users can manage own dismissals"
+ON team_announcement_dismissals FOR ALL
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
 ```
 
-### 2. Helper-Funktion fuer Hintergrundfarbe
+---
 
+## 3. Frontend-Komponenten
+
+### 3.1 GlobalAnnouncementBanner.tsx (NEU)
+
+Position: Wird in `src/pages/Index.tsx` ganz oben eingefuegt, noch vor dem Layout-Wrapper.
+
+**Funktionen:**
+- Laedt aktive Mitteilungen fuer den aktuellen Tenant
+- Filtert bereits als erledigt markierte
+- Zeigt Banner mit Prioritaets-Farbe an
+- "Als erledigt markieren" Button pro Benutzer
+- Realtime-Subscription fuer sofortige Updates
+
+**Struktur:**
 ```typescript
-// Get warm background color for full card mode
-const getCardBackground = (color: string | null): string | undefined => {
-  if (!color) return undefined;
-  const found = noteColors.find(c => c.value === color);
-  return found?.bg || `${color}30`; // Fallback fuer unbekannte Farben
+interface Announcement {
+  id: string;
+  title: string;
+  message: string;
+  priority: 'critical' | 'warning' | 'info' | 'success';
+  author_name: string;
+  created_at: string;
+}
+
+// Farb-Mapping
+const priorityStyles = {
+  critical: { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-800', icon: AlertTriangle },
+  warning: { bg: 'bg-orange-100', border: 'border-orange-500', text: 'text-orange-800', icon: AlertCircle },
+  info: { bg: 'bg-blue-100', border: 'border-blue-500', text: 'text-blue-800', icon: Info },
+  success: { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-800', icon: CheckCircle },
 };
 ```
 
-### 3. Card-Styling anpassen (Zeilen 1323-1328)
+### 3.2 TeamAnnouncementsManager.tsx (NEU)
 
-```typescript
-style={{ 
-  borderLeftColor: note.color || "#3b82f6",
-  backgroundColor: note.color && note.color_full_card === true
-    ? getCardBackground(note.color)
-    : undefined
-}}
+Position: In MyWorkView.tsx unter dem "Team"-Tab, nur fuer abgeordneter/bueroleitung sichtbar.
+
+**Funktionen:**
+- Neue Mitteilung erstellen (Dialog)
+- Aktive Mitteilungen verwalten
+- Archiv vergangener Mitteilungen einsehen
+- Wer hat bereits als erledigt markiert (Fortschritt)
+
+**UI-Elemente:**
+- Button "Neue Mitteilung"
+- Tabelle mit aktiven Mitteilungen
+- Tabs: "Aktiv" | "Archiv"
+- Pro Mitteilung: Titel, Prioritaet-Badge, Zeitraum, Fortschritt (X von Y gelesen), Aktionen
+
+### 3.3 CreateAnnouncementDialog.tsx (NEU)
+
+**Felder:**
+- Titel (Pflicht, max 100 Zeichen)
+- Nachricht (Pflicht, Textarea)
+- Prioritaet (Select: Kritisch/Warnung/Info/Erfolg)
+- Anzeigedauer:
+  - Sofort starten / Geplanter Start (DateTimePicker)
+  - Unbegrenzt / Enddatum (DateTimePicker)
+- Vorschau des Banners in gewaehlter Farbe
+
+---
+
+## 4. Zusaetzliche Features
+
+### 4.1 Fortschrittsanzeige fuer Ersteller
+
+Admins sehen, wer die Mitteilung bereits als erledigt markiert hat:
+- Fortschrittsbalken: "5 von 8 Teammitgliedern"
+- Liste mit Namen und Zeitstempel
+
+### 4.2 Benachrichtigungen
+
+Bei neuer kritischer oder Warn-Mitteilung:
+- Push-Notification an alle Team-Mitglieder (optional, ueber bestehendes Notification-System)
+
+### 4.3 Zeitbasierte Automatik
+
+- Mitteilungen werden automatisch angezeigt wenn `starts_at` erreicht
+- Mitteilungen verschwinden automatisch wenn `expires_at` ueberschritten
+- Cron-artige Logik im Frontend (Intervall-Check alle 60 Sekunden)
+
+### 4.4 Mehrere gleichzeitige Banner
+
+Falls mehrere aktive Mitteilungen existieren:
+- Sortiert nach Prioritaet (critical > warning > info > success)
+- Dann nach Erstellungsdatum (neueste zuerst)
+- Maximal 3 Banner gleichzeitig sichtbar
+- "Weitere X Mitteilungen" Link zum Team-Tab
+
+### 4.5 Benachrichtigungs-Toggle in Einstellungen
+
+Benutzer koennen in den Einstellungen deaktivieren:
+- "Banner-Benachrichtigungen anzeigen" (on/off)
+- Falls off: Banner wird trotzdem im Team-Tab sichtbar, aber nicht global
+
+---
+
+## 5. Dateistruktur
+
+```text
+src/
+  components/
+    announcements/
+      GlobalAnnouncementBanner.tsx      # Banner-Komponente
+      TeamAnnouncementsManager.tsx      # Verwaltungs-Ansicht
+      CreateAnnouncementDialog.tsx      # Erstellungs-Dialog
+      AnnouncementCard.tsx              # Einzelne Mitteilung (Liste)
+      AnnouncementProgress.tsx          # Fortschrittsanzeige
+    my-work/
+      MyWorkTeamTab.tsx                 # (erweitert)
+  hooks/
+    useTeamAnnouncements.ts             # Hook fuer Daten-Logik
+  pages/
+    Index.tsx                           # (erweitert mit Banner)
 ```
 
 ---
 
-## Bugfix: handleSetColorMode mit `.select()`
+## 6. Integration in bestehendes System
 
-Der eigentliche Fehler war das fehlende `.select()`. Hier die korrigierte Version:
+### Index.tsx Aenderung
 
 ```typescript
-const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
-  if (colorModeUpdating) {
-    console.log("Color mode update already in progress, skipping");
-    return;
-  }
-  
-  if (!user?.id) {
-    toast.error("Nicht angemeldet");
-    return;
-  }
-
-  const note = notes.find(n => n.id === noteId);
-  if (!note) {
-    toast.error("Notiz nicht gefunden");
-    return;
-  }
-
-  const canModify = note.user_id === user.id || note.can_edit === true;
-  if (!canModify) {
-    toast.error("Keine Berechtigung zum Ändern dieser Notiz");
-    return;
-  }
-
-  setColorModeUpdating(noteId);
-  
-  const previousValue = note.color_full_card;
-  setNotes(prev => prev.map(n => 
-    n.id === noteId ? { ...n, color_full_card: fullCard } : n
-  ));
-
-  try {
-    // MIT .select() - KRITISCH fuer korrekte Fehlerbehandlung!
-    const { data, error } = await supabase
-      .from("quick_notes")
-      .update({ color_full_card: fullCard })
-      .eq("id", noteId)
-      .select();
-
-    if (error || !data || data.length === 0) {
-      console.error("Update error:", error);
-      setNotes(prev => prev.map(n => 
-        n.id === noteId ? { ...n, color_full_card: previousValue } : n
-      ));
-      toast.error("Fehler beim Setzen des Farbmodus");
-      return;
-    }
+// In Index.tsx, vor dem ThemeProvider/Layout:
+return (
+  <ThemeProvider>
+    {/* NEUES Banner ueber allem */}
+    <GlobalAnnouncementBanner />
     
-    toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
-  } catch (error) {
-    console.error("Error setting color mode:", error);
-    setNotes(prev => prev.map(n => 
-      n.id === noteId ? { ...n, color_full_card: previousValue } : n
-    ));
-    toast.error("Fehler beim Setzen des Farbmodus");
-  } finally {
-    setTimeout(() => setColorModeUpdating(null), 300);
-  }
-};
+    {/* Bestehender Layout */}
+    <div className="flex min-h-screen...">
+      ...
+    </div>
+  </ThemeProvider>
+);
+```
+
+### MyWorkTeamTab.tsx Erweiterung
+
+Neuer Abschnitt fuer abgeordneter/bueroleitung:
+```typescript
+{isAdmin && (
+  <div className="mb-6">
+    <TeamAnnouncementsManager />
+  </div>
+)}
 ```
 
 ---
 
-## Zusammenfassung der Aenderungen
+## 7. Zusammenfassung der Aenderungen
 
-| Datei | Zeilen | Aenderung |
-|-------|--------|-----------|
-| `QuickNotesList.tsx` | 159-169 | Farbpalette mit `bg`-Eigenschaft erweitern |
-| `QuickNotesList.tsx` | nach 169 | Helper `getCardBackground()` hinzufuegen |
-| `QuickNotesList.tsx` | 618-680 | `.select()` zu handleSetColorMode hinzufuegen |
-| `QuickNotesList.tsx` | 1323-1328 | `getCardBackground()` statt Opacity verwenden |
+| Komponente | Aktion |
+|------------|--------|
+| Datenbank | 2 neue Tabellen + RLS-Policies |
+| GlobalAnnouncementBanner.tsx | Neu erstellen |
+| TeamAnnouncementsManager.tsx | Neu erstellen |
+| CreateAnnouncementDialog.tsx | Neu erstellen |
+| AnnouncementCard.tsx | Neu erstellen |
+| useTeamAnnouncements.ts | Neu erstellen |
+| Index.tsx | Banner-Komponente einfuegen |
+| MyWorkTeamTab.tsx | Manager-Komponente einfuegen |
 
 ---
 
-## Ergebnis
+## 8. Moegliche Erweiterungen (spaeter)
 
-- **Rand**: Kraeftige, intensive Farben (z.B. `#f97316` Orange)
-- **Hintergrund**: Warme, weiche Toene (z.B. `#fed7aa` Pfirsich - genau wie im Bild!)
-- **Bugfix**: Mit `.select()` funktioniert das Toggle jetzt zuverlaessig
-
+- **Anhang-Support**: Dateien/Bilder an Mitteilungen anhaengen
+- **Zielgruppen**: Mitteilungen nur fuer bestimmte Rollen
+- **Wiederkehrende Mitteilungen**: Woechentliche/monatliche Erinnerungen
+- **Lesebestaetigung erzwingen**: Mitteilung kann nicht geschlossen werden ohne Bestaetigung
+- **E-Mail-Versand**: Kritische Mitteilungen zusaetzlich per E-Mail
