@@ -1,237 +1,218 @@
 
-# Plan: Planungen - Archiv-Fixes und UI-Verbesserungen
 
-## Zusammenfassung der Probleme
+# Plan: Verbesserte Aufgabenansicht unter "Meine Arbeit"
 
-| Problem | Ursache | Loesung |
-|---------|---------|---------|
-| Fehler beim Wiederherstellen/Archivieren | Fehlende `.select()` bei Supabase-Update | `.select()` hinzufuegen |
-| "Abschliessen" vs "Archivieren" verwirrend | Zwei Funktionen die dasselbe tun | Nur "Archivieren" behalten |
-| Button hinter Menue versteckt | DropdownMenu verwendet | Direkter Archive-Icon-Button |
-| Archiv oeffnet nicht direkt | Moegliches State/Timing-Problem | Dialog-Logik korrigieren |
+## 1. Layout-Aenderung: Nebeneinander statt Untereinander
+
+Die beiden Bereiche "Mir zugewiesen" und "Von mir erstellt" werden in einem 50/50 Split-Layout dargestellt.
+
+```text
++---------------------------+---------------------------+
+|    MIR ZUGEWIESEN         |    VON MIR ERSTELLT       |
+|    (50% Breite)           |    (50% Breite)           |
++---------------------------+---------------------------+
+|                           |                           |
+|   [Aufgabe 1]             |   [Aufgabe A]             |
+|   [Aufgabe 2]             |   [Aufgabe B]             |
+|   [Aufgabe 3]             |   [Aufgabe C]             |
+|                           |                           |
++---------------------------+---------------------------+
+```
+
+Umsetzung:
+- `grid grid-cols-1 lg:grid-cols-2 gap-4` fuer das Layout
+- Jede Spalte hat eigene ScrollArea
+- Responsive: Auf mobilen Geraeten untereinander
 
 ---
 
-## 1. Bugfix: `.select()` zu allen Archiv-Funktionen hinzufuegen
+## 2. Ansichts-Toggle: Card vs. Liste
 
-Das ist das Hauptproblem! Ohne `.select()` kann der Client nicht korrekt auf Erfolg/Fehler reagieren, und es erscheinen falsche Fehlermeldungen.
+Ein Toggle oben rechts ermoeglicht den Wechsel zwischen den Ansichten.
 
-### archivePlanning (Zeilen 481-485)
-
-**Vorher:**
-```typescript
-const { error } = await supabase
-  .from("event_plannings")
-  .update({ is_archived: true, archived_at: new Date().toISOString() })
-  .eq("id", planningId)
-  .eq("user_id", user?.id);
+```text
+Header-Bereich:
+[Aufgaben (12)]                    [Card | Liste]
 ```
 
-**Nachher:**
-```typescript
-const { data, error } = await supabase
-  .from("event_plannings")
-  .update({ is_archived: true, archived_at: new Date().toISOString() })
-  .eq("id", planningId)
-  .eq("user_id", user?.id)
-  .select();
+| Ansicht | Beschreibung |
+|---------|--------------|
+| Card    | Karten mit mehr Details, wie bei Notizen |
+| Liste   | Kompakte Tabellenansicht mit Spalten |
 
-if (error || !data || data.length === 0) throw error || new Error("Update failed");
+Speicherung der Praeferenz via `useViewPreference` Hook (bereits vorhanden).
+
+---
+
+## 3. Badge-System (wie bei Notizen)
+
+Farbige Quadrate im Normalzustand, erweiterte Badges beim Hover.
+
+### Standard-Ansicht (kleine farbige Quadrate):
+
+```text
+[■] Prioritaet (rot/orange/gruen)
+[■] Status (grau/blau/gruen)
+[■] Kategorie (violett/blau/etc.)
+[■] Zugewiesen an (vorhanden = tuerkis)
 ```
 
-### restorePlanning (Zeilen 506-510)
+### Hover-Ansicht (volle Badges):
 
-**Nachher:**
-```typescript
-const { data, error } = await supabase
-  .from("event_plannings")
-  .update({ is_archived: false, archived_at: null })
-  .eq("id", planningId)
-  .eq("user_id", user?.id)
-  .select();
-
-if (error || !data || data.length === 0) throw error || new Error("Update failed");
+```text
+[Hoch] [In Bearbeitung] [Persoenlich] [Max M.]
 ```
 
-### archivePreparation (Zeilen 605-611)
+### Farbschema:
 
-**Nachher:**
-```typescript
-const { data, error } = await supabase
-  .from("appointment_preparations")
-  .update({ is_archived: true, archived_at: new Date().toISOString() })
-  .eq("id", preparationId)
-  .select();
+| Badge | Farbe | Bedeutung |
+|-------|-------|-----------|
+| Prioritaet hoch | Rot (#ef4444) | Dringend |
+| Prioritaet mittel | Orange (#f97316) | Wichtig |
+| Prioritaet niedrig | Gruen (#22c55e) | Normal |
+| Status: todo | Grau (#6b7280) | Offen |
+| Status: in-progress | Blau (#3b82f6) | In Arbeit |
+| Status: completed | Gruen (#22c55e) | Erledigt |
+| Kategorie | Violett (#8b5cf6) | Thema/Bereich |
+| Zugewiesen | Tuerkis (#06b6d4) | Person zugewiesen |
 
-if (error || !data || data.length === 0) throw error || new Error("Update failed");
+---
+
+## 4. Aktions-Icons (bei Hover einfliegen)
+
+Icons erscheinen beim Hover in einer Leiste am unteren Rand der Card/Zeile.
+
+| Icon | Aktion | Beschreibung |
+|------|--------|--------------|
+| AlarmClock | Wiedervorlage | Aufgabe auf spaeter verschieben |
+| UserPlus | Zuweisung | Person zuweisen/aendern |
+| MessageSquare | Kommentare | Kommentare anzeigen/hinzufuegen |
+| Vote | Entscheidung anfordern | Abstimmung starten |
+| Paperclip | Dokumente | Anhaenge anzeigen/hinzufuegen |
+
+### Anordnung (identisch zu Notizen):
+
+```text
++------------------------------------------+
+|  [Titel]                                 |
+|  [Beschreibung...]                       |
+|                                          |
+|  [■][■][■][■]                [→ Details] |  <- Standard
+|  [Hoch][Status][...]   [🔔][👤][💬][📎] |  <- Hover
++------------------------------------------+
 ```
 
 ---
 
-## 2. "Abschliessen" entfernen - nur "Archivieren" behalten
+## 5. Inline-Bearbeitung von Titel und Beschreibung
 
-Da beide Funktionen praktisch dasselbe machen, wird `completePlanningAndArchive` und `completePreparationAndArchive` entfernt. Nur die Archiv-Funktionen bleiben.
+Titel und Beschreibung koennen direkt in der Card bearbeitet werden.
 
-### Zu entfernende Funktionen:
-- `completePlanningAndArchive` (Zeilen 530-571)
-- `completePreparationAndArchive` (Zeilen 574-600)
+**Implementierung:**
+- Klick auf Titel/Beschreibung aktiviert Bearbeitungsmodus
+- Einfaches Input-Feld fuer Titel
+- Textarea oder SimpleRichTextEditor fuer Beschreibung
+- Speichern bei Blur oder Enter
+- Abbrechen bei Escape
+
+```text
++------------------------------------------+
+|  [Aufgabe einkaufen_______] <- Editierbar|
+|  [Milch und Brot besorgen_] <- Editierbar|
+|                                          |
++------------------------------------------+
+```
 
 ---
 
-## 3. Direkter Archiv-Icon-Button statt Dropdown-Menue
+## 6. Listen-Ansicht
 
-### Veranstaltungsplanungen - Card-Ansicht (Zeilen 2948-2973)
+Kompakte Tabellen-Darstellung mit den wichtigsten Spalten.
 
-**Vorher:** DropdownMenu mit "Abschliessen" und "Archivieren"
+| Checkbox | Titel | Prioritaet | Status | Faellig | Aktionen |
+|----------|-------|------------|--------|---------|----------|
+| [ ] | Einkaufen | 🔴 | In Arbeit | 05.02. | [🔔][👤][💬] |
+| [ ] | Meeting | 🟡 | Offen | 07.02. | [🔔][👤][💬] |
 
-**Nachher:** Einzelner Icon-Button mit Tooltip
-```typescript
-{planning.user_id === user?.id && (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-7 w-7"
-        onClick={(e) => {
-          e.stopPropagation();
-          archivePlanning(planning.id);
-        }}
-      >
-        <Archive className="h-4 w-4" />
-      </Button>
-    </TooltipTrigger>
-    <TooltipContent>Archivieren</TooltipContent>
-  </Tooltip>
-)}
-```
-
-### Veranstaltungsplanungen - Listen-Ansicht (Zeilen 851-870)
-
-Analog: DropdownMenu durch einzelnen Icon-Button ersetzen.
-
-### Veranstaltungsplanungen - Detailansicht (Zeilen 3495-3520)
-
-**Vorher:** AlertDialog mit "Abschliessen"
-
-**Nachher:** Button "Archivieren" (ohne Bestaetigung, da einfache Aktion)
-```typescript
-{selectedPlanning.user_id === user?.id && (
-  <Button 
-    variant="outline"
-    onClick={() => archivePlanning(selectedPlanning.id)}
-  >
-    <Archive className="mr-2 h-4 w-4" />
-    Archivieren
-  </Button>
-)}
-```
-
-### Terminplanungen - Card-Ansicht (Zeilen 3175-3198)
-
-**Nachher:** Einzelner Icon-Button
-```typescript
-<Tooltip>
-  <TooltipTrigger asChild>
-    <Button 
-      variant="ghost" 
-      size="icon" 
-      className="h-7 w-7"
-      onClick={(e) => {
-        e.stopPropagation();
-        archivePreparation(preparation.id);
-      }}
-    >
-      <Archive className="h-4 w-4" />
-    </Button>
-  </TooltipTrigger>
-  <TooltipContent>Archivieren</TooltipContent>
-</Tooltip>
-```
-
-### Terminplanungen - Listen-Ansicht (Zeilen 929-948)
-
-Analog: DropdownMenu durch einzelnen Icon-Button ersetzen.
+- Aktions-Icons erscheinen nur bei Hover der Zeile
+- Titel ist inline bearbeitbar (Doppelklick)
+- Checkbox fuer schnelles Erledigen
 
 ---
 
-## 4. Archiv-Button-Dialog sofort oeffnen
+## 7. Zusaetzliche Ideen
 
-Das Problem ist, dass der Dialog sich nicht oeffnet, wenn man auf "Archiv" klickt. Die Ursache koennte sein, dass das Event irgendwie blockiert wird oder der State nicht korrekt gesetzt wird.
+### 7.1 Schnellfilter
 
-### Loesung: Direkte State-Aenderung ohne async-Abhaengigkeit
+Filter-Chips ueber den Listen fuer schnelles Filtern:
 
-**Vorher (Zeilen 2843-2849):**
-```typescript
-onClick={(e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  console.log("Archiv-Button clicked, current state:", showPlanningArchive);
-  fetchArchivedPlannings();
-  setShowPlanningArchive(true);
-}}
+```text
+[Alle] [Ueberfaellig] [Heute] [Diese Woche] [Hohe Prioritaet]
 ```
 
-**Nachher:**
-```typescript
-onClick={(e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  // Sofort Dialog oeffnen - nicht auf fetch warten!
-  setShowPlanningArchive(true);
-  // Dann Daten laden
-  fetchArchivedPlannings();
-}}
+### 7.2 Sortieroptionen
+
+Dropdown fuer Sortierung:
+
+```text
+Sortieren nach: [Faelligkeit ▼]
+- Faelligkeit
+- Prioritaet
+- Erstelldatum
+- Titel
 ```
 
-Die Reihenfolge ist wichtig: Erst den Dialog oeffnen, dann die Daten laden. So sieht der Benutzer sofort den Dialog (ggf. mit Ladezustand) und muss nicht warten.
+### 7.3 Drag & Drop zwischen Spalten
+
+Aufgabe von "Mir zugewiesen" nach "Von mir erstellt" ziehen (falls Berechtigung).
+
+### 7.4 Bulk-Aktionen
+
+Mehrere Aufgaben auswaehlen und gemeinsam bearbeiten:
+- Alle als erledigt markieren
+- Prioritaet aendern
+- Status aendern
+
+### 7.5 Unteraufgaben-Zaehler
+
+Badge mit Anzahl offener Unteraufgaben: `[3/5]`
+
+### 7.6 Kommentar-Zaehler
+
+Badge mit Anzahl Kommentare: `[💬 2]`
 
 ---
 
-## 5. Zusammenfassung aller Aenderungen
+## 8. Technische Umsetzung
 
-| Datei | Zeilen (ca.) | Aenderung |
-|-------|--------------|-----------|
-| EventPlanningView.tsx | 481-485 | `.select()` zu archivePlanning |
-| EventPlanningView.tsx | 506-510 | `.select()` zu restorePlanning |
-| EventPlanningView.tsx | 605-611 | `.select()` zu archivePreparation |
-| EventPlanningView.tsx | 530-571 | `completePlanningAndArchive` entfernen |
-| EventPlanningView.tsx | 574-600 | `completePreparationAndArchive` entfernen |
-| EventPlanningView.tsx | 2843-2849 | Archiv-Dialog-Reihenfolge aendern |
-| EventPlanningView.tsx | 2948-2973 | Card-Ansicht: DropdownMenu -> Icon-Button |
-| EventPlanningView.tsx | 851-870 | Listen-Ansicht: DropdownMenu -> Icon-Button |
-| EventPlanningView.tsx | 3495-3520 | Detailansicht: "Abschliessen" -> "Archivieren" |
-| EventPlanningView.tsx | 3175-3198 | Termin Card: DropdownMenu -> Icon-Button |
-| EventPlanningView.tsx | 929-948 | Termin Liste: DropdownMenu -> Icon-Button |
+### Neue/Geaenderte Dateien:
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/my-work/MyWorkTasksTab.tsx` | Komplette Ueberarbeitung mit neuem Layout |
+| `src/components/tasks/TaskCard.tsx` | NEUE Komponente fuer einzelne Aufgaben-Cards |
+| `src/components/tasks/TaskListRow.tsx` | NEUE Komponente fuer Listen-Zeilen |
+| `src/components/tasks/TaskBadges.tsx` | NEUE Komponente fuer Badge-Anzeige mit Hover |
+| `src/components/tasks/TaskActionIcons.tsx` | NEUE Komponente fuer Aktions-Icons |
+
+### Wiederverwendbare Patterns aus QuickNotesList:
+
+- Hover-Zustand mit `group` und `group-hover:` Klassen
+- Kleine Quadrate: `<div className="w-1.5 h-1.5 bg-[farbe]" />`
+- Transition: `opacity-0 group-hover:opacity-100 transition-opacity duration-200`
+- TooltipProvider fuer Icon-Beschreibungen
 
 ---
 
-## Visuelle Vorschau
+## 9. Zusammenfassung
 
-**Vorher (Card):**
-```
-[Titel]                  [Privat] [...]
-                                   |
-                         +---------+------+
-                         | Abschliessen   |
-                         | Archivieren    |
-                         +----------------+
-```
+| Feature | Beschreibung |
+|---------|--------------|
+| 50/50 Layout | Beide Bereiche nebeneinander |
+| Ansichts-Toggle | Card oder Liste waehlbar |
+| Badge-System | Farbige Quadrate, erweitert bei Hover |
+| Aktions-Icons | Wiedervorlage, Zuweisung, Kommentare, Entscheidung, Dokumente |
+| Inline-Edit | Titel und Beschreibung direkt aenderbar |
+| Schnellfilter | Optional: Ueberfaellig, Heute, etc. |
+| Sortierung | Optional: Nach Faelligkeit, Prioritaet, etc. |
 
-**Nachher (Card):**
-```
-[Titel]                  [Privat] [📁]
-                                   ^
-                                   |
-                            Tooltip: "Archivieren"
-```
-
-**Vorher (Detail):**
-```
-[+ Mitarbeiter] [✓ Abschliessen] [🗑 Loeschen]
-```
-
-**Nachher (Detail):**
-```
-[+ Mitarbeiter] [📁 Archivieren] [🗑 Loeschen]
-```
