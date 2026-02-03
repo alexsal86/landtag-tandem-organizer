@@ -518,12 +518,12 @@ export function MyWorkTasksTab() {
             <DialogTitle>Aufgabe zuweisen</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Select onValueChange={handleUpdateAssignee}>
+            <Select onValueChange={(value) => handleUpdateAssignee(value === "__none__" ? "" : value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Person auswählen" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Keine Zuweisung</SelectItem>
+                <SelectItem value="__none__">Keine Zuweisung</SelectItem>
                 {profiles.map(profile => (
                   <SelectItem key={profile.user_id} value={profile.user_id}>
                     {profile.display_name || 'Unbekannter Benutzer'}
