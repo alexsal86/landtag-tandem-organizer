@@ -1,289 +1,326 @@
 
+# Plan: Fixes fuer Aufgabenansicht und weitere Probleme
 
-# Plan: Icon-Fixes und Layout-Korrekturen
+## Zusammenfassung der 5 Probleme
 
-## Zusammenfassung der Probleme
-
-| Problem | Ursache | Loesung |
-|---------|---------|---------|
-| "Zuweisen an" Icon funktioniert nicht | Obwohl der Handler korrekt aufgerufen wird, scheint der Dialog nicht zu oeffnen. Die Analyse zeigt, dass das Setup korrekt ist - hier muss geprueft werden, ob der Handler tatsaechlich aufgerufen wird |
-| "Entscheidung anfordern" Icon funktioniert nicht | `TaskDecisionCreator` hat einen internen `isOpen` State (Zeile 28) und `DialogTrigger` (Zeile 416) - wenn die Komponente von aussen gerendert wird, ist `isOpen=false` |
-| Abstand zwischen Frist und Link-Icon | `gap-1` in Zeile 232 (TaskCard) und Zeile 197 (TaskListRow) erzeugt Abstaende zwischen ALLEN Elementen |
-
----
-
-## 1. Fix: "Zuweisen an" Icon debuggen
-
-### Aktuelle Implementierung (funktioniert korrekt)
-
-In `MyWorkTasksTab.tsx`:
-```typescript
-// Handler (Zeile 328-331)
-const handleAssign = (taskId: string) => {
-  setAssignTaskId(taskId);
-  setAssignDialogOpen(true);  // <-- Dialog wird geoeffnet
-};
-
-// Dialog (Zeile 519-536) - existiert bereits
-<Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-  ...
-</Dialog>
-```
-
-**Pruefung erforderlich**: Der Code sieht korrekt aus. Moeglicherweise wird der Handler nicht an die Komponenten uebergeben. Laut Code in Zeile 409 und 429 wird `onAssign={handleAssign}` uebergeben.
-
-**Aktion**: Console.log in `handleAssign` einfuegen, um zu pruefen ob der Handler aufgerufen wird.
+| # | Problem | Loesung |
+|---|---------|---------|
+| 1 | Abstand zwischen Frist-Icon und Verlinkungs-Icon bei Tasks | CSS-Anpassung: Button-Padding reduzieren |
+| 2 | Fehler beim Aktivieren/Deaktivieren von Mitteilungen | RLS-Policy oder Fehlerbehandlung im Hook pruefen |
+| 3 | Avatar-Hintergruende weiss auf weiss im hellen Modus | Fallback-Farbe anpassen |
+| 4 | Profilbild-Upload funktioniert nicht | Storage-Bucket-Zugriff pruefen |
+| 5 | Einhorn-Animation auf Meine Arbeit erweitern | UnicornAnimation in MyWorkTasksTab integrieren |
 
 ---
 
-## 2. Fix: "Entscheidung anfordern" Icon
+## 1. Layout-Fix: Abstand zwischen Frist und Verlinkung entfernen
 
-### Problem
+### Ursache
 
-`TaskDecisionCreator.tsx` (Zeile 27-28, 414-425):
-
-```typescript
-export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionCreatorProps) => {
-  const [isOpen, setIsOpen] = useState(false);  // <-- startet IMMER mit false
-  // ...
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>  // <-- erfordert Klick auf Button
-        <Button onClick={loadProfiles}>
-          <Vote className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-```
-
-Wenn wir in `MyWorkTasksTab.tsx` nur `decisionTaskId` setzen und die Komponente rendern (Zeile 541-550), oeffnet sich der Dialog NICHT, weil `isOpen` intern auf `false` gesetzt ist.
+Das Problem liegt im `Button`-Styling des Navigate-Buttons. Der Button hat `h-7 w-7` was 28px ist, aber auch internen Padding durch `size="icon"`. Da der Container kein `gap` mehr hat, muss der Navigate-Button nahtlos an die Frist anschliessen.
 
 ### Loesung
 
-`TaskDecisionCreator` erweitern, um externe Steuerung zu unterstuetzen:
+Den Navigate-Button mit weniger horizontalem Spacing stylen:
 
-**Datei: `src/components/task-decisions/TaskDecisionCreator.tsx`**
+**Datei: `src/components/tasks/TaskCard.tsx` (Zeile 275-280)**
 
-**Zeilen 17-20 aendern (Props erweitern):**
 ```typescript
-interface TaskDecisionCreatorProps {
-  taskId: string;
-  onDecisionCreated: () => void;
-  isOpen?: boolean;                          // NEU
-  onOpenChange?: (open: boolean) => void;    // NEU
-}
+// VORHER:
+<Button
+  variant="ghost"
+  size="icon"
+  className="h-7 w-7 flex-shrink-0"
+  onClick={() => onNavigate(task.id)}
+>
+
+// NACHHER:
+<Button
+  variant="ghost"
+  size="icon"
+  className="h-7 w-7 flex-shrink-0 ml-0"
+  onClick={() => onNavigate(task.id)}
+>
 ```
 
-**Zeile 27-28 aendern (Steuerungslogik):**
+Das reicht vermutlich nicht aus. Das Problem ist, dass der Button intrinsisches Padding hat.
+
+**Bessere Loesung**: Den Button direkt auf `p-0` setzen oder ein kleineres `size` verwenden:
+
 ```typescript
-export const TaskDecisionCreator = ({ 
-  taskId, 
-  onDecisionCreated,
-  isOpen: externalOpen,
-  onOpenChange: externalOnOpenChange
-}: TaskDecisionCreatorProps) => {
-  const [internalOpen, setInternalOpen] = useState(false);
+<Button
+  variant="ghost"
+  size="sm"
+  className="h-6 w-6 p-0 flex-shrink-0"
+  onClick={() => onNavigate(task.id)}
+>
+  <ExternalLink className="h-3 w-3" />
+</Button>
+```
+
+**Gleiche Aenderung in TaskListRow.tsx (Zeile 240-247)**
+
+---
+
+## 2. Fehler beim Aktivieren/Deaktivieren von Mitteilungen
+
+### Ursache
+
+Basierend auf der Fehleranalyse und dem Code in `useTeamAnnouncements.ts`:
+
+- Die `updateAnnouncement` Funktion (Zeile 200-217) ruft `supabase.from("team_announcements").update(data).eq("id", id)` auf
+- Das Problem koennte sein, dass die RLS-Policy nur dem `author_id` das Update erlaubt, aber die Pruefung fehlerhaft ist
+- Oder: Das optimistische UI-Update nach `toast.success` schlaegt fehl wegen eines Netzwerkfehlers beim `fetchAnnouncements()`
+
+### Beobachtung
+
+Der Fehler tritt auf, die Aenderung wird aber in der Datenbank gespeichert (nach Neuladen sichtbar). Das deutet auf ein Problem mit dem Realtime-Callback oder der `fetchAnnouncements()`-Funktion hin.
+
+### Loesung
+
+Im Hook `useTeamAnnouncements.ts` die Fehlerbehandlung verbessern:
+
+**Datei: `src/hooks/useTeamAnnouncements.ts` (Zeile 200-217)**
+
+```typescript
+const updateAnnouncement = async (id: string, data: Partial<CreateAnnouncementData & { is_active: boolean }>) => {
+  // Optimistisches Update der lokalen State VORHER
+  const previousAnnouncements = [...announcements];
   
-  // Wenn externe Steuerung vorhanden, diese verwenden
-  const isControlled = externalOpen !== undefined;
-  const isOpen = isControlled ? externalOpen : internalOpen;
+  // Optimistisch die lokalen States aktualisieren
+  setAnnouncements(prev => prev.map(a => 
+    a.id === id ? { ...a, ...data } : a
+  ));
   
-  const handleOpenChange = (open: boolean) => {
-    if (isControlled && externalOnOpenChange) {
-      externalOnOpenChange(open);
+  // Auch activeAnnouncements aktualisieren falls noetig
+  if (data.is_active !== undefined) {
+    if (data.is_active) {
+      // Aktiviert - aus activeAnnouncements neu berechnen bei fetchAnnouncements
     } else {
-      setInternalOpen(open);
+      // Deaktiviert - sofort aus activeAnnouncements entfernen
+      setActiveAnnouncements(prev => prev.filter(a => a.id !== id));
     }
-  };
-```
+  }
+  
+  try {
+    const { error } = await supabase
+      .from("team_announcements")
+      .update(data)
+      .eq("id", id);
 
-**Zeile 414-425 aendern (Dialog und Trigger):**
-```typescript
-return (
-  <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-    {/* DialogTrigger nur rendern wenn KEINE externe Steuerung */}
-    {!isControlled && (
-      <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={loadProfiles}
-          className="text-destructive hover:text-destructive/80"
-        >
-          <Vote className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-    )}
-    <DialogContent className="sm:max-w-[500px]">
-```
+    if (error) throw error;
 
-**Datei: `src/components/my-work/MyWorkTasksTab.tsx`**
-
-**Zeile 70 aendern (neuer State):**
-```typescript
-const [decisionDialogOpen, setDecisionDialogOpen] = useState(false);
-const [decisionTaskId, setDecisionTaskId] = useState<string | null>(null);
-```
-
-**Zeile 367-369 aendern (Handler):**
-```typescript
-const handleDecision = (taskId: string) => {
-  setDecisionTaskId(taskId);
-  setDecisionDialogOpen(true);  // Dialog explizit oeffnen
+    toast.success("Mitteilung aktualisiert");
+    // Kein fetchAnnouncements() hier - das Realtime-Subscription uebernimmt das
+    return true;
+  } catch (error) {
+    console.error("Error updating announcement:", error);
+    // Rollback bei Fehler
+    setAnnouncements(previousAnnouncements);
+    toast.error("Fehler beim Aktualisieren");
+    return false;
+  }
 };
 ```
 
-**Zeile 541-550 aendern (Komponente mit Props):**
+---
+
+## 3. Avatar-Hintergruende weiss im hellen Modus
+
+### Ursache
+
+In `src/components/layout/AppHeader.tsx` (Zeile 208):
+
 ```typescript
-{decisionTaskId && (
-  <TaskDecisionCreator 
-    taskId={decisionTaskId}
-    isOpen={decisionDialogOpen}
-    onOpenChange={(open) => {
-      setDecisionDialogOpen(open);
-      if (!open) setDecisionTaskId(null);
-    }}
-    onDecisionCreated={() => {
-      setDecisionDialogOpen(false);
-      setDecisionTaskId(null);
-      toast({ title: "Entscheidungsanfrage erstellt" });
-    }}
-  />
-)}
+<AvatarFallback className="text-[10px]">
+  {onlineUser.display_name?.charAt(0) || "?"}
+</AvatarFallback>
+```
+
+Der `AvatarFallback` hat keine explizite Hintergrundfarbe. Im Dark Mode funktioniert es, weil der Standard-Hintergrund dunkel ist. Im Light Mode ist der Hintergrund aber weiss und der Text ebenso.
+
+### Loesung
+
+Explizite Hintergrund- und Textfarben setzen:
+
+**Datei: `src/components/layout/AppHeader.tsx` (Zeile 208-210)**
+
+```typescript
+// VORHER:
+<AvatarFallback className="text-[10px]">
+
+// NACHHER:
+<AvatarFallback className="text-[10px] bg-muted text-foreground">
+```
+
+Alternative mit mehr Kontrast:
+
+```typescript
+<AvatarFallback className="text-[10px] bg-primary/20 text-primary-foreground dark:bg-primary/30 dark:text-white">
 ```
 
 ---
 
-## 3. Fix: Layout - Frist direkt neben Link-Icon
+## 4. Profilbild-Upload funktioniert nicht
 
-### Aktuelles Layout (Problem aus dem Screenshot):
+### Ursache
 
-```text
-[31.08.]  [           ]  [→]
-          ^-- Abstand durch gap-1
-```
+Der Code in `EditProfile.tsx` (Zeile 106-124) versucht in einen `avatars` Storage-Bucket hochzuladen:
 
-### Gewuenschtes Layout:
-
-```text
-Standard:   [31.08.][→]
-                   ^-- KEIN Abstand!
-
-Hover:      [31.08.] | [Icons...][→]
-                     ^-- Separator + Icons schieben sich ein
-```
-
-### Aenderung in TaskCard.tsx (Zeile 231-288)
-
-**Zeile 232: `gap-1` entfernen**
 ```typescript
-// VORHER:
-<div className="flex items-center gap-1">
-
-// NACHHER:
-<div className="flex items-center">
+const { data: uploadData, error: uploadError } = await supabase.storage
+  .from('avatars')  // <-- Bucket muss existieren und public sein
+  .upload(fileName, file, { 
+    upsert: true,
+    contentType: file.type 
+  });
 ```
 
-**Zeilen 261-277: Separator und Icons in EINEN Container**
+Das Problem ist wahrscheinlich:
+1. Der `avatars` Bucket existiert nicht
+2. Oder die RLS-Policies erlauben keinen Upload
+
+### Loesung
+
+1. **Storage Bucket erstellen** - muss im Supabase Dashboard erfolgen:
+   - Bucket-Name: `avatars`
+   - Public: Ja (damit die URLs oeffentlich abrufbar sind)
+
+2. **RLS-Policies hinzufuegen**:
+   ```sql
+   -- INSERT Policy: User kann eigene Avatare hochladen
+   CREATE POLICY "Users can upload their own avatar" ON storage.objects
+   FOR INSERT WITH CHECK (
+     bucket_id = 'avatars' AND 
+     auth.uid()::text = (storage.foldername(name))[1]
+   );
+   
+   -- UPDATE Policy: User kann eigene Avatare aktualisieren
+   CREATE POLICY "Users can update their own avatar" ON storage.objects
+   FOR UPDATE USING (
+     bucket_id = 'avatars' AND 
+     auth.uid()::text = (storage.foldername(name))[1]
+   );
+   
+   -- SELECT Policy: Jeder kann Avatare lesen
+   CREATE POLICY "Avatar images are publicly accessible" ON storage.objects
+   FOR SELECT USING (bucket_id = 'avatars');
+   ```
+
+3. **Bessere Fehlerbehandlung im Code** (optional aber empfohlen):
+
+**Datei: `src/pages/EditProfile.tsx` (Zeile 137-143)**
+
 ```typescript
-// VORHER (zwei separate Elemente mit je opacity):
-<Separator 
-  orientation="vertical" 
-  className="h-4 mx-1 opacity-0 group-hover:opacity-100 transition-opacity" 
+} catch (error: any) {
+  console.error('Error uploading file:', error);
+  // Spezifischere Fehlermeldung
+  const errorMessage = error?.message?.includes('bucket') 
+    ? "Der Avatar-Speicher ist nicht konfiguriert. Bitte kontaktieren Sie den Administrator."
+    : "Das Bild konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut.";
+  toast({
+    title: "Upload-Fehler",
+    description: errorMessage,
+    variant: "destructive",
+  });
+```
+
+---
+
+## 5. Einhorn-Animation auf Meine Arbeit erweitern
+
+### Aktuelle Situation
+
+Die `UnicornAnimation` ist nur in `TasksView.tsx` integriert. Sie wird bei Task-, Subtask- und Todo-Completion getriggert.
+
+### Loesung
+
+Die gleiche Logik in `MyWorkTasksTab.tsx` einbauen:
+
+**Datei: `src/components/my-work/MyWorkTasksTab.tsx`**
+
+**Import hinzufuegen (Zeile 20):**
+```typescript
+import { UnicornAnimation } from "@/components/UnicornAnimation";
+```
+
+**State hinzufuegen (nach Zeile 74):**
+```typescript
+const [showUnicorn, setShowUnicorn] = useState(false);
+```
+
+**In handleToggleComplete triggern (Zeile 200-201):**
+```typescript
+// Nach erfolgreichem Complete
+setShowUnicorn(true);
+toast({ title: "Aufgabe erledigt und archiviert" });
+```
+
+**In handleToggleSubtaskComplete triggern (Zeile 217):**
+```typescript
+setShowUnicorn(true);
+toast({ title: "Unteraufgabe erledigt" });
+```
+
+**Komponente am Ende rendern (vor dem letzten schliessenden Tag):**
+```typescript
+{/* Unicorn Animation */}
+<UnicornAnimation 
+  isVisible={showUnicorn} 
+  onAnimationComplete={() => setShowUnicorn(false)} 
 />
-
-<div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-  <TaskActionIcons ... />
-</div>
-
-// NACHHER (ein Container fuer beide):
-<div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-  <Separator orientation="vertical" className="h-4 mx-1" />
-  <TaskActionIcons
-    taskId={task.id}
-    onReminder={onReminder}
-    onAssign={onAssign}
-    onComment={onComment}
-    onDecision={onDecision}
-    onDocuments={onDocuments}
-  />
-</div>
-```
-
-### Aenderung in TaskListRow.tsx (Zeile 196-253)
-
-Gleiche Logik:
-
-**Zeile 197: `gap-1` entfernen**
-```typescript
-// VORHER:
-<div className="flex items-center gap-1 flex-shrink-0">
-
-// NACHHER:
-<div className="flex items-center flex-shrink-0">
-```
-
-**Zeilen 226-242: Separator und Icons gruppieren**
-```typescript
-// NACHHER:
-<div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-  <Separator orientation="vertical" className="h-4 mx-1" />
-  <TaskActionIcons
-    taskId={task.id}
-    onReminder={onReminder}
-    onAssign={onAssign}
-    onComment={onComment}
-    onDecision={onDecision}
-    onDocuments={onDocuments}
-  />
-</div>
 ```
 
 ---
 
-## 4. Visuelle Darstellung nach den Fixes
+## 6. Admin-konfigurierbare Einhorn-Grafik (Diskussion)
 
-### Standard (nicht hovern):
+### Optionen
 
-```text
-+------------------------------------------+
-|  [Titel]                                 |
-|  [Beschreibung...]                       |
-|                                          |
-|  [●][●][●][●]              [31.08.][→]  |
-+------------------------------------------+
-                             ^-- KEIN Abstand mehr!
-```
+Es gibt mehrere Ansaetze, die Animation ueber den Admin-Bereich konfigurierbar zu machen:
 
-### Hover:
+| Option | Aufwand | Beschreibung |
+|--------|---------|--------------|
+| A) Einfacher Toggle | Gering | Admin kann Animation ein/ausschalten (global oder pro Benutzer) |
+| B) Vordefinierte Animationen | Mittel | Auswahl aus 3-5 verschiedenen Animationen (Einhorn, Feuerwerk, Konfetti, etc.) |
+| C) Benutzerdefinierte Grafik | Hoch | Admin kann eigene SVG/GIF hochladen |
 
-```text
-+------------------------------------------+
-|  [Titel]                                 |
-|  [Beschreibung...]                       |
-|                                          |
-|  [Mittel][Offen][personal]  [31.08.] | [🔔][👤][💬][☑][📎][→]  |
-+------------------------------------------+
-                              ^-- Separator + Icons schieben sich ein
-```
+### Empfohlener Ansatz: Option B
+
+1. **Neue Tabelle** `app_settings` erweitern um:
+   - `completion_animation`: Enum ('unicorn', 'confetti', 'firework', 'none')
+   
+2. **Admin-UI** in den Einstellungen:
+   - Dropdown zur Auswahl der Animation
+   - Vorschau-Button um die Animation zu testen
+
+3. **Animation-Komponente** erweitern:
+   ```typescript
+   // CompletionAnimation.tsx
+   export function CompletionAnimation({ type, isVisible, onComplete }) {
+     switch(type) {
+       case 'unicorn': return <UnicornAnimation ... />;
+       case 'confetti': return <ConfettiAnimation ... />;
+       case 'firework': return <FireworkAnimation ... />;
+       default: return null;
+     }
+   }
+   ```
+
+### Naechste Schritte fuer Admin-Konfiguration
+
+Dies wuerde ich als separates Feature empfehlen. Soll ich dafuer einen eigenen Plan erstellen?
 
 ---
 
-## 5. Zusammenfassung der Dateiaenderungen
+## Zusammenfassung der Dateiaenderungen
 
-| Datei | Zeilen | Aenderung |
-|-------|--------|-----------|
-| `TaskDecisionCreator.tsx` | 17-20, 27-28, 414-425 | Props `isOpen` und `onOpenChange` hinzufuegen, DialogTrigger konditionell |
-| `MyWorkTasksTab.tsx` | 70, 367-369, 541-550 | `decisionDialogOpen` State, Handler anpassen, Props uebergeben |
-| `TaskCard.tsx` | 232, 261-277 | `gap-1` entfernen, Separator+Icons in einen Container |
-| `TaskListRow.tsx` | 197, 226-242 | `gap-1` entfernen, Separator+Icons in einen Container |
-
----
-
-## 6. Ergebnis
-
-Nach den Aenderungen:
-- **Entscheidung anfordern** oeffnet den Dialog direkt statt zu navigieren
-- **Zuweisen an** funktioniert bereits (wird bestaetigt durch Debugging)
-- **Frist und Link-Icon** sind ohne Hover direkt nebeneinander
-- **Beim Hover** schieben sich Separator und Action-Icons zwischen Frist und Link-Icon
+| Datei | Aenderung |
+|-------|-----------|
+| `TaskCard.tsx` | Zeile 275-280: Button-Styling fuer nahtlose Aneinanderreihung |
+| `TaskListRow.tsx` | Zeile 240-247: Button-Styling fuer nahtlose Aneinanderreihung |
+| `useTeamAnnouncements.ts` | Zeile 200-217: Optimistisches Update und bessere Fehlerbehandlung |
+| `AppHeader.tsx` | Zeile 208-210: AvatarFallback mit expliziten Farben |
+| `EditProfile.tsx` | Zeile 137-143: Bessere Fehlermeldung, plus Storage-Bucket erstellen |
+| `MyWorkTasksTab.tsx` | Import, State, Trigger in Handlers, Komponente rendern |
 
