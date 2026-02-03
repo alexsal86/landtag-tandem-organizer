@@ -155,15 +155,16 @@ export function QuickNotesList({
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   
-  // Note colors for picker
+  // Note colors for picker - intensive colors
   const noteColors = [
-    { value: '#fef3c7', label: 'Gelb' },
-    { value: '#dbeafe', label: 'Blau' },
-    { value: '#dcfce7', label: 'Grün' },
-    { value: '#fce7f3', label: 'Rosa' },
-    { value: '#e9d5ff', label: 'Lila' },
-    { value: '#fed7aa', label: 'Orange' },
-    { value: '#f1f5f9', label: 'Grau' },
+    { value: '#f59e0b', label: 'Gold' },      // amber-500
+    { value: '#3b82f6', label: 'Blau' },      // blue-500
+    { value: '#22c55e', label: 'Grün' },      // green-500
+    { value: '#ec4899', label: 'Pink' },      // pink-500
+    { value: '#8b5cf6', label: 'Lila' },      // violet-500
+    { value: '#f97316', label: 'Orange' },    // orange-500
+    { value: '#06b6d4', label: 'Türkis' },    // cyan-500
+    { value: '#ef4444', label: 'Rot' },       // red-500
     { value: null, label: 'Standard' }
   ];
 
@@ -349,6 +350,16 @@ export function QuickNotesList({
       supabase.removeChannel(channel);
     };
   }, [user, loadNotes]);
+
+  // Listen for notes created via GlobalQuickNoteDialog
+  useEffect(() => {
+    const handleNoteCreated = () => {
+      loadNotes();
+    };
+    
+    window.addEventListener('quick-note-created', handleNoteCreated);
+    return () => window.removeEventListener('quick-note-created', handleNoteCreated);
+  }, [loadNotes]);
 
   // Group notes by priority and follow-up
   const groupNotesByPriority = useCallback((allNotes: QuickNote[]) => {
@@ -571,17 +582,19 @@ export function QuickNotesList({
     }
 
     try {
-      // Build query - only add user_id filter for own notes
-      let query = supabase
-        .from("quick_notes")
-        .update({ color })
-        .eq("id", noteId);
-      
-      if (note.user_id === user.id) {
-        query = query.eq("user_id", user.id);
-      }
-      
-      const { data, error } = await query.select();
+      // Execute query directly - different paths for own vs shared notes
+      const { data, error } = note.user_id === user.id
+        ? await supabase
+            .from("quick_notes")
+            .update({ color })
+            .eq("id", noteId)
+            .eq("user_id", user.id)
+            .select()
+        : await supabase
+            .from("quick_notes")
+            .update({ color })
+            .eq("id", noteId)
+            .select();
 
       if (error) throw error;
       
@@ -624,17 +637,17 @@ export function QuickNotesList({
     ));
 
     try {
-      // Build query - only add user_id filter for own notes
-      let query = supabase
-        .from("quick_notes")
-        .update({ color_full_card: fullCard })
-        .eq("id", noteId);
-      
-      if (note.user_id === user.id) {
-        query = query.eq("user_id", user.id);
-      }
-
-      const { error } = await query;
+      // Execute query directly without reassignment - fixes async issue
+      const { error } = note.user_id === user.id
+        ? await supabase
+            .from("quick_notes")
+            .update({ color_full_card: fullCard })
+            .eq("id", noteId)
+            .eq("user_id", user.id)
+        : await supabase
+            .from("quick_notes")
+            .update({ color_full_card: fullCard })
+            .eq("id", noteId);
 
       if (error) {
         // Rollback on error
@@ -1295,7 +1308,7 @@ export function QuickNotesList({
         style={{ 
           borderLeftColor: note.color || "#3b82f6",
           backgroundColor: note.color && note.color_full_card === true
-            ? `${note.color}40` // 25% opacity for full card mode only
+            ? `${note.color}50` // 31% opacity for full card mode - more intense
             : undefined  // Kein Hintergrund wenn nur Rand
         }}
         onClick={() => onNoteClick?.(note)}
@@ -1564,6 +1577,24 @@ export function QuickNotesList({
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top">{note.meeting_id ? "Von Jour Fixe entfernen" : "Auf Jour Fixe"}</TooltipContent>
+                      </Tooltip>
+                      
+                      {/* Archive */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-muted/80 rounded-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleArchive(note.id);
+                            }}
+                          >
+                            <Archive className="h-3 w-3" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Archivieren</TooltipContent>
                       </Tooltip>
                       
                       {/* Drag Handle - LAST */}
