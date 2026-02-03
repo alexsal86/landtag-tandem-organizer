@@ -41,10 +41,10 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
 
-  // Global keyboard shortcut: Cmd/Ctrl + Shift + N
+  // Global keyboard shortcut: Cmd/Ctrl + . (period)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'n') {
+      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
         e.preventDefault();
         setQuickNoteOpen(true);
       }
