@@ -579,12 +579,17 @@ export function QuickNotesList({
     }
   };
 
-  // Set color full card mode
+  // Set color full card mode with optimistic UI
   const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
     if (!user?.id) {
       toast.error("Nicht angemeldet");
       return;
     }
+
+    // Optimistic update
+    setNotes(prev => prev.map(n => 
+      n.id === noteId ? { ...n, color_full_card: fullCard } : n
+    ));
 
     try {
       const { error } = await supabase
@@ -593,10 +598,15 @@ export function QuickNotesList({
         .eq("id", noteId)
         .eq("user_id", user.id);
 
-      if (error) throw error;
+      if (error) {
+        // Rollback on error
+        setNotes(prev => prev.map(n => 
+          n.id === noteId ? { ...n, color_full_card: !fullCard } : n
+        ));
+        throw error;
+      }
       
       toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
-      loadNotes();
     } catch (error) {
       console.error("Error setting color mode:", error);
       toast.error("Fehler beim Setzen des Farbmodus");
@@ -1705,11 +1715,20 @@ export function QuickNotesList({
                         {note.color && (
                           <>
                             <DropdownMenuSeparator />
-                            <div className="px-2 py-1.5">
-                              <label className="flex items-center gap-2 text-xs cursor-pointer">
+                            <div 
+                              className="px-2 py-1.5" 
+                              onClick={(e) => e.stopPropagation()}
+                              onPointerDown={(e) => e.stopPropagation()}
+                            >
+                              <label 
+                                className="flex items-center gap-2 text-xs cursor-pointer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <Checkbox 
-                                  checked={note.color_full_card ?? false}
-                                  onCheckedChange={(checked) => handleSetColorMode(note.id, !!checked)}
+                                  checked={note.color_full_card === true}
+                                  onCheckedChange={(checked) => {
+                                    handleSetColorMode(note.id, checked === true);
+                                  }}
                                 />
                                 Ganze Card einfärben
                               </label>
