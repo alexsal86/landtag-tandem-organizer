@@ -155,18 +155,25 @@ export function QuickNotesList({
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   
-  // Note colors for picker - Palette 2: Balanced/Mittel (ausgewogen und lesbar)
+  // Note colors for picker - Intensive Rand-Farben + warme Card-Hintergründe
   const noteColors = [
-    { value: '#fbbf24', label: 'Gold' },      // amber-400 - balanced
-    { value: '#60a5fa', label: 'Blau' },      // blue-400 - balanced
-    { value: '#4ade80', label: 'Grün' },      // green-400 - balanced
-    { value: '#f472b6', label: 'Pink' },      // pink-400 - balanced
-    { value: '#a78bfa', label: 'Lila' },      // violet-400 - balanced
-    { value: '#fb923c', label: 'Orange' },    // orange-400 - balanced
-    { value: '#22d3ee', label: 'Türkis' },    // cyan-400 - balanced
-    { value: '#f87171', label: 'Rot' },       // red-400 - balanced
-    { value: null, label: 'Standard' }
+    { value: '#f59e0b', bg: '#fef3c7', label: 'Gold' },      // Rand: amber-500, BG: amber-100
+    { value: '#3b82f6', bg: '#dbeafe', label: 'Blau' },      // Rand: blue-500, BG: blue-100
+    { value: '#22c55e', bg: '#dcfce7', label: 'Grün' },      // Rand: green-500, BG: green-100
+    { value: '#ec4899', bg: '#fce7f3', label: 'Pink' },      // Rand: pink-500, BG: pink-100
+    { value: '#8b5cf6', bg: '#ede9fe', label: 'Lila' },      // Rand: violet-500, BG: violet-100
+    { value: '#f97316', bg: '#fed7aa', label: 'Orange' },    // Rand: orange-500, BG: orange-200 (Pfirsich)
+    { value: '#06b6d4', bg: '#cffafe', label: 'Türkis' },    // Rand: cyan-500, BG: cyan-100
+    { value: '#ef4444', bg: '#fee2e2', label: 'Rot' },       // Rand: red-500, BG: red-100
+    { value: null, bg: null, label: 'Standard' }
   ];
+  
+  // Get warm background color for full card mode
+  const getCardBackground = (color: string | null): string | undefined => {
+    if (!color) return undefined;
+    const found = noteColors.find(c => c.value === color);
+    return found?.bg || `${color}30`; // Fallback für unbekannte Farben
+  };
   
   // State to prevent double-clicks on color mode checkbox
   const [colorModeUpdating, setColorModeUpdating] = useState<string | null>(null);
@@ -650,23 +657,24 @@ export function QuickNotesList({
     ));
 
     try {
-      // SIMPLIFIED QUERY - let RLS handle permissions
-      // No ternary, no user_id filter - RLS policies already check this
-      const { error } = await supabase
+      // MIT .select() - KRITISCH für korrekte Fehlerbehandlung!
+      const { data, error } = await supabase
         .from("quick_notes")
         .update({ color_full_card: fullCard })
-        .eq("id", noteId);
+        .eq("id", noteId)
+        .select();
 
-      if (error) {
+      if (error || !data || data.length === 0) {
         console.error("Update error:", error);
         // Rollback
         setNotes(prev => prev.map(n => 
           n.id === noteId ? { ...n, color_full_card: previousValue } : n
         ));
         toast.error("Fehler beim Setzen des Farbmodus");
-      } else {
-        toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
+        return;
       }
+      
+      toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
     } catch (error) {
       console.error("Error setting color mode:", error);
       setNotes(prev => prev.map(n => 
@@ -1323,8 +1331,8 @@ export function QuickNotesList({
         style={{ 
           borderLeftColor: note.color || "#3b82f6",
           backgroundColor: note.color && note.color_full_card === true
-            ? `${note.color}50` // 31% opacity for full card mode - more intense
-            : undefined  // Kein Hintergrund wenn nur Rand
+            ? getCardBackground(note.color)
+            : undefined
         }}
         onClick={() => onNoteClick?.(note)}
       >
