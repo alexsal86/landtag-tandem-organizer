@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,8 @@ import { DECISION_TEMPLATES, DEFAULT_TEMPLATE_ID, ResponseOption, getTemplateByI
 interface TaskDecisionCreatorProps {
   taskId: string;
   onDecisionCreated: () => void;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface Profile {
@@ -24,8 +26,26 @@ interface Profile {
   display_name: string | null;
 }
 
-export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionCreatorProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const TaskDecisionCreator = ({ 
+  taskId, 
+  onDecisionCreated,
+  isOpen: externalOpen,
+  onOpenChange: externalOnOpenChange
+}: TaskDecisionCreatorProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // Controlled vs uncontrolled mode
+  const isControlled = externalOpen !== undefined;
+  const isOpen = isControlled ? externalOpen : internalOpen;
+  
+  const handleOpenChange = (open: boolean) => {
+    if (isControlled && externalOnOpenChange) {
+      externalOnOpenChange(open);
+    } else {
+      setInternalOpen(open);
+    }
+  };
+  
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -42,6 +62,13 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
     { key: "option_2", label: "Option 2", color: "green" }
   ]);
   const { toast } = useToast();
+  
+  // Load profiles when controlled dialog opens
+  useEffect(() => {
+    if (isControlled && isOpen && !profilesLoaded) {
+      loadProfiles();
+    }
+  }, [isControlled, isOpen, profilesLoaded]);
 
   const currentOptions = useMemo(() => {
     if (selectedTemplateId === "custom") {
@@ -389,7 +416,7 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
         { key: "option_1", label: "Option 1", color: "blue" },
         { key: "option_2", label: "Option 2", color: "green" }
       ]);
-      setIsOpen(false);
+      handleOpenChange(false);
       onDecisionCreated();
     } catch (error) {
       console.error('Error creating decision:', error);
@@ -412,17 +439,20 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
   }, [profiles]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={loadProfiles}
-          className="text-destructive hover:text-destructive/80"
-        >
-          <Vote className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      {/* Only render trigger when NOT externally controlled */}
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={loadProfiles}
+            className="text-destructive hover:text-destructive/80"
+          >
+            <Vote className="h-4 w-4" />
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Entscheidung anfordern</DialogTitle>
@@ -552,7 +582,7 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
         <div className="flex justify-end space-x-2 pt-4 border-t">
           <Button 
             variant="outline" 
-            onClick={() => setIsOpen(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={isLoading}
           >
             Abbrechen

@@ -68,6 +68,7 @@ export function MyWorkTasksTab() {
   const [commentTaskId, setCommentTaskId] = useState<string | null>(null);
   
   const [decisionTaskId, setDecisionTaskId] = useState<string | null>(null);
+  const [decisionDialogOpen, setDecisionDialogOpen] = useState(false);
   
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documentTaskId, setDocumentTaskId] = useState<string | null>(null);
@@ -366,6 +367,7 @@ export function MyWorkTasksTab() {
 
   const handleDecision = (taskId: string) => {
     setDecisionTaskId(taskId);
+    setDecisionDialogOpen(true);
   };
 
   const handleDocuments = (taskId: string) => {
@@ -541,11 +543,17 @@ export function MyWorkTasksTab() {
         onOpenChange={setCommentSidebarOpen}
       />
 
-      {/* Decision Creator - uses its own dialog */}
+      {/* Decision Creator - controlled dialog */}
       {decisionTaskId && (
         <TaskDecisionCreator 
           taskId={decisionTaskId}
+          isOpen={decisionDialogOpen}
+          onOpenChange={(open) => {
+            setDecisionDialogOpen(open);
+            if (!open) setDecisionTaskId(null);
+          }}
           onDecisionCreated={() => {
+            setDecisionDialogOpen(false);
             setDecisionTaskId(null);
             toast({ title: "Entscheidungsanfrage erstellt" });
           }}

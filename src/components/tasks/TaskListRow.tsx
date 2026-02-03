@@ -194,7 +194,7 @@ export function TaskListRow({
         </div>
 
         {/* Due date + Actions + Navigate */}
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center flex-shrink-0">
           {/* Due date - clickable for editing */}
           <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
             <PopoverTrigger asChild>
@@ -223,14 +223,9 @@ export function TaskListRow({
             </PopoverContent>
           </Popover>
 
-          {/* Separator - visible on hover */}
-          <Separator 
-            orientation="vertical" 
-            className="h-4 mx-1 opacity-0 group-hover:opacity-100 transition-opacity" 
-          />
-
-          {/* Actions - visible on hover */}
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {/* Separator + Actions - slide in on hover between date and navigate */}
+          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <Separator orientation="vertical" className="h-4 mx-1" />
             <TaskActionIcons
               taskId={task.id}
               onReminder={onReminder}
