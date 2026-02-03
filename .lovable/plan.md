@@ -1,218 +1,361 @@
 
 
-# Plan: Verbesserte Aufgabenansicht unter "Meine Arbeit"
+# Plan: Meine Arbeit - Aufgabenansicht Verbesserungen
 
-## 1. Layout-Aenderung: Nebeneinander statt Untereinander
+## Uebersicht der Aenderungen
 
-Die beiden Bereiche "Mir zugewiesen" und "Von mir erstellt" werden in einem 50/50 Split-Layout dargestellt.
-
-```text
-+---------------------------+---------------------------+
-|    MIR ZUGEWIESEN         |    VON MIR ERSTELLT       |
-|    (50% Breite)           |    (50% Breite)           |
-+---------------------------+---------------------------+
-|                           |                           |
-|   [Aufgabe 1]             |   [Aufgabe A]             |
-|   [Aufgabe 2]             |   [Aufgabe B]             |
-|   [Aufgabe 3]             |   [Aufgabe C]             |
-|                           |                           |
-+---------------------------+---------------------------+
-```
-
-Umsetzung:
-- `grid grid-cols-1 lg:grid-cols-2 gap-4` fuer das Layout
-- Jede Spalte hat eigene ScrollArea
-- Responsive: Auf mobilen Geraeten untereinander
+| Aenderung | Beschreibung |
+|-----------|--------------|
+| Spalten tauschen | "Von mir erstellt" links, "Mir zugewiesen" rechts |
+| Icon-Funktionalitaet | Aktions-Icons funktional machen (Dialoge statt Navigation) |
+| Frist bearbeiten | Datum klickbar machen mit Kalender-Popover |
+| Frist-Position | Unten rechts, beim Hover links neben Icons mit Trennstrich |
 
 ---
 
-## 2. Ansichts-Toggle: Card vs. Liste
+## 1. Spalten tauschen
 
-Ein Toggle oben rechts ermoeglicht den Wechsel zwischen den Ansichten.
+**Datei:** `src/components/my-work/MyWorkTasksTab.tsx`
+
+Die Reihenfolge der `renderTaskList` Aufrufe wird getauscht:
 
 ```text
-Header-Bereich:
-[Aufgaben (12)]                    [Card | Liste]
+Vorher:
+[Mir zugewiesen]  |  [Von mir erstellt]
+
+Nachher:
+[Von mir erstellt]  |  [Mir zugewiesen]
 ```
 
-| Ansicht | Beschreibung |
-|---------|--------------|
-| Card    | Karten mit mehr Details, wie bei Notizen |
-| Liste   | Kompakte Tabellenansicht mit Spalten |
+**Aenderung in Zeilen 348-351:**
+```typescript
+// Vorher
+{renderTaskList(assignedTasks, "Mir zugewiesen", ...)}
+{renderTaskList(createdTasks, "Von mir erstellt", ...)}
 
-Speicherung der Praeferenz via `useViewPreference` Hook (bereits vorhanden).
+// Nachher
+{renderTaskList(createdTasks, "Von mir erstellt", ...)}
+{renderTaskList(assignedTasks, "Mir zugewiesen", ...)}
+```
 
 ---
 
-## 3. Badge-System (wie bei Notizen)
+## 2. Icon-Funktionalitaet implementieren
 
-Farbige Quadrate im Normalzustand, erweiterte Badges beim Hover.
+Aktuell navigieren die Icons zur Aufgaben-Seite. Stattdessen sollen sie Dialoge/Sidebars oeffnen, wie auf der Aufgaben-Seite.
 
-### Standard-Ansicht (kleine farbige Quadrate):
+### Neue States in MyWorkTasksTab:
 
-```text
-[■] Prioritaet (rot/orange/gruen)
-[■] Status (grau/blau/gruen)
-[■] Kategorie (violett/blau/etc.)
-[■] Zugewiesen an (vorhanden = tuerkis)
+```typescript
+// Wiedervorlage
+const [snoozeDialogOpen, setSnoozeDialogOpen] = useState(false);
+const [snoozeTaskId, setSnoozeTaskId] = useState<string | null>(null);
+const [snoozeDate, setSnoozeDate] = useState<string>("");
+
+// Zuweisung
+const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+const [assignTaskId, setAssignTaskId] = useState<string | null>(null);
+
+// Kommentare
+const [commentSidebarOpen, setCommentSidebarOpen] = useState(false);
+const [commentTaskId, setCommentTaskId] = useState<string | null>(null);
+
+// Entscheidung
+const [decisionDialogOpen, setDecisionDialogOpen] = useState(false);
+const [decisionTaskId, setDecisionTaskId] = useState<string | null>(null);
+
+// Dokumente
+const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
+const [documentTaskId, setDocumentTaskId] = useState<string | null>(null);
 ```
 
-### Hover-Ansicht (volle Badges):
+### Handler-Funktionen:
 
-```text
-[Hoch] [In Bearbeitung] [Persoenlich] [Max M.]
+```typescript
+// Wiedervorlage - Snooze setzen
+const handleReminder = (taskId: string) => {
+  setSnoozeTaskId(taskId);
+  setSnoozeDialogOpen(true);
+};
+
+const handleSetSnooze = async (date: Date) => {
+  if (!snoozeTaskId || !user) return;
+  
+  await supabase.from("task_snoozes").upsert({
+    user_id: user.id,
+    task_id: snoozeTaskId,
+    snoozed_until: date.toISOString()
+  });
+  
+  toast({ title: "Wiedervorlage gesetzt", ... });
+  setSnoozeDialogOpen(false);
+  setSnoozeTaskId(null);
+};
+
+// Zuweisung aendern
+const handleAssign = (taskId: string) => {
+  setAssignTaskId(taskId);
+  setAssignDialogOpen(true);
+};
+
+// Kommentare anzeigen
+const handleComment = (taskId: string) => {
+  setCommentTaskId(taskId);
+  setCommentSidebarOpen(true);
+};
+
+// Entscheidung erstellen
+const handleDecision = (taskId: string) => {
+  setDecisionTaskId(taskId);
+  setDecisionDialogOpen(true);
+};
+
+// Dokumente
+const handleDocuments = (taskId: string) => {
+  setDocumentTaskId(taskId);
+  setDocumentDialogOpen(true);
+};
 ```
 
-### Farbschema:
+### Dialoge hinzufuegen:
 
-| Badge | Farbe | Bedeutung |
-|-------|-------|-----------|
-| Prioritaet hoch | Rot (#ef4444) | Dringend |
-| Prioritaet mittel | Orange (#f97316) | Wichtig |
-| Prioritaet niedrig | Gruen (#22c55e) | Normal |
-| Status: todo | Grau (#6b7280) | Offen |
-| Status: in-progress | Blau (#3b82f6) | In Arbeit |
-| Status: completed | Gruen (#22c55e) | Erledigt |
-| Kategorie | Violett (#8b5cf6) | Thema/Bereich |
-| Zugewiesen | Tuerkis (#06b6d4) | Person zugewiesen |
+**a) Wiedervorlage-Dialog (Kalender-Popover)**
+```typescript
+<Dialog open={snoozeDialogOpen} onOpenChange={setSnoozeDialogOpen}>
+  <DialogContent className="sm:max-w-[350px]">
+    <DialogHeader>
+      <DialogTitle>Wiedervorlage setzen</DialogTitle>
+    </DialogHeader>
+    <Calendar
+      mode="single"
+      selected={snoozeDate ? new Date(snoozeDate) : undefined}
+      onSelect={(date) => date && handleSetSnooze(date)}
+      locale={de}
+    />
+  </DialogContent>
+</Dialog>
+```
+
+**b) Zuweisungs-Dialog**
+```typescript
+<Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Aufgabe zuweisen</DialogTitle>
+    </DialogHeader>
+    <Select onValueChange={handleUpdateAssignee}>
+      <SelectTrigger>
+        <SelectValue placeholder="Person auswaehlen" />
+      </SelectTrigger>
+      <SelectContent>
+        {users.map(user => (
+          <SelectItem key={user.user_id} value={user.user_id}>
+            {user.display_name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </DialogContent>
+</Dialog>
+```
+
+**c) Kommentar-Sidebar** - TaskDetailSidebar wiederverwenden oder einfache Kommentar-Liste
+
+**d) Entscheidungs-Dialog** - TaskDecisionCreator wiederverwenden:
+```typescript
+{decisionTaskId && (
+  <TaskDecisionCreator 
+    taskId={decisionTaskId}
+    isOpen={decisionDialogOpen}
+    onOpenChange={setDecisionDialogOpen}
+    onDecisionCreated={() => {
+      setDecisionDialogOpen(false);
+      setDecisionTaskId(null);
+    }}
+  />
+)}
+```
+
+**e) Dokumente-Dialog** - Aehnlich wie in TaskDetailSidebar
 
 ---
 
-## 4. Aktions-Icons (bei Hover einfliegen)
+## 3. Frist bearbeiten
 
-Icons erscheinen beim Hover in einer Leiste am unteren Rand der Card/Zeile.
+### Neuer Handler in MyWorkTasksTab:
 
-| Icon | Aktion | Beschreibung |
-|------|--------|--------------|
-| AlarmClock | Wiedervorlage | Aufgabe auf spaeter verschieben |
-| UserPlus | Zuweisung | Person zuweisen/aendern |
-| MessageSquare | Kommentare | Kommentare anzeigen/hinzufuegen |
-| Vote | Entscheidung anfordern | Abstimmung starten |
-| Paperclip | Dokumente | Anhaenge anzeigen/hinzufuegen |
+```typescript
+const handleUpdateDueDate = async (taskId: string, newDate: Date | null) => {
+  try {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ due_date: newDate?.toISOString() || null })
+      .eq("id", taskId)
+      .select();
 
-### Anordnung (identisch zu Notizen):
+    if (error) throw error;
+    
+    setAssignedTasks(prev => prev.map(t => 
+      t.id === taskId ? { ...t, due_date: newDate?.toISOString() || null } : t
+    ));
+    setCreatedTasks(prev => prev.map(t => 
+      t.id === taskId ? { ...t, due_date: newDate?.toISOString() || null } : t
+    ));
+    toast({ title: "Frist aktualisiert" });
+  } catch (error) {
+    toast({ title: "Fehler beim Speichern", variant: "destructive" });
+  }
+};
+```
+
+### Neue Props fuer TaskCard und TaskListRow:
+
+```typescript
+interface TaskCardProps {
+  // ... existing props
+  onUpdateDueDate?: (taskId: string, date: Date | null) => void;
+}
+```
+
+---
+
+## 4. Frist-Position aendern (TaskCard)
+
+### Neues Layout-Verhalten:
 
 ```text
+Standard (nicht hovern):
 +------------------------------------------+
-|  [Titel]                                 |
-|  [Beschreibung...]                       |
+|  [✓] [Titel]                             |
+|      [Beschreibung...]                   |
 |                                          |
-|  [■][■][■][■]                [→ Details] |  <- Standard
-|  [Hoch][Status][...]   [🔔][👤][💬][📎] |  <- Hover
+|  [■][■][■][■]              [05.02] [→]  |
 +------------------------------------------+
-```
 
----
-
-## 5. Inline-Bearbeitung von Titel und Beschreibung
-
-Titel und Beschreibung koennen direkt in der Card bearbeitet werden.
-
-**Implementierung:**
-- Klick auf Titel/Beschreibung aktiviert Bearbeitungsmodus
-- Einfaches Input-Feld fuer Titel
-- Textarea oder SimpleRichTextEditor fuer Beschreibung
-- Speichern bei Blur oder Enter
-- Abbrechen bei Escape
-
-```text
+Beim Hovern:
 +------------------------------------------+
-|  [Aufgabe einkaufen_______] <- Editierbar|
-|  [Milch und Brot besorgen_] <- Editierbar|
+|  [✓] [Titel]                             |
+|      [Beschreibung...]                   |
 |                                          |
+|  [Hoch][Status][...]  [05.02] | [🔔][👤][💬][📎] [→]  |
 +------------------------------------------+
 ```
 
----
+### Aenderung in TaskCard.tsx (Zeilen 198-250):
 
-## 6. Listen-Ansicht
+```typescript
+{/* Bottom bar with badges and actions */}
+<div className="px-3 pb-2 flex items-center justify-between">
+  {/* Left: Badges */}
+  <div className="flex-1">
+    {/* Badges wie bisher */}
+  </div>
 
-Kompakte Tabellen-Darstellung mit den wichtigsten Spalten.
+  {/* Right: Due date + Actions + Navigate */}
+  <div className="flex items-center gap-1">
+    {/* Frist - IMMER sichtbar, aber Position aendert sich */}
+    {task.due_date && (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "h-6 px-2 text-xs",
+              getDueDateColor(task.due_date)
+            )}
+          >
+            <Calendar className="h-3 w-3 mr-1" />
+            {format(new Date(task.due_date), "dd.MM.", { locale: de })}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar
+            mode="single"
+            selected={new Date(task.due_date)}
+            onSelect={(date) => onUpdateDueDate?.(task.id, date || null)}
+            locale={de}
+          />
+        </PopoverContent>
+      </Popover>
+    )}
 
-| Checkbox | Titel | Prioritaet | Status | Faellig | Aktionen |
-|----------|-------|------------|--------|---------|----------|
-| [ ] | Einkaufen | 🔴 | In Arbeit | 05.02. | [🔔][👤][💬] |
-| [ ] | Meeting | 🟡 | Offen | 07.02. | [🔔][👤][💬] |
+    {/* Trennstrich - nur bei Hover */}
+    <Separator 
+      orientation="vertical" 
+      className="h-4 mx-1 opacity-0 group-hover:opacity-100 transition-opacity" 
+    />
 
-- Aktions-Icons erscheinen nur bei Hover der Zeile
-- Titel ist inline bearbeitbar (Doppelklick)
-- Checkbox fuer schnelles Erledigen
-
----
-
-## 7. Zusaetzliche Ideen
-
-### 7.1 Schnellfilter
-
-Filter-Chips ueber den Listen fuer schnelles Filtern:
-
-```text
-[Alle] [Ueberfaellig] [Heute] [Diese Woche] [Hohe Prioritaet]
+    {/* Action icons - bei Hover */}
+    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      <TaskActionIcons ... />
+    </div>
+    
+    {/* Navigate button */}
+    <Button variant="ghost" size="icon" ...>
+      <ExternalLink className="h-3 w-3" />
+    </Button>
+  </div>
+</div>
 ```
 
-### 7.2 Sortieroptionen
+---
 
-Dropdown fuer Sortierung:
+## 5. Frist-Position aendern (TaskListRow)
 
-```text
-Sortieren nach: [Faelligkeit ▼]
-- Faelligkeit
-- Prioritaet
-- Erstelldatum
-- Titel
+Aehnliche Logik wie bei TaskCard:
+
+```typescript
+{/* Due date + Separator + Actions */}
+<div className="flex items-center gap-1 flex-shrink-0">
+  {/* Frist */}
+  <Popover>
+    <PopoverTrigger asChild>
+      <button className={cn("flex items-center gap-1 text-xs", getDueDateColor(task.due_date))}>
+        <Calendar className="h-3 w-3" />
+        {task.due_date ? format(new Date(task.due_date), "dd.MM.", { locale: de }) : "–"}
+      </button>
+    </PopoverTrigger>
+    <PopoverContent className="w-auto p-0">
+      <Calendar ... />
+    </PopoverContent>
+  </Popover>
+
+  {/* Trennstrich - nur bei Hover */}
+  <Separator 
+    orientation="vertical" 
+    className="h-4 mx-1 opacity-0 group-hover:opacity-100 transition-opacity" 
+  />
+
+  {/* Actions - bei Hover */}
+  <div className="opacity-0 group-hover:opacity-100 ...">
+    <TaskActionIcons ... />
+  </div>
+</div>
 ```
-
-### 7.3 Drag & Drop zwischen Spalten
-
-Aufgabe von "Mir zugewiesen" nach "Von mir erstellt" ziehen (falls Berechtigung).
-
-### 7.4 Bulk-Aktionen
-
-Mehrere Aufgaben auswaehlen und gemeinsam bearbeiten:
-- Alle als erledigt markieren
-- Prioritaet aendern
-- Status aendern
-
-### 7.5 Unteraufgaben-Zaehler
-
-Badge mit Anzahl offener Unteraufgaben: `[3/5]`
-
-### 7.6 Kommentar-Zaehler
-
-Badge mit Anzahl Kommentare: `[💬 2]`
 
 ---
 
-## 8. Technische Umsetzung
-
-### Neue/Geaenderte Dateien:
+## Zusammenfassung der Dateiaenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/my-work/MyWorkTasksTab.tsx` | Komplette Ueberarbeitung mit neuem Layout |
-| `src/components/tasks/TaskCard.tsx` | NEUE Komponente fuer einzelne Aufgaben-Cards |
-| `src/components/tasks/TaskListRow.tsx` | NEUE Komponente fuer Listen-Zeilen |
-| `src/components/tasks/TaskBadges.tsx` | NEUE Komponente fuer Badge-Anzeige mit Hover |
-| `src/components/tasks/TaskActionIcons.tsx` | NEUE Komponente fuer Aktions-Icons |
+| `src/components/my-work/MyWorkTasksTab.tsx` | Spalten tauschen, neue States/Handler, Dialoge hinzufuegen |
+| `src/components/tasks/TaskCard.tsx` | Frist-Position, Popover fuer Datum, onUpdateDueDate prop |
+| `src/components/tasks/TaskListRow.tsx` | Frist-Position, Popover fuer Datum, onUpdateDueDate prop |
 
-### Wiederverwendbare Patterns aus QuickNotesList:
+## Neue Importe
 
-- Hover-Zustand mit `group` und `group-hover:` Klassen
-- Kleine Quadrate: `<div className="w-1.5 h-1.5 bg-[farbe]" />`
-- Transition: `opacity-0 group-hover:opacity-100 transition-opacity duration-200`
-- TooltipProvider fuer Icon-Beschreibungen
+```typescript
+// MyWorkTasksTab.tsx
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TaskDecisionCreator } from "@/components/task-decisions/TaskDecisionCreator";
 
----
-
-## 9. Zusammenfassung
-
-| Feature | Beschreibung |
-|---------|--------------|
-| 50/50 Layout | Beide Bereiche nebeneinander |
-| Ansichts-Toggle | Card oder Liste waehlbar |
-| Badge-System | Farbige Quadrate, erweitert bei Hover |
-| Aktions-Icons | Wiedervorlage, Zuweisung, Kommentare, Entscheidung, Dokumente |
-| Inline-Edit | Titel und Beschreibung direkt aenderbar |
-| Schnellfilter | Optional: Ueberfaellig, Heute, etc. |
-| Sortierung | Optional: Nach Faelligkeit, Prioritaet, etc. |
+// TaskCard.tsx / TaskListRow.tsx
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+import { Calendar } from "@/components/ui/calendar";
+```
 
