@@ -114,7 +114,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <div className="flex items-center gap-1 text-xs text-muted-foreground mr-auto">
             <Keyboard className="h-3 w-3" />
-            <span>Cmd/Ctrl + Shift + N</span>
+            <span>Cmd/Ctrl + .</span>
           </div>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Abbrechen
