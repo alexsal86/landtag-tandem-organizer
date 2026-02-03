@@ -250,11 +250,22 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
   };
 
   if (loading) {
-    return null;
+    return (
+      <div className="flex items-center justify-center py-8 text-muted-foreground">
+        <span className="text-sm">Lädt...</span>
+      </div>
+    );
   }
 
   if (notes.length === 0 && archivedNotes.length === 0) {
-    return null;
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Archive className="h-12 w-12 text-muted-foreground/50 mb-4" />
+        <p className="text-muted-foreground text-sm">
+          Keine archivierten oder gelöschten Notizen vorhanden.
+        </p>
+      </div>
+    );
   }
 
   return (
