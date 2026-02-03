@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Separator } from "@/components/ui/separator";
 import { TaskBadges } from "./TaskBadges";
 import { TaskActionIcons } from "./TaskActionIcons";
-import { Calendar, ExternalLink, ListTodo } from "lucide-react";
+import { Calendar as CalendarIcon, ExternalLink, ListTodo } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
@@ -42,6 +45,7 @@ interface TaskCardProps {
   onNavigate: (taskId: string) => void;
   onUpdateTitle?: (taskId: string, title: string) => void;
   onUpdateDescription?: (taskId: string, description: string) => void;
+  onUpdateDueDate?: (taskId: string, date: Date | null) => void;
   onReminder?: (taskId: string) => void;
   onAssign?: (taskId: string) => void;
   onComment?: (taskId: string) => void;
@@ -58,6 +62,7 @@ export function TaskCard({
   onNavigate,
   onUpdateTitle,
   onUpdateDescription,
+  onUpdateDueDate,
   onReminder,
   onAssign,
   onComment,
@@ -69,6 +74,7 @@ export function TaskCard({
   const [editingDescription, setEditingDescription] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
   const [descriptionValue, setDescriptionValue] = useState(task.description || "");
+  const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -124,6 +130,13 @@ export function TaskCard({
         setEditingDescription(false);
       }
     }
+  };
+
+  const handleDueDateSelect = (date: Date | undefined) => {
+    if (onUpdateDueDate) {
+      onUpdateDueDate(task.id, date || null);
+    }
+    setDueDatePopoverOpen(false);
   };
 
   return (
@@ -184,14 +197,6 @@ export function TaskCard({
               <RichTextDisplay content={task.description} className="text-xs line-clamp-2" />
             </div>
           ) : null}
-
-          {/* Due date */}
-          {task.due_date && (
-            <div className={cn("flex items-center gap-1 text-xs", getDueDateColor(task.due_date))}>
-              <Calendar className="h-3 w-3" />
-              {format(new Date(task.due_date), "dd.MM.yyyy", { locale: de })}
-            </div>
-          )}
         </div>
       </div>
 
@@ -223,8 +228,42 @@ export function TaskCard({
           </div>
         </div>
 
-        {/* Right: Actions */}
+        {/* Right: Due date + Actions + Navigate */}
         <div className="flex items-center gap-1">
+          {/* Due date - always visible, clickable for editing */}
+          <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-6 px-2 text-xs",
+                  getDueDateColor(task.due_date)
+                )}
+              >
+                <CalendarIcon className="h-3 w-3 mr-1" />
+                {task.due_date 
+                  ? format(new Date(task.due_date), "dd.MM.", { locale: de })
+                  : "–"
+                }
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={task.due_date ? new Date(task.due_date) : undefined}
+                onSelect={handleDueDateSelect}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Separator - visible on hover */}
+          <Separator 
+            orientation="vertical" 
+            className="h-4 mx-1 opacity-0 group-hover:opacity-100 transition-opacity" 
+          />
+
           {/* Action icons - visible on hover */}
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <TaskActionIcons
