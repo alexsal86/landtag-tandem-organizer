@@ -1,59 +1,100 @@
 
-# Plan: Palette 2 und robuster Bugfix fuer "Ganze Card einfaerben"
 
-## Zusammenfassung
+# Plan: Warme Card-Farben + Bugfix "Ganze Card einfaerben"
 
-| Aenderung | Beschreibung |
-|-----------|--------------|
-| 1. Farbpalette | Palette 2 (Balanced/Mittel) mit Tailwind-400 Farben implementieren |
-| 2. Bugfix | Robusteres Pattern mit Lock-State und vereinfachter Query |
+## Verstaendnis
+
+Du moechtest:
+- **Rand (border-left)**: Intensive, kraeftige Farben ✓
+- **Card-Hintergrund**: Weiche, warme Toene wie der Pfirsich im Screenshot
+
+Das Problem: Aktuell wird dieselbe Farbe fuer beides verwendet, nur mit 31% Opacity fuer den Hintergrund. Das ergibt bei intensiven Farben wie `#fbbf24` (Gold) keinen warmen Pfirsich-Ton.
 
 ---
 
-## 1. Farbpalette 2 implementieren
+## Loesung: Separate Hintergrundfarben
 
-**Datei:** `src/components/shared/QuickNotesList.tsx` (Zeilen 158-169)
+Statt Opacity-Berechnung fuehren wir **explizite warme Hintergrundfarben** pro Farbton ein:
 
-Aktuelle intensive Farben ersetzen durch die ausgewogene Palette 2:
+### Neue Farbpalette mit zwei Werten
 
 ```typescript
-// Note colors for picker - Palette 2: Balanced/Mittel (ausgewogen und lesbar)
 const noteColors = [
-  { value: '#fbbf24', label: 'Gold' },      // amber-400 - balanced
-  { value: '#60a5fa', label: 'Blau' },      // blue-400 - balanced
-  { value: '#4ade80', label: 'Grün' },      // green-400 - balanced
-  { value: '#f472b6', label: 'Pink' },      // pink-400 - balanced
-  { value: '#a78bfa', label: 'Lila' },      // violet-400 - balanced
-  { value: '#fb923c', label: 'Orange' },    // orange-400 - balanced
-  { value: '#22d3ee', label: 'Türkis' },    // cyan-400 - balanced
-  { value: '#f87171', label: 'Rot' },       // red-400 - balanced
-  { value: null, label: 'Standard' }
+  { value: '#f59e0b', bg: '#fef3c7', label: 'Gold' },      // Rand: amber-500, BG: amber-100
+  { value: '#3b82f6', bg: '#dbeafe', label: 'Blau' },      // Rand: blue-500, BG: blue-100
+  { value: '#22c55e', bg: '#dcfce7', label: 'Grün' },      // Rand: green-500, BG: green-100
+  { value: '#ec4899', bg: '#fce7f3', label: 'Pink' },      // Rand: pink-500, BG: pink-100
+  { value: '#8b5cf6', bg: '#ede9fe', label: 'Lila' },      // Rand: violet-500, BG: violet-100
+  { value: '#f97316', bg: '#fed7aa', label: 'Orange' },    // Rand: orange-500, BG: orange-200 (wie im Bild!)
+  { value: '#06b6d4', bg: '#cffafe', label: 'Türkis' },    // Rand: cyan-500, BG: cyan-100
+  { value: '#ef4444', bg: '#fee2e2', label: 'Rot' },       // Rand: red-500, BG: red-100
+  { value: null, bg: null, label: 'Standard' }
 ];
 ```
 
+### Visuelle Wirkung
+
+| Farbe | Rand (intensiv) | Hintergrund (warm) |
+|-------|-----------------|-------------------|
+| Gold | `#f59e0b` | `#fef3c7` (warmes Creme-Gelb) |
+| Blau | `#3b82f6` | `#dbeafe` (sanftes Himmelblau) |
+| Grün | `#22c55e` | `#dcfce7` (zartes Mintgruen) |
+| Pink | `#ec4899` | `#fce7f3` (weiches Rosa) |
+| Lila | `#8b5cf6` | `#ede9fe` (helles Lavendel) |
+| Orange | `#f97316` | `#fed7aa` (warmer Pfirsich - wie im Bild!) |
+| Tuerkis | `#06b6d4` | `#cffafe` (zartes Aqua) |
+| Rot | `#ef4444` | `#fee2e2` (sanftes Rosarot) |
+
 ---
 
-## 2. Bugfix: "Ganze Card einfaerben"
+## Implementierung
 
-### Root Cause
-Das Problem tritt weiterhin auf wegen:
-1. Ternary-Operator mit await kann Timing-Probleme verursachen
-2. Kein Lock verhindert Doppelklicks
-3. Eventuell RLS-Konflikt bei der Query mit user_id Filter
+### 1. Farbpalette erweitern (Zeilen 159-169)
 
-### Loesung: Lock-State + Vereinfachte Query
-
-**Schritt 1:** State fuer Lock hinzufuegen (nach Zeile 169):
 ```typescript
-// State to prevent double-clicks on color mode checkbox
-const [colorModeUpdating, setColorModeUpdating] = useState<string | null>(null);
+const noteColors = [
+  { value: '#f59e0b', bg: '#fef3c7', label: 'Gold' },
+  { value: '#3b82f6', bg: '#dbeafe', label: 'Blau' },
+  { value: '#22c55e', bg: '#dcfce7', label: 'Grün' },
+  { value: '#ec4899', bg: '#fce7f3', label: 'Pink' },
+  { value: '#8b5cf6', bg: '#ede9fe', label: 'Lila' },
+  { value: '#f97316', bg: '#fed7aa', label: 'Orange' },
+  { value: '#06b6d4', bg: '#cffafe', label: 'Türkis' },
+  { value: '#ef4444', bg: '#fee2e2', label: 'Rot' },
+  { value: null, bg: null, label: 'Standard' }
+];
 ```
 
-**Schritt 2:** handleSetColorMode komplett ersetzen (Zeilen 614-666):
+### 2. Helper-Funktion fuer Hintergrundfarbe
+
 ```typescript
-// Set color full card mode with optimistic UI and locking
+// Get warm background color for full card mode
+const getCardBackground = (color: string | null): string | undefined => {
+  if (!color) return undefined;
+  const found = noteColors.find(c => c.value === color);
+  return found?.bg || `${color}30`; // Fallback fuer unbekannte Farben
+};
+```
+
+### 3. Card-Styling anpassen (Zeilen 1323-1328)
+
+```typescript
+style={{ 
+  borderLeftColor: note.color || "#3b82f6",
+  backgroundColor: note.color && note.color_full_card === true
+    ? getCardBackground(note.color)
+    : undefined
+}}
+```
+
+---
+
+## Bugfix: handleSetColorMode mit `.select()`
+
+Der eigentliche Fehler war das fehlende `.select()`. Hier die korrigierte Version:
+
+```typescript
 const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
-  // Prevent double execution
   if (colorModeUpdating) {
     console.log("Color mode update already in progress, skipping");
     return;
@@ -70,40 +111,37 @@ const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
     return;
   }
 
-  // Check permission: own note OR shared with edit rights
   const canModify = note.user_id === user.id || note.can_edit === true;
   if (!canModify) {
     toast.error("Keine Berechtigung zum Ändern dieser Notiz");
     return;
   }
 
-  // Set lock FIRST
   setColorModeUpdating(noteId);
   
-  // Optimistic update
   const previousValue = note.color_full_card;
   setNotes(prev => prev.map(n => 
     n.id === noteId ? { ...n, color_full_card: fullCard } : n
   ));
 
   try {
-    // SIMPLIFIED QUERY - let RLS handle permissions
-    // No ternary, no user_id filter - RLS policies already check this
-    const { error } = await supabase
+    // MIT .select() - KRITISCH fuer korrekte Fehlerbehandlung!
+    const { data, error } = await supabase
       .from("quick_notes")
       .update({ color_full_card: fullCard })
-      .eq("id", noteId);
+      .eq("id", noteId)
+      .select();
 
-    if (error) {
+    if (error || !data || data.length === 0) {
       console.error("Update error:", error);
-      // Rollback
       setNotes(prev => prev.map(n => 
         n.id === noteId ? { ...n, color_full_card: previousValue } : n
       ));
       toast.error("Fehler beim Setzen des Farbmodus");
-    } else {
-      toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
+      return;
     }
+    
+    toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
   } catch (error) {
     console.error("Error setting color mode:", error);
     setNotes(prev => prev.map(n => 
@@ -111,66 +149,27 @@ const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
     ));
     toast.error("Fehler beim Setzen des Farbmodus");
   } finally {
-    // Release lock after a small delay to prevent rapid re-clicks
     setTimeout(() => setColorModeUpdating(null), 300);
   }
 };
 ```
 
-**Schritt 3:** Checkbox UI robuster machen (Zeilen 1783-1805):
-```typescript
-{note.color && (
-  <>
-    <DropdownMenuSeparator />
-    <div 
-      className="px-2 py-1.5" 
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      <label 
-        className="flex items-center gap-2 text-xs cursor-pointer select-none"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <Checkbox 
-          checked={note.color_full_card === true}
-          disabled={colorModeUpdating === note.id}
-          onCheckedChange={(checked) => {
-            if (colorModeUpdating !== note.id) {
-              handleSetColorMode(note.id, checked === true);
-            }
-          }}
-        />
-        {colorModeUpdating === note.id ? "Wird gespeichert..." : "Ganze Card einfärben"}
-      </label>
-    </div>
-  </>
-)}
-```
-
 ---
 
-## Zusammenfassung der Code-Aenderungen
+## Zusammenfassung der Aenderungen
 
 | Datei | Zeilen | Aenderung |
 |-------|--------|-----------|
-| `QuickNotesList.tsx` | 158-169 | Palette 2 Farben einsetzen |
-| `QuickNotesList.tsx` | nach 169 | State `colorModeUpdating` hinzufuegen |
-| `QuickNotesList.tsx` | 614-666 | handleSetColorMode mit Lock + vereinfachter Query |
-| `QuickNotesList.tsx` | 1783-1805 | Checkbox mit disabled-State und Feedback-Text |
+| `QuickNotesList.tsx` | 159-169 | Farbpalette mit `bg`-Eigenschaft erweitern |
+| `QuickNotesList.tsx` | nach 169 | Helper `getCardBackground()` hinzufuegen |
+| `QuickNotesList.tsx` | 618-680 | `.select()` zu handleSetColorMode hinzufuegen |
+| `QuickNotesList.tsx` | 1323-1328 | `getCardBackground()` statt Opacity verwenden |
 
 ---
 
-## Warum diese Loesung funktioniert
+## Ergebnis
 
-1. **Lock-State verhindert Doppelklicks**: Wenn ein Update laeuft, werden weitere Clicks ignoriert
-2. **Vereinfachte Query**: Kein ternary-Operator, kein user_id Filter - RLS regelt die Berechtigung automatisch
-3. **Visuelles Feedback**: Checkbox zeigt "Wird gespeichert..." waehrend des Updates
-4. **Timeout beim Lock-Release**: 300ms Verzoegerung verhindert zu schnelle Folge-Clicks
-5. **Robustes Error-Handling**: Rollback zur vorherigen Wert bei Fehler
+- **Rand**: Kraeftige, intensive Farben (z.B. `#f97316` Orange)
+- **Hintergrund**: Warme, weiche Toene (z.B. `#fed7aa` Pfirsich - genau wie im Bild!)
+- **Bugfix**: Mit `.select()` funktioniert das Toggle jetzt zuverlaessig
+
