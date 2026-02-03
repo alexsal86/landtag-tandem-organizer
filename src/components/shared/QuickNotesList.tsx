@@ -155,18 +155,21 @@ export function QuickNotesList({
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   
-  // Note colors for picker - intensive colors
+  // Note colors for picker - Palette 2: Balanced/Mittel (ausgewogen und lesbar)
   const noteColors = [
-    { value: '#f59e0b', label: 'Gold' },      // amber-500
-    { value: '#3b82f6', label: 'Blau' },      // blue-500
-    { value: '#22c55e', label: 'Grün' },      // green-500
-    { value: '#ec4899', label: 'Pink' },      // pink-500
-    { value: '#8b5cf6', label: 'Lila' },      // violet-500
-    { value: '#f97316', label: 'Orange' },    // orange-500
-    { value: '#06b6d4', label: 'Türkis' },    // cyan-500
-    { value: '#ef4444', label: 'Rot' },       // red-500
+    { value: '#fbbf24', label: 'Gold' },      // amber-400 - balanced
+    { value: '#60a5fa', label: 'Blau' },      // blue-400 - balanced
+    { value: '#4ade80', label: 'Grün' },      // green-400 - balanced
+    { value: '#f472b6', label: 'Pink' },      // pink-400 - balanced
+    { value: '#a78bfa', label: 'Lila' },      // violet-400 - balanced
+    { value: '#fb923c', label: 'Orange' },    // orange-400 - balanced
+    { value: '#22d3ee', label: 'Türkis' },    // cyan-400 - balanced
+    { value: '#f87171', label: 'Rot' },       // red-400 - balanced
     { value: null, label: 'Standard' }
   ];
+  
+  // State to prevent double-clicks on color mode checkbox
+  const [colorModeUpdating, setColorModeUpdating] = useState<string | null>(null);
 
   const loadNotes = useCallback(async () => {
     if (!user) return;
@@ -611,8 +614,14 @@ export function QuickNotesList({
     }
   };
 
-  // Set color full card mode with optimistic UI
+  // Set color full card mode with optimistic UI and locking
   const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
+    // Prevent double execution
+    if (colorModeUpdating) {
+      console.log("Color mode update already in progress, skipping");
+      return;
+    }
+    
     if (!user?.id) {
       toast.error("Nicht angemeldet");
       return;
@@ -631,36 +640,42 @@ export function QuickNotesList({
       return;
     }
 
+    // Set lock FIRST
+    setColorModeUpdating(noteId);
+    
     // Optimistic update
+    const previousValue = note.color_full_card;
     setNotes(prev => prev.map(n => 
       n.id === noteId ? { ...n, color_full_card: fullCard } : n
     ));
 
     try {
-      // Execute query directly without reassignment - fixes async issue
-      const { error } = note.user_id === user.id
-        ? await supabase
-            .from("quick_notes")
-            .update({ color_full_card: fullCard })
-            .eq("id", noteId)
-            .eq("user_id", user.id)
-        : await supabase
-            .from("quick_notes")
-            .update({ color_full_card: fullCard })
-            .eq("id", noteId);
+      // SIMPLIFIED QUERY - let RLS handle permissions
+      // No ternary, no user_id filter - RLS policies already check this
+      const { error } = await supabase
+        .from("quick_notes")
+        .update({ color_full_card: fullCard })
+        .eq("id", noteId);
 
       if (error) {
-        // Rollback on error
+        console.error("Update error:", error);
+        // Rollback
         setNotes(prev => prev.map(n => 
-          n.id === noteId ? { ...n, color_full_card: !fullCard } : n
+          n.id === noteId ? { ...n, color_full_card: previousValue } : n
         ));
-        throw error;
+        toast.error("Fehler beim Setzen des Farbmodus");
+      } else {
+        toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
       }
-      
-      toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
     } catch (error) {
       console.error("Error setting color mode:", error);
+      setNotes(prev => prev.map(n => 
+        n.id === noteId ? { ...n, color_full_card: previousValue } : n
+      ));
       toast.error("Fehler beim Setzen des Farbmodus");
+    } finally {
+      // Release lock after a small delay to prevent rapid re-clicks
+      setTimeout(() => setColorModeUpdating(null), 300);
     }
   };
 
@@ -1785,21 +1800,30 @@ export function QuickNotesList({
                               <DropdownMenuSeparator />
                               <div 
                                 className="px-2 py-1.5" 
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
                                 onPointerDown={(e) => e.stopPropagation()}
                               >
                                 <label 
-                                  className="flex items-center gap-2 text-xs cursor-pointer"
-                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex items-center gap-2 text-xs cursor-pointer select-none"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
                                   onPointerDown={(e) => e.stopPropagation()}
                                 >
                                   <Checkbox 
                                     checked={note.color_full_card === true}
+                                    disabled={colorModeUpdating === note.id}
                                     onCheckedChange={(checked) => {
-                                      handleSetColorMode(note.id, checked === true);
+                                      if (colorModeUpdating !== note.id) {
+                                        handleSetColorMode(note.id, checked === true);
+                                      }
                                     }}
                                   />
-                                  Ganze Card einfärben
+                                  {colorModeUpdating === note.id ? "Wird gespeichert..." : "Ganze Card einfärben"}
                                 </label>
                               </div>
                             </>
