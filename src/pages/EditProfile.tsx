@@ -134,11 +134,14 @@ export function EditProfile() {
         description: "Ihr Profilbild wurde erfolgreich hochgeladen.",
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading file:', error);
+      const errorMessage = error?.message?.includes('bucket') || error?.message?.includes('Bucket')
+        ? "Der Avatar-Speicher ist nicht konfiguriert. Bitte kontaktieren Sie den Administrator."
+        : "Das Bild konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut.";
       toast({
         title: "Upload-Fehler",
-        description: "Das Bild konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

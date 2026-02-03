@@ -17,6 +17,7 @@ import { TaskListRow } from "@/components/tasks/TaskListRow";
 import { TaskDecisionCreator } from "@/components/task-decisions/TaskDecisionCreator";
 import { TaskCommentSidebar } from "@/components/tasks/TaskCommentSidebar";
 import { TaskDocumentDialog } from "@/components/tasks/TaskDocumentDialog";
+import { UnicornAnimation } from "@/components/UnicornAnimation";
 
 interface Task {
   id: string;
@@ -72,6 +73,9 @@ export function MyWorkTasksTab() {
   
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documentTaskId, setDocumentTaskId] = useState<string | null>(null);
+  
+  // Unicorn animation state
+  const [showUnicorn, setShowUnicorn] = useState(false);
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -198,6 +202,7 @@ export function MyWorkTasksTab() {
       setAssignedTasks(prev => prev.filter(t => t.id !== taskId));
       setCreatedTasks(prev => prev.filter(t => t.id !== taskId));
       
+      setShowUnicorn(true);
       toast({ title: "Aufgabe erledigt und archiviert" });
     } catch (error: any) {
       console.error("Error completing task:", error);
@@ -214,6 +219,7 @@ export function MyWorkTasksTab() {
         .select();
 
       if (error) throw error;
+      setShowUnicorn(true);
       toast({ title: "Unteraufgabe erledigt" });
       loadTasks();
     } catch (error) {
@@ -566,6 +572,12 @@ export function MyWorkTasksTab() {
         taskTitle={getTaskTitle(documentTaskId)}
         isOpen={documentDialogOpen}
         onOpenChange={setDocumentDialogOpen}
+      />
+
+      {/* Unicorn Animation on task completion */}
+      <UnicornAnimation 
+        isVisible={showUnicorn} 
+        onAnimationComplete={() => setShowUnicorn(false)} 
       />
     </div>
   );

@@ -198,6 +198,23 @@ export function useTeamAnnouncements() {
   };
 
   const updateAnnouncement = async (id: string, data: Partial<CreateAnnouncementData & { is_active: boolean }>) => {
+    // Store previous state for rollback
+    const previousAnnouncements = [...announcements];
+    const previousActiveAnnouncements = [...activeAnnouncements];
+    
+    // Optimistic update
+    setAnnouncements(prev => prev.map(a => 
+      a.id === id ? { ...a, ...data } : a
+    ));
+    
+    // Update activeAnnouncements if is_active changed
+    if (data.is_active !== undefined) {
+      if (!data.is_active) {
+        // Deactivated - remove from active
+        setActiveAnnouncements(prev => prev.filter(a => a.id !== id));
+      }
+    }
+    
     try {
       const { error } = await supabase
         .from("team_announcements")
@@ -207,10 +224,13 @@ export function useTeamAnnouncements() {
       if (error) throw error;
 
       toast.success("Mitteilung aktualisiert");
-      await fetchAnnouncements();
+      // Realtime subscription will handle the refetch
       return true;
     } catch (error) {
       console.error("Error updating announcement:", error);
+      // Rollback on error
+      setAnnouncements(previousAnnouncements);
+      setActiveAnnouncements(previousActiveAnnouncements);
       toast.error("Fehler beim Aktualisieren");
       return false;
     }

@@ -239,8 +239,8 @@ export function TaskListRow({
           {/* Navigate button */}
           <Button
             variant="ghost"
-            size="icon"
-            className="h-6 w-6 flex-shrink-0"
+            size="sm"
+            className="h-6 w-6 p-0 flex-shrink-0"
             onClick={() => onNavigate(task.id)}
           >
             <ExternalLink className="h-3 w-3" />
