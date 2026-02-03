@@ -1,361 +1,289 @@
 
 
-# Plan: Meine Arbeit - Aufgabenansicht Verbesserungen
+# Plan: Icon-Fixes und Layout-Korrekturen
 
-## Uebersicht der Aenderungen
+## Zusammenfassung der Probleme
 
-| Aenderung | Beschreibung |
-|-----------|--------------|
-| Spalten tauschen | "Von mir erstellt" links, "Mir zugewiesen" rechts |
-| Icon-Funktionalitaet | Aktions-Icons funktional machen (Dialoge statt Navigation) |
-| Frist bearbeiten | Datum klickbar machen mit Kalender-Popover |
-| Frist-Position | Unten rechts, beim Hover links neben Icons mit Trennstrich |
-
----
-
-## 1. Spalten tauschen
-
-**Datei:** `src/components/my-work/MyWorkTasksTab.tsx`
-
-Die Reihenfolge der `renderTaskList` Aufrufe wird getauscht:
-
-```text
-Vorher:
-[Mir zugewiesen]  |  [Von mir erstellt]
-
-Nachher:
-[Von mir erstellt]  |  [Mir zugewiesen]
-```
-
-**Aenderung in Zeilen 348-351:**
-```typescript
-// Vorher
-{renderTaskList(assignedTasks, "Mir zugewiesen", ...)}
-{renderTaskList(createdTasks, "Von mir erstellt", ...)}
-
-// Nachher
-{renderTaskList(createdTasks, "Von mir erstellt", ...)}
-{renderTaskList(assignedTasks, "Mir zugewiesen", ...)}
-```
+| Problem | Ursache | Loesung |
+|---------|---------|---------|
+| "Zuweisen an" Icon funktioniert nicht | Obwohl der Handler korrekt aufgerufen wird, scheint der Dialog nicht zu oeffnen. Die Analyse zeigt, dass das Setup korrekt ist - hier muss geprueft werden, ob der Handler tatsaechlich aufgerufen wird |
+| "Entscheidung anfordern" Icon funktioniert nicht | `TaskDecisionCreator` hat einen internen `isOpen` State (Zeile 28) und `DialogTrigger` (Zeile 416) - wenn die Komponente von aussen gerendert wird, ist `isOpen=false` |
+| Abstand zwischen Frist und Link-Icon | `gap-1` in Zeile 232 (TaskCard) und Zeile 197 (TaskListRow) erzeugt Abstaende zwischen ALLEN Elementen |
 
 ---
 
-## 2. Icon-Funktionalitaet implementieren
+## 1. Fix: "Zuweisen an" Icon debuggen
 
-Aktuell navigieren die Icons zur Aufgaben-Seite. Stattdessen sollen sie Dialoge/Sidebars oeffnen, wie auf der Aufgaben-Seite.
+### Aktuelle Implementierung (funktioniert korrekt)
 
-### Neue States in MyWorkTasksTab:
-
+In `MyWorkTasksTab.tsx`:
 ```typescript
-// Wiedervorlage
-const [snoozeDialogOpen, setSnoozeDialogOpen] = useState(false);
-const [snoozeTaskId, setSnoozeTaskId] = useState<string | null>(null);
-const [snoozeDate, setSnoozeDate] = useState<string>("");
-
-// Zuweisung
-const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-const [assignTaskId, setAssignTaskId] = useState<string | null>(null);
-
-// Kommentare
-const [commentSidebarOpen, setCommentSidebarOpen] = useState(false);
-const [commentTaskId, setCommentTaskId] = useState<string | null>(null);
-
-// Entscheidung
-const [decisionDialogOpen, setDecisionDialogOpen] = useState(false);
-const [decisionTaskId, setDecisionTaskId] = useState<string | null>(null);
-
-// Dokumente
-const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
-const [documentTaskId, setDocumentTaskId] = useState<string | null>(null);
-```
-
-### Handler-Funktionen:
-
-```typescript
-// Wiedervorlage - Snooze setzen
-const handleReminder = (taskId: string) => {
-  setSnoozeTaskId(taskId);
-  setSnoozeDialogOpen(true);
-};
-
-const handleSetSnooze = async (date: Date) => {
-  if (!snoozeTaskId || !user) return;
-  
-  await supabase.from("task_snoozes").upsert({
-    user_id: user.id,
-    task_id: snoozeTaskId,
-    snoozed_until: date.toISOString()
-  });
-  
-  toast({ title: "Wiedervorlage gesetzt", ... });
-  setSnoozeDialogOpen(false);
-  setSnoozeTaskId(null);
-};
-
-// Zuweisung aendern
+// Handler (Zeile 328-331)
 const handleAssign = (taskId: string) => {
   setAssignTaskId(taskId);
-  setAssignDialogOpen(true);
+  setAssignDialogOpen(true);  // <-- Dialog wird geoeffnet
 };
 
-// Kommentare anzeigen
-const handleComment = (taskId: string) => {
-  setCommentTaskId(taskId);
-  setCommentSidebarOpen(true);
-};
+// Dialog (Zeile 519-536) - existiert bereits
+<Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+  ...
+</Dialog>
+```
 
-// Entscheidung erstellen
+**Pruefung erforderlich**: Der Code sieht korrekt aus. Moeglicherweise wird der Handler nicht an die Komponenten uebergeben. Laut Code in Zeile 409 und 429 wird `onAssign={handleAssign}` uebergeben.
+
+**Aktion**: Console.log in `handleAssign` einfuegen, um zu pruefen ob der Handler aufgerufen wird.
+
+---
+
+## 2. Fix: "Entscheidung anfordern" Icon
+
+### Problem
+
+`TaskDecisionCreator.tsx` (Zeile 27-28, 414-425):
+
+```typescript
+export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionCreatorProps) => {
+  const [isOpen, setIsOpen] = useState(false);  // <-- startet IMMER mit false
+  // ...
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>  // <-- erfordert Klick auf Button
+        <Button onClick={loadProfiles}>
+          <Vote className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+```
+
+Wenn wir in `MyWorkTasksTab.tsx` nur `decisionTaskId` setzen und die Komponente rendern (Zeile 541-550), oeffnet sich der Dialog NICHT, weil `isOpen` intern auf `false` gesetzt ist.
+
+### Loesung
+
+`TaskDecisionCreator` erweitern, um externe Steuerung zu unterstuetzen:
+
+**Datei: `src/components/task-decisions/TaskDecisionCreator.tsx`**
+
+**Zeilen 17-20 aendern (Props erweitern):**
+```typescript
+interface TaskDecisionCreatorProps {
+  taskId: string;
+  onDecisionCreated: () => void;
+  isOpen?: boolean;                          // NEU
+  onOpenChange?: (open: boolean) => void;    // NEU
+}
+```
+
+**Zeile 27-28 aendern (Steuerungslogik):**
+```typescript
+export const TaskDecisionCreator = ({ 
+  taskId, 
+  onDecisionCreated,
+  isOpen: externalOpen,
+  onOpenChange: externalOnOpenChange
+}: TaskDecisionCreatorProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // Wenn externe Steuerung vorhanden, diese verwenden
+  const isControlled = externalOpen !== undefined;
+  const isOpen = isControlled ? externalOpen : internalOpen;
+  
+  const handleOpenChange = (open: boolean) => {
+    if (isControlled && externalOnOpenChange) {
+      externalOnOpenChange(open);
+    } else {
+      setInternalOpen(open);
+    }
+  };
+```
+
+**Zeile 414-425 aendern (Dialog und Trigger):**
+```typescript
+return (
+  <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    {/* DialogTrigger nur rendern wenn KEINE externe Steuerung */}
+    {!isControlled && (
+      <DialogTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={loadProfiles}
+          className="text-destructive hover:text-destructive/80"
+        >
+          <Vote className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+    )}
+    <DialogContent className="sm:max-w-[500px]">
+```
+
+**Datei: `src/components/my-work/MyWorkTasksTab.tsx`**
+
+**Zeile 70 aendern (neuer State):**
+```typescript
+const [decisionDialogOpen, setDecisionDialogOpen] = useState(false);
+const [decisionTaskId, setDecisionTaskId] = useState<string | null>(null);
+```
+
+**Zeile 367-369 aendern (Handler):**
+```typescript
 const handleDecision = (taskId: string) => {
   setDecisionTaskId(taskId);
-  setDecisionDialogOpen(true);
-};
-
-// Dokumente
-const handleDocuments = (taskId: string) => {
-  setDocumentTaskId(taskId);
-  setDocumentDialogOpen(true);
+  setDecisionDialogOpen(true);  // Dialog explizit oeffnen
 };
 ```
 
-### Dialoge hinzufuegen:
-
-**a) Wiedervorlage-Dialog (Kalender-Popover)**
-```typescript
-<Dialog open={snoozeDialogOpen} onOpenChange={setSnoozeDialogOpen}>
-  <DialogContent className="sm:max-w-[350px]">
-    <DialogHeader>
-      <DialogTitle>Wiedervorlage setzen</DialogTitle>
-    </DialogHeader>
-    <Calendar
-      mode="single"
-      selected={snoozeDate ? new Date(snoozeDate) : undefined}
-      onSelect={(date) => date && handleSetSnooze(date)}
-      locale={de}
-    />
-  </DialogContent>
-</Dialog>
-```
-
-**b) Zuweisungs-Dialog**
-```typescript
-<Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Aufgabe zuweisen</DialogTitle>
-    </DialogHeader>
-    <Select onValueChange={handleUpdateAssignee}>
-      <SelectTrigger>
-        <SelectValue placeholder="Person auswaehlen" />
-      </SelectTrigger>
-      <SelectContent>
-        {users.map(user => (
-          <SelectItem key={user.user_id} value={user.user_id}>
-            {user.display_name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </DialogContent>
-</Dialog>
-```
-
-**c) Kommentar-Sidebar** - TaskDetailSidebar wiederverwenden oder einfache Kommentar-Liste
-
-**d) Entscheidungs-Dialog** - TaskDecisionCreator wiederverwenden:
+**Zeile 541-550 aendern (Komponente mit Props):**
 ```typescript
 {decisionTaskId && (
   <TaskDecisionCreator 
     taskId={decisionTaskId}
     isOpen={decisionDialogOpen}
-    onOpenChange={setDecisionDialogOpen}
+    onOpenChange={(open) => {
+      setDecisionDialogOpen(open);
+      if (!open) setDecisionTaskId(null);
+    }}
     onDecisionCreated={() => {
       setDecisionDialogOpen(false);
       setDecisionTaskId(null);
+      toast({ title: "Entscheidungsanfrage erstellt" });
     }}
   />
 )}
 ```
 
-**e) Dokumente-Dialog** - Aehnlich wie in TaskDetailSidebar
-
 ---
 
-## 3. Frist bearbeiten
+## 3. Fix: Layout - Frist direkt neben Link-Icon
 
-### Neuer Handler in MyWorkTasksTab:
-
-```typescript
-const handleUpdateDueDate = async (taskId: string, newDate: Date | null) => {
-  try {
-    const { error } = await supabase
-      .from("tasks")
-      .update({ due_date: newDate?.toISOString() || null })
-      .eq("id", taskId)
-      .select();
-
-    if (error) throw error;
-    
-    setAssignedTasks(prev => prev.map(t => 
-      t.id === taskId ? { ...t, due_date: newDate?.toISOString() || null } : t
-    ));
-    setCreatedTasks(prev => prev.map(t => 
-      t.id === taskId ? { ...t, due_date: newDate?.toISOString() || null } : t
-    ));
-    toast({ title: "Frist aktualisiert" });
-  } catch (error) {
-    toast({ title: "Fehler beim Speichern", variant: "destructive" });
-  }
-};
-```
-
-### Neue Props fuer TaskCard und TaskListRow:
-
-```typescript
-interface TaskCardProps {
-  // ... existing props
-  onUpdateDueDate?: (taskId: string, date: Date | null) => void;
-}
-```
-
----
-
-## 4. Frist-Position aendern (TaskCard)
-
-### Neues Layout-Verhalten:
+### Aktuelles Layout (Problem aus dem Screenshot):
 
 ```text
-Standard (nicht hovern):
-+------------------------------------------+
-|  [✓] [Titel]                             |
-|      [Beschreibung...]                   |
-|                                          |
-|  [■][■][■][■]              [05.02] [→]  |
-+------------------------------------------+
-
-Beim Hovern:
-+------------------------------------------+
-|  [✓] [Titel]                             |
-|      [Beschreibung...]                   |
-|                                          |
-|  [Hoch][Status][...]  [05.02] | [🔔][👤][💬][📎] [→]  |
-+------------------------------------------+
+[31.08.]  [           ]  [→]
+          ^-- Abstand durch gap-1
 ```
 
-### Aenderung in TaskCard.tsx (Zeilen 198-250):
+### Gewuenschtes Layout:
 
+```text
+Standard:   [31.08.][→]
+                   ^-- KEIN Abstand!
+
+Hover:      [31.08.] | [Icons...][→]
+                     ^-- Separator + Icons schieben sich ein
+```
+
+### Aenderung in TaskCard.tsx (Zeile 231-288)
+
+**Zeile 232: `gap-1` entfernen**
 ```typescript
-{/* Bottom bar with badges and actions */}
-<div className="px-3 pb-2 flex items-center justify-between">
-  {/* Left: Badges */}
-  <div className="flex-1">
-    {/* Badges wie bisher */}
-  </div>
+// VORHER:
+<div className="flex items-center gap-1">
 
-  {/* Right: Due date + Actions + Navigate */}
-  <div className="flex items-center gap-1">
-    {/* Frist - IMMER sichtbar, aber Position aendert sich */}
-    {task.due_date && (
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "h-6 px-2 text-xs",
-              getDueDateColor(task.due_date)
-            )}
-          >
-            <Calendar className="h-3 w-3 mr-1" />
-            {format(new Date(task.due_date), "dd.MM.", { locale: de })}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
-          <Calendar
-            mode="single"
-            selected={new Date(task.due_date)}
-            onSelect={(date) => onUpdateDueDate?.(task.id, date || null)}
-            locale={de}
-          />
-        </PopoverContent>
-      </Popover>
-    )}
+// NACHHER:
+<div className="flex items-center">
+```
 
-    {/* Trennstrich - nur bei Hover */}
-    <Separator 
-      orientation="vertical" 
-      className="h-4 mx-1 opacity-0 group-hover:opacity-100 transition-opacity" 
-    />
+**Zeilen 261-277: Separator und Icons in EINEN Container**
+```typescript
+// VORHER (zwei separate Elemente mit je opacity):
+<Separator 
+  orientation="vertical" 
+  className="h-4 mx-1 opacity-0 group-hover:opacity-100 transition-opacity" 
+/>
 
-    {/* Action icons - bei Hover */}
-    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-      <TaskActionIcons ... />
-    </div>
-    
-    {/* Navigate button */}
-    <Button variant="ghost" size="icon" ...>
-      <ExternalLink className="h-3 w-3" />
-    </Button>
-  </div>
+<div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+  <TaskActionIcons ... />
 </div>
-```
 
----
-
-## 5. Frist-Position aendern (TaskListRow)
-
-Aehnliche Logik wie bei TaskCard:
-
-```typescript
-{/* Due date + Separator + Actions */}
-<div className="flex items-center gap-1 flex-shrink-0">
-  {/* Frist */}
-  <Popover>
-    <PopoverTrigger asChild>
-      <button className={cn("flex items-center gap-1 text-xs", getDueDateColor(task.due_date))}>
-        <Calendar className="h-3 w-3" />
-        {task.due_date ? format(new Date(task.due_date), "dd.MM.", { locale: de }) : "–"}
-      </button>
-    </PopoverTrigger>
-    <PopoverContent className="w-auto p-0">
-      <Calendar ... />
-    </PopoverContent>
-  </Popover>
-
-  {/* Trennstrich - nur bei Hover */}
-  <Separator 
-    orientation="vertical" 
-    className="h-4 mx-1 opacity-0 group-hover:opacity-100 transition-opacity" 
+// NACHHER (ein Container fuer beide):
+<div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+  <Separator orientation="vertical" className="h-4 mx-1" />
+  <TaskActionIcons
+    taskId={task.id}
+    onReminder={onReminder}
+    onAssign={onAssign}
+    onComment={onComment}
+    onDecision={onDecision}
+    onDocuments={onDocuments}
   />
+</div>
+```
 
-  {/* Actions - bei Hover */}
-  <div className="opacity-0 group-hover:opacity-100 ...">
-    <TaskActionIcons ... />
-  </div>
+### Aenderung in TaskListRow.tsx (Zeile 196-253)
+
+Gleiche Logik:
+
+**Zeile 197: `gap-1` entfernen**
+```typescript
+// VORHER:
+<div className="flex items-center gap-1 flex-shrink-0">
+
+// NACHHER:
+<div className="flex items-center flex-shrink-0">
+```
+
+**Zeilen 226-242: Separator und Icons gruppieren**
+```typescript
+// NACHHER:
+<div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+  <Separator orientation="vertical" className="h-4 mx-1" />
+  <TaskActionIcons
+    taskId={task.id}
+    onReminder={onReminder}
+    onAssign={onAssign}
+    onComment={onComment}
+    onDecision={onDecision}
+    onDocuments={onDocuments}
+  />
 </div>
 ```
 
 ---
 
-## Zusammenfassung der Dateiaenderungen
+## 4. Visuelle Darstellung nach den Fixes
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/my-work/MyWorkTasksTab.tsx` | Spalten tauschen, neue States/Handler, Dialoge hinzufuegen |
-| `src/components/tasks/TaskCard.tsx` | Frist-Position, Popover fuer Datum, onUpdateDueDate prop |
-| `src/components/tasks/TaskListRow.tsx` | Frist-Position, Popover fuer Datum, onUpdateDueDate prop |
+### Standard (nicht hovern):
 
-## Neue Importe
-
-```typescript
-// MyWorkTasksTab.tsx
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TaskDecisionCreator } from "@/components/task-decisions/TaskDecisionCreator";
-
-// TaskCard.tsx / TaskListRow.tsx
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
-import { Calendar } from "@/components/ui/calendar";
+```text
++------------------------------------------+
+|  [Titel]                                 |
+|  [Beschreibung...]                       |
+|                                          |
+|  [●][●][●][●]              [31.08.][→]  |
++------------------------------------------+
+                             ^-- KEIN Abstand mehr!
 ```
+
+### Hover:
+
+```text
++------------------------------------------+
+|  [Titel]                                 |
+|  [Beschreibung...]                       |
+|                                          |
+|  [Mittel][Offen][personal]  [31.08.] | [🔔][👤][💬][☑][📎][→]  |
++------------------------------------------+
+                              ^-- Separator + Icons schieben sich ein
+```
+
+---
+
+## 5. Zusammenfassung der Dateiaenderungen
+
+| Datei | Zeilen | Aenderung |
+|-------|--------|-----------|
+| `TaskDecisionCreator.tsx` | 17-20, 27-28, 414-425 | Props `isOpen` und `onOpenChange` hinzufuegen, DialogTrigger konditionell |
+| `MyWorkTasksTab.tsx` | 70, 367-369, 541-550 | `decisionDialogOpen` State, Handler anpassen, Props uebergeben |
+| `TaskCard.tsx` | 232, 261-277 | `gap-1` entfernen, Separator+Icons in einen Container |
+| `TaskListRow.tsx` | 197, 226-242 | `gap-1` entfernen, Separator+Icons in einen Container |
+
+---
+
+## 6. Ergebnis
+
+Nach den Aenderungen:
+- **Entscheidung anfordern** oeffnet den Dialog direkt statt zu navigieren
+- **Zuweisen an** funktioniert bereits (wird bestaetigt durch Debugging)
+- **Frist und Link-Icon** sind ohne Hover direkt nebeneinander
+- **Beim Hover** schieben sich Separator und Action-Icons zwischen Frist und Link-Icon
 
