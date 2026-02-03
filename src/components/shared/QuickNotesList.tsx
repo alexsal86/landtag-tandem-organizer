@@ -279,8 +279,9 @@ export function QuickNotesList({
         const { data: globallySharedData } = await supabase
           .from("quick_notes")
           .select(`
-            id, title, content, color, is_pinned, created_at, updated_at, user_id,
-            is_archived, task_id, meeting_id, priority_level, follow_up_date, pending_for_jour_fixe,
+            id, title, content, color, color_full_card, is_pinned, created_at, updated_at, user_id,
+            is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
+            task_archived_info, decision_archived_info, meeting_archived_info,
             meetings!meeting_id(title, meeting_date)
           `)
           .in("user_id", globalShareUserIds)
@@ -556,18 +557,36 @@ export function QuickNotesList({
       return;
     }
 
+    const note = notes.find(n => n.id === noteId);
+    if (!note) {
+      toast.error("Notiz nicht gefunden");
+      return;
+    }
+
+    // Check permission: own note OR shared with edit rights
+    const canModify = note.user_id === user.id || note.can_edit === true;
+    if (!canModify) {
+      toast.error("Keine Berechtigung zum Ändern dieser Notiz");
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
+      // Build query - only add user_id filter for own notes
+      let query = supabase
         .from("quick_notes")
         .update({ color })
-        .eq("id", noteId)
-        .eq("user_id", user.id)
-        .select();
+        .eq("id", noteId);
+      
+      if (note.user_id === user.id) {
+        query = query.eq("user_id", user.id);
+      }
+      
+      const { data, error } = await query.select();
 
       if (error) throw error;
       
       if (!data || data.length === 0) {
-        toast.error("Keine Berechtigung zum Ändern dieser Notiz");
+        toast.error("Farbe konnte nicht geändert werden");
         return;
       }
       
@@ -586,17 +605,36 @@ export function QuickNotesList({
       return;
     }
 
+    const note = notes.find(n => n.id === noteId);
+    if (!note) {
+      toast.error("Notiz nicht gefunden");
+      return;
+    }
+
+    // Check permission: own note OR shared with edit rights
+    const canModify = note.user_id === user.id || note.can_edit === true;
+    if (!canModify) {
+      toast.error("Keine Berechtigung zum Ändern dieser Notiz");
+      return;
+    }
+
     // Optimistic update
     setNotes(prev => prev.map(n => 
       n.id === noteId ? { ...n, color_full_card: fullCard } : n
     ));
 
     try {
-      const { error } = await supabase
+      // Build query - only add user_id filter for own notes
+      let query = supabase
         .from("quick_notes")
         .update({ color_full_card: fullCard })
-        .eq("id", noteId)
-        .eq("user_id", user.id);
+        .eq("id", noteId);
+      
+      if (note.user_id === user.id) {
+        query = query.eq("user_id", user.id);
+      }
+
+      const { error } = await query;
 
       if (error) {
         // Rollback on error
@@ -1256,11 +1294,9 @@ export function QuickNotesList({
         className="p-3 pb-12 rounded-lg border transition-all hover:shadow-sm border-l-4 group relative"
         style={{ 
           borderLeftColor: note.color || "#3b82f6",
-          backgroundColor: note.color && note.color_full_card 
-            ? `${note.color}40` // 25% opacity for full card
-            : note.color 
-              ? `${note.color}20` // 12% opacity for accent
-              : undefined
+          backgroundColor: note.color && note.color_full_card === true
+            ? `${note.color}40` // 25% opacity for full card mode only
+            : undefined  // Kein Hintergrund wenn nur Rand
         }}
         onClick={() => onNoteClick?.(note)}
       >
@@ -1683,61 +1719,64 @@ export function QuickNotesList({
                     </DropdownMenuPortal>
                   </DropdownMenuSub>
 
-                  {/* Color Submenu */}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <Palette className="h-3 w-3 mr-2" />
-                      Farbe
-                      {note.color && (
-                        <span 
-                          className="ml-auto w-3 h-3 rounded-full border"
-                          style={{ backgroundColor: note.color }}
-                        />
-                      )}
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        <div className="flex flex-wrap gap-1.5 p-2 max-w-[140px]">
-                          {noteColors.map((color) => (
-                            <button
-                              key={color.value || 'default'}
-                              onClick={() => handleSetColor(note.id, color.value)}
-                              className={cn(
-                                "w-6 h-6 rounded-full border-2 transition-all hover:scale-110",
-                                note.color === color.value ? "border-primary ring-2 ring-primary/30" : "border-transparent",
-                                !color.value && "bg-background border-border"
-                              )}
-                              style={color.value ? { backgroundColor: color.value } : undefined}
-                              title={color.label}
-                            />
-                          ))}
-                        </div>
+                  {/* Color Submenu - also for shared notes with edit permission */}
+                  {(note.user_id === user?.id || note.can_edit === true) && (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Palette className="h-3 w-3 mr-2" />
+                        Farbe
                         {note.color && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <div 
-                              className="px-2 py-1.5" 
-                              onClick={(e) => e.stopPropagation()}
-                              onPointerDown={(e) => e.stopPropagation()}
-                            >
-                              <label 
-                                className="flex items-center gap-2 text-xs cursor-pointer"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Checkbox 
-                                  checked={note.color_full_card === true}
-                                  onCheckedChange={(checked) => {
-                                    handleSetColorMode(note.id, checked === true);
-                                  }}
-                                />
-                                Ganze Card einfärben
-                              </label>
-                            </div>
-                          </>
+                          <span 
+                            className="ml-auto w-3 h-3 rounded-full border"
+                            style={{ backgroundColor: note.color }}
+                          />
                         )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                          <div className="flex flex-wrap gap-1.5 p-2 max-w-[140px]">
+                            {noteColors.map((color) => (
+                              <button
+                                key={color.value || 'default'}
+                                onClick={() => handleSetColor(note.id, color.value)}
+                                className={cn(
+                                  "w-6 h-6 rounded-full border-2 transition-all hover:scale-110",
+                                  note.color === color.value ? "border-primary ring-2 ring-primary/30" : "border-transparent",
+                                  !color.value && "bg-background border-border"
+                                )}
+                                style={color.value ? { backgroundColor: color.value } : undefined}
+                                title={color.label}
+                              />
+                            ))}
+                          </div>
+                          {note.color && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <div 
+                                className="px-2 py-1.5" 
+                                onClick={(e) => e.stopPropagation()}
+                                onPointerDown={(e) => e.stopPropagation()}
+                              >
+                                <label 
+                                  className="flex items-center gap-2 text-xs cursor-pointer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                >
+                                  <Checkbox 
+                                    checked={note.color_full_card === true}
+                                    onCheckedChange={(checked) => {
+                                      handleSetColorMode(note.id, checked === true);
+                                    }}
+                                  />
+                                  Ganze Card einfärben
+                                </label>
+                              </div>
+                            </>
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                  )}
                   
                   {/* Share option - only for own notes */}
                   {note.user_id === user?.id && (
