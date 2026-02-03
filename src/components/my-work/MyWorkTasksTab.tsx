@@ -1,19 +1,17 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight, Calendar, Flag, ExternalLink, ListTodo } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { LayoutGrid, List } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
-import { format, isPast, isToday } from "date-fns";
-import { de } from "date-fns/locale";
+import { useViewPreference, ViewType } from "@/hooks/useViewPreference";
+import { TaskCard } from "@/components/tasks/TaskCard";
+import { TaskListRow } from "@/components/tasks/TaskListRow";
 
 interface Task {
   id: string;
@@ -25,6 +23,7 @@ interface Task {
   assigned_to: string | null;
   user_id: string;
   created_at: string;
+  category?: string;
 }
 
 interface Subtask {
@@ -40,14 +39,12 @@ export function MyWorkTasksTab() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { viewType, setViewType } = useViewPreference({ key: "mywork-tasks", defaultView: "card" });
   
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
   const [createdTasks, setCreatedTasks] = useState<Task[]>([]);
   const [subtasks, setSubtasks] = useState<Record<string, Subtask[]>>({});
-  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [assignedOpen, setAssignedOpen] = useState(true);
-  const [createdOpen, setCreatedOpen] = useState(true);
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -69,7 +66,7 @@ export function MyWorkTasksTab() {
     if (!user) return;
     
     try {
-      // Load tasks assigned to user (check both exact match and partial match)
+      // Load tasks assigned to user
       const { data: assigned, error: assignedError } = await supabase
         .from("tasks")
         .select("*")
@@ -79,7 +76,7 @@ export function MyWorkTasksTab() {
 
       if (assignedError) throw assignedError;
 
-      // Load tasks created by user (not assigned to them)
+      // Load tasks created by user
       const { data: created, error: createdError } = await supabase
         .from("tasks")
         .select("*")
@@ -89,12 +86,10 @@ export function MyWorkTasksTab() {
 
       if (createdError) throw createdError;
 
-      // Also load tasks where user_id matches (own tasks)
       const allAssigned = assigned || [];
       const allCreated = created || [];
       
-      // Filter: assigned = tasks where user is explicitly assigned
-      // created = tasks user created but are NOT assigned to them
+      // Filter: created = tasks user created but are NOT assigned to them
       const assignedIds = new Set(allAssigned.map(t => t.id));
       const filteredCreated = allCreated.filter(t => !assignedIds.has(t.id));
       
@@ -102,7 +97,7 @@ export function MyWorkTasksTab() {
       setCreatedTasks(filteredCreated);
 
       // Load subtasks for all tasks
-      const allTaskIds = [...(assigned || []), ...filteredCreated].map(t => t.id);
+      const allTaskIds = [...allAssigned, ...filteredCreated].map(t => t.id);
       if (allTaskIds.length > 0) {
         const { data: subtasksData, error: subtasksError } = await supabase
           .from("subtasks")
@@ -113,17 +108,12 @@ export function MyWorkTasksTab() {
 
         if (subtasksError) throw subtasksError;
 
-        // Group subtasks by task_id
         const grouped: Record<string, Subtask[]> = {};
         (subtasksData || []).forEach(st => {
           if (!grouped[st.task_id]) grouped[st.task_id] = [];
           grouped[st.task_id].push(st);
         });
         setSubtasks(grouped);
-        
-        // Auto-expand tasks with subtasks
-        const tasksWithSubtasks = Object.keys(grouped);
-        setExpandedTasks(new Set(tasksWithSubtasks));
       }
     } catch (error) {
       console.error("Error loading tasks:", error);
@@ -137,22 +127,15 @@ export function MyWorkTasksTab() {
     if (!task || !user) return;
     
     try {
-      // 1. Status aendern
       const { error: updateError } = await supabase
         .from("tasks")
         .update({ status: "completed", progress: 100 })
-        .eq("id", taskId);
+        .eq("id", taskId)
+        .select();
 
-      const isNetworkError = updateError?.message?.includes('Failed to fetch') || 
-                             updateError?.message?.includes('NetworkError') ||
-                             updateError?.message?.includes('TypeError');
+      if (updateError) throw updateError;
 
-      if (updateError && !isNetworkError) {
-        throw updateError;
-      }
-
-      // 2. Archivieren
-      const { error: archiveError } = await supabase
+      await supabase
         .from('archived_tasks')
         .insert({
           task_id: taskId,
@@ -160,7 +143,7 @@ export function MyWorkTasksTab() {
           title: task.title,
           description: task.description,
           priority: task.priority,
-          category: 'personal', // Fallback
+          category: 'personal',
           assigned_to: task.assigned_to || '',
           progress: 100,
           due_date: task.due_date,
@@ -168,44 +151,14 @@ export function MyWorkTasksTab() {
           auto_delete_after_days: null,
         });
 
-      if (archiveError && !archiveError.message?.includes('Failed to fetch')) {
-        throw archiveError;
-      }
-
-      // 3. Task loeschen
       await supabase.from('tasks').delete().eq('id', taskId);
       
-      // 4. UI sofort aktualisieren
       setAssignedTasks(prev => prev.filter(t => t.id !== taskId));
       setCreatedTasks(prev => prev.filter(t => t.id !== taskId));
       
       toast({ title: "Aufgabe erledigt und archiviert" });
-      
     } catch (error: any) {
       console.error("Error completing task:", error);
-      
-      // Bei Netzwerkfehler: Nach Verzoegerung verifizieren
-      const isNetworkError = error?.message?.includes('Failed to fetch') || 
-                             error?.message?.includes('NetworkError');
-      
-      if (isNetworkError) {
-        setTimeout(async () => {
-          const { data: freshTask } = await supabase
-            .from('tasks')
-            .select('status')
-            .eq('id', taskId)
-            .maybeSingle();
-          
-          if (!freshTask || freshTask.status === 'completed') {
-            // Erfolgreich - UI aktualisieren
-            setAssignedTasks(prev => prev.filter(t => t.id !== taskId));
-            setCreatedTasks(prev => prev.filter(t => t.id !== taskId));
-            toast({ title: "Aufgabe erledigt" });
-          }
-        }, 500);
-        return;
-      }
-      
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
@@ -215,7 +168,8 @@ export function MyWorkTasksTab() {
       const { error } = await supabase
         .from("subtasks")
         .update({ is_completed: true })
-        .eq("id", subtaskId);
+        .eq("id", subtaskId)
+        .select();
 
       if (error) throw error;
       toast({ title: "Unteraufgabe erledigt" });
@@ -226,112 +180,136 @@ export function MyWorkTasksTab() {
     }
   };
 
-  const toggleTaskExpanded = (taskId: string) => {
-    setExpandedTasks(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(taskId)) {
-        newSet.delete(taskId);
-      } else {
-        newSet.add(taskId);
-      }
-      return newSet;
-    });
-  };
+  const handleUpdateTitle = async (taskId: string, title: string) => {
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ title })
+        .eq("id", taskId)
+        .select();
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high": return "text-red-500";
-      case "medium": return "text-yellow-500";
-      default: return "text-green-500";
+      if (error) throw error;
+      
+      setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t));
+      setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t));
+      toast({ title: "Titel aktualisiert" });
+    } catch (error) {
+      console.error("Error updating title:", error);
+      toast({ title: "Fehler beim Speichern", variant: "destructive" });
     }
   };
 
-  const getDueDateColor = (dueDate: string | null) => {
-    if (!dueDate) return "text-muted-foreground";
-    const date = new Date(dueDate);
-    if (isPast(date) && !isToday(date)) return "text-red-500";
-    if (isToday(date)) return "text-orange-500";
-    return "text-muted-foreground";
+  const handleUpdateDescription = async (taskId: string, description: string) => {
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ description })
+        .eq("id", taskId)
+        .select();
+
+      if (error) throw error;
+      
+      setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, description } : t));
+      setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, description } : t));
+      toast({ title: "Beschreibung aktualisiert" });
+    } catch (error) {
+      console.error("Error updating description:", error);
+      toast({ title: "Fehler beim Speichern", variant: "destructive" });
+    }
   };
 
-  const TaskItem = ({ task }: { task: Task }) => {
-    const taskSubtasks = subtasks[task.id] || [];
-    const hasSubtasks = taskSubtasks.length > 0;
-    // Subtasks are always shown if they exist
-    const isExpanded = hasSubtasks || expandedTasks.has(task.id);
+  // Placeholder action handlers
+  const handleReminder = (taskId: string) => {
+    toast({ title: "Wiedervorlage", description: "Funktion kommt bald" });
+  };
 
+  const handleAssign = (taskId: string) => {
+    navigate(`/tasks?id=${taskId}&action=assign`);
+  };
+
+  const handleComment = (taskId: string) => {
+    navigate(`/tasks?id=${taskId}&tab=comments`);
+  };
+
+  const handleDecision = (taskId: string) => {
+    toast({ title: "Entscheidung anfordern", description: "Funktion kommt bald" });
+  };
+
+  const handleDocuments = (taskId: string) => {
+    navigate(`/tasks?id=${taskId}&tab=documents`);
+  };
+
+  const renderTaskList = (tasks: Task[], title: string, emptyMessage: string) => {
     return (
-      <div className="rounded-lg border bg-card">
-        <div className="flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors">
-          <Checkbox
-            className="mt-0.5 h-4 w-4"
-            onCheckedChange={() => handleToggleComplete(task.id)}
-          />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-sm truncate">{task.title}</span>
-              <Flag className={cn("h-3 w-3 flex-shrink-0", getPriorityColor(task.priority))} />
-              {hasSubtasks && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
-                  <ListTodo className="h-2.5 w-2.5 mr-1" />
-                  {taskSubtasks.length} Unteraufgaben
-                </Badge>
-              )}
-            </div>
-            {task.description && (
-              <RichTextDisplay content={task.description} className="text-xs line-clamp-1 mt-0.5" />
-            )}
-            {task.due_date && (
-              <div className={cn("flex items-center gap-1 mt-1 text-xs", getDueDateColor(task.due_date))}>
-                <Calendar className="h-3 w-3" />
-                {format(new Date(task.due_date), "dd.MM.yyyy", { locale: de })}
-              </div>
-            )}
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-sm">{title}</h3>
+            <Badge variant="secondary" className="text-xs">{tasks.length}</Badge>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 flex-shrink-0"
-            onClick={() => navigate("/tasks")}
-          >
-            <ExternalLink className="h-3 w-3" />
-          </Button>
         </div>
         
-        {/* Subtasks - always visible if they exist */}
-        {hasSubtasks && (
-          <div className="border-t bg-muted/30 px-3 py-2 space-y-1">
-            {taskSubtasks.map((subtask) => (
-              <div 
-                key={subtask.id} 
-                className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-accent/50 transition-colors"
-              >
-                <Checkbox
-                  className="h-4 w-4"
-                  onCheckedChange={() => handleToggleSubtaskComplete(subtask.id)}
+        <ScrollArea className="flex-1">
+          {tasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
+          ) : viewType === "card" ? (
+            <div className="space-y-2 pr-2">
+              {tasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  subtasks={subtasks[task.id]}
+                  onComplete={handleToggleComplete}
+                  onSubtaskComplete={handleToggleSubtaskComplete}
+                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
+                  onUpdateTitle={handleUpdateTitle}
+                  onUpdateDescription={handleUpdateDescription}
+                  onReminder={handleReminder}
+                  onAssign={handleAssign}
+                  onComment={handleComment}
+                  onDecision={handleDecision}
+                  onDocuments={handleDocuments}
                 />
-                <span className="text-sm text-foreground flex-1 truncate">
-                  {subtask.description}
-                </span>
-                {subtask.due_date && (
-                  <span className={cn("text-xs", getDueDateColor(subtask.due_date))}>
-                    {format(new Date(subtask.due_date), "dd.MM.", { locale: de })}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              {tasks.map((task) => (
+                <TaskListRow
+                  key={task.id}
+                  task={task}
+                  subtasks={subtasks[task.id]}
+                  onComplete={handleToggleComplete}
+                  onSubtaskComplete={handleToggleSubtaskComplete}
+                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
+                  onUpdateTitle={handleUpdateTitle}
+                  onReminder={handleReminder}
+                  onAssign={handleAssign}
+                  onComment={handleComment}
+                  onDecision={handleDecision}
+                  onDocuments={handleDocuments}
+                />
+              ))}
+            </div>
+          )}
+        </ScrollArea>
       </div>
     );
   };
 
   if (loading) {
     return (
-      <div className="space-y-2 p-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />
-        ))}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -339,56 +317,39 @@ export function MyWorkTasksTab() {
   const totalTasks = assignedTasks.length + createdTasks.length;
 
   return (
-    <ScrollArea className="h-[calc(100vh-20rem)]">
-      <div className="space-y-4 p-4">
-        {totalTasks === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Keine offenen Aufgaben</p>
-          </div>
-        ) : (
-          <>
-            {/* Mir zugewiesen */}
-            <Collapsible open={assignedOpen} onOpenChange={setAssignedOpen}>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full justify-between p-2 h-auto">
-                  <div className="flex items-center gap-2">
-                    {assignedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    <span className="font-medium">Mir zugewiesen</span>
-                  </div>
-                  <Badge variant="secondary">{assignedTasks.length}</Badge>
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-2 mt-2">
-                {assignedTasks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground px-2">Keine Aufgaben zugewiesen</p>
-                ) : (
-                  assignedTasks.map((task) => <TaskItem key={task.id} task={task} />)
-                )}
-              </CollapsibleContent>
-            </Collapsible>
-
-            {/* Von mir erstellt */}
-            <Collapsible open={createdOpen} onOpenChange={setCreatedOpen}>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full justify-between p-2 h-auto">
-                  <div className="flex items-center gap-2">
-                    {createdOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    <span className="font-medium">Von mir erstellt</span>
-                  </div>
-                  <Badge variant="secondary">{createdTasks.length}</Badge>
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-2 mt-2">
-                {createdTasks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground px-2">Keine eigenen Aufgaben</p>
-                ) : (
-                  createdTasks.map((task) => <TaskItem key={task.id} task={task} />)
-                )}
-              </CollapsibleContent>
-            </Collapsible>
-          </>
-        )}
+    <div className="h-[calc(100vh-20rem)] flex flex-col">
+      {/* Header with view toggle */}
+      <div className="flex items-center justify-between px-4 py-2 border-b">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">Aufgaben</span>
+          <Badge variant="outline">{totalTasks}</Badge>
+        </div>
+        <ToggleGroup 
+          type="single" 
+          value={viewType} 
+          onValueChange={(value) => value && setViewType(value as ViewType)}
+          className="bg-muted rounded-md p-0.5"
+        >
+          <ToggleGroupItem value="card" aria-label="Kartenansicht" className="h-7 w-7 p-0">
+            <LayoutGrid className="h-4 w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem value="list" aria-label="Listenansicht" className="h-7 w-7 p-0">
+            <List className="h-4 w-4" />
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
-    </ScrollArea>
+
+      {/* Main content - 50/50 split */}
+      {totalTasks === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">Keine offenen Aufgaben</p>
+        </div>
+      ) : (
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 min-h-0">
+          {renderTaskList(assignedTasks, "Mir zugewiesen", "Keine Aufgaben zugewiesen")}
+          {renderTaskList(createdTasks, "Von mir erstellt", "Keine eigenen Aufgaben")}
+        </div>
+      )}
+    </div>
   );
 }
