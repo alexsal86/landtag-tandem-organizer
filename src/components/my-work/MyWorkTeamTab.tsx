@@ -12,6 +12,7 @@ import { format, differenceInDays, startOfWeek, isWeekend, subDays } from "date-
 import { de } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { TeamAnnouncementsManager } from "@/components/announcements/TeamAnnouncementsManager";
 
 interface TeamMember {
   user_id: string;
@@ -287,13 +288,21 @@ export function MyWorkTeamTab() {
   }
 
   return (
-    <ScrollArea className="h-[500px]">
-      <div className="space-y-2 p-4">
-        {teamMembers.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
-            <p>Keine Mitarbeiter</p>
-          </div>
+    <ScrollArea className="h-[600px]">
+      <div className="space-y-6 p-4">
+        {/* Team Announcements Manager - only for admins */}
+        {isAdmin && (
+          <TeamAnnouncementsManager />
+        )}
+
+        {/* Team Members Section */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold mb-3">Teammitglieder</h3>
+          {teamMembers.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
+              <p>Keine Mitarbeiter</p>
+            </div>
         ) : (
           teamMembers.map((member) => {
             const meetingStatus = getMeetingStatus(member.next_meeting_due);
@@ -365,6 +374,7 @@ export function MyWorkTeamTab() {
             );
           })
         )}
+        </div>
       </div>
     </ScrollArea>
   );

@@ -29,6 +29,7 @@ const MyWorkView = lazy(() => import("@/components/MyWorkView").then(m => ({ def
 const CallsView = lazy(() => import("@/components/CallsView").then(m => ({ default: m.CallsView })));
 import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
 import { GlobalQuickActionHandler } from "@/components/layout/GlobalQuickActionHandler";
+import { GlobalAnnouncementBanner } from "@/components/announcements/GlobalAnnouncementBanner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -181,6 +182,9 @@ const Index = () => {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      {/* Global Announcement Banner - above everything */}
+      <GlobalAnnouncementBanner />
+      
       {/* Skip to Content Link for Accessibility */}
       <a 
         href="#main-content" 
