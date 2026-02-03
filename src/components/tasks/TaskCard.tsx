@@ -229,7 +229,7 @@ export function TaskCard({
         </div>
 
         {/* Right: Due date + Actions + Navigate */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center">
           {/* Due date - always visible, clickable for editing */}
           <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
             <PopoverTrigger asChild>
@@ -258,14 +258,9 @@ export function TaskCard({
             </PopoverContent>
           </Popover>
 
-          {/* Separator - visible on hover */}
-          <Separator 
-            orientation="vertical" 
-            className="h-4 mx-1 opacity-0 group-hover:opacity-100 transition-opacity" 
-          />
-
-          {/* Action icons - visible on hover */}
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {/* Separator + Action icons - slide in on hover between date and navigate */}
+          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <Separator orientation="vertical" className="h-4 mx-1" />
             <TaskActionIcons
               taskId={task.id}
               onReminder={onReminder}
