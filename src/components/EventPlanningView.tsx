@@ -527,6 +527,107 @@ export function EventPlanningView() {
     }
   };
 
+  const completePlanningAndArchive = async (planningId: string) => {
+    const planning = plannings.find(p => p.id === planningId);
+    if (planning?.user_id !== user?.id) {
+      toast({
+        title: "Keine Berechtigung",
+        description: "Nur der Ersteller kann diese Planung abschließen.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("event_plannings")
+        .update({ 
+          is_archived: true, 
+          archived_at: new Date().toISOString()
+        })
+        .eq("id", planningId)
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Planung abgeschlossen",
+        description: "Die Veranstaltungsplanung wurde abgeschlossen und archiviert.",
+      });
+      
+      // Falls Detailansicht offen, zurück zur Liste
+      if (selectedPlanning?.id === planningId) {
+        setSelectedPlanning(null);
+      }
+      
+      fetchPlannings();
+    } catch (error) {
+      console.error('Error completing planning:', error);
+      toast({
+        title: "Fehler",
+        description: "Planung konnte nicht abgeschlossen werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const completePreparationAndArchive = async (preparationId: string) => {
+    try {
+      const { error } = await supabase
+        .from("appointment_preparations")
+        .update({ 
+          is_archived: true, 
+          archived_at: new Date().toISOString(),
+          status: 'completed'
+        })
+        .eq("id", preparationId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Terminplanung abgeschlossen",
+        description: "Die Terminplanung wurde abgeschlossen und archiviert.",
+      });
+      
+      fetchAppointmentPreparations();
+    } catch (error) {
+      console.error('Error completing preparation:', error);
+      toast({
+        title: "Fehler",
+        description: "Terminplanung konnte nicht abgeschlossen werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const archivePreparation = async (preparationId: string) => {
+    try {
+      const { error } = await supabase
+        .from("appointment_preparations")
+        .update({ 
+          is_archived: true, 
+          archived_at: new Date().toISOString()
+        })
+        .eq("id", preparationId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Terminplanung archiviert",
+        description: "Die Terminplanung wurde ins Archiv verschoben.",
+      });
+      
+      fetchAppointmentPreparations();
+    } catch (error) {
+      console.error('Error archiving preparation:', error);
+      toast({
+        title: "Fehler",
+        description: "Terminplanung konnte nicht archiviert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const fetchAllCollaborators = async (planningIds: string[]) => {
     const { data: collabs } = await supabase
       .from("event_planning_collaborators")
@@ -756,6 +857,10 @@ export function EventPlanningView() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-popover">
+                      <DropdownMenuItem onClick={() => completePlanningAndArchive(planning.id)}>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Abschließen
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => archivePlanning(planning.id)}>
                         <Archive className="h-4 w-4 mr-2" />
                         Archivieren
@@ -785,6 +890,7 @@ export function EventPlanningView() {
           <TableHead>Titel</TableHead>
           <TableHead>Notizen</TableHead>
           {isArchived && <TableHead>Archiviert</TableHead>}
+          {!isArchived && <TableHead className="w-14">Aktionen</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -818,6 +924,27 @@ export function EventPlanningView() {
               {isArchived && preparation.archived_at && (
                 <TableCell>
                   {format(new Date(preparation.archived_at), "dd.MM.yyyy", { locale: de })}
+                </TableCell>
+              )}
+              {!isArchived && (
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover">
+                      <DropdownMenuItem onClick={() => completePreparationAndArchive(preparation.id)}>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Abschließen
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => archivePreparation(preparation.id)}>
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archivieren
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               )}
             </TableRow>
@@ -2711,9 +2838,12 @@ export function EventPlanningView() {
               </Button>
               {/* Archive Button */}
               <Button 
-                variant="outline" 
+                variant={showPlanningArchive ? "default" : "outline"}
                 size="sm"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("Archiv-Button clicked, current state:", showPlanningArchive);
                   fetchArchivedPlannings();
                   setShowPlanningArchive(true);
                 }}
@@ -2824,6 +2954,13 @@ export function EventPlanningView() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="bg-popover">
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  completePlanningAndArchive(planning.id);
+                                }}>
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Abschließen
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={(e) => {
                                   e.stopPropagation();
                                   archivePlanning(planning.id);
@@ -3021,17 +3158,48 @@ export function EventPlanningView() {
                         <NewItemIndicator isVisible={isItemNew(preparation.id, preparation.created_at)} />
                         <CardHeader>
                           <CardTitle className="flex items-center justify-between">
-                            <span className="truncate">{preparation.title}</span>
-                            <Badge 
-                              variant={preparation.status === 'completed' ? 'default' : 
-                                     preparation.status === 'in_progress' ? 'secondary' : 'outline'}
+                            <span 
+                              className="truncate cursor-pointer" 
+                              onClick={() => handlePreparationClick(preparation)}
                             >
-                              {preparation.status === 'completed' ? 'Abgeschlossen' :
-                               preparation.status === 'in_progress' ? 'In Bearbeitung' : 'Entwurf'}
-                            </Badge>
+                              {preparation.title}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                variant={preparation.status === 'completed' ? 'default' : 
+                                       preparation.status === 'in_progress' ? 'secondary' : 'outline'}
+                              >
+                                {preparation.status === 'completed' ? 'Abgeschlossen' :
+                                 preparation.status === 'in_progress' ? 'In Bearbeitung' : 'Entwurf'}
+                              </Badge>
+                              {/* Dropdown Menu */}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-popover">
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation();
+                                    completePreparationAndArchive(preparation.id);
+                                  }}>
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Abschließen
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation();
+                                    archivePreparation(preparation.id);
+                                  }}>
+                                    <Archive className="h-4 w-4 mr-2" />
+                                    Archivieren
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3">
+                        <CardContent className="space-y-3" onClick={() => handlePreparationClick(preparation)}>
                           {preparation.notes && (
                             <p className="text-sm text-muted-foreground line-clamp-2">
                               {preparation.notes}
@@ -3323,6 +3491,33 @@ export function EventPlanningView() {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Abschließen-Button - nur für Ersteller */}
+          {selectedPlanning.user_id === user?.id && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline">
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Abschließen
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Planung abschließen</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Möchten Sie diese Planung abschließen und archivieren? 
+                    Die Planung wird ins Archiv verschoben.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => completePlanningAndArchive(selectedPlanning!.id)}>
+                    Abschließen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
 
           {/* Löschen-Button */}
           <AlertDialog>
