@@ -1,359 +1,237 @@
 
-# Plan: Veranstaltungs- und Terminplanungen - Archiv-Button Fix + Abschliessen & Archivieren
+# Plan: Planungen - Archiv-Fixes und UI-Verbesserungen
 
-## Zusammenfassung der Probleme und Loesungen
+## Zusammenfassung der Probleme
 
-### Problem 1: Archiv-Button funktioniert nicht
-
-**Analyse:** Der Archiv-Button bei Veranstaltungsplanungen (Zeilen 2712-2723) sieht korrekt aus:
-```typescript
-<Button 
-  variant="outline" 
-  size="sm"
-  onClick={() => {
-    fetchArchivedPlannings();
-    setShowPlanningArchive(true);
-  }}
->
-```
-
-Der Dialog (Zeilen 4738-4784) ist ebenfalls vorhanden. Moegliche Ursachen:
-1. Der `onClick` Handler wird durch ein uebergeordnetes Element blockiert
-2. Der State `showPlanningArchive` wird nicht korrekt gesetzt
-3. Es gibt einen Fehler beim Laden der archivierten Planungen
-
-**Loesung:** Den Button ueberpruefen und mit explizitem Event-Handling verbessern.
+| Problem | Ursache | Loesung |
+|---------|---------|---------|
+| Fehler beim Wiederherstellen/Archivieren | Fehlende `.select()` bei Supabase-Update | `.select()` hinzufuegen |
+| "Abschliessen" vs "Archivieren" verwirrend | Zwei Funktionen die dasselbe tun | Nur "Archivieren" behalten |
+| Button hinter Menue versteckt | DropdownMenu verwendet | Direkter Archive-Icon-Button |
+| Archiv oeffnet nicht direkt | Moegliches State/Timing-Problem | Dialog-Logik korrigieren |
 
 ---
 
-### Problem 2: "Abschliessen und archivieren" Button fehlt
+## 1. Bugfix: `.select()` zu allen Archiv-Funktionen hinzufuegen
 
-Dieser Button soll in folgenden Bereichen eingefuegt werden:
+Das ist das Hauptproblem! Ohne `.select()` kann der Client nicht korrekt auf Erfolg/Fehler reagieren, und es erscheinen falsche Fehlermeldungen.
 
-| Bereich | Ort | Position |
-|---------|-----|----------|
-| **Veranstaltungsplanungen** | Card-Ansicht | Im Dropdown-Menue (neben "Archivieren") |
-| **Veranstaltungsplanungen** | Listen-Ansicht | Im Dropdown-Menue (neben "Archivieren") |
-| **Veranstaltungsplanungen** | Detailansicht | Neben "Loeschen" und "+ Mitarbeiter" |
-| **Terminplanungen** | Card-Ansicht | Im Dropdown-Menue hinzufuegen |
-| **Terminplanungen** | Listen-Ansicht | Im Dropdown-Menue hinzufuegen |
+### archivePlanning (Zeilen 481-485)
+
+**Vorher:**
+```typescript
+const { error } = await supabase
+  .from("event_plannings")
+  .update({ is_archived: true, archived_at: new Date().toISOString() })
+  .eq("id", planningId)
+  .eq("user_id", user?.id);
+```
+
+**Nachher:**
+```typescript
+const { data, error } = await supabase
+  .from("event_plannings")
+  .update({ is_archived: true, archived_at: new Date().toISOString() })
+  .eq("id", planningId)
+  .eq("user_id", user?.id)
+  .select();
+
+if (error || !data || data.length === 0) throw error || new Error("Update failed");
+```
+
+### restorePlanning (Zeilen 506-510)
+
+**Nachher:**
+```typescript
+const { data, error } = await supabase
+  .from("event_plannings")
+  .update({ is_archived: false, archived_at: null })
+  .eq("id", planningId)
+  .eq("user_id", user?.id)
+  .select();
+
+if (error || !data || data.length === 0) throw error || new Error("Update failed");
+```
+
+### archivePreparation (Zeilen 605-611)
+
+**Nachher:**
+```typescript
+const { data, error } = await supabase
+  .from("appointment_preparations")
+  .update({ is_archived: true, archived_at: new Date().toISOString() })
+  .eq("id", preparationId)
+  .select();
+
+if (error || !data || data.length === 0) throw error || new Error("Update failed");
+```
 
 ---
 
-## Implementierung
+## 2. "Abschliessen" entfernen - nur "Archivieren" behalten
 
-### 1. Archiv-Button fixen (Veranstaltungsplanungen)
+Da beide Funktionen praktisch dasselbe machen, wird `completePlanningAndArchive` und `completePreparationAndArchive` entfernt. Nur die Archiv-Funktionen bleiben.
 
-**Datei:** `src/components/EventPlanningView.tsx`
+### Zu entfernende Funktionen:
+- `completePlanningAndArchive` (Zeilen 530-571)
+- `completePreparationAndArchive` (Zeilen 574-600)
 
-Der Button-Handler wird mit zusaetzlichem Logging und explizitem State-Update verbessert:
+---
 
+## 3. Direkter Archiv-Icon-Button statt Dropdown-Menue
+
+### Veranstaltungsplanungen - Card-Ansicht (Zeilen 2948-2973)
+
+**Vorher:** DropdownMenu mit "Abschliessen" und "Archivieren"
+
+**Nachher:** Einzelner Icon-Button mit Tooltip
 ```typescript
-// Zeilen 2712-2723
-<Button 
-  variant={showPlanningArchive ? "default" : "outline"}
-  size="sm"
-  onClick={(e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log("Archiv-Button clicked, current state:", showPlanningArchive);
-    fetchArchivedPlannings();
-    setShowPlanningArchive(true);
-  }}
->
-  <Archive className="h-4 w-4 mr-2" />
-  Archiv
-</Button>
-```
-
-### 2. Neue Funktion: completePlanningAndArchive
-
-**Position:** Nach `archivePlanning` (ca. Zeile 502)
-
-```typescript
-const completePlanningAndArchive = async (planningId: string) => {
-  const planning = plannings.find(p => p.id === planningId);
-  if (planning?.user_id !== user?.id) {
-    toast({
-      title: "Keine Berechtigung",
-      description: "Nur der Ersteller kann diese Planung abschliessen.",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  try {
-    const { error } = await supabase
-      .from("event_plannings")
-      .update({ 
-        is_archived: true, 
-        archived_at: new Date().toISOString(),
-        // Optional: Status auf "abgeschlossen" setzen
-      })
-      .eq("id", planningId)
-      .eq("user_id", user?.id);
-
-    if (error) throw error;
-
-    toast({
-      title: "Planung abgeschlossen",
-      description: "Die Veranstaltungsplanung wurde abgeschlossen und archiviert.",
-    });
-    
-    // Falls Detailansicht offen, zurueck zur Liste
-    if (selectedPlanning?.id === planningId) {
-      setSelectedPlanning(null);
-    }
-    
-    fetchPlannings();
-  } catch (error) {
-    console.error('Error completing planning:', error);
-    toast({
-      title: "Fehler",
-      description: "Planung konnte nicht abgeschlossen werden.",
-      variant: "destructive",
-    });
-  }
-};
-```
-
-### 3. Card-Ansicht: Button hinzufuegen (Veranstaltungsplanungen)
-
-**Position:** Zeilen 2826-2834 (im DropdownMenuContent)
-
-```typescript
-<DropdownMenuContent align="end" className="bg-popover">
-  <DropdownMenuItem onClick={(e) => {
-    e.stopPropagation();
-    completePlanningAndArchive(planning.id);
-  }}>
-    <CheckCircle className="h-4 w-4 mr-2" />
-    Abschliessen
-  </DropdownMenuItem>
-  <DropdownMenuItem onClick={(e) => {
-    e.stopPropagation();
-    archivePlanning(planning.id);
-  }}>
-    <Archive className="h-4 w-4 mr-2" />
-    Archivieren
-  </DropdownMenuItem>
-</DropdownMenuContent>
-```
-
-### 4. Listen-Ansicht: Button hinzufuegen (Veranstaltungsplanungen)
-
-**Position:** Zeilen 758-763 (im DropdownMenuContent der Tabelle)
-
-```typescript
-<DropdownMenuContent align="end" className="bg-popover">
-  <DropdownMenuItem onClick={() => completePlanningAndArchive(planning.id)}>
-    <CheckCircle className="h-4 w-4 mr-2" />
-    Abschliessen
-  </DropdownMenuItem>
-  <DropdownMenuItem onClick={() => archivePlanning(planning.id)}>
-    <Archive className="h-4 w-4 mr-2" />
-    Archivieren
-  </DropdownMenuItem>
-</DropdownMenuContent>
-```
-
-### 5. Detailansicht: Button hinzufuegen (Veranstaltungsplanungen)
-
-**Position:** Zeilen 3327-3350 (neben Loeschen-Button)
-
-Neuer Button zwischen "+ Mitarbeiter" und "Loeschen":
-
-```typescript
-{/* Abschliessen-Button - nur fuer Ersteller */}
-{selectedPlanning.user_id === user?.id && (
-  <AlertDialog>
-    <AlertDialogTrigger asChild>
-      <Button variant="outline">
-        <CheckCircle className="mr-2 h-4 w-4" />
-        Abschliessen
+{planning.user_id === user?.id && (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-7 w-7"
+        onClick={(e) => {
+          e.stopPropagation();
+          archivePlanning(planning.id);
+        }}
+      >
+        <Archive className="h-4 w-4" />
       </Button>
-    </AlertDialogTrigger>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Planung abschliessen</AlertDialogTitle>
-        <AlertDialogDescription>
-          Moechten Sie diese Planung abschliessen und archivieren? 
-          Die Planung wird ins Archiv verschoben.
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-        <AlertDialogAction onClick={() => completePlanningAndArchive(selectedPlanning!.id)}>
-          Abschliessen
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
+    </TooltipTrigger>
+    <TooltipContent>Archivieren</TooltipContent>
+  </Tooltip>
 )}
 ```
 
-### 6. Terminplanungen: Dropdown-Menue hinzufuegen
+### Veranstaltungsplanungen - Listen-Ansicht (Zeilen 851-870)
 
-**Neue Funktion:** `completePreparationAndArchive`
+Analog: DropdownMenu durch einzelnen Icon-Button ersetzen.
 
+### Veranstaltungsplanungen - Detailansicht (Zeilen 3495-3520)
+
+**Vorher:** AlertDialog mit "Abschliessen"
+
+**Nachher:** Button "Archivieren" (ohne Bestaetigung, da einfache Aktion)
 ```typescript
-const completePreparationAndArchive = async (preparationId: string) => {
-  try {
-    const { error } = await supabase
-      .from("appointment_preparations")
-      .update({ 
-        is_archived: true, 
-        archived_at: new Date().toISOString(),
-        status: 'completed'
-      })
-      .eq("id", preparationId);
-
-    if (error) throw error;
-
-    toast({
-      title: "Terminplanung abgeschlossen",
-      description: "Die Terminplanung wurde abgeschlossen und archiviert.",
-    });
-    
-    fetchAppointmentPreparations();
-  } catch (error) {
-    console.error('Error completing preparation:', error);
-    toast({
-      title: "Fehler",
-      description: "Terminplanung konnte nicht abgeschlossen werden.",
-      variant: "destructive",
-    });
-  }
-};
-
-const archivePreparation = async (preparationId: string) => {
-  try {
-    const { error } = await supabase
-      .from("appointment_preparations")
-      .update({ 
-        is_archived: true, 
-        archived_at: new Date().toISOString()
-      })
-      .eq("id", preparationId);
-
-    if (error) throw error;
-
-    toast({
-      title: "Terminplanung archiviert",
-      description: "Die Terminplanung wurde ins Archiv verschoben.",
-    });
-    
-    fetchAppointmentPreparations();
-  } catch (error) {
-    console.error('Error archiving preparation:', error);
-    toast({
-      title: "Fehler",
-      description: "Terminplanung konnte nicht archiviert werden.",
-      variant: "destructive",
-    });
-  }
-};
+{selectedPlanning.user_id === user?.id && (
+  <Button 
+    variant="outline"
+    onClick={() => archivePlanning(selectedPlanning.id)}
+  >
+    <Archive className="mr-2 h-4 w-4" />
+    Archivieren
+  </Button>
+)}
 ```
 
-**Card-Ansicht (Zeilen 3015-3049):** Dropdown-Menue hinzufuegen
+### Terminplanungen - Card-Ansicht (Zeilen 3175-3198)
 
+**Nachher:** Einzelner Icon-Button
 ```typescript
-<Card 
-  key={preparation.id} 
-  className="cursor-pointer hover:shadow-md transition-shadow relative"
->
-  <NewItemIndicator isVisible={isItemNew(preparation.id, preparation.created_at)} />
-  <CardHeader>
-    <CardTitle className="flex items-center justify-between">
-      <span 
-        className="truncate cursor-pointer" 
-        onClick={() => handlePreparationClick(preparation)}
-      >
-        {preparation.title}
-      </span>
-      <div className="flex items-center gap-2">
-        <Badge ...>...</Badge>
-        {/* NEUES Dropdown-Menue */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-popover">
-            <DropdownMenuItem onClick={(e) => {
-              e.stopPropagation();
-              completePreparationAndArchive(preparation.id);
-            }}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Abschliessen
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => {
-              e.stopPropagation();
-              archivePreparation(preparation.id);
-            }}>
-              <Archive className="h-4 w-4 mr-2" />
-              Archivieren
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </CardTitle>
-  </CardHeader>
-  <CardContent className="space-y-3" onClick={() => handlePreparationClick(preparation)}>
-    ...
-  </CardContent>
-</Card>
+<Tooltip>
+  <TooltipTrigger asChild>
+    <Button 
+      variant="ghost" 
+      size="icon" 
+      className="h-7 w-7"
+      onClick={(e) => {
+        e.stopPropagation();
+        archivePreparation(preparation.id);
+      }}
+    >
+      <Archive className="h-4 w-4" />
+    </Button>
+  </TooltipTrigger>
+  <TooltipContent>Archivieren</TooltipContent>
+</Tooltip>
 ```
 
-**Listen-Ansicht (Zeilen 780-828):** Spalte mit Dropdown hinzufuegen
+### Terminplanungen - Listen-Ansicht (Zeilen 929-948)
 
-Neue Spalte in TableHeader und TableBody fuer das Dropdown-Menue.
+Analog: DropdownMenu durch einzelnen Icon-Button ersetzen.
 
 ---
 
-## Zusammenfassung der Aenderungen
+## 4. Archiv-Button-Dialog sofort oeffnen
 
-| Datei | Aenderung |
-|-------|-----------|
-| `EventPlanningView.tsx` | Archiv-Button mit Event-Handling fixen |
-| `EventPlanningView.tsx` | Neue Funktion `completePlanningAndArchive` |
-| `EventPlanningView.tsx` | Neue Funktionen `completePreparationAndArchive` + `archivePreparation` |
-| `EventPlanningView.tsx` | Card-Ansicht (Veranstaltungen): Dropdown erweitern |
-| `EventPlanningView.tsx` | Listen-Ansicht (Veranstaltungen): Dropdown erweitern |
-| `EventPlanningView.tsx` | Detailansicht (Veranstaltungen): "Abschliessen" Button hinzufuegen |
-| `EventPlanningView.tsx` | Card-Ansicht (Terminplanungen): Dropdown hinzufuegen |
-| `EventPlanningView.tsx` | Listen-Ansicht (Terminplanungen): Aktions-Spalte hinzufuegen |
+Das Problem ist, dass der Dialog sich nicht oeffnet, wenn man auf "Archiv" klickt. Die Ursache koennte sein, dass das Event irgendwie blockiert wird oder der State nicht korrekt gesetzt wird.
+
+### Loesung: Direkte State-Aenderung ohne async-Abhaengigkeit
+
+**Vorher (Zeilen 2843-2849):**
+```typescript
+onClick={(e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  console.log("Archiv-Button clicked, current state:", showPlanningArchive);
+  fetchArchivedPlannings();
+  setShowPlanningArchive(true);
+}}
+```
+
+**Nachher:**
+```typescript
+onClick={(e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  // Sofort Dialog oeffnen - nicht auf fetch warten!
+  setShowPlanningArchive(true);
+  // Dann Daten laden
+  fetchArchivedPlannings();
+}}
+```
+
+Die Reihenfolge ist wichtig: Erst den Dialog oeffnen, dann die Daten laden. So sieht der Benutzer sofort den Dialog (ggf. mit Ladezustand) und muss nicht warten.
 
 ---
 
-## Visuelle Darstellung
+## 5. Zusammenfassung aller Aenderungen
 
-**Veranstaltungsplanungen - Header:**
+| Datei | Zeilen (ca.) | Aenderung |
+|-------|--------------|-----------|
+| EventPlanningView.tsx | 481-485 | `.select()` zu archivePlanning |
+| EventPlanningView.tsx | 506-510 | `.select()` zu restorePlanning |
+| EventPlanningView.tsx | 605-611 | `.select()` zu archivePreparation |
+| EventPlanningView.tsx | 530-571 | `completePlanningAndArchive` entfernen |
+| EventPlanningView.tsx | 574-600 | `completePreparationAndArchive` entfernen |
+| EventPlanningView.tsx | 2843-2849 | Archiv-Dialog-Reihenfolge aendern |
+| EventPlanningView.tsx | 2948-2973 | Card-Ansicht: DropdownMenu -> Icon-Button |
+| EventPlanningView.tsx | 851-870 | Listen-Ansicht: DropdownMenu -> Icon-Button |
+| EventPlanningView.tsx | 3495-3520 | Detailansicht: "Abschliessen" -> "Archivieren" |
+| EventPlanningView.tsx | 3175-3198 | Termin Card: DropdownMenu -> Icon-Button |
+| EventPlanningView.tsx | 929-948 | Termin Liste: DropdownMenu -> Icon-Button |
+
+---
+
+## Visuelle Vorschau
+
+**Vorher (Card):**
 ```
-[Standard-Mitarbeiter] [Archiv] [Grid|List] [+ Neue Planung]
+[Titel]                  [Privat] [...]
+                                   |
+                         +---------+------+
+                         | Abschliessen   |
+                         | Archivieren    |
+                         +----------------+
 ```
 
-**Veranstaltungsplanungen - Card-Dropdown:**
+**Nachher (Card):**
 ```
-[...]
-  ✓ Abschliessen
-  📁 Archivieren
+[Titel]                  [Privat] [📁]
+                                   ^
+                                   |
+                            Tooltip: "Archivieren"
 ```
 
-**Veranstaltungsplanungen - Detailansicht:**
+**Vorher (Detail):**
 ```
 [+ Mitarbeiter] [✓ Abschliessen] [🗑 Loeschen]
 ```
 
-**Terminplanungen - Header:**
+**Nachher (Detail):**
 ```
-[Grid|List] [Aktive (X)] [Archiv (X)]
-```
-
-**Terminplanungen - Card-Dropdown:**
-```
-[...]
-  ✓ Abschliessen
-  📁 Archivieren
+[+ Mitarbeiter] [📁 Archivieren] [🗑 Loeschen]
 ```
