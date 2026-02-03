@@ -1,9 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Separator } from "@/components/ui/separator";
 import { TaskBadges } from "./TaskBadges";
 import { TaskActionIcons } from "./TaskActionIcons";
-import { Calendar, ChevronDown, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
@@ -37,6 +41,7 @@ interface TaskListRowProps {
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
   onUpdateTitle?: (taskId: string, title: string) => void;
+  onUpdateDueDate?: (taskId: string, date: Date | null) => void;
   onReminder?: (taskId: string) => void;
   onAssign?: (taskId: string) => void;
   onComment?: (taskId: string) => void;
@@ -52,6 +57,7 @@ export function TaskListRow({
   onSubtaskComplete,
   onNavigate,
   onUpdateTitle,
+  onUpdateDueDate,
   onReminder,
   onAssign,
   onComment,
@@ -62,6 +68,7 @@ export function TaskListRow({
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
   const [expanded, setExpanded] = useState(false);
+  const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const hasSubtasks = subtasks.length > 0;
@@ -98,6 +105,13 @@ export function TaskListRow({
       setTitleValue(task.title);
       setEditingTitle(false);
     }
+  };
+
+  const handleDueDateSelect = (date: Date | undefined) => {
+    if (onUpdateDueDate) {
+      onUpdateDueDate(task.id, date || null);
+    }
+    setDueDatePopoverOpen(false);
   };
 
   return (
@@ -179,28 +193,63 @@ export function TaskListRow({
           </div>
         </div>
 
-        {/* Due date */}
-        <div className={cn("flex-shrink-0 w-20 text-xs", getDueDateColor(task.due_date))}>
-          {task.due_date ? (
-            <div className="flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              {format(new Date(task.due_date), "dd.MM.", { locale: de })}
-            </div>
-          ) : (
-            <span className="text-muted-foreground">–</span>
-          )}
-        </div>
+        {/* Due date + Actions + Navigate */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Due date - clickable for editing */}
+          <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-6 px-2 text-xs w-16 justify-start",
+                  getDueDateColor(task.due_date)
+                )}
+              >
+                <CalendarIcon className="h-3 w-3 mr-1" />
+                {task.due_date 
+                  ? format(new Date(task.due_date), "dd.MM.", { locale: de })
+                  : "–"
+                }
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={task.due_date ? new Date(task.due_date) : undefined}
+                onSelect={handleDueDateSelect}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
 
-        {/* Actions - visible on hover */}
-        <div className="flex-shrink-0 w-28 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <TaskActionIcons
-            taskId={task.id}
-            onReminder={onReminder}
-            onAssign={onAssign}
-            onComment={onComment}
-            onDecision={onDecision}
-            onDocuments={onDocuments}
+          {/* Separator - visible on hover */}
+          <Separator 
+            orientation="vertical" 
+            className="h-4 mx-1 opacity-0 group-hover:opacity-100 transition-opacity" 
           />
+
+          {/* Actions - visible on hover */}
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <TaskActionIcons
+              taskId={task.id}
+              onReminder={onReminder}
+              onAssign={onAssign}
+              onComment={onComment}
+              onDecision={onDecision}
+              onDocuments={onDocuments}
+            />
+          </div>
+
+          {/* Navigate button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 flex-shrink-0"
+            onClick={() => onNavigate(task.id)}
+          >
+            <ExternalLink className="h-3 w-3" />
+          </Button>
         </div>
       </div>
 
