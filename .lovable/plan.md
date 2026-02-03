@@ -1,266 +1,359 @@
 
-# Plan: Globale Team-Mitteilungen (System-Banner)
+# Plan: Veranstaltungs- und Terminplanungen - Archiv-Button Fix + Abschliessen & Archivieren
 
-## Uebersicht
+## Zusammenfassung der Probleme und Loesungen
 
-Eine neue Funktion fuer globale Mitteilungen an das gesamte Team, die als auffaelliges Banner ueber dem Header angezeigt werden.
+### Problem 1: Archiv-Button funktioniert nicht
 
-## Architektur
-
-```text
-+--------------------------------------------------+
-|  GLOBALES BANNER (ueber gesamter App)            |
-|  [Rot/Orange/Gelb/Blau je nach Prioritaet]       |
-|  Nachricht hier...                    [X erledigt]|
-+--------------------------------------------------+
-|  Header (AppHeader.tsx)                          |
-+--------------------------------------------------+
-|  Navigation | Hauptinhalt                        |
-+--------------------------------------------------+
-```
-
----
-
-## 1. Datenbank-Schema
-
-### Neue Tabelle: `team_announcements`
-
-| Spalte | Typ | Beschreibung |
-|--------|-----|--------------|
-| id | uuid | Primary Key |
-| tenant_id | uuid | Mandanten-Zuordnung (FK zu tenants) |
-| author_id | uuid | Ersteller (FK zu auth.users) |
-| title | text | Kurzer Titel der Mitteilung |
-| message | text | Vollstaendiger Nachrichtentext |
-| priority | text | 'critical', 'warning', 'info', 'success' |
-| starts_at | timestamptz | Ab wann anzeigen (NULL = sofort) |
-| expires_at | timestamptz | Bis wann anzeigen (NULL = unbegrenzt) |
-| is_active | boolean | Manuelles Aktivieren/Deaktivieren |
-| created_at | timestamptz | Erstellungszeitpunkt |
-| updated_at | timestamptz | Letztes Update |
-
-### Neue Tabelle: `team_announcement_dismissals`
-
-| Spalte | Typ | Beschreibung |
-|--------|-----|--------------|
-| id | uuid | Primary Key |
-| announcement_id | uuid | FK zu team_announcements |
-| user_id | uuid | Wer hat als erledigt markiert |
-| dismissed_at | timestamptz | Wann als erledigt markiert |
-
-### Farbschema nach Prioritaet
-
-| Prioritaet | Farbe | Hex-Codes | Verwendungszweck |
-|------------|-------|-----------|------------------|
-| critical | Rot | BG: #fee2e2, Border: #ef4444, Text: #991b1b | Dringende, kritische Meldungen |
-| warning | Orange | BG: #fed7aa, Border: #f97316, Text: #9a3412 | Wichtige Hinweise, Fristen |
-| info | Blau | BG: #dbeafe, Border: #3b82f6, Text: #1e40af | Allgemeine Informationen |
-| success | Gruen | BG: #dcfce7, Border: #22c55e, Text: #166534 | Positive Nachrichten, Erfolge |
-
----
-
-## 2. RLS-Policies
-
-```sql
--- Lesen: Alle authentifizierten Benutzer im gleichen Tenant
-CREATE POLICY "Users can read announcements in their tenant"
-ON team_announcements FOR SELECT
-TO authenticated
-USING (
-  tenant_id IN (SELECT tenant_id FROM user_tenant_memberships WHERE user_id = auth.uid() AND is_active = true)
-);
-
--- Erstellen/Bearbeiten: Nur abgeordneter und bueroleitung
-CREATE POLICY "Admins can manage announcements"
-ON team_announcements FOR ALL
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM user_roles 
-    WHERE user_id = auth.uid() 
-    AND role IN ('abgeordneter', 'bueroleitung')
-  )
-);
-
--- Dismissals: Benutzer koennen nur eigene erstellen
-CREATE POLICY "Users can manage own dismissals"
-ON team_announcement_dismissals FOR ALL
-TO authenticated
-USING (user_id = auth.uid())
-WITH CHECK (user_id = auth.uid());
-```
-
----
-
-## 3. Frontend-Komponenten
-
-### 3.1 GlobalAnnouncementBanner.tsx (NEU)
-
-Position: Wird in `src/pages/Index.tsx` ganz oben eingefuegt, noch vor dem Layout-Wrapper.
-
-**Funktionen:**
-- Laedt aktive Mitteilungen fuer den aktuellen Tenant
-- Filtert bereits als erledigt markierte
-- Zeigt Banner mit Prioritaets-Farbe an
-- "Als erledigt markieren" Button pro Benutzer
-- Realtime-Subscription fuer sofortige Updates
-
-**Struktur:**
+**Analyse:** Der Archiv-Button bei Veranstaltungsplanungen (Zeilen 2712-2723) sieht korrekt aus:
 ```typescript
-interface Announcement {
-  id: string;
-  title: string;
-  message: string;
-  priority: 'critical' | 'warning' | 'info' | 'success';
-  author_name: string;
-  created_at: string;
-}
+<Button 
+  variant="outline" 
+  size="sm"
+  onClick={() => {
+    fetchArchivedPlannings();
+    setShowPlanningArchive(true);
+  }}
+>
+```
 
-// Farb-Mapping
-const priorityStyles = {
-  critical: { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-800', icon: AlertTriangle },
-  warning: { bg: 'bg-orange-100', border: 'border-orange-500', text: 'text-orange-800', icon: AlertCircle },
-  info: { bg: 'bg-blue-100', border: 'border-blue-500', text: 'text-blue-800', icon: Info },
-  success: { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-800', icon: CheckCircle },
+Der Dialog (Zeilen 4738-4784) ist ebenfalls vorhanden. Moegliche Ursachen:
+1. Der `onClick` Handler wird durch ein uebergeordnetes Element blockiert
+2. Der State `showPlanningArchive` wird nicht korrekt gesetzt
+3. Es gibt einen Fehler beim Laden der archivierten Planungen
+
+**Loesung:** Den Button ueberpruefen und mit explizitem Event-Handling verbessern.
+
+---
+
+### Problem 2: "Abschliessen und archivieren" Button fehlt
+
+Dieser Button soll in folgenden Bereichen eingefuegt werden:
+
+| Bereich | Ort | Position |
+|---------|-----|----------|
+| **Veranstaltungsplanungen** | Card-Ansicht | Im Dropdown-Menue (neben "Archivieren") |
+| **Veranstaltungsplanungen** | Listen-Ansicht | Im Dropdown-Menue (neben "Archivieren") |
+| **Veranstaltungsplanungen** | Detailansicht | Neben "Loeschen" und "+ Mitarbeiter" |
+| **Terminplanungen** | Card-Ansicht | Im Dropdown-Menue hinzufuegen |
+| **Terminplanungen** | Listen-Ansicht | Im Dropdown-Menue hinzufuegen |
+
+---
+
+## Implementierung
+
+### 1. Archiv-Button fixen (Veranstaltungsplanungen)
+
+**Datei:** `src/components/EventPlanningView.tsx`
+
+Der Button-Handler wird mit zusaetzlichem Logging und explizitem State-Update verbessert:
+
+```typescript
+// Zeilen 2712-2723
+<Button 
+  variant={showPlanningArchive ? "default" : "outline"}
+  size="sm"
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("Archiv-Button clicked, current state:", showPlanningArchive);
+    fetchArchivedPlannings();
+    setShowPlanningArchive(true);
+  }}
+>
+  <Archive className="h-4 w-4 mr-2" />
+  Archiv
+</Button>
+```
+
+### 2. Neue Funktion: completePlanningAndArchive
+
+**Position:** Nach `archivePlanning` (ca. Zeile 502)
+
+```typescript
+const completePlanningAndArchive = async (planningId: string) => {
+  const planning = plannings.find(p => p.id === planningId);
+  if (planning?.user_id !== user?.id) {
+    toast({
+      title: "Keine Berechtigung",
+      description: "Nur der Ersteller kann diese Planung abschliessen.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from("event_plannings")
+      .update({ 
+        is_archived: true, 
+        archived_at: new Date().toISOString(),
+        // Optional: Status auf "abgeschlossen" setzen
+      })
+      .eq("id", planningId)
+      .eq("user_id", user?.id);
+
+    if (error) throw error;
+
+    toast({
+      title: "Planung abgeschlossen",
+      description: "Die Veranstaltungsplanung wurde abgeschlossen und archiviert.",
+    });
+    
+    // Falls Detailansicht offen, zurueck zur Liste
+    if (selectedPlanning?.id === planningId) {
+      setSelectedPlanning(null);
+    }
+    
+    fetchPlannings();
+  } catch (error) {
+    console.error('Error completing planning:', error);
+    toast({
+      title: "Fehler",
+      description: "Planung konnte nicht abgeschlossen werden.",
+      variant: "destructive",
+    });
+  }
 };
 ```
 
-### 3.2 TeamAnnouncementsManager.tsx (NEU)
+### 3. Card-Ansicht: Button hinzufuegen (Veranstaltungsplanungen)
 
-Position: In MyWorkView.tsx unter dem "Team"-Tab, nur fuer abgeordneter/bueroleitung sichtbar.
-
-**Funktionen:**
-- Neue Mitteilung erstellen (Dialog)
-- Aktive Mitteilungen verwalten
-- Archiv vergangener Mitteilungen einsehen
-- Wer hat bereits als erledigt markiert (Fortschritt)
-
-**UI-Elemente:**
-- Button "Neue Mitteilung"
-- Tabelle mit aktiven Mitteilungen
-- Tabs: "Aktiv" | "Archiv"
-- Pro Mitteilung: Titel, Prioritaet-Badge, Zeitraum, Fortschritt (X von Y gelesen), Aktionen
-
-### 3.3 CreateAnnouncementDialog.tsx (NEU)
-
-**Felder:**
-- Titel (Pflicht, max 100 Zeichen)
-- Nachricht (Pflicht, Textarea)
-- Prioritaet (Select: Kritisch/Warnung/Info/Erfolg)
-- Anzeigedauer:
-  - Sofort starten / Geplanter Start (DateTimePicker)
-  - Unbegrenzt / Enddatum (DateTimePicker)
-- Vorschau des Banners in gewaehlter Farbe
-
----
-
-## 4. Zusaetzliche Features
-
-### 4.1 Fortschrittsanzeige fuer Ersteller
-
-Admins sehen, wer die Mitteilung bereits als erledigt markiert hat:
-- Fortschrittsbalken: "5 von 8 Teammitgliedern"
-- Liste mit Namen und Zeitstempel
-
-### 4.2 Benachrichtigungen
-
-Bei neuer kritischer oder Warn-Mitteilung:
-- Push-Notification an alle Team-Mitglieder (optional, ueber bestehendes Notification-System)
-
-### 4.3 Zeitbasierte Automatik
-
-- Mitteilungen werden automatisch angezeigt wenn `starts_at` erreicht
-- Mitteilungen verschwinden automatisch wenn `expires_at` ueberschritten
-- Cron-artige Logik im Frontend (Intervall-Check alle 60 Sekunden)
-
-### 4.4 Mehrere gleichzeitige Banner
-
-Falls mehrere aktive Mitteilungen existieren:
-- Sortiert nach Prioritaet (critical > warning > info > success)
-- Dann nach Erstellungsdatum (neueste zuerst)
-- Maximal 3 Banner gleichzeitig sichtbar
-- "Weitere X Mitteilungen" Link zum Team-Tab
-
-### 4.5 Benachrichtigungs-Toggle in Einstellungen
-
-Benutzer koennen in den Einstellungen deaktivieren:
-- "Banner-Benachrichtigungen anzeigen" (on/off)
-- Falls off: Banner wird trotzdem im Team-Tab sichtbar, aber nicht global
-
----
-
-## 5. Dateistruktur
-
-```text
-src/
-  components/
-    announcements/
-      GlobalAnnouncementBanner.tsx      # Banner-Komponente
-      TeamAnnouncementsManager.tsx      # Verwaltungs-Ansicht
-      CreateAnnouncementDialog.tsx      # Erstellungs-Dialog
-      AnnouncementCard.tsx              # Einzelne Mitteilung (Liste)
-      AnnouncementProgress.tsx          # Fortschrittsanzeige
-    my-work/
-      MyWorkTeamTab.tsx                 # (erweitert)
-  hooks/
-    useTeamAnnouncements.ts             # Hook fuer Daten-Logik
-  pages/
-    Index.tsx                           # (erweitert mit Banner)
-```
-
----
-
-## 6. Integration in bestehendes System
-
-### Index.tsx Aenderung
+**Position:** Zeilen 2826-2834 (im DropdownMenuContent)
 
 ```typescript
-// In Index.tsx, vor dem ThemeProvider/Layout:
-return (
-  <ThemeProvider>
-    {/* NEUES Banner ueber allem */}
-    <GlobalAnnouncementBanner />
-    
-    {/* Bestehender Layout */}
-    <div className="flex min-h-screen...">
-      ...
-    </div>
-  </ThemeProvider>
-);
+<DropdownMenuContent align="end" className="bg-popover">
+  <DropdownMenuItem onClick={(e) => {
+    e.stopPropagation();
+    completePlanningAndArchive(planning.id);
+  }}>
+    <CheckCircle className="h-4 w-4 mr-2" />
+    Abschliessen
+  </DropdownMenuItem>
+  <DropdownMenuItem onClick={(e) => {
+    e.stopPropagation();
+    archivePlanning(planning.id);
+  }}>
+    <Archive className="h-4 w-4 mr-2" />
+    Archivieren
+  </DropdownMenuItem>
+</DropdownMenuContent>
 ```
 
-### MyWorkTeamTab.tsx Erweiterung
+### 4. Listen-Ansicht: Button hinzufuegen (Veranstaltungsplanungen)
 
-Neuer Abschnitt fuer abgeordneter/bueroleitung:
+**Position:** Zeilen 758-763 (im DropdownMenuContent der Tabelle)
+
 ```typescript
-{isAdmin && (
-  <div className="mb-6">
-    <TeamAnnouncementsManager />
-  </div>
+<DropdownMenuContent align="end" className="bg-popover">
+  <DropdownMenuItem onClick={() => completePlanningAndArchive(planning.id)}>
+    <CheckCircle className="h-4 w-4 mr-2" />
+    Abschliessen
+  </DropdownMenuItem>
+  <DropdownMenuItem onClick={() => archivePlanning(planning.id)}>
+    <Archive className="h-4 w-4 mr-2" />
+    Archivieren
+  </DropdownMenuItem>
+</DropdownMenuContent>
+```
+
+### 5. Detailansicht: Button hinzufuegen (Veranstaltungsplanungen)
+
+**Position:** Zeilen 3327-3350 (neben Loeschen-Button)
+
+Neuer Button zwischen "+ Mitarbeiter" und "Loeschen":
+
+```typescript
+{/* Abschliessen-Button - nur fuer Ersteller */}
+{selectedPlanning.user_id === user?.id && (
+  <AlertDialog>
+    <AlertDialogTrigger asChild>
+      <Button variant="outline">
+        <CheckCircle className="mr-2 h-4 w-4" />
+        Abschliessen
+      </Button>
+    </AlertDialogTrigger>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Planung abschliessen</AlertDialogTitle>
+        <AlertDialogDescription>
+          Moechten Sie diese Planung abschliessen und archivieren? 
+          Die Planung wird ins Archiv verschoben.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+        <AlertDialogAction onClick={() => completePlanningAndArchive(selectedPlanning!.id)}>
+          Abschliessen
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 )}
 ```
 
+### 6. Terminplanungen: Dropdown-Menue hinzufuegen
+
+**Neue Funktion:** `completePreparationAndArchive`
+
+```typescript
+const completePreparationAndArchive = async (preparationId: string) => {
+  try {
+    const { error } = await supabase
+      .from("appointment_preparations")
+      .update({ 
+        is_archived: true, 
+        archived_at: new Date().toISOString(),
+        status: 'completed'
+      })
+      .eq("id", preparationId);
+
+    if (error) throw error;
+
+    toast({
+      title: "Terminplanung abgeschlossen",
+      description: "Die Terminplanung wurde abgeschlossen und archiviert.",
+    });
+    
+    fetchAppointmentPreparations();
+  } catch (error) {
+    console.error('Error completing preparation:', error);
+    toast({
+      title: "Fehler",
+      description: "Terminplanung konnte nicht abgeschlossen werden.",
+      variant: "destructive",
+    });
+  }
+};
+
+const archivePreparation = async (preparationId: string) => {
+  try {
+    const { error } = await supabase
+      .from("appointment_preparations")
+      .update({ 
+        is_archived: true, 
+        archived_at: new Date().toISOString()
+      })
+      .eq("id", preparationId);
+
+    if (error) throw error;
+
+    toast({
+      title: "Terminplanung archiviert",
+      description: "Die Terminplanung wurde ins Archiv verschoben.",
+    });
+    
+    fetchAppointmentPreparations();
+  } catch (error) {
+    console.error('Error archiving preparation:', error);
+    toast({
+      title: "Fehler",
+      description: "Terminplanung konnte nicht archiviert werden.",
+      variant: "destructive",
+    });
+  }
+};
+```
+
+**Card-Ansicht (Zeilen 3015-3049):** Dropdown-Menue hinzufuegen
+
+```typescript
+<Card 
+  key={preparation.id} 
+  className="cursor-pointer hover:shadow-md transition-shadow relative"
+>
+  <NewItemIndicator isVisible={isItemNew(preparation.id, preparation.created_at)} />
+  <CardHeader>
+    <CardTitle className="flex items-center justify-between">
+      <span 
+        className="truncate cursor-pointer" 
+        onClick={() => handlePreparationClick(preparation)}
+      >
+        {preparation.title}
+      </span>
+      <div className="flex items-center gap-2">
+        <Badge ...>...</Badge>
+        {/* NEUES Dropdown-Menue */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" className="h-7 w-7">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-popover">
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              completePreparationAndArchive(preparation.id);
+            }}>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Abschliessen
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              archivePreparation(preparation.id);
+            }}>
+              <Archive className="h-4 w-4 mr-2" />
+              Archivieren
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-3" onClick={() => handlePreparationClick(preparation)}>
+    ...
+  </CardContent>
+</Card>
+```
+
+**Listen-Ansicht (Zeilen 780-828):** Spalte mit Dropdown hinzufuegen
+
+Neue Spalte in TableHeader und TableBody fuer das Dropdown-Menue.
+
 ---
 
-## 7. Zusammenfassung der Aenderungen
+## Zusammenfassung der Aenderungen
 
-| Komponente | Aktion |
-|------------|--------|
-| Datenbank | 2 neue Tabellen + RLS-Policies |
-| GlobalAnnouncementBanner.tsx | Neu erstellen |
-| TeamAnnouncementsManager.tsx | Neu erstellen |
-| CreateAnnouncementDialog.tsx | Neu erstellen |
-| AnnouncementCard.tsx | Neu erstellen |
-| useTeamAnnouncements.ts | Neu erstellen |
-| Index.tsx | Banner-Komponente einfuegen |
-| MyWorkTeamTab.tsx | Manager-Komponente einfuegen |
+| Datei | Aenderung |
+|-------|-----------|
+| `EventPlanningView.tsx` | Archiv-Button mit Event-Handling fixen |
+| `EventPlanningView.tsx` | Neue Funktion `completePlanningAndArchive` |
+| `EventPlanningView.tsx` | Neue Funktionen `completePreparationAndArchive` + `archivePreparation` |
+| `EventPlanningView.tsx` | Card-Ansicht (Veranstaltungen): Dropdown erweitern |
+| `EventPlanningView.tsx` | Listen-Ansicht (Veranstaltungen): Dropdown erweitern |
+| `EventPlanningView.tsx` | Detailansicht (Veranstaltungen): "Abschliessen" Button hinzufuegen |
+| `EventPlanningView.tsx` | Card-Ansicht (Terminplanungen): Dropdown hinzufuegen |
+| `EventPlanningView.tsx` | Listen-Ansicht (Terminplanungen): Aktions-Spalte hinzufuegen |
 
 ---
 
-## 8. Moegliche Erweiterungen (spaeter)
+## Visuelle Darstellung
 
-- **Anhang-Support**: Dateien/Bilder an Mitteilungen anhaengen
-- **Zielgruppen**: Mitteilungen nur fuer bestimmte Rollen
-- **Wiederkehrende Mitteilungen**: Woechentliche/monatliche Erinnerungen
-- **Lesebestaetigung erzwingen**: Mitteilung kann nicht geschlossen werden ohne Bestaetigung
-- **E-Mail-Versand**: Kritische Mitteilungen zusaetzlich per E-Mail
+**Veranstaltungsplanungen - Header:**
+```
+[Standard-Mitarbeiter] [Archiv] [Grid|List] [+ Neue Planung]
+```
+
+**Veranstaltungsplanungen - Card-Dropdown:**
+```
+[...]
+  ✓ Abschliessen
+  📁 Archivieren
+```
+
+**Veranstaltungsplanungen - Detailansicht:**
+```
+[+ Mitarbeiter] [✓ Abschliessen] [🗑 Loeschen]
+```
+
+**Terminplanungen - Header:**
+```
+[Grid|List] [Aktive (X)] [Archiv (X)]
+```
+
+**Terminplanungen - Card-Dropdown:**
+```
+[...]
+  ✓ Abschliessen
+  📁 Archivieren
+```
