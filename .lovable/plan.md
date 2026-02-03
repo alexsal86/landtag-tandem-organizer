@@ -1,57 +1,303 @@
 
-# Plan: 5 Verbesserungen fuer Meine Notizen und Entscheidungen
+# Plan: 3 Bugfixes fuer Meine Notizen
 
-## Uebersicht der Probleme
+## Zusammenfassung der identifizierten Probleme
 
-| # | Problem | Ursache | Loesung |
-|---|---------|---------|---------|
-| 1 | Farbmodus "Ganze Card einfaerben" kann nicht gesetzt werden und zeigt nicht den aktuellen Zustand | Checkbox-Event wird moeglicherweise abgefangen, UI zeigt bereits `checked={note.color_full_card ?? false}` | Event-Propagation pruefen, sicherstellen dass handleSetColorMode korrekt aufgerufen wird |
-| 2 | Entscheidungserstellung aus Notizen fehlt Features (oeffentlich, Themen, Dateien) | `NoteDecisionCreator` ist eine vereinfachte Version von `StandaloneDecisionCreator` | `NoteDecisionCreator` erweitern um alle Features |
-| 3 | Beschreibungstexte von Entscheidungen sind unbegrenzt lang | Keine Laengenbegrenzung in der UI | Beschreibung auf 250 Zeichen kuerzen mit "mehr anzeigen" Button |
-| 4 | Globaler Quick Note Dialog speichert nicht | RLS-Policy oder fehlendes tenant_id Problem | Debugging und Korrektur der Insert-Logik |
-| 5 | Aufgabe aus abgeschlossener Entscheidung erstellen | Feature existiert noch nicht | Button "Aufgabe erstellen" anzeigen wenn alle abgestimmt haben |
+| # | Problem | Root Cause | Loesung |
+|---|---------|------------|---------|
+| 1 | GlobalQuickNoteDialog speichert nicht (tenant_id Fehler) | Die `quick_notes` Tabelle hat **keine** `tenant_id` Spalte, aber der Code versucht sie zu setzen | `tenant_id` aus dem Insert entfernen |
+| 2a | Card leicht eingefaerbt obwohl nur Rand | Hintergrund `${note.color}20` wird immer gesetzt wenn `note.color` existiert | Nur Rand-Farbe ohne Hintergrund wenn `color_full_card` false |
+| 2b | Farb-Kontrast-Unterschied zwischen eigenen und geteilten Notizen | Globale Shares laden `color_full_card` nicht im SELECT | `color_full_card` zur globalen Shares-Abfrage hinzufuegen |
+| 2c | Farbe bei geteilten Notizen nicht aenderbar | `handleSetColor` und `handleSetColorMode` filtern nach `user_id` | RLS-basierte Updates fuer geteilte Notizen mit edit-Recht |
+| 2d | "Ganze Card einfaerben" Checkbox erzeugt Fehler | RLS blockiert Updates bei Shared Notes ohne user_id match | Updates ueber RLS statt user_id Filter |
+| 3 | NoteDecisionCreator zeigt neue Features nicht | Code ist vorhanden - moeglicherweise Caching-Problem oder nicht deployed | Build-Verification und ggf. Props/Imports pruefen |
 
 ---
 
-## 1. Farbmodus "Ganze Card einfaerben" - Bugfix
+## Problem 1: GlobalQuickNoteDialog - tenant_id existiert nicht
 
 ### Analyse
-Der aktuelle Code sieht korrekt aus:
-```typescript
-<Checkbox 
-  checked={note.color_full_card ?? false}
-  onCheckedChange={(checked) => handleSetColorMode(note.id, !!checked)}
-/>
+Die Datenbank-Abfrage zeigt, dass `quick_notes` **keine `tenant_id` Spalte hat**:
+```
+Spalten: id, user_id, title, content, category, color, is_pinned, tags, 
+         created_at, updated_at, task_id, is_archived, archived_at, 
+         meeting_id, meeting_result, added_to_meeting_at, priority_level,
+         follow_up_date, deleted_at, permanent_delete_at, pending_for_jour_fixe,
+         decision_id, task_archived_info, decision_archived_info, 
+         meeting_archived_info, color_full_card
 ```
 
-### Moegliche Ursachen
-1. Event-Propagation wird von DropdownMenuSubContent abgefangen
-2. Die Checkbox sitzt in einem `<label>` das Click-Events doppelt triggert
-3. `loadNotes()` nach dem Update entfernt die Aenderung aufgrund von Timing
+Der Code in `GlobalQuickNoteDialog.tsx` (Zeilen 58-66) versucht faelschlicherweise:
+```typescript
+const insertData = {
+  user_id: user.id,
+  tenant_id: currentTenant.id,  // FEHLER: Spalte existiert nicht!
+  ...
+};
+```
 
 ### Loesung
-**Datei:** `src/components/shared/QuickNotesList.tsx` (Zeilen 1708-1716)
+**Datei:** `src/components/GlobalQuickNoteDialog.tsx`
 
 ```typescript
-<div className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
-  <label className="flex items-center gap-2 text-xs cursor-pointer">
-    <Checkbox 
-      checked={note.color_full_card === true}
-      onCheckedChange={(checked) => {
-        // Explicitly stop propagation and update
-        handleSetColorMode(note.id, checked === true);
-      }}
-    />
-    Ganze Card einfaerben
-  </label>
-</div>
+// Zeilen 52-66 aendern
+const insertData = {
+  user_id: user.id,
+  // tenant_id entfernen - existiert nicht in quick_notes
+  title: title.trim() || null,
+  content: content.trim() || title.trim(),
+  is_pinned: false,
+  priority_level: 0,
+  is_archived: false
+};
 ```
 
-Ausserdem sicherstellen, dass `handleSetColorMode` einen Optimistic-UI-Ansatz verwendet:
+Ausserdem die tenant-bezogene Logik vereinfachen:
+- Entferne `useTenant` Hook wenn nicht benoetigt
+- Entferne `tenantLoading` und `currentTenant` Checks
+
+---
+
+## Problem 2: Farbmodus-Probleme (mehrere Issues)
+
+### 2a: Card wird immer eingefaerbt obwohl nur Rand gewuenscht
+
+**Aktuelle Logik (QuickNotesList.tsx Zeilen 1257-1264):**
+```typescript
+backgroundColor: note.color && note.color_full_card 
+  ? `${note.color}40` // 25% opacity for full card
+  : note.color 
+    ? `${note.color}20` // 12% opacity for accent  <-- PROBLEM!
+    : undefined
+```
+
+**Problem:** Wenn `color_full_card` false ist, wird trotzdem `20%` Opacity gesetzt.
+
+**Loesung:**
+```typescript
+backgroundColor: note.color && note.color_full_card === true
+  ? `${note.color}40` // 25% opacity for full card mode
+  : undefined  // Kein Hintergrund wenn nur Rand
+```
+
+### 2b: Global geteilte Notizen laden color_full_card nicht
+
+**Aktuelle Abfrage (Zeilen 279-286):**
+```typescript
+.select(`
+  id, title, content, color, is_pinned, created_at, updated_at, user_id,
+  is_archived, task_id, meeting_id, priority_level, follow_up_date, pending_for_jour_fixe,
+  meetings!meeting_id(title, meeting_date)
+`)  // FEHLT: color_full_card, decision_id, task_archived_info, decision_archived_info, meeting_archived_info
+```
+
+**Loesung:** SELECT erweitern wie bei individuell geteilten Notizen (Zeilen 248-252).
+
+### 2c + 2d: Farbe bei geteilten Notizen nicht aenderbar
+
+**Problem:** Die Funktionen `handleSetColor` und `handleSetColorMode` filtern mit `.eq("user_id", user.id)`, was bei geteilten Notizen fehlschlaegt.
+
+**Loesung 1: UI anpassen**
+- Farbmenue nur fuer eigene Notizen ODER geteilte Notizen mit `can_edit` anzeigen
+- Wenn `can_edit` true: Updates ohne `user_id` Filter (RLS regelt Berechtigung)
+
+**Loesung 2: Update-Funktionen anpassen**
+```typescript
+const handleSetColor = async (noteId: string, color: string | null) => {
+  // Finde die Notiz um Besitzer zu pruefen
+  const note = notes.find(n => n.id === noteId);
+  if (!note) return;
+  
+  try {
+    let updateQuery = supabase
+      .from("quick_notes")
+      .update({ color })
+      .eq("id", noteId);
+    
+    // Nur bei eigenen Notizen user_id Filter
+    if (note.user_id === user?.id) {
+      updateQuery = updateQuery.eq("user_id", user.id);
+    }
+    // Bei geteilten Notizen mit can_edit: RLS regelt es
+    
+    const { data, error } = await updateQuery.select();
+    // ... rest
+  }
+};
+```
+
+Gleiche Logik fuer `handleSetColorMode`.
+
+---
+
+## Problem 3: NoteDecisionCreator Features nicht sichtbar
+
+### Analyse
+Der Code in `NoteDecisionCreator.tsx` enthaelt alle Features:
+- Zeilen 365-376: Oeffentlich-Checkbox mit `Globe` Icon
+- Zeilen 378-387: TopicSelector
+- Zeilen 389-400: DecisionFileUpload mit `Paperclip` Icon
+
+**Moegliche Ursachen:**
+1. Build/Deploy nicht aktualisiert
+2. Browser-Cache
+3. Fehler beim Laden der Sub-Komponenten
+
+**Loesung:**
+1. Hard-Refresh des Browsers (Cmd+Shift+R)
+2. Sicherstellen dass alle Imports vorhanden sind
+3. Pruefen ob `TopicSelector` und `DecisionFileUpload` korrekt geladen werden
+
+Falls das nicht hilft: Die Komponente-Struktur validieren und ggf. neu bauen.
+
+---
+
+## Zusammenfassung der Dateiaenderungen
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/GlobalQuickNoteDialog.tsx` | `tenant_id` aus Insert entfernen, Tenant-Checks vereinfachen |
+| `src/components/shared/QuickNotesList.tsx` | 1) Background nur bei `color_full_card === true`; 2) Global Shares SELECT erweitern; 3) Update-Funktionen fuer Shared Notes anpassen |
+
+---
+
+## Detaillierte Code-Aenderungen
+
+### GlobalQuickNoteDialog.tsx
+
+```typescript
+// Zeilen 8-9: useTenant kann entfernt werden
+import { useAuth } from "@/hooks/useAuth";
+// import { useTenant } from "@/hooks/useTenant"; // Nicht benoetigt
+
+// Zeile 19: Entfernen
+// const { currentTenant } = useTenant();
+// const tenantLoading = !currentTenant;
+
+// Zeilen 44-47: Entfernen
+// if (!currentTenant?.id) {
+//   toast.error("Mandant wird geladen, bitte erneut versuchen");
+//   return;
+// }
+
+// Zeilen 52-66: Vereinfachen
+const insertData = {
+  user_id: user.id,
+  title: title.trim() || null,
+  content: content.trim() || title.trim(),
+  is_pinned: false,
+  priority_level: 0,
+  is_archived: false
+};
+
+// Zeile 132: Button vereinfachen
+<Button onClick={handleSave} disabled={saving}>
+  {saving ? (
+    <>
+      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+      Speichern...
+    </>
+  ) : (
+    "Speichern"
+  )}
+</Button>
+```
+
+### QuickNotesList.tsx
+
+**1. Card-Hintergrund korrigieren (Zeilen 1257-1264):**
+```typescript
+style={{ 
+  borderLeftColor: note.color || "#3b82f6",
+  backgroundColor: note.color && note.color_full_card === true
+    ? `${note.color}40` // 25% opacity for full card mode only
+    : undefined  // Kein Hintergrund wenn nur Rand
+}}
+```
+
+**2. Global Shares SELECT erweitern (Zeilen 279-286):**
+```typescript
+const { data: globallySharedData } = await supabase
+  .from("quick_notes")
+  .select(`
+    id, title, content, color, color_full_card, is_pinned, created_at, updated_at, user_id,
+    is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
+    task_archived_info, decision_archived_info, meeting_archived_info,
+    meetings!meeting_id(title, meeting_date)
+  `)
+  .in("user_id", globalShareUserIds)
+  .eq("is_archived", false)
+  .is("deleted_at", null);
+```
+
+**3. handleSetColor anpassen (Zeilen 553-579):**
+```typescript
+const handleSetColor = async (noteId: string, color: string | null) => {
+  if (!user?.id) {
+    toast.error("Nicht angemeldet");
+    return;
+  }
+
+  const note = notes.find(n => n.id === noteId);
+  if (!note) {
+    toast.error("Notiz nicht gefunden");
+    return;
+  }
+
+  // Pruefe Berechtigung
+  const canModify = note.user_id === user.id || note.can_edit === true;
+  if (!canModify) {
+    toast.error("Keine Berechtigung zum Aendern dieser Notiz");
+    return;
+  }
+
+  try {
+    let updateQuery = supabase
+      .from("quick_notes")
+      .update({ color })
+      .eq("id", noteId);
+    
+    // Nur bei eigenen Notizen user_id Filter hinzufuegen
+    if (note.user_id === user.id) {
+      updateQuery = updateQuery.eq("user_id", user.id);
+    }
+    
+    const { data, error } = await updateQuery.select();
+
+    if (error) throw error;
+    
+    if (!data || data.length === 0) {
+      toast.error("Farbe konnte nicht geaendert werden");
+      return;
+    }
+    
+    toast.success(color ? "Farbe gesetzt" : "Farbe entfernt");
+    loadNotes();
+  } catch (error) {
+    console.error("Error setting color:", error);
+    toast.error("Fehler beim Setzen der Farbe");
+  }
+};
+```
+
+**4. handleSetColorMode anpassen (Zeilen 583-613):**
 ```typescript
 const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
   if (!user?.id) {
     toast.error("Nicht angemeldet");
+    return;
+  }
+
+  const note = notes.find(n => n.id === noteId);
+  if (!note) {
+    toast.error("Notiz nicht gefunden");
+    return;
+  }
+
+  // Pruefe Berechtigung
+  const canModify = note.user_id === user.id || note.can_edit === true;
+  if (!canModify) {
+    toast.error("Keine Berechtigung zum Aendern dieser Notiz");
     return;
   }
 
@@ -61,11 +307,17 @@ const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
   ));
 
   try {
-    const { error } = await supabase
+    let updateQuery = supabase
       .from("quick_notes")
       .update({ color_full_card: fullCard })
-      .eq("id", noteId)
-      .eq("user_id", user.id);
+      .eq("id", noteId);
+    
+    // Nur bei eigenen Notizen user_id Filter
+    if (note.user_id === user.id) {
+      updateQuery = updateQuery.eq("user_id", user.id);
+    }
+
+    const { error } = await updateQuery;
 
     if (error) {
       // Rollback on error
@@ -83,399 +335,32 @@ const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
 };
 ```
 
----
-
-## 2. NoteDecisionCreator mit allen Features erweitern
-
-### Aktueller Unterschied
-
-**StandaloneDecisionCreator hat:**
-- Oeffentlich-Checkbox (visibleToAll)
-- TopicSelector fuer Themen
-- DecisionFileUpload fuer Dateianhaenge
-
-**NoteDecisionCreator fehlt:**
-- Oeffentlich-Checkbox (setzt immer `visible_to_all: true`)
-- TopicSelector
-- DecisionFileUpload
-
-### Loesung
-**Datei:** `src/components/shared/NoteDecisionCreator.tsx`
-
-1. Imports hinzufuegen:
+**5. Farbmenue fuer geteilte Notizen mit can_edit anzeigen (Zeilen 1686-1740):**
 ```typescript
-import { DecisionFileUpload } from "@/components/task-decisions/DecisionFileUpload";
-import { TopicSelector } from "@/components/topics/TopicSelector";
-import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Globe, Paperclip } from "lucide-react";
-```
-
-2. State hinzufuegen:
-```typescript
-const [visibleToAll, setVisibleToAll] = useState(true);
-const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
-```
-
-3. UI-Elemente hinzufuegen (nach Teilnehmer-Auswahl):
-```typescript
-{/* Oeffentlich Checkbox */}
-<div className="space-y-2">
-  <div className="flex items-center space-x-2">
-    <Checkbox
-      id="visible-to-all"
-      checked={visibleToAll}
-      onCheckedChange={(checked) => setVisibleToAll(checked === true)}
-    />
-    <Label htmlFor="visible-to-all" className="flex items-center gap-1 text-sm cursor-pointer">
-      <Globe className="h-3.5 w-3.5" />
-      Oeffentlich (fuer alle sichtbar)
-    </Label>
-  </div>
-</div>
-
-{/* Themen */}
-<div className="space-y-2">
-  <Label>Themen (optional)</Label>
-  <TopicSelector
-    selectedTopicIds={selectedTopicIds}
-    onTopicsChange={setSelectedTopicIds}
-    compact
-    placeholder="Themen hinzufuegen..."
-  />
-</div>
-
-{/* Dateien */}
-<div className="space-y-2">
-  <Label>Dateien anhaengen (optional)</Label>
-  <DecisionFileUpload
-    mode="creation"
-    onFilesSelected={(files) => setSelectedFiles(prev => [...prev, ...files])}
-    canUpload={true}
-  />
-</div>
-```
-
-4. handleSubmit anpassen:
-```typescript
-// Bei Insert:
-visible_to_all: visibleToAll,
-
-// Nach erfolgreicher Erstellung:
-// Upload files
-if (selectedFiles.length > 0) {
-  for (const file of selectedFiles) {
-    const fileName = `${user.id}/decisions/${decision.id}/${Date.now()}-${file.name}`;
-    
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('decision-attachments')
-      .upload(fileName, file);
-    
-    if (!uploadError) {
-      await supabase
-        .from('task_decision_attachments')
-        .insert({
-          decision_id: decision.id,
-          file_path: uploadData.path,
-          file_name: file.name,
-          file_size: file.size,
-          file_type: file.type,
-          uploaded_by: user.id
-        });
-    }
-  }
-}
-
-// Save topics
-if (selectedTopicIds.length > 0) {
-  await saveDecisionTopics(decision.id, selectedTopicIds);
-}
-```
-
----
-
-## 3. Beschreibungstexte von Entscheidungen kuerzen
-
-### Loesung
-**Datei:** `src/components/task-decisions/DecisionOverview.tsx` (renderDecisionCard, Zeilen 779-791)
-
-Neue Komponente fuer gekuerzte Beschreibung:
-
-```typescript
-// Am Anfang der Datei oder als separate Komponente:
-const TruncatedDescription = ({ content, maxLength = 250 }: { content: string; maxLength?: number }) => {
-  const [expanded, setExpanded] = useState(false);
-  
-  // Strip HTML tags for length calculation
-  const plainText = content.replace(/<[^>]*>/g, '');
-  const isTruncated = plainText.length > maxLength;
-  
-  if (!isTruncated || expanded) {
-    return (
-      <div>
-        <RichTextDisplay content={content} className="text-sm" />
-        {isTruncated && (
-          <Button 
-            variant="link" 
-            size="sm" 
-            onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
-            className="text-xs p-0 h-auto"
-          >
-            weniger
-          </Button>
-        )}
-      </div>
-    );
-  }
-  
-  // Truncate at word boundary
-  const truncatedPlain = plainText.substring(0, maxLength).replace(/\s+\S*$/, '') + '...';
-  
-  return (
-    <div>
-      <p className="text-sm text-muted-foreground">{truncatedPlain}</p>
-      <Button 
-        variant="link" 
-        size="sm" 
-        onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
-        className="text-xs p-0 h-auto"
-      >
-        mehr anzeigen
-      </Button>
-    </div>
-  );
-};
-```
-
-Verwendung in renderDecisionCard (Zeile 780-782):
-```typescript
-{decision.description && (
-  <TruncatedDescription content={decision.description} maxLength={250} />
+{/* Color Submenu - auch fuer geteilte Notizen mit edit-Recht */}
+{(note.user_id === user?.id || note.can_edit === true) && (
+  <DropdownMenuSub>
+    <DropdownMenuSubTrigger>
+      <Palette className="h-3 w-3 mr-2" />
+      Farbe
+      {note.color && (
+        <span 
+          className="ml-auto w-3 h-3 rounded-full border"
+          style={{ backgroundColor: note.color }}
+        />
+      )}
+    </DropdownMenuSubTrigger>
+    {/* ... rest bleibt gleich */}
+  </DropdownMenuSub>
 )}
 ```
-
----
-
-## 4. Globaler Quick Note Dialog - Fehler beheben
-
-### Analyse
-Der Code in `GlobalQuickNoteDialog.tsx` sieht korrekt aus. Er:
-- Prueft auf `user?.id`
-- Prueft auf `currentTenant?.id`
-- Setzt alle erforderlichen Felder
-
-### Moegliche Ursache
-Das Problem koennte sein, dass `currentTenant` initial `undefined` ist, wenn der Dialog sehr schnell nach dem Laden geoeffnet wird.
-
-### Loesung
-**Datei:** `src/components/GlobalQuickNoteDialog.tsx`
-
-1. Besseres Debugging und Fehlerbehandlung:
-```typescript
-const handleSave = async () => {
-  if (!content.trim() && !title.trim()) {
-    toast.error("Bitte Inhalt eingeben");
-    return;
-  }
-  
-  if (!user?.id) {
-    toast.error("Nicht angemeldet");
-    return;
-  }
-
-  // Wait for tenant if not loaded yet
-  if (!currentTenant?.id) {
-    toast.error("Mandant wird geladen, bitte erneut versuchen");
-    return;
-  }
-
-  setSaving(true);
-  
-  try {
-    console.log('Creating quick note:', { 
-      user_id: user.id, 
-      tenant_id: currentTenant.id, 
-      title: title.trim() 
-    });
-    
-    const insertData = {
-      user_id: user.id,
-      tenant_id: currentTenant.id,
-      title: title.trim() || null,
-      content: content.trim() || title.trim(),
-      is_pinned: false,
-      priority_level: 0,
-      is_archived: false
-    };
-    
-    const { data, error } = await supabase
-      .from('quick_notes')
-      .insert(insertData)
-      .select();
-
-    if (error) {
-      console.error("Supabase error:", error);
-      throw error;
-    }
-    
-    console.log('Note created:', data);
-    toast.success("Notiz erstellt");
-    onOpenChange(false);
-  } catch (error: any) {
-    console.error("Error creating quick note:", error);
-    toast.error(`Fehler beim Erstellen: ${error.message || 'Unbekannter Fehler'}`);
-  } finally {
-    setSaving(false);
-  }
-};
-```
-
-2. Button deaktivieren wenn Tenant nicht geladen:
-```typescript
-<Button onClick={handleSave} disabled={saving || !currentTenant?.id}>
-  {saving ? "Speichern..." : !currentTenant?.id ? "Laden..." : "Speichern"}
-</Button>
-```
-
----
-
-## 5. Aufgabe aus abgeschlossener Entscheidung erstellen
-
-### Logik
-Eine Entscheidung ist "abgeschlossen" wenn:
-- `summary.pending === 0` (alle haben abgestimmt)
-- Keine offenen Rueckfragen (`summary.questionCount === 0` ODER alle beantwortet)
-
-### Loesung
-**Datei:** `src/components/task-decisions/DecisionOverview.tsx`
-
-1. State fuer Task-Erstellung:
-```typescript
-const [creatingTaskFromDecision, setCreatingTaskFromDecision] = useState<string | null>(null);
-```
-
-2. Funktion zum Erstellen der Aufgabe:
-```typescript
-const createTaskFromDecision = async (decision: DecisionRequest) => {
-  if (!user?.id) return;
-  
-  const summary = getResponseSummary(decision.participants);
-  
-  // Ergebnis bestimmen
-  let resultText = 'Ergebnis: ';
-  if (summary.yesCount > summary.noCount) {
-    resultText += 'Angenommen';
-  } else if (summary.noCount > summary.yesCount) {
-    resultText += 'Abgelehnt';
-  } else {
-    resultText += 'Unentschieden';
-  }
-  
-  // Aufgabenbeschreibung zusammenstellen
-  const taskDescription = `
-    <h3>Aus Entscheidung: ${decision.title}</h3>
-    <p><strong>${resultText}</strong> (Ja: ${summary.yesCount}, Nein: ${summary.noCount})</p>
-    ${decision.description ? `<p>${decision.description}</p>` : ''}
-  `;
-  
-  try {
-    // Get tenant
-    const { data: tenantData } = await supabase
-      .from('user_tenant_memberships')
-      .select('tenant_id')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single();
-    
-    if (!tenantData) throw new Error('Kein Mandant gefunden');
-    
-    const { data: task, error } = await supabase
-      .from('tasks')
-      .insert({
-        title: `[Entscheidung] ${decision.title}`,
-        description: taskDescription,
-        created_by: user.id,
-        assigned_to: user.id, // Dem Ersteller zuweisen
-        tenant_id: tenantData.tenant_id,
-        status: 'to-do',
-        decision_id: decision.id // Verknuepfung zur Entscheidung
-      })
-      .select()
-      .single();
-    
-    if (error) throw error;
-    
-    toast({
-      title: "Aufgabe erstellt",
-      description: "Die Aufgabe wurde aus der Entscheidung erstellt.",
-    });
-    
-    setCreatingTaskFromDecision(null);
-    loadDecisionRequests(user.id);
-  } catch (error) {
-    console.error('Error creating task from decision:', error);
-    toast({
-      title: "Fehler",
-      description: "Aufgabe konnte nicht erstellt werden.",
-      variant: "destructive"
-    });
-  }
-};
-```
-
-3. UI: Button im renderDecisionCard hinzufuegen (nach den Badges, wenn Ersteller):
-```typescript
-{/* Aufgabe erstellen - nur fuer Ersteller bei abgeschlossenen Entscheidungen */}
-{decision.isCreator && summary.pending === 0 && decision.participants && decision.participants.length > 0 && (
-  <div className="mt-2 border-t pt-2">
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={(e) => { 
-        e.stopPropagation(); 
-        createTaskFromDecision(decision); 
-      }}
-      className="w-full"
-    >
-      <CheckSquare className="h-4 w-4 mr-2" />
-      Aufgabe aus Ergebnis erstellen
-    </Button>
-  </div>
-)}
-```
-
-4. Optional: Auch im DropdownMenu hinzufuegen:
-```typescript
-{summary.pending === 0 && decision.participants && decision.participants.length > 0 && (
-  <DropdownMenuItem onClick={(e) => { 
-    e.stopPropagation(); 
-    createTaskFromDecision(decision); 
-  }}>
-    <CheckSquare className="h-4 w-4 mr-2" />
-    Aufgabe erstellen
-  </DropdownMenuItem>
-)}
-```
-
----
-
-## Zusammenfassung der Dateiaenderungen
-
-| Datei | Aenderungen |
-|-------|-------------|
-| `src/components/shared/QuickNotesList.tsx` | Farbmodus-Checkbox Event-Handling + Optimistic UI |
-| `src/components/shared/NoteDecisionCreator.tsx` | Oeffentlich, Themen, Dateien hinzufuegen |
-| `src/components/task-decisions/DecisionOverview.tsx` | Beschreibung kuerzen, Aufgabe aus Entscheidung erstellen |
-| `src/components/GlobalQuickNoteDialog.tsx` | Bessere Fehlerbehandlung und Debugging |
 
 ---
 
 ## Umsetzungsreihenfolge
 
-1. **GlobalQuickNoteDialog bugfix** - Kritischer Fehler beim Speichern
-2. **Farbmodus Checkbox** - UI-Bugfix
-3. **NoteDecisionCreator erweitern** - Feature-Parität
-4. **Beschreibung kuerzen** - UI-Verbesserung
-5. **Aufgabe aus Entscheidung** - Neues Feature
-
+1. **GlobalQuickNoteDialog** - tenant_id entfernen (kritischer Bug)
+2. **QuickNotesList** - Card-Hintergrund korrigieren
+3. **QuickNotesList** - Global Shares SELECT erweitern
+4. **QuickNotesList** - Update-Funktionen fuer Shared Notes anpassen
+5. **NoteDecisionCreator** - Browser-Cache leeren und validieren
