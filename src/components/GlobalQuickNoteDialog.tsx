@@ -61,6 +61,12 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       }
       
       toast.success("Notiz erstellt");
+      
+      // Dispatch event to refresh notes list immediately
+      window.dispatchEvent(new CustomEvent('quick-note-created', { 
+        detail: { note: data?.[0] } 
+      }));
+      
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error creating quick note:", error);
