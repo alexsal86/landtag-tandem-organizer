@@ -205,7 +205,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
                           style={{ '--tw-ring-color': statusColor } as React.CSSProperties}
                         >
                           <AvatarImage src={onlineUser.avatar_url || undefined} />
-                          <AvatarFallback className="text-[10px]">
+                          <AvatarFallback className="text-[10px] bg-muted text-foreground">
                             {onlineUser.display_name?.charAt(0) || "?"}
                           </AvatarFallback>
                         </Avatar>
