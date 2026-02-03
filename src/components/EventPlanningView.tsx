@@ -478,18 +478,25 @@ export function EventPlanningView() {
     }
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("event_plannings")
         .update({ is_archived: true, archived_at: new Date().toISOString() })
         .eq("id", planningId)
-        .eq("user_id", user?.id);
+        .eq("user_id", user?.id)
+        .select();
 
-      if (error) throw error;
+      if (error || !data || data.length === 0) throw error || new Error("Update failed");
 
       toast({
         title: "Planung archiviert",
         description: "Die Veranstaltungsplanung wurde ins Archiv verschoben.",
       });
+      
+      // Falls Detailansicht offen, zurück zur Liste
+      if (selectedPlanning?.id === planningId) {
+        setSelectedPlanning(null);
+      }
+      
       fetchPlannings();
     } catch (error) {
       console.error('Error archiving planning:', error);
@@ -503,13 +510,14 @@ export function EventPlanningView() {
 
   const restorePlanning = async (planningId: string) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("event_plannings")
         .update({ is_archived: false, archived_at: null })
         .eq("id", planningId)
-        .eq("user_id", user?.id);
+        .eq("user_id", user?.id)
+        .select();
 
-      if (error) throw error;
+      if (error || !data || data.length === 0) throw error || new Error("Update failed");
 
       toast({
         title: "Planung wiederhergestellt",
@@ -527,90 +535,18 @@ export function EventPlanningView() {
     }
   };
 
-  const completePlanningAndArchive = async (planningId: string) => {
-    const planning = plannings.find(p => p.id === planningId);
-    if (planning?.user_id !== user?.id) {
-      toast({
-        title: "Keine Berechtigung",
-        description: "Nur der Ersteller kann diese Planung abschließen.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("event_plannings")
-        .update({ 
-          is_archived: true, 
-          archived_at: new Date().toISOString()
-        })
-        .eq("id", planningId)
-        .eq("user_id", user?.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Planung abgeschlossen",
-        description: "Die Veranstaltungsplanung wurde abgeschlossen und archiviert.",
-      });
-      
-      // Falls Detailansicht offen, zurück zur Liste
-      if (selectedPlanning?.id === planningId) {
-        setSelectedPlanning(null);
-      }
-      
-      fetchPlannings();
-    } catch (error) {
-      console.error('Error completing planning:', error);
-      toast({
-        title: "Fehler",
-        description: "Planung konnte nicht abgeschlossen werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const completePreparationAndArchive = async (preparationId: string) => {
-    try {
-      const { error } = await supabase
-        .from("appointment_preparations")
-        .update({ 
-          is_archived: true, 
-          archived_at: new Date().toISOString(),
-          status: 'completed'
-        })
-        .eq("id", preparationId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Terminplanung abgeschlossen",
-        description: "Die Terminplanung wurde abgeschlossen und archiviert.",
-      });
-      
-      fetchAppointmentPreparations();
-    } catch (error) {
-      console.error('Error completing preparation:', error);
-      toast({
-        title: "Fehler",
-        description: "Terminplanung konnte nicht abgeschlossen werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const archivePreparation = async (preparationId: string) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("appointment_preparations")
         .update({ 
           is_archived: true, 
           archived_at: new Date().toISOString()
         })
-        .eq("id", preparationId);
+        .eq("id", preparationId)
+        .select();
 
-      if (error) throw error;
+      if (error || !data || data.length === 0) throw error || new Error("Update failed");
 
       toast({
         title: "Terminplanung archiviert",
@@ -850,23 +786,21 @@ export function EventPlanningView() {
               </TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
                 {planning.user_id === user?.id && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover">
-                      <DropdownMenuItem onClick={() => completePlanningAndArchive(planning.id)}>
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Abschließen
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => archivePlanning(planning.id)}>
-                        <Archive className="h-4 w-4 mr-2" />
-                        Archivieren
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7"
+                          onClick={() => archivePlanning(planning.id)}
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Archivieren</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
               </TableCell>
             </TableRow>
@@ -928,23 +862,21 @@ export function EventPlanningView() {
               )}
               {!isArchived && (
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover">
-                      <DropdownMenuItem onClick={() => completePreparationAndArchive(preparation.id)}>
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Abschließen
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => archivePreparation(preparation.id)}>
-                        <Archive className="h-4 w-4 mr-2" />
-                        Archivieren
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7"
+                          onClick={() => archivePreparation(preparation.id)}
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Archivieren</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </TableCell>
               )}
             </TableRow>
@@ -2843,9 +2775,10 @@ export function EventPlanningView() {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log("Archiv-Button clicked, current state:", showPlanningArchive);
-                  fetchArchivedPlannings();
+                  // Sofort Dialog öffnen - nicht auf fetch warten!
                   setShowPlanningArchive(true);
+                  // Dann Daten laden
+                  fetchArchivedPlannings();
                 }}
               >
                 <Archive className="h-4 w-4 mr-2" />
@@ -2945,31 +2878,26 @@ export function EventPlanningView() {
                           {planning.is_private && (
                             <Badge variant="outline">Privat</Badge>
                           )}
-                          {/* Archive menu - only for creator */}
+                          {/* Archive button - only for creator */}
                           {planning.user_id === user?.id && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" className="h-7 w-7">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="bg-popover">
-                                <DropdownMenuItem onClick={(e) => {
-                                  e.stopPropagation();
-                                  completePlanningAndArchive(planning.id);
-                                }}>
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Abschließen
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => {
-                                  e.stopPropagation();
-                                  archivePlanning(planning.id);
-                                }}>
-                                  <Archive className="h-4 w-4 mr-2" />
-                                  Archivieren
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-7 w-7"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      archivePlanning(planning.id);
+                                    }}
+                                  >
+                                    <Archive className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Archivieren</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
                         </div>
                       </CardTitle>
@@ -3172,30 +3100,25 @@ export function EventPlanningView() {
                                 {preparation.status === 'completed' ? 'Abgeschlossen' :
                                  preparation.status === 'in_progress' ? 'In Bearbeitung' : 'Entwurf'}
                               </Badge>
-                              {/* Dropdown Menu */}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="bg-popover">
-                                  <DropdownMenuItem onClick={(e) => {
-                                    e.stopPropagation();
-                                    completePreparationAndArchive(preparation.id);
-                                  }}>
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Abschließen
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={(e) => {
-                                    e.stopPropagation();
-                                    archivePreparation(preparation.id);
-                                  }}>
-                                    <Archive className="h-4 w-4 mr-2" />
-                                    Archivieren
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              {/* Archive button */}
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-7 w-7"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        archivePreparation(preparation.id);
+                                      }}
+                                    >
+                                      <Archive className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Archivieren</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             </div>
                           </CardTitle>
                         </CardHeader>
@@ -3492,31 +3415,15 @@ export function EventPlanningView() {
             </DialogContent>
           </Dialog>
 
-          {/* Abschließen-Button - nur für Ersteller */}
+          {/* Archivieren-Button - nur für Ersteller */}
           {selectedPlanning.user_id === user?.id && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline">
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Abschließen
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Planung abschließen</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Möchten Sie diese Planung abschließen und archivieren? 
-                    Die Planung wird ins Archiv verschoben.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => completePlanningAndArchive(selectedPlanning!.id)}>
-                    Abschließen
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button 
+              variant="outline"
+              onClick={() => archivePlanning(selectedPlanning.id)}
+            >
+              <Archive className="mr-2 h-4 w-4" />
+              Archivieren
+            </Button>
           )}
 
           {/* Löschen-Button */}
