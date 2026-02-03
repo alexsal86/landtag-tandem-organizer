@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { StickyNote, Keyboard, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
 
 interface GlobalQuickNoteDialogProps {
@@ -16,8 +15,6 @@ interface GlobalQuickNoteDialogProps {
 
 export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDialogProps) {
   const { user } = useAuth();
-  const { currentTenant } = useTenant();
-  const tenantLoading = !currentTenant;
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
@@ -41,23 +38,11 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       return;
     }
 
-    if (!currentTenant?.id) {
-      toast.error("Mandant wird geladen, bitte erneut versuchen");
-      return;
-    }
-
     setSaving(true);
     
     try {
-      console.log('Creating quick note:', { 
-        user_id: user.id, 
-        tenant_id: currentTenant.id, 
-        title: title.trim() 
-      });
-      
       const insertData = {
         user_id: user.id,
-        tenant_id: currentTenant.id,
         title: title.trim() || null,
         content: content.trim() || title.trim(),
         is_pinned: false,
@@ -75,7 +60,6 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
         throw error;
       }
       
-      console.log('Note created:', data);
       toast.success("Notiz erstellt");
       onOpenChange(false);
     } catch (error: any) {
@@ -129,14 +113,12 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Abbrechen
           </Button>
-          <Button onClick={handleSave} disabled={saving || tenantLoading || !currentTenant?.id}>
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Speichern...
               </>
-            ) : tenantLoading || !currentTenant?.id ? (
-              "Laden..."
             ) : (
               "Speichern"
             )}
