@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { StickyNote, Keyboard } from "lucide-react";
+import { StickyNote, Keyboard, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -17,6 +17,7 @@ interface GlobalQuickNoteDialogProps {
 export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDialogProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const tenantLoading = !currentTenant;
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
@@ -41,32 +42,45 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
     }
 
     if (!currentTenant?.id) {
-      toast.error("Kein Mandant ausgewählt");
+      toast.error("Mandant wird geladen, bitte erneut versuchen");
       return;
     }
 
     setSaving(true);
     
     try {
-      const { error } = await supabase
+      console.log('Creating quick note:', { 
+        user_id: user.id, 
+        tenant_id: currentTenant.id, 
+        title: title.trim() 
+      });
+      
+      const insertData = {
+        user_id: user.id,
+        tenant_id: currentTenant.id,
+        title: title.trim() || null,
+        content: content.trim() || title.trim(),
+        is_pinned: false,
+        priority_level: 0,
+        is_archived: false
+      };
+      
+      const { data, error } = await supabase
         .from('quick_notes')
-        .insert({
-          user_id: user.id,
-          tenant_id: currentTenant.id,
-          title: title.trim() || null,
-          content: content.trim() || title.trim(),
-          is_pinned: false,
-          priority_level: 0,
-          is_archived: false
-        });
+        .insert(insertData)
+        .select();
 
-      if (error) throw error;
-
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
+      
+      console.log('Note created:', data);
       toast.success("Notiz erstellt");
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating quick note:", error);
-      toast.error("Fehler beim Erstellen der Notiz");
+      toast.error(`Fehler: ${error.message || 'Unbekannter Fehler'}`);
     } finally {
       setSaving(false);
     }
@@ -115,8 +129,17 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Abbrechen
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Speichern..." : "Speichern"}
+          <Button onClick={handleSave} disabled={saving || tenantLoading || !currentTenant?.id}>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Speichern...
+              </>
+            ) : tenantLoading || !currentTenant?.id ? (
+              "Laden..."
+            ) : (
+              "Speichern"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

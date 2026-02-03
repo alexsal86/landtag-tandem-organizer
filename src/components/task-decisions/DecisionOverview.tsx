@@ -13,13 +13,58 @@ import { DecisionEditDialog } from "./DecisionEditDialog";
 import { DecisionViewerComment } from "./DecisionViewerComment";
 import { UserBadge } from "@/components/ui/user-badge";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
-import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle } from "lucide-react";
+import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
+
+// Truncated description component
+const TruncatedDescription = ({ content, maxLength = 250 }: { content: string; maxLength?: number }) => {
+  const [expanded, setExpanded] = useState(false);
+  
+  // Strip HTML tags for length calculation
+  const plainText = content.replace(/<[^>]*>/g, '');
+  const isTruncated = plainText.length > maxLength;
+  
+  if (!isTruncated || expanded) {
+    return (
+      <div>
+        <RichTextDisplay content={content} className="text-sm" />
+        {isTruncated && (
+          <Button 
+            variant="link" 
+            size="sm" 
+            onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+            className="text-xs p-0 h-auto text-muted-foreground hover:text-primary"
+          >
+            weniger
+          </Button>
+        )}
+      </div>
+    );
+  }
+  
+  // Truncate at word boundary
+  const truncatedPlain = plainText.substring(0, maxLength).replace(/\s+\S*$/, '') + '...';
+  
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground">{truncatedPlain}</p>
+      <Button 
+        variant="link" 
+        size="sm" 
+        onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+        className="text-xs p-0 h-auto text-muted-foreground hover:text-primary"
+      >
+        mehr anzeigen
+      </Button>
+    </div>
+  );
+};
 
 interface DecisionRequest {
   id: string;
@@ -67,6 +112,7 @@ interface DecisionRequest {
 export const DecisionOverview = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [decisions, setDecisions] = useState<DecisionRequest[]>([]);
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
@@ -77,6 +123,7 @@ export const DecisionOverview = () => {
   const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
   const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [creatingTaskFromDecisionId, setCreatingTaskFromDecisionId] = useState<string | null>(null);
 
   // Handle URL action parameter for QuickActions
   useEffect(() => {
@@ -671,6 +718,74 @@ export const DecisionOverview = () => {
     }
   };
 
+  // Create task from completed decision
+  const createTaskFromDecision = async (decision: DecisionRequest) => {
+    if (!user?.id || !currentTenant?.id) {
+      toast({
+        title: "Fehler",
+        description: "Nicht angemeldet",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setCreatingTaskFromDecisionId(decision.id);
+    
+    const summary = getResponseSummary(decision.participants);
+    
+    // Determine result
+    let resultText = 'Ergebnis: ';
+    if (summary.yesCount > summary.noCount) {
+      resultText += 'Angenommen';
+    } else if (summary.noCount > summary.yesCount) {
+      resultText += 'Abgelehnt';
+    } else {
+      resultText += 'Unentschieden';
+    }
+    
+    // Build task description
+    const taskDescription = `
+      <h3>Aus Entscheidung: ${decision.title}</h3>
+      <p><strong>${resultText}</strong> (Ja: ${summary.yesCount}, Nein: ${summary.noCount})</p>
+      ${decision.description ? `<div>${decision.description}</div>` : ''}
+    `;
+    
+    try {
+      const { data: task, error } = await supabase
+        .from('tasks')
+        .insert({
+          user_id: user.id,
+          title: `[Entscheidung] ${decision.title}`,
+          description: taskDescription,
+          assigned_to: user.id,
+          tenant_id: currentTenant.id,
+          status: 'todo',
+          priority: 'medium',
+          category: 'personal'
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Aufgabe erstellt",
+        description: "Die Aufgabe wurde aus der Entscheidung erstellt.",
+      });
+      
+      setCreatingTaskFromDecisionId(null);
+      loadDecisionRequests(user.id);
+    } catch (error) {
+      console.error('Error creating task from decision:', error);
+      toast({
+        title: "Fehler",
+        description: "Aufgabe konnte nicht erstellt werden.",
+        variant: "destructive",
+      });
+      setCreatingTaskFromDecisionId(null);
+    }
+  };
+
   const getResponseSummary = (participants: DecisionRequest['participants'] = []) => {
     const yesCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'yes').length;
     const noCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'no').length;
@@ -759,6 +874,23 @@ export const DecisionOverview = () => {
                       Archivieren
                     </DropdownMenuItem>
                   )}
+                  {/* Aufgabe erstellen - nur wenn alle abgestimmt haben */}
+                  {summary.pending === 0 && decision.participants && decision.participants.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          createTaskFromDecision(decision); 
+                        }}
+                        disabled={creatingTaskFromDecisionId === decision.id}
+                      >
+                        <ClipboardList className="h-4 w-4 mr-2" />
+                        {creatingTaskFromDecisionId === decision.id ? 'Erstelle...' : 'Aufgabe erstellen'}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     onClick={(e) => { e.stopPropagation(); setDeletingDecisionId(decision.id); }}
                     className="text-destructive"
@@ -778,7 +910,7 @@ export const DecisionOverview = () => {
             {/* Left Column: Description - mehr Platz */}
             <div className="space-y-2 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
               {decision.description && (
-                <RichTextDisplay content={decision.description} className="text-sm" />
+                <TruncatedDescription content={decision.description} maxLength={250} />
               )}
               {decision.task && (
                 <p className="text-xs text-muted-foreground italic">

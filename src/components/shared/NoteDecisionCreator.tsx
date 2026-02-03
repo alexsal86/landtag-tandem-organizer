@@ -4,13 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { ResponseOptionsEditor } from "@/components/task-decisions/ResponseOptionsEditor";
 import { ResponseOption, DECISION_TEMPLATES, DEFAULT_TEMPLATE_ID, getTemplateById, getDefaultOptions } from "@/lib/decisionTemplates";
 import { ResponseOptionsPreview } from "@/components/task-decisions/ResponseOptionsPreview";
-import { Vote, Loader2, Mail, MessageSquare } from "lucide-react";
+import { DecisionFileUpload } from "@/components/task-decisions/DecisionFileUpload";
+import { TopicSelector } from "@/components/topics/TopicSelector";
+import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
+import { Vote, Loader2, Mail, MessageSquare, Globe, Paperclip } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -49,6 +53,9 @@ export function NoteDecisionCreator({
   const [sendViaMatrix, setSendViaMatrix] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(DEFAULT_TEMPLATE_ID);
   const [customOptions, setCustomOptions] = useState<ResponseOption[]>(getDefaultOptions());
+  const [visibleToAll, setVisibleToAll] = useState(true);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
 
   // Initialize from note content
   useEffect(() => {
@@ -164,7 +171,7 @@ export function NoteDecisionCreator({
           tenant_id: currentTenant.id,
           status: "active",
           response_options: currentOptions as unknown as any,
-          visible_to_all: true
+          visible_to_all: visibleToAll
         }])
         .select()
         .single();
@@ -231,6 +238,35 @@ export function NoteDecisionCreator({
         }
       }
 
+      // Upload files
+      if (selectedFiles.length > 0) {
+        for (const file of selectedFiles) {
+          const fileName = `${user.id}/decisions/${decision.id}/${Date.now()}-${file.name}`;
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('decision-attachments')
+            .upload(fileName, file);
+          
+          if (!uploadError && uploadData) {
+            await supabase
+              .from('task_decision_attachments')
+              .insert({
+                decision_id: decision.id,
+                file_path: uploadData.path,
+                file_name: file.name,
+                file_size: file.size,
+                file_type: file.type,
+                uploaded_by: user.id
+              });
+          }
+        }
+      }
+
+      // Save topics
+      if (selectedTopicIds.length > 0) {
+        await saveDecisionTopics(decision.id, selectedTopicIds);
+      }
+
       toast.success("Entscheidungsanfrage erstellt");
       onOpenChange(false);
       onDecisionCreated();
@@ -240,6 +276,9 @@ export function NoteDecisionCreator({
       setDescription("");
       setSelectedUsers([]);
       setSelectedTemplateId(DEFAULT_TEMPLATE_ID);
+      setVisibleToAll(true);
+      setSelectedFiles([]);
+      setSelectedTopicIds([]);
     } catch (error) {
       console.error('Error creating decision:', error);
       toast.error("Fehler beim Erstellen der Entscheidungsanfrage");
@@ -321,6 +360,43 @@ export function NoteDecisionCreator({
                 placeholder="Teilnehmer auswählen..."
               />
             )}
+          </div>
+
+          {/* Öffentlich Checkbox */}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="visible-to-all"
+              checked={visibleToAll}
+              onCheckedChange={(checked) => setVisibleToAll(checked === true)}
+            />
+            <Label htmlFor="visible-to-all" className="flex items-center gap-1 text-sm cursor-pointer">
+              <Globe className="h-3.5 w-3.5" />
+              Öffentlich (für alle sichtbar)
+            </Label>
+          </div>
+
+          {/* Themen */}
+          <div className="space-y-2">
+            <Label>Themen (optional)</Label>
+            <TopicSelector
+              selectedTopicIds={selectedTopicIds}
+              onTopicsChange={setSelectedTopicIds}
+              compact
+              placeholder="Themen hinzufügen..."
+            />
+          </div>
+
+          {/* Dateien */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1">
+              <Paperclip className="h-3.5 w-3.5" />
+              Dateien anhängen (optional)
+            </Label>
+            <DecisionFileUpload
+              mode="creation"
+              onFilesSelected={(files) => setSelectedFiles(prev => [...prev, ...files])}
+              canUpload={true}
+            />
           </div>
 
           <div className="flex items-center gap-6 pt-2">
