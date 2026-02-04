@@ -327,7 +327,7 @@ export const TaskDecisionResponse = ({
   // Show response buttons
   return (
     <div className="space-y-3">
-      {/* Abstimmungsbuttons ZUERST */}
+      {/* Abstimmungsbuttons + Kommentar-Trigger in einer Reihe */}
       <div className="flex items-center flex-wrap gap-2">
         {responseOptions.map((option) => {
           const colorClasses = getColorClasses(option.color);
@@ -407,6 +407,17 @@ export const TaskDecisionResponse = ({
           );
         })}
         
+        {/* Kommentar-Trigger DIREKT in der Button-Reihe */}
+        <Collapsible open={showCommentField} onOpenChange={setShowCommentField}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
+              <MessageCircle className="h-3 w-3 mr-1" />
+              Kommentar
+              <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${showCommentField ? 'rotate-180' : ''}`} />
+            </Button>
+          </CollapsibleTrigger>
+        </Collapsible>
+        
         {showEdit && (
           <Button
             variant="ghost"
@@ -423,24 +434,17 @@ export const TaskDecisionResponse = ({
         )}
       </div>
 
-      {/* Kommentar ausklappbar DANACH */}
-      <Collapsible open={showCommentField} onOpenChange={setShowCommentField}>
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground p-0 h-auto">
-            <MessageCircle className="h-3 w-3 mr-1" />
-            Kommentar hinzufügen
-            <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${showCommentField ? 'rotate-180' : ''}`} />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
+      {/* Kommentarfeld unter den Buttons wenn geöffnet */}
+      {showCommentField && (
+        <div className="mt-2">
           <SimpleRichTextEditor
             initialContent={questionComment}
             onChange={setQuestionComment}
             placeholder="Ihr Kommentar (optional)..."
             minHeight="80px"
           />
-        </CollapsibleContent>
-      </Collapsible>
+        </div>
+      )}
     </div>
   );
 };

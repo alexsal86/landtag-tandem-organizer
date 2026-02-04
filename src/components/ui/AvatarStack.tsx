@@ -58,7 +58,7 @@ export function AvatarStack({ participants, maxVisible = 4, size = 'sm' }: Avata
 
   return (
     <TooltipProvider>
-      <div className="flex items-center -space-x-2">
+      <div className="flex items-center -space-x-1">
         {visibleParticipants.map((participant, index) => (
           <Tooltip key={participant.user_id}>
             <TooltipTrigger asChild>

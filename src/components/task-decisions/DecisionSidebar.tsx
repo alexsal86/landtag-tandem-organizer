@@ -92,7 +92,7 @@ export function DecisionSidebar({
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium">Was liegt für mich an?</CardTitle>
+            <CardTitle className="text-base font-bold">Was liegt für mich an?</CardTitle>
             {totalItems > 0 && (
               <Badge variant="destructive" className="text-xs">
                 {totalItems}

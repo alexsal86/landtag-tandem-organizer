@@ -893,18 +893,18 @@ export const DecisionOverview = () => {
               {/* Creator Avatar + Name */}
               {decision.creator && (
                 <div className="flex items-center gap-1.5">
-                  <Avatar className="h-5 w-5">
+                  <Avatar className="h-6 w-6">
                     {decision.creator.avatar_url && (
                       <AvatarImage src={decision.creator.avatar_url} alt={decision.creator.display_name || 'Avatar'} />
                     )}
                     <AvatarFallback 
-                      className="text-[8px]"
+                      className="text-[9px]"
                       style={{ backgroundColor: decision.creator.badge_color || undefined }}
                     >
                       {getInitials(decision.creator.display_name)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs font-semibold text-foreground">
                     {decision.creator.display_name || 'Unbekannt'}
                   </span>
                 </div>
@@ -940,12 +940,13 @@ export const DecisionOverview = () => {
             <div className="flex items-center gap-3">
               {decision.participants && decision.participants.length > 0 && (
                 <>
-                  <div className="flex items-center gap-1.5 text-[10px]">
-                    <span className="text-green-600 font-medium">{summary.yesCount}</span>
+                  <div className="flex items-center gap-1 text-xs">
+                    <span className="text-muted-foreground font-medium">Stand:</span>
+                    <span className="text-green-600 font-bold">{summary.yesCount}</span>
                     <span className="text-muted-foreground">/</span>
-                    <span className="text-orange-600 font-medium">{summary.questionCount}</span>
+                    <span className="text-orange-600 font-bold">{summary.questionCount}</span>
                     <span className="text-muted-foreground">/</span>
-                    <span className="text-red-600 font-medium">{summary.noCount}</span>
+                    <span className="text-red-600 font-bold">{summary.noCount}</span>
                   </div>
                   <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
                 </>
@@ -1077,96 +1078,88 @@ export const DecisionOverview = () => {
         </p>
       </div>
       
-      {/* Grid Layout: Main + Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
-        {/* Main Content */}
-        <div className="space-y-4">
-          {/* Search + Create */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Entscheidungen durchsuchen..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <StandaloneDecisionCreator 
-              onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)} 
-              isOpen={isCreateDialogOpen}
-              onOpenChange={setIsCreateDialogOpen}
-            />
-          </div>
-
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 h-9">
-              <TabsTrigger value="for-me" className="text-xs">
-                Für mich
-                {tabCounts.forMe > 0 && (
-                  <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">
-                    {tabCounts.forMe}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="my-decisions" className="text-xs">
-                Von mir ({tabCounts.myDecisions})
-              </TabsTrigger>
-              <TabsTrigger value="public" className="text-xs">
-                Öffentlich ({tabCounts.public})
-              </TabsTrigger>
-              <TabsTrigger value="questions" className="text-xs">
-                Rückfragen
-                {tabCounts.questions > 0 && (
-                  <Badge variant="outline" className="ml-1.5 text-orange-600 border-orange-600 text-[10px] px-1.5 py-0">
-                    {tabCounts.questions}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={activeTab} className="mt-4 space-y-3">
-              {filteredDecisions.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  {activeTab === "for-me" && "Keine offenen Entscheidungen für Sie."}
-                  {activeTab === "my-decisions" && "Sie haben noch keine Entscheidungsanfragen erstellt."}
-                  {activeTab === "public" && "Keine öffentlichen Entscheidungen vorhanden."}
-                  {activeTab === "questions" && "Keine offenen Rückfragen vorhanden."}
-                  {activeTab === "archived" && "Keine archivierten Entscheidungen vorhanden."}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {activeTab === "archived" 
-                    ? filteredDecisions.map(renderArchivedCard)
-                    : filteredDecisions.map(renderCompactCard)
-                  }
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-
-          {/* Archived Link */}
-          {activeTab !== "archived" && tabCounts.archived > 0 && (
-            <button
-              onClick={() => setActiveTab("archived")}
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mt-4"
-            >
-              <FolderArchive className="h-4 w-4" />
-              Archiviert ({tabCounts.archived})
-            </button>
-          )}
+      {/* Search + Create */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Entscheidungen durchsuchen..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
         </div>
-
-        {/* Right Sidebar */}
-        <DecisionSidebar
-          openQuestions={sidebarData.openQuestions}
-          newComments={sidebarData.newComments}
-          onQuestionClick={handleOpenDetails}
-          onCommentClick={handleOpenDetails}
-          onResponseSent={() => user?.id && loadDecisionRequests(user.id)}
+        <StandaloneDecisionCreator 
+          onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)} 
+          isOpen={isCreateDialogOpen}
+          onOpenChange={setIsCreateDialogOpen}
         />
       </div>
+
+      {/* Tabs + Grid Layout */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* TabsList AUSSERHALB des Grids */}
+        <TabsList className="grid w-full grid-cols-5 h-9 mb-4">
+          <TabsTrigger value="for-me" className="text-xs">
+            Für mich
+            {tabCounts.forMe > 0 && (
+              <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">
+                {tabCounts.forMe}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="my-decisions" className="text-xs">
+            Von mir ({tabCounts.myDecisions})
+          </TabsTrigger>
+          <TabsTrigger value="public" className="text-xs">
+            Öffentlich ({tabCounts.public})
+          </TabsTrigger>
+          <TabsTrigger value="questions" className="text-xs">
+            Rückfragen
+            {tabCounts.questions > 0 && (
+              <Badge variant="outline" className="ml-1.5 text-orange-600 border-orange-600 text-[10px] px-1.5 py-0">
+                {tabCounts.questions}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="archived" className="text-xs">
+            <FolderArchive className="h-3 w-3 mr-1" />
+            Archiv ({tabCounts.archived})
+          </TabsTrigger>
+        </TabsList>
+        
+        {/* Grid: Content + Sidebar auf GLEICHER HÖHE */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+          {/* Main Content */}
+          <TabsContent value={activeTab} className="mt-0 space-y-3">
+            {filteredDecisions.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                {activeTab === "for-me" && "Keine offenen Entscheidungen für Sie."}
+                {activeTab === "my-decisions" && "Sie haben noch keine Entscheidungsanfragen erstellt."}
+                {activeTab === "public" && "Keine öffentlichen Entscheidungen vorhanden."}
+                {activeTab === "questions" && "Keine offenen Rückfragen vorhanden."}
+                {activeTab === "archived" && "Keine archivierten Entscheidungen vorhanden."}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activeTab === "archived" 
+                  ? filteredDecisions.map(renderArchivedCard)
+                  : filteredDecisions.map(renderCompactCard)
+                }
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Right Sidebar */}
+          <DecisionSidebar
+            openQuestions={sidebarData.openQuestions}
+            newComments={sidebarData.newComments}
+            onQuestionClick={handleOpenDetails}
+            onCommentClick={handleOpenDetails}
+            onResponseSent={() => user?.id && loadDecisionRequests(user.id)}
+          />
+        </div>
+      </Tabs>
 
       {/* Dialogs */}
       {selectedDecisionId && (
