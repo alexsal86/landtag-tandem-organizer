@@ -4,6 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { UserBadge } from "@/components/ui/user-badge";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { 
   CheckCircle, 
   AlarmClock, 
@@ -185,9 +186,10 @@ export function AssignedItemCard({
           {/* Left column (60%) - Description & Topics */}
           <div className="space-y-2 min-w-0">
             {description && (
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {description}
-              </p>
+              <RichTextDisplay 
+                content={description} 
+                className="text-sm text-muted-foreground line-clamp-2" 
+              />
             )}
             {topicIds.length > 0 && (
               <TopicDisplay topicIds={topicIds} maxDisplay={3} />
