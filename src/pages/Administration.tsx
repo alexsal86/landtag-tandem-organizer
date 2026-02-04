@@ -482,6 +482,16 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
     }
   };
 
+  // Helper function to get title for system types
+  const getTitleForSystemType = (systemType: string) => {
+    switch (systemType) {
+      case 'upcoming_appointments': return 'Kommende Termine';
+      case 'quick_notes': return 'Meine Notizen';
+      case 'tasks': return 'Aufgaben';
+      default: return systemType;
+    }
+  };
+
   const addSystemTemplateItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks', parentIndex?: number) => {
     if (!selectedTemplate) return;
     
@@ -494,13 +504,13 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
     if (existsInMain || existsInChildren) {
       toast({ 
         title: "Bereits vorhanden", 
-        description: `"${systemType === 'upcoming_appointments' ? 'Kommende Termine' : 'Meine Notizen'}" ist bereits in der Agenda.`,
+        description: `"${getTitleForSystemType(systemType)}" ist bereits in der Agenda.`,
         variant: "destructive" 
       });
       return;
     }
 
-    const title = systemType === 'upcoming_appointments' ? 'Kommende Termine' : 'Meine Notizen';
+    const title = getTitleForSystemType(systemType);
     const newItems = [...templateItems];
     
     if (parentIndex !== undefined) {
@@ -1123,6 +1133,13 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                         .update({ name: editingTemplateName.value })
                                         .eq('id', selectedTemplate.id);
                                       if (error) throw error;
+                                      
+                                      // Update local state first (before loadData to avoid losing selection)
+                                      setSelectedTemplate({
+                                        ...selectedTemplate,
+                                        name: editingTemplateName.value
+                                      });
+                                      
                                       await loadData();
                                       setEditingTemplateName(null);
                                       toast({ title: "Gespeichert", description: "Template-Name aktualisiert." });
@@ -1155,14 +1172,15 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                               defaultRecurrence={selectedTemplate.default_recurrence || null}
                               autoCreateCount={selectedTemplate.auto_create_count || 3}
                               compact
-                              onSave={async (participants, recurrence, autoCreateCount) => {
+                              onSave={async (participants, recurrence, autoCreateCount, visibility) => {
                                 try {
                                   await supabase
                                     .from('meeting_templates')
                                     .update({
-                                      default_participants: participants,
+                                      default_participants: participants as any,
                                       default_recurrence: recurrence as any,
-                                      auto_create_count: autoCreateCount || 3
+                                      auto_create_count: autoCreateCount || 3,
+                                      default_visibility: visibility || 'private'
                                     })
                                     .eq('id', selectedTemplate.id);
                                   
@@ -1170,7 +1188,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                     ...selectedTemplate,
                                     default_participants: participants,
                                     default_recurrence: recurrence,
-                                    auto_create_count: autoCreateCount
+                                    auto_create_count: autoCreateCount,
+                                    default_visibility: visibility
                                   });
                                 } catch (error) {
                                   toast({ title: "Fehler", description: "Speichern fehlgeschlagen.", variant: "destructive" });
@@ -1359,12 +1378,15 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                             className="w-full justify-between text-sm h-8 px-2"
                                                             onClick={() => activateChild(index, childIdx)}
                                                           >
-                                                            <span className="flex items-center gap-1.5 truncate">
+                                                          <span className="flex items-center gap-1.5 truncate">
                                                               {child.system_type === 'upcoming_appointments' && (
                                                                 <CalendarDays className="h-3 w-3 text-blue-600 shrink-0" />
                                                               )}
                                                               {child.system_type === 'quick_notes' && (
                                                                 <StickyNote className="h-3 w-3 text-amber-600 shrink-0" />
+                                                              )}
+                                                              {child.system_type === 'tasks' && (
+                                                                <ListTodo className="h-3 w-3 text-green-600 shrink-0" />
                                                               )}
                                                               {child.title}
                                                             </span>
@@ -1380,7 +1402,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                               {/* Dynamic content buttons */}
                                               <div className="border-t pt-2">
                                                 <p className="text-xs text-muted-foreground mb-2">Dynamische Inhalte:</p>
-                                                <div className="flex gap-1">
+                                                <div className="flex flex-wrap gap-1">
                                                   <Button 
                                                     variant="outline" 
                                                     size="sm"
@@ -1404,6 +1426,18 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                   >
                                                     <StickyNote className="h-3 w-3 mr-1" />
                                                     Notizen
+                                                  </Button>
+                                                  <Button 
+                                                    variant="outline" 
+                                                    size="sm"
+                                                    className="flex-1 justify-start border-green-200 text-green-700 h-7 text-xs"
+                                                    onClick={() => {
+                                                      addSystemTemplateItem('tasks', index);
+                                                      setChildPopoverOpen(null);
+                                                    }}
+                                                  >
+                                                    <ListTodo className="h-3 w-3 mr-1" />
+                                                    Aufgaben
                                                   </Button>
                                                 </div>
                                               </div>
@@ -1439,6 +1473,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                 child.system_type
                                                   ? child.system_type === 'upcoming_appointments'
                                                     ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
+                                                    : child.system_type === 'tasks'
+                                                    ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
                                                     : 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
                                                   : 'bg-muted/30 border-border'
                                               }`}
@@ -1498,6 +1534,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                     <>
                                                       {child.system_type === 'upcoming_appointments' ? (
                                                         <CalendarDays className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                                      ) : child.system_type === 'tasks' ? (
+                                                        <ListTodo className="h-3.5 w-3.5 text-green-600 shrink-0" />
                                                       ) : (
                                                         <StickyNote className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                                                       )}

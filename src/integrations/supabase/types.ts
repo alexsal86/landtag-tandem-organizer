@@ -5671,6 +5671,7 @@ export type Database = {
           created_at: string
           default_participants: string[] | null
           default_recurrence: Json | null
+          default_visibility: string | null
           description: string | null
           id: string
           is_default: boolean | null
@@ -5686,6 +5687,7 @@ export type Database = {
           created_at?: string
           default_participants?: string[] | null
           default_recurrence?: Json | null
+          default_visibility?: string | null
           description?: string | null
           id?: string
           is_default?: boolean | null
@@ -5701,6 +5703,7 @@ export type Database = {
           created_at?: string
           default_participants?: string[] | null
           default_recurrence?: Json | null
+          default_visibility?: string | null
           description?: string | null
           id?: string
           is_default?: boolean | null

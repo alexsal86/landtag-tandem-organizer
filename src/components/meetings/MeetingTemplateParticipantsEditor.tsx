@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserSelector } from '@/components/UserSelector';
 import { RecurrenceSelector } from '@/components/ui/recurrence-selector';
-import { Users, X, CalendarRange, Repeat } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Users, X, CalendarRange, Repeat, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,13 +21,24 @@ interface RecurrenceData {
   endDate?: string;
 }
 
+interface ParticipantWithRole {
+  user_id: string;
+  role: 'organizer' | 'participant' | 'optional';
+}
+
 interface MeetingTemplateParticipantsEditorProps {
   templateId: string;
-  defaultParticipants: string[];
+  defaultParticipants: string[] | ParticipantWithRole[];
   defaultRecurrence: RecurrenceData | null;
+  defaultVisibility?: 'private' | 'public';
   autoCreateCount?: number;
   compact?: boolean;
-  onSave: (participants: string[], recurrence: RecurrenceData | null, autoCreateCount?: number) => void;
+  onSave: (
+    participants: ParticipantWithRole[], 
+    recurrence: RecurrenceData | null, 
+    autoCreateCount?: number,
+    visibility?: 'private' | 'public'
+  ) => void;
 }
 
 interface User {
@@ -34,18 +47,37 @@ interface User {
   avatar_url?: string;
 }
 
+// Helper to normalize participants to ParticipantWithRole format
+const normalizeParticipants = (participants: string[] | ParticipantWithRole[]): ParticipantWithRole[] => {
+  if (!participants || participants.length === 0) return [];
+  
+  // Check if first element is a string (old format)
+  if (typeof participants[0] === 'string') {
+    return (participants as string[]).map(userId => ({
+      user_id: userId,
+      role: 'participant' as const
+    }));
+  }
+  
+  return participants as ParticipantWithRole[];
+};
+
 export function MeetingTemplateParticipantsEditor({
   templateId,
   defaultParticipants,
   defaultRecurrence,
+  defaultVisibility = 'private',
   autoCreateCount: initialAutoCreateCount = 3,
   compact = false,
   onSave
 }: MeetingTemplateParticipantsEditorProps) {
   const { currentTenant } = useTenant();
-  const [participants, setParticipants] = useState<string[]>(defaultParticipants || []);
+  const [participants, setParticipants] = useState<ParticipantWithRole[]>(
+    normalizeParticipants(defaultParticipants || [])
+  );
   const [participantUsers, setParticipantUsers] = useState<User[]>([]);
   const [autoCreateCount, setAutoCreateCount] = useState<number>(initialAutoCreateCount);
+  const [visibility, setVisibility] = useState<'private' | 'public'>(defaultVisibility);
   const [recurrence, setRecurrence] = useState<RecurrenceData>(
     defaultRecurrence || {
       enabled: false,
@@ -56,22 +88,23 @@ export function MeetingTemplateParticipantsEditor({
   );
 
   useEffect(() => {
-    if (participants.length > 0) {
-      loadUserDetails();
+    const userIds = participants.map(p => p.user_id);
+    if (userIds.length > 0) {
+      loadUserDetails(userIds);
     } else {
       setParticipantUsers([]);
     }
   }, [participants]);
 
-  const loadUserDetails = async () => {
-    if (!currentTenant || participants.length === 0) return;
+  const loadUserDetails = async (userIds: string[]) => {
+    if (!currentTenant || userIds.length === 0) return;
 
     try {
       // Get user details from profiles for the participant user IDs
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, display_name, avatar_url')
-        .in('user_id', participants);
+        .in('user_id', userIds);
 
       if (error) throw error;
 
@@ -88,30 +121,50 @@ export function MeetingTemplateParticipantsEditor({
   };
 
   const handleAddUser = (user: User) => {
-    if (participants.includes(user.id)) return;
+    if (participants.some(p => p.user_id === user.id)) return;
     
-    const newParticipants = [...participants, user.id];
+    const newParticipant: ParticipantWithRole = { user_id: user.id, role: 'participant' };
+    const newParticipants = [...participants, newParticipant];
     setParticipants(newParticipants);
     setParticipantUsers(prev => [...prev, user]);
-    onSave(newParticipants, recurrence.enabled ? recurrence : null, autoCreateCount);
+    onSave(newParticipants, recurrence.enabled ? recurrence : null, autoCreateCount, visibility);
   };
 
   const handleRemoveParticipant = (userId: string) => {
-    const newParticipants = participants.filter(id => id !== userId);
+    const newParticipants = participants.filter(p => p.user_id !== userId);
     setParticipants(newParticipants);
     setParticipantUsers(prev => prev.filter(u => u.id !== userId));
-    onSave(newParticipants, recurrence.enabled ? recurrence : null, autoCreateCount);
+    onSave(newParticipants, recurrence.enabled ? recurrence : null, autoCreateCount, visibility);
+  };
+
+  const handleRoleChange = (userId: string, role: 'organizer' | 'participant' | 'optional') => {
+    const newParticipants = participants.map(p => 
+      p.user_id === userId ? { ...p, role } : p
+    );
+    setParticipants(newParticipants);
+    onSave(newParticipants, recurrence.enabled ? recurrence : null, autoCreateCount, visibility);
   };
 
   const handleRecurrenceChange = (newRecurrence: RecurrenceData) => {
     setRecurrence(newRecurrence);
-    onSave(participants, newRecurrence.enabled ? newRecurrence : null, autoCreateCount);
+    onSave(participants, newRecurrence.enabled ? newRecurrence : null, autoCreateCount, visibility);
   };
 
   const handleAutoCreateCountChange = (value: number[]) => {
     const count = value[0];
     setAutoCreateCount(count);
-    onSave(participants, recurrence.enabled ? recurrence : null, count);
+    onSave(participants, recurrence.enabled ? recurrence : null, count, visibility);
+  };
+
+  const handleVisibilityChange = (isPublic: boolean) => {
+    const newVisibility = isPublic ? 'public' : 'private';
+    setVisibility(newVisibility);
+    onSave(participants, recurrence.enabled ? recurrence : null, autoCreateCount, newVisibility);
+  };
+
+  const getParticipantRole = (userId: string): 'organizer' | 'participant' | 'optional' => {
+    const participant = participants.find(p => p.user_id === userId);
+    return participant?.role || 'participant';
   };
 
   const getInitials = (name: string) => {
@@ -140,7 +193,7 @@ export function MeetingTemplateParticipantsEditor({
             onSelect={handleAddUser}
             placeholder="Teilnehmer hinzufügen..."
             clearAfterSelect
-            excludeUserIds={participants}
+            excludeUserIds={participants.map(p => p.user_id)}
           />
           {participantUsers.length > 0 && (
             <div className="mt-2 space-y-1">
@@ -237,7 +290,7 @@ export function MeetingTemplateParticipantsEditor({
               onSelect={handleAddUser}
               placeholder="Teammitglied hinzufügen..."
               clearAfterSelect
-              excludeUserIds={participants}
+              excludeUserIds={participants.map(p => p.user_id)}
             />
           </div>
 
