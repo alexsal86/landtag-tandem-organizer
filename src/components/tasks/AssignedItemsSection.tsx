@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -188,9 +189,10 @@ function ItemCard({
                 </p>
               )}
               {description && (
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {description.length > 150 ? `${description.substring(0, 150)}...` : description}
-                </p>
+                <RichTextDisplay 
+                  content={description} 
+                  className="text-sm text-muted-foreground line-clamp-2" 
+                />
               )}
               {assignedToNames && (
                 <p className="text-xs text-muted-foreground">

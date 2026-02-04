@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { ImageCropper } from "@/components/ui/ImageCropper";
 
 interface ProfileData {
   display_name: string;
@@ -34,6 +35,10 @@ export function EditProfile() {
   const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Image cropper state
+  const [imageToEdit, setImageToEdit] = useState<string | null>(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -77,7 +82,7 @@ export function EditProfile() {
     }));
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
@@ -101,32 +106,60 @@ export function EditProfile() {
       return;
     }
 
+    // Read file and open cropper
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageToEdit(reader.result as string);
+      setCropperOpen(true);
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset file input so the same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    if (!user) return;
+    
+    setCropperOpen(false);
+    setImageToEdit(null);
     setIsUploading(true);
 
     try {
-      // Create unique filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar.${fileExt}`;
-
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      // Delete old avatars first
+      const { data: existingFiles } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { 
-          upsert: true,
-          contentType: file.type 
+        .list(user.id);
+
+      if (existingFiles && existingFiles.length > 0) {
+        await supabase.storage
+          .from('avatars')
+          .remove(existingFiles.map(f => `${user.id}/${f.name}`));
+      }
+
+      // Upload with unique timestamp-based filename
+      const fileName = `${user.id}/avatar_${Date.now()}.webp`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, croppedBlob, { 
+          contentType: 'image/webp' 
         });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
+      // Get URL with cache-buster
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
 
-      // Update form data with new avatar URL
+      const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
+      
       setFormData(prev => ({
         ...prev,
-        avatar_url: publicUrl
+        avatar_url: urlWithCacheBust
       }));
 
       toast({
@@ -147,6 +180,11 @@ export function EditProfile() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleCropCancel = () => {
+    setCropperOpen(false);
+    setImageToEdit(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -297,11 +335,11 @@ export function EditProfile() {
                           ref={fileInputRef}
                           type="file"
                           accept="image/*"
-                          onChange={handleFileUpload}
+                          onChange={handleFileSelect}
                           className="hidden"
                         />
                         <p className="text-sm text-muted-foreground mt-1">
-                          Unterstützte Formate: JPG, PNG, GIF (max. 5MB)
+                          Nach Auswahl können Sie den Bildausschnitt anpassen
                         </p>
                       </div>
                       
@@ -420,6 +458,16 @@ export function EditProfile() {
           </div>
         </form>
       </div>
+      
+      {/* Image Cropper Dialog */}
+      {imageToEdit && (
+        <ImageCropper
+          imageSrc={imageToEdit}
+          open={cropperOpen}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
+      )}
     </div>
   );
 }

@@ -860,6 +860,15 @@ export function QuickNotesList({
         ? stripHtml(note.title) 
         : plainContent.substring(0, 50) + (plainContent.length > 50 ? '...' : '');
       
+      // Map note priority_level to task priority
+      const mapNotePriorityToTaskPriority = (level: number | undefined | null): 'low' | 'medium' | 'high' => {
+        if (!level || level <= 1) return 'low';
+        if (level === 2) return 'medium';
+        return 'high'; // level 3 or higher
+      };
+      
+      const taskPriority = mapNotePriorityToTaskPriority(note.priority_level);
+      
       const { data: task, error: taskError } = await supabase
         .from('tasks')
         .insert({
@@ -868,7 +877,7 @@ export function QuickNotesList({
           title: taskTitle,
           description: note.content, // Keep HTML for RichTextDisplay rendering
           category: 'personal',
-          priority: 'medium',
+          priority: taskPriority,
           status: 'todo',
           due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           assigned_to: user.id,
