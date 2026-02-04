@@ -7655,6 +7655,51 @@ export type Database = {
           },
         ]
       }
+      task_decision_comments: {
+        Row: {
+          content: string
+          created_at: string
+          decision_id: string
+          id: string
+          parent_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          decision_id: string
+          id?: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          decision_id?: string
+          id?: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_decision_comments_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decision_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "task_decision_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_decision_participants: {
         Row: {
           decision_id: string
@@ -7749,6 +7794,7 @@ export type Database = {
           creator_response: string | null
           decision_id: string
           id: string
+          parent_response_id: string | null
           participant_id: string
           response_type: string
           updated_at: string
@@ -7759,6 +7805,7 @@ export type Database = {
           creator_response?: string | null
           decision_id: string
           id?: string
+          parent_response_id?: string | null
           participant_id: string
           response_type: string
           updated_at?: string
@@ -7769,6 +7816,7 @@ export type Database = {
           creator_response?: string | null
           decision_id?: string
           id?: string
+          parent_response_id?: string | null
           participant_id?: string
           response_type?: string
           updated_at?: string
@@ -7779,6 +7827,13 @@ export type Database = {
             columns: ["decision_id"]
             isOneToOne: false
             referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decision_responses_parent_response_id_fkey"
+            columns: ["parent_response_id"]
+            isOneToOne: false
+            referencedRelation: "task_decision_responses"
             referencedColumns: ["id"]
           },
           {
@@ -8936,6 +8991,10 @@ export type Database = {
       }
       auto_archive_completed_preparations: { Args: never; Returns: undefined }
       auto_update_poll_status: { Args: never; Returns: undefined }
+      can_access_decision: {
+        Args: { p_decision_id: string; p_user_id: string }
+        Returns: boolean
+      }
       can_access_knowledge_document: {
         Args: { _document_id: string; _user_id: string }
         Returns: boolean

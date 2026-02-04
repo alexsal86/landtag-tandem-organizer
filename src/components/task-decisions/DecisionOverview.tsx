@@ -13,13 +13,15 @@ import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
 import { DecisionEditDialog } from "./DecisionEditDialog";
 import { DecisionViewerComment } from "./DecisionViewerComment";
 import { DecisionSidebar } from "./DecisionSidebar";
+import { DecisionComments } from "./DecisionComments";
 import { UserBadge } from "@/components/ui/user-badge";
 import { AvatarStack } from "@/components/ui/AvatarStack";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
+import { useDecisionComments } from "@/hooks/useDecisionComments";
 import { 
   Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, 
   MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle, ClipboardList, 
-  Search, FolderArchive
+  Search, FolderArchive, MessageSquare
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -133,7 +135,8 @@ export const DecisionOverview = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [creatingTaskFromDecisionId, setCreatingTaskFromDecisionId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
+  const [commentsDecisionTitle, setCommentsDecisionTitle] = useState<string>("");
   // Handle URL action parameter for QuickActions
   useEffect(() => {
     const action = searchParams.get('action');
@@ -729,11 +732,16 @@ export const DecisionOverview = () => {
     return { openQuestions, newComments };
   }, [decisions]);
 
+  // Get decision IDs for comment counts
+  const decisionIds = useMemo(() => decisions.map(d => d.id), [decisions]);
+  const { getCommentCount, refresh: refreshCommentCounts } = useDecisionComments(decisionIds);
+
   // Tab counts
   const tabCounts = useMemo(() => {
     const active = decisions.filter(d => d.status !== 'archived');
     return {
       forMe: active.filter(d => d.isParticipant && !d.hasResponded).length,
+      answered: active.filter(d => d.isParticipant && d.hasResponded && !d.isCreator).length,
       myDecisions: active.filter(d => d.isCreator).length,
       public: active.filter(d => d.visible_to_all && !d.isCreator && !d.isParticipant).length,
       questions: active.filter(d => {
@@ -768,6 +776,8 @@ export const DecisionOverview = () => {
     switch (activeTab) {
       case "for-me":
         return filtered.filter(d => d.isParticipant && !d.hasResponded);
+      case "answered":
+        return filtered.filter(d => d.isParticipant && d.hasResponded && !d.isCreator);
       case "my-decisions":
         return filtered.filter(d => d.isCreator);
       case "public":
@@ -782,6 +792,11 @@ export const DecisionOverview = () => {
         return filtered;
     }
   }, [decisions, activeTab, searchQuery]);
+
+  const openComments = (decisionId: string, decisionTitle: string) => {
+    setCommentsDecisionId(decisionId);
+    setCommentsDecisionTitle(decisionTitle);
+  };
 
   const renderCompactCard = (decision: DecisionRequest) => {
     const summary = getResponseSummary(decision.participants);
@@ -936,8 +951,17 @@ export const DecisionOverview = () => {
               )}
             </div>
 
-            {/* Avatar Stack + Voting */}
+            {/* Comments Icon + Avatar Stack + Voting */}
             <div className="flex items-center gap-3">
+              {/* Comments Icon */}
+              <button
+                onClick={(e) => { e.stopPropagation(); openComments(decision.id, decision.title); }}
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span className="text-xs">{getCommentCount(decision.id)}</span>
+              </button>
+
               {decision.participants && decision.participants.length > 0 && (
                 <>
                   <div className="flex items-center gap-1 text-xs">
@@ -1099,7 +1123,7 @@ export const DecisionOverview = () => {
       {/* Tabs + Grid Layout */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* TabsList AUSSERHALB des Grids */}
-        <TabsList className="grid w-full grid-cols-5 h-9 mb-4">
+        <TabsList className="grid w-full grid-cols-6 h-9 mb-4">
           <TabsTrigger value="for-me" className="text-xs">
             Für mich
             {tabCounts.forMe > 0 && (
@@ -1107,6 +1131,9 @@ export const DecisionOverview = () => {
                 {tabCounts.forMe}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="answered" className="text-xs">
+            Beantwortet ({tabCounts.answered})
           </TabsTrigger>
           <TabsTrigger value="my-decisions" className="text-xs">
             Von mir ({tabCounts.myDecisions})
@@ -1135,6 +1162,7 @@ export const DecisionOverview = () => {
             {filteredDecisions.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 {activeTab === "for-me" && "Keine offenen Entscheidungen für Sie."}
+                {activeTab === "answered" && "Keine beantworteten Entscheidungen vorhanden."}
                 {activeTab === "my-decisions" && "Sie haben noch keine Entscheidungsanfragen erstellt."}
                 {activeTab === "public" && "Keine öffentlichen Entscheidungen vorhanden."}
                 {activeTab === "questions" && "Keine offenen Rückfragen vorhanden."}
@@ -1178,6 +1206,20 @@ export const DecisionOverview = () => {
           onClose={() => setEditingDecisionId(null)}
           onUpdated={() => {
             setEditingDecisionId(null);
+            if (user?.id) loadDecisionRequests(user.id);
+          }}
+        />
+      )}
+
+      {/* Comments Sheet */}
+      {commentsDecisionId && (
+        <DecisionComments
+          decisionId={commentsDecisionId}
+          decisionTitle={commentsDecisionTitle}
+          isOpen={!!commentsDecisionId}
+          onClose={() => setCommentsDecisionId(null)}
+          onCommentAdded={() => {
+            refreshCommentCounts();
             if (user?.id) loadDecisionRequests(user.id);
           }}
         />
