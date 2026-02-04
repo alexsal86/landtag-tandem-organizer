@@ -392,42 +392,73 @@ export function MyWorkTasksTab() {
   };
 
   const handleSelectMeeting = async (meetingId: string, meetingTitle: string) => {
-    if (!meetingTaskId) return;
+    if (!meetingTaskId || !user) return;
     
     try {
-      const { error } = await supabase
+      console.log('Adding task to meeting:', { taskId: meetingTaskId, meetingId });
+      
+      const { data, error } = await supabase
         .from('tasks')
         .update({ meeting_id: meetingId, pending_for_jour_fixe: false })
-        .eq('id', meetingTaskId);
+        .eq('id', meetingTaskId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error adding task to meeting:', error);
+        toast({ 
+          title: "Fehler", 
+          description: error.message || "Aufgabe konnte nicht zugeordnet werden.",
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      if (!data || data.length === 0) {
+        toast({ 
+          title: "Warnung", 
+          description: "Keine Aufgabe aktualisiert.",
+          variant: "destructive" 
+        });
+        return;
+      }
       
       toast({ title: `Aufgabe zu "${meetingTitle}" hinzugefügt` });
       loadTasks();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding task to meeting:', error);
-      toast({ title: "Fehler", variant: "destructive" });
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
     } finally {
       setMeetingTaskId(null);
     }
   };
 
   const handleMarkForNextJourFixe = async () => {
-    if (!meetingTaskId) return;
+    if (!meetingTaskId || !user) return;
     
     try {
-      const { error } = await supabase
+      console.log('Marking task for next jour fixe:', meetingTaskId);
+      
+      const { data, error } = await supabase
         .from('tasks')
         .update({ pending_for_jour_fixe: true, meeting_id: null })
-        .eq('id', meetingTaskId);
+        .eq('id', meetingTaskId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking task:', error);
+        toast({ 
+          title: "Fehler", 
+          description: error.message || "Aufgabe konnte nicht vorgemerkt werden.",
+          variant: "destructive" 
+        });
+        return;
+      }
       
       toast({ title: "Aufgabe für nächsten Jour Fixe vorgemerkt" });
       loadTasks();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error marking task for next jour fixe:', error);
-      toast({ title: "Fehler", variant: "destructive" });
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
     } finally {
       setMeetingTaskId(null);
     }

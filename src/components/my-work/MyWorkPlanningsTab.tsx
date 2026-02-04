@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
-import { CalendarPlus, ExternalLink, MapPin, CheckSquare, Calendar } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CalendarPlus, ExternalLink, MapPin, CheckSquare, Calendar, CheckCircle, Archive } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface Planning {
   id: string;
@@ -20,6 +23,7 @@ interface Planning {
   created_at: string;
   user_id: string;
   isCollaborator: boolean;
+  is_completed?: boolean;
   checklistProgress: {
     completed: number;
     total: number;
@@ -28,6 +32,7 @@ interface Planning {
 
 export function MyWorkPlanningsTab() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -66,12 +71,14 @@ export function MyWorkPlanningsTab() {
           confirmed_date,
           created_at,
           user_id,
+          is_completed,
           event_planning_checklist_items (
             id,
             is_completed
           )
         `)
         .eq("user_id", user.id)
+        .or("is_archived.is.null,is_archived.eq.false")
         .order("created_at", { ascending: false })
         .limit(10);
 
@@ -90,6 +97,8 @@ export function MyWorkPlanningsTab() {
             confirmed_date,
             created_at,
             user_id,
+            is_completed,
+            is_archived,
             event_planning_checklist_items (
               id,
               is_completed
@@ -110,15 +119,16 @@ export function MyWorkPlanningsTab() {
         created_at: p.created_at,
         user_id: p.user_id,
         isCollaborator: false,
+        is_completed: p.is_completed ?? false,
         checklistProgress: {
           completed: (p.event_planning_checklist_items || []).filter((i: any) => i.is_completed).length,
           total: (p.event_planning_checklist_items || []).length,
         },
       }));
 
-      // Format collaboration plannings
+      // Format collaboration plannings (filter out archived)
       const formattedCollab: Planning[] = (collaborations || [])
-        .filter((c: any) => c.event_plannings && c.event_plannings.user_id !== user.id)
+        .filter((c: any) => c.event_plannings && c.event_plannings.user_id !== user.id && !c.event_plannings.is_archived)
         .map((c: any) => ({
           id: c.event_plannings.id,
           title: c.event_plannings.title,
@@ -128,6 +138,7 @@ export function MyWorkPlanningsTab() {
           created_at: c.event_plannings.created_at,
           user_id: c.event_plannings.user_id,
           isCollaborator: true,
+          is_completed: c.event_plannings.is_completed ?? false,
           checklistProgress: {
             completed: (c.event_plannings.event_planning_checklist_items || []).filter((i: any) => i.is_completed).length,
             total: (c.event_plannings.event_planning_checklist_items || []).length,
@@ -148,6 +159,48 @@ export function MyWorkPlanningsTab() {
       console.error("Error loading plannings:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleCompleted = async (planningId: string, isCompleted: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('event_plannings')
+        .update({ 
+          is_completed: isCompleted,
+          completed_at: isCompleted ? new Date().toISOString() : null
+        })
+        .eq('id', planningId)
+        .select();
+
+      if (error) throw error;
+      
+      toast({ title: isCompleted ? "Planung als erledigt markiert" : "Markierung entfernt" });
+      loadPlannings();
+    } catch (error) {
+      console.error('Error toggling completed:', error);
+      toast({ title: "Fehler", variant: "destructive" });
+    }
+  };
+
+  const archivePlanning = async (planningId: string) => {
+    try {
+      const { error } = await supabase
+        .from('event_plannings')
+        .update({ 
+          is_archived: true,
+          archived_at: new Date().toISOString()
+        })
+        .eq('id', planningId)
+        .select();
+
+      if (error) throw error;
+      
+      toast({ title: "Planung archiviert" });
+      loadPlannings();
+    } catch (error) {
+      console.error('Error archiving planning:', error);
+      toast({ title: "Fehler", variant: "destructive" });
     }
   };
 
@@ -179,9 +232,17 @@ export function MyWorkPlanningsTab() {
               <CalendarPlus className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-sm">{planning.title}</span>
+                  <span className={cn(
+                    "font-medium text-sm",
+                    planning.is_completed && "line-through text-muted-foreground"
+                  )}>
+                    {planning.title}
+                  </span>
                   {planning.isCollaborator && (
                     <Badge variant="secondary" className="text-xs">Mitwirkend</Badge>
+                  )}
+                  {planning.is_completed && (
+                    <Badge variant="outline" className="text-xs text-green-600 border-green-200">Erledigt</Badge>
                   )}
                 </div>
                 {planning.description && (
@@ -209,17 +270,61 @@ export function MyWorkPlanningsTab() {
                   )}
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 flex-shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/eventplanning?planningId=${planning.id}`);
-                }}
-              >
-                <ExternalLink className="h-3 w-3" />
-              </Button>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn("h-7 w-7", planning.is_completed && "text-green-600")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleCompleted(planning.id, !planning.is_completed);
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {planning.is_completed ? "Als unerledigt markieren" : "Als erledigt markieren"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                {planning.user_id === user?.id && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            archivePlanning(planning.id);
+                          }}
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Archivieren</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/eventplanning?planningId=${planning.id}`);
+                  }}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
           ))
         )}
