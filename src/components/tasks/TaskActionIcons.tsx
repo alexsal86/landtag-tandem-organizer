@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlarmClock, UserPlus, MessageSquare, Vote, Paperclip } from "lucide-react";
+import { AlarmClock, UserPlus, MessageSquare, Vote, Paperclip, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TaskActionIconsProps {
@@ -10,8 +10,10 @@ interface TaskActionIconsProps {
   onComment?: (taskId: string) => void;
   onDecision?: (taskId: string) => void;
   onDocuments?: (taskId: string) => void;
+  onAddToMeeting?: (taskId: string) => void;
   hasComments?: boolean;
   hasDocuments?: boolean;
+  hasMeetingLink?: boolean;
   className?: string;
 }
 
@@ -22,8 +24,10 @@ export function TaskActionIcons({
   onComment,
   onDecision,
   onDocuments,
+  onAddToMeeting,
   hasComments = false,
   hasDocuments = false,
+  hasMeetingLink = false,
   className,
 }: TaskActionIconsProps) {
   return (
@@ -127,6 +131,28 @@ export function TaskActionIcons({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">Dokumente</TooltipContent>
+          </Tooltip>
+        )}
+
+        {onAddToMeeting && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-6 w-6 hover:bg-muted/80 rounded-full",
+                  hasMeetingLink && "text-purple-600"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToMeeting(taskId);
+                }}
+              >
+                <CalendarDays className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Jour Fixe</TooltipContent>
           </Tooltip>
         )}
       </div>

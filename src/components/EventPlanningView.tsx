@@ -508,6 +508,33 @@ export function EventPlanningView() {
     }
   };
 
+  const togglePlanningCompleted = async (planningId: string, isCompleted: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("event_plannings")
+        .update({ 
+          is_completed: isCompleted,
+          completed_at: isCompleted ? new Date().toISOString() : null
+        })
+        .eq("id", planningId)
+        .select();
+
+      if (error) throw error;
+      
+      toast({
+        title: isCompleted ? "Planung als erledigt markiert" : "Markierung entfernt",
+      });
+      
+      fetchPlannings();
+    } catch (error) {
+      console.error('Error toggling completed:', error);
+      toast({
+        title: "Fehler",
+        variant: "destructive",
+      });
+    }
+  };
+
   const restorePlanning = async (planningId: string) => {
     try {
       const { data, error } = await supabase
@@ -2921,11 +2948,38 @@ export function EventPlanningView() {
                     <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} />
                     <CardHeader className="pb-2">
                       <CardTitle className="flex items-center justify-between">
-                        <span className="truncate">{planning.title}</span>
-                        <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "truncate",
+                          (planning as any).is_completed && "line-through text-muted-foreground"
+                        )}>{planning.title}</span>
+                        <div className="flex items-center gap-1">
                           {planning.is_private && (
                             <Badge variant="outline">Privat</Badge>
                           )}
+                          {/* Completed button */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className={cn(
+                                    "h-7 w-7",
+                                    (planning as any).is_completed && "text-green-600"
+                                  )}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    togglePlanningCompleted(planning.id, !(planning as any).is_completed);
+                                  }}
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {(planning as any).is_completed ? "Als unerledigt markieren" : "Als erledigt markieren"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           {/* Archive button - only for creator */}
                           {planning.user_id === user?.id && (
                             <TooltipProvider>

@@ -17,6 +17,7 @@ import { TaskListRow } from "@/components/tasks/TaskListRow";
 import { TaskDecisionCreator } from "@/components/task-decisions/TaskDecisionCreator";
 import { TaskCommentSidebar } from "@/components/tasks/TaskCommentSidebar";
 import { TaskDocumentDialog } from "@/components/tasks/TaskDocumentDialog";
+import { TaskMeetingSelector } from "@/components/tasks/TaskMeetingSelector";
 import { UnicornAnimation } from "@/components/UnicornAnimation";
 
 interface Task {
@@ -73,6 +74,10 @@ export function MyWorkTasksTab() {
   
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [documentTaskId, setDocumentTaskId] = useState<string | null>(null);
+  
+  // Meeting selector states
+  const [meetingSelectorOpen, setMeetingSelectorOpen] = useState(false);
+  const [meetingTaskId, setMeetingTaskId] = useState<string | null>(null);
   
   // Unicorn animation state
   const [showUnicorn, setShowUnicorn] = useState(false);
@@ -381,6 +386,53 @@ export function MyWorkTasksTab() {
     setDocumentDialogOpen(true);
   };
 
+  const handleAddToMeeting = (taskId: string) => {
+    setMeetingTaskId(taskId);
+    setMeetingSelectorOpen(true);
+  };
+
+  const handleSelectMeeting = async (meetingId: string, meetingTitle: string) => {
+    if (!meetingTaskId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ meeting_id: meetingId, pending_for_jour_fixe: false })
+        .eq('id', meetingTaskId);
+
+      if (error) throw error;
+      
+      toast({ title: `Aufgabe zu "${meetingTitle}" hinzugefügt` });
+      loadTasks();
+    } catch (error) {
+      console.error('Error adding task to meeting:', error);
+      toast({ title: "Fehler", variant: "destructive" });
+    } finally {
+      setMeetingTaskId(null);
+    }
+  };
+
+  const handleMarkForNextJourFixe = async () => {
+    if (!meetingTaskId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ pending_for_jour_fixe: true, meeting_id: null })
+        .eq('id', meetingTaskId);
+
+      if (error) throw error;
+      
+      toast({ title: "Aufgabe für nächsten Jour Fixe vorgemerkt" });
+      loadTasks();
+    } catch (error) {
+      console.error('Error marking task for next jour fixe:', error);
+      toast({ title: "Fehler", variant: "destructive" });
+    } finally {
+      setMeetingTaskId(null);
+    }
+  };
+
   const getTaskTitle = (taskId: string | null) => {
     if (!taskId) return undefined;
     const task = [...assignedTasks, ...createdTasks].find(t => t.id === taskId);
@@ -418,6 +470,7 @@ export function MyWorkTasksTab() {
                   onComment={handleComment}
                   onDecision={handleDecision}
                   onDocuments={handleDocuments}
+                  onAddToMeeting={handleAddToMeeting}
                 />
               ))}
             </div>
@@ -438,6 +491,7 @@ export function MyWorkTasksTab() {
                   onComment={handleComment}
                   onDecision={handleDecision}
                   onDocuments={handleDocuments}
+                  onAddToMeeting={handleAddToMeeting}
                 />
               ))}
             </div>
@@ -580,6 +634,14 @@ export function MyWorkTasksTab() {
         taskTitle={getTaskTitle(documentTaskId)}
         isOpen={documentDialogOpen}
         onOpenChange={setDocumentDialogOpen}
+      />
+
+      {/* Meeting Selector Dialog */}
+      <TaskMeetingSelector
+        open={meetingSelectorOpen}
+        onOpenChange={setMeetingSelectorOpen}
+        onSelect={handleSelectMeeting}
+        onMarkForNextJourFixe={handleMarkForNextJourFixe}
       />
 
       {/* Unicorn Animation on task completion */}

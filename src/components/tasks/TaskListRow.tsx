@@ -47,6 +47,7 @@ interface TaskListRowProps {
   onComment?: (taskId: string) => void;
   onDecision?: (taskId: string) => void;
   onDocuments?: (taskId: string) => void;
+  onAddToMeeting?: (taskId: string) => void;
 }
 
 export function TaskListRow({
@@ -63,6 +64,7 @@ export function TaskListRow({
   onComment,
   onDecision,
   onDocuments,
+  onAddToMeeting,
 }: TaskListRowProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -233,6 +235,7 @@ export function TaskListRow({
               onComment={onComment}
               onDecision={onDecision}
               onDocuments={onDocuments}
+              onAddToMeeting={onAddToMeeting}
             />
           </div>
 
