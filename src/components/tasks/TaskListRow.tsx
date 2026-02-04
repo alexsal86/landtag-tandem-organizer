@@ -223,8 +223,8 @@ export function TaskListRow({
             </PopoverContent>
           </Popover>
 
-          {/* Separator + Actions - slide in on hover between date and navigate */}
-          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {/* Separator + Actions - hidden when not hovered to remove spacing */}
+          <div className="hidden group-hover:flex items-center">
             <Separator orientation="vertical" className="h-4 mx-1" />
             <TaskActionIcons
               taskId={task.id}

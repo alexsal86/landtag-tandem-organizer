@@ -16,7 +16,8 @@ import {
   FileText,
   Archive,
   UserCog,
-  Phone
+  Phone,
+  HelpCircle
 } from "lucide-react";
 import { useMatrixClient } from "@/contexts/MatrixClientContext";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
@@ -30,6 +31,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 interface NavigationProps {
   activeSection: string;
@@ -139,6 +147,7 @@ export function AppNavigation({
   const [pendingSection, setPendingSection] = useState<string | null>(null);
   const [previousBadges, setPreviousBadges] = useState<Record<string, number>>({});
   const [newBadgeItems, setNewBadgeItems] = useState<Set<string>>(new Set());
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
 
   // Check admin role and user role - no more separate app settings load needed
   useEffect(() => {
@@ -461,8 +470,29 @@ export function AppNavigation({
           {navigationGroups.map((group) => renderNavGroup(group))}
         </div>
 
-        {/* Bottom Section: Team + Admin */}
+        {/* Bottom Section: Help + Team + Admin */}
         <div className="mt-auto border-t border-[hsl(var(--nav-foreground)/0.1)] py-2">
+          {/* Help Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setHelpDialogOpen(true)}
+                className={cn(
+                  "flex flex-col items-center w-full py-2 px-1 gap-1 transition-all duration-200 relative group",
+                  "hover:bg-[hsl(var(--nav-hover))]"
+                )}
+              >
+                <HelpCircle className="h-5 w-5 text-[hsl(var(--nav-foreground))]" />
+                <span className="text-[10px] font-medium text-[hsl(var(--nav-foreground))] text-center leading-tight">
+                  Hilfe
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
+              Hilfe & Tastenkürzel
+            </TooltipContent>
+          </Tooltip>
+
           {renderTeamGroup()}
 
           {hasAdminAccess && (
@@ -504,6 +534,53 @@ export function AppNavigation({
           )}
         </div>
       </nav>
+      
+      {/* Help Dialog */}
+      <Dialog open={helpDialogOpen} onOpenChange={setHelpDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HelpCircle className="h-5 w-5" />
+              Hilfe & Tastenkürzel
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium text-sm mb-2">Globale Tastenkürzel</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span>Suche öffnen</span>
+                  <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + K</kbd>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Neuer Termin</span>
+                  <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + Shift + T</kbd>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Neue Aufgabe</span>
+                  <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + Shift + A</kbd>
+                </div>
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <h4 className="font-medium text-sm mb-2">Navigation</h4>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>• Klicken Sie auf ein Menüsymbol, um zur entsprechenden Seite zu wechseln.</p>
+                <p>• Rote Badges zeigen neue oder ungelesene Elemente an.</p>
+                <p>• In der Kartenansicht können Sie mit Hover weitere Aktionen sehen.</p>
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <h4 className="font-medium text-sm mb-2">Weitere Hilfe</h4>
+              <p className="text-sm text-muted-foreground">
+                Bei Fragen oder Problemen wenden Sie sich an Ihren Administrator.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }

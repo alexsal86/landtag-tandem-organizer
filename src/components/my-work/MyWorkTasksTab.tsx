@@ -549,7 +549,7 @@ export function MyWorkTasksTab() {
         onOpenChange={setCommentSidebarOpen}
       />
 
-      {/* Decision Creator - controlled dialog */}
+      {/* Decision Creator - controlled dialog with pre-filled values */}
       {decisionTaskId && (
         <TaskDecisionCreator 
           taskId={decisionTaskId}
@@ -558,6 +558,14 @@ export function MyWorkTasksTab() {
             setDecisionDialogOpen(open);
             if (!open) setDecisionTaskId(null);
           }}
+          initialTitle={(() => {
+            const task = [...assignedTasks, ...createdTasks].find(t => t.id === decisionTaskId);
+            return task?.title;
+          })()}
+          initialDescription={(() => {
+            const task = [...assignedTasks, ...createdTasks].find(t => t.id === decisionTaskId);
+            return task?.description || undefined;
+          })()}
           onDecisionCreated={() => {
             setDecisionDialogOpen(false);
             setDecisionTaskId(null);

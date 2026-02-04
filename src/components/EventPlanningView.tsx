@@ -2769,21 +2769,69 @@ export function EventPlanningView() {
                 Standard-Mitarbeiter
               </Button>
               {/* Archive Button */}
-              <Button 
-                variant={showPlanningArchive ? "default" : "outline"}
-                size="sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // Sofort Dialog öffnen - nicht auf fetch warten!
-                  setShowPlanningArchive(true);
-                  // Dann Daten laden
-                  fetchArchivedPlannings();
-                }}
-              >
-                <Archive className="h-4 w-4 mr-2" />
-                Archiv
-              </Button>
+              <Dialog open={showPlanningArchive} onOpenChange={(open) => {
+                setShowPlanningArchive(open);
+                if (open) {
+                  fetchArchivedPlannings().catch(err => console.error('Failed to fetch archived plannings:', err));
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant={showPlanningArchive ? "default" : "outline"}
+                    size="sm"
+                  >
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archiv
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Archive className="h-5 w-5" />
+                      Archivierte Veranstaltungsplanungen
+                    </DialogTitle>
+                    <DialogDescription>
+                      Hier finden Sie alle archivierten Planungen. Sie können diese wiederherstellen.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3 mt-4">
+                    {archivedPlannings.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Archive className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                        <p className="text-muted-foreground text-sm">
+                          Keine archivierten Planungen vorhanden.
+                        </p>
+                      </div>
+                    ) : (
+                      archivedPlannings.map((planning) => (
+                        <div 
+                          key={planning.id} 
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
+                          <div>
+                            <h4 className="font-medium">{planning.title}</h4>
+                            {planning.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-1">
+                                {planning.description}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Erstellt: {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
+                            </p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => restorePlanning(planning.id)}
+                          >
+                            Wiederherstellen
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
               {/* View Toggle for Event Planning */}
               <div className="flex items-center border rounded-lg p-1">
                 <Button
@@ -4837,53 +4885,6 @@ export function EventPlanningView() {
         onOpenChange={setShowDefaultCollaboratorsDialog}
       />
 
-      {/* Planning Archive Dialog */}
-      <Dialog open={showPlanningArchive} onOpenChange={setShowPlanningArchive}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Archive className="h-5 w-5" />
-              Archivierte Veranstaltungsplanungen
-            </DialogTitle>
-            <DialogDescription>
-              Hier finden Sie alle archivierten Planungen. Sie können diese wiederherstellen.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 mt-4">
-            {archivedPlannings.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Keine archivierten Planungen vorhanden.
-              </p>
-            ) : (
-              archivedPlannings.map((planning) => (
-                <div 
-                  key={planning.id} 
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                >
-                  <div>
-                    <h4 className="font-medium">{planning.title}</h4>
-                    {planning.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-1">
-                        {planning.description}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Erstellt: {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
-                    </p>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => restorePlanning(planning.id)}
-                  >
-                    Wiederherstellen
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

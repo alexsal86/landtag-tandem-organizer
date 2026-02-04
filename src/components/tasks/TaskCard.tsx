@@ -164,7 +164,7 @@ export function TaskCard({
           ) : (
             <div className="flex items-center gap-2 flex-wrap">
               <span 
-                className="font-medium text-sm cursor-text hover:bg-muted/50 px-1 -mx-1 rounded"
+                className="font-semibold text-sm cursor-text hover:bg-muted/50 px-1 -mx-1 rounded"
                 onClick={() => onUpdateTitle && setEditingTitle(true)}
               >
                 {task.title}
@@ -258,8 +258,8 @@ export function TaskCard({
             </PopoverContent>
           </Popover>
 
-          {/* Separator + Action icons - slide in on hover between date and navigate */}
-          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {/* Separator + Action icons - hidden when not hovered to remove spacing */}
+          <div className="hidden group-hover:flex items-center">
             <Separator orientation="vertical" className="h-4 mx-1" />
             <TaskActionIcons
               taskId={task.id}

@@ -19,6 +19,8 @@ interface TaskDecisionCreatorProps {
   onDecisionCreated: () => void;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  initialTitle?: string;
+  initialDescription?: string;
 }
 
 interface Profile {
@@ -30,7 +32,9 @@ export const TaskDecisionCreator = ({
   taskId, 
   onDecisionCreated,
   isOpen: externalOpen,
-  onOpenChange: externalOnOpenChange
+  onOpenChange: externalOnOpenChange,
+  initialTitle,
+  initialDescription
 }: TaskDecisionCreatorProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   
@@ -46,8 +50,16 @@ export const TaskDecisionCreator = ({
     }
   };
   
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(initialTitle || "");
+  const [description, setDescription] = useState(initialDescription || "");
+  
+  // Update fields when dialog opens with initial values
+  useEffect(() => {
+    if (isOpen) {
+      if (initialTitle) setTitle(initialTitle);
+      if (initialDescription) setDescription(initialDescription);
+    }
+  }, [isOpen, initialTitle, initialDescription]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
