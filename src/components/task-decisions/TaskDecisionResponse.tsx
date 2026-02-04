@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, MessageCircle, Edit2, Paperclip, Circle, Star } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Check, X, MessageCircle, Edit2, Paperclip, Circle, Star, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
@@ -51,6 +52,7 @@ export const TaskDecisionResponse = ({
   const [isLoading, setIsLoading] = useState(false);
   const [currentResponse, setCurrentResponse] = useState<ResponseData | null>(null);
   const [showEdit, setShowEdit] = useState(false);
+  const [showCommentField, setShowCommentField] = useState(false);
   const [responseOptions, setResponseOptions] = useState<ResponseOption[]>(getDefaultOptions());
   const { toast } = useToast();
 
@@ -325,13 +327,7 @@ export const TaskDecisionResponse = ({
   // Show response buttons
   return (
     <div className="space-y-3">
-      <SimpleRichTextEditor
-        initialContent={questionComment}
-        onChange={setQuestionComment}
-        placeholder="Kommentar (optional)..."
-        minHeight="80px"
-      />
-      
+      {/* Abstimmungsbuttons ZUERST */}
       <div className="flex items-center flex-wrap gap-2">
         {responseOptions.map((option) => {
           const colorClasses = getColorClasses(option.color);
@@ -418,6 +414,7 @@ export const TaskDecisionResponse = ({
             onClick={() => {
               setShowEdit(false);
               setQuestionComment("");
+              setShowCommentField(false);
             }}
             className="text-xs"
           >
@@ -425,6 +422,25 @@ export const TaskDecisionResponse = ({
           </Button>
         )}
       </div>
+
+      {/* Kommentar ausklappbar DANACH */}
+      <Collapsible open={showCommentField} onOpenChange={setShowCommentField}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground p-0 h-auto">
+            <MessageCircle className="h-3 w-3 mr-1" />
+            Kommentar hinzufügen
+            <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${showCommentField ? 'rotate-180' : ''}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <SimpleRichTextEditor
+            initialContent={questionComment}
+            onChange={setQuestionComment}
+            placeholder="Ihr Kommentar (optional)..."
+            minHeight="80px"
+          />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 };

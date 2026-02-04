@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Check, X, MessageCircle, Clock } from "lucide-react";
 
@@ -7,6 +7,7 @@ interface Participant {
   user_id: string;
   display_name: string | null;
   badge_color: string | null;
+  avatar_url?: string | null;
   response_type?: 'yes' | 'no' | 'question' | null;
 }
 
@@ -69,6 +70,9 @@ export function AvatarStack({ participants, maxVisible = 4, size = 'sm' }: Avata
                 style={{ zIndex: maxVisible - index }}
               >
                 <Avatar className={sizeClasses}>
+                  {participant.avatar_url && (
+                    <AvatarImage src={participant.avatar_url} alt={participant.display_name || 'Avatar'} />
+                  )}
                   <AvatarFallback
                     className="text-foreground font-medium"
                     style={{

@@ -21,6 +21,7 @@ import {
   MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle, ClipboardList, 
   Search, FolderArchive
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -96,6 +97,7 @@ interface DecisionRequest {
     user_id: string;
     display_name: string | null;
     badge_color: string | null;
+    avatar_url: string | null;
   };
   participants?: Array<{
     id: string;
@@ -103,6 +105,7 @@ interface DecisionRequest {
     profile?: {
       display_name: string | null;
       badge_color: string | null;
+      avatar_url: string | null;
     };
     responses: Array<{
       id: string;
@@ -367,7 +370,7 @@ export const DecisionOverview = () => {
         ])];
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('user_id, display_name, badge_color')
+          .select('user_id, display_name, badge_color, avatar_url')
           .in('user_id', allUserIds);
 
         const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
@@ -383,6 +386,7 @@ export const DecisionOverview = () => {
             profile: {
               display_name: profileMap.get(participant.user_id)?.display_name || null,
               badge_color: profileMap.get(participant.user_id)?.badge_color || null,
+              avatar_url: profileMap.get(participant.user_id)?.avatar_url || null,
             },
             responses: (participant.task_decision_responses || [])
               .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -401,6 +405,7 @@ export const DecisionOverview = () => {
             user_id: decision.created_by,
             display_name: creatorProfile?.display_name || null,
             badge_color: creatorProfile?.badge_color || null,
+            avatar_url: creatorProfile?.avatar_url || null,
           };
         });
       }
@@ -656,6 +661,7 @@ export const DecisionOverview = () => {
       participantName: string | null;
       participantBadgeColor: string | null;
       participantUserId: string;
+      participantAvatarUrl: string | null;
       comment: string | null;
       createdAt: string;
       hasCreatorResponse: boolean;
@@ -668,6 +674,7 @@ export const DecisionOverview = () => {
       participantName: string | null;
       participantBadgeColor: string | null;
       participantUserId: string;
+      participantAvatarUrl: string | null;
       responseType: 'yes' | 'no' | 'question';
       comment: string | null;
       createdAt: string;
@@ -690,6 +697,7 @@ export const DecisionOverview = () => {
             participantName: participant.profile?.display_name || null,
             participantBadgeColor: participant.profile?.badge_color || null,
             participantUserId: participant.user_id,
+            participantAvatarUrl: participant.profile?.avatar_url || null,
             comment: latestResponse.comment,
             createdAt: latestResponse.created_at,
             hasCreatorResponse: false,
@@ -708,6 +716,7 @@ export const DecisionOverview = () => {
               participantName: participant.profile?.display_name || null,
               participantBadgeColor: participant.profile?.badge_color || null,
               participantUserId: participant.user_id,
+              participantAvatarUrl: participant.profile?.avatar_url || null,
               responseType: latestResponse.response_type,
               comment: latestResponse.comment,
               createdAt: latestResponse.created_at,
@@ -782,8 +791,14 @@ export const DecisionOverview = () => {
       user_id: p.user_id,
       display_name: p.profile?.display_name || null,
       badge_color: p.profile?.badge_color || null,
+      avatar_url: p.profile?.avatar_url || null,
       response_type: p.responses[0]?.response_type || null,
     }));
+
+    const getInitials = (name: string | null) => {
+      if (!name) return '?';
+      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    };
 
     return (
       <Card 
@@ -795,30 +810,22 @@ export const DecisionOverview = () => {
         onClick={() => handleOpenDetails(decision.id)}
       >
         <CardContent className="p-4">
-          {/* Header: Status + Creator + Visibility */}
+          {/* Header: Status badges */}
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2 flex-wrap text-xs">
-              {/* Status badge */}
+              {/* Status badge - größer mit ausgefülltem Hintergrund */}
               {summary.questionCount > 0 ? (
-                <Badge variant="outline" className="text-orange-600 border-orange-600 text-[10px]">
-                  <MessageCircle className="h-2.5 w-2.5 mr-1" />
+                <Badge className="bg-orange-500 hover:bg-orange-500 text-white text-xs px-3 py-1">
+                  <MessageCircle className="h-3 w-3 mr-1.5" />
                   Rückfrage offen
                 </Badge>
               ) : summary.pending === 0 && summary.total > 0 ? (
-                <Badge variant="outline" className={cn(
-                  "text-[10px]",
-                  summary.yesCount > summary.noCount 
-                    ? "text-green-600 border-green-600" 
-                    : "text-red-600 border-red-600"
-                )}>
-                  {summary.yesCount > summary.noCount ? (
-                    <><Check className="h-2.5 w-2.5 mr-1" />Angenommen</>
-                  ) : (
-                    <><X className="h-2.5 w-2.5 mr-1" />Abgelehnt</>
-                  )}
+                <Badge className="bg-green-500 hover:bg-green-500 text-white text-xs px-3 py-1">
+                  <CheckCircle className="h-3 w-3 mr-1.5" />
+                  Entschieden
                 </Badge>
               ) : summary.total > 0 ? (
-                <Badge variant="outline" className="text-muted-foreground text-[10px]">
+                <Badge className="bg-gray-400 hover:bg-gray-400 text-white text-xs px-3 py-1">
                   {summary.pending} ausstehend
                 </Badge>
               ) : null}
@@ -826,24 +833,6 @@ export const DecisionOverview = () => {
               {/* Responded indicator */}
               {decision.hasResponded && decision.isParticipant && (
                 <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
-              )}
-
-              {/* Creator */}
-              {decision.creator && (
-                <UserBadge 
-                  userId={decision.creator.user_id}
-                  displayName={decision.creator.display_name}
-                  badgeColor={decision.creator.badge_color}
-                  size="sm"
-                />
-              )}
-
-              {/* Visibility */}
-              {decision.visible_to_all && (
-                <Badge variant="secondary" className="text-[10px]">
-                  <Globe className="h-2.5 w-2.5 mr-1" />
-                  Öffentlich
-                </Badge>
               )}
             </div>
 
@@ -888,8 +877,8 @@ export const DecisionOverview = () => {
             )}
           </div>
 
-          {/* Title */}
-          <h3 className="font-medium text-sm mb-1">{decision.title}</h3>
+          {/* Title - größer und fetter */}
+          <h3 className="font-semibold text-base mb-1">{decision.title}</h3>
 
           {/* Description */}
           {decision.description && (
@@ -898,13 +887,40 @@ export const DecisionOverview = () => {
             </div>
           )}
 
-          {/* Footer: Meta info */}
+          {/* Footer: Creator Avatar + Date + Visibility + Meta info */}
           <div className="flex items-center justify-between mt-3 pt-2 border-t">
             <div className="flex items-center gap-3">
+              {/* Creator Avatar + Name */}
+              {decision.creator && (
+                <div className="flex items-center gap-1.5">
+                  <Avatar className="h-5 w-5">
+                    {decision.creator.avatar_url && (
+                      <AvatarImage src={decision.creator.avatar_url} alt={decision.creator.display_name || 'Avatar'} />
+                    )}
+                    <AvatarFallback 
+                      className="text-[8px]"
+                      style={{ backgroundColor: decision.creator.badge_color || undefined }}
+                    >
+                      {getInitials(decision.creator.display_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-[10px] text-muted-foreground">
+                    {decision.creator.display_name || 'Unbekannt'}
+                  </span>
+                </div>
+              )}
+
               {/* Date */}
               <span className="text-[10px] text-muted-foreground">
                 {new Date(decision.created_at).toLocaleDateString('de-DE')}
               </span>
+
+              {/* Visibility as text with dash */}
+              {decision.visible_to_all && (
+                <span className="text-[10px] text-muted-foreground">
+                  – Öffentlich
+                </span>
+              )}
 
               {/* Attachments */}
               {(decision.attachmentCount ?? 0) > 0 && (
@@ -1062,7 +1078,7 @@ export const DecisionOverview = () => {
       </div>
       
       {/* Grid Layout: Main + Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
         {/* Main Content */}
         <div className="space-y-4">
           {/* Search + Create */}
@@ -1148,6 +1164,7 @@ export const DecisionOverview = () => {
           newComments={sidebarData.newComments}
           onQuestionClick={handleOpenDetails}
           onCommentClick={handleOpenDetails}
+          onResponseSent={() => user?.id && loadDecisionRequests(user.id)}
         />
       </div>
 
