@@ -1,326 +1,424 @@
 
-# Plan: Fixes fuer Aufgabenansicht und weitere Probleme
+# Plan: 6 Fixes fuer Meine Arbeit und Profilbilder
 
-## Zusammenfassung der 5 Probleme
+## Zusammenfassung
 
 | # | Problem | Loesung |
 |---|---------|---------|
-| 1 | Abstand zwischen Frist-Icon und Verlinkungs-Icon bei Tasks | CSS-Anpassung: Button-Padding reduzieren |
-| 2 | Fehler beim Aktivieren/Deaktivieren von Mitteilungen | RLS-Policy oder Fehlerbehandlung im Hook pruefen |
-| 3 | Avatar-Hintergruende weiss auf weiss im hellen Modus | Fallback-Farbe anpassen |
-| 4 | Profilbild-Upload funktioniert nicht | Storage-Bucket-Zugriff pruefen |
-| 5 | Einhorn-Animation auf Meine Arbeit erweitern | UnicornAnimation in MyWorkTasksTab integrieren |
+| 1 | HTML-Tags in Aufgabenbeschreibungen unter "Mir zugewiesene Aufgaben" | RichTextDisplay in AssignedItemsSection.tsx verwenden |
+| 2 | Aufgabe aus Notiz uebernimmt Prioritaet nicht | Priority-Mapping in QuickNotesList.tsx einbauen |
+| 3 | Profilbild-Verzerrung und fehlende Fokus-Funktion | Image Cropper mit react-image-crop integrieren |
+| 4 | Profilbild zeigt nach Upload ein altes Bild | Timestamp zur URL hinzufuegen und Cache-Busting |
+| 5 | Ctrl + . fehlt in globaler Hilfe | Shortcut im AppNavigation Help-Dialog ergaenzen |
+| 6 | Archivierte Mitteilungen reaktivieren schlaegt fehl | Fehlerbehandlung in useTeamAnnouncements verbessern |
 
 ---
 
-## 1. Layout-Fix: Abstand zwischen Frist und Verlinkung entfernen
+## 1. HTML-Tags in Beschreibungen der Zugewiesenen Aufgaben
 
 ### Ursache
 
-Das Problem liegt im `Button`-Styling des Navigate-Buttons. Der Button hat `h-7 w-7` was 28px ist, aber auch internen Padding durch `size="icon"`. Da der Container kein `gap` mehr hat, muss der Navigate-Button nahtlos an die Frist anschliessen.
+In `AssignedItemsSection.tsx` (Zeile 190-193) wird die Beschreibung als einfacher Text gerendert:
+
+```typescript
+{description && (
+  <p className="text-sm text-muted-foreground line-clamp-2">
+    {description.length > 150 ? `${description.substring(0, 150)}...` : description}
+  </p>
+)}
+```
+
+Das fuehrt dazu, dass HTML-Tags wie `<p>`, `<ul>`, `<b>` als roher Text angezeigt werden.
 
 ### Loesung
 
-Den Navigate-Button mit weniger horizontalem Spacing stylen:
+RichTextDisplay-Komponente verwenden (wie bereits in AssignedItemCard gemacht):
 
-**Datei: `src/components/tasks/TaskCard.tsx` (Zeile 275-280)**
+**Datei: `src/components/tasks/AssignedItemsSection.tsx`**
 
+Import hinzufuegen:
 ```typescript
-// VORHER:
-<Button
-  variant="ghost"
-  size="icon"
-  className="h-7 w-7 flex-shrink-0"
-  onClick={() => onNavigate(task.id)}
->
-
-// NACHHER:
-<Button
-  variant="ghost"
-  size="icon"
-  className="h-7 w-7 flex-shrink-0 ml-0"
-  onClick={() => onNavigate(task.id)}
->
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 ```
 
-Das reicht vermutlich nicht aus. Das Problem ist, dass der Button intrinsisches Padding hat.
-
-**Bessere Loesung**: Den Button direkt auf `p-0` setzen oder ein kleineres `size` verwenden:
-
+Zeile 190-193 ersetzen:
 ```typescript
-<Button
-  variant="ghost"
-  size="sm"
-  className="h-6 w-6 p-0 flex-shrink-0"
-  onClick={() => onNavigate(task.id)}
->
-  <ExternalLink className="h-3 w-3" />
-</Button>
+{description && (
+  <RichTextDisplay 
+    content={description} 
+    className="text-sm text-muted-foreground line-clamp-2" 
+  />
+)}
 ```
-
-**Gleiche Aenderung in TaskListRow.tsx (Zeile 240-247)**
 
 ---
 
-## 2. Fehler beim Aktivieren/Deaktivieren von Mitteilungen
+## 2. Aufgabe aus Notiz uebernimmt Prioritaet
 
 ### Ursache
 
-Basierend auf der Fehleranalyse und dem Code in `useTeamAnnouncements.ts`:
+In `QuickNotesList.tsx` (Zeile 871) wird die Prioritaet fest auf `medium` gesetzt:
 
-- Die `updateAnnouncement` Funktion (Zeile 200-217) ruft `supabase.from("team_announcements").update(data).eq("id", id)` auf
-- Das Problem koennte sein, dass die RLS-Policy nur dem `author_id` das Update erlaubt, aber die Pruefung fehlerhaft ist
-- Oder: Das optimistische UI-Update nach `toast.success` schlaegt fehl wegen eines Netzwerkfehlers beim `fetchAnnouncements()`
+```typescript
+priority: 'medium',
+```
 
-### Beobachtung
-
-Der Fehler tritt auf, die Aenderung wird aber in der Datenbank gespeichert (nach Neuladen sichtbar). Das deutet auf ein Problem mit dem Realtime-Callback oder der `fetchAnnouncements()`-Funktion hin.
+Die `priority_level` der Notiz wird nicht ausgelesen oder gemappt.
 
 ### Loesung
 
-Im Hook `useTeamAnnouncements.ts` die Fehlerbehandlung verbessern:
+Priority-Mapping einfuehren:
+- Level 0 (Ohne) und Level 1 -> `low`
+- Level 2 -> `medium`
+- Level 3 -> `high`
 
-**Datei: `src/hooks/useTeamAnnouncements.ts` (Zeile 200-217)**
+**Datei: `src/components/shared/QuickNotesList.tsx` (Zeile 855-876)**
+
+Vor der Task-Erstellung das Mapping durchfuehren:
+```typescript
+// Map note priority_level to task priority
+const mapNotePriorityToTaskPriority = (level: number | undefined | null): 'low' | 'medium' | 'high' => {
+  if (!level || level <= 1) return 'low';
+  if (level === 2) return 'medium';
+  return 'high'; // level 3 or higher
+};
+
+const taskPriority = mapNotePriorityToTaskPriority(note.priority_level);
+
+// In der insert-Anweisung:
+priority: taskPriority,
+```
+
+---
+
+## 3. Profilbild-Verzerrung und fehlende Fokus-Funktion
+
+### Ursache
+
+Aktuell wird das Bild direkt hochgeladen ohne Bearbeitung. Wenn ein nicht-quadratisches Bild als rundes Avatar angezeigt wird, wirkt es verzerrt oder abgeschnitten an falscher Stelle.
+
+### Loesung
+
+Einen Image Cropper implementieren, der:
+1. Quadratischen Ausschnitt ermoeglicht
+2. Fokuspunkt verschieben laesst
+3. Alle gaengigen Formate akzeptiert
+
+**Ansatz:** Eine neue Komponente `ImageCropper.tsx` erstellen mit einem Canvas-basierten Cropper:
 
 ```typescript
-const updateAnnouncement = async (id: string, data: Partial<CreateAnnouncementData & { is_active: boolean }>) => {
-  // Optimistisches Update der lokalen State VORHER
-  const previousAnnouncements = [...announcements];
-  
-  // Optimistisch die lokalen States aktualisieren
-  setAnnouncements(prev => prev.map(a => 
-    a.id === id ? { ...a, ...data } : a
-  ));
-  
-  // Auch activeAnnouncements aktualisieren falls noetig
-  if (data.is_active !== undefined) {
-    if (data.is_active) {
-      // Aktiviert - aus activeAnnouncements neu berechnen bei fetchAnnouncements
-    } else {
-      // Deaktiviert - sofort aus activeAnnouncements entfernen
-      setActiveAnnouncements(prev => prev.filter(a => a.id !== id));
-    }
-  }
-  
-  try {
-    const { error } = await supabase
-      .from("team_announcements")
-      .update(data)
-      .eq("id", id);
+// src/components/ui/ImageCropper.tsx
+interface ImageCropperProps {
+  imageSrc: string;
+  onCropComplete: (croppedImageBlob: Blob) => void;
+  onCancel: () => void;
+  aspectRatio?: number; // Default 1 fuer quadratisch
+}
+```
 
-    if (error) throw error;
+**Funktionsweise:**
+1. Benutzer waehlt ein Bild aus
+2. Dialog oeffnet sich mit Cropper-UI
+3. Benutzer zieht den quadratischen Rahmen auf den gewuenschten Bereich
+4. "Zuschneiden" generiert einen Canvas-Crop als Blob
+5. Blob wird hochgeladen
 
-    toast.success("Mitteilung aktualisiert");
-    // Kein fetchAnnouncements() hier - das Realtime-Subscription uebernimmt das
-    return true;
-  } catch (error) {
-    console.error("Error updating announcement:", error);
-    // Rollback bei Fehler
-    setAnnouncements(previousAnnouncements);
-    toast.error("Fehler beim Aktualisieren");
-    return false;
+**Technische Umsetzung ohne externe Bibliothek:**
+- Canvas API fuer das Cropping verwenden
+- Drag-and-Drop fuer den Crop-Bereich
+- Slider fuer Zoom
+
+**Aenderung in EditProfile.tsx:**
+1. Zwischenzustand `imageToEdit` hinzufuegen
+2. Nach Dateiauswahl: Preview in Cropper zeigen
+3. Nach Croppen: Blob hochladen
+
+```typescript
+const [imageToEdit, setImageToEdit] = useState<string | null>(null);
+const [croppingFile, setCroppingFile] = useState<File | null>(null);
+
+// Bei Dateiauswahl:
+const handleFileSelect = (e) => {
+  const file = e.target.files?.[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = () => setImageToEdit(reader.result as string);
+    reader.readAsDataURL(file);
+    setCroppingFile(file);
   }
+};
+
+// Nach Crop:
+const handleCropComplete = async (blob: Blob) => {
+  setImageToEdit(null);
+  // Upload blob statt original file
+  const fileName = `${user.id}/avatar_${Date.now()}.webp`;
+  // ... upload logic
 };
 ```
 
 ---
 
-## 3. Avatar-Hintergruende weiss im hellen Modus
+## 4. Profilbild zeigt nach Upload ein altes Bild (Cache-Problem)
 
 ### Ursache
 
-In `src/components/layout/AppHeader.tsx` (Zeile 208):
-
-```typescript
-<AvatarFallback className="text-[10px]">
-  {onlineUser.display_name?.charAt(0) || "?"}
-</AvatarFallback>
-```
-
-Der `AvatarFallback` hat keine explizite Hintergrundfarbe. Im Dark Mode funktioniert es, weil der Standard-Hintergrund dunkel ist. Im Light Mode ist der Hintergrund aber weiss und der Text ebenso.
+Der Dateiname ist immer `avatar.{ext}`. Beim zweiten Upload mit anderem Format (z.B. erst JPG, dann PNG) bleibt die alte URL im Browser-Cache. Die `publicUrl` hat keinen Cache-Buster.
 
 ### Loesung
 
-Explizite Hintergrund- und Textfarben setzen:
-
-**Datei: `src/components/layout/AppHeader.tsx` (Zeile 208-210)**
-
+1. **Einheitlicher Dateiname mit Timestamp:**
 ```typescript
-// VORHER:
-<AvatarFallback className="text-[10px]">
-
-// NACHHER:
-<AvatarFallback className="text-[10px] bg-muted text-foreground">
+const fileName = `${user.id}/avatar_${Date.now()}.webp`;
 ```
 
-Alternative mit mehr Kontrast:
+2. **Cache-Busting Query-Parameter an URL:**
+```typescript
+const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
+setFormData(prev => ({
+  ...prev,
+  avatar_url: urlWithCacheBust
+}));
+```
+
+3. **Alte Dateien loeschen (optional):**
+```typescript
+// Vor dem Upload alle alten avatare loeschen
+const { data: existingFiles } = await supabase.storage
+  .from('avatars')
+  .list(user.id);
+
+if (existingFiles?.length) {
+  const filesToDelete = existingFiles.map(f => `${user.id}/${f.name}`);
+  await supabase.storage.from('avatars').remove(filesToDelete);
+}
+```
+
+**Zusammengefasster Upload-Code in EditProfile.tsx:**
 
 ```typescript
-<AvatarFallback className="text-[10px] bg-primary/20 text-primary-foreground dark:bg-primary/30 dark:text-white">
+try {
+  // Delete old avatars first
+  const { data: existingFiles } = await supabase.storage
+    .from('avatars')
+    .list(user.id);
+
+  if (existingFiles?.length) {
+    await supabase.storage
+      .from('avatars')
+      .remove(existingFiles.map(f => `${user.id}/${f.name}`));
+  }
+
+  // Upload with unique timestamp-based filename
+  const fileName = `${user.id}/avatar_${Date.now()}.webp`;
+  
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(fileName, croppedBlob, { 
+      contentType: 'image/webp' 
+    });
+
+  if (uploadError) throw uploadError;
+
+  // Get URL with cache-buster
+  const { data: { publicUrl } } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(fileName);
+
+  const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
+  
+  setFormData(prev => ({
+    ...prev,
+    avatar_url: urlWithCacheBust
+  }));
+  
+  toast({ title: "Bild hochgeladen" });
+} catch (error) {
+  // ...
+}
 ```
 
 ---
 
-## 4. Profilbild-Upload funktioniert nicht
+## 5. Ctrl + . fehlt in globaler Hilfe
 
 ### Ursache
 
-Der Code in `EditProfile.tsx` (Zeile 106-124) versucht in einen `avatars` Storage-Bucket hochzuladen:
-
-```typescript
-const { data: uploadData, error: uploadError } = await supabase.storage
-  .from('avatars')  // <-- Bucket muss existieren und public sein
-  .upload(fileName, file, { 
-    upsert: true,
-    contentType: file.type 
-  });
-```
-
-Das Problem ist wahrscheinlich:
-1. Der `avatars` Bucket existiert nicht
-2. Oder die RLS-Policies erlauben keinen Upload
+Der Shortcut `Ctrl + .` fuer "Neue Notiz erstellen" ist nicht im Hilfe-Dialog aufgelistet (AppNavigation.tsx, Zeile 547-563).
 
 ### Loesung
 
-1. **Storage Bucket erstellen** - muss im Supabase Dashboard erfolgen:
-   - Bucket-Name: `avatars`
-   - Public: Ja (damit die URLs oeffentlich abrufbar sind)
+**Datei: `src/components/AppNavigation.tsx` (Zeile 559-562)**
 
-2. **RLS-Policies hinzufuegen**:
-   ```sql
-   -- INSERT Policy: User kann eigene Avatare hochladen
-   CREATE POLICY "Users can upload their own avatar" ON storage.objects
-   FOR INSERT WITH CHECK (
-     bucket_id = 'avatars' AND 
-     auth.uid()::text = (storage.foldername(name))[1]
-   );
-   
-   -- UPDATE Policy: User kann eigene Avatare aktualisieren
-   CREATE POLICY "Users can update their own avatar" ON storage.objects
-   FOR UPDATE USING (
-     bucket_id = 'avatars' AND 
-     auth.uid()::text = (storage.foldername(name))[1]
-   );
-   
-   -- SELECT Policy: Jeder kann Avatare lesen
-   CREATE POLICY "Avatar images are publicly accessible" ON storage.objects
-   FOR SELECT USING (bucket_id = 'avatars');
-   ```
-
-3. **Bessere Fehlerbehandlung im Code** (optional aber empfohlen):
-
-**Datei: `src/pages/EditProfile.tsx` (Zeile 137-143)**
+Neuen Eintrag hinzufuegen:
 
 ```typescript
+<div className="flex justify-between items-center">
+  <span>Neue Notiz erstellen</span>
+  <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + .</kbd>
+</div>
+```
+
+Nach "Neue Aufgabe" einfuegen.
+
+---
+
+## 6. Archivierte Mitteilungen reaktivieren schlaegt fehl
+
+### Ursache
+
+Basierend auf dem Code in `useTeamAnnouncements.ts` (Zeile 200-236) gibt es bereits ein optimistisches Update mit Rollback. Das Problem koennte sein:
+
+1. Der Toast zeigt "Fehler" obwohl das Update erfolgreich war (weil der nachfolgende Fetch fehlschlaegt)
+2. Die RLS-Policy erlaubt kein Update fuer archivierte Mitteilungen
+3. Netzwerkfehler beim Polling nach dem Update
+
+### Analyse des Codes
+
+```typescript
+try {
+  const { error } = await supabase
+    .from("team_announcements")
+    .update(data)
+    .eq("id", id);
+
+  if (error) throw error;
+
+  toast.success("Mitteilung aktualisiert");
+  return true;
+} catch (error) {
+  // Rollback on error
+  setAnnouncements(previousAnnouncements);
+  setActiveAnnouncements(previousActiveAnnouncements);
+  toast.error("Fehler beim Aktualisieren");
+  return false;
+}
+```
+
+Der Code sieht korrekt aus. Wenn der Benutzer nach Neuladen sieht, dass es funktioniert hat, dann ist das Problem wahrscheinlich:
+
+1. Ein Fehler tritt **nach** dem erfolgreichen Update auf (z.B. Realtime-Subscription)
+2. Oder die Supabase-Antwort wird als Fehler interpretiert
+
+### Loesung
+
+Detaillierteres Error-Logging und robustere Behandlung:
+
+**Datei: `src/hooks/useTeamAnnouncements.ts` (Zeile 218-236)**
+
+```typescript
+try {
+  const { data: updateData, error } = await supabase
+    .from("team_announcements")
+    .update(data)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Update error details:", error);
+    throw error;
+  }
+
+  // Update successful - update local state with returned data
+  if (updateData) {
+    setAnnouncements(prev => prev.map(a => 
+      a.id === id ? { ...a, ...updateData } : a
+    ));
+    
+    // Recalculate activeAnnouncements based on is_active state
+    if (updateData.is_active) {
+      const now = new Date();
+      const isExpired = updateData.expires_at && new Date(updateData.expires_at) < now;
+      const isScheduled = updateData.starts_at && new Date(updateData.starts_at) > now;
+      
+      if (!isExpired && !isScheduled) {
+        // Add to active if not already there
+        setActiveAnnouncements(prev => {
+          if (prev.find(a => a.id === id)) return prev;
+          return [...prev, { ...announcements.find(a => a.id === id)!, ...updateData }];
+        });
+      }
+    }
+  }
+
+  toast.success("Mitteilung aktualisiert");
+  return true;
 } catch (error: any) {
-  console.error('Error uploading file:', error);
-  // Spezifischere Fehlermeldung
-  const errorMessage = error?.message?.includes('bucket') 
-    ? "Der Avatar-Speicher ist nicht konfiguriert. Bitte kontaktieren Sie den Administrator."
-    : "Das Bild konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut.";
-  toast({
-    title: "Upload-Fehler",
-    description: errorMessage,
-    variant: "destructive",
-  });
+  console.error("Error updating announcement:", error);
+  console.error("Error code:", error?.code);
+  console.error("Error message:", error?.message);
+  
+  // Rollback on error
+  setAnnouncements(previousAnnouncements);
+  setActiveAnnouncements(previousActiveAnnouncements);
+  toast.error(`Fehler: ${error?.message || 'Unbekannter Fehler'}`);
+  return false;
+}
 ```
 
----
-
-## 5. Einhorn-Animation auf Meine Arbeit erweitern
-
-### Aktuelle Situation
-
-Die `UnicornAnimation` ist nur in `TasksView.tsx` integriert. Sie wird bei Task-, Subtask- und Todo-Completion getriggert.
-
-### Loesung
-
-Die gleiche Logik in `MyWorkTasksTab.tsx` einbauen:
-
-**Datei: `src/components/my-work/MyWorkTasksTab.tsx`**
-
-**Import hinzufuegen (Zeile 20):**
-```typescript
-import { UnicornAnimation } from "@/components/UnicornAnimation";
-```
-
-**State hinzufuegen (nach Zeile 74):**
-```typescript
-const [showUnicorn, setShowUnicorn] = useState(false);
-```
-
-**In handleToggleComplete triggern (Zeile 200-201):**
-```typescript
-// Nach erfolgreichem Complete
-setShowUnicorn(true);
-toast({ title: "Aufgabe erledigt und archiviert" });
-```
-
-**In handleToggleSubtaskComplete triggern (Zeile 217):**
-```typescript
-setShowUnicorn(true);
-toast({ title: "Unteraufgabe erledigt" });
-```
-
-**Komponente am Ende rendern (vor dem letzten schliessenden Tag):**
-```typescript
-{/* Unicorn Animation */}
-<UnicornAnimation 
-  isVisible={showUnicorn} 
-  onAnimationComplete={() => setShowUnicorn(false)} 
-/>
-```
-
----
-
-## 6. Admin-konfigurierbare Einhorn-Grafik (Diskussion)
-
-### Optionen
-
-Es gibt mehrere Ansaetze, die Animation ueber den Admin-Bereich konfigurierbar zu machen:
-
-| Option | Aufwand | Beschreibung |
-|--------|---------|--------------|
-| A) Einfacher Toggle | Gering | Admin kann Animation ein/ausschalten (global oder pro Benutzer) |
-| B) Vordefinierte Animationen | Mittel | Auswahl aus 3-5 verschiedenen Animationen (Einhorn, Feuerwerk, Konfetti, etc.) |
-| C) Benutzerdefinierte Grafik | Hoch | Admin kann eigene SVG/GIF hochladen |
-
-### Empfohlener Ansatz: Option B
-
-1. **Neue Tabelle** `app_settings` erweitern um:
-   - `completion_animation`: Enum ('unicorn', 'confetti', 'firework', 'none')
-   
-2. **Admin-UI** in den Einstellungen:
-   - Dropdown zur Auswahl der Animation
-   - Vorschau-Button um die Animation zu testen
-
-3. **Animation-Komponente** erweitern:
-   ```typescript
-   // CompletionAnimation.tsx
-   export function CompletionAnimation({ type, isVisible, onComplete }) {
-     switch(type) {
-       case 'unicorn': return <UnicornAnimation ... />;
-       case 'confetti': return <ConfettiAnimation ... />;
-       case 'firework': return <FireworkAnimation ... />;
-       default: return null;
-     }
-   }
-   ```
-
-### Naechste Schritte fuer Admin-Konfiguration
-
-Dies wuerde ich als separates Feature empfehlen. Soll ich dafuer einen eigenen Plan erstellen?
+Ausserdem: RLS-Policy pruefen, ob `UPDATE` fuer alle Rollen erlaubt ist (nicht nur fuer `author_id`).
 
 ---
 
 ## Zusammenfassung der Dateiaenderungen
 
-| Datei | Aenderung |
-|-------|-----------|
-| `TaskCard.tsx` | Zeile 275-280: Button-Styling fuer nahtlose Aneinanderreihung |
-| `TaskListRow.tsx` | Zeile 240-247: Button-Styling fuer nahtlose Aneinanderreihung |
-| `useTeamAnnouncements.ts` | Zeile 200-217: Optimistisches Update und bessere Fehlerbehandlung |
-| `AppHeader.tsx` | Zeile 208-210: AvatarFallback mit expliziten Farben |
-| `EditProfile.tsx` | Zeile 137-143: Bessere Fehlermeldung, plus Storage-Bucket erstellen |
-| `MyWorkTasksTab.tsx` | Import, State, Trigger in Handlers, Komponente rendern |
+| Datei | Aenderungen |
+|-------|-------------|
+| `AssignedItemsSection.tsx` | Import RichTextDisplay, Beschreibung damit rendern |
+| `QuickNotesList.tsx` | Priority-Mapping Funktion, taskPriority aus note.priority_level |
+| `EditProfile.tsx` | Image Cropper einbauen, Caching-Problem beheben, alte Dateien loeschen |
+| Neue Datei: `ImageCropper.tsx` | Canvas-basierter Cropper mit Drag & Zoom |
+| `AppNavigation.tsx` | Ctrl + . Shortcut in Hilfe-Dialog hinzufuegen |
+| `useTeamAnnouncements.ts` | Detaillierteres Error-Logging, robustere State-Updates |
 
+---
+
+## Technische Details
+
+### ImageCropper Komponente
+
+Die Komponente wird als Modal implementiert:
+
+```text
++--------------------------------------+
+|  Profilbild zuschneiden              |
++--------------------------------------+
+|                                      |
+|    +------------------------+        |
+|    |     Drag to move       |        |
+|    |                        |        |
+|    |    [Crop area 1:1]     |        |
+|    |                        |        |
+|    +------------------------+        |
+|                                      |
+|  Zoom: [========o=========]          |
+|                                      |
+|  [Abbrechen]        [Zuschneiden]    |
++--------------------------------------+
+```
+
+**Features:**
+- Quadratischer Ausschnitt (1:1 Aspect Ratio)
+- Drag zum Verschieben des Bildausschnitts
+- Pinch-to-Zoom auf Touch-Geraeten
+- Slider fuer Zoom-Level
+- Vorschau des zugeschnittenen Bereichs
+- Export als WebP fuer kleinere Dateigroesse
+
+### Priority-Mapping Logik
+
+```text
+Notiz priority_level  ->  Task priority
+-------------------------------------
+0 (Keine)             ->  low
+1 (Level 1)           ->  low
+2 (Level 2)           ->  medium
+3 (Level 3)           ->  high
+```
+
+### Cache-Busting Strategie
+
+1. **Eindeutige Dateinamen:** `avatar_{timestamp}.webp` statt `avatar.jpg`
+2. **Alte Dateien loeschen:** Vor jedem Upload werden bestehende Avatare geloescht
+3. **Query-Parameter:** `?t={timestamp}` an URL anhaengen verhindert Browser-Caching
