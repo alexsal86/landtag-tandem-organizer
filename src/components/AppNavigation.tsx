@@ -560,6 +560,10 @@ export function AppNavigation({
                   <span>Neue Aufgabe</span>
                   <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + Shift + A</kbd>
                 </div>
+                <div className="flex justify-between items-center">
+                  <span>Neue Notiz</span>
+                  <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + .</kbd>
+                </div>
               </div>
             </div>
             <Separator />

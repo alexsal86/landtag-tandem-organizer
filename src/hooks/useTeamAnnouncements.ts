@@ -216,22 +216,58 @@ export function useTeamAnnouncements() {
     }
     
     try {
-      const { error } = await supabase
+      const { data: updateData, error } = await supabase
         .from("team_announcements")
         .update(data)
-        .eq("id", id);
+        .eq("id", id)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Update error details:", error);
+        throw error;
+      }
+
+      // Update successful - update local state with returned data
+      if (updateData) {
+        setAnnouncements(prev => prev.map(a => 
+          a.id === id ? { ...a, ...updateData, priority: updateData.priority as TeamAnnouncement['priority'] } : a
+        ));
+        
+        // Recalculate activeAnnouncements based on is_active state
+        if (updateData.is_active) {
+          const now = new Date();
+          const isExpired = updateData.expires_at && new Date(updateData.expires_at) < now;
+          const isScheduled = updateData.starts_at && new Date(updateData.starts_at) > now;
+          
+          if (!isExpired && !isScheduled) {
+            // Add to active if not already there
+            setActiveAnnouncements(prev => {
+              if (prev.find(a => a.id === id)) return prev;
+              const existingAnnouncement = announcements.find(a => a.id === id);
+              if (existingAnnouncement) {
+                return [...prev, { ...existingAnnouncement, ...updateData, priority: updateData.priority as TeamAnnouncement['priority'] }];
+              }
+              return prev;
+            });
+          }
+        } else {
+          // Deactivated - remove from active
+          setActiveAnnouncements(prev => prev.filter(a => a.id !== id));
+        }
+      }
 
       toast.success("Mitteilung aktualisiert");
-      // Realtime subscription will handle the refetch
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating announcement:", error);
+      console.error("Error code:", error?.code);
+      console.error("Error message:", error?.message);
+      
       // Rollback on error
       setAnnouncements(previousAnnouncements);
       setActiveAnnouncements(previousActiveAnnouncements);
-      toast.error("Fehler beim Aktualisieren");
+      toast.error(`Fehler: ${error?.message || 'Unbekannter Fehler'}`);
       return false;
     }
   };
