@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { de } from "date-fns/locale";
-import { Clock, Plus, ExternalLink, TrendingUp, Calendar } from "lucide-react";
+import { Clock, Plus, ExternalLink, TrendingUp, Calendar, Play, Pause, Square, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface TimeEntryRow {
@@ -43,10 +43,99 @@ export function MyWorkTimeTrackingTab() {
   // Form state
   const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+  const [endTime, setEndTime] = useState(() => format(new Date(), "HH:mm"));
   const [pauseMinutes, setPauseMinutes] = useState("30");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Stempeluhr States
+  const [clockedIn, setClockedIn] = useState<string | null>(null);
+  const [clockedInDate, setClockedInDate] = useState<string | null>(null);
+  const [pauseStart, setPauseStart] = useState<string | null>(null);
+  const [totalPauseMinutes, setTotalPauseMinutes] = useState(0);
+
+  // Beim Mount: Gespeicherte Stempelzeit laden
+  useEffect(() => {
+    const savedClockIn = localStorage.getItem('timetracking_clock_in');
+    const savedClockDate = localStorage.getItem('timetracking_date');
+    const savedPauseStart = localStorage.getItem('timetracking_pause_start');
+    const savedPauseTotal = localStorage.getItem('timetracking_pause_total');
+    
+    // Nur laden wenn das Datum heute ist
+    const today = format(new Date(), "yyyy-MM-dd");
+    if (savedClockIn && savedClockDate === today) {
+      setClockedIn(savedClockIn);
+      setClockedInDate(savedClockDate);
+      setStartTime(savedClockIn);
+      if (savedPauseStart) setPauseStart(savedPauseStart);
+      if (savedPauseTotal) {
+        const pauseTotal = parseInt(savedPauseTotal) || 0;
+        setTotalPauseMinutes(pauseTotal);
+        setPauseMinutes(pauseTotal.toString());
+      }
+    } else if (savedClockIn && savedClockDate !== today) {
+      // Alte Daten aufräumen wenn sie nicht von heute sind
+      clearClockData();
+    }
+  }, []);
+
+  const handleClockIn = () => {
+    const now = format(new Date(), "HH:mm");
+    const today = format(new Date(), "yyyy-MM-dd");
+    setClockedIn(now);
+    setClockedInDate(today);
+    setStartTime(now);
+    setEntryDate(today);
+    setTotalPauseMinutes(0);
+    setPauseMinutes("0");
+    localStorage.setItem('timetracking_clock_in', now);
+    localStorage.setItem('timetracking_date', today);
+    localStorage.removeItem('timetracking_pause_total');
+    toast.success(`Arbeit begonnen um ${now}`);
+  };
+
+  const handlePauseStart = () => {
+    const now = format(new Date(), "HH:mm");
+    setPauseStart(now);
+    localStorage.setItem('timetracking_pause_start', now);
+    toast.info(`Pause begonnen um ${now}`);
+  };
+
+  const handlePauseEnd = () => {
+    if (!pauseStart) return;
+    
+    const pauseStartTime = new Date(`1970-01-01T${pauseStart}:00`);
+    const now = new Date();
+    const pauseEndTime = new Date(`1970-01-01T${format(now, "HH:mm")}:00`);
+    const minutes = Math.round((pauseEndTime.getTime() - pauseStartTime.getTime()) / 60000);
+    
+    const newTotal = totalPauseMinutes + minutes;
+    setTotalPauseMinutes(newTotal);
+    setPauseMinutes(newTotal.toString());
+    setPauseStart(null);
+    
+    localStorage.setItem('timetracking_pause_total', newTotal.toString());
+    localStorage.removeItem('timetracking_pause_start');
+    
+    toast.success(`Pause beendet (+${minutes} Min)`);
+  };
+
+  const handleClockOut = () => {
+    const now = format(new Date(), "HH:mm");
+    setEndTime(now);
+    toast.success(`Feierabend um ${now} - Bitte Eintrag speichern`);
+  };
+
+  const clearClockData = () => {
+    setClockedIn(null);
+    setClockedInDate(null);
+    setPauseStart(null);
+    setTotalPauseMinutes(0);
+    localStorage.removeItem('timetracking_clock_in');
+    localStorage.removeItem('timetracking_pause_start');
+    localStorage.removeItem('timetracking_pause_total');
+    localStorage.removeItem('timetracking_date');
+  };
 
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
@@ -170,8 +259,10 @@ export function MyWorkTimeTrackingTab() {
       if (error) throw error;
 
       toast.success("Zeiteintrag gespeichert");
+      // Stempeluhr-Daten nach erfolgreichem Speichern löschen
+      clearClockData();
       setStartTime("");
-      setEndTime("");
+      setEndTime(format(new Date(), "HH:mm"));
       setPauseMinutes("30");
       setNotes("");
       checkRoleAndLoad();
@@ -292,6 +383,76 @@ export function MyWorkTimeTrackingTab() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Stempeluhr */}
+        <Card className={clockedIn ? "border-primary/50 bg-primary/5" : ""}>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Play className="h-5 w-5" />
+                Stempeluhr
+              </CardTitle>
+              {clockedIn && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (window.confirm('Stempeluhr abbrechen?')) clearClockData();
+                  }}
+                  className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Abbrechen
+                </Button>
+              )}
+            </div>
+            <CardDescription>
+              {clockedIn ? "Arbeitszeit läuft..." : "Automatisch Start- und Endzeit erfassen"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!clockedIn ? (
+              <Button onClick={handleClockIn} className="w-full" size="lg">
+                <Play className="h-5 w-5 mr-2" />
+                Arbeit beginnen
+              </Button>
+            ) : pauseStart ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 text-center">
+                  <div className="text-sm text-amber-700">In Pause seit</div>
+                  <div className="text-2xl font-bold text-amber-800">{pauseStart}</div>
+                </div>
+                <Button onClick={handlePauseEnd} className="w-full" variant="outline" size="lg">
+                  <Play className="h-5 w-5 mr-2" />
+                  Pause beenden
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="text-xs text-muted-foreground">Arbeitsbeginn</div>
+                    <div className="text-xl font-bold">{clockedIn}</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="text-xs text-muted-foreground">Pausenzeit</div>
+                    <div className="text-xl font-bold">{totalPauseMinutes} Min</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button onClick={handlePauseStart} variant="outline" size="lg">
+                    <Pause className="h-5 w-5 mr-2" />
+                    Pause
+                  </Button>
+                  <Button onClick={handleClockOut} size="lg">
+                    <Square className="h-5 w-5 mr-2" />
+                    Feierabend
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Schnelleingabe */}
         <Card>
           <CardHeader>
@@ -300,7 +461,7 @@ export function MyWorkTimeTrackingTab() {
               Zeit erfassen
             </CardTitle>
             <CardDescription>
-              Neuen Zeiteintrag hinzufügen
+              {clockedIn ? "Formular ist vorausgefüllt - nach Feierabend speichern" : "Manuell Zeiteintrag hinzufügen"}
             </CardDescription>
           </CardHeader>
           <CardContent>

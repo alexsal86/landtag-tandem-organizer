@@ -638,8 +638,8 @@ export function EmployeesView() {
     return days.filter(day => !isWeekend(day)).length;
   };
 
-  // Erstelle Kalendereintrag für genehmigten Urlaub
-  const createVacationCalendarEntry = async (leaveRequest: PendingLeaveRequest, userId: string) => {
+  // Erstelle Kalendereintrag für genehmigte Abwesenheiten (alle Typen)
+  const createLeaveCalendarEntry = async (leaveRequest: PendingLeaveRequest, userId: string, leaveType: LeaveType) => {
     try {
       const { data: userProfile } = await supabase
         .from("profiles")
@@ -663,13 +663,54 @@ export function EmployeesView() {
       const userName = userProfile?.display_name || "Mitarbeiter";
       const workingDays = calculateWorkingDays(leaveRequest.start_date, leaveRequest.end_date);
       
+      // Typ-spezifische Konfiguration
+      const config: Record<LeaveType, { title: string; description: string; category: string; requestTitle: string; requestCategory: string }> = {
+        vacation: {
+          title: `Urlaub von ${userName}`,
+          description: `Urlaubsantrag genehmigt (${workingDays} Arbeitstage)`,
+          category: 'vacation',
+          requestTitle: `Anfrage Urlaub von ${userName}`,
+          requestCategory: 'vacation_request',
+        },
+        sick: {
+          title: `Krankheit: ${userName}`,
+          description: `Krankmeldung (${workingDays} Arbeitstage)`,
+          category: 'sick',
+          requestTitle: `Anfrage Krankheit: ${userName}`,
+          requestCategory: 'sick_request',
+        },
+        medical: {
+          title: `Arzttermin: ${userName}`,
+          description: `Arzttermin genehmigt`,
+          category: 'medical',
+          requestTitle: `Anfrage Arzttermin: ${userName}`,
+          requestCategory: 'medical_request',
+        },
+        overtime_reduction: {
+          title: `Überstundenabbau: ${userName}`,
+          description: `Überstundenabbau genehmigt (${workingDays} Arbeitstage)`,
+          category: 'overtime_reduction',
+          requestTitle: `Anfrage Überstundenabbau: ${userName}`,
+          requestCategory: 'overtime_request',
+        },
+        other: {
+          title: `Abwesenheit: ${userName}`,
+          description: `Abwesenheit (${workingDays} Arbeitstage)`,
+          category: 'other',
+          requestTitle: `Anfrage: ${userName}`,
+          requestCategory: 'other_request',
+        },
+      };
+      
+      const typeConfig = config[leaveType];
+      
       // First, try to update existing request entry
       const { data: existingEntry } = await supabase
         .from("appointments")
         .select("id")
-        .eq("title", `Anfrage Urlaub von ${userName}`)
+        .eq("title", typeConfig.requestTitle)
         .eq("start_time", new Date(leaveRequest.start_date).toISOString())
-        .eq("category", "vacation_request")
+        .eq("category", typeConfig.requestCategory)
         .single();
 
       if (existingEntry) {
@@ -677,9 +718,9 @@ export function EmployeesView() {
         await supabase
           .from("appointments")
           .update({
-            title: `Urlaub von ${userName}`,
-            description: `Urlaubsantrag genehmigt (${workingDays} Arbeitstage)`,
-            category: "vacation",
+            title: typeConfig.title,
+            description: typeConfig.description,
+            category: typeConfig.category,
             status: "confirmed"
           })
           .eq("id", existingEntry.id);
@@ -692,9 +733,9 @@ export function EmployeesView() {
             tenant_id: tenantData.tenant_id,
             start_time: new Date(leaveRequest.start_date).toISOString(),
             end_time: new Date(leaveRequest.end_date + "T23:59:59").toISOString(),
-            title: `Urlaub von ${userName}`,
-            description: `Urlaubsantrag genehmigt (${workingDays} Arbeitstage)`,
-            category: "vacation",
+            title: typeConfig.title,
+            description: typeConfig.description,
+            category: typeConfig.category,
             priority: "medium",
             status: "confirmed",
             is_all_day: true
@@ -731,16 +772,24 @@ export function EmployeesView() {
         const userName = userProfile?.display_name || "Mitarbeiter";
 
         if (action === "approved") {
-          // Bei Genehmigung: Kalendereintrag aktualisieren
-          await createVacationCalendarEntry(leaveRequest, leaveRequest.user_id);
+          // Bei Genehmigung: Kalendereintrag für ALLE Typen erstellen
+          await createLeaveCalendarEntry(leaveRequest, leaveRequest.user_id, leaveRequest.type);
         } else {
           // Bei Ablehnung: Ursprünglichen Antragseintrag löschen
+          const categoryMap: Record<LeaveType, string> = {
+            vacation: 'vacation_request',
+            sick: 'sick_request',
+            medical: 'medical_request',
+            overtime_reduction: 'overtime_request',
+            other: 'other_request',
+          };
+          
           await supabase
             .from("appointments")
             .delete()
-            .eq("title", `Anfrage Urlaub von ${userName}`)
+            .ilike("title", `%${userName}%`)
             .eq("start_time", new Date(leaveRequest.start_date).toISOString())
-            .eq("category", "vacation_request");
+            .eq("category", categoryMap[leaveRequest.type]);
         }
       }
 
@@ -806,7 +855,7 @@ export function EmployeesView() {
 
       if (error) throw error;
 
-      // If cancellation approved, remove calendar entry
+      // If cancellation approved, remove calendar entry for ALL types
       if (approve && leaveRequest) {
         const { data: userProfile } = await supabase
           .from("profiles")
@@ -815,14 +864,23 @@ export function EmployeesView() {
           .single();
 
         const userName = userProfile?.display_name || "Mitarbeiter";
+        
+        // Kategorie basierend auf dem Leave-Typ
+        const categoryMap: Record<LeaveType, string> = {
+          vacation: 'vacation',
+          sick: 'sick',
+          medical: 'medical',
+          overtime_reduction: 'overtime_reduction',
+          other: 'other',
+        };
 
-        // Delete the vacation calendar entry
+        // Delete the calendar entry
         await supabase
           .from("appointments")
           .delete()
-          .eq("title", `Urlaub von ${userName}`)
-          .gte("start_time", new Date(leaveRequest.start_date).toISOString())
-          .eq("category", "vacation");
+          .ilike("title", `%${userName}%`)
+          .eq("category", categoryMap[leaveRequest.type])
+          .gte("start_time", new Date(leaveRequest.start_date).toISOString());
       }
 
       toast({

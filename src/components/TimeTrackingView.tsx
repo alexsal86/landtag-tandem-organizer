@@ -700,31 +700,152 @@ export function TimeTrackingView() {
     return <Badge className={className}>{label}</Badge>;
   };
 
+  // Hilfsfunktion zum Entfernen von Kalendereinträgen
+  const removeLeaveCalendarEntry = async (leave: LeaveRow, type: 'vacation' | 'sick' | 'medical' | 'overtime_reduction') => {
+    if (!user) return;
+    
+    try {
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .single();
+
+      const userName = userProfile?.display_name || "Mitarbeiter";
+      
+      const titleMap = {
+        vacation: `Urlaub von ${userName}`,
+        sick: `Krankheit: ${userName}`,
+        medical: `Arzttermin: ${userName}`,
+        overtime_reduction: `Überstundenabbau: ${userName}`,
+      };
+      
+      await supabase
+        .from("appointments")
+        .delete()
+        .eq("category", type)
+        .ilike("title", `%${userName}%`)
+        .gte("start_time", new Date(leave.start_date).toISOString());
+        
+    } catch (error) {
+      console.error("Error removing calendar entry:", error);
+    }
+  };
+
   const handleCancelVacationRequest = async (leaveId: string) => {
     if (!window.confirm('Möchten Sie diesen Urlaubsantrag wirklich stornieren?')) return;
     
     try {
       const leave = vacationLeaves.find(v => v.id === leaveId);
+      if (!leave) {
+        toast.error("Antrag nicht gefunden");
+        return;
+      }
+      
       // For pending requests: set directly to cancelled
       // For approved requests: set to cancel_requested (admin must confirm)
-      const newStatus = leave?.status === 'pending' ? 'cancelled' : 'cancel_requested';
+      const newStatus = leave.status === 'pending' ? 'cancelled' : 'cancel_requested';
+      
+      const { data, error } = await supabase
+        .from("leave_requests")
+        .update({ status: newStatus as any })
+        .eq("id", leaveId)
+        .eq("user_id", user?.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Cancel request error:', error);
+        throw error;
+      }
+      
+      // Bei direkter Stornierung (pending): Kalendereintrag entfernen
+      if (newStatus === 'cancelled') {
+        await removeLeaveCalendarEntry(leave, 'vacation');
+      }
+      
+      toast.success(
+        newStatus === 'cancelled' 
+          ? "Urlaubsantrag storniert" 
+          : "Stornierungsanfrage gesendet - Wartet auf Genehmigung"
+      );
+      loadData();
+    } catch (error: any) {
+      console.error('Error cancelling vacation request:', error);
+      toast.error(`Fehler beim Stornieren: ${error?.message || 'Unbekannter Fehler'}`);
+    }
+  };
+
+  // Arzttermin stornieren
+  const handleCancelMedicalRequest = async (leaveId: string) => {
+    if (!window.confirm('Möchten Sie diesen Arzttermin wirklich stornieren?')) return;
+    
+    try {
+      const leave = medicalLeaves.find(m => m.id === leaveId);
+      if (!leave) {
+        toast.error("Termin nicht gefunden");
+        return;
+      }
+      
+      const newStatus = leave.status === 'pending' ? 'cancelled' : 'cancel_requested';
       
       const { error } = await supabase
         .from("leave_requests")
-        .update({ status: newStatus as any }) // Cast needed for extended status types
+        .update({ status: newStatus as any })
         .eq("id", leaveId)
         .eq("user_id", user?.id);
 
       if (error) throw error;
       
       if (newStatus === 'cancelled') {
-        toast.success("Urlaubsantrag storniert");
-      } else {
-        toast.success("Stornierungsanfrage gesendet - Wartet auf Genehmigung");
+        await removeLeaveCalendarEntry(leave, 'medical');
       }
+      
+      toast.success(
+        newStatus === 'cancelled' 
+          ? "Arzttermin storniert" 
+          : "Stornierungsanfrage gesendet"
+      );
       loadData();
     } catch (error: any) {
-      console.error('Error cancelling vacation request:', error);
+      console.error('Error cancelling medical request:', error);
+      toast.error("Fehler beim Stornieren");
+    }
+  };
+
+  // Überstundenabbau stornieren
+  const handleCancelOvertimeRequest = async (leaveId: string) => {
+    if (!window.confirm('Möchten Sie diesen Überstundenabbau wirklich stornieren?')) return;
+    
+    try {
+      const leave = overtimeLeaves.find(o => o.id === leaveId);
+      if (!leave) {
+        toast.error("Antrag nicht gefunden");
+        return;
+      }
+      
+      const newStatus = leave.status === 'pending' ? 'cancelled' : 'cancel_requested';
+      
+      const { error } = await supabase
+        .from("leave_requests")
+        .update({ status: newStatus as any })
+        .eq("id", leaveId)
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+      
+      if (newStatus === 'cancelled') {
+        await removeLeaveCalendarEntry(leave, 'overtime_reduction');
+      }
+      
+      toast.success(
+        newStatus === 'cancelled' 
+          ? "Überstundenabbau storniert" 
+          : "Stornierungsanfrage gesendet"
+      );
+      loadData();
+    } catch (error: any) {
+      console.error('Error cancelling overtime request:', error);
       toast.error("Fehler beim Stornieren");
     }
   };
@@ -1465,24 +1586,49 @@ export function TimeTrackingView() {
                         <TableHead>Art</TableHead>
                         <TableHead>Dauer</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Aktion</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {medicalLeaves.map(m => (
-                        <TableRow key={m.id}>
-                          <TableCell>{format(parseISO(m.start_date), "dd.MM.yyyy")}</TableCell>
-                          <TableCell>
-                            {m.start_time && m.end_time ? `${m.start_time} - ${m.end_time}` : "-"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {getMedicalReasonLabel(m.medical_reason)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{fmt(m.minutes_counted || 0)}</TableCell>
-                          <TableCell>{getStatusBadge(m.status)}</TableCell>
-                        </TableRow>
-                      ))}
+                      {medicalLeaves.map(m => {
+                        const canCancel = (m.status === 'pending' || m.status === 'approved') && parseISO(m.start_date) > new Date();
+                        const isCancelRequested = m.status === 'cancel_requested';
+                        
+                        return (
+                          <TableRow key={m.id}>
+                            <TableCell>{format(parseISO(m.start_date), "dd.MM.yyyy")}</TableCell>
+                            <TableCell>
+                              {m.start_time && m.end_time ? `${m.start_time} - ${m.end_time}` : "-"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">
+                                {getMedicalReasonLabel(m.medical_reason)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{fmt(m.minutes_counted || 0)}</TableCell>
+                            <TableCell>{getStatusBadge(m.status)}</TableCell>
+                            <TableCell>
+                              {canCancel && !isCancelRequested && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCancelMedicalRequest(m.id)}
+                                  className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Undo2 className="h-4 w-4 mr-1" />
+                                  Stornieren
+                                </Button>
+                              )}
+                              {isCancelRequested && (
+                                <span className="text-xs text-amber-600 flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Wird geprüft
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
@@ -1506,13 +1652,13 @@ export function TimeTrackingView() {
                 {/* Info Box */}
                 <div className="p-3 rounded-lg bg-muted/50 text-sm">
                   <div className="flex justify-between">
-                    <span>Überstunden (aktueller Monat):</span>
-                    <span className={`font-mono font-bold ${monthlyTotals.difference >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                      {monthlyTotals.difference >= 0 ? '+' : ''}{fmt(monthlyTotals.difference)}
+                    <span>Überstundensaldo (gesamt):</span>
+                    <span className={`font-mono font-bold ${yearlyBalance >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                      {yearlyBalance >= 0 ? '+' : ''}{fmt(yearlyBalance)}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Hinweis: Der Gesamtstand wird bei der Genehmigung geprüft.
+                    Jahressaldo inkl. aller Monate bis heute
                   </p>
                 </div>
                 
@@ -1567,6 +1713,7 @@ export function TimeTrackingView() {
                         <TableHead>Tage</TableHead>
                         <TableHead>Anmerkung</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Aktion</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1575,6 +1722,9 @@ export function TimeTrackingView() {
                           start: parseISO(o.start_date), 
                           end: parseISO(o.end_date) 
                         }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length;
+                        const canCancel = (o.status === 'pending' || o.status === 'approved') && parseISO(o.start_date) > new Date();
+                        const isCancelRequested = o.status === 'cancel_requested';
+                        
                         return (
                           <TableRow key={o.id}>
                             <TableCell>{format(parseISO(o.start_date), "dd.MM.yyyy")}</TableCell>
@@ -1582,6 +1732,25 @@ export function TimeTrackingView() {
                             <TableCell>{d}</TableCell>
                             <TableCell>{o.reason || "-"}</TableCell>
                             <TableCell>{getStatusBadge(o.status)}</TableCell>
+                            <TableCell>
+                              {canCancel && !isCancelRequested && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCancelOvertimeRequest(o.id)}
+                                  className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Undo2 className="h-4 w-4 mr-1" />
+                                  Stornieren
+                                </Button>
+                              )}
+                              {isCancelRequested && (
+                                <span className="text-xs text-amber-600 flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Wird geprüft
+                                </span>
+                              )}
+                            </TableCell>
                           </TableRow>
                         );
                       })}
