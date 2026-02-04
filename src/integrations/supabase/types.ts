@@ -1591,6 +1591,84 @@ export type Database = {
           },
         ]
       }
+      celebration_animations: {
+        Row: {
+          animation_key: string
+          created_at: string | null
+          custom_gif_url: string | null
+          custom_svg: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          order_index: number | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          animation_key: string
+          created_at?: string | null
+          custom_gif_url?: string | null
+          custom_svg?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          order_index?: number | null
+          type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          animation_key?: string
+          created_at?: string | null
+          custom_gif_url?: string | null
+          custom_svg?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          order_index?: number | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      celebration_settings: {
+        Row: {
+          created_at: string | null
+          enabled: boolean | null
+          frequency: string | null
+          id: string
+          mode: string | null
+          selected_animation: string | null
+          size: string | null
+          speed: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean | null
+          frequency?: string | null
+          id?: string
+          mode?: string | null
+          selected_animation?: string | null
+          size?: string | null
+          speed?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean | null
+          frequency?: string | null
+          id?: string
+          mode?: string | null
+          selected_animation?: string | null
+          size?: string | null
+          speed?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       contact_activities: {
         Row: {
           activity_type: string

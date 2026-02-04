@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote, MoveVertical, ArrowUp, ArrowDown, ChevronUp, ChevronDown, CornerUpLeft } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote, MoveVertical, ArrowUp, ArrowDown, ChevronUp, ChevronDown, CornerUpLeft, ListTodo } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
@@ -482,7 +482,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
     }
   };
 
-  const addSystemTemplateItem = (systemType: 'upcoming_appointments' | 'quick_notes', parentIndex?: number) => {
+  const addSystemTemplateItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks', parentIndex?: number) => {
     if (!selectedTemplate) return;
     
     // Check if this system type already exists in main items OR in children
@@ -1204,7 +1204,11 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                       item.type === 'system' 
                                         ? item.system_type === 'upcoming_appointments' 
                                           ? 'border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20' 
-                                          : 'border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20'
+                                          : item.system_type === 'quick_notes'
+                                          ? 'border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20'
+                                          : item.system_type === 'tasks'
+                                          ? 'border-l-4 border-l-green-500 bg-green-50/50 dark:bg-green-950/20'
+                                          : ''
                                         : ''
                                     }`}>
                                       <div {...provided.dragHandleProps} className="cursor-grab">
@@ -1216,9 +1220,11 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                         <div className="flex items-center gap-2 flex-1">
                                           {item.system_type === 'upcoming_appointments' ? (
                                             <CalendarDays className="h-4 w-4 text-blue-600" />
-                                          ) : (
+                                          ) : item.system_type === 'quick_notes' ? (
                                             <StickyNote className="h-4 w-4 text-amber-600" />
-                                          )}
+                                          ) : item.system_type === 'tasks' ? (
+                                            <ListTodo className="h-4 w-4 text-green-600" />
+                                          ) : null}
                                           <span className="font-medium">{item.title}</span>
                                           <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                                             Dynamisch
@@ -1595,6 +1601,15 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                 >
                                   <StickyNote className="h-4 w-4 mr-2" />
                                   Notizen
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-950"
+                                  onClick={() => addSystemTemplateItem('tasks')}
+                                >
+                                  <ListTodo className="h-4 w-4 mr-2" />
+                                  Aufgaben
                                 </Button>
                               </>
                             )}

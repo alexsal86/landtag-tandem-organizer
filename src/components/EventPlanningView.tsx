@@ -759,7 +759,10 @@ export function EventPlanningView() {
                   </div>
                 )}
               </TableCell>
-              <TableCell className="font-medium relative">
+              <TableCell className={cn(
+                "font-medium relative",
+                (planning as any).is_completed && "line-through text-muted-foreground"
+              )}>
                 <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} size="sm" />
                 {planning.title}
               </TableCell>
@@ -812,23 +815,45 @@ export function EventPlanningView() {
                 }
               </TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
-                {planning.user_id === user?.id && (
+                <div className="flex items-center gap-1">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-7 w-7"
-                          onClick={() => archivePlanning(planning.id)}
+                          className={cn(
+                            "h-7 w-7",
+                            (planning as any).is_completed && "text-green-600"
+                          )}
+                          onClick={() => togglePlanningCompleted(planning.id, !(planning as any).is_completed)}
                         >
-                          <Archive className="h-4 w-4" />
+                          <CheckCircle className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Archivieren</TooltipContent>
+                      <TooltipContent>
+                        {(planning as any).is_completed ? "Als unerledigt markieren" : "Als erledigt markieren"}
+                      </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                )}
+                  {planning.user_id === user?.id && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7"
+                            onClick={() => archivePlanning(planning.id)}
+                          >
+                            <Archive className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Archivieren</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           );
