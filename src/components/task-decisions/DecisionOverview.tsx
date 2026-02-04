@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
@@ -11,9 +12,15 @@ import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
 import { DecisionEditDialog } from "./DecisionEditDialog";
 import { DecisionViewerComment } from "./DecisionViewerComment";
+import { DecisionSidebar } from "./DecisionSidebar";
 import { UserBadge } from "@/components/ui/user-badge";
+import { AvatarStack } from "@/components/ui/AvatarStack";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
-import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle, ClipboardList } from "lucide-react";
+import { 
+  Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, 
+  MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle, ClipboardList, 
+  Search, FolderArchive
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -23,23 +30,22 @@ import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 
 // Truncated description component
-const TruncatedDescription = ({ content, maxLength = 250 }: { content: string; maxLength?: number }) => {
+const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; maxLength?: number }) => {
   const [expanded, setExpanded] = useState(false);
   
-  // Strip HTML tags for length calculation
   const plainText = content.replace(/<[^>]*>/g, '');
   const isTruncated = plainText.length > maxLength;
   
   if (!isTruncated || expanded) {
     return (
       <div>
-        <RichTextDisplay content={content} className="text-sm" />
+        <RichTextDisplay content={content} className="text-xs text-muted-foreground" />
         {isTruncated && (
           <Button 
             variant="link" 
             size="sm" 
             onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
-            className="text-xs p-0 h-auto text-muted-foreground hover:text-primary"
+            className="text-[10px] p-0 h-auto text-muted-foreground hover:text-primary"
           >
             weniger
           </Button>
@@ -48,19 +54,18 @@ const TruncatedDescription = ({ content, maxLength = 250 }: { content: string; m
     );
   }
   
-  // Truncate at word boundary
   const truncatedPlain = plainText.substring(0, maxLength).replace(/\s+\S*$/, '') + '...';
   
   return (
     <div>
-      <p className="text-sm text-muted-foreground">{truncatedPlain}</p>
+      <p className="text-xs text-muted-foreground">{truncatedPlain}</p>
       <Button 
         variant="link" 
         size="sm" 
         onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
-        className="text-xs p-0 h-auto text-muted-foreground hover:text-primary"
+        className="text-[10px] p-0 h-auto text-muted-foreground hover:text-primary"
       >
-        mehr anzeigen
+        mehr
       </Button>
     </div>
   );
@@ -119,11 +124,12 @@ export const DecisionOverview = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [creatorResponses, setCreatorResponses] = useState<{[key: string]: string}>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("for-me");
   const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
   const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [creatingTaskFromDecisionId, setCreatingTaskFromDecisionId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Handle URL action parameter for QuickActions
   useEffect(() => {
@@ -265,15 +271,12 @@ export const DecisionOverview = () => {
       // Format all decisions - filter for relevant ones
       const formattedAllData = combinedDecisions
         ?.filter(item => {
-          // Include if user is creator, participant, assigned to task, or visible_to_all
           const isCreator = item.created_by === currentUserId;
           const isParticipant = item.task_decision_participants.some(p => p.user_id === currentUserId);
           const assignedTo = item.tasks?.assigned_to;
           const isAssigned = assignedTo ? assignedTo.includes(currentUserId) : false;
           const isVisibleToAll = item.visible_to_all === true;
-          const shouldInclude = isCreator || isParticipant || isAssigned || isVisibleToAll;
-          
-          return shouldInclude;
+          return isCreator || isParticipant || isAssigned || isVisibleToAll;
         })
         ?.map(item => {
           const userParticipant = item.task_decision_participants.find(p => p.user_id === currentUserId);
@@ -300,38 +303,31 @@ export const DecisionOverview = () => {
           };
         }) || [];
 
-      // Intelligente Deduplizierung: Merge participant data with all data
+      // Merge and deduplicate
       const decisionsMap = new Map<string, any>();
-
-      // Zuerst alle Decisions aus formattedAllData hinzufügen
       formattedAllData.forEach(decision => {
         decisionsMap.set(decision.id, decision);
       });
-
-      // Dann participant-spezifische Daten mergen/überschreiben
       formattedParticipantData.forEach(participantDecision => {
         const existing = decisionsMap.get(participantDecision.id);
         if (existing) {
-          // Merge: Participant-Daten haben Priorität für participant_id und hasResponded
           decisionsMap.set(participantDecision.id, {
             ...existing,
             participant_id: participantDecision.participant_id,
             hasResponded: participantDecision.hasResponded,
-            isParticipant: true, // User ist definitiv Participant
+            isParticipant: true,
           });
         } else {
-          // Neue Decision nur in participant data
           decisionsMap.set(participantDecision.id, participantDecision);
         }
       });
 
       const allDecisionsList = Array.from(decisionsMap.values());
 
-      // Now load all participants and responses for each decision
+      // Load participants and responses
       if (allDecisionsList.length > 0) {
         const decisionIds = allDecisionsList.map(d => d.id);
 
-        // Get participants for these decisions
         const { data: participantsData, error: participantsError } = await supabase
           .from('task_decision_participants')
           .select(`
@@ -350,7 +346,6 @@ export const DecisionOverview = () => {
 
         if (participantsError) throw participantsError;
 
-        // Get topics for these decisions
         const { data: topicsData, error: topicsError } = await supabase
           .from('task_decision_topics')
           .select('decision_id, topic_id')
@@ -358,7 +353,6 @@ export const DecisionOverview = () => {
 
         if (topicsError) throw topicsError;
 
-        // Group topics by decision
         const topicsByDecision = new Map<string, string[]>();
         topicsData?.forEach(topic => {
           if (!topicsByDecision.has(topic.decision_id)) {
@@ -367,7 +361,6 @@ export const DecisionOverview = () => {
           topicsByDecision.get(topic.decision_id)!.push(topic.topic_id);
         });
 
-        // Get user profiles for participants and creators
         const allUserIds = [...new Set([
           ...participantsData?.map(p => p.user_id) || [],
           ...allDecisionsList.map(d => d.created_by)
@@ -379,7 +372,6 @@ export const DecisionOverview = () => {
 
         const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
-        // Group participants by decision
         const participantsByDecision = new Map();
         participantsData?.forEach(participant => {
           if (!participantsByDecision.has(participant.decision_id)) {
@@ -401,7 +393,6 @@ export const DecisionOverview = () => {
           });
         });
 
-        // Add participants data, creator info and topics to decisions
         allDecisionsList.forEach((decision: any) => {
           decision.participants = participantsByDecision.get(decision.id) || [];
           decision.topicIds = topicsByDecision.get(decision.id) || [];
@@ -414,34 +405,23 @@ export const DecisionOverview = () => {
         });
       }
 
-      // Multi-level sorting: Unanswered first, then by creation date
+      // Sort decisions
       allDecisionsList.sort((a, b) => {
-        // Calculate response summaries for sorting
         const summaryA = getResponseSummary(a.participants);
         const summaryB = getResponseSummary(b.participants);
         
-        // Priority 1: User is participant and hasn't responded yet
         const aIsUnansweredParticipant = a.isParticipant && !a.hasResponded;
         const bIsUnansweredParticipant = b.isParticipant && !b.hasResponded;
         
         if (aIsUnansweredParticipant && !bIsUnansweredParticipant) return -1;
         if (!aIsUnansweredParticipant && bIsUnansweredParticipant) return 1;
         
-        // Priority 2: Questions pending (for creators)
         const aHasQuestions = summaryA.questionCount > 0;
         const bHasQuestions = summaryB.questionCount > 0;
         
         if (aHasQuestions && !bHasQuestions) return -1;
         if (!aHasQuestions && bHasQuestions) return 1;
         
-        // Priority 3: Pending responses (for creators)
-        const aPending = summaryA.pending;
-        const bPending = summaryB.pending;
-        
-        if (aPending > 0 && bPending === 0) return -1;
-        if (aPending === 0 && bPending > 0) return 1;
-        
-        // Priority 4: Sort by creation date (newest first)
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
@@ -453,17 +433,11 @@ export const DecisionOverview = () => {
 
   const sendCreatorResponse = async (responseId: string) => {
     const responseText = creatorResponses[responseId];
-    
-    if (!responseText?.trim()) {
-      console.warn('No response text for responseId:', responseId);
-      return;
-    }
+    if (!responseText?.trim()) return;
 
-    console.log('Sending creator response:', { responseId, responseText: responseText.substring(0, 50) });
     setIsLoading(true);
     
     try {
-      // Get response details first to find participant
       const { data: responseData, error: fetchError } = await supabase
         .from('task_decision_responses')
         .select(`
@@ -476,26 +450,15 @@ export const DecisionOverview = () => {
         .eq('id', responseId)
         .single();
 
-      if (fetchError) {
-        console.error('Error fetching response data:', fetchError);
-        throw fetchError;
-      }
+      if (fetchError) throw fetchError;
 
-      // Update the creator_response field
-      const { data: updateResult, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('task_decision_responses')
         .update({ creator_response: responseText.trim() })
-        .eq('id', responseId)
-        .select('id, creator_response');
+        .eq('id', responseId);
 
-      console.log('Update result:', { updateResult, updateError });
+      if (updateError) throw updateError;
 
-      if (updateError) {
-        console.error('Error updating creator response:', updateError);
-        throw updateError;
-      }
-
-      // Notify the participant about the creator's response
       if (responseData) {
         const participantUserId = (responseData as any).task_decision_participants?.user_id;
         const decisionTitle = (responseData as any).task_decisions?.title;
@@ -520,13 +483,8 @@ export const DecisionOverview = () => {
         description: "Antwort wurde gesendet.",
       });
 
-      // Clear the input first
       setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
-      
-      // Then reload decisions
-      if (user?.id) {
-        await loadDecisionRequests(user.id);
-      }
+      if (user?.id) await loadDecisionRequests(user.id);
     } catch (error) {
       console.error('Error sending creator response:', error);
       toast({
@@ -540,9 +498,7 @@ export const DecisionOverview = () => {
   };
 
   const handleResponseSubmitted = () => {
-    if (user?.id) {
-      loadDecisionRequests(user.id);
-    }
+    if (user?.id) loadDecisionRequests(user.id);
   };
 
   const handleOpenDetails = (decisionId: string) => {
@@ -556,26 +512,17 @@ export const DecisionOverview = () => {
   };
 
   const handleDecisionArchived = () => {
-    if (user?.id) {
-      loadDecisionRequests(user.id);
-    }
+    if (user?.id) loadDecisionRequests(user.id);
     handleCloseDetails();
   };
 
   const archiveDecision = async (decisionId: string) => {
     if (!user?.id) {
-      toast({
-        title: "Fehler",
-        description: "Nicht angemeldet.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Nicht angemeldet.", variant: "destructive" });
       return;
     }
 
-    console.log("Archiving decision:", { decisionId, userId: user.id });
-
     try {
-      // UPDATE ohne created_by Filter - RLS Policy regelt die Berechtigung
       const { data, error } = await supabase
         .from('task_decisions')
         .update({ 
@@ -586,73 +533,18 @@ export const DecisionOverview = () => {
         .eq('id', decisionId)
         .select();
 
-      console.log("Archive result:", { data, error });
-
-      if (error) {
-        console.error("Supabase archive error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       if (!data || data.length === 0) {
-        console.warn("No rows updated - checking decision ownership");
-        // Prüfe ob die Entscheidung existiert und wer der Ersteller ist
-        const { data: decision } = await supabase
-          .from('task_decisions')
-          .select('id, created_by, status')
-          .eq('id', decisionId)
-          .single();
-        
-        console.log("Decision check:", decision);
-        
-        if (!decision) {
-          toast({
-            title: "Fehler",
-            description: "Entscheidung nicht gefunden.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        if (decision.created_by !== user.id) {
-          toast({
-            title: "Keine Berechtigung",
-            description: "Nur der Ersteller kann diese Entscheidung archivieren.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        if (decision.status === 'archived') {
-          toast({
-            title: "Bereits archiviert",
-            description: "Diese Entscheidung ist bereits archiviert.",
-          });
-          loadDecisionRequests(user.id);
-          return;
-        }
-        
-        // Unerwarteter Fall - RLS blockiert möglicherweise
-        toast({
-          title: "Fehler",
-          description: "Archivierung fehlgeschlagen. Bitte kontaktieren Sie den Administrator.",
-          variant: "destructive",
-        });
+        toast({ title: "Fehler", description: "Archivierung fehlgeschlagen.", variant: "destructive" });
         return;
       }
 
-      toast({
-        title: "Archiviert",
-        description: "Entscheidung wurde archiviert.",
-      });
-
+      toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
       loadDecisionRequests(user.id);
     } catch (error) {
       console.error('Error archiving decision:', error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht archiviert werden.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Entscheidung konnte nicht archiviert werden.", variant: "destructive" });
     }
   };
 
@@ -660,7 +552,6 @@ export const DecisionOverview = () => {
     if (!deletingDecisionId) return;
 
     try {
-      // Actually delete the decision permanently
       const { error } = await supabase
         .from('task_decisions')
         .delete()
@@ -668,22 +559,12 @@ export const DecisionOverview = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Gelöscht",
-        description: "Entscheidung wurde endgültig gelöscht.",
-      });
-
+      toast({ title: "Gelöscht", description: "Entscheidung wurde endgültig gelöscht." });
       setDeletingDecisionId(null);
-      if (user?.id) {
-        loadDecisionRequests(user.id);
-      }
+      if (user?.id) loadDecisionRequests(user.id);
     } catch (error) {
       console.error('Error deleting decision:', error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Entscheidung konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
 
@@ -691,59 +572,32 @@ export const DecisionOverview = () => {
     try {
       const { error } = await supabase
         .from('task_decisions')
-        .update({
-          status: 'open',
-          archived_at: null,
-          archived_by: null,
-        })
+        .update({ status: 'open', archived_at: null, archived_by: null })
         .eq('id', decisionId);
 
       if (error) throw error;
-
-      toast({
-        title: "Erfolgreich",
-        description: "Entscheidung wurde wiederhergestellt.",
-      });
-
-      if (user?.id) {
-        loadDecisionRequests(user.id);
-      }
+      toast({ title: "Erfolgreich", description: "Entscheidung wurde wiederhergestellt." });
+      if (user?.id) loadDecisionRequests(user.id);
     } catch (error) {
       console.error('Error restoring decision:', error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht wiederhergestellt werden.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Entscheidung konnte nicht wiederhergestellt werden.", variant: "destructive" });
     }
   };
 
-  // Create task from completed decision
   const createTaskFromDecision = async (decision: DecisionRequest) => {
     if (!user?.id || !currentTenant?.id) {
-      toast({
-        title: "Fehler",
-        description: "Nicht angemeldet",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Nicht angemeldet", variant: "destructive" });
       return;
     }
     
     setCreatingTaskFromDecisionId(decision.id);
-    
     const summary = getResponseSummary(decision.participants);
     
-    // Determine result
     let resultText = 'Ergebnis: ';
-    if (summary.yesCount > summary.noCount) {
-      resultText += 'Angenommen';
-    } else if (summary.noCount > summary.yesCount) {
-      resultText += 'Abgelehnt';
-    } else {
-      resultText += 'Unentschieden';
-    }
+    if (summary.yesCount > summary.noCount) resultText += 'Angenommen';
+    else if (summary.noCount > summary.yesCount) resultText += 'Abgelehnt';
+    else resultText += 'Unentschieden';
     
-    // Build task description
     const taskDescription = `
       <h3>Aus Entscheidung: ${decision.title}</h3>
       <p><strong>${resultText}</strong> (Ja: ${summary.yesCount}, Nein: ${summary.noCount})</p>
@@ -751,7 +605,7 @@ export const DecisionOverview = () => {
     `;
     
     try {
-      const { data: task, error } = await supabase
+      const { error } = await supabase
         .from('tasks')
         .insert({
           user_id: user.id,
@@ -762,26 +616,15 @@ export const DecisionOverview = () => {
           status: 'todo',
           priority: 'medium',
           category: 'personal'
-        })
-        .select()
-        .single();
+        });
       
       if (error) throw error;
-      
-      toast({
-        title: "Aufgabe erstellt",
-        description: "Die Aufgabe wurde aus der Entscheidung erstellt.",
-      });
-      
+      toast({ title: "Aufgabe erstellt", description: "Die Aufgabe wurde aus der Entscheidung erstellt." });
       setCreatingTaskFromDecisionId(null);
       loadDecisionRequests(user.id);
     } catch (error) {
       console.error('Error creating task from decision:', error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Aufgabe konnte nicht erstellt werden.", variant: "destructive" });
       setCreatingTaskFromDecisionId(null);
     }
   };
@@ -790,99 +633,242 @@ export const DecisionOverview = () => {
     const yesCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'yes').length;
     const noCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'no').length;
     const questionCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'question').length;
-    const totalResponses = yesCount + noCount + questionCount;
-    const pending = participants.length - totalResponses;
-
+    const pending = participants.length - (yesCount + noCount + questionCount);
     return { yesCount, noCount, questionCount, pending, total: participants.length };
   };
 
   const getBorderColor = (summary: ReturnType<typeof getResponseSummary>) => {
     const hasResponses = summary.yesCount + summary.noCount + summary.questionCount > 0;
     const allResponsesReceived = summary.pending === 0;
-    const hasQuestions = summary.questionCount > 0;
     
-    // Orange: Rückfragen vorhanden
-    if (hasQuestions) {
-      return 'border-l-orange-500';
-    }
-    
-    // Grau: Noch Antworten ausstehend ODER keine Teilnehmer/Antworten
-    if (!allResponsesReceived || !hasResponses) {
-      return 'border-l-gray-400';
-    }
-    
-    // Alle haben geantwortet: Grün wenn mehr Ja, sonst Rot
-    if (summary.yesCount > summary.noCount) {
-      return 'border-l-green-500';
-    } else {
-      return 'border-l-red-600';
-    }
+    if (summary.questionCount > 0) return 'border-l-orange-500';
+    if (!allResponsesReceived || !hasResponses) return 'border-l-gray-400';
+    if (summary.yesCount > summary.noCount) return 'border-l-green-500';
+    return 'border-l-red-600';
   };
 
-  const filteredDecisions = decisions.filter(decision => {
-    if (activeTab === "archived") {
-      return decision.status === 'archived';
-    }
-    
-    // For all other tabs, only show non-archived decisions
-    if (decision.status === 'archived') return false;
-    
-    switch (activeTab) {
-      case "my-decisions":
-        return decision.isCreator;
-      case "participating":
-        return decision.isParticipant;
-      default:
-        return true;
-    }
-  });
+  // Sidebar data
+  const sidebarData = useMemo(() => {
+    const openQuestions: Array<{
+      id: string;
+      decisionId: string;
+      decisionTitle: string;
+      participantName: string | null;
+      participantBadgeColor: string | null;
+      participantUserId: string;
+      comment: string | null;
+      createdAt: string;
+      hasCreatorResponse: boolean;
+    }> = [];
 
-  const renderDecisionCard = (decision: DecisionRequest) => {
+    const newComments: Array<{
+      id: string;
+      decisionId: string;
+      decisionTitle: string;
+      participantName: string | null;
+      participantBadgeColor: string | null;
+      participantUserId: string;
+      responseType: 'yes' | 'no' | 'question';
+      comment: string | null;
+      createdAt: string;
+    }> = [];
+
+    // Find open questions (for creator) and new comments
+    decisions.forEach(decision => {
+      if (decision.status === 'archived') return;
+      
+      decision.participants?.forEach(participant => {
+        const latestResponse = participant.responses[0];
+        if (!latestResponse) return;
+
+        // Open questions: questions without creator response (for decision creator)
+        if (decision.isCreator && latestResponse.response_type === 'question' && !latestResponse.creator_response) {
+          openQuestions.push({
+            id: latestResponse.id,
+            decisionId: decision.id,
+            decisionTitle: decision.title,
+            participantName: participant.profile?.display_name || null,
+            participantBadgeColor: participant.profile?.badge_color || null,
+            participantUserId: participant.user_id,
+            comment: latestResponse.comment,
+            createdAt: latestResponse.created_at,
+            hasCreatorResponse: false,
+          });
+        }
+
+        // New comments: responses with comments in the last 7 days (for non-creators)
+        if (decision.isCreator && latestResponse.comment) {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          if (new Date(latestResponse.created_at) > sevenDaysAgo && latestResponse.response_type !== 'question') {
+            newComments.push({
+              id: latestResponse.id,
+              decisionId: decision.id,
+              decisionTitle: decision.title,
+              participantName: participant.profile?.display_name || null,
+              participantBadgeColor: participant.profile?.badge_color || null,
+              participantUserId: participant.user_id,
+              responseType: latestResponse.response_type,
+              comment: latestResponse.comment,
+              createdAt: latestResponse.created_at,
+            });
+          }
+        }
+      });
+    });
+
+    return { openQuestions, newComments };
+  }, [decisions]);
+
+  // Tab counts
+  const tabCounts = useMemo(() => {
+    const active = decisions.filter(d => d.status !== 'archived');
+    return {
+      forMe: active.filter(d => d.isParticipant && !d.hasResponded).length,
+      myDecisions: active.filter(d => d.isCreator).length,
+      public: active.filter(d => d.visible_to_all && !d.isCreator && !d.isParticipant).length,
+      questions: active.filter(d => {
+        if (!d.isCreator) return false;
+        const summary = getResponseSummary(d.participants);
+        return summary.questionCount > 0;
+      }).length,
+      archived: decisions.filter(d => d.status === 'archived').length,
+    };
+  }, [decisions]);
+
+  // Filter decisions
+  const filteredDecisions = useMemo(() => {
+    let filtered = decisions;
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(d => 
+        d.title.toLowerCase().includes(query) ||
+        (d.description && d.description.toLowerCase().includes(query))
+      );
+    }
+
+    // Tab filter
+    if (activeTab === "archived") {
+      return filtered.filter(d => d.status === 'archived');
+    }
+
+    filtered = filtered.filter(d => d.status !== 'archived');
+
+    switch (activeTab) {
+      case "for-me":
+        return filtered.filter(d => d.isParticipant && !d.hasResponded);
+      case "my-decisions":
+        return filtered.filter(d => d.isCreator);
+      case "public":
+        return filtered.filter(d => d.visible_to_all && !d.isCreator && !d.isParticipant);
+      case "questions":
+        return filtered.filter(d => {
+          if (!d.isCreator) return false;
+          const summary = getResponseSummary(d.participants);
+          return summary.questionCount > 0;
+        });
+      default:
+        return filtered;
+    }
+  }, [decisions, activeTab, searchQuery]);
+
+  const renderCompactCard = (decision: DecisionRequest) => {
     const summary = getResponseSummary(decision.participants);
     
+    // Prepare avatar stack data
+    const avatarParticipants = (decision.participants || []).map(p => ({
+      user_id: p.user_id,
+      display_name: p.profile?.display_name || null,
+      badge_color: p.profile?.badge_color || null,
+      response_type: p.responses[0]?.response_type || null,
+    }));
+
     return (
       <Card 
         key={decision.id} 
-        className={`border-l-4 ${getBorderColor(summary)} hover:bg-muted/50 transition-colors`}
+        className={cn(
+          "border-l-4 hover:bg-muted/50 transition-colors cursor-pointer",
+          getBorderColor(summary)
+        )}
+        onClick={() => handleOpenDetails(decision.id)}
       >
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              {decision.hasResponded && (
-                <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+        <CardContent className="p-4">
+          {/* Header: Status + Creator + Visibility */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              {/* Status badge */}
+              {summary.questionCount > 0 ? (
+                <Badge variant="outline" className="text-orange-600 border-orange-600 text-[10px]">
+                  <MessageCircle className="h-2.5 w-2.5 mr-1" />
+                  Rückfrage offen
+                </Badge>
+              ) : summary.pending === 0 && summary.total > 0 ? (
+                <Badge variant="outline" className={cn(
+                  "text-[10px]",
+                  summary.yesCount > summary.noCount 
+                    ? "text-green-600 border-green-600" 
+                    : "text-red-600 border-red-600"
+                )}>
+                  {summary.yesCount > summary.noCount ? (
+                    <><Check className="h-2.5 w-2.5 mr-1" />Angenommen</>
+                  ) : (
+                    <><X className="h-2.5 w-2.5 mr-1" />Abgelehnt</>
+                  )}
+                </Badge>
+              ) : summary.total > 0 ? (
+                <Badge variant="outline" className="text-muted-foreground text-[10px]">
+                  {summary.pending} ausstehend
+                </Badge>
+              ) : null}
+
+              {/* Responded indicator */}
+              {decision.hasResponded && decision.isParticipant && (
+                <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
               )}
-              <CardTitle className="text-base font-semibold cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
-                {decision.title}
-              </CardTitle>
+
+              {/* Creator */}
+              {decision.creator && (
+                <UserBadge 
+                  userId={decision.creator.user_id}
+                  displayName={decision.creator.display_name}
+                  badgeColor={decision.creator.badge_color}
+                  size="sm"
+                />
+              )}
+
+              {/* Visibility */}
+              {decision.visible_to_all && (
+                <Badge variant="secondary" className="text-[10px]">
+                  <Globe className="h-2.5 w-2.5 mr-1" />
+                  Öffentlich
+                </Badge>
+              )}
             </div>
-            
+
+            {/* Actions dropdown */}
             {decision.isCreator && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="sm">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                    <MoreVertical className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditingDecisionId(decision.id); }}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Bearbeiten
+                    <Edit className="h-4 w-4 mr-2" />Bearbeiten
                   </DropdownMenuItem>
                   {decision.status !== 'archived' && (
                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); archiveDecision(decision.id); }}>
-                      <Archive className="h-4 w-4 mr-2" />
-                      Archivieren
+                      <Archive className="h-4 w-4 mr-2" />Archivieren
                     </DropdownMenuItem>
                   )}
-                  {/* Aufgabe erstellen - nur wenn alle abgestimmt haben */}
                   {summary.pending === 0 && decision.participants && decision.participants.length > 0 && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          createTaskFromDecision(decision); 
-                        }}
+                        onClick={(e) => { e.stopPropagation(); createTaskFromDecision(decision); }}
                         disabled={creatingTaskFromDecisionId === decision.id}
                       >
                         <ClipboardList className="h-4 w-4 mr-2" />
@@ -895,238 +881,122 @@ export const DecisionOverview = () => {
                     onClick={(e) => { e.stopPropagation(); setDeletingDecisionId(decision.id); }}
                     className="text-destructive"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Endgültig löschen
+                    <Trash2 className="h-4 w-4 mr-2" />Endgültig löschen
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
           </div>
-        </CardHeader>
-        
-        <CardContent className="pt-0">
-          {/* 60/40 Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-4 mb-3">
-            {/* Left Column: Description - mehr Platz */}
-            <div className="space-y-2 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
-              {decision.description && (
-                <TruncatedDescription content={decision.description} maxLength={250} />
+
+          {/* Title */}
+          <h3 className="font-medium text-sm mb-1">{decision.title}</h3>
+
+          {/* Description */}
+          {decision.description && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <TruncatedDescription content={decision.description} maxLength={120} />
+            </div>
+          )}
+
+          {/* Footer: Meta info */}
+          <div className="flex items-center justify-between mt-3 pt-2 border-t">
+            <div className="flex items-center gap-3">
+              {/* Date */}
+              <span className="text-[10px] text-muted-foreground">
+                {new Date(decision.created_at).toLocaleDateString('de-DE')}
+              </span>
+
+              {/* Attachments */}
+              {(decision.attachmentCount ?? 0) > 0 && (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                  <Paperclip className="h-2.5 w-2.5" />
+                  {decision.attachmentCount}
+                </span>
               )}
-              {decision.task && (
-                <p className="text-xs text-muted-foreground italic">
-                  Aufgabe: {decision.task.title}
-                </p>
-              )}
+
+              {/* Topics */}
               {decision.topicIds && decision.topicIds.length > 0 && (
-                <TopicDisplay topicIds={decision.topicIds} maxDisplay={3} />
+                <TopicDisplay topicIds={decision.topicIds} maxDisplay={2} />
               )}
             </div>
 
-            {/* Right Column: Metadata, Voting, Actions - flex column für Badges unten */}
-            <div className="flex flex-col justify-between min-h-[120px]">
-              {/* Top: Voting */}
-              <div className="space-y-2">
-
-                {/* Voting Results - größer */}
-                {decision.participants && decision.participants.length > 0 && (
-                  <div className="flex items-center gap-4 text-sm font-medium py-2">
-                    <span className="flex items-center text-green-600">
-                      <Check className="h-4 w-4 mr-1" />
-                      {summary.yesCount}
-                    </span>
-                    <span className="flex items-center text-orange-600">
-                      <MessageCircle className="h-4 w-4 mr-1" />
-                      {summary.questionCount}
-                    </span>
-                    <span className="flex items-center text-red-600">
-                      <X className="h-4 w-4 mr-1" />
-                      {summary.noCount}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      ({summary.pending} offen)
-                    </span>
+            {/* Avatar Stack + Voting */}
+            <div className="flex items-center gap-3">
+              {decision.participants && decision.participants.length > 0 && (
+                <>
+                  <div className="flex items-center gap-1.5 text-[10px]">
+                    <span className="text-green-600 font-medium">{summary.yesCount}</span>
+                    <span className="text-muted-foreground">/</span>
+                    <span className="text-orange-600 font-medium">{summary.questionCount}</span>
+                    <span className="text-muted-foreground">/</span>
+                    <span className="text-red-600 font-medium">{summary.noCount}</span>
                   </div>
-                )}
-
-                {/* Participant Responses Preview - volle Länge */}
-                {decision.participants && decision.participants.length > 0 && (
-                  <div className="space-y-2">
-                    {decision.participants.map(participant => {
-                      const latestResponse = participant.responses[0];
-                      if (!latestResponse) return null;
-                      
-                      return (
-                        <div key={participant.id} className="space-y-1">
-                          <div className="flex items-center gap-2 text-xs">
-                            {latestResponse.response_type === 'yes' && (
-                              <Badge variant="outline" className="text-green-600 border-green-600 text-xs px-1.5">
-                                <Check className="h-3 w-3" />
-                              </Badge>
-                            )}
-                            {latestResponse.response_type === 'no' && (
-                              <Badge variant="outline" className="text-red-600 border-red-600 text-xs px-1.5">
-                                <X className="h-3 w-3" />
-                              </Badge>
-                            )}
-                            {latestResponse.response_type === 'question' && (
-                              <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs px-1.5">
-                                <MessageCircle className="h-3 w-3" />
-                              </Badge>
-                            )}
-                            
-                            <UserBadge 
-                              userId={participant.user_id}
-                              displayName={participant.profile?.display_name}
-                              badgeColor={participant.profile?.badge_color}
-                              size="sm"
-                            />
-                          </div>
-                          
-                          {/* Kommentar in voller Länge mit RichText */}
-                          {latestResponse.comment && (
-                            <div className="ml-8 text-xs">
-                              <RichTextDisplay content={latestResponse.comment} className="text-muted-foreground" />
-                            </div>
-                          )}
-                          
-                          {/* Creator Response */}
-                          {latestResponse.creator_response && (
-                            <div className="ml-8 bg-muted p-2 rounded text-xs">
-                              <strong>Antwort:</strong>
-                              <RichTextDisplay content={latestResponse.creator_response} className="mt-1" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Response option for participants - always show for editing */}
-                {decision.isParticipant && decision.participant_id && (
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <TaskDecisionResponse 
-                      decisionId={decision.id}
-                      participantId={decision.participant_id}
-                      onResponseSubmitted={handleResponseSubmitted}
-                      hasResponded={decision.hasResponded}
-                    />
-                  </div>
-                )}
-                
-                {/* Viewer comment option for non-participants */}
-                {!decision.isParticipant && decision.visible_to_all && (
-                  <div onClick={(e) => e.stopPropagation()} className="mt-2 border-t pt-2">
-                    <DecisionViewerComment
-                      decisionId={decision.id}
-                      creatorId={decision.created_by}
-                      decisionTitle={decision.title}
-                      onCommentSubmitted={handleResponseSubmitted}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Bottom: Badges + Creator + Datum - rechts unten */}
-              <div className="flex flex-col items-end gap-1 mt-2">
-                <div className="flex items-center gap-1 flex-wrap justify-end">
-                  {decision.creator && (
-                    <UserBadge 
-                      userId={decision.creator.user_id}
-                      displayName={decision.creator.display_name}
-                      badgeColor={decision.creator.badge_color}
-                      size="sm"
-                    />
-                  )}
-                  {decision.visible_to_all && (
-                    <Badge variant="secondary" className="text-xs">
-                      <Globe className="h-3 w-3 mr-1" />
-                      Öffentlich
-                    </Badge>
-                  )}
-                  {decision.isStandalone ? (
-                    <Badge variant="secondary" className="text-xs">
-                      <Vote className="h-3 w-3 mr-1" />
-                      Eigenständig
-                    </Badge>
-                  ) : (
-                    <Badge variant="destructive" className="text-xs">
-                      <CheckSquare className="h-3 w-3 mr-1" />
-                      Task
-                    </Badge>
-                  )}
-                  {(decision.attachmentCount ?? 0) > 0 && (
-                    <Badge variant="outline" className="text-xs">
-                      <Paperclip className="h-3 w-3 mr-1" />
-                      {decision.attachmentCount}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(decision.created_at).toLocaleString('de-DE', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
+                  <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
+                </>
+              )}
             </div>
           </div>
 
-          {/* Questions section - Full width */}
-          {user?.id === decision.created_by && decision.participants && (
-            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+          {/* Response buttons for participants */}
+          {decision.isParticipant && decision.participant_id && !decision.hasResponded && (
+            <div className="mt-3 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
+              <TaskDecisionResponse 
+                decisionId={decision.id}
+                participantId={decision.participant_id}
+                onResponseSubmitted={handleResponseSubmitted}
+                hasResponded={decision.hasResponded}
+              />
+            </div>
+          )}
+
+          {/* Viewer comment option */}
+          {!decision.isParticipant && decision.visible_to_all && (
+            <div className="mt-3 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
+              <DecisionViewerComment
+                decisionId={decision.id}
+                creatorId={decision.created_by}
+                decisionTitle={decision.title}
+                onCommentSubmitted={handleResponseSubmitted}
+              />
+            </div>
+          )}
+
+          {/* Open questions for creator */}
+          {user?.id === decision.created_by && decision.participants?.some(p => 
+            p.responses[0]?.response_type === 'question' && !p.responses[0]?.creator_response
+          ) && (
+            <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
               {decision.participants.map(participant => {
                 const latestResponse = participant.responses[0];
-                if (!latestResponse || latestResponse.response_type !== 'question') return null;
+                if (!latestResponse || latestResponse.response_type !== 'question' || latestResponse.creator_response) return null;
                 
                 return (
-                  <div key={participant.id} className="bg-orange-50 p-2 rounded text-xs space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-orange-700 flex items-center gap-2">
-                        Rückfrage von 
-                        <UserBadge 
-                          userId={participant.user_id}
-                          displayName={participant.profile?.display_name}
-                          badgeColor={participant.profile?.badge_color}
-                          size="sm"
-                        />
-                      </span>
-                      <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs">
-                        <MessageCircle className="h-2 w-2 mr-1" />
-                        Rückfrage
-                      </Badge>
+                  <div key={participant.id} className="bg-orange-50 dark:bg-orange-950/20 p-2 rounded text-xs space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-orange-700 dark:text-orange-400">Rückfrage von</span>
+                      <UserBadge 
+                        userId={participant.user_id}
+                        displayName={participant.profile?.display_name}
+                        badgeColor={participant.profile?.badge_color}
+                        size="sm"
+                      />
                     </div>
                     <p className="text-muted-foreground">{latestResponse.comment}</p>
-                    
-                    {latestResponse.creator_response ? (
-                      <div className="bg-white dark:bg-muted p-2 rounded border">
-                        <strong className="text-green-700 dark:text-green-500">Ihre Antwort:</strong>
-                        <RichTextDisplay content={latestResponse.creator_response} className="mt-1" />
-                      </div>
-                    ) : (
-                      <div className="space-y-2 mt-2">
-                        <SimpleRichTextEditor
-                          initialContent={creatorResponses[latestResponse.id] || ''}
-                          onChange={(html) => setCreatorResponses(prev => ({
-                            ...prev,
-                            [latestResponse.id]: html
-                          }))}
-                          placeholder="Antwort eingeben..."
-                          minHeight="60px"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={() => sendCreatorResponse(latestResponse.id)}
-                          disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}
-                        >
-                          <Send className="h-3 w-3 mr-1" />
-                          Senden
-                        </Button>
-                      </div>
-                    )}
+                    <div className="space-y-2 mt-2">
+                      <SimpleRichTextEditor
+                        initialContent={creatorResponses[latestResponse.id] || ''}
+                        onChange={(html) => setCreatorResponses(prev => ({ ...prev, [latestResponse.id]: html }))}
+                        placeholder="Antwort eingeben..."
+                        minHeight="50px"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => sendCreatorResponse(latestResponse.id)}
+                        disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}
+                      >
+                        <Send className="h-3 w-3 mr-1" />Senden
+                      </Button>
+                    </div>
                   </div>
                 );
               })}
@@ -1137,130 +1007,45 @@ export const DecisionOverview = () => {
     );
   };
 
-  const renderArchivedDecisionCard = (decision: DecisionRequest) => {
+  const renderArchivedCard = (decision: DecisionRequest) => {
     const summary = getResponseSummary(decision.participants);
     
     return (
       <Card 
         key={decision.id} 
-        className={`border-l-4 ${getBorderColor(summary)} bg-muted/30`}
+        className={cn("border-l-4 bg-muted/30", getBorderColor(summary))}
+        onClick={() => handleOpenDetails(decision.id)}
       >
-        <CardHeader className="pb-3">
+        <CardContent className="p-4">
           <div className="flex items-center justify-between gap-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
-              {decision.title}
-            </CardTitle>
+            <div>
+              <h3 className="font-medium text-sm text-muted-foreground">{decision.title}</h3>
+              <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
+                <span>Archiviert: {decision.archived_at && new Date(decision.archived_at).toLocaleDateString('de-DE')}</span>
+                {decision.creator && (
+                  <>
+                    <span>•</span>
+                    <UserBadge 
+                      userId={decision.creator.user_id}
+                      displayName={decision.creator.display_name}
+                      badgeColor={decision.creator.badge_color}
+                      size="sm"
+                    />
+                  </>
+                )}
+              </div>
+            </div>
             
             {decision.isCreator && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  restoreDecision(decision.id);
-                }}
+                onClick={(e) => { e.stopPropagation(); restoreDecision(decision.id); }}
               >
-                <RotateCcw className="h-4 w-4 mr-2" />
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
                 Wiederherstellen
               </Button>
             )}
-          </div>
-        </CardHeader>
-        
-        <CardContent className="pt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Left Column: Description */}
-            <div className="space-y-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
-              {decision.description && (
-                <RichTextDisplay content={decision.description} className="text-xs line-clamp-3" />
-              )}
-              {decision.task && (
-                <p className="text-xs text-muted-foreground italic">
-                  Aufgabe: {decision.task.title}
-                </p>
-              )}
-            </div>
-
-            {/* Right Column: Metadata, Badges, Voting */}
-            <div className="space-y-2">
-              <div className="flex gap-2 flex-wrap text-xs text-muted-foreground">
-                <p>
-                  Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-                {decision.archived_at && (
-                  <p>
-                    • Archiviert: {new Date(decision.archived_at).toLocaleString('de-DE', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-1 flex-wrap">
-                {decision.creator && (
-                  <UserBadge 
-                    userId={decision.creator.user_id}
-                    displayName={decision.creator.display_name}
-                    badgeColor={decision.creator.badge_color}
-                    size="sm"
-                  />
-                )}
-                <Badge variant="outline" className="text-gray-600 border-gray-600 text-xs">
-                  <Archive className="h-3 w-3 mr-1" />
-                  Archiviert
-                </Badge>
-                {decision.isStandalone ? (
-                  <Badge variant="secondary" className="text-xs">
-                    <Vote className="h-3 w-3 mr-1" />
-                    Eigenständig
-                  </Badge>
-                ) : (
-                  <Badge variant="destructive" className="text-xs">
-                    <CheckSquare className="h-3 w-3 mr-1" />
-                    Task
-                  </Badge>
-                )}
-                {(decision.attachmentCount ?? 0) > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    <Paperclip className="h-3 w-3 mr-1" />
-                    {decision.attachmentCount}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Final Result */}
-              {decision.participants && decision.participants.length > 0 && (
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="flex items-center text-green-600">
-                    <Check className="h-3 w-3 mr-1" />
-                    {summary.yesCount}
-                  </span>
-                  <span className="flex items-center text-orange-600">
-                    <MessageCircle className="h-3 w-3 mr-1" />
-                    {summary.questionCount}
-                  </span>
-                  <span className="flex items-center text-red-600">
-                    <X className="h-3 w-3 mr-1" />
-                    {summary.noCount}
-                  </span>
-                  {summary.pending > 0 && (
-                    <span className="text-muted-foreground">
-                      ({summary.pending} ausstehend)
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -1269,50 +1054,105 @@ export const DecisionOverview = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Entscheidungen</h1>
-        <p className="text-muted-foreground">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-foreground mb-1">Entscheidungen</h1>
+        <p className="text-sm text-muted-foreground">
           Verwalten Sie Entscheidungsanfragen und Abstimmungen
         </p>
       </div>
       
-      <div className="space-y-6">
-        <div className="flex justify-center mb-4">
-          <StandaloneDecisionCreator 
-            onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)} 
-            isOpen={isCreateDialogOpen}
-            onOpenChange={setIsCreateDialogOpen}
-          />
+      {/* Grid Layout: Main + Sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
+        {/* Main Content */}
+        <div className="space-y-4">
+          {/* Search + Create */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Entscheidungen durchsuchen..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <StandaloneDecisionCreator 
+              onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)} 
+              isOpen={isCreateDialogOpen}
+              onOpenChange={setIsCreateDialogOpen}
+            />
+          </div>
+
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4 h-9">
+              <TabsTrigger value="for-me" className="text-xs">
+                Für mich
+                {tabCounts.forMe > 0 && (
+                  <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">
+                    {tabCounts.forMe}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="my-decisions" className="text-xs">
+                Von mir ({tabCounts.myDecisions})
+              </TabsTrigger>
+              <TabsTrigger value="public" className="text-xs">
+                Öffentlich ({tabCounts.public})
+              </TabsTrigger>
+              <TabsTrigger value="questions" className="text-xs">
+                Rückfragen
+                {tabCounts.questions > 0 && (
+                  <Badge variant="outline" className="ml-1.5 text-orange-600 border-orange-600 text-[10px] px-1.5 py-0">
+                    {tabCounts.questions}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value={activeTab} className="mt-4 space-y-3">
+              {filteredDecisions.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  {activeTab === "for-me" && "Keine offenen Entscheidungen für Sie."}
+                  {activeTab === "my-decisions" && "Sie haben noch keine Entscheidungsanfragen erstellt."}
+                  {activeTab === "public" && "Keine öffentlichen Entscheidungen vorhanden."}
+                  {activeTab === "questions" && "Keine offenen Rückfragen vorhanden."}
+                  {activeTab === "archived" && "Keine archivierten Entscheidungen vorhanden."}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {activeTab === "archived" 
+                    ? filteredDecisions.map(renderArchivedCard)
+                    : filteredDecisions.map(renderCompactCard)
+                  }
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+
+          {/* Archived Link */}
+          {activeTab !== "archived" && tabCounts.archived > 0 && (
+            <button
+              onClick={() => setActiveTab("archived")}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mt-4"
+            >
+              <FolderArchive className="h-4 w-4" />
+              Archiviert ({tabCounts.archived})
+            </button>
+          )}
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="all">Alle ({decisions.filter(d => d.status !== 'archived').length})</TabsTrigger>
-          <TabsTrigger value="my-decisions">Meine Anfragen ({decisions.filter(d => d.isCreator && d.status !== 'archived').length})</TabsTrigger>
-          <TabsTrigger value="participating">Teilnehmend ({decisions.filter(d => d.isParticipant && d.status !== 'archived').length})</TabsTrigger>
-          <TabsTrigger value="archived">Archiviert ({decisions.filter(d => d.status === 'archived').length})</TabsTrigger>
-        </TabsList>
+        {/* Right Sidebar */}
+        <DecisionSidebar
+          openQuestions={sidebarData.openQuestions}
+          newComments={sidebarData.newComments}
+          onQuestionClick={handleOpenDetails}
+          onCommentClick={handleOpenDetails}
+        />
+      </div>
 
-        <TabsContent value={activeTab} className="space-y-4">
-          {filteredDecisions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {activeTab === "all" && "Keine Entscheidungen vorhanden."}
-              {activeTab === "my-decisions" && "Sie haben noch keine Entscheidungsanfragen erstellt."}
-              {activeTab === "participating" && "Sie nehmen an keinen Entscheidungen teil."}
-              {activeTab === "archived" && "Keine archivierten Entscheidungen vorhanden."}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {activeTab === "archived" 
-                ? filteredDecisions.map(renderArchivedDecisionCard)
-                : filteredDecisions.map(renderDecisionCard)
-              }
-            </div>
-          )}
-        </TabsContent>
-        </Tabs>
-
-        {selectedDecisionId && (
+      {/* Dialogs */}
+      {selectedDecisionId && (
         <TaskDecisionDetails
           decisionId={selectedDecisionId}
           isOpen={isDetailsOpen}
@@ -1328,9 +1168,7 @@ export const DecisionOverview = () => {
           onClose={() => setEditingDecisionId(null)}
           onUpdated={() => {
             setEditingDecisionId(null);
-            if (user?.id) {
-              loadDecisionRequests(user.id);
-            }
+            if (user?.id) loadDecisionRequests(user.id);
           }}
         />
       )}
@@ -1340,9 +1178,7 @@ export const DecisionOverview = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Entscheidung endgültig löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Aktion löscht die Entscheidung unwiderruflich. Alle zugehörigen Antworten und Kommentare werden ebenfalls gelöscht. 
-              <br /><br />
-              <strong>Tipp:</strong> Wenn Sie die Entscheidung nur ausblenden möchten, nutzen Sie stattdessen die Archivieren-Funktion.
+              Diese Aktion löscht die Entscheidung unwiderruflich. Alle zugehörigen Antworten und Kommentare werden ebenfalls gelöscht.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1353,7 +1189,6 @@ export const DecisionOverview = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      </div>
     </div>
   );
 };
