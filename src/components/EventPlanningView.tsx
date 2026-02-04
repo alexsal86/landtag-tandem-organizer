@@ -816,26 +816,29 @@ export function EventPlanningView() {
               </TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-1">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className={cn(
-                            "h-7 w-7",
-                            (planning as any).is_completed && "text-green-600"
-                          )}
-                          onClick={() => togglePlanningCompleted(planning.id, !(planning as any).is_completed)}
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {(planning as any).is_completed ? "Als unerledigt markieren" : "Als erledigt markieren"}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  {/* Erledigt-Button - nur für Eigentümer oder Bearbeiter */}
+                  {(planning.user_id === user?.id || collaborators.some(c => c.event_planning_id === planning.id && c.user_id === user?.id && c.can_edit)) && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className={cn(
+                              "h-7 w-7",
+                              (planning as any).is_completed && "text-green-600"
+                            )}
+                            onClick={() => togglePlanningCompleted(planning.id, !(planning as any).is_completed)}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {(planning as any).is_completed ? "Als unerledigt markieren" : "Als erledigt markieren"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                   {planning.user_id === user?.id && (
                     <TooltipProvider>
                       <Tooltip>
@@ -3541,6 +3544,18 @@ export function EventPlanningView() {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Erledigt-Button - nur für Eigentümer oder Bearbeiter */}
+          {(selectedPlanning.user_id === user?.id || collaborators.some(c => c.user_id === user?.id && c.can_edit)) && (
+            <Button 
+              variant={(selectedPlanning as any).is_completed ? "default" : "outline"}
+              className={cn((selectedPlanning as any).is_completed && "bg-green-600 hover:bg-green-700")}
+              onClick={() => togglePlanningCompleted(selectedPlanning.id, !(selectedPlanning as any).is_completed)}
+            >
+              <CheckCircle className="mr-2 h-4 w-4" />
+              {(selectedPlanning as any).is_completed ? "Erledigt" : "Als erledigt markieren"}
+            </Button>
+          )}
 
           {/* Archivieren-Button - nur für Ersteller */}
           {selectedPlanning.user_id === user?.id && (

@@ -271,26 +271,29 @@ export function MyWorkPlanningsTab() {
                 </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn("h-7 w-7", planning.is_completed && "text-green-600")}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleCompleted(planning.id, !planning.is_completed);
-                        }}
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {planning.is_completed ? "Als unerledigt markieren" : "Als erledigt markieren"}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                {/* Erledigt-Button - nur für Eigentümer */}
+                {planning.user_id === user?.id && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn("h-7 w-7", planning.is_completed && "text-green-600")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleCompleted(planning.id, !planning.is_completed);
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {planning.is_completed ? "Als unerledigt markieren" : "Als erledigt markieren"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
                 
                 {planning.user_id === user?.id && (
                   <TooltipProvider>

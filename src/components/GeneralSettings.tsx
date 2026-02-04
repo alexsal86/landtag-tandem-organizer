@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { DashboardDefaultCover } from "./administration/DashboardDefaultCover";
+import { CelebrationSettingsCard } from "./administration/CelebrationSettingsCard";
 
 interface AppSettings {
   app_name: string;
@@ -277,6 +278,9 @@ export function GeneralSettings() {
 
       {/* Dashboard Default Cover */}
       <DashboardDefaultCover />
+
+      {/* Celebration Animations Settings */}
+      <CelebrationSettingsCard />
     </div>
   );
 }

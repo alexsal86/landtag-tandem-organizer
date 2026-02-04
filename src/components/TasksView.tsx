@@ -27,7 +27,7 @@ import { TaskDecisionStatus } from "./task-decisions/TaskDecisionStatus";
 import { TaskDecisionList } from "./task-decisions/TaskDecisionList";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { NewItemIndicator } from "./NewItemIndicator";
-import { UnicornAnimation } from "./UnicornAnimation";
+import { CelebrationAnimationSystem } from "./celebrations";
 
 interface Task {
   id: string;
@@ -152,7 +152,7 @@ export function TasksView() {
   }>>([]);
   const [quickNoteDialog, setQuickNoteDialog] = useState<{ open: boolean; taskId: string | null }>({ open: false, taskId: null });
   const [quickNoteContent, setQuickNoteContent] = useState("");
-  const [showUnicorn, setShowUnicorn] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   
   console.log('TodoCreateOpen state:', todoCreateOpen); // Debug log
   
@@ -996,7 +996,7 @@ export function TasksView() {
             if (!freshTask) {
               // Task was deleted (archived successfully)
               setTasks(prev => prev.filter(t => t.id !== taskId));
-              setShowUnicorn(true);
+              setShowCelebration(true);
               toast({
                 title: "Status aktualisiert",
                 description: "Aufgabe wurde archiviert."
@@ -1031,7 +1031,7 @@ export function TasksView() {
               
               // UI aktualisieren
               setTasks(prev => prev.filter(t => t.id !== taskId));
-              setShowUnicorn(true);
+              setShowCelebration(true);
               toast({
                 title: "Status aktualisiert",
                 description: "Aufgabe wurde archiviert."
@@ -1098,7 +1098,7 @@ export function TasksView() {
                 // Archive succeeded, delete task
                 await supabase.from('tasks').delete().eq('id', taskId);
                 setTasks(prev => prev.filter(t => t.id !== taskId));
-                setShowUnicorn(true);
+                setShowCelebration(true);
                 toast({
                   title: "Status aktualisiert",
                   description: "Aufgabe wurde archiviert."
@@ -1136,7 +1136,7 @@ export function TasksView() {
           .eq('user_id', user.id)
           .eq('navigation_context', 'tasks');
           
-        setShowUnicorn(true);
+        setShowCelebration(true);
       } else {
         // Nur bei Status-Wechsel ohne Archivierung neu laden
         loadTasks();
@@ -1410,7 +1410,7 @@ export function TasksView() {
       
       // Trigger unicorn animation when subtask is completed
       if (isCompleted) {
-        setShowUnicorn(true);
+        setShowCelebration(true);
       }
       
       toast({
@@ -1798,7 +1798,7 @@ export function TasksView() {
                 
                 if (error) throw error;
                 loadTodos();
-                setShowUnicorn(true);
+                setShowCelebration(true);
                 
                 toast({
                   title: "ToDo erledigt",
@@ -2095,7 +2095,7 @@ export function TasksView() {
                                        
                                        // Trigger unicorn animation when subtask is completed
                                        if (isChecked) {
-                                         setShowUnicorn(true);
+                                         setShowCelebration(true);
                                        }
                                        
                                        toast({ 
@@ -2652,10 +2652,10 @@ export function TasksView() {
         </DialogContent>
       </Dialog>
 
-      {/* Unicorn Animation */}
-      <UnicornAnimation 
-        isVisible={showUnicorn} 
-        onAnimationComplete={() => setShowUnicorn(false)} 
+      {/* Celebration Animation */}
+      <CelebrationAnimationSystem 
+        isVisible={showCelebration} 
+        onAnimationComplete={() => setShowCelebration(false)} 
       />
      </>
    );
