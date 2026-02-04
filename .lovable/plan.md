@@ -1,363 +1,593 @@
 
-# Plan: 6 Fixes fuer Meine Arbeit und Profilbilder
+# Plan: Mitarbeiterverwaltung - 7 Verbesserungen
 
 ## Zusammenfassung
 
-| # | Problem | Loesung |
-|---|---------|---------|
-| 1 | HTML-Tags in Aufgabenbeschreibungen unter "Mir zugewiesene Aufgaben" | RichTextDisplay in AssignedItemsSection.tsx verwenden |
-| 2 | Aufgabe aus Notiz uebernimmt Prioritaet nicht | Priority-Mapping in QuickNotesList.tsx einbauen |
-| 3 | Profilbild-Verzerrung und fehlende Fokus-Funktion | Image Cropper mit react-image-crop integrieren |
-| 4 | Profilbild zeigt nach Upload ein altes Bild | Timestamp zur URL hinzufuegen und Cache-Busting |
-| 5 | Ctrl + . fehlt in globaler Hilfe | Shortcut im AppNavigation Help-Dialog ergaenzen |
-| 6 | Archivierte Mitteilungen reaktivieren schlaegt fehl | Fehlerbehandlung in useTeamAnnouncements verbessern |
+| # | Anforderung | Loesung |
+|---|-------------|---------|
+| 1 | Urlaubsstornierung funktioniert nicht / verursacht Fehler | TypeScript-Typisierung fuer `cancel_requested` Status korrigieren, Kalendereintrag bei Stornierung entfernen |
+| 2 | Ueberstundenabbau, Arzttermine, Krankmeldungen in den Kalender | Kalendereintraege beim Genehmigen erstellen, beim Stornieren entfernen |
+| 3 | Arzttermine und Ueberstundenabbau stornierbar machen | Stornieren-Buttons und Logik analog zu Urlaub hinzufuegen |
+| 4 | Arzttermin + Weiterarbeit korrekt berechnen | Medical Leaves als Gutschrift NUR fuer die Arzttermin-Zeit, danach Arbeitszeit separat erfassen |
+| 5 | Ueberstunden-Saldo bei Antrag: Jahressaldo statt Monatssaldo | yearlyBalance statt monthlyTotals.difference anzeigen |
+| 6 | "Ende"-Feld in Meine Zeit Tab: aktuelle Uhrzeit vorausfuellen | `endTime` State mit `format(new Date(), "HH:mm")` initialisieren |
+| 7 | Stempeluhr-Button fuer Arbeitsanfang/-pause | Neuen "Stempeln"-Modus mit localStorage-basierter Zeitspeicherung |
 
 ---
 
-## 1. HTML-Tags in Beschreibungen der Zugewiesenen Aufgaben
+## Detaillierte Loesungen
 
-### Ursache
+### 1. Urlaubsstornierung verursacht Fehler
 
-In `AssignedItemsSection.tsx` (Zeile 190-193) wird die Beschreibung als einfacher Text gerendert:
+**Ursache:**
 
+Der Code in `TimeTrackingView.tsx` (Zeile 714) verwendet `as any` Cast fuer den Status:
 ```typescript
-{description && (
-  <p className="text-sm text-muted-foreground line-clamp-2">
-    {description.length > 150 ? `${description.substring(0, 150)}...` : description}
-  </p>
-)}
+.update({ status: newStatus as any })
 ```
 
-Das fuehrt dazu, dass HTML-Tags wie `<p>`, `<ul>`, `<b>` als roher Text angezeigt werden.
+Das Problem ist vermutlich, dass der TypeScript-Typ in `types.ts` den `cancel_requested` Status nicht korrekt erkennt, obwohl er in der Datenbank existiert (bestaetigt durch Enum-Abfrage: `pending`, `approved`, `rejected`, `cancel_requested`, `cancelled`).
 
-### Loesung
+**Loesung:**
 
-RichTextDisplay-Komponente verwenden (wie bereits in AssignedItemCard gemacht):
-
-**Datei: `src/components/tasks/AssignedItemsSection.tsx`**
-
-Import hinzufuegen:
+Die `types.ts` Datei enthaelt bereits den korrekten Enum-Typ. Das Problem koennte sein, dass die RLS-Policy das Update nicht erlaubt. Der Code verwendet:
 ```typescript
-import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+.eq("user_id", user?.id)
 ```
 
-Zeile 190-193 ersetzen:
-```typescript
-{description && (
-  <RichTextDisplay 
-    content={description} 
-    className="text-sm text-muted-foreground line-clamp-2" 
-  />
-)}
-```
+Das sollte funktionieren. Moegliche Ursache: Der Status wird als String statt als Enum-Wert uebergeben.
 
----
+**Aenderungen in `TimeTrackingView.tsx`:**
 
-## 2. Aufgabe aus Notiz uebernimmt Prioritaet
-
-### Ursache
-
-In `QuickNotesList.tsx` (Zeile 871) wird die Prioritaet fest auf `medium` gesetzt:
+1. Fehlerbehandlung verbessern mit detailliertem Error-Logging
+2. Status-Typ explizit definieren
+3. Nach erfolgreicher Stornierung: Benachrichtigung an Admin senden (optional, via Trigger bereits vorhanden)
 
 ```typescript
-priority: 'medium',
-```
+// Zeile 703-730: Verbesserte handleCancelVacationRequest
+const handleCancelVacationRequest = async (leaveId: string) => {
+  if (!window.confirm('Moechten Sie diesen Urlaubsantrag wirklich stornieren?')) return;
+  
+  try {
+    const leave = vacationLeaves.find(v => v.id === leaveId);
+    if (!leave) {
+      toast.error("Antrag nicht gefunden");
+      return;
+    }
+    
+    // Fuer pending: direkt stornieren, fuer approved: Stornierung anfragen
+    const newStatus = leave.status === 'pending' ? 'cancelled' : 'cancel_requested';
+    
+    const { data, error } = await supabase
+      .from("leave_requests")
+      .update({ status: newStatus })
+      .eq("id", leaveId)
+      .eq("user_id", user?.id)
+      .select()
+      .single();
 
-Die `priority_level` der Notiz wird nicht ausgelesen oder gemappt.
-
-### Loesung
-
-Priority-Mapping einfuehren:
-- Level 0 (Ohne) und Level 1 -> `low`
-- Level 2 -> `medium`
-- Level 3 -> `high`
-
-**Datei: `src/components/shared/QuickNotesList.tsx` (Zeile 855-876)**
-
-Vor der Task-Erstellung das Mapping durchfuehren:
-```typescript
-// Map note priority_level to task priority
-const mapNotePriorityToTaskPriority = (level: number | undefined | null): 'low' | 'medium' | 'high' => {
-  if (!level || level <= 1) return 'low';
-  if (level === 2) return 'medium';
-  return 'high'; // level 3 or higher
+    if (error) {
+      console.error('Cancel request error:', error);
+      throw error;
+    }
+    
+    // Bei direkter Stornierung (pending): Kalendereintrag entfernen
+    if (newStatus === 'cancelled' && leave) {
+      await removeLeaveCalendarEntry(leave, 'vacation');
+    }
+    
+    toast.success(
+      newStatus === 'cancelled' 
+        ? "Urlaubsantrag storniert" 
+        : "Stornierungsanfrage gesendet - Wartet auf Genehmigung"
+    );
+    loadData();
+  } catch (error: any) {
+    console.error('Error cancelling vacation request:', error);
+    toast.error(`Fehler beim Stornieren: ${error?.message || 'Unbekannter Fehler'}`);
+  }
 };
+```
 
-const taskPriority = mapNotePriorityToTaskPriority(note.priority_level);
+**Neue Hilfsfunktion zum Entfernen von Kalendereintraegen:**
 
-// In der insert-Anweisung:
-priority: taskPriority,
+```typescript
+const removeLeaveCalendarEntry = async (leave: LeaveRow, type: 'vacation' | 'sick' | 'medical' | 'overtime_reduction') => {
+  if (!user) return;
+  
+  try {
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("user_id", user.id)
+      .single();
+
+    const userName = userProfile?.display_name || "Mitarbeiter";
+    
+    const categoryMap = {
+      vacation: 'vacation',
+      sick: 'sick',
+      medical: 'medical',
+      overtime_reduction: 'overtime_reduction',
+    };
+    
+    const titleMap = {
+      vacation: `Urlaub von ${userName}`,
+      sick: `Krankheit: ${userName}`,
+      medical: `Arzttermin: ${userName}`,
+      overtime_reduction: `Ueberstundenabbau: ${userName}`,
+    };
+    
+    await supabase
+      .from("appointments")
+      .delete()
+      .eq("category", categoryMap[type])
+      .ilike("title", `%${userName}%`)
+      .gte("start_time", new Date(leave.start_date).toISOString());
+      
+  } catch (error) {
+    console.error("Error removing calendar entry:", error);
+  }
+};
 ```
 
 ---
 
-## 3. Profilbild-Verzerrung und fehlende Fokus-Funktion
+### 2. Ueberstundenabbau, Arzttermine und Krankmeldungen in den Kalender
 
-### Ursache
+**Aktueller Stand:**
 
-Aktuell wird das Bild direkt hochgeladen ohne Bearbeitung. Wenn ein nicht-quadratisches Bild als rundes Avatar angezeigt wird, wirkt es verzerrt oder abgeschnitten an falscher Stelle.
+Nur Urlaubsantraege werden als Kalendereintraege erstellt (in `EmployeesView.tsx`, Zeile 641-706: `createVacationCalendarEntry`).
 
-### Loesung
+**Loesung:**
 
-Einen Image Cropper implementieren, der:
-1. Quadratischen Ausschnitt ermoeglicht
-2. Fokuspunkt verschieben laesst
-3. Alle gaengigen Formate akzeptiert
+Die `createVacationCalendarEntry`-Funktion generalisieren zu `createLeaveCalendarEntry` die alle Typen unterstuetzt.
 
-**Ansatz:** Eine neue Komponente `ImageCropper.tsx` erstellen mit einem Canvas-basierten Cropper:
+**Aenderungen in `EmployeesView.tsx`:**
+
+1. `createVacationCalendarEntry` umbenennen zu `createLeaveCalendarEntry` und fuer alle Typen erweitern
+2. Bei `handleLeaveAction` fuer alle Typen Kalendereintraege erstellen
 
 ```typescript
-// src/components/ui/ImageCropper.tsx
-interface ImageCropperProps {
-  imageSrc: string;
-  onCropComplete: (croppedImageBlob: Blob) => void;
-  onCancel: () => void;
-  aspectRatio?: number; // Default 1 fuer quadratisch
+// Neue generische Funktion
+const createLeaveCalendarEntry = async (
+  leaveRequest: PendingLeaveRequest, 
+  userId: string, 
+  leaveType: LeaveType
+) => {
+  try {
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("user_id", userId)
+      .single();
+
+    const { data: tenantData } = await supabase
+      .from("user_tenant_memberships")
+      .select("tenant_id")
+      .eq("user_id", user?.id)
+      .eq("is_active", true)
+      .limit(1)
+      .single();
+
+    if (!tenantData) return;
+
+    const userName = userProfile?.display_name || "Mitarbeiter";
+    const workingDays = calculateWorkingDays(leaveRequest.start_date, leaveRequest.end_date);
+    
+    // Typ-spezifische Konfiguration
+    const config = {
+      vacation: {
+        title: `Urlaub von ${userName}`,
+        description: `Urlaubsantrag genehmigt (${workingDays} Arbeitstage)`,
+        category: 'vacation',
+        requestTitle: `Anfrage Urlaub von ${userName}`,
+        requestCategory: 'vacation_request',
+      },
+      sick: {
+        title: `Krankheit: ${userName}`,
+        description: `Krankmeldung (${workingDays} Arbeitstage)`,
+        category: 'sick',
+        requestTitle: `Anfrage Krankheit: ${userName}`,
+        requestCategory: 'sick_request',
+      },
+      medical: {
+        title: `Arzttermin: ${userName}`,
+        description: `Arzttermin genehmigt`,
+        category: 'medical',
+        requestTitle: `Anfrage Arzttermin: ${userName}`,
+        requestCategory: 'medical_request',
+      },
+      overtime_reduction: {
+        title: `Ueberstundenabbau: ${userName}`,
+        description: `Ueberstundenabbau genehmigt (${workingDays} Arbeitstage)`,
+        category: 'overtime_reduction',
+        requestTitle: `Anfrage Ueberstundenabbau: ${userName}`,
+        requestCategory: 'overtime_request',
+      },
+      other: {
+        title: `Abwesenheit: ${userName}`,
+        description: `Abwesenheit (${workingDays} Arbeitstage)`,
+        category: 'other',
+        requestTitle: `Anfrage: ${userName}`,
+        requestCategory: 'other_request',
+      },
+    };
+    
+    const typeConfig = config[leaveType] || config.other;
+    
+    // Bestehenden Antrag-Eintrag aktualisieren oder neuen erstellen
+    const { data: existingEntry } = await supabase
+      .from("appointments")
+      .select("id")
+      .eq("title", typeConfig.requestTitle)
+      .eq("start_time", new Date(leaveRequest.start_date).toISOString())
+      .eq("category", typeConfig.requestCategory)
+      .single();
+
+    if (existingEntry) {
+      await supabase
+        .from("appointments")
+        .update({
+          title: typeConfig.title,
+          description: typeConfig.description,
+          category: typeConfig.category,
+          status: "confirmed"
+        })
+        .eq("id", existingEntry.id);
+    } else {
+      await supabase
+        .from("appointments")
+        .insert({
+          user_id: user?.id,
+          tenant_id: tenantData.tenant_id,
+          start_time: new Date(leaveRequest.start_date).toISOString(),
+          end_time: new Date(leaveRequest.end_date + "T23:59:59").toISOString(),
+          title: typeConfig.title,
+          description: typeConfig.description,
+          category: typeConfig.category,
+          priority: "medium",
+          status: "confirmed",
+          is_all_day: true
+        });
+    }
+  } catch (error) {
+    console.error("Fehler beim Erstellen des Kalendereintrags:", error);
+  }
+};
+```
+
+**Anpassung in handleLeaveAction (Zeile 708-760):**
+
+```typescript
+if (action === "approved") {
+  // Bei Genehmigung: Kalendereintrag fuer ALLE Typen erstellen
+  await createLeaveCalendarEntry(leaveRequest, leaveRequest.user_id, leaveRequest.type);
+} else {
+  // Bei Ablehnung: Antragseintrag loeschen (falls vorhanden)
+  // ... bestehende Logik
 }
 ```
 
-**Funktionsweise:**
-1. Benutzer waehlt ein Bild aus
-2. Dialog oeffnet sich mit Cropper-UI
-3. Benutzer zieht den quadratischen Rahmen auf den gewuenschten Bereich
-4. "Zuschneiden" generiert einen Canvas-Crop als Blob
-5. Blob wird hochgeladen
+**Anpassung bei handleCancelApproval (Zeile 796-845):**
 
-**Technische Umsetzung ohne externe Bibliothek:**
-- Canvas API fuer das Cropping verwenden
-- Drag-and-Drop fuer den Crop-Bereich
-- Slider fuer Zoom
-
-**Aenderung in EditProfile.tsx:**
-1. Zwischenzustand `imageToEdit` hinzufuegen
-2. Nach Dateiauswahl: Preview in Cropper zeigen
-3. Nach Croppen: Blob hochladen
+Erweitern, um auch Arzttermine, Krankmeldungen und Ueberstundenabbau-Eintraege zu entfernen:
 
 ```typescript
-const [imageToEdit, setImageToEdit] = useState<string | null>(null);
-const [croppingFile, setCroppingFile] = useState<File | null>(null);
+if (approve && leaveRequest) {
+  const typeConfig = {
+    vacation: `Urlaub von ${userName}`,
+    sick: `Krankheit: ${userName}`,
+    medical: `Arzttermin: ${userName}`,
+    overtime_reduction: `Ueberstundenabbau: ${userName}`,
+    other: `Abwesenheit: ${userName}`,
+  };
+  
+  const calendarCategory = leaveRequest.type;
+  
+  await supabase
+    .from("appointments")
+    .delete()
+    .ilike("title", `%${userName}%`)
+    .eq("category", calendarCategory)
+    .gte("start_time", new Date(leaveRequest.start_date).toISOString());
+}
+```
 
-// Bei Dateiauswahl:
-const handleFileSelect = (e) => {
-  const file = e.target.files?.[0];
-  if (file && file.type.startsWith('image/')) {
-    const reader = new FileReader();
-    reader.onload = () => setImageToEdit(reader.result as string);
-    reader.readAsDataURL(file);
-    setCroppingFile(file);
+---
+
+### 3. Arzttermine und Ueberstundenabbau stornierbar machen
+
+**Aenderungen in `TimeTrackingView.tsx`:**
+
+1. `handleCancelMedicalRequest` Funktion hinzufuegen (analog zu Urlaub)
+2. `handleCancelOvertimeRequest` Funktion hinzufuegen
+3. Stornieren-Buttons in den Arzttermin- und Ueberstundenabbau-Tabellen hinzufuegen
+
+```typescript
+// Neue Funktion: Arzttermin stornieren
+const handleCancelMedicalRequest = async (leaveId: string) => {
+  if (!window.confirm('Moechten Sie diesen Arzttermin wirklich stornieren?')) return;
+  
+  try {
+    const leave = medicalLeaves.find(m => m.id === leaveId);
+    if (!leave) {
+      toast.error("Termin nicht gefunden");
+      return;
+    }
+    
+    const newStatus = leave.status === 'pending' ? 'cancelled' : 'cancel_requested';
+    
+    const { error } = await supabase
+      .from("leave_requests")
+      .update({ status: newStatus })
+      .eq("id", leaveId)
+      .eq("user_id", user?.id);
+
+    if (error) throw error;
+    
+    if (newStatus === 'cancelled') {
+      await removeLeaveCalendarEntry(leave, 'medical');
+    }
+    
+    toast.success(
+      newStatus === 'cancelled' 
+        ? "Arzttermin storniert" 
+        : "Stornierungsanfrage gesendet"
+    );
+    loadData();
+  } catch (error: any) {
+    console.error('Error cancelling medical request:', error);
+    toast.error("Fehler beim Stornieren");
   }
 };
 
-// Nach Crop:
-const handleCropComplete = async (blob: Blob) => {
-  setImageToEdit(null);
-  // Upload blob statt original file
-  const fileName = `${user.id}/avatar_${Date.now()}.webp`;
-  // ... upload logic
+// Neue Funktion: Ueberstundenabbau stornieren
+const handleCancelOvertimeRequest = async (leaveId: string) => {
+  if (!window.confirm('Moechten Sie diesen Ueberstundenabbau wirklich stornieren?')) return;
+  
+  try {
+    const leave = overtimeLeaves.find(o => o.id === leaveId);
+    if (!leave) {
+      toast.error("Antrag nicht gefunden");
+      return;
+    }
+    
+    const newStatus = leave.status === 'pending' ? 'cancelled' : 'cancel_requested';
+    
+    const { error } = await supabase
+      .from("leave_requests")
+      .update({ status: newStatus })
+      .eq("id", leaveId)
+      .eq("user_id", user?.id);
+
+    if (error) throw error;
+    
+    if (newStatus === 'cancelled') {
+      await removeLeaveCalendarEntry(leave, 'overtime_reduction');
+    }
+    
+    toast.success(
+      newStatus === 'cancelled' 
+        ? "Ueberstundenabbau storniert" 
+        : "Stornierungsanfrage gesendet"
+    );
+    loadData();
+  } catch (error: any) {
+    console.error('Error cancelling overtime request:', error);
+    toast.error("Fehler beim Stornieren");
+  }
 };
 ```
 
----
+**UI-Anpassungen (Arzttermine-Tabelle, ca. Zeile 1460-1490):**
 
-## 4. Profilbild zeigt nach Upload ein altes Bild (Cache-Problem)
+Spalte "Aktion" hinzufuegen mit Stornieren-Button.
 
-### Ursache
+**UI-Anpassungen (Ueberstundenabbau-Tabelle, ca. Zeile 1572-1590):**
 
-Der Dateiname ist immer `avatar.{ext}`. Beim zweiten Upload mit anderem Format (z.B. erst JPG, dann PNG) bleibt die alte URL im Browser-Cache. Die `publicUrl` hat keinen Cache-Buster.
-
-### Loesung
-
-1. **Einheitlicher Dateiname mit Timestamp:**
-```typescript
-const fileName = `${user.id}/avatar_${Date.now()}.webp`;
-```
-
-2. **Cache-Busting Query-Parameter an URL:**
-```typescript
-const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
-setFormData(prev => ({
-  ...prev,
-  avatar_url: urlWithCacheBust
-}));
-```
-
-3. **Alte Dateien loeschen (optional):**
-```typescript
-// Vor dem Upload alle alten avatare loeschen
-const { data: existingFiles } = await supabase.storage
-  .from('avatars')
-  .list(user.id);
-
-if (existingFiles?.length) {
-  const filesToDelete = existingFiles.map(f => `${user.id}/${f.name}`);
-  await supabase.storage.from('avatars').remove(filesToDelete);
-}
-```
-
-**Zusammengefasster Upload-Code in EditProfile.tsx:**
-
-```typescript
-try {
-  // Delete old avatars first
-  const { data: existingFiles } = await supabase.storage
-    .from('avatars')
-    .list(user.id);
-
-  if (existingFiles?.length) {
-    await supabase.storage
-      .from('avatars')
-      .remove(existingFiles.map(f => `${user.id}/${f.name}`));
-  }
-
-  // Upload with unique timestamp-based filename
-  const fileName = `${user.id}/avatar_${Date.now()}.webp`;
-  
-  const { error: uploadError } = await supabase.storage
-    .from('avatars')
-    .upload(fileName, croppedBlob, { 
-      contentType: 'image/webp' 
-    });
-
-  if (uploadError) throw uploadError;
-
-  // Get URL with cache-buster
-  const { data: { publicUrl } } = supabase.storage
-    .from('avatars')
-    .getPublicUrl(fileName);
-
-  const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
-  
-  setFormData(prev => ({
-    ...prev,
-    avatar_url: urlWithCacheBust
-  }));
-  
-  toast({ title: "Bild hochgeladen" });
-} catch (error) {
-  // ...
-}
-```
+Spalte "Aktion" hinzufuegen mit Stornieren-Button.
 
 ---
 
-## 5. Ctrl + . fehlt in globaler Hilfe
+### 4. Arzttermin + Weiterarbeit korrekt berechnen
 
-### Ursache
+**Aktueller Stand:**
 
-Der Shortcut `Ctrl + .` fuer "Neue Notiz erstellen" ist nicht im Hilfe-Dialog aufgelistet (AppNavigation.tsx, Zeile 547-563).
+Der `useCombinedTimeEntries` Hook (Zeile 288-316) behandelt Medical Leaves so, dass sie als eigene Eintraege erscheinen, aber Arbeitseintraege am selben Tag NICHT blockieren (anders als bei Urlaub/Krankheit).
 
-### Loesung
+Das ist bereits korrekt implementiert! Der Code in Zeile 318-338 filtert Arbeitseintraege nur fuer Feiertage, Krankheit, Urlaub und Ueberstundenabbau - NICHT fuer Arzttermine.
 
-**Datei: `src/components/AppNavigation.tsx` (Zeile 559-562)**
+**Verifizierung:**
 
-Neuen Eintrag hinzufuegen:
+Die Logik ist bereits korrekt:
+- Arzttermin-Tage werden NICHT in die `medicalDates` Set aufgenommen, die Arbeit blockieren wuerden
+- Arzttermine werden separat als Eintraege hinzugefuegt
+- Arbeitseintraege am selben Tag bleiben erhalten
+
+**Moegliche Verbesserung:**
+
+In der Anzeige koennte man visuell klarer machen, dass an einem Tag sowohl ein Arzttermin als auch Arbeitszeit erfasst wurde.
+
+---
+
+### 5. Ueberstunden-Saldo bei Antrag: Jahressaldo statt Monatssaldo anzeigen
+
+**Aktueller Stand (Zeile 1507-1517):**
 
 ```typescript
-<div className="flex justify-between items-center">
-  <span>Neue Notiz erstellen</span>
-  <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + .</kbd>
+<div className="flex justify-between">
+  <span>Ueberstunden (aktueller Monat):</span>
+  <span>{monthlyTotals.difference >= 0 ? '+' : ''}{fmt(monthlyTotals.difference)}</span>
 </div>
 ```
 
-Nach "Neue Aufgabe" einfuegen.
+**Loesung:**
+
+Statt `monthlyTotals.difference` den `yearlyBalance` anzeigen:
+
+```typescript
+<div className="flex justify-between">
+  <span>Ueberstundensaldo (gesamt):</span>
+  <span className={`font-mono font-bold ${yearlyBalance >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+    {yearlyBalance >= 0 ? '+' : ''}{fmt(yearlyBalance)}
+  </span>
+</div>
+<p className="text-xs text-muted-foreground mt-1">
+  Jahressaldo inkl. aller Monate bis heute
+</p>
+```
 
 ---
 
-## 6. Archivierte Mitteilungen reaktivieren schlaegt fehl
+### 6. "Ende"-Feld in Meine Zeit Tab: aktuelle Uhrzeit vorausfuellen
 
-### Ursache
-
-Basierend auf dem Code in `useTeamAnnouncements.ts` (Zeile 200-236) gibt es bereits ein optimistisches Update mit Rollback. Das Problem koennte sein:
-
-1. Der Toast zeigt "Fehler" obwohl das Update erfolgreich war (weil der nachfolgende Fetch fehlschlaegt)
-2. Die RLS-Policy erlaubt kein Update fuer archivierte Mitteilungen
-3. Netzwerkfehler beim Polling nach dem Update
-
-### Analyse des Codes
+**Aktueller Stand in `MyWorkTimeTrackingTab.tsx` (Zeile 46):**
 
 ```typescript
-try {
-  const { error } = await supabase
-    .from("team_announcements")
-    .update(data)
-    .eq("id", id);
-
-  if (error) throw error;
-
-  toast.success("Mitteilung aktualisiert");
-  return true;
-} catch (error) {
-  // Rollback on error
-  setAnnouncements(previousAnnouncements);
-  setActiveAnnouncements(previousActiveAnnouncements);
-  toast.error("Fehler beim Aktualisieren");
-  return false;
-}
+const [endTime, setEndTime] = useState("");
 ```
 
-Der Code sieht korrekt aus. Wenn der Benutzer nach Neuladen sieht, dass es funktioniert hat, dann ist das Problem wahrscheinlich:
+**Loesung:**
 
-1. Ein Fehler tritt **nach** dem erfolgreichen Update auf (z.B. Realtime-Subscription)
-2. Oder die Supabase-Antwort wird als Fehler interpretiert
-
-### Loesung
-
-Detaillierteres Error-Logging und robustere Behandlung:
-
-**Datei: `src/hooks/useTeamAnnouncements.ts` (Zeile 218-236)**
+Den `endTime` State mit der aktuellen Uhrzeit initialisieren:
 
 ```typescript
-try {
-  const { data: updateData, error } = await supabase
-    .from("team_announcements")
-    .update(data)
-    .eq("id", id)
-    .select()
-    .single();
+const [endTime, setEndTime] = useState(() => format(new Date(), "HH:mm"));
+```
 
-  if (error) {
-    console.error("Update error details:", error);
-    throw error;
-  }
+**Zusaetzlich:** Bei jedem Tab-Wechsel/Mount aktualisieren:
 
-  // Update successful - update local state with returned data
-  if (updateData) {
-    setAnnouncements(prev => prev.map(a => 
-      a.id === id ? { ...a, ...updateData } : a
-    ));
-    
-    // Recalculate activeAnnouncements based on is_active state
-    if (updateData.is_active) {
-      const now = new Date();
-      const isExpired = updateData.expires_at && new Date(updateData.expires_at) < now;
-      const isScheduled = updateData.starts_at && new Date(updateData.starts_at) > now;
-      
-      if (!isExpired && !isScheduled) {
-        // Add to active if not already there
-        setActiveAnnouncements(prev => {
-          if (prev.find(a => a.id === id)) return prev;
-          return [...prev, { ...announcements.find(a => a.id === id)!, ...updateData }];
-        });
-      }
-    }
-  }
+```typescript
+useEffect(() => {
+  // Aktuelle Zeit als Ende-Zeit setzen wenn noch leer oder beim Mounten
+  setEndTime(format(new Date(), "HH:mm"));
+}, []); // Nur beim initialen Mount
+```
 
-  toast.success("Mitteilung aktualisiert");
-  return true;
-} catch (error: any) {
-  console.error("Error updating announcement:", error);
-  console.error("Error code:", error?.code);
-  console.error("Error message:", error?.message);
+Oder alternativ: Jedes Mal wenn der Tab geoeffnet wird, die Zeit aktualisieren. Da der Tab als Komponente gemountet wird, reicht das `useState` mit Initialisierung.
+
+---
+
+### 7. Stempeluhr-Button fuer Arbeitsbeginn und Pause
+
+**Konzept:**
+
+Ein "Stempeln"-System mit folgenden Funktionen:
+1. "Arbeit beginnen" - speichert aktuelle Zeit in localStorage
+2. "Pause beginnen" - speichert Pausenstart
+3. "Pause beenden" - berechnet Pausenzeit
+4. "Feierabend" - erstellt automatisch den Zeiteintrag
+
+**Implementierung:**
+
+Neue State-Variablen und localStorage-Integration in `MyWorkTimeTrackingTab.tsx`:
+
+```typescript
+// Stempeluhr States
+const [clockedIn, setClockedIn] = useState<string | null>(null);
+const [pauseStart, setPauseStart] = useState<string | null>(null);
+const [totalPauseMinutes, setTotalPauseMinutes] = useState(0);
+
+// Beim Mount: Gespeicherte Stempelzeit laden
+useEffect(() => {
+  const savedClockIn = localStorage.getItem('timetracking_clock_in');
+  const savedPauseStart = localStorage.getItem('timetracking_pause_start');
+  const savedPauseTotal = localStorage.getItem('timetracking_pause_total');
   
-  // Rollback on error
-  setAnnouncements(previousAnnouncements);
-  setActiveAnnouncements(previousActiveAnnouncements);
-  toast.error(`Fehler: ${error?.message || 'Unbekannter Fehler'}`);
-  return false;
-}
+  if (savedClockIn) setClockedIn(savedClockIn);
+  if (savedPauseStart) setPauseStart(savedPauseStart);
+  if (savedPauseTotal) setTotalPauseMinutes(parseInt(savedPauseTotal) || 0);
+}, []);
+
+const handleClockIn = () => {
+  const now = format(new Date(), "HH:mm");
+  setClockedIn(now);
+  setStartTime(now);
+  localStorage.setItem('timetracking_clock_in', now);
+  localStorage.setItem('timetracking_date', format(new Date(), "yyyy-MM-dd"));
+  toast.success(`Arbeit begonnen um ${now}`);
+};
+
+const handlePauseStart = () => {
+  const now = format(new Date(), "HH:mm");
+  setPauseStart(now);
+  localStorage.setItem('timetracking_pause_start', now);
+  toast.info(`Pause begonnen um ${now}`);
+};
+
+const handlePauseEnd = () => {
+  if (!pauseStart) return;
+  
+  const pauseStartTime = new Date(`1970-01-01T${pauseStart}:00`);
+  const pauseEndTime = new Date();
+  const minutes = Math.round((pauseEndTime.getTime() - pauseStartTime.getTime()) / 60000);
+  
+  const newTotal = totalPauseMinutes + minutes;
+  setTotalPauseMinutes(newTotal);
+  setPauseMinutes(newTotal.toString());
+  setPauseStart(null);
+  
+  localStorage.setItem('timetracking_pause_total', newTotal.toString());
+  localStorage.removeItem('timetracking_pause_start');
+  
+  toast.success(`Pause beendet (+${minutes} Min)`);
+};
+
+const handleClockOut = () => {
+  const now = format(new Date(), "HH:mm");
+  setEndTime(now);
+  
+  // Formular ist jetzt vorausgefuellt und kann abgeschickt werden
+  toast.success(`Feierabend um ${now} - Bitte Eintrag speichern`);
+  
+  // LocalStorage aufraumen nach erfolgreicher Speicherung
+};
+
+const clearClockData = () => {
+  setClockedIn(null);
+  setPauseStart(null);
+  setTotalPauseMinutes(0);
+  localStorage.removeItem('timetracking_clock_in');
+  localStorage.removeItem('timetracking_pause_start');
+  localStorage.removeItem('timetracking_pause_total');
+  localStorage.removeItem('timetracking_date');
+};
 ```
 
-Ausserdem: RLS-Policy pruefen, ob `UPDATE` fuer alle Rollen erlaubt ist (nicht nur fuer `author_id`).
+**UI-Komponente - Stempeluhr-Card:**
+
+```text
++------------------------------------------+
+|  Stempeluhr                              |
++------------------------------------------+
+|  [Nicht gestempelt]                      |
+|                                          |
+|  [Arbeit beginnen]                       |
++------------------------------------------+
+
+ODER (wenn eingestempelt):
+
++------------------------------------------+
+|  Stempeluhr                 [Abbrechen]  |
++------------------------------------------+
+|  Arbeitsbeginn: 08:30                    |
+|  Pausenzeit: 45 Min                      |
+|                                          |
+|  [Pause]  oder  [Feierabend]             |
++------------------------------------------+
+
+ODER (in Pause):
+
++------------------------------------------+
+|  Stempeluhr                              |
++------------------------------------------+
+|  Arbeitsbeginn: 08:30                    |
+|  In Pause seit: 12:00                    |
+|                                          |
+|  [Pause beenden]                         |
++------------------------------------------+
+```
 
 ---
 
@@ -365,60 +595,52 @@ Ausserdem: RLS-Policy pruefen, ob `UPDATE` fuer alle Rollen erlaubt ist (nicht n
 
 | Datei | Aenderungen |
 |-------|-------------|
-| `AssignedItemsSection.tsx` | Import RichTextDisplay, Beschreibung damit rendern |
-| `QuickNotesList.tsx` | Priority-Mapping Funktion, taskPriority aus note.priority_level |
-| `EditProfile.tsx` | Image Cropper einbauen, Caching-Problem beheben, alte Dateien loeschen |
-| Neue Datei: `ImageCropper.tsx` | Canvas-basierter Cropper mit Drag & Zoom |
-| `AppNavigation.tsx` | Ctrl + . Shortcut in Hilfe-Dialog hinzufuegen |
-| `useTeamAnnouncements.ts` | Detaillierteres Error-Logging, robustere State-Updates |
+| `TimeTrackingView.tsx` | 1) Fehlerbehandlung bei Stornierung, 2) `removeLeaveCalendarEntry` Funktion, 3) Arzttermin/Ueberstunden stornieren, 4) Jahressaldo statt Monatssaldo anzeigen |
+| `MyWorkTimeTrackingTab.tsx` | 1) endTime mit aktueller Zeit initialisieren, 2) Stempeluhr-Feature komplett |
+| `EmployeesView.tsx` | 1) `createVacationCalendarEntry` generalisieren zu `createLeaveCalendarEntry`, 2) handleLeaveAction fuer alle Typen erweitern, 3) handleCancelApproval fuer alle Typen |
 
 ---
 
-## Technische Details
-
-### ImageCropper Komponente
-
-Die Komponente wird als Modal implementiert:
+## Technische Architektur
 
 ```text
-+--------------------------------------+
-|  Profilbild zuschneiden              |
-+--------------------------------------+
-|                                      |
-|    +------------------------+        |
-|    |     Drag to move       |        |
-|    |                        |        |
-|    |    [Crop area 1:1]     |        |
-|    |                        |        |
-|    +------------------------+        |
-|                                      |
-|  Zoom: [========o=========]          |
-|                                      |
-|  [Abbrechen]        [Zuschneiden]    |
-+--------------------------------------+
+Mitarbeiter                         Admin (Abgeordneter)
+    |                                      |
+    |  1. Urlaub/Krankheit/etc. beantragen |
+    |------------------------------------->|
+    |                                      |
+    |  2. Genehmigt                        |
+    |<-------------------------------------|
+    |                                      |
+    |  [Kalendereintrag wird erstellt]     |
+    |                                      |
+    |  3. Stornierung anfragen             |
+    |------------------------------------->|
+    |     (status = cancel_requested)      |
+    |                                      |
+    |  4. Stornierung genehmigen           |
+    |<-------------------------------------|
+    |     (status = cancelled)             |
+    |     [Kalendereintrag wird geloescht] |
+    |     [Urlaubstage werden gutgeschrieben]
 ```
 
-**Features:**
-- Quadratischer Ausschnitt (1:1 Aspect Ratio)
-- Drag zum Verschieben des Bildausschnitts
-- Pinch-to-Zoom auf Touch-Geraeten
-- Slider fuer Zoom-Level
-- Vorschau des zugeschnittenen Bereichs
-- Export als WebP fuer kleinere Dateigroesse
-
-### Priority-Mapping Logik
+### Stempeluhr Datenfluss
 
 ```text
-Notiz priority_level  ->  Task priority
--------------------------------------
-0 (Keine)             ->  low
-1 (Level 1)           ->  low
-2 (Level 2)           ->  medium
-3 (Level 3)           ->  high
+localStorage:
+- timetracking_clock_in: "08:30"
+- timetracking_date: "2026-02-04"
+- timetracking_pause_start: null | "12:00"
+- timetracking_pause_total: "45"
+
+State:
+- clockedIn: string | null
+- pauseStart: string | null
+- totalPauseMinutes: number
+
+Formularfelder (automatisch befuellt):
+- startTime <- clockedIn
+- endTime <- beim Feierabend
+- pauseMinutes <- totalPauseMinutes
 ```
-
-### Cache-Busting Strategie
-
-1. **Eindeutige Dateinamen:** `avatar_{timestamp}.webp` statt `avatar.jpg`
-2. **Alte Dateien loeschen:** Vor jedem Upload werden bestehende Avatare geloescht
-3. **Query-Parameter:** `?t={timestamp}` an URL anhaengen verhindert Browser-Caching
