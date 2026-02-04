@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { UserBadge } from "@/components/ui/user-badge";
-import { MessageCircle, Bell, ChevronRight } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { MessageCircle, Bell, ChevronRight, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface OpenQuestion {
   id: string;
@@ -12,6 +18,7 @@ interface OpenQuestion {
   participantName: string | null;
   participantBadgeColor: string | null;
   participantUserId: string;
+  participantAvatarUrl?: string | null;
   comment: string | null;
   createdAt: string;
   hasCreatorResponse: boolean;
@@ -24,6 +31,7 @@ interface NewComment {
   participantName: string | null;
   participantBadgeColor: string | null;
   participantUserId: string;
+  participantAvatarUrl?: string | null;
   responseType: 'yes' | 'no' | 'question';
   comment: string | null;
   createdAt: string;
@@ -34,15 +42,50 @@ interface DecisionSidebarProps {
   newComments: NewComment[];
   onQuestionClick: (decisionId: string) => void;
   onCommentClick: (decisionId: string) => void;
+  onResponseSent?: () => void;
 }
+
+const getInitials = (name: string | null) => {
+  if (!name) return '?';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+};
 
 export function DecisionSidebar({
   openQuestions,
   newComments,
   onQuestionClick,
   onCommentClick,
+  onResponseSent,
 }: DecisionSidebarProps) {
+  const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const [responseText, setResponseText] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
   const totalItems = openQuestions.length + newComments.length;
+
+  const handleSendResponse = async (responseId: string) => {
+    if (!responseText.trim()) return;
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase
+        .from('task_decision_responses')
+        .update({ creator_response: responseText.trim() })
+        .eq('id', responseId);
+
+      if (error) throw error;
+      
+      toast.success("Antwort gesendet");
+      setResponseText("");
+      setRespondingTo(null);
+      onResponseSent?.();
+    } catch (error) {
+      console.error('Error sending response:', error);
+      toast.error("Fehler beim Senden");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <aside className="hidden lg:block space-y-4 sticky top-6">
@@ -75,40 +118,91 @@ export function DecisionSidebar({
                         {openQuestions.length}
                       </Badge>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       {openQuestions.map((question) => (
-                        <button
+                        <div
                           key={question.id}
-                          onClick={() => onQuestionClick(question.decisionId)}
                           className={cn(
-                            "w-full text-left p-2 rounded-md border-l-2 border-l-orange-500",
-                            "bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100 dark:hover:bg-orange-950/40",
-                            "transition-colors group"
+                            "p-2.5 rounded-md border-l-2 border-l-orange-500",
+                            "bg-orange-50 dark:bg-orange-950/20"
                           )}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">
-                                {question.decisionTitle}
-                              </p>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className="text-[10px] text-muted-foreground">von</span>
-                                <UserBadge
-                                  userId={question.participantUserId}
-                                  displayName={question.participantName}
-                                  badgeColor={question.participantBadgeColor}
-                                  size="sm"
-                                />
-                              </div>
-                              {question.comment && (
-                                <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
-                                  "{question.comment}"
+                          <button
+                            onClick={() => onQuestionClick(question.decisionId)}
+                            className="w-full text-left hover:bg-orange-100 dark:hover:bg-orange-950/40 transition-colors rounded -m-1 p-1"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold truncate">
+                                  {question.decisionTitle}
                                 </p>
-                              )}
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <span className="text-[10px] text-muted-foreground">von</span>
+                                  <Avatar className="h-4 w-4">
+                                    {question.participantAvatarUrl && (
+                                      <AvatarImage src={question.participantAvatarUrl} />
+                                    )}
+                                    <AvatarFallback
+                                      className="text-[8px]"
+                                      style={{ backgroundColor: question.participantBadgeColor || undefined }}
+                                    >
+                                      {getInitials(question.participantName)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {question.participantName || 'Unbekannt'}
+                                  </span>
+                                </div>
+                                {question.comment && (
+                                  <div className="text-[10px] text-muted-foreground mt-1.5 line-clamp-2">
+                                    <RichTextDisplay content={question.comment} className="text-[10px]" />
+                                  </div>
+                                )}
+                              </div>
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
                             </div>
-                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
-                          </div>
-                        </button>
+                          </button>
+
+                          {/* Inline Response */}
+                          {respondingTo === question.id ? (
+                            <div className="mt-2 pt-2 border-t border-orange-200 dark:border-orange-800 space-y-2">
+                              <SimpleRichTextEditor
+                                initialContent=""
+                                onChange={setResponseText}
+                                placeholder="Ihre Antwort..."
+                                minHeight="60px"
+                              />
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleSendResponse(question.id)}
+                                  disabled={isLoading || !responseText.trim()}
+                                  className="text-xs"
+                                >
+                                  <Send className="h-3 w-3 mr-1" />
+                                  Senden
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => { setRespondingTo(null); setResponseText(""); }}
+                                  className="text-xs"
+                                >
+                                  Abbrechen
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-2 text-xs w-full"
+                              onClick={(e) => { e.stopPropagation(); setRespondingTo(question.id); }}
+                            >
+                              Antworten
+                            </Button>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -139,16 +233,24 @@ export function DecisionSidebar({
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">
+                              <p className="text-sm font-semibold truncate">
                                 {comment.decisionTitle}
                               </p>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <UserBadge
-                                  userId={comment.participantUserId}
-                                  displayName={comment.participantName}
-                                  badgeColor={comment.participantBadgeColor}
-                                  size="sm"
-                                />
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <Avatar className="h-4 w-4">
+                                  {comment.participantAvatarUrl && (
+                                    <AvatarImage src={comment.participantAvatarUrl} />
+                                  )}
+                                  <AvatarFallback
+                                    className="text-[8px]"
+                                    style={{ backgroundColor: comment.participantBadgeColor || undefined }}
+                                  >
+                                    {getInitials(comment.participantName)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {comment.participantName || 'Unbekannt'}
+                                </span>
                                 <span className="text-[10px] text-muted-foreground">
                                   {comment.responseType === 'yes' && '→ Ja'}
                                   {comment.responseType === 'no' && '→ Nein'}
@@ -156,9 +258,9 @@ export function DecisionSidebar({
                                 </span>
                               </div>
                               {comment.comment && (
-                                <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
-                                  "{comment.comment}"
-                                </p>
+                                <div className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
+                                  <RichTextDisplay content={comment.comment} className="text-[10px]" />
+                                </div>
                               )}
                             </div>
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
