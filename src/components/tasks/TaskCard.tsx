@@ -51,6 +51,7 @@ interface TaskCardProps {
   onComment?: (taskId: string) => void;
   onDecision?: (taskId: string) => void;
   onDocuments?: (taskId: string) => void;
+  onAddToMeeting?: (taskId: string) => void;
 }
 
 export function TaskCard({
@@ -68,6 +69,7 @@ export function TaskCard({
   onComment,
   onDecision,
   onDocuments,
+  onAddToMeeting,
 }: TaskCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -268,6 +270,7 @@ export function TaskCard({
               onComment={onComment}
               onDecision={onDecision}
               onDocuments={onDocuments}
+              onAddToMeeting={onAddToMeeting}
             />
           </div>
           

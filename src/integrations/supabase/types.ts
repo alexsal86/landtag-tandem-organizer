@@ -3670,6 +3670,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           background_info: string | null
+          completed_at: string | null
           confirmed_date: string | null
           contact_person: string | null
           created_at: string
@@ -3679,6 +3680,7 @@ export type Database = {
           digital_platform: string | null
           id: string
           is_archived: boolean | null
+          is_completed: boolean | null
           is_digital: boolean | null
           is_private: boolean
           location: string | null
@@ -3691,6 +3693,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           background_info?: string | null
+          completed_at?: string | null
           confirmed_date?: string | null
           contact_person?: string | null
           created_at?: string
@@ -3700,6 +3703,7 @@ export type Database = {
           digital_platform?: string | null
           id?: string
           is_archived?: boolean | null
+          is_completed?: boolean | null
           is_digital?: boolean | null
           is_private?: boolean
           location?: string | null
@@ -3712,6 +3716,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           background_info?: string | null
+          completed_at?: string | null
           confirmed_date?: string | null
           contact_person?: string | null
           created_at?: string
@@ -3721,6 +3726,7 @@ export type Database = {
           digital_platform?: string | null
           id?: string
           is_archived?: boolean | null
+          is_completed?: boolean | null
           is_digital?: boolean | null
           is_private?: boolean
           location?: string | null
@@ -8088,6 +8094,8 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          meeting_id: string | null
+          pending_for_jour_fixe: boolean | null
           priority: string
           progress: number | null
           status: string
@@ -8104,6 +8112,8 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          meeting_id?: string | null
+          pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
           status?: string
@@ -8120,6 +8130,8 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          meeting_id?: string | null
+          pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
           status?: string
@@ -8134,6 +8146,13 @@ export type Database = {
             columns: ["call_log_id"]
             isOneToOne: false
             referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
             referencedColumns: ["id"]
           },
           {
