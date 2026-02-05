@@ -1,581 +1,418 @@
 
+# Plan: Verbesserungen fuer die Jour Fixe Agenda
 
-# Plan: Behebung von Bugs und Verbesserungen in Meeting-Templates, Planungen und Celebration System
+## Uebersicht der Anforderungen
 
-## Zusammenfassung der Probleme und Loesungen
-
-| # | Problem | Ursache | Loesung |
-|---|---------|---------|---------|
-| 1 | "Aufgaben" wird zu "Meine Notizen" bei Unterpunkt-Verschiebung | `addSystemTemplateItem` setzt Titel nur fuer `upcoming_appointments` oder `quick_notes`, ignoriert `tasks` | Titel-Logik um `tasks` erweitern |
-| 2 | Fehler beim Aendern des Template-Namens | Nach `loadData()` wird `selectedTemplate` nicht aktualisiert | `selectedTemplate` nach dem Speichern korrekt aktualisieren |
-| 3 | Fehlende Oeffentlichkeits-Option und Rollen bei Teilnehmern | `MeetingTemplateParticipantsEditor` hat keine Felder dafuer | Erweitern um `default_visibility` und Teilnehmer-Rollen |
-| 4 | Erledigt-Button auch bei fremden Planungen sichtbar | Button wird immer angezeigt, nicht nur bei Eigentuemer | Berechtigung pruefen bevor Button angezeigt wird |
-| 5 | Celebration Animation System nicht in UI integriert | TasksView und MyWorkTasksTab verwenden noch `UnicornAnimation` | Ersetzen durch `CelebrationAnimationSystem` + Admin-UI hinzufuegen |
+| # | Anforderung | Loesung |
+|---|-------------|---------|
+| 1 | Dynamische Punkte koennen in der Agenda nicht hinzugefuegt werden | Buttons "Termine", "Notizen", "Aufgaben" neben "Punkt hinzufuegen" ergaenzen |
+| 2 | Dynamische Punkte werden nicht als eigenstaendige navigierbare Punkte erkannt | FocusModeView erweitern: einzelne Notizen/Termine/Aufgaben als Sub-Items |
+| 3 | Oeffentliche Meetings/Teilnehmer sollen mehr Rechte haben | Berechtigungslogik hinzufuegen: Teilnehmer und oeffentliche Meetings erhalten Bearbeitungsrechte |
+| 4 | Notizen-Icon soll vor dem + nach rechts verschoben werden | Reihenfolge der Icons in der Toolbar aendern |
+| 5 | Design-Verbesserungen: Titel fett, Input-Felder erst bei Hover grau, kompaktere Cards | CSS-Aenderungen in MeetingsView.tsx |
 
 ---
 
-## 1. Bug: "Aufgaben" wird zu "Meine Notizen" bei Unterpunkt-Verschiebung
+## 1. Dynamische Punkte in der Agenda hinzufuegen
 
-### Ursache
+**Problem:** Aktuell gibt es nur einen "Punkt hinzufuegen"-Button, der normale Agenda-Punkte erstellt. Es fehlt die Moeglichkeit, dynamische System-Punkte (Termine, Notizen, Aufgaben) direkt in der Meeting-Agenda hinzuzufuegen.
 
-In `Administration.tsx` Zeile 497-503 hat die Funktion `addSystemTemplateItem` eine unvollstaendige Titel-Logik:
+**Loesung:** Neben dem Button "Punkt hinzufuegen" werden drei zusaetzliche Buttons eingefuegt.
 
-```typescript
-// Aktuell (fehlerhaft):
-const title = systemType === 'upcoming_appointments' ? 'Kommende Termine' : 'Meine Notizen';
+### MeetingsView.tsx (Zeile 3504-3513)
+
+**Vorher:**
+```tsx
+<Button variant="outline" onClick={addAgendaItem}>
+  <Plus className="h-4 w-4 mr-2" />
+  Punkt hinzufügen
+</Button>
 ```
 
-Das bedeutet: Wenn `systemType === 'tasks'`, wird trotzdem "Meine Notizen" als Titel gesetzt.
-
-Zusaetzlich fehlt in Zeile 497-498 die Pruefung auf `tasks`:
-
-```typescript
-description: `"${systemType === 'upcoming_appointments' ? 'Kommende Termine' : 'Meine Notizen'}" ist bereits in der Agenda.`
-```
-
-### Aenderungen in `Administration.tsx`
-
-**Zeile 497-503:**
-```typescript
-// NEU:
-const getTitleForSystemType = (type: string) => {
-  switch (type) {
-    case 'upcoming_appointments': return 'Kommende Termine';
-    case 'quick_notes': return 'Meine Notizen';
-    case 'tasks': return 'Aufgaben';
-    default: return type;
-  }
-};
-
-// In der Funktion verwenden:
-toast({ 
-  title: "Bereits vorhanden", 
-  description: `"${getTitleForSystemType(systemType)}" ist bereits in der Agenda.`,
-  variant: "destructive" 
-});
-
-const title = getTitleForSystemType(systemType);
-```
-
-**Zeile 1380-1408 - Fehlender "Aufgaben" Button im Child-Popover:**
-```typescript
-<div className="flex gap-1 flex-wrap">
-  <Button ... onClick={() => addSystemTemplateItem('upcoming_appointments', index)}>
-    Termine
+**Nachher:**
+```tsx
+<div className="flex gap-2">
+  <Button variant="outline" onClick={addAgendaItem}>
+    <Plus className="h-4 w-4 mr-2" />
+    Punkt
   </Button>
-  <Button ... onClick={() => addSystemTemplateItem('quick_notes', index)}>
-    Notizen
-  </Button>
-  {/* NEU: Aufgaben-Button */}
-  <Button 
-    variant="outline" 
-    size="sm"
-    className="flex-1 justify-start border-green-200 text-green-700 h-7 text-xs"
-    onClick={() => {
-      addSystemTemplateItem('tasks', index);
-      setChildPopoverOpen(null);
-    }}
-  >
-    <ListTodo className="h-3 w-3 mr-1" />
-    Aufgaben
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button variant="outline" size="sm">
+        <CalendarDays className="h-4 w-4 mr-2" />
+        System
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-56">
+      <div className="space-y-2">
+        <p className="text-sm font-medium mb-2">Dynamischen Punkt hinzufuegen</p>
+        <Button 
+          variant="outline" 
+          className="w-full justify-start border-blue-200 text-blue-700"
+          onClick={() => addSystemAgendaItem('upcoming_appointments')}
+          disabled={agendaItems.some(i => i.system_type === 'upcoming_appointments')}
+        >
+          <CalendarDays className="h-4 w-4 mr-2" />
+          Kommende Termine
+        </Button>
+        <Button 
+          variant="outline" 
+          className="w-full justify-start border-amber-200 text-amber-700"
+          onClick={() => addSystemAgendaItem('quick_notes')}
+          disabled={agendaItems.some(i => i.system_type === 'quick_notes')}
+        >
+          <StickyNote className="h-4 w-4 mr-2" />
+          Meine Notizen
+        </Button>
+        <Button 
+          variant="outline" 
+          className="w-full justify-start border-green-200 text-green-700"
+          onClick={() => addSystemAgendaItem('tasks')}
+          disabled={agendaItems.some(i => i.system_type === 'tasks')}
+        >
+          <ListTodo className="h-4 w-4 mr-2" />
+          Aufgaben
+        </Button>
+      </div>
+    </PopoverContent>
+  </Popover>
+  <Button onClick={saveAgendaItems}>
+    <Save className="h-4 w-4 mr-2" />
+    Speichern
   </Button>
 </div>
 ```
 
-**Zeile 1497-1507 - Fehlende Icon-Darstellung fuer "tasks" bei Child-Items:**
-```typescript
-{child.system_type ? (
-  <>
-    {child.system_type === 'upcoming_appointments' ? (
-      <CalendarDays className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-    ) : child.system_type === 'tasks' ? (
-      <ListTodo className="h-3.5 w-3.5 text-green-600 shrink-0" />
-    ) : (
-      <StickyNote className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-    )}
-    <span className="text-sm">{child.title}</span>
-    <span className="text-[10px] ...">Dynamisch</span>
-  </>
-) : ...}
-```
+### Neue Funktion: addSystemAgendaItem
 
-**Zeile 1436-1444 - Farblogik fuer Child-Items erweitern:**
-```typescript
-className={`flex items-center gap-2 p-2 rounded-md border ${
-  child.system_type
-    ? child.system_type === 'upcoming_appointments'
-      ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
-      : child.system_type === 'tasks'
-      ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
-      : 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
-    : 'bg-muted/30 border-border'
-}`}
-```
-
----
-
-## 2. Bug: Fehler beim Aendern des Template-Namens
-
-### Ursache
-
-Nach dem Speichern des neuen Namens wird `loadData()` aufgerufen (Zeile 1126), aber `selectedTemplate` wird nicht mit den neuen Daten aktualisiert. Wenn die Templates neu geladen werden, verliert `selectedTemplate` den Bezug.
-
-### Loesung in `Administration.tsx`
-
-**Zeile 1119-1131:**
-```typescript
-<Button size="sm" className="h-8 w-8 p-0" onClick={async () => {
-  try {
-    const { error } = await supabase
-      .from('meeting_templates')
-      .update({ name: editingTemplateName.value })
-      .eq('id', selectedTemplate.id);
-    if (error) throw error;
-    
-    // Lokalen State zuerst aktualisieren (vor loadData)
-    setSelectedTemplate({
-      ...selectedTemplate,
-      name: editingTemplateName.value
+```tsx
+const addSystemAgendaItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks') => {
+  if (!selectedMeeting?.id) return;
+  
+  // Pruefe ob bereits vorhanden
+  if (agendaItems.some(i => i.system_type === systemType)) {
+    toast({
+      title: "Bereits vorhanden",
+      description: "Dieser dynamische Punkt ist bereits in der Agenda.",
+      variant: "destructive",
     });
-    
-    // Dann Daten neu laden
-    await loadData();
-    setEditingTemplateName(null);
-    toast({ title: "Gespeichert", description: "Template-Name aktualisiert." });
-  } catch (error: any) {
-    toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
+    return;
   }
-}}>
-```
+  
+  const titles: Record<string, string> = {
+    'upcoming_appointments': 'Kommende Termine',
+    'quick_notes': 'Meine Notizen',
+    'tasks': 'Aufgaben'
+  };
+  
+  const localKey = `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  const newItem: AgendaItem = {
+    title: titles[systemType],
+    description: "",
+    assigned_to: [],
+    notes: "",
+    is_completed: false,
+    is_recurring: false,
+    order_index: agendaItems.length,
+    localKey,
+    system_type: systemType,
+  };
 
----
-
-## 3. Fehlende Oeffentlichkeits-Option und Rollen bei Teilnehmern
-
-### Aktuelle Situation
-
-Die `MeetingTemplateParticipantsEditor` speichert nur User-IDs als `default_participants`. Es fehlen:
-- `default_visibility` (public/private) fuer Meetings
-- Rollen pro Teilnehmer (organizer, participant, optional)
-
-### Datenbankschema erweitern
-
-```sql
-ALTER TABLE meeting_templates ADD COLUMN IF NOT EXISTS default_visibility TEXT DEFAULT 'private';
--- 'private' oder 'public'
-```
-
-Die Teilnehmer-Struktur muss von `string[]` zu einem komplexeren Format geaendert werden:
-
-```typescript
-// Neues Format fuer default_participants:
-interface DefaultParticipant {
-  user_id: string;
-  role: 'organizer' | 'participant' | 'optional';
-}
-```
-
-### Aenderungen in `MeetingTemplateParticipantsEditor.tsx`
-
-**Neue Props:**
-```typescript
-interface MeetingTemplateParticipantsEditorProps {
-  templateId: string;
-  defaultParticipants: Array<{ user_id: string; role: string }> | string[];
-  defaultRecurrence: RecurrenceData | null;
-  defaultVisibility?: 'private' | 'public';
-  autoCreateCount?: number;
-  compact?: boolean;
-  onSave: (
-    participants: Array<{ user_id: string; role: string }>,
-    recurrence: RecurrenceData | null,
-    autoCreateCount?: number,
-    visibility?: 'private' | 'public'
-  ) => void;
-}
-```
-
-**Neue State-Variablen:**
-```typescript
-const [visibility, setVisibility] = useState<'private' | 'public'>(defaultVisibility || 'private');
-const [participantRoles, setParticipantRoles] = useState<Map<string, string>>(new Map());
-```
-
-**UI-Erweiterungen:**
-
-1. **Sichtbarkeits-Toggle:**
-```typescript
-<Card>
-  <CardHeader className="pb-3">
-    <CardTitle className="text-base flex items-center gap-2">
-      <Eye className="h-4 w-4" />
-      Standard-Sichtbarkeit
-    </CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className="flex items-center justify-between">
-      <div>
-        <Label>Oeffentlich fuer alle Teammitglieder</Label>
-        <p className="text-sm text-muted-foreground">
-          Meetings werden fuer alle Mandantenmitglieder sichtbar sein
-        </p>
-      </div>
-      <Switch
-        checked={visibility === 'public'}
-        onCheckedChange={(checked) => {
-          const newVis = checked ? 'public' : 'private';
-          setVisibility(newVis);
-          onSave(participantsWithRoles, recurrence.enabled ? recurrence : null, autoCreateCount, newVis);
-        }}
-      />
-    </div>
-  </CardContent>
-</Card>
-```
-
-2. **Rollen-Auswahl pro Teilnehmer:**
-```typescript
-{participantUsers.map((user) => (
-  <div key={user.id} className="flex items-center gap-3 p-2 rounded-md border bg-muted/50">
-    <Avatar ... />
-    <div className="flex-1 min-w-0">
-      <span className="font-medium text-sm">{user.display_name}</span>
-    </div>
-    
-    {/* Rollen-Selector */}
-    <Select
-      value={participantRoles.get(user.id) || 'participant'}
-      onValueChange={(role) => updateParticipantRole(user.id, role)}
-    >
-      <SelectTrigger className="w-28 h-7 text-xs">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="organizer">Organisator</SelectItem>
-        <SelectItem value="participant">Teilnehmer</SelectItem>
-        <SelectItem value="optional">Optional</SelectItem>
-      </SelectContent>
-    </Select>
-    
-    <Button size="icon" variant="ghost" onClick={() => handleRemoveParticipant(user.id)}>
-      <X className="h-3 w-3" />
-    </Button>
-  </div>
-))}
-```
-
----
-
-## 4. Erledigt-Button bei fremden Planungen verstecken
-
-### Problem
-
-In `EventPlanningView.tsx` Zeile 817-838 und `MyWorkPlanningsTab.tsx` Zeile 273-293 wird der Erledigt-Button immer angezeigt, auch wenn der Benutzer keine Bearbeitungsrechte hat.
-
-### Loesung
-
-**EventPlanningView.tsx (Listenansicht, Zeile 817-838):**
-```typescript
-<TableCell onClick={(e) => e.stopPropagation()}>
-  <div className="flex items-center gap-1">
-    {/* Erledigt-Button - nur fuer Eigentuemer/Bearbeiter */}
-    {(planning.user_id === user?.id || hasEditPermission(planning)) && (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className={cn("h-7 w-7", (planning as any).is_completed && "text-green-600")}
-              onClick={() => togglePlanningCompleted(planning.id, !(planning as any).is_completed)}
-            >
-              <CheckCircle className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>...</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )}
-    {/* Archiv-Button bleibt nur fuer Eigentuemer */}
-    ...
-  </div>
-</TableCell>
-```
-
-**Hilfsfunktion hinzufuegen:**
-```typescript
-const hasEditPermission = (planning: EventPlanning) => {
-  // Pruefe ob User ein Collaborator mit can_edit ist
-  const collab = collaborators.find(c => 
-    c.event_planning_id === planning.id && c.user_id === user?.id
-  );
-  return collab?.can_edit === true;
+  const next = [...agendaItems, newItem].map((it, idx) => ({ ...it, order_index: idx }));
+  setAgendaItems(next);
+  
+  toast({
+    title: "Dynamischer Punkt hinzugefuegt",
+    description: `"${titles[systemType]}" wurde zur Agenda hinzugefuegt.`,
+  });
 };
 ```
 
-**MyWorkPlanningsTab.tsx (Zeile 273-293):**
-```typescript
-{/* Erledigt-Button - nur fuer Eigentuemer */}
-{planning.user_id === user?.id && (
-  <TooltipProvider>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("h-7 w-7", planning.is_completed && "text-green-600")}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleCompleted(planning.id, !planning.is_completed);
-          }}
-        >
-          <CheckCircle className="h-4 w-4" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>...</TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
-)}
+---
+
+## 2. Dynamische Punkte als eigenstaendige navigierbare Items im Fokus-Mode
+
+**Problem:** Im Fokus-Mode werden "Meine Notizen" und "Kommende Termine" als ein Block behandelt. Man kann nicht einzelne Notizen, Termine oder Aufgaben im Fokus-Mode markieren.
+
+**Loesung:** Jede einzelne Notiz/Termin/Aufgabe wird als eigenstaendiger Sub-Item in der Navigation behandelt.
+
+### FocusModeView.tsx - Erweiterte NavigableItem-Logik
+
+**Erweiterung der allNavigableItems useMemo (Zeile 104-137):**
+
+```tsx
+const allNavigableItems: NavigableItem[] = useMemo(() => {
+  const result: NavigableItem[] = [];
+  
+  // Get main items (no parent)
+  const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
+  
+  mainItems.forEach((mainItem) => {
+    const globalIndex = agendaItems.findIndex(i => i.id === mainItem.id);
+    result.push({ 
+      item: mainItem, 
+      isSubItem: false, 
+      parentItem: null,
+      globalIndex,
+      isSystemSubItem: false,
+    });
+    
+    // Get regular sub-items (excluding system sub-items)
+    const subItems = agendaItems.filter(sub => 
+      (sub.parent_id === mainItem.id || sub.parentLocalKey === mainItem.id) &&
+      !sub.system_type
+    );
+    
+    subItems.forEach(subItem => {
+      const subGlobalIndex = agendaItems.findIndex(i => i.id === subItem.id);
+      result.push({ 
+        item: subItem, 
+        isSubItem: true, 
+        parentItem: mainItem,
+        globalIndex: subGlobalIndex,
+        isSystemSubItem: false,
+      });
+    });
+    
+    // NEU: Einzelne System-Items als navigierbare Sub-Items
+    if (mainItem.system_type === 'quick_notes') {
+      linkedQuickNotes.forEach((note, noteIndex) => {
+        result.push({
+          item: {
+            id: `note-${note.id}`,
+            title: note.title || `Notiz ${noteIndex + 1}`,
+            is_completed: false,
+            order_index: mainItem.order_index + noteIndex + 1,
+            system_type: 'quick_note_item',
+            sourceData: note,
+          } as any,
+          isSubItem: true,
+          parentItem: mainItem,
+          globalIndex: -1, // Virtuelle Items
+          isSystemSubItem: true,
+          sourceId: note.id,
+          sourceType: 'quick_note',
+        });
+      });
+    }
+    
+    // Aehnlich fuer upcoming_appointments und tasks
+    // (mit entsprechenden Daten aus dem Meeting-Kontext)
+  });
+  
+  return result;
+}, [agendaItems, linkedQuickNotes, linkedTasks, appointments]);
 ```
 
-**Detailansicht (Zeile 3545-3554):**
+### Rendering fuer System-Sub-Items
 
-Hier fehlt der Erledigt-Button komplett. Hinzufuegen vor dem Archiv-Button:
+Neue Render-Logik fuer einzelne Notizen/Termine/Aufgaben mit farbiger Kante:
 
-```typescript
-{/* Erledigt-Button - nur fuer Eigentuemer/Bearbeiter */}
-{(selectedPlanning.user_id === user?.id || canEdit) && (
-  <Button 
-    variant={(selectedPlanning as any).is_completed ? "default" : "outline"}
-    className={cn((selectedPlanning as any).is_completed && "bg-green-600 hover:bg-green-700")}
-    onClick={() => togglePlanningCompleted(selectedPlanning.id, !(selectedPlanning as any).is_completed)}
-  >
-    <CheckCircle className="mr-2 h-4 w-4" />
-    {(selectedPlanning as any).is_completed ? "Erledigt" : "Als erledigt markieren"}
-  </Button>
-)}
-
-{/* Archivieren-Button */}
-{selectedPlanning.user_id === user?.id && (
-  <Button variant="outline" onClick={() => archivePlanning(selectedPlanning.id)}>
-    <Archive className="mr-2 h-4 w-4" />
-    Archivieren
-  </Button>
-)}
+```tsx
+// Im renderNavigableItem:
+if (navigable.isSystemSubItem) {
+  const borderColor = navigable.sourceType === 'quick_note' 
+    ? 'border-l-amber-500' 
+    : navigable.sourceType === 'appointment' 
+    ? 'border-l-blue-500'
+    : 'border-l-green-500';
+  
+  return (
+    <div className={cn(
+      "p-4 rounded-lg border border-l-4 ml-8",
+      borderColor,
+      isFocused && "ring-2 ring-primary bg-primary/5"
+    )}>
+      <div className="flex items-start gap-4">
+        <Checkbox checked={item.is_completed} ... />
+        <div className="flex-1">
+          <span className="text-sm font-medium">{item.title}</span>
+          {item.sourceData?.content && (
+            <p className="text-sm text-muted-foreground mt-1">{item.sourceData.content}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 ```
 
 ---
 
-## 5. Celebration Animation System integrieren
+## 3. Berechtigungen fuer oeffentliche Meetings und Teilnehmer
 
-### Aktueller Stand
+**Problem:** Aktuell koennen nur Ersteller eines Meetings Inhalte bearbeiten. Teilnehmer und Benutzer von oeffentlichen Meetings haben nur Leserechte.
 
-- Komponenten existieren in `src/components/celebrations/`
-- `TasksView.tsx` und `MyWorkTasksTab.tsx` verwenden noch `UnicornAnimation`
-- Keine Admin-UI fuer Einstellungen
+**Loesung:** Eine `hasEditPermission`-Funktion einfuehren und diese fuer alle Bearbeitungsaktionen verwenden.
 
-### Aenderungen
+### Neue Berechtigungslogik
 
-**TasksView.tsx:**
-```typescript
-// Import aendern
-import { CelebrationAnimationSystem } from '@/components/celebrations';
+```tsx
+// Am Anfang der Komponente
+const [currentUserIsParticipant, setCurrentUserIsParticipant] = useState(false);
 
-// State umbenennen
-const [showCelebration, setShowCelebration] = useState(false);
+// Laden der Teilnehmer-Info beim Meeting-Wechsel
+useEffect(() => {
+  const checkParticipation = async () => {
+    if (!selectedMeeting?.id || !user?.id) {
+      setCurrentUserIsParticipant(false);
+      return;
+    }
+    
+    const { data } = await supabase
+      .from('meeting_participants')
+      .select('user_id')
+      .eq('meeting_id', selectedMeeting.id)
+      .eq('user_id', user.id)
+      .single();
+    
+    setCurrentUserIsParticipant(!!data);
+  };
+  
+  checkParticipation();
+}, [selectedMeeting?.id, user?.id]);
 
-// Bei Task-Completion:
-setShowCelebration(true);
+// Berechtigungsfunktion
+const hasEditPermission = useMemo(() => {
+  if (!selectedMeeting || !user) return false;
+  
+  // Ersteller hat immer Bearbeitungsrechte
+  if (selectedMeeting.user_id === user.id) return true;
+  
+  // Teilnehmer haben Bearbeitungsrechte
+  if (currentUserIsParticipant) return true;
+  
+  // Oeffentliche Meetings: alle Teammitglieder haben Bearbeitungsrechte
+  if (selectedMeeting.is_public) return true;
+  
+  return false;
+}, [selectedMeeting, user, currentUserIsParticipant]);
+```
 
-// Render:
-<CelebrationAnimationSystem 
-  isVisible={showCelebration} 
-  onAnimationComplete={() => setShowCelebration(false)} 
+### Verwendung in der UI
+
+Buttons und Eingabefelder werden nur angezeigt/aktiviert, wenn `hasEditPermission === true`:
+
+```tsx
+{/* Beispiel: Punkt hinzufuegen Button */}
+{hasEditPermission && (
+  <Button variant="outline" onClick={addAgendaItem}>
+    <Plus className="h-4 w-4 mr-2" />
+    Punkt hinzufügen
+  </Button>
+)}
+
+{/* Beispiel: Input-Felder readonly wenn keine Berechtigung */}
+<Input
+  value={item.title}
+  onChange={(e) => updateAgendaItem(index, 'title', e.target.value)}
+  placeholder="Agenda-Punkt Titel"
+  disabled={!hasEditPermission}
+  className={cn(
+    "font-semibold flex-1",
+    !hasEditPermission && "cursor-not-allowed opacity-60"
+  )}
 />
 ```
 
-**MyWorkTasksTab.tsx:**
-```typescript
-// Gleiche Aenderungen wie oben
-import { CelebrationAnimationSystem } from '@/components/celebrations';
-const [showCelebration, setShowCelebration] = useState(false);
-// ... ersetze alle setShowUnicorn(true) durch setShowCelebration(true)
-```
+---
 
-### Admin-UI fuer Celebration Settings
+## 4. Notizen-Icon vor das + verschieben
 
-**Neuer Bereich in Administration.tsx unter "Allgemein" oder als eigener Sub-Tab:**
+**Aktuell (Zeile 3594-3656):** Input -> Plus -> ListTodo -> Trash
 
-```typescript
-// Neuer Case in renderContent oder als Teil des "general" Tabs:
-case "celebrations":
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5" />
-          Erfolgs-Animationen
-        </CardTitle>
-        <CardDescription>
-          Konfigurieren Sie die Animationen, die bei erledigten Aufgaben angezeigt werden.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Aktivierung */}
-        <div className="flex items-center justify-between">
-          <div>
-            <Label>Animationen aktiviert</Label>
-            <p className="text-sm text-muted-foreground">
-              Zeigt Animationen bei erfolgreichen Aktionen
-            </p>
-          </div>
-          <Switch 
-            checked={celebrationSettings?.enabled ?? true}
-            onCheckedChange={(checked) => updateCelebrationSettings({ enabled: checked })}
-          />
-        </div>
-        
-        <Separator />
-        
-        {/* Modus */}
-        <div className="space-y-2">
-          <Label>Animations-Modus</Label>
-          <Select 
-            value={celebrationSettings?.mode ?? 'random'}
-            onValueChange={(value) => updateCelebrationSettings({ mode: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="random">Zufaellige Auswahl</SelectItem>
-              <SelectItem value="sequential">Der Reihe nach</SelectItem>
-              <SelectItem value="specific">Feste Animation</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Animation auswaehlen bei specific */}
-        {celebrationSettings?.mode === 'specific' && (
-          <div className="space-y-2">
-            <Label>Animation</Label>
-            <div className="grid grid-cols-5 gap-2">
-              {['unicorn', 'confetti', 'fireworks', 'stars', 'thumbsup'].map(anim => (
-                <Button
-                  key={anim}
-                  variant={celebrationSettings.selectedAnimation === anim ? "default" : "outline"}
-                  className="h-16 flex flex-col items-center justify-center gap-1"
-                  onClick={() => updateCelebrationSettings({ selectedAnimation: anim })}
-                >
-                  {anim === 'unicorn' && '🦄'}
-                  {anim === 'confetti' && '🎊'}
-                  {anim === 'fireworks' && '🎆'}
-                  {anim === 'stars' && '⭐'}
-                  {anim === 'thumbsup' && '👍'}
-                  <span className="text-xs capitalize">{anim}</span>
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* Haeufigkeit */}
-        <div className="space-y-2">
-          <Label>Haeufigkeit</Label>
-          <Select 
-            value={celebrationSettings?.frequency ?? 'always'}
-            onValueChange={(value) => updateCelebrationSettings({ frequency: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="always">Immer (100%)</SelectItem>
-              <SelectItem value="sometimes">Manchmal (50%)</SelectItem>
-              <SelectItem value="rarely">Selten (20%)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Geschwindigkeit */}
-        <div className="space-y-2">
-          <Label>Geschwindigkeit</Label>
-          <ToggleGroup type="single" value={celebrationSettings?.speed ?? 'normal'} onValueChange={(v) => v && updateCelebrationSettings({ speed: v })}>
-            <ToggleGroupItem value="slow">Langsam</ToggleGroupItem>
-            <ToggleGroupItem value="normal">Normal</ToggleGroupItem>
-            <ToggleGroupItem value="fast">Schnell</ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-        
-        {/* Groesse */}
-        <div className="space-y-2">
-          <Label>Groesse</Label>
-          <ToggleGroup type="single" value={celebrationSettings?.size ?? 'medium'} onValueChange={(v) => v && updateCelebrationSettings({ size: v })}>
-            <ToggleGroupItem value="small">Klein</ToggleGroupItem>
-            <ToggleGroupItem value="medium">Mittel</ToggleGroupItem>
-            <ToggleGroupItem value="large">Gross</ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-        
-        {/* Vorschau */}
-        <Button 
-          variant="outline" 
-          onClick={() => setShowPreviewCelebration(true)}
-          className="w-full"
-        >
-          <Eye className="mr-2 h-4 w-4" />
-          Vorschau anzeigen
+**Neu:** Input -> StickyNote -> Plus -> ListTodo -> Trash
+
+```tsx
+<div className="flex items-center gap-2">
+  <Input ... />
+  
+  {/* NEU: Notizen zuerst */}
+  {!(item.parentLocalKey || item.parent_id) && (
+    <Collapsible>
+      <CollapsibleTrigger asChild>
+        <Button size="icon" variant="ghost" className="shrink-0" aria-label="Notizen">
+          <StickyNote className={cn("h-4 w-4", item.notes && "text-amber-500")} />
         </Button>
-      </CardContent>
-    </Card>
-  );
+      </CollapsibleTrigger>
+      {/* CollapsibleContent bleibt unveraendert */}
+    </Collapsible>
+  )}
+  
+  {/* Plus-Button fuer Unterpunkte */}
+  {!(item.parentLocalKey || item.parent_id) && (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button size="icon" variant="ghost" className="shrink-0" aria-label="Unterpunkt hinzufügen">
+          <Plus className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      {/* ... */}
+    </Popover>
+  )}
+  
+  {/* Aufgaben-Button */}
+  {!(item.parentLocalKey || item.parent_id) && (
+    <Popover ...>
+      {/* ... ListTodo */}
+    </Popover>
+  )}
+  
+  {/* Loeschen */}
+  <Button size="icon" variant="ghost" className="shrink-0 text-destructive" ...>
+    <Trash className="h-4 w-4" />
+  </Button>
+</div>
 ```
 
-**Celebration Settings State und Handler:**
-```typescript
-const [celebrationSettings, setCelebrationSettings] = useState<CelebrationSettings | null>(null);
-const [showPreviewCelebration, setShowPreviewCelebration] = useState(false);
+---
 
-useEffect(() => {
-  loadCelebrationSettings();
-}, [user]);
+## 5. Design-Verbesserungen fuer die Cards
 
-const loadCelebrationSettings = async () => {
-  if (!user) return;
-  const { data } = await supabase
-    .from('celebration_settings')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
-  
-  if (data) {
-    setCelebrationSettings({
-      enabled: data.enabled,
-      mode: data.mode,
-      selectedAnimation: data.selected_animation,
-      frequency: data.frequency,
-      speed: data.speed,
-      size: data.size,
-    });
-  }
-};
+### 5.1 Titel fett wie bei dynamischen Punkten
 
-const updateCelebrationSettings = async (updates: Partial<CelebrationSettings>) => {
-  const newSettings = { ...celebrationSettings, ...updates };
-  setCelebrationSettings(newSettings as CelebrationSettings);
-  
-  await supabase
-    .from('celebration_settings')
-    .upsert({
-      user_id: user?.id,
-      enabled: newSettings.enabled,
-      mode: newSettings.mode,
-      selected_animation: newSettings.selectedAnimation,
-      frequency: newSettings.frequency,
-      speed: newSettings.speed,
-      size: newSettings.size,
-    });
-};
+Aenderung in der Input-Klasse (Zeile 3588-3593):
+
+```tsx
+<Input
+  value={item.title}
+  onChange={(e) => updateAgendaItem(index, 'title', e.target.value)}
+  placeholder={(item.parentLocalKey || item.parent_id) ? 'Unterpunkt' : 'Agenda-Punkt Titel'}
+  className={cn(
+    "flex-1 border-none shadow-none p-0 h-auto",
+    // NEU: fett wie bei dynamischen Punkten
+    "font-semibold text-base",
+    // NEU: transparent, erst bei Hover grau
+    "bg-transparent hover:bg-muted/50 focus:bg-muted/50 transition-colors"
+  )}
+/>
+```
+
+### 5.2 Kompaktere Cards
+
+Aenderung in CardContent (Zeile 3577):
+
+```tsx
+<CardContent className="p-3"> {/* statt p-4 */}
+  <div className="flex items-start gap-2"> {/* statt gap-3 */}
+    ...
+  </div>
+</CardContent>
+```
+
+### 5.3 Weisse Cards mit Hover-Effekt
+
+```tsx
+<Card 
+  ref={provided.innerRef}
+  {...provided.draggableProps}
+  className={cn(
+    (item.parentLocalKey || item.parent_id) && 'ml-6 border-l border-border',
+    snapshot.isDragging && 'shadow-glow',
+    // NEU: Hover-Effekt
+    "hover:bg-muted/30 transition-colors"
+  )}
+>
 ```
 
 ---
@@ -584,11 +421,33 @@ const updateCelebrationSettings = async (updates: Partial<CelebrationSettings>) 
 
 | Datei | Aenderungen |
 |-------|-------------|
-| **Migration** | `default_visibility` zu `meeting_templates` hinzufuegen |
-| **`Administration.tsx`** | 1) `getTitleForSystemType` Funktion, 2) "Aufgaben" im Child-Popover, 3) Icon+Farbe fuer tasks bei Children, 4) Template-Name-Fix, 5) Celebration Admin-UI |
-| **`MeetingTemplateParticipantsEditor.tsx`** | Sichtbarkeits-Toggle und Rollen-Auswahl hinzufuegen |
-| **`EventPlanningView.tsx`** | Erledigt-Button nur fuer Eigentuemer/Bearbeiter, Erledigt-Button in Detailansicht |
-| **`MyWorkPlanningsTab.tsx`** | Erledigt-Button nur fuer Eigentuemer |
-| **`TasksView.tsx`** | `UnicornAnimation` durch `CelebrationAnimationSystem` ersetzen |
-| **`MyWorkTasksTab.tsx`** | `UnicornAnimation` durch `CelebrationAnimationSystem` ersetzen |
+| **`MeetingsView.tsx`** | 1) addSystemAgendaItem Funktion, 2) System-Buttons in der Toolbar, 3) hasEditPermission-Logik, 4) Icon-Reihenfolge, 5) Design-Anpassungen |
+| **`FocusModeView.tsx`** | Einzelne Notizen/Termine/Aufgaben als navigierbare Sub-Items mit farbiger Kante |
 
+---
+
+## Technische Details
+
+### Neue Props fuer FocusModeView
+
+```tsx
+interface FocusModeViewProps {
+  // ... bestehende Props
+  linkedTasks?: any[]; // NEU: Aufgaben fuer das Meeting
+  appointments?: any[]; // NEU: Termine aus dem Kalender
+}
+```
+
+### Erweitertes NavigableItem Interface
+
+```tsx
+interface NavigableItem {
+  item: AgendaItem;
+  isSubItem: boolean;
+  parentItem: AgendaItem | null;
+  globalIndex: number;
+  isSystemSubItem?: boolean; // NEU
+  sourceId?: string;         // NEU: ID der Notiz/Termin/Aufgabe
+  sourceType?: 'quick_note' | 'appointment' | 'task'; // NEU
+}
+```
