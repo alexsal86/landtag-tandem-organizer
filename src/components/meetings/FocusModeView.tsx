@@ -108,7 +108,7 @@ export function FocusModeView({
   // Ref to track when dialog just closed to prevent Enter from marking items
   const justClosedDialogRef = useRef(false);
 
-  // Build flat list of all navigable items (main items + sub-items)
+  // Build flat list of all navigable items (main items + sub-items + system sub-items)
   const allNavigableItems: NavigableItem[] = useMemo(() => {
     const result: NavigableItem[] = [];
     
@@ -121,10 +121,11 @@ export function FocusModeView({
         item: mainItem, 
         isSubItem: false, 
         parentItem: null,
-        globalIndex 
+        globalIndex,
+        isSystemSubItem: false
       });
       
-      // Get sub-items for this main item (excluding system sub-items which render inline)
+      // Get regular sub-items for this main item (excluding system sub-items)
       const subItems = agendaItems.filter(sub => 
         (sub.parent_id === mainItem.id || sub.parentLocalKey === mainItem.id) &&
         !sub.system_type
@@ -136,13 +137,78 @@ export function FocusModeView({
           item: subItem, 
           isSubItem: true, 
           parentItem: mainItem,
-          globalIndex: subGlobalIndex 
+          globalIndex: subGlobalIndex,
+          isSystemSubItem: false
         });
       });
+      
+      // Add individual system sub-items as navigable elements
+      if (mainItem.system_type === 'quick_notes' && linkedQuickNotes.length > 0) {
+        linkedQuickNotes.forEach((note, noteIndex) => {
+          result.push({
+            item: {
+              id: `note-${note.id}`,
+              title: note.title || `Notiz ${noteIndex + 1}`,
+              is_completed: false,
+              order_index: mainItem.order_index + noteIndex + 1,
+              system_type: 'quick_note_item',
+            } as AgendaItem,
+            isSubItem: true,
+            parentItem: mainItem,
+            globalIndex: -1, // Virtual items don't have a real index
+            isSystemSubItem: true,
+            sourceId: note.id,
+            sourceType: 'quick_note',
+            sourceData: note
+          });
+        });
+      }
+      
+      if (mainItem.system_type === 'upcoming_appointments' && upcomingAppointments.length > 0) {
+        upcomingAppointments.forEach((appt, apptIndex) => {
+          result.push({
+            item: {
+              id: `appt-${appt.id}`,
+              title: appt.title || `Termin ${apptIndex + 1}`,
+              is_completed: false,
+              order_index: mainItem.order_index + apptIndex + 1,
+              system_type: 'appointment_item',
+            } as AgendaItem,
+            isSubItem: true,
+            parentItem: mainItem,
+            globalIndex: -1,
+            isSystemSubItem: true,
+            sourceId: appt.id,
+            sourceType: 'appointment',
+            sourceData: appt
+          });
+        });
+      }
+      
+      if (mainItem.system_type === 'tasks' && linkedTasks.length > 0) {
+        linkedTasks.forEach((task, taskIndex) => {
+          result.push({
+            item: {
+              id: `task-${task.id}`,
+              title: task.title || `Aufgabe ${taskIndex + 1}`,
+              is_completed: false,
+              order_index: mainItem.order_index + taskIndex + 1,
+              system_type: 'task_item',
+            } as AgendaItem,
+            isSubItem: true,
+            parentItem: mainItem,
+            globalIndex: -1,
+            isSystemSubItem: true,
+            sourceId: task.id,
+            sourceType: 'task',
+            sourceData: task
+          });
+        });
+      }
     });
     
     return result;
-  }, [agendaItems]);
+  }, [agendaItems, linkedQuickNotes, upcomingAppointments, linkedTasks]);
 
   // Get current focused navigable item
   const currentNavigable = allNavigableItems[flatFocusIndex];
@@ -389,10 +455,73 @@ export function FocusModeView({
     return dateStr;
   };
 
+  // Get border color for system sub-items
+  const getSystemSubItemBorderColor = (sourceType?: 'quick_note' | 'appointment' | 'task') => {
+    switch (sourceType) {
+      case 'quick_note': return 'border-l-amber-500';
+      case 'appointment': return 'border-l-blue-500';
+      case 'task': return 'border-l-green-500';
+      default: return 'border-l-primary/30';
+    }
+  };
+
   // Render a single navigable item
   const renderNavigableItem = (navigable: NavigableItem, navIndex: number) => {
-    const { item, isSubItem, parentItem } = navigable;
+    const { item, isSubItem, parentItem, isSystemSubItem, sourceType, sourceData } = navigable;
     const isFocused = navIndex === flatFocusIndex;
+    
+    // Render system sub-items (individual notes, appointments, tasks) differently
+    if (isSystemSubItem && sourceData) {
+      return (
+        <div
+          key={item.id || navIndex}
+          ref={el => itemRefs.current[navIndex] = el}
+          className={cn(
+            "p-4 rounded-lg border border-l-4 ml-8 transition-all duration-300",
+            getSystemSubItemBorderColor(sourceType),
+            isFocused && "ring-2 ring-primary bg-primary/5 scale-[1.01] shadow-lg",
+            !isFocused && "bg-card hover:bg-muted/30"
+          )}
+          onClick={() => setFlatFocusIndex(navIndex)}
+        >
+          <div className="flex items-start gap-4">
+            <Checkbox
+              checked={false}
+              className="mt-0.5 h-4 w-4"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <CornerDownRight className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">{item.title}</span>
+              </div>
+              {sourceType === 'quick_note' && sourceData.content && (
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{sourceData.content}</p>
+              )}
+              {sourceType === 'appointment' && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {sourceData.start_time && format(new Date(sourceData.start_time), "dd.MM.yyyy HH:mm", { locale: de })}
+                  {sourceData.location && ` • ${sourceData.location}`}
+                </p>
+              )}
+              {sourceType === 'task' && (
+                <div className="flex items-center gap-2 mt-1">
+                  {sourceData.due_date && (
+                    <span className="text-xs text-muted-foreground">
+                      Frist: {format(new Date(sourceData.due_date), "dd.MM.yyyy", { locale: de })}
+                    </span>
+                  )}
+                  {sourceData.priority && (
+                    <Badge variant="outline" className="text-xs">
+                      {sourceData.priority}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
     
     // Get system sub-items to render inline (only for main items)
     const systemSubItems = !isSubItem ? agendaItems.filter(sub => 
