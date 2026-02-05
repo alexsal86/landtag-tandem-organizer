@@ -59,6 +59,10 @@ interface NavigableItem {
   isSubItem: boolean;
   parentItem: AgendaItem | null;
   globalIndex: number; // Index in agendaItems array
+  isSystemSubItem?: boolean; // True for individual notes/appointments/tasks
+  sourceId?: string; // ID of the source item (note, appointment, task)
+  sourceType?: 'quick_note' | 'appointment' | 'task';
+  sourceData?: any; // The actual source data
 }
 
 interface FocusModeViewProps {
@@ -66,6 +70,8 @@ interface FocusModeViewProps {
   agendaItems: AgendaItem[];
   profiles: Profile[];
   linkedQuickNotes?: any[];
+  linkedTasks?: any[];
+  upcomingAppointments?: any[];
   onClose: () => void;
   onUpdateItem: (index: number, field: keyof AgendaItem, value: any) => void;
   onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => void;
@@ -83,6 +89,8 @@ export function FocusModeView({
   agendaItems,
   profiles,
   linkedQuickNotes = [],
+  linkedTasks = [],
+  upcomingAppointments = [],
   onClose,
   onUpdateItem,
   onUpdateResult,
