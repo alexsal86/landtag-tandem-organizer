@@ -3696,16 +3696,16 @@ export function MeetingsView() {
                                   "hover:bg-muted/30 transition-colors"
                                 )}
                               > 
-                                <CardContent className="p-3">
-                                  <div className="flex items-start gap-2">
+                                <CardContent className="p-2">
+                                  <div className="flex items-center gap-2">
                                     <div 
                                       {...provided.dragHandleProps}
                                       className="cursor-grab active:cursor-grabbing"
                                     >
-                                      <GripVertical className="h-4 w-4 text-muted-foreground mt-1" />
+                                      <GripVertical className="h-4 w-4 text-muted-foreground" />
                                     </div>
                                    
-                                     <div className="flex-1 space-y-3">
+                                     <div className="flex-1 space-y-2">
                                        <div className="flex items-center gap-2">
                                          <Input
                                            value={item.title}
@@ -3718,6 +3718,27 @@ export function MeetingsView() {
                                              !hasEditPermission && "cursor-not-allowed opacity-60"
                                            )}
                                          />
+                                          {/* Notes button for main agenda items (before Plus) */}
+                                          {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
+                                            <Popover>
+                                              <PopoverTrigger asChild>
+                                                <Button size="icon" variant="ghost" className="shrink-0" aria-label="Notizen bearbeiten">
+                                                  <StickyNote className={cn("h-4 w-4", item.notes && "text-amber-500")} />
+                                                </Button>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-80">
+                                                <div className="space-y-2">
+                                                  <div className="text-sm font-medium mb-2">Notizen</div>
+                                                  <Textarea
+                                                    value={item.notes || ''}
+                                                    onChange={(e) => updateAgendaItem(index, 'notes', e.target.value)}
+                                                    placeholder="Vorbereitungsnotizen, Hintergrundinformationen, Gesprächspunkte..."
+                                                    className="min-h-[100px]"
+                                                  />
+                                                </div>
+                                              </PopoverContent>
+                                            </Popover>
+                                          )}
                                           {/* Plus button for sub-items */}
                                           {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
                                             <Popover>
@@ -3787,25 +3808,6 @@ export function MeetingsView() {
                                             </Button>
                                           )}
                                        </div>
-
-                                       {/* Notes field for main agenda items (not sub-items) */}
-                                       {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
-                                         <Collapsible>
-                                           <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                                             <StickyNote className={cn("h-3.5 w-3.5", item.notes && "text-amber-500")} />
-                                             <span>{item.notes ? 'Notizen bearbeiten' : 'Notizen hinzufügen'}</span>
-                                             {item.notes && <Badge variant="outline" className="text-xs">vorhanden</Badge>}
-                                           </CollapsibleTrigger>
-                                           <CollapsibleContent className="mt-2">
-                                             <Textarea
-                                               value={item.notes || ''}
-                                               onChange={(e) => updateAgendaItem(index, 'notes', e.target.value)}
-                                               placeholder="Vorbereitungsnotizen, Hintergrundinformationen, Gesprächspunkte..."
-                                               className="min-h-[80px]"
-                                             />
-                                           </CollapsibleContent>
-                                         </Collapsible>
-                                       )}
 
                                        {(item.parentLocalKey || item.parent_id) && (
                                          <>
