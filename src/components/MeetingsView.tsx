@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -154,6 +154,7 @@ export function MeetingsView() {
   const [showArchive, setShowArchive] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [meetingParticipants, setMeetingParticipants] = useState<any[]>([]);
+  const [currentUserIsParticipant, setCurrentUserIsParticipant] = useState(false);
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Handle URL action parameter for QuickActions
@@ -304,6 +305,43 @@ export function MeetingsView() {
       setActiveMeeting(prev => prev ? {...prev, lastUpdate: Date.now()} : prev);
     }
   }, [agendaItems, activeMeeting?.id]);
+
+  // Check if current user is a participant of the selected meeting
+  useEffect(() => {
+    const checkParticipation = async () => {
+      if (!selectedMeeting?.id || !user?.id) {
+        setCurrentUserIsParticipant(false);
+        return;
+      }
+      
+      const { data } = await supabase
+        .from('meeting_participants')
+        .select('user_id')
+        .eq('meeting_id', selectedMeeting.id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      setCurrentUserIsParticipant(!!data);
+    };
+    
+    checkParticipation();
+  }, [selectedMeeting?.id, user?.id]);
+
+  // Calculate edit permission based on owner, participant, or public meeting
+  const hasEditPermission = React.useMemo(() => {
+    if (!selectedMeeting || !user) return false;
+    
+    // Creator always has edit rights
+    if (selectedMeeting.user_id === user.id) return true;
+    
+    // Participants have edit rights
+    if (currentUserIsParticipant) return true;
+    
+    // Public meetings: all team members have edit rights
+    if (selectedMeeting.is_public) return true;
+    
+    return false;
+  }, [selectedMeeting, user, currentUserIsParticipant]);
 
   const loadMeetings = async () => {
     console.log('=== LOAD MEETINGS STARTED ===');
@@ -1593,6 +1631,47 @@ export function MeetingsView() {
 
     const next = [...agendaItems, newItem].map((it, idx) => ({ ...it, order_index: idx }));
     setAgendaItems(next);
+  };
+
+  const addSystemAgendaItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks') => {
+    if (!selectedMeeting?.id) return;
+    
+    // Check if already exists
+    if (agendaItems.some(i => i.system_type === systemType)) {
+      toast({
+        title: "Bereits vorhanden",
+        description: "Dieser dynamische Punkt ist bereits in der Agenda.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const titles: Record<string, string> = {
+      'upcoming_appointments': 'Kommende Termine',
+      'quick_notes': 'Meine Notizen',
+      'tasks': 'Aufgaben'
+    };
+    
+    const localKey = `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    const newItem: AgendaItem = {
+      title: titles[systemType],
+      description: "",
+      assigned_to: [],
+      notes: "",
+      is_completed: false,
+      is_recurring: false,
+      order_index: agendaItems.length,
+      localKey,
+      system_type: systemType,
+    };
+
+    const next = [...agendaItems, newItem].map((it, idx) => ({ ...it, order_index: idx }));
+    setAgendaItems(next);
+    
+    toast({
+      title: "Dynamischer Punkt hinzugefügt",
+      description: `"${titles[systemType]}" wurde zur Agenda hinzugefügt.`,
+    });
   };
 
   const updateAgendaItem = async (index: number, field: keyof AgendaItem, value: any) => {
@@ -3501,16 +3580,58 @@ export function MeetingsView() {
                   Agenda: {selectedMeeting.title} am {format(new Date(selectedMeeting.meeting_date), "EEEE, d. MMMM", { locale: de })}
                   {selectedMeeting.meeting_time && ` um ${selectedMeeting.meeting_time.substring(0, 5)} Uhr`}
                 </h2>
+              {hasEditPermission && (
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={addAgendaItem}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Punkt hinzufügen
+                    Punkt
                   </Button>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <CalendarDays className="h-4 w-4 mr-2" />
+                        System
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56">
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium mb-2">Dynamischen Punkt hinzufügen</p>
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400"
+                          onClick={() => addSystemAgendaItem('upcoming_appointments')}
+                          disabled={agendaItems.some(i => i.system_type === 'upcoming_appointments')}
+                        >
+                          <CalendarDays className="h-4 w-4 mr-2" />
+                          Kommende Termine
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start border-amber-200 text-amber-700 dark:border-amber-800 dark:text-amber-400"
+                          onClick={() => addSystemAgendaItem('quick_notes')}
+                          disabled={agendaItems.some(i => i.system_type === 'quick_notes')}
+                        >
+                          <StickyNote className="h-4 w-4 mr-2" />
+                          Meine Notizen
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start border-green-200 text-green-700 dark:border-green-800 dark:text-green-400"
+                          onClick={() => addSystemAgendaItem('tasks')}
+                          disabled={agendaItems.some(i => i.system_type === 'tasks')}
+                        >
+                          <ListTodo className="h-4 w-4 mr-2" />
+                          Aufgaben
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <Button onClick={saveAgendaItems}>
                     <Save className="h-4 w-4 mr-2" />
                     Speichern
                   </Button>
                 </div>
+              )}
               </div>
 
 
@@ -3571,11 +3692,12 @@ export function MeetingsView() {
                                 {...provided.draggableProps}
                                 className={cn(
                                   (item.parentLocalKey || item.parent_id) && 'ml-6 border-l border-border',
-                                  snapshot.isDragging && 'shadow-glow'
+                                  snapshot.isDragging && 'shadow-glow',
+                                  "hover:bg-muted/30 transition-colors"
                                 )}
                               > 
-                                <CardContent className="p-4">
-                                  <div className="flex items-start gap-3">
+                                <CardContent className="p-3">
+                                  <div className="flex items-start gap-2">
                                     <div 
                                       {...provided.dragHandleProps}
                                       className="cursor-grab active:cursor-grabbing"
@@ -3589,9 +3711,15 @@ export function MeetingsView() {
                                            value={item.title}
                                            onChange={(e) => updateAgendaItem(index, 'title', e.target.value)}
                                            placeholder={(item.parentLocalKey || item.parent_id) ? 'Unterpunkt' : 'Agenda-Punkt Titel'}
-                                           className="font-medium flex-1"
+                                           disabled={!hasEditPermission}
+                                           className={cn(
+                                             "flex-1 border-none shadow-none p-0 h-auto font-semibold text-base",
+                                             "bg-transparent hover:bg-muted/50 focus:bg-muted/50 transition-colors",
+                                             !hasEditPermission && "cursor-not-allowed opacity-60"
+                                           )}
                                          />
-                                          {!(item.parentLocalKey || item.parent_id) && (
+                                          {/* Plus button for sub-items */}
+                                          {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
                                             <Popover>
                                               <PopoverTrigger asChild>
                                                 <Button size="icon" variant="ghost" className="shrink-0" aria-label="Unterpunkt hinzufügen">
@@ -3614,7 +3742,8 @@ export function MeetingsView() {
                                               </PopoverContent>
                                             </Popover>
                                           )}
-                                          {!(item.parentLocalKey || item.parent_id) && (
+                                          {/* Task button */}
+                                          {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
                                             <Popover open={showTaskSelector?.itemIndex === index} onOpenChange={(open) => 
                                               setShowTaskSelector(open ? {itemIndex: index} : null)
                                             }>
@@ -3650,17 +3779,20 @@ export function MeetingsView() {
                                               </PopoverContent>
                                             </Popover>
                                           )}
-                                         <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive" 
-                                           onClick={() => deleteAgendaItem(item, index)} aria-label="Punkt löschen">
-                                           <Trash className="h-4 w-4" />
-                                         </Button>
+                                          {/* Delete button */}
+                                          {hasEditPermission && (
+                                            <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive" 
+                                              onClick={() => deleteAgendaItem(item, index)} aria-label="Punkt löschen">
+                                              <Trash className="h-4 w-4" />
+                                            </Button>
+                                          )}
                                        </div>
 
                                        {/* Notes field for main agenda items (not sub-items) */}
-                                       {!(item.parentLocalKey || item.parent_id) && (
+                                       {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
                                          <Collapsible>
                                            <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                                             <StickyNote className="h-3.5 w-3.5" />
+                                             <StickyNote className={cn("h-3.5 w-3.5", item.notes && "text-amber-500")} />
                                              <span>{item.notes ? 'Notizen bearbeiten' : 'Notizen hinzufügen'}</span>
                                              {item.notes && <Badge variant="outline" className="text-xs">vorhanden</Badge>}
                                            </CollapsibleTrigger>
