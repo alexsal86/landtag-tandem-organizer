@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe } from "lucide-react";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -130,6 +131,7 @@ export function MeetingsView() {
   const [agendaDocuments, setAgendaDocuments] = useState<Record<string, any[]>>({});
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
   const [linkedQuickNotes, setLinkedQuickNotes] = useState<any[]>([]);
+  const [meetingLinkedTasks, setMeetingLinkedTasks] = useState<any[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
     title: "",
@@ -176,6 +178,7 @@ export function MeetingsView() {
         setSelectedMeeting(meetingFromUrl);
         loadAgendaItems(urlMeetingId);
         loadLinkedQuickNotes(urlMeetingId);
+        loadMeetingLinkedTasks(urlMeetingId);
         // Clear the id param after selecting
         searchParams.delete('id');
         setSearchParams(searchParams, { replace: true });
@@ -213,6 +216,7 @@ export function MeetingsView() {
         if (nextMeeting.id) {
           loadAgendaItems(nextMeeting.id);
           loadLinkedQuickNotes(nextMeeting.id);
+          loadMeetingLinkedTasks(nextMeeting.id);
         }
       }
     }
@@ -222,6 +226,7 @@ export function MeetingsView() {
   useEffect(() => {
     if (selectedMeeting?.id && !activeMeeting) {
       loadLinkedQuickNotes(selectedMeeting.id);
+      loadMeetingLinkedTasks(selectedMeeting.id);
     }
   }, [selectedMeeting?.id, activeMeeting]);
 
@@ -1054,6 +1059,23 @@ export function MeetingsView() {
     }
   };
 
+  const loadMeetingLinkedTasks = async (meetingId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('id, title, description, due_date, priority, status')
+        .eq('meeting_id', meetingId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setMeetingLinkedTasks(data || []);
+    } catch (error) {
+      console.error('Error loading meeting linked tasks:', error);
+      setMeetingLinkedTasks([]);
+    }
+  };
+
+
   const updateQuickNoteResult = async (noteId: string, result: string) => {
     try {
       const { error } = await supabase
@@ -1092,6 +1114,7 @@ export function MeetingsView() {
     if (meeting.id) {
       await loadAgendaItems(meeting.id);
       await loadLinkedQuickNotes(meeting.id);
+      await loadMeetingLinkedTasks(meeting.id);
     }
   };
 
@@ -2534,6 +2557,7 @@ export function MeetingsView() {
         agendaItems={agendaItems}
         profiles={profiles}
         linkedQuickNotes={linkedQuickNotes}
+        linkedTasks={meetingLinkedTasks}
         onClose={() => setIsFocusMode(false)}
         onUpdateItem={updateAgendaItem}
         onUpdateResult={updateAgendaItemResult}
@@ -3126,7 +3150,9 @@ export function MeetingsView() {
                       </div>
                       
                       {item.description && (
-                        <p className="text-muted-foreground mb-3 ml-12">{item.description}</p>
+                        <div className="mb-3 ml-12">
+                          <RichTextDisplay content={item.description} className="text-muted-foreground" />
+                        </div>
                       )}
 
                       {/* Show system content based on system_type */}
@@ -3148,6 +3174,16 @@ export function MeetingsView() {
                             systemType="quick_notes"
                             linkedQuickNotes={linkedQuickNotes}
                             onUpdateNoteResult={updateQuickNoteResult}
+                            isEmbedded={true}
+                          />
+                        </div>
+                      )}
+
+                      {item.system_type === 'tasks' && (
+                        <div className="ml-12 mb-4">
+                          <SystemAgendaItem 
+                            systemType="tasks"
+                            linkedTasks={meetingLinkedTasks}
                             isEmbedded={true}
                           />
                         </div>
@@ -3241,14 +3277,16 @@ export function MeetingsView() {
                            </div>
                            <div className="space-y-2">
                                  {sortedSubItems.map((subItem, subIndex) => (
-                                 <div key={subItem.id} className={cn(
-                                   "pl-4 border-l-2",
-                                   subItem.system_type === 'upcoming_appointments' 
-                                     ? "border-l-blue-500" 
-                                     : subItem.system_type === 'quick_notes'
-                                       ? "border-l-amber-500"
-                                       : "border-muted"
-                                 )}>
+                                  <div key={subItem.id} className={cn(
+                                    "pl-4 border-l-2",
+                                    subItem.system_type === 'upcoming_appointments' 
+                                      ? "border-l-blue-500" 
+                                      : subItem.system_type === 'quick_notes'
+                                        ? "border-l-amber-500"
+                                        : subItem.system_type === 'tasks'
+                                          ? "border-l-green-500"
+                                          : "border-muted"
+                                  )}>
                                    {/* Render system items with proper numbering and header */}
                                      {subItem.system_type === 'upcoming_appointments' ? (
                                        <div className="space-y-2">
@@ -3282,8 +3320,23 @@ export function MeetingsView() {
                                           onUpdateNoteResult={updateQuickNoteResult}
                                           isEmbedded={true}
                                         />
-                                      </div>
-                                    ) : (
+                                       </div>
+                                     ) : subItem.system_type === 'tasks' ? (
+                                       <div className="space-y-2">
+                                         <div className="flex items-center gap-2 mb-2">
+                                           <span className="text-xs font-medium text-muted-foreground">
+                                             {index + 1}.{subIndex + 1}
+                                           </span>
+                                           <ListTodo className="h-4 w-4 text-green-500" />
+                                           <span className="text-sm font-medium">Aufgaben</span>
+                                         </div>
+                                         <SystemAgendaItem 
+                                           systemType="tasks"
+                                           linkedTasks={meetingLinkedTasks}
+                                           isEmbedded={true}
+                                         />
+                                       </div>
+                                     ) : (
                                    <>
                                    <div className="flex items-center gap-2 mb-2">
                                      <span className="text-xs font-medium text-muted-foreground">
@@ -3313,11 +3366,11 @@ export function MeetingsView() {
                                         size="sm"
                                       />
                                    </div>
-                                   {subItem.description && (
-                                     <div className="mb-2 bg-muted/20 p-2 rounded border-l-2 border-primary/20">
-                                       <p className="text-sm text-foreground whitespace-pre-wrap">{subItem.description}</p>
-                                     </div>
-                                   )}
+                                    {subItem.description && (
+                                      <div className="mb-2 bg-muted/20 p-2 rounded border-l-2 border-primary/20">
+                                        <RichTextDisplay content={subItem.description} className="text-sm text-foreground" />
+                                      </div>
+                                    )}
                                 {subItem.notes && (
                                   <div className="mb-2">
                                     <span className="text-xs font-medium text-muted-foreground">Notizen: </span>
@@ -3671,19 +3724,17 @@ export function MeetingsView() {
                                     </div>
                                     <div className="flex-1">
                                       <SystemAgendaItem 
-                                        systemType={item.system_type as 'upcoming_appointments' | 'quick_notes'}
+                                        systemType={item.system_type as 'upcoming_appointments' | 'quick_notes' | 'tasks'}
                                         meetingDate={selectedMeeting?.meeting_date}
                                         meetingId={selectedMeeting?.id}
                                         allowStarring={true}
                                         linkedQuickNotes={linkedQuickNotes}
+                                        linkedTasks={meetingLinkedTasks}
                                         isEmbedded={true}
                                         defaultCollapsed={item.system_type === 'upcoming_appointments'}
+                                        onDelete={hasEditPermission ? () => deleteAgendaItem(item, index) : undefined}
                                       />
                                     </div>
-                                    <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive mt-2" 
-                                      onClick={() => deleteAgendaItem(item, index)} aria-label="Punkt löschen">
-                                      <Trash className="h-4 w-4" />
-                                    </Button>
                                   </div>
                                 </div>
                               ) : (

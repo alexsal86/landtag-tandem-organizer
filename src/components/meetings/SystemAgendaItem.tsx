@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, StickyNote, ListTodo } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { CalendarDays, StickyNote, ListTodo, Trash } from 'lucide-react';
 import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
 import { cn } from '@/lib/utils';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
@@ -24,6 +25,7 @@ interface SystemAgendaItemProps {
   linkedQuickNotes?: any[];
   linkedTasks?: LinkedTask[];
   onUpdateNoteResult?: (noteId: string, result: string) => void;
+  onDelete?: () => void;
   className?: string;
   isEmbedded?: boolean;
   defaultCollapsed?: boolean;
@@ -37,6 +39,7 @@ export function SystemAgendaItem({
   linkedQuickNotes = [],
   linkedTasks = [],
   onUpdateNoteResult,
+  onDelete,
   className,
   isEmbedded = false,
   defaultCollapsed = false
@@ -94,6 +97,48 @@ export function SystemAgendaItem({
     }
   };
 
+  const getBadgeIcon = () => {
+    switch (systemType) {
+      case 'upcoming_appointments':
+        return <CalendarDays className="h-3 w-3 mr-1" />;
+      case 'quick_notes':
+        return <StickyNote className="h-3 w-3 mr-1" />;
+      case 'tasks':
+        return <ListTodo className="h-3 w-3 mr-1" />;
+      default:
+        return null;
+    }
+  };
+
+  const renderHeader = (extraBadge?: React.ReactNode) => (
+    <CardHeader className="py-2 px-3 pb-1">
+      <div className="flex items-center justify-between">
+        <CardTitle className="text-base flex items-center gap-2">
+          {getIcon()}
+          {getTitle()}
+          {extraBadge}
+        </CardTitle>
+        <div className="flex items-center gap-1">
+          <Badge variant="outline" className={cn("text-xs", getBadgeColors())}>
+            {getBadgeIcon()}
+            System
+          </Badge>
+          {onDelete && (
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              className="h-7 w-7 text-destructive hover:text-destructive"
+              onClick={onDelete} 
+              aria-label="Punkt löschen"
+            >
+              <Trash className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </CardHeader>
+  );
+
   if (systemType === 'upcoming_appointments') {
     return (
       <Card className={cn(
@@ -101,19 +146,8 @@ export function SystemAgendaItem({
         getBorderColor(),
         className
       )}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              {getIcon()}
-              {getTitle()}
-            </CardTitle>
-            <Badge variant="outline" className={cn("text-xs", getBadgeColors())}>
-              <CalendarDays className="h-3 w-3 mr-1" />
-              System
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
+        {renderHeader()}
+        <CardContent className="px-3 pb-2 pt-0">
           <UpcomingAppointmentsSection 
             meetingDate={meetingDate} 
             meetingId={meetingId}
@@ -133,22 +167,10 @@ export function SystemAgendaItem({
         getBorderColor(),
         className
       )}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              {getIcon()}
-              {getTitle()}
-              {linkedQuickNotes.length > 0 && (
-                <Badge variant="secondary">{linkedQuickNotes.length}</Badge>
-              )}
-            </CardTitle>
-            <Badge variant="outline" className={cn("text-xs", getBadgeColors())}>
-              <StickyNote className="h-3 w-3 mr-1" />
-              System
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
+        {renderHeader(
+          linkedQuickNotes.length > 0 ? <Badge variant="secondary">{linkedQuickNotes.length}</Badge> : undefined
+        )}
+        <CardContent className="px-3 pb-2 pt-0">
           {linkedQuickNotes.length > 0 ? (
             <div className="space-y-2">
               {linkedQuickNotes.map((note) => (
@@ -182,22 +204,10 @@ export function SystemAgendaItem({
         getBorderColor(),
         className
       )}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              {getIcon()}
-              {getTitle()}
-              {linkedTasks.length > 0 && (
-                <Badge variant="secondary">{linkedTasks.length}</Badge>
-              )}
-            </CardTitle>
-            <Badge variant="outline" className={cn("text-xs", getBadgeColors())}>
-              <ListTodo className="h-3 w-3 mr-1" />
-              System
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
+        {renderHeader(
+          linkedTasks.length > 0 ? <Badge variant="secondary">{linkedTasks.length}</Badge> : undefined
+        )}
+        <CardContent className="px-3 pb-2 pt-0">
           {linkedTasks.length > 0 ? (
             <div className="space-y-2">
               {linkedTasks.map((task) => (
