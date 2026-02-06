@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -201,6 +201,7 @@ export function MyWorkJourFixeTab() {
   const getSystemItemIcon = (systemType: string | null | undefined) => {
     if (systemType === 'quick_notes') return <StickyNote className="h-3 w-3 text-amber-500" />;
     if (systemType === 'upcoming_appointments') return <Calendar className="h-3 w-3 text-blue-500" />;
+    if (systemType === 'tasks') return <ListTodo className="h-3 w-3 text-green-500" />;
     return null;
   };
 

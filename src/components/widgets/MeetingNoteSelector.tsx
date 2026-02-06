@@ -45,17 +45,67 @@ export const MeetingNoteSelector: React.FC<MeetingNoteSelectorProps> = ({
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // 1. Own meetings
+      const { data: ownMeetings, error: ownError } = await supabase
         .from('meetings')
         .select('id, title, meeting_date, status')
         .eq('user_id', user.id)
         .neq('status', 'archived')
-        .gte('meeting_date', new Date().toISOString().split('T')[0])
+        .gte('meeting_date', todayStr)
         .order('meeting_date', { ascending: true })
         .limit(20);
 
-      if (error) throw error;
-      setMeetings(data || []);
+      if (ownError) throw ownError;
+
+      // 2. Meetings where user is participant
+      const { data: participantEntries } = await supabase
+        .from('meeting_participants')
+        .select('meeting_id')
+        .eq('user_id', user.id);
+
+      let participantMeetings: Meeting[] = [];
+      if (participantEntries && participantEntries.length > 0) {
+        const meetingIds = participantEntries.map(p => p.meeting_id);
+        const { data: partMeetings } = await supabase
+          .from('meetings')
+          .select('id, title, meeting_date, status')
+          .in('id', meetingIds)
+          .neq('status', 'archived')
+          .neq('user_id', user.id)
+          .gte('meeting_date', todayStr)
+          .order('meeting_date', { ascending: true });
+
+        participantMeetings = (partMeetings || []) as Meeting[];
+      }
+
+      // 3. Public meetings
+      const { data: publicMeetings } = await supabase
+        .from('meetings')
+        .select('id, title, meeting_date, status')
+        .eq('is_public', true)
+        .neq('status', 'archived')
+        .neq('user_id', user.id)
+        .gte('meeting_date', todayStr)
+        .order('meeting_date', { ascending: true })
+        .limit(20);
+
+      // Merge and deduplicate
+      const allMeetings: Meeting[] = [...(ownMeetings || [])];
+      const existingIds = new Set(allMeetings.map(m => m.id));
+
+      for (const m of [...participantMeetings, ...((publicMeetings || []) as Meeting[])]) {
+        if (!existingIds.has(m.id)) {
+          allMeetings.push(m);
+          existingIds.add(m.id);
+        }
+      }
+
+      // Sort by date
+      allMeetings.sort((a, b) => new Date(a.meeting_date).getTime() - new Date(b.meeting_date).getTime());
+
+      setMeetings(allMeetings);
     } catch (error) {
       console.error('Error loading meetings:', error);
     } finally {

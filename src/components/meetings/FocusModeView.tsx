@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { FocusModeUpcomingAppointments, FocusModeUpcomingAppointmentsHandle } from './FocusModeUpcomingAppointments';
 import { SystemAgendaItem } from './SystemAgendaItem';
+import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 
 interface AgendaItem {
   id?: string;
@@ -586,7 +587,9 @@ export function FocusModeView({
 
             {/* Description */}
             {item.description && (
-              <p className="text-muted-foreground mt-2">{item.description}</p>
+              <div className="mt-2">
+                <RichTextDisplay content={item.description} className="text-muted-foreground" />
+              </div>
             )}
 
             {/* Notes */}
@@ -624,6 +627,17 @@ export function FocusModeView({
               </div>
             )}
 
+            {/* System content: Tasks */}
+            {item.system_type === 'tasks' && (
+              <div className="mt-4">
+                <SystemAgendaItem 
+                  systemType="tasks"
+                  linkedTasks={linkedTasks}
+                  isEmbedded={true}
+                />
+              </div>
+            )}
+
             {/* Assigned users */}
             {item.assigned_to && item.assigned_to.length > 0 && (
               <div className="mt-3 flex items-center gap-2">
@@ -651,7 +665,9 @@ export function FocusModeView({
                     ? "border-l-blue-500" 
                     : sub.system_type === 'quick_notes'
                       ? "border-l-amber-500"
-                      : "border-muted"
+                      : sub.system_type === 'tasks'
+                        ? "border-l-green-500"
+                        : "border-muted"
                 )}
               >
                 {sub.system_type === 'upcoming_appointments' ? (
@@ -664,6 +680,12 @@ export function FocusModeView({
                   <SystemAgendaItem 
                     systemType="quick_notes"
                     linkedQuickNotes={linkedQuickNotes}
+                    isEmbedded={true}
+                  />
+                ) : sub.system_type === 'tasks' ? (
+                  <SystemAgendaItem 
+                    systemType="tasks"
+                    linkedTasks={linkedTasks}
                     isEmbedded={true}
                   />
                 ) : null}
