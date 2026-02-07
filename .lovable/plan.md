@@ -1,332 +1,249 @@
 
-# Plan: Drei Verbesserungen fuer Meeting-Agenda
+# Plan: Vier Verbesserungen fuer Meine Arbeit und Meetings
 
 ## Uebersicht
 
-| # | Problem | Loesung |
-|---|---------|---------|
-| 1 | System-Items werden nicht dauerhaft gespeichert | `addSystemAgendaItem` direkt in die Datenbank schreiben (analog zu `addSubItem` und `addTaskToAgenda`) |
-| 2 | Aufgabe als Unterpunkt: Zuweisung automatisch setzen | Bei `addTaskToAgenda` automatisch `assigned_to` vom Task-Eigentuemer uebernehmen; bei `addSubItem` den aktuellen User setzen |
-| 3 | Sidebar-Layout fuer Meeting-Agenda | Seitenleiste mit Meeting-Liste, Buttons und Details; Hauptbereich nur fuer die Agenda |
+| # | Anforderung | Loesung |
+|---|-------------|---------|
+| 1 | Jour Fixe Tab: oeffentliche und Teilnehmer-Meetings anzeigen | `loadMeetings` in `MyWorkJourFixeTab` erweitern um Teilnehmer-Meetings und oeffentliche Meetings |
+| 2 | Notizen in Agenda fuer alle berechtigten Teilnehmer sichtbar | RLS-Policy fuer `quick_notes` um Meeting-basierte Sichtbarkeit erweitern |
+| 3 | Jour Fixe Icon-Faerbung bei Aufgaben unter Meine Arbeit | `meeting_id` und `pending_for_jour_fixe` im Task-Interface verfuegbar machen und `hasMeetingLink`-Prop an `TaskActionIcons` uebergeben |
+| 4 | Korrekte Aufteilung: Links eigene, rechts zugewiesene Aufgaben | Filterlogik in `MyWorkTasksTab` ueberarbeiten |
 
 ---
 
-## 1. System-Items persistent speichern
+## 1. Jour Fixe Tab: oeffentliche Meetings und Teilnehmer-Meetings anzeigen
 
-### Ursache
-`addSystemAgendaItem` fuegt Items nur zum lokalen State (`setAgendaItems`) hinzu, ohne sie in die Datenbank zu schreiben. Im Gegensatz dazu speichern `addSubItem` und `addTaskToAgenda` sofort per `supabase.from('meeting_agenda_items').insert(...)`. Beim Verlassen der Seite oder Starten des Meetings werden die Items neu aus der DB geladen - die nur lokal vorhandenen System-Items gehen verloren.
+### Problem
+In `MyWorkJourFixeTab.tsx` werden Meetings nur per `.eq("user_id", user.id)` geladen (Zeile 101). Das bedeutet, nur selbst erstellte Meetings werden angezeigt. Meetings, an denen man als Teilnehmer eingetragen ist oder die als oeffentlich markiert sind, fehlen komplett.
 
-### Loesung (MeetingsView.tsx)
+### Loesung (MyWorkJourFixeTab.tsx)
 
-`addSystemAgendaItem` wird zu einer `async`-Funktion umgebaut, die das Item sofort in die DB schreibt (nach dem gleichen Muster wie `addSubItem`):
+Die `loadMeetings`-Funktion wird analog zur `loadMeetings` in `MeetingsView.tsx` erweitert:
+
+1. Eigene Meetings laden (bestehend)
+2. Teilnehmer-Meetings laden (via `meeting_participants`)
+3. Oeffentliche Meetings laden (via `is_public = true`)
+4. Ergebnisse zusammenfuehren und deduplizieren
 
 ```tsx
-const addSystemAgendaItem = async (
-  systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks', 
-  parentItem?: AgendaItem
-) => {
-  if (!selectedMeeting?.id) return;
-
-  // Duplikat-Pruefung bleibt
-  if (agendaItems.some(i => i.system_type === systemType)) {
-    toast({ title: "Bereits vorhanden", ... });
-    return;
-  }
-
+const loadMeetings = async () => {
+  if (!user) return;
   try {
-    let parentId: string | null = null;
+    const now = new Date().toISOString();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    if (parentItem) {
-      parentId = parentItem.id || null;
-      // Falls Parent noch keine DB-ID hat, zuerst speichern
-      if (!parentId) {
-        const { data: parentData, error: parentError } = await supabase
-          .from('meeting_agenda_items')
-          .insert({
-            meeting_id: selectedMeeting.id,
-            title: parentItem.title,
-            description: parentItem.description || null,
-            order_index: parentItem.order_index,
-            is_completed: false,
-            is_recurring: false,
-          })
-          .select().single();
-        if (parentError) throw parentError;
-        parentId = parentData.id;
-        // Local state aktualisieren
-        const parentIndex = agendaItems.findIndex(...);
-        const updatedItems = [...agendaItems];
-        updatedItems[parentIndex] = { ...parentItem, id: parentId };
-        setAgendaItems(updatedItems);
-      }
-    }
+    // 1. Own meetings (creator)
+    const { data: ownUpcoming } = await supabase
+      .from("meetings")
+      .select("id, title, meeting_date, meeting_time, status, description")
+      .eq("user_id", user.id)
+      .neq("status", "archived")
+      .gte("meeting_date", now)
+      .order("meeting_date", { ascending: true })
+      .limit(20);
 
-    // Order-Index berechnen
-    let insertIndex: number;
-    if (parentItem) {
-      const parentIndex = agendaItems.findIndex(...);
-      insertIndex = parentIndex + 1;
-      while (insertIndex < agendaItems.length && 
-             agendaItems[insertIndex].parent_id === parentId) {
-        insertIndex++;
-      }
-    } else {
-      insertIndex = agendaItems.length;
-    }
+    const { data: ownPast } = await supabase
+      .from("meetings")
+      .select("id, title, meeting_date, meeting_time, status, description")
+      .eq("user_id", user.id)
+      .neq("status", "archived")
+      .lt("meeting_date", now)
+      .gte("meeting_date", thirtyDaysAgo.toISOString())
+      .order("meeting_date", { ascending: false })
+      .limit(10);
 
-    // In DB speichern
-    const { data: savedItem, error } = await supabase
-      .from('meeting_agenda_items')
-      .insert({
-        meeting_id: selectedMeeting.id,
-        title: titles[systemType],
-        description: null,
-        system_type: systemType,
-        parent_id: parentId,
-        order_index: insertIndex,
-        is_completed: false,
-        is_recurring: false,
-        is_visible: true,
-      })
-      .select().single();
+    // 2. Participant meetings
+    const { data: participantData } = await supabase
+      .from("meeting_participants")
+      .select("meeting_id, meetings(id, title, meeting_date, meeting_time, status, description)")
+      .eq("user_id", user.id);
 
-    if (error) throw error;
+    // 3. Public meetings in tenant
+    const { data: publicMeetings } = await supabase
+      .from("meetings")
+      .select("id, title, meeting_date, meeting_time, status, description")
+      .eq("is_public", true)
+      .neq("status", "archived")
+      .gte("meeting_date", thirtyDaysAgo.toISOString());
 
-    // Lokalen State aktualisieren
-    const newItem: AgendaItem = {
-      ...savedItem,
-      localKey: savedItem.id,
-      parentLocalKey: parentId || undefined,
-    };
+    // Combine and deduplicate
+    const ownIds = new Set([
+      ...(ownUpcoming || []).map(m => m.id),
+      ...(ownPast || []).map(m => m.id)
+    ]);
+    
+    const participantMeetings = (participantData || [])
+      .filter(p => p.meetings && !ownIds.has(p.meetings.id) && p.meetings.status !== 'archived')
+      .map(p => p.meetings);
+    
+    const allIds = new Set([...ownIds, ...participantMeetings.map(m => m.id)]);
+    const publicExtra = (publicMeetings || []).filter(m => !allIds.has(m.id));
+    
+    const allMeetings = [
+      ...(ownUpcoming || []),
+      ...(ownPast || []),
+      ...participantMeetings,
+      ...publicExtra
+    ];
 
-    const next = [...agendaItems];
-    next.splice(insertIndex, 0, newItem);
-    const reindexed = next.map((it, idx) => ({ ...it, order_index: idx }));
-    setAgendaItems(reindexed);
+    // Split into upcoming/past
+    const upcoming = allMeetings
+      .filter(m => new Date(m.meeting_date) >= new Date(now))
+      .sort((a, b) => new Date(a.meeting_date).getTime() - new Date(b.meeting_date).getTime())
+      .slice(0, 20);
 
-    // Order-Index in DB aktualisieren fuer verschobene Items
-    for (const item of reindexed) {
-      if (item.id && item.id !== savedItem.id) {
-        await supabase
-          .from('meeting_agenda_items')
-          .update({ order_index: item.order_index })
-          .eq('id', item.id);
-      }
-    }
+    const past = allMeetings
+      .filter(m => new Date(m.meeting_date) < new Date(now))
+      .sort((a, b) => new Date(b.meeting_date).getTime() - new Date(a.meeting_date).getTime())
+      .slice(0, 10);
 
-    toast({ title: "Dynamischer Punkt hinzugefuegt", ... });
+    setUpcomingMeetings(upcoming);
+    setPastMeetings(past);
   } catch (error) {
-    console.error('Error saving system agenda item:', error);
-    toast({ title: "Fehler", variant: "destructive", ... });
+    console.error("Error loading meetings:", error);
+  } finally {
+    setLoading(false);
   }
 };
 ```
 
+Das `Meeting`-Interface wird um `is_public` erweitert, und in der `MeetingItem`-Darstellung wird ein Globe-Icon fuer oeffentliche Meetings angezeigt (analog zu MeetingsView).
+
 ---
 
-## 2. Automatische Zuweisung bei Task-Unterpunkten
+## 2. Notizen in Meeting-Agenda fuer alle berechtigten Teilnehmer sichtbar
 
 ### Problem
-Wenn eine Aufgabe als Unterpunkt hinzugefuegt wird (`addTaskToAgenda`), wird kein `assigned_to` gesetzt. Die Zuweisung soll automatisch den Eigentuemer der Aufgabe (`task.assigned_to` oder `task.user_id`) uebernehmen.
+Die `quick_notes` RLS-Policies erlauben SELECT nur fuer:
+- Eigene Notizen (`user_id = auth.uid()`)
+- Geteilte Notizen (via `quick_note_shares` oder globale Freigabe)
 
-### Loesung (MeetingsView.tsx)
+Wenn ein Teilnehmer die Meeting-Agenda oeffnet und der System-Punkt "Meine Notizen" angezeigt wird, sieht jeder Teilnehmer nur seine eigenen Notizen. Notizen anderer Meeting-Teilnehmer sind nicht sichtbar, auch wenn sie zum selben Meeting verknuepft sind.
 
-**In `addTaskToAgenda` (Zeile 2081-2093):**
+### Loesung
 
-Beim Insert das `assigned_to`-Feld mit dem Aufgaben-Eigentuemer befuellen:
+Eine neue RLS-Policy auf der `quick_notes`-Tabelle hinzufuegen, die SELECT erlaubt, wenn die Notiz mit einem Meeting verknuepft ist, an dem der aktuelle Benutzer teilnimmt oder das oeffentlich ist:
 
-```tsx
-// Bestimme den Zustaendigen: assigned_to der Aufgabe, dann user_id der Aufgabe, dann aktueller User
-const taskOwner = task.assigned_to || task.user_id || user.id;
-
-const { data: taskData, error: taskError } = await supabase
-  .from('meeting_agenda_items')
-  .insert({
-    meeting_id: selectedMeeting.id,
-    title: task.title,
-    description: task.description || null,
-    task_id: task.id,
-    parent_id: parentId,
-    order_index: subItemOrderIndex,
-    is_completed: false,
-    is_recurring: false,
-    file_path: documentPath,
-    assigned_to: [taskOwner],  // Automatische Zuweisung
-  })
-  .select().single();
-```
-
-**In `addSubItem` (Zeile 2217-2230):**
-
-Beim Erstellen eines freien Unterpunkts den aktuellen User als Standard-Zustaendigen setzen:
-
-```tsx
-const { data: subItemData, error: subItemError } = await supabase
-  .from('meeting_agenda_items')
-  .insert({
-    meeting_id: selectedMeeting.id,
-    title: title || '',
-    description: '',
-    parent_id: parentId,
-    order_index: subItemOrderIndex,
-    is_completed: false,
-    is_recurring: false,
-    assigned_to: user?.id ? [user.id] : null,  // Aktueller User als Standard
-  })
-  .select().single();
-```
-
----
-
-## 3. Sidebar-Layout fuer Meeting-Agenda
-
-### Aktuelles Layout
-Alles ist vertikal gestapelt:
-1. Header (Titel + Buttons "Neues Meeting" und "Archiv")
-2. Meeting-Karten (3-spaltig)
-3. Aktive Besprechung (wenn gestartet) ODER Agenda-Editor (wenn ausgewaehlt)
-
-### Neues Layout
-Ein zweispaltiges Layout mit ResizablePanels:
-
-```text
-+-------------------------------+-------------------------------------------+
-| SEITENLEISTE (300px)          | HAUPTBEREICH                              |
-|                               |                                           |
-| [+ Neues Meeting] [Archiv]    | Agenda: Meeting-Titel                     |
-|                               | am Freitag, 7. Februar um 10:00 Uhr      |
-| --- Naechste Besprechungen -- |                                           |
-|                               | [+ Punkt] [System] [Speichern]            |
-| > Jour Fixe 07.02.            |                                           |
-|   10:00 | Buero               | [Drag] Aktuelles aus dem Landtag          |
-|   [Teilnehmer-Avatare]        |   [Drag] Unterpunkt 1                     |
-|   [Start]                     |   [Drag] Unterpunkt 2                     |
-|                               |                                           |
-| > Jour Fixe 14.02.            | [Drag] Wahlkreisarbeit                    |
-|   10:00 | Buero               |   [Drag] Meine Notizen (System)           |
-|   [Start]                     |                                           |
-|                               | [Drag] Organisation                       |
-| > Jour Fixe 21.02.            |   [Drag] Aufgaben (System)                |
-|   10:00 | Buero               |                                           |
-|   [Start]                     |                                           |
-|                               |                                           |
-| --- Details ---               |                                           |
-| Beschreibung: ...             |                                           |
-| Ort: Buero                    |                                           |
-| Teilnehmer: [Inline Editor]   |                                           |
-| Sichtbarkeit: Oeffentlich     |                                           |
-+-------------------------------+-------------------------------------------+
-```
-
-### Technische Umsetzung
-
-Die bestehenden `ResizablePanel`-Komponenten (`react-resizable-panels`) werden verwendet.
-
-**Aenderungen in MeetingsView.tsx:**
-
-1. Import der Panel-Komponenten:
-```tsx
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-```
-
-2. Das bestehende vertikale Layout wird in ein Panel-Layout umgebaut:
-
-```tsx
-return (
-  <div className="min-h-screen bg-gradient-subtle p-6">
-    <ResizablePanelGroup direction="horizontal" className="min-h-[calc(100vh-4rem)]">
-      {/* Seitenleiste */}
-      <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
-        <div className="h-full flex flex-col pr-4 space-y-4">
-          {/* Buttons */}
-          <div className="flex gap-2">
-            <Dialog ...>
-              <DialogTrigger asChild>
-                <Button className="flex-1">
-                  <Plus className="h-4 w-4 mr-2" /> Neues Meeting
-                </Button>
-              </DialogTrigger>
-              {/* DialogContent bleibt gleich */}
-            </Dialog>
-            <Button variant="outline" onClick={() => setShowArchive(true)}>
-              <Archive className="h-4 w-4 mr-2" /> Archiv
-            </Button>
-          </div>
-
-          {/* Meeting-Liste (vertikal statt 3-spaltig) */}
-          <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
-              Naechste Besprechungen
-            </h3>
-            <div className="space-y-2">
-              {upcomingMeetings.map((meeting) => (
-                <Card 
-                  key={meeting.id} 
-                  className={cn(
-                    "cursor-pointer hover:shadow-sm transition",
-                    selectedMeeting?.id === meeting.id && "border-primary ring-1 ring-primary"
-                  )}
-                  onClick={() => { setSelectedMeeting(meeting); loadAgendaItems(meeting.id); }}
-                >
-                  {/* Kompakte Karte: Titel, Datum/Uhrzeit, Teilnehmer, Start-Button */}
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          {/* Meeting-Details (nur wenn ausgewaehlt) */}
-          {selectedMeeting && (
-            <div className="border-t pt-4 space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground">Details</h3>
-              {/* Beschreibung, Ort, Teilnehmer, Sichtbarkeit */}
-              {/* Bearbeiten/Loeschen Buttons */}
-            </div>
-          )}
-        </div>
-      </ResizablePanel>
-
-      <ResizableHandle withHandle />
-
-      {/* Hauptbereich: Agenda */}
-      <ResizablePanel defaultSize={75}>
-        <div className="h-full pl-4">
-          {activeMeeting ? (
-            /* Aktive Besprechung - Tagesordnung */
-          ) : selectedMeeting ? (
-            /* Agenda-Editor */
-          ) : (
-            /* Kein Meeting ausgewaehlt */
-          )}
-        </div>
-      </ResizablePanel>
-    </ResizablePanelGroup>
-  </div>
+```sql
+CREATE POLICY "Meeting participants can view linked notes"
+ON quick_notes
+FOR SELECT
+USING (
+  meeting_id IS NOT NULL
+  AND (
+    EXISTS (
+      SELECT 1 FROM meeting_participants
+      WHERE meeting_participants.meeting_id = quick_notes.meeting_id
+      AND meeting_participants.user_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM meetings
+      WHERE meetings.id = quick_notes.meeting_id
+      AND (meetings.is_public = true OR meetings.user_id = auth.uid())
+    )
+  )
 );
 ```
 
-3. Die Meeting-Karten werden von der 3-spaltigen Grid-Ansicht in eine vertikale, kompaktere Liste in der Seitenleiste umgebaut. Jede Karte wird schmaler:
-   - Titel (fett, truncated)
-   - Datum + Uhrzeit in einer Zeile
-   - Ort (wenn vorhanden)
-   - Teilnehmer-Avatare (klein)
-   - Start-Button (volle Breite)
-   - Edit/Delete Buttons (klein, hover-only)
+Dadurch werden alle Notizen, die zu einem Meeting gehoeren, fuer alle Teilnehmer, den Ersteller und bei oeffentlichen Meetings fuer alle Mandantenmitglieder sichtbar.
 
-4. Die Meeting-Details (Beschreibung, Ort, Teilnehmer-Editor, Sichtbarkeit, Bearbeiten) werden aus den Karten herausgezogen und in einen eigenen Abschnitt unter der Liste verschoben - nur fuer das aktuell ausgewaehlte Meeting sichtbar.
+Keine Codeaenderungen noetig - die Query `loadLinkedQuickNotes` in `MeetingsView.tsx` (Zeile 1055) laed bereits alle Notizen per `meeting_id`, die RLS-Policy blockiert nur den Zugriff.
 
-5. Die Ueberschrift "Meeting Agenda" und der Untertitel koennen in der Seitenleiste als Kopfzeile verbleiben oder entfernt werden, da die Seitenleiste selbst schon den Kontext liefert.
+---
 
-### Kein Inhaltsverlust
-Alle Elemente werden beibehalten:
-- "Neues Meeting" Dialog (identisch, nur Button in Sidebar)
-- "Archiv" Button (in Sidebar)
-- Meeting-Karten mit allen Details (kompakter in Sidebar)
-- Inline-Editing von Meetings (im Detail-Bereich der Sidebar)
-- Teilnehmer-Management (im Detail-Bereich)
-- Start/Stop-Buttons (in den Karten)
-- Agenda-Editor mit allen Features (im Hauptbereich)
-- Aktive Besprechungsansicht (im Hauptbereich)
-- Quick Notes/Appointments Previews (im Hauptbereich unter der Agenda)
+## 3. Jour Fixe Icon-Faerbung bei Aufgaben
+
+### Problem
+In `QuickNotesList.tsx` wird das CalendarDays-Icon eingefaerbt (`text-emerald-600`), wenn eine Notiz eine `meeting_id` hat (Zeile 1597). Bei Aufgaben in `MyWorkTasksTab` fehlt diese Faerbung. Die `TaskActionIcons`-Komponente hat bereits eine `hasMeetingLink`-Prop (Zeile 30), die das Icon lila faerbt (`text-purple-600`), aber sie wird nie mit `true` uebergeben.
+
+### Loesung
+
+**MyWorkTasksTab.tsx:**
+
+1. Das `Task`-Interface um `meeting_id` und `pending_for_jour_fixe` erweitern:
+```tsx
+interface Task {
+  // ...bestehende Felder...
+  meeting_id?: string | null;
+  pending_for_jour_fixe?: boolean | null;
+}
+```
+
+2. Beim Rendern von `TaskCard` die `hasMeetingLink`-Prop uebergeben. Da `TaskCard` diese Prop noch nicht hat, muss sie dort ergaenzt werden.
+
+**TaskCard.tsx:**
+
+1. Neue Prop `hasMeetingLink` hinzufuegen:
+```tsx
+interface TaskCardProps {
+  // ...bestehende Props...
+  hasMeetingLink?: boolean;
+}
+```
+
+2. An `TaskActionIcons` weiterreichen:
+```tsx
+<TaskActionIcons
+  taskId={task.id}
+  hasMeetingLink={hasMeetingLink}
+  // ...restliche Props...
+/>
+```
+
+**MyWorkTasksTab.tsx - renderTaskList:**
+
+Beim Rendern der TaskCard:
+```tsx
+<TaskCard
+  key={task.id}
+  task={task}
+  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
+  // ...restliche Props...
+/>
+```
+
+**TaskListRow.tsx:**
+
+Gleiche Erweiterung wie bei TaskCard (Prop hinzufuegen und an TaskActionIcons weiterreichen).
+
+---
+
+## 4. Korrekte Aufteilung: Links eigene Aufgaben, rechts zugewiesene
+
+### Problem
+In `MyWorkTasksTab.tsx` (Zeile 126-131) funktioniert die Aufteilung wie folgt:
+- "Mir zugewiesen" (rechts): Alle Aufgaben, bei denen `assigned_to` die User-ID enthaelt
+- "Von mir erstellt" (links): Alle Aufgaben, bei denen `user_id` dem aktuellen User entspricht, AUSSER wenn sie schon in "Mir zugewiesen" sind
+
+Das Problem: Wenn ein Benutzer eine Aufgabe selbst erstellt UND sich selbst zuweist, landet sie ausschliesslich rechts ("Mir zugewiesen"), weil die Logik alle assigned Tasks von den created Tasks abzieht. Die erwartete Aufteilung ist:
+- **Links**: Aufgaben, die der Benutzer selbst originaer erstellt hat (user_id = eigene ID)
+- **Rechts**: Aufgaben, die von **anderen** Personen oder dem System zugewiesen wurden (assigned_to enthaelt eigene ID, aber user_id ist NICHT die eigene ID)
+
+### Loesung (MyWorkTasksTab.tsx)
+
+Die Filterlogik anpassen:
+
+```tsx
+const allAssigned = assigned || [];
+const allCreated = created || [];
+
+// Links: Tasks, die der User selbst erstellt hat (user_id = eigene ID)
+// Auch wenn der User sich selbst zugewiesen hat, bleiben sie links
+const createdByMe = allCreated; // Alle selbst erstellten Aufgaben
+
+// Rechts: Tasks, die zugewiesen wurden, aber NICHT vom User selbst erstellt
+const assignedByOthers = allAssigned.filter(t => t.user_id !== user.id);
+
+setCreatedTasks(createdByMe);
+setAssignedTasks(assignedByOthers);
+```
+
+Dadurch erscheinen:
+- Selbst erstellte und sich selbst zugewiesene Aufgaben: Links ("Von mir erstellt")
+- Von anderen erstellte und mir zugewiesene Aufgaben: Rechts ("Mir zugewiesen")
+- Selbst erstellte, jemandem anderem zugewiesene Aufgaben: Links ("Von mir erstellt")
 
 ---
 
@@ -334,4 +251,8 @@ Alle Elemente werden beibehalten:
 
 | Datei | Aenderungen |
 |-------|-------------|
-| **MeetingsView.tsx** | 1) `addSystemAgendaItem` zu async umbauen und DB-Insert hinzufuegen, 2) `addTaskToAgenda` um automatisches `assigned_to` erweitern, 3) `addSubItem` um Standard-Zuweisung erweitern, 4) Gesamtes Layout auf ResizablePanelGroup umstellen mit Sidebar fuer Meetings und Hauptbereich fuer Agenda |
+| **MyWorkJourFixeTab.tsx** | `loadMeetings` erweitern um Teilnehmer- und oeffentliche Meetings, `Meeting`-Interface um `is_public` erweitern, Globe-Icon fuer oeffentliche Meetings |
+| **MyWorkTasksTab.tsx** | 1) `Task`-Interface um `meeting_id` und `pending_for_jour_fixe`, 2) `hasMeetingLink`-Prop an TaskCard uebergeben, 3) Filterlogik fuer Links/Rechts-Aufteilung korrigieren |
+| **TaskCard.tsx** | Neue Prop `hasMeetingLink`, Weiterleitung an `TaskActionIcons` |
+| **TaskListRow.tsx** | Gleiche `hasMeetingLink`-Prop-Erweiterung |
+| **Supabase Migration** | Neue RLS-Policy auf `quick_notes` fuer Meeting-basierte Sichtbarkeit |
