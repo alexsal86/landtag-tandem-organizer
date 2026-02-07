@@ -15,7 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe } from "lucide-react";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay, addDays } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -132,6 +132,7 @@ export function MeetingsView() {
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
   const [linkedQuickNotes, setLinkedQuickNotes] = useState<any[]>([]);
   const [meetingLinkedTasks, setMeetingLinkedTasks] = useState<any[]>([]);
+  const [meetingUpcomingAppointments, setMeetingUpcomingAppointments] = useState<any[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
     title: "",
@@ -179,6 +180,7 @@ export function MeetingsView() {
         loadAgendaItems(urlMeetingId);
         loadLinkedQuickNotes(urlMeetingId);
         loadMeetingLinkedTasks(urlMeetingId);
+        if (meetingFromUrl?.meeting_date) loadMeetingUpcomingAppointments(urlMeetingId, meetingFromUrl.meeting_date);
         // Clear the id param after selecting
         searchParams.delete('id');
         setSearchParams(searchParams, { replace: true });
@@ -217,6 +219,7 @@ export function MeetingsView() {
           loadAgendaItems(nextMeeting.id);
           loadLinkedQuickNotes(nextMeeting.id);
           loadMeetingLinkedTasks(nextMeeting.id);
+          loadMeetingUpcomingAppointments(nextMeeting.id, nextMeeting.meeting_date);
         }
       }
     }
@@ -227,6 +230,7 @@ export function MeetingsView() {
     if (selectedMeeting?.id && !activeMeeting) {
       loadLinkedQuickNotes(selectedMeeting.id);
       loadMeetingLinkedTasks(selectedMeeting.id);
+      if (selectedMeeting.meeting_date) loadMeetingUpcomingAppointments(selectedMeeting.id, selectedMeeting.meeting_date);
     }
   }, [selectedMeeting?.id, activeMeeting]);
 
@@ -1075,6 +1079,44 @@ export function MeetingsView() {
     }
   };
 
+  const loadMeetingUpcomingAppointments = async (meetingId: string, meetingDate: string | Date) => {
+    if (!currentTenant?.id) return;
+    try {
+      const baseDate = typeof meetingDate === 'string' ? new Date(meetingDate) : meetingDate;
+      const start = startOfDay(baseDate);
+      const end = endOfDay(addDays(baseDate, 14));
+
+      const { data: internalData } = await supabase
+        .from('appointments')
+        .select('id, title, start_time, end_time, location, category, status')
+        .eq('tenant_id', currentTenant.id)
+        .gte('start_time', start.toISOString())
+        .lte('start_time', end.toISOString())
+        .order('start_time', { ascending: true });
+
+      const { data: externalData } = await supabase
+        .from('external_events')
+        .select('id, title, start_time, end_time, location, external_calendars!inner(name, color, tenant_id)')
+        .eq('external_calendars.tenant_id', currentTenant.id)
+        .gte('start_time', start.toISOString())
+        .lte('start_time', end.toISOString());
+
+      const all = [
+        ...(internalData || []).map(a => ({ ...a, isExternal: false })),
+        ...(externalData || []).map((e: any) => ({
+          id: e.id, title: e.title, start_time: e.start_time, end_time: e.end_time,
+          location: e.location, isExternal: true,
+          calendarName: e.external_calendars?.name, calendarColor: e.external_calendars?.color
+        }))
+      ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+      setMeetingUpcomingAppointments(all);
+    } catch (error) {
+      console.error('Error loading upcoming appointments:', error);
+      setMeetingUpcomingAppointments([]);
+    }
+  };
+
 
   const updateQuickNoteResult = async (noteId: string, result: string) => {
     try {
@@ -1115,6 +1157,7 @@ export function MeetingsView() {
       await loadAgendaItems(meeting.id);
       await loadLinkedQuickNotes(meeting.id);
       await loadMeetingLinkedTasks(meeting.id);
+      await loadMeetingUpcomingAppointments(meeting.id, meeting.meeting_date);
     }
   };
 
@@ -2558,6 +2601,7 @@ export function MeetingsView() {
         profiles={profiles}
         linkedQuickNotes={linkedQuickNotes}
         linkedTasks={meetingLinkedTasks}
+        upcomingAppointments={meetingUpcomingAppointments}
         onClose={() => setIsFocusMode(false)}
         onUpdateItem={updateAgendaItem}
         onUpdateResult={updateAgendaItemResult}
@@ -3158,14 +3202,44 @@ export function MeetingsView() {
 
                       {/* Show system content as individual sub-items */}
                       {item.system_type === 'upcoming_appointments' && (
-                        <div className="ml-12 mb-4">
-                          <UpcomingAppointmentsSection 
-                            meetingDate={activeMeeting.meeting_date}
-                            meetingId={activeMeeting.id}
-                            allowStarring={true}
-                            className="border-0 shadow-none bg-transparent p-0"
-                            defaultCollapsed={false}
-                          />
+                        <div className="ml-12 mb-4 space-y-3">
+                          {meetingUpcomingAppointments.length > 0 ? (
+                            (() => {
+                              const apptResults = (() => {
+                                try { return JSON.parse(item.result_text || '{}'); } catch { return {}; }
+                              })();
+                              return meetingUpcomingAppointments.map((appt, apptIdx) => (
+                                <div key={appt.id} className="pl-4 border-l-2 border-l-blue-500 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                      {String.fromCharCode(97 + apptIdx)})
+                                    </span>
+                                    <CalendarDays className="h-3.5 w-3.5 text-blue-500" />
+                                    <span className="text-sm font-medium">{appt.title}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {format(new Date(appt.start_time), "EEE dd.MM. HH:mm", { locale: de })}
+                                    {appt.end_time && ` - ${format(new Date(appt.end_time), "HH:mm")}`}
+                                    {appt.location && ` | ${appt.location}`}
+                                  </p>
+                                  <div>
+                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                    <Textarea
+                                      value={apptResults[appt.id] || ''}
+                                      onChange={(e) => {
+                                        const newResults = { ...apptResults, [appt.id]: e.target.value };
+                                        updateAgendaItemResult(item.id!, 'result_text', JSON.stringify(newResults));
+                                      }}
+                                      placeholder="Notizen zu diesem Termin..."
+                                      className="min-h-[60px] text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              ));
+                            })()
+                          ) : (
+                            <p className="text-sm text-muted-foreground pl-4">Keine Termine in den nächsten 2 Wochen.</p>
+                          )}
                         </div>
                       )}
                       
@@ -3352,13 +3426,43 @@ export function MeetingsView() {
                                             <CalendarDays className="h-4 w-4 text-blue-500" />
                                             <span className="text-sm font-medium">Kommende Termine</span>
                                           </div>
-                                          <UpcomingAppointmentsSection 
-                                            meetingDate={activeMeeting.meeting_date}
-                                            meetingId={activeMeeting.id}
-                                            allowStarring={true}
-                                            className="border-0 shadow-none bg-transparent p-0"
-                                            defaultCollapsed={false}
-                                          />
+                                          {meetingUpcomingAppointments.length > 0 ? (
+                                            (() => {
+                                              const apptResults = (() => {
+                                                try { return JSON.parse(subItem.result_text || '{}'); } catch { return {}; }
+                                              })();
+                                              return meetingUpcomingAppointments.map((appt, apptIdx) => (
+                                                <div key={appt.id} className="pl-4 border-l-2 border-l-blue-500 space-y-2 ml-4">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-medium text-muted-foreground">
+                                                      {String.fromCharCode(97 + apptIdx)})
+                                                    </span>
+                                                    <CalendarDays className="h-3.5 w-3.5 text-blue-500" />
+                                                    <span className="text-sm font-medium">{appt.title}</span>
+                                                  </div>
+                                                  <p className="text-xs text-muted-foreground">
+                                                    {format(new Date(appt.start_time), "EEE dd.MM. HH:mm", { locale: de })}
+                                                    {appt.end_time && ` - ${format(new Date(appt.end_time), "HH:mm")}`}
+                                                    {appt.location && ` | ${appt.location}`}
+                                                  </p>
+                                                  <div>
+                                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                                    <Textarea
+                                                      value={apptResults[appt.id] || ''}
+                                                      onChange={(e) => {
+                                                        const newResults = { ...apptResults, [appt.id]: e.target.value };
+                                                        updateAgendaItemResult(subItem.id!, 'result_text', JSON.stringify(newResults));
+                                                      }}
+                                                      placeholder="Notizen zu diesem Termin..."
+                                                      className="min-h-[60px] text-xs"
+                                                    />
+                                                  </div>
+                                                </div>
+                                              ));
+                                            })()
+                                          ) : (
+                                            <p className="text-sm text-muted-foreground pl-4">Keine Termine in den nächsten 2 Wochen.</p>
+                                          )}
                                         </div>
                                      ) : subItem.system_type === 'quick_notes' ? (
                                        <div className="space-y-2">
