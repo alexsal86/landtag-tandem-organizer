@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe } from "lucide-react";
+import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe, Star, MessageSquarePlus } from "lucide-react";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { format, startOfDay, endOfDay, addDays } from "date-fns";
 import { de } from "date-fns/locale";
@@ -159,6 +159,8 @@ export function MeetingsView() {
   const [meetingParticipants, setMeetingParticipants] = useState<any[]>([]);
   const [currentUserIsParticipant, setCurrentUserIsParticipant] = useState(false);
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+  const [starredAppointmentIds, setStarredAppointmentIds] = useState<Set<string>>(new Set());
+  const [expandedApptNotes, setExpandedApptNotes] = useState<Set<string>>(new Set());
 
   // Handle URL action parameter for QuickActions
   useEffect(() => {
@@ -181,6 +183,7 @@ export function MeetingsView() {
         loadLinkedQuickNotes(urlMeetingId);
         loadMeetingLinkedTasks(urlMeetingId);
         if (meetingFromUrl?.meeting_date) loadMeetingUpcomingAppointments(urlMeetingId, meetingFromUrl.meeting_date);
+        loadStarredAppointments(urlMeetingId);
         // Clear the id param after selecting
         searchParams.delete('id');
         setSearchParams(searchParams, { replace: true });
@@ -220,6 +223,7 @@ export function MeetingsView() {
           loadLinkedQuickNotes(nextMeeting.id);
           loadMeetingLinkedTasks(nextMeeting.id);
           loadMeetingUpcomingAppointments(nextMeeting.id, nextMeeting.meeting_date);
+          loadStarredAppointments(nextMeeting.id);
         }
       }
     }
@@ -231,6 +235,7 @@ export function MeetingsView() {
       loadLinkedQuickNotes(selectedMeeting.id);
       loadMeetingLinkedTasks(selectedMeeting.id);
       if (selectedMeeting.meeting_date) loadMeetingUpcomingAppointments(selectedMeeting.id, selectedMeeting.meeting_date);
+      loadStarredAppointments(selectedMeeting.id);
     }
   }, [selectedMeeting?.id, activeMeeting]);
 
@@ -1067,7 +1072,7 @@ export function MeetingsView() {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, title, description, due_date, priority, status')
+        .select('id, title, description, due_date, priority, status, user_id')
         .eq('meeting_id', meetingId)
         .order('created_at', { ascending: false });
 
@@ -1117,6 +1122,66 @@ export function MeetingsView() {
     }
   };
 
+  const loadStarredAppointments = async (meetingId: string) => {
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('starred_appointments')
+        .select('id, appointment_id, external_event_id')
+        .eq('meeting_id', meetingId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      const ids = new Set<string>();
+      data?.forEach(item => {
+        if (item.appointment_id) ids.add(item.appointment_id);
+        if (item.external_event_id) ids.add(item.external_event_id);
+      });
+      setStarredAppointmentIds(ids);
+    } catch (error) {
+      console.error('Error loading starred appointments:', error);
+    }
+  };
+
+  const toggleStarAppointment = async (appt: any) => {
+    if (!activeMeeting?.id || !user?.id || !currentTenant?.id) return;
+    const isCurrentlyStarred = starredAppointmentIds.has(appt.id);
+
+    setStarredAppointmentIds(prev => {
+      const newSet = new Set(prev);
+      if (isCurrentlyStarred) newSet.delete(appt.id);
+      else newSet.add(appt.id);
+      return newSet;
+    });
+
+    try {
+      if (isCurrentlyStarred) {
+        await supabase
+          .from('starred_appointments')
+          .delete()
+          .eq('meeting_id', activeMeeting.id)
+          .eq('user_id', user.id)
+          .or(`appointment_id.eq.${appt.id},external_event_id.eq.${appt.id}`);
+      } else {
+        const insertData: any = {
+          meeting_id: activeMeeting.id,
+          user_id: user.id,
+          tenant_id: currentTenant.id
+        };
+        if (appt.isExternal) insertData.external_event_id = appt.id;
+        else insertData.appointment_id = appt.id;
+        await supabase.from('starred_appointments').insert(insertData);
+      }
+    } catch (error) {
+      console.error('Error toggling star:', error);
+      setStarredAppointmentIds(prev => {
+        const newSet = new Set(prev);
+        if (isCurrentlyStarred) newSet.add(appt.id);
+        else newSet.delete(appt.id);
+        return newSet;
+      });
+    }
+  };
 
   const updateQuickNoteResult = async (noteId: string, result: string) => {
     try {
@@ -1158,6 +1223,7 @@ export function MeetingsView() {
       await loadLinkedQuickNotes(meeting.id);
       await loadMeetingLinkedTasks(meeting.id);
       await loadMeetingUpcomingAppointments(meeting.id, meeting.meeting_date);
+      await loadStarredAppointments(meeting.id);
     }
   };
 
@@ -2602,6 +2668,8 @@ export function MeetingsView() {
         linkedQuickNotes={linkedQuickNotes}
         linkedTasks={meetingLinkedTasks}
         upcomingAppointments={meetingUpcomingAppointments}
+        starredAppointmentIds={starredAppointmentIds}
+        onToggleStar={toggleStarAppointment}
         onClose={() => setIsFocusMode(false)}
         onUpdateItem={updateAgendaItem}
         onUpdateResult={updateAgendaItemResult}
@@ -3209,31 +3277,53 @@ export function MeetingsView() {
                                 try { return JSON.parse(item.result_text || '{}'); } catch { return {}; }
                               })();
                               return meetingUpcomingAppointments.map((appt, apptIdx) => (
-                                <div key={appt.id} className="pl-4 border-l-2 border-l-blue-500 space-y-2">
+                                <div key={appt.id} className={cn(
+                                  "pl-4 border-l-2 border-muted space-y-2",
+                                  starredAppointmentIds.has(appt.id) && "bg-amber-50/50 dark:bg-amber-950/20"
+                                )}>
                                   <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 shrink-0"
+                                      onClick={(e) => { e.stopPropagation(); toggleStarAppointment(appt); }}
+                                    >
+                                      <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(appt.id) ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
+                                    </Button>
                                     <span className="text-xs font-medium text-muted-foreground">
                                       {String.fromCharCode(97 + apptIdx)})
                                     </span>
                                     <CalendarDays className="h-3.5 w-3.5 text-blue-500" />
                                     <span className="text-sm font-medium">{appt.title}</span>
                                   </div>
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-xs text-muted-foreground ml-8">
                                     {format(new Date(appt.start_time), "EEE dd.MM. HH:mm", { locale: de })}
                                     {appt.end_time && ` - ${format(new Date(appt.end_time), "HH:mm")}`}
                                     {appt.location && ` | ${appt.location}`}
                                   </p>
-                                  <div>
-                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
-                                    <Textarea
-                                      value={apptResults[appt.id] || ''}
-                                      onChange={(e) => {
-                                        const newResults = { ...apptResults, [appt.id]: e.target.value };
-                                        updateAgendaItemResult(item.id!, 'result_text', JSON.stringify(newResults));
-                                      }}
-                                      placeholder="Notizen zu diesem Termin..."
-                                      className="min-h-[60px] text-xs"
-                                    />
-                                  </div>
+                                  {(apptResults[appt.id] || expandedApptNotes.has(appt.id)) ? (
+                                    <div className="ml-8">
+                                      <Textarea
+                                        value={apptResults[appt.id] || ''}
+                                        onChange={(e) => {
+                                          const newResults = { ...apptResults, [appt.id]: e.target.value };
+                                          updateAgendaItemResult(item.id!, 'result_text', JSON.stringify(newResults));
+                                        }}
+                                        placeholder="Notizen zu diesem Termin..."
+                                        className="min-h-[60px] text-xs"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 text-xs text-muted-foreground ml-8"
+                                      onClick={() => setExpandedApptNotes(prev => new Set(prev).add(appt.id))}
+                                    >
+                                      <MessageSquarePlus className="h-3 w-3 mr-1" />
+                                      Notiz
+                                    </Button>
+                                  )}
                                 </div>
                               ));
                             })()
@@ -3247,7 +3337,7 @@ export function MeetingsView() {
                         <div className="ml-12 mb-4 space-y-3">
                           {linkedQuickNotes.length > 0 ? (
                             linkedQuickNotes.map((note, noteIdx) => (
-                              <div key={note.id} className="pl-4 border-l-2 border-l-amber-500 space-y-2">
+                              <div key={note.id} className="pl-4 border-l-2 border-muted space-y-2">
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs font-medium text-muted-foreground">
                                     {String.fromCharCode(97 + noteIdx)})
@@ -3255,6 +3345,9 @@ export function MeetingsView() {
                                   <StickyNote className="h-3.5 w-3.5 text-amber-500" />
                                   <span className="text-sm font-medium">{note.title || `Notiz ${noteIdx + 1}`}</span>
                                 </div>
+                                {note.user_id && (
+                                  <span className="text-xs text-muted-foreground ml-6">von {getDisplayName(note.user_id)}</span>
+                                )}
                                 <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
                                 <div>
                                   <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
@@ -3281,7 +3374,7 @@ export function MeetingsView() {
                                 try { return JSON.parse(item.result_text || '{}'); } catch { return {}; }
                               })();
                               return meetingLinkedTasks.map((task, taskIdx) => (
-                                <div key={task.id} className="pl-4 border-l-2 border-l-green-500 space-y-2">
+                                <div key={task.id} className="pl-4 border-l-2 border-muted space-y-2">
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs font-medium text-muted-foreground">
                                       {String.fromCharCode(97 + taskIdx)})
@@ -3289,6 +3382,9 @@ export function MeetingsView() {
                                     <ListTodo className="h-3.5 w-3.5 text-green-500" />
                                     <span className="text-sm font-medium">{task.title}</span>
                                   </div>
+                                  {task.user_id && (
+                                    <span className="text-xs text-muted-foreground ml-6">von {getDisplayName(task.user_id)}</span>
+                                  )}
                                   {task.description && (
                                     <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
                                   )}
@@ -3406,16 +3502,7 @@ export function MeetingsView() {
                            </div>
                            <div className="space-y-2">
                                  {sortedSubItems.map((subItem, subIndex) => (
-                                  <div key={subItem.id} className={cn(
-                                    "pl-4 border-l-2",
-                                    subItem.system_type === 'upcoming_appointments' 
-                                      ? "border-l-blue-500" 
-                                      : subItem.system_type === 'quick_notes'
-                                        ? "border-l-amber-500"
-                                        : subItem.system_type === 'tasks'
-                                          ? "border-l-green-500"
-                                          : "border-muted"
-                                  )}>
+                                   <div key={subItem.id} className="pl-4 border-l-2 border-muted">
                                     {/* Render system items with individual sub-items */}
                                       {subItem.system_type === 'upcoming_appointments' ? (
                                         <div className="space-y-2">
@@ -3432,31 +3519,53 @@ export function MeetingsView() {
                                                 try { return JSON.parse(subItem.result_text || '{}'); } catch { return {}; }
                                               })();
                                               return meetingUpcomingAppointments.map((appt, apptIdx) => (
-                                                <div key={appt.id} className="pl-4 border-l-2 border-l-blue-500 space-y-2 ml-4">
+                                                <div key={appt.id} className={cn(
+                                                  "pl-4 border-l-2 border-muted space-y-2 ml-4",
+                                                  starredAppointmentIds.has(appt.id) && "bg-amber-50/50 dark:bg-amber-950/20"
+                                                )}>
                                                   <div className="flex items-center gap-2">
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-6 w-6 p-0 shrink-0"
+                                                      onClick={(e) => { e.stopPropagation(); toggleStarAppointment(appt); }}
+                                                    >
+                                                      <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(appt.id) ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
+                                                    </Button>
                                                     <span className="text-xs font-medium text-muted-foreground">
                                                       {String.fromCharCode(97 + apptIdx)})
                                                     </span>
                                                     <CalendarDays className="h-3.5 w-3.5 text-blue-500" />
                                                     <span className="text-sm font-medium">{appt.title}</span>
                                                   </div>
-                                                  <p className="text-xs text-muted-foreground">
+                                                  <p className="text-xs text-muted-foreground ml-8">
                                                     {format(new Date(appt.start_time), "EEE dd.MM. HH:mm", { locale: de })}
                                                     {appt.end_time && ` - ${format(new Date(appt.end_time), "HH:mm")}`}
                                                     {appt.location && ` | ${appt.location}`}
                                                   </p>
-                                                  <div>
-                                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
-                                                    <Textarea
-                                                      value={apptResults[appt.id] || ''}
-                                                      onChange={(e) => {
-                                                        const newResults = { ...apptResults, [appt.id]: e.target.value };
-                                                        updateAgendaItemResult(subItem.id!, 'result_text', JSON.stringify(newResults));
-                                                      }}
-                                                      placeholder="Notizen zu diesem Termin..."
-                                                      className="min-h-[60px] text-xs"
-                                                    />
-                                                  </div>
+                                                  {(apptResults[appt.id] || expandedApptNotes.has(appt.id)) ? (
+                                                    <div className="ml-8">
+                                                      <Textarea
+                                                        value={apptResults[appt.id] || ''}
+                                                        onChange={(e) => {
+                                                          const newResults = { ...apptResults, [appt.id]: e.target.value };
+                                                          updateAgendaItemResult(subItem.id!, 'result_text', JSON.stringify(newResults));
+                                                        }}
+                                                        placeholder="Notizen zu diesem Termin..."
+                                                        className="min-h-[60px] text-xs"
+                                                      />
+                                                    </div>
+                                                  ) : (
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-6 text-xs text-muted-foreground ml-8"
+                                                      onClick={() => setExpandedApptNotes(prev => new Set(prev).add(appt.id))}
+                                                    >
+                                                      <MessageSquarePlus className="h-3 w-3 mr-1" />
+                                                      Notiz
+                                                    </Button>
+                                                  )}
                                                 </div>
                                               ));
                                             })()
@@ -3475,24 +3584,28 @@ export function MeetingsView() {
                                          </div>
                                          {linkedQuickNotes.length > 0 ? (
                                            linkedQuickNotes.map((note, noteIdx) => (
-                                             <div key={note.id} className="pl-4 border-l-2 border-l-amber-500 space-y-2 ml-4">
-                                               <div className="flex items-center gap-2">
-                                                 <span className="text-xs font-medium text-muted-foreground">
-                                                   {String.fromCharCode(97 + noteIdx)})
-                                                 </span>
-                                                 <span className="text-sm font-medium">{note.title || `Notiz ${noteIdx + 1}`}</span>
-                                               </div>
-                                               <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
-                                               <div>
-                                                 <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
-                                                 <Textarea
-                                                   value={note.meeting_result || ''}
-                                                   onChange={(e) => updateQuickNoteResult(note.id, e.target.value)}
-                                                   placeholder="Ergebnis für diese Notiz..."
-                                                   className="min-h-[60px] text-xs"
-                                                 />
-                                               </div>
-                                             </div>
+                                              <div key={note.id} className="pl-4 border-l-2 border-muted space-y-2 ml-4">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-xs font-medium text-muted-foreground">
+                                                    {String.fromCharCode(97 + noteIdx)})
+                                                  </span>
+                                                  <StickyNote className="h-3.5 w-3.5 text-amber-500" />
+                                                  <span className="text-sm font-medium">{note.title || `Notiz ${noteIdx + 1}`}</span>
+                                                </div>
+                                                {note.user_id && (
+                                                  <span className="text-xs text-muted-foreground ml-6">von {getDisplayName(note.user_id)}</span>
+                                                )}
+                                                <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
+                                                <div>
+                                                  <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                                  <Textarea
+                                                    value={note.meeting_result || ''}
+                                                    onChange={(e) => updateQuickNoteResult(note.id, e.target.value)}
+                                                    placeholder="Ergebnis für diese Notiz..."
+                                                    className="min-h-[60px] text-xs"
+                                                  />
+                                                </div>
+                                              </div>
                                            ))
                                          ) : (
                                            <p className="text-sm text-muted-foreground pl-4">Keine Notizen vorhanden.</p>
@@ -3513,13 +3626,17 @@ export function MeetingsView() {
                                                 try { return JSON.parse(subItem.result_text || '{}'); } catch { return {}; }
                                               })();
                                               return meetingLinkedTasks.map((task, taskIdx) => (
-                                                <div key={task.id} className="pl-4 border-l-2 border-l-green-500 space-y-2 ml-4">
+                                                <div key={task.id} className="pl-4 border-l-2 border-muted space-y-2 ml-4">
                                                   <div className="flex items-center gap-2">
                                                     <span className="text-xs font-medium text-muted-foreground">
                                                       {String.fromCharCode(97 + taskIdx)})
                                                     </span>
+                                                    <ListTodo className="h-3.5 w-3.5 text-green-500" />
                                                     <span className="text-sm font-medium">{task.title}</span>
                                                   </div>
+                                                  {task.user_id && (
+                                                    <span className="text-xs text-muted-foreground ml-6">von {getDisplayName(task.user_id)}</span>
+                                                  )}
                                                   {task.description && (
                                                     <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
                                                   )}

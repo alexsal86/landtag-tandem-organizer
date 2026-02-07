@@ -19,7 +19,7 @@ import {
 import { 
   X, Keyboard, ChevronDown, ChevronUp, CheckCircle, 
   ArrowUp, ArrowDown, CornerDownRight, StickyNote,
-  Maximize2, Users, Archive, CalendarDays, ListTodo
+  Maximize2, Users, Archive, CalendarDays, ListTodo, Star, MessageSquarePlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -71,6 +71,8 @@ interface FocusModeViewProps {
   linkedQuickNotes?: any[];
   linkedTasks?: any[];
   upcomingAppointments?: any[];
+  starredAppointmentIds?: Set<string>;
+  onToggleStar?: (appt: any) => void;
   onClose: () => void;
   onUpdateItem: (index: number, field: keyof AgendaItem, value: any) => void;
   onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => void;
@@ -91,6 +93,8 @@ export function FocusModeView({
   linkedQuickNotes = [],
   linkedTasks = [],
   upcomingAppointments = [],
+  starredAppointmentIds = new Set(),
+  onToggleStar,
   onClose,
   onUpdateItem,
   onUpdateResult,
@@ -99,6 +103,7 @@ export function FocusModeView({
 }: FocusModeViewProps) {
   const [flatFocusIndex, setFlatFocusIndex] = useState(0);
   const [showLegend, setShowLegend] = useState(false);
+  const [completedSystemSubItems, setCompletedSystemSubItems] = useState<Set<string>>(new Set());
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -252,6 +257,34 @@ export function FocusModeView({
 
   // Auto-complete parent when all sub-items are completed
   const handleItemComplete = (navigable: NavigableItem, isCompleted: boolean) => {
+    if (navigable.isSystemSubItem) {
+      // System sub-items are synthetic - track completion locally
+      setCompletedSystemSubItems(prev => {
+        const newSet = new Set(prev);
+        if (isCompleted) newSet.add(navigable.item.id!);
+        else newSet.delete(navigable.item.id!);
+        return newSet;
+      });
+      
+      // Check if all system siblings under the same parent are now complete
+      if (isCompleted && navigable.parentItem) {
+        const parentId = navigable.parentItem.id;
+        const siblings = allNavigableItems.filter(n =>
+          n.isSystemSubItem && n.parentItem?.id === parentId
+        );
+        const allSiblingsComplete = siblings.every(s =>
+          s.item.id === navigable.item.id ? true : completedSystemSubItems.has(s.item.id!)
+        );
+        if (allSiblingsComplete && !navigable.parentItem.is_completed) {
+          const parentGlobalIndex = agendaItems.findIndex(i => i.id === parentId);
+          if (parentGlobalIndex !== -1) {
+            onUpdateItem(parentGlobalIndex, 'is_completed', true);
+          }
+        }
+      }
+      return;
+    }
+    
     // Update the item itself
     onUpdateItem(navigable.globalIndex, 'is_completed', isCompleted);
     
@@ -333,41 +366,49 @@ export function FocusModeView({
           break;
         case 'Enter':
           e.preventDefault();
-          if (currentNavigable && currentGlobalIndex !== -1) {
-            // Check if current is a main item with uncompleted sub-items
-            if (!currentNavigable.isSubItem) {
-              const subItems = agendaItems.filter(sub => 
-                (sub.parent_id === currentItem.id || sub.parentLocalKey === currentItem.id) &&
-                !sub.system_type
-              );
-              
-              // If has sub-items, navigate to first uncompleted sub-item instead of completing parent
-              if (subItems.length > 0) {
-                const firstUncompletedSub = subItems.find(sub => !sub.is_completed);
-                if (firstUncompletedSub) {
-                  const subNavIndex = allNavigableItems.findIndex(n => n.item.id === firstUncompletedSub.id);
-                  if (subNavIndex !== -1) {
-                    setFlatFocusIndex(subNavIndex);
-                    return; // Don't complete the parent
-                  }
-                }
+          if (currentNavigable) {
+            // Check if current item has navigable children
+            const childrenInNav = allNavigableItems.filter((n, idx) => 
+              idx > flatFocusIndex && n.parentItem?.id === currentItem.id
+            );
+            
+            if (childrenInNav.length > 0) {
+              const firstUncompleted = childrenInNav.find(n => {
+                if (n.isSystemSubItem) return !completedSystemSubItems.has(n.item.id!);
+                return !n.item.is_completed;
+              });
+              if (firstUncompleted) {
+                const childIdx = allNavigableItems.indexOf(firstUncompleted);
+                setFlatFocusIndex(childIdx);
+                return;
               }
             }
             
-            // Standard behavior: toggle completion
-            const isNowCompleted = !currentItem.is_completed;
-            handleItemComplete(currentNavigable, isNowCompleted);
-            
-            // If marking as completed, navigate to next or show archive dialog
-            if (isNowCompleted) {
-              // Use setTimeout to check after state update
-              setTimeout(() => {
-                if (checkAllCompleted()) {
-                  setShowArchiveConfirm(true);
-                } else {
-                  setFlatFocusIndex(prev => Math.min(prev + 1, allNavigableItems.length - 1));
-                }
-              }, 50);
+            // Toggle completion
+            if (currentNavigable.isSystemSubItem) {
+              const isNowCompleted = !completedSystemSubItems.has(currentItem.id!);
+              handleItemComplete(currentNavigable, isNowCompleted);
+              if (isNowCompleted) {
+                setTimeout(() => {
+                  if (checkAllCompleted()) {
+                    setShowArchiveConfirm(true);
+                  } else {
+                    setFlatFocusIndex(prev => Math.min(prev + 1, allNavigableItems.length - 1));
+                  }
+                }, 50);
+              }
+            } else if (currentGlobalIndex !== -1) {
+              const isNowCompleted = !currentItem.is_completed;
+              handleItemComplete(currentNavigable, isNowCompleted);
+              if (isNowCompleted) {
+                setTimeout(() => {
+                  if (checkAllCompleted()) {
+                    setShowArchiveConfirm(true);
+                  } else {
+                    setFlatFocusIndex(prev => Math.min(prev + 1, allNavigableItems.length - 1));
+                  }
+                }, 50);
+              }
             }
           }
           break;
@@ -475,6 +516,8 @@ export function FocusModeView({
         }
       };
 
+      const isItemCompleted = completedSystemSubItems.has(item.id!);
+
       return (
         <div
           key={item.id || navIndex}
@@ -483,26 +526,47 @@ export function FocusModeView({
             "p-4 rounded-lg border border-l-4 ml-8 transition-all duration-300",
             getSystemSubItemBorderColor(sourceType),
             isFocused && "ring-2 ring-primary bg-primary/5 scale-[1.01] shadow-lg",
-            !isFocused && "bg-card hover:bg-muted/30"
+            isItemCompleted && "bg-muted/50",
+            !isFocused && !isItemCompleted && "bg-card hover:bg-muted/30"
           )}
           onClick={() => setFlatFocusIndex(navIndex)}
         >
           <div className="flex items-start gap-4">
             <Checkbox
-              checked={false}
+              checked={isItemCompleted}
+              onCheckedChange={(checked) => handleItemComplete(navigable, !!checked)}
               className="mt-0.5 h-4 w-4"
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
+                {sourceType === 'appointment' && onToggleStar && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 shrink-0"
+                    onClick={(e) => { e.stopPropagation(); onToggleStar(sourceData); }}
+                  >
+                    <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(sourceData.id) ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
+                  </Button>
+                )}
                 {sourceType === 'quick_note' && <StickyNote className="h-3.5 w-3.5 text-amber-500" />}
                 {sourceType === 'appointment' && <CalendarDays className="h-3.5 w-3.5 text-blue-500" />}
                 {sourceType === 'task' && <ListTodo className="h-3.5 w-3.5 text-green-500" />}
-                <span className="text-sm font-medium">{item.title}</span>
+                <span className={cn("text-sm font-medium", isItemCompleted && "line-through text-muted-foreground")}>{item.title}</span>
+                {isItemCompleted && (
+                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Besprochen
+                  </Badge>
+                )}
               </div>
               {sourceType === 'quick_note' && sourceData.content && (
                 <div className="mt-1">
                   <RichTextDisplay content={sourceData.content} className="text-sm text-muted-foreground line-clamp-2" />
                 </div>
+              )}
+              {(sourceType === 'quick_note' || sourceType === 'task') && sourceData.user_id && (
+                <span className="text-xs text-muted-foreground">von {getDisplayName(sourceData.user_id)}</span>
               )}
               {sourceType === 'appointment' && (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -530,8 +594,8 @@ export function FocusModeView({
                 </div>
               )}
 
-              {/* Result input for focused system sub-item */}
-              {isFocused && (sourceType === 'quick_note' || sourceType === 'task' || sourceType === 'appointment') && (
+              {/* Result input - show when focused or when result exists */}
+              {(isFocused || getSubItemResult()) && (sourceType === 'quick_note' || sourceType === 'task' || sourceType === 'appointment') && (
                 <div className="mt-4 pt-3 border-t">
                   <label className="text-sm font-medium block mb-2">Ergebnis / Notizen</label>
                   <Textarea
