@@ -1851,15 +1851,32 @@ export function MeetingsView() {
       notes: "",
       is_completed: false,
       is_recurring: false,
-      order_index: agendaItems.length,
+      order_index: 0, // will be reindexed
       localKey,
       system_type: systemType,
       parent_id: parentItem?.id || null,
       parentLocalKey: parentItem?.id || parentItem?.localKey || undefined,
     };
 
-    const next = [...agendaItems, newItem].map((it, idx) => ({ ...it, order_index: idx }));
-    setAgendaItems(next);
+    if (parentItem) {
+      // Insert right after parent and its existing children
+      const parentKey = parentItem.id || parentItem.localKey;
+      const parentIndex = agendaItems.findIndex(
+        item => item.id === parentItem.id || item.localKey === parentItem.localKey
+      );
+      let insertIndex = parentIndex + 1;
+      while (insertIndex < agendaItems.length && 
+             (agendaItems[insertIndex].parent_id === parentItem.id || 
+              agendaItems[insertIndex].parentLocalKey === parentKey)) {
+        insertIndex++;
+      }
+      const next = [...agendaItems];
+      next.splice(insertIndex, 0, newItem);
+      setAgendaItems(next.map((it, idx) => ({ ...it, order_index: idx })));
+    } else {
+      const next = [...agendaItems, newItem].map((it, idx) => ({ ...it, order_index: idx }));
+      setAgendaItems(next);
+    }
     
     toast({
       title: "Dynamischer Punkt hinzugefügt",
@@ -3408,6 +3425,7 @@ export function MeetingsView() {
                                   <StickyNote className="h-3.5 w-3.5 text-amber-500" />
                                   <span className="text-sm font-medium">{note.title || `Notiz ${noteIdx + 1}`}</span>
                                 </div>
+                                <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
                                 {note.user_id && (() => {
                                   const profile = getProfile(note.user_id);
                                   return profile ? (
@@ -3422,7 +3440,6 @@ export function MeetingsView() {
                                     </div>
                                   ) : null;
                                 })()}
-                                <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
                                 <div>
                                   <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
                                   <Textarea
@@ -3456,6 +3473,9 @@ export function MeetingsView() {
                                     <ListTodo className="h-3.5 w-3.5 text-green-500" />
                                     <span className="text-sm font-medium">{task.title}</span>
                                   </div>
+                                  {task.description && (
+                                    <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
+                                  )}
                                   {task.user_id && (() => {
                                     const profile = getProfile(task.user_id);
                                     return profile ? (
@@ -3470,9 +3490,6 @@ export function MeetingsView() {
                                       </div>
                                     ) : null;
                                   })()}
-                                  {task.description && (
-                                    <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
-                                  )}
                                   {task.due_date && (
                                     <p className="text-xs text-muted-foreground">
                                       Frist: {format(new Date(task.due_date), "dd.MM.yyyy", { locale: de })}
@@ -3677,77 +3694,77 @@ export function MeetingsView() {
                                                   <StickyNote className="h-3.5 w-3.5 text-amber-500" />
                                                   <span className="text-sm font-medium">{note.title || `Notiz ${noteIdx + 1}`}</span>
                                                 </div>
-                                                {note.user_id && (() => {
-                                                  const profile = getProfile(note.user_id);
-                                                  return profile ? (
-                                                    <div className="flex items-center gap-1.5 ml-6 mt-1">
-                                                      <Avatar className="h-5 w-5">
-                                                        <AvatarImage src={profile.avatar_url || undefined} />
-                                                        <AvatarFallback className="text-[10px]">
-                                                          {(profile.display_name || '?').charAt(0).toUpperCase()}
-                                                        </AvatarFallback>
-                                                      </Avatar>
-                                                      <span className="text-xs text-muted-foreground">{profile.display_name}</span>
-                                                    </div>
-                                                  ) : null;
-                                                })()}
-                                                <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
-                                                <div>
-                                                  <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
-                                                  <Textarea
-                                                    value={note.meeting_result || ''}
-                                                    onChange={(e) => updateQuickNoteResult(note.id, e.target.value)}
-                                                    placeholder="Ergebnis für diese Notiz..."
-                                                    className="min-h-[60px] text-xs"
-                                                  />
-                                                </div>
-                                              </div>
-                                           ))
-                                         ) : (
-                                           <p className="text-sm text-muted-foreground pl-4">Keine Notizen vorhanden.</p>
-                                         )}
-                                        </div>
-                                      ) : subItem.system_type === 'tasks' ? (
-                                        <div className="space-y-2">
-                                          <div className="flex items-center gap-2 mb-2">
-                                            <span className="text-xs font-medium text-muted-foreground">
-                                              {index + 1}.{subIndex + 1}
-                                            </span>
-                                            <ListTodo className="h-4 w-4 text-green-500" />
-                                            <span className="text-sm font-medium">Aufgaben</span>
-                                          </div>
-                                          {meetingLinkedTasks.length > 0 ? (
-                                            (() => {
-                                              const taskResults = (() => {
-                                                try { return JSON.parse(subItem.result_text || '{}'); } catch { return {}; }
-                                              })();
-                                              return meetingLinkedTasks.map((task, taskIdx) => (
-                                                <div key={task.id} className="pl-4 border-l-2 border-muted space-y-2 ml-4">
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-medium text-muted-foreground">
-                                                      {String.fromCharCode(97 + taskIdx)})
-                                                    </span>
-                                                    <ListTodo className="h-3.5 w-3.5 text-green-500" />
-                                                    <span className="text-sm font-medium">{task.title}</span>
-                                                  </div>
-                                                  {task.user_id && (() => {
-                                                    const profile = getProfile(task.user_id);
-                                                    return profile ? (
-                                                      <div className="flex items-center gap-1.5 ml-6 mt-1">
-                                                        <Avatar className="h-5 w-5">
-                                                          <AvatarImage src={profile.avatar_url || undefined} />
-                                                          <AvatarFallback className="text-[10px]">
-                                                            {(profile.display_name || '?').charAt(0).toUpperCase()}
-                                                          </AvatarFallback>
-                                                        </Avatar>
-                                                        <span className="text-xs text-muted-foreground">{profile.display_name}</span>
-                                                      </div>
-                                                    ) : null;
-                                                  })()}
-                                                  {task.description && (
-                                                    <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
-                                                  )}
-                                                  {task.due_date && (
+                                <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
+                                {note.user_id && (() => {
+                                  const profile = getProfile(note.user_id);
+                                  return profile ? (
+                                    <div className="flex items-center gap-1.5 ml-6 mt-1">
+                                      <Avatar className="h-5 w-5">
+                                        <AvatarImage src={profile.avatar_url || undefined} />
+                                        <AvatarFallback className="text-[10px]">
+                                          {(profile.display_name || '?').charAt(0).toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-xs text-muted-foreground">{profile.display_name}</span>
+                                    </div>
+                                  ) : null;
+                                })()}
+                                <div>
+                                  <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                  <Textarea
+                                    value={note.meeting_result || ''}
+                                    onChange={(e) => updateQuickNoteResult(note.id, e.target.value)}
+                                    placeholder="Ergebnis für diese Notiz..."
+                                    className="min-h-[60px] text-xs"
+                                  />
+                                </div>
+                              </div>
+                           ))
+                         ) : (
+                           <p className="text-sm text-muted-foreground pl-4">Keine Notizen vorhanden.</p>
+                         )}
+                        </div>
+                      ) : subItem.system_type === 'tasks' ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs font-medium text-muted-foreground">
+                              {index + 1}.{subIndex + 1}
+                            </span>
+                            <ListTodo className="h-4 w-4 text-green-500" />
+                            <span className="text-sm font-medium">Aufgaben</span>
+                          </div>
+                          {meetingLinkedTasks.length > 0 ? (
+                            (() => {
+                              const taskResults = (() => {
+                                try { return JSON.parse(subItem.result_text || '{}'); } catch { return {}; }
+                              })();
+                              return meetingLinkedTasks.map((task, taskIdx) => (
+                                <div key={task.id} className="pl-4 border-l-2 border-muted space-y-2 ml-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                      {String.fromCharCode(97 + taskIdx)})
+                                    </span>
+                                    <ListTodo className="h-3.5 w-3.5 text-green-500" />
+                                    <span className="text-sm font-medium">{task.title}</span>
+                                  </div>
+                                  {task.description && (
+                                    <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
+                                  )}
+                                  {task.user_id && (() => {
+                                    const profile = getProfile(task.user_id);
+                                    return profile ? (
+                                      <div className="flex items-center gap-1.5 ml-6 mt-1">
+                                        <Avatar className="h-5 w-5">
+                                          <AvatarImage src={profile.avatar_url || undefined} />
+                                          <AvatarFallback className="text-[10px]">
+                                            {(profile.display_name || '?').charAt(0).toUpperCase()}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-xs text-muted-foreground">{profile.display_name}</span>
+                                      </div>
+                                    ) : null;
+                                  })()}
+                                  {task.due_date && (
                                                     <p className="text-xs text-muted-foreground">
                                                       Frist: {format(new Date(task.due_date), "dd.MM.yyyy", { locale: de })}
                                                     </p>
@@ -4330,11 +4347,22 @@ export function MeetingsView() {
 
                                        {(item.parentLocalKey || item.parent_id) && (
                                          <>
-                                           <Textarea
-                                             value={item.description || ''}
-                                             onChange={(e) => updateAgendaItem(index, 'description', e.target.value)}
-                                             placeholder="Beschreibung"
-                                             className="min-h-[60px]"
+                                           {item.description && /<[a-z][\s\S]*>/i.test(item.description) ? (
+                                             <RichTextDisplay content={item.description} className="text-sm text-muted-foreground" />
+                                           ) : (
+                                             <Textarea
+                                               value={item.description || ''}
+                                               onChange={(e) => updateAgendaItem(index, 'description', e.target.value)}
+                                               placeholder="Beschreibung"
+                                               className="min-h-[60px]"
+                                             />
+                                           )}
+                                           {/* Assignment for sub-items */}
+                                           <MultiUserAssignSelect
+                                             assignedTo={item.assigned_to}
+                                             profiles={profiles}
+                                             onChange={(userIds) => updateAgendaItem(index, 'assigned_to', userIds.length > 0 ? userIds : null)}
+                                             size="sm"
                                            />
 
                                             {/* Display task documents above notes field (subtle) */}
@@ -4584,7 +4612,7 @@ export function MeetingsView() {
                           {note.title && (
                             <h4 className="font-semibold text-sm mb-1">{note.title}</h4>
                           )}
-                          <p className="text-sm">{note.content}</p>
+                          <RichTextDisplay content={note.content} className="text-sm" />
                           {note.meeting_result && (
                             <p className="text-xs text-muted-foreground mt-1">
                               Ergebnis: {note.meeting_result}

@@ -567,6 +567,25 @@ export function FocusModeView({
                   <RichTextDisplay content={sourceData.content} className="text-sm text-muted-foreground line-clamp-2" />
                 </div>
               )}
+              {sourceType === 'task' && (
+                <div className="mt-1">
+                  {sourceData.description && (
+                    <RichTextDisplay content={sourceData.description} className="text-sm text-muted-foreground" />
+                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    {sourceData.due_date && (
+                      <span className="text-xs text-muted-foreground">
+                        Frist: {format(new Date(sourceData.due_date), "dd.MM.yyyy", { locale: de })}
+                      </span>
+                    )}
+                    {sourceData.priority && (
+                      <Badge variant="outline" className="text-xs">
+                        {sourceData.priority}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
               {(sourceType === 'quick_note' || sourceType === 'task') && sourceData.user_id && (() => {
                 const profile = profiles.find(p => p.user_id === sourceData.user_id);
                 return profile ? (
@@ -588,25 +607,6 @@ export function FocusModeView({
                   {sourceData.start_time && format(new Date(sourceData.start_time), "dd.MM.yyyy HH:mm", { locale: de })}
                   {sourceData.location && ` • ${sourceData.location}`}
                 </p>
-              )}
-              {sourceType === 'task' && (
-                <div className="mt-1">
-                  {sourceData.description && (
-                    <RichTextDisplay content={sourceData.description} className="text-sm text-muted-foreground" />
-                  )}
-                  <div className="flex items-center gap-2 mt-1">
-                    {sourceData.due_date && (
-                      <span className="text-xs text-muted-foreground">
-                        Frist: {format(new Date(sourceData.due_date), "dd.MM.yyyy", { locale: de })}
-                      </span>
-                    )}
-                    {sourceData.priority && (
-                      <Badge variant="outline" className="text-xs">
-                        {sourceData.priority}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
               )}
 
               {/* Result input - show when focused or when result exists */}

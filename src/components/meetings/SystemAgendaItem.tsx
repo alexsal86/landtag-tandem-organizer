@@ -177,8 +177,8 @@ export function SystemAgendaItem({
                   {note.title && (
                     <h4 className="font-semibold text-sm mb-1">{note.title}</h4>
                   )}
-                  <ProfileBadge userId={note.user_id} profiles={profiles} />
                   <RichTextDisplay content={note.content} className="text-sm" />
+                  <ProfileBadge userId={note.user_id} profiles={profiles} />
                   {note.meeting_result && (
                     <p className="text-xs text-muted-foreground mt-1">
                       Ergebnis: {note.meeting_result}
@@ -209,10 +209,10 @@ export function SystemAgendaItem({
               {linkedTasks.map((task) => (
                 <div key={task.id} className="p-3 bg-muted/50 rounded-md">
                   <h4 className="font-semibold text-sm mb-1">{task.title}</h4>
-                  <ProfileBadge userId={task.user_id} profiles={profiles} />
                   {task.description && (
                     <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
                   )}
+                  <ProfileBadge userId={task.user_id} profiles={profiles} />
                   {task.due_date && (
                     <p className="text-xs text-muted-foreground mt-1">
                       Frist: {format(new Date(task.due_date), "dd.MM.yyyy", { locale: de })}

@@ -35,6 +35,12 @@ interface AgendaItem {
   system_type?: string | null;
 }
 
+interface SystemItemData {
+  id: string;
+  title: string;
+  user_id?: string;
+}
+
 export function MyWorkJourFixeTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -53,6 +59,10 @@ export function MyWorkJourFixeTab() {
   
   // State for meeting participants
   const [meetingParticipants, setMeetingParticipants] = useState<Record<string, MeetingParticipant[]>>({});
+
+  // State for system item data (notes and tasks per meeting)
+  const [meetingQuickNotes, setMeetingQuickNotes] = useState<Record<string, SystemItemData[]>>({});
+  const [meetingTasks, setMeetingTasks] = useState<Record<string, SystemItemData[]>>({});
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -77,12 +87,6 @@ export function MyWorkJourFixeTab() {
       loadParticipantsForMeetings(allMeetingIds);
     }
   }, [upcomingMeetings, pastMeetings]);
-
-  useEffect(() => {
-    if (user) {
-      loadMeetings();
-    }
-  }, [user]);
 
   const loadMeetings = async () => {
     if (!user) return;
@@ -180,11 +184,41 @@ export function MyWorkJourFixeTab() {
 
       if (error) throw error;
       
-      setAgendaItems(prev => ({ ...prev, [meetingId]: data || [] }));
+      const items = data || [];
+      setAgendaItems(prev => ({ ...prev, [meetingId]: items }));
+      
+      // Load system item data if needed
+      await loadMeetingSystemData(meetingId, items);
     } catch (error) {
       console.error('Error loading agenda:', error);
     } finally {
       setLoadingAgenda(null);
+    }
+  };
+
+  const loadMeetingSystemData = async (meetingId: string, items: AgendaItem[]) => {
+    const hasNotes = items.some(i => i.system_type === 'quick_notes');
+    const hasTasks = items.some(i => i.system_type === 'tasks');
+    
+    if (hasNotes) {
+      try {
+        const { data } = await supabase
+          .from('quick_notes')
+          .select('id, title, user_id')
+          .eq('meeting_id', meetingId)
+          .is('deleted_at', null);
+        setMeetingQuickNotes(prev => ({ ...prev, [meetingId]: data || [] }));
+      } catch { /* ignore */ }
+    }
+    
+    if (hasTasks) {
+      try {
+        const { data } = await supabase
+          .from('tasks')
+          .select('id, title, user_id')
+          .eq('meeting_id', meetingId);
+        setMeetingTasks(prev => ({ ...prev, [meetingId]: data || [] }));
+      } catch { /* ignore */ }
     }
   };
 
@@ -218,6 +252,8 @@ export function MyWorkJourFixeTab() {
     const meetingAgenda = agendaItems[meeting.id] || [];
     const isLoadingThisAgenda = loadingAgenda === meeting.id;
     const participants = meetingParticipants[meeting.id] || [];
+    const notes = meetingQuickNotes[meeting.id] || [];
+    const tasks = meetingTasks[meeting.id] || [];
     
     // Get only main items (no parent)
     const mainItems = meetingAgenda
@@ -345,17 +381,63 @@ export function MyWorkJourFixeTab() {
                           {item.title}
                         </span>
                       </div>
+                      {/* Show individual notes under quick_notes system item */}
+                      {item.system_type === 'quick_notes' && notes.length > 0 && (
+                        <ul className="ml-6 mt-1 space-y-0.5">
+                          {notes.map((note, nIdx) => (
+                            <li key={note.id} className="flex items-center gap-1.5 text-muted-foreground">
+                              <StickyNote className="h-2.5 w-2.5 text-amber-500" />
+                              <span>{note.title || `Notiz ${nIdx + 1}`}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {/* Show individual tasks under tasks system item */}
+                      {item.system_type === 'tasks' && tasks.length > 0 && (
+                        <ul className="ml-6 mt-1 space-y-0.5">
+                          {tasks.map((task) => (
+                            <li key={task.id} className="flex items-center gap-1.5 text-muted-foreground">
+                              <ListTodo className="h-2.5 w-2.5 text-green-500" />
+                              <span>{task.title}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                       {subItems.length > 0 && (
                         <ul className="ml-6 mt-1 space-y-0.5">
                           {subItems.map((subItem, subIndex) => {
                             const subSystemIcon = getSystemItemIcon(subItem.system_type);
                             return (
-                              <li key={subItem.id} className="flex items-start gap-1.5 text-muted-foreground">
-                                <span className="min-w-[1rem]">{String.fromCharCode(97 + subIndex)})</span>
-                                {subSystemIcon}
-                                <span className={subItem.system_type ? "font-medium text-foreground" : ""}>
-                                  {subItem.title}
-                                </span>
+                              <li key={subItem.id} className="text-muted-foreground">
+                                <div className="flex items-start gap-1.5">
+                                  <span className="min-w-[1rem]">{String.fromCharCode(97 + subIndex)})</span>
+                                  {subSystemIcon}
+                                  <span className={subItem.system_type ? "font-medium text-foreground" : ""}>
+                                    {subItem.title}
+                                  </span>
+                                </div>
+                                {/* Show individual notes under sub-item quick_notes */}
+                                {subItem.system_type === 'quick_notes' && notes.length > 0 && (
+                                  <ul className="ml-4 mt-0.5 space-y-0.5">
+                                    {notes.map((note, nIdx) => (
+                                      <li key={note.id} className="flex items-center gap-1.5 text-muted-foreground">
+                                        <StickyNote className="h-2.5 w-2.5 text-amber-500" />
+                                        <span>{note.title || `Notiz ${nIdx + 1}`}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                                {/* Show individual tasks under sub-item tasks */}
+                                {subItem.system_type === 'tasks' && tasks.length > 0 && (
+                                  <ul className="ml-4 mt-0.5 space-y-0.5">
+                                    {tasks.map((task) => (
+                                      <li key={task.id} className="flex items-center gap-1.5 text-muted-foreground">
+                                        <ListTodo className="h-2.5 w-2.5 text-green-500" />
+                                        <span>{task.title}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
                               </li>
                             );
                           })}
