@@ -114,6 +114,7 @@ interface MeetingTemplate {
 interface Profile {
   user_id: string;
   display_name: string | null;
+  avatar_url?: string | null;
 }
 
 export function MeetingsView() {
@@ -431,7 +432,7 @@ export function MeetingsView() {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('user_id, display_name')
+        .select('user_id, display_name, avatar_url')
         .in('user_id', userIds);
 
       if (error) throw error;
@@ -1396,35 +1397,84 @@ export function MeetingsView() {
         }
       }
 
-      // Step 5b: Create task for starred appointments
+      // Step 5b: Process quick note results - write back to owner's note
+      try {
+        for (const note of linkedQuickNotes) {
+          if (note.meeting_result?.trim()) {
+            const meetingContext = `Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}`;
+            await supabase
+              .from('quick_notes')
+              .update({ 
+                meeting_result: `[${meetingContext}]\n${note.meeting_result}` 
+              })
+              .eq('id', note.id);
+          }
+        }
+      } catch (noteResultError) {
+        console.error('Error processing quick note results (non-fatal):', noteResultError);
+      }
+
+      // Step 5c: Process task results - add subtask to original task
+      try {
+        const taskSystemItems = agendaItemsData?.filter(item => item.system_type === 'tasks') || [];
+        for (const taskItem of taskSystemItems) {
+          if (!taskItem.result_text?.trim()) continue;
+          
+          try {
+            const taskResults = JSON.parse(taskItem.result_text);
+            for (const [taskId, resultText] of Object.entries(taskResults)) {
+              if (!resultText || !(resultText as string).trim()) continue;
+              
+              const originalTask = meetingLinkedTasks.find(t => t.id === taskId);
+              if (!originalTask) continue;
+              
+              const meetingContext = `Aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}`;
+              
+              const { data: maxOrder } = await supabase
+                .from('subtasks')
+                .select('order_index')
+                .eq('task_id', taskId)
+                .order('order_index', { ascending: false })
+                .limit(1);
+              
+              const nextOrder = (maxOrder?.[0]?.order_index ?? -1) + 1;
+              
+              await supabase.from('subtasks').insert({
+                task_id: taskId,
+                user_id: user.id,
+                description: `${meetingContext}: ${resultText}`,
+                assigned_to: originalTask.user_id || user.id,
+                is_completed: false,
+                order_index: nextOrder,
+              });
+            }
+          } catch (e) {
+            console.error('Error processing task results:', e);
+          }
+        }
+      } catch (taskResultError) {
+        console.error('Error processing task results (non-fatal):', taskResultError);
+      }
+
+      // Step 5d: Create single task with subtasks for starred appointments
       try {
         const { data: starredAppts } = await supabase
           .from('starred_appointments')
-          .select(`
-            id,
-            appointment_id,
-            external_event_id
-          `)
+          .select('id, appointment_id, external_event_id')
           .eq('meeting_id', meeting.id);
 
         if (starredAppts && starredAppts.length > 0) {
-          // Fetch appointment details
           const appointmentIds = starredAppts.filter(s => s.appointment_id).map(s => s.appointment_id);
           const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => s.external_event_id);
           
-          let appointmentsList = '';
+          const allAppointments: Array<{ title: string; start_time: string }> = [];
           
           if (appointmentIds.length > 0) {
             const { data: appointments } = await supabase
               .from('appointments')
               .select('title, start_time')
               .in('id', appointmentIds);
-            
-            if (appointments) {
-              appointmentsList += appointments.map(apt => 
-                `- ${apt.title} (${format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`
-              ).join('\n');
-            }
+            if (appointments) allAppointments.push(...appointments);
           }
           
           if (externalEventIds.length > 0) {
@@ -1432,44 +1482,53 @@ export function MeetingsView() {
               .from('external_events')
               .select('title, start_time')
               .in('id', externalEventIds);
-            
-            if (externalEvents) {
-              if (appointmentsList) appointmentsList += '\n';
-              appointmentsList += externalEvents.map(evt => 
-                `- ${evt.title} (${format(new Date(evt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`
-              ).join('\n');
-            }
+            if (externalEvents) allAppointments.push(...externalEvents);
           }
           
-          if (appointmentsList) {
-            // Get all meeting participants
+          if (allAppointments.length > 0) {
             const { data: participants } = await supabase
               .from('meeting_participants')
               .select('user_id')
               .eq('meeting_id', meeting.id);
             
             const participantIds = participants?.map(p => p.user_id) || [user.id];
+            const firstParticipant = participantIds[0] || user.id;
             
-            // Create one task for each participant
-            for (const participantId of participantIds) {
-              const { error: starredTaskError } = await supabase.from('tasks').insert({
+            const participantNames = participantIds.map(id => {
+              const profile = profiles.find(p => p.user_id === id);
+              return profile?.display_name || 'Unbekannt';
+            }).join(', ');
+            
+            const { data: apptTask } = await supabase
+              .from('tasks')
+              .insert({
                 user_id: user.id,
                 title: `Vorbereitung: Markierte Termine aus ${meeting.title}`,
-                description: `Folgende Termine wurden in der Besprechung als besonders wichtig markiert:\n\n${appointmentsList}`,
+                description: `Folgende Termine wurden in der Besprechung als wichtig markiert.\n\n**Zuständige:** ${participantNames}`,
                 priority: 'medium',
                 category: 'meeting',
                 status: 'todo',
-                assigned_to: participantId,
+                assigned_to: firstParticipant,
                 tenant_id: currentTenant?.id || '',
                 due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-              });
+              })
+              .select()
+              .single();
+            
+            if (apptTask) {
+              const subtasks = allAppointments.map((apt, idx) => ({
+                task_id: apptTask.id,
+                user_id: user.id,
+                description: `${apt.title} (${format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`,
+                assigned_to: null,
+                is_completed: false,
+                order_index: idx,
+              }));
               
-              if (starredTaskError) {
-                console.error('Error creating starred appointments task:', starredTaskError);
-              }
+              await supabase.from('subtasks').insert(subtasks);
             }
             
-            console.log(`Created starred appointments task for ${participantIds.length} participants`);
+            console.log(`Created starred appointments task with ${allAppointments.length} subtasks`);
           }
         }
       } catch (starredError) {
@@ -1765,7 +1824,7 @@ export function MeetingsView() {
     setAgendaItems(next);
   };
 
-  const addSystemAgendaItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks') => {
+  const addSystemAgendaItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks', parentItem?: AgendaItem) => {
     if (!selectedMeeting?.id) return;
     
     // Check if already exists
@@ -1795,6 +1854,8 @@ export function MeetingsView() {
       order_index: agendaItems.length,
       localKey,
       system_type: systemType,
+      parent_id: parentItem?.id || null,
+      parentLocalKey: parentItem?.id || parentItem?.localKey || undefined,
     };
 
     const next = [...agendaItems, newItem].map((it, idx) => ({ ...it, order_index: idx }));
@@ -1805,6 +1866,8 @@ export function MeetingsView() {
       description: `"${titles[systemType]}" wurde zur Agenda hinzugefügt.`,
     });
   };
+
+  const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
   const updateAgendaItem = async (index: number, field: keyof AgendaItem, value: any) => {
     console.log('🔧 UPDATE AGENDA ITEM:', { index, field, value });
@@ -3345,9 +3408,20 @@ export function MeetingsView() {
                                   <StickyNote className="h-3.5 w-3.5 text-amber-500" />
                                   <span className="text-sm font-medium">{note.title || `Notiz ${noteIdx + 1}`}</span>
                                 </div>
-                                {note.user_id && (
-                                  <span className="text-xs text-muted-foreground ml-6">von {getDisplayName(note.user_id)}</span>
-                                )}
+                                {note.user_id && (() => {
+                                  const profile = getProfile(note.user_id);
+                                  return profile ? (
+                                    <div className="flex items-center gap-1.5 ml-6 mt-1">
+                                      <Avatar className="h-5 w-5">
+                                        <AvatarImage src={profile.avatar_url || undefined} />
+                                        <AvatarFallback className="text-[10px]">
+                                          {(profile.display_name || '?').charAt(0).toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-xs text-muted-foreground">{profile.display_name}</span>
+                                    </div>
+                                  ) : null;
+                                })()}
                                 <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
                                 <div>
                                   <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
@@ -3382,9 +3456,20 @@ export function MeetingsView() {
                                     <ListTodo className="h-3.5 w-3.5 text-green-500" />
                                     <span className="text-sm font-medium">{task.title}</span>
                                   </div>
-                                  {task.user_id && (
-                                    <span className="text-xs text-muted-foreground ml-6">von {getDisplayName(task.user_id)}</span>
-                                  )}
+                                  {task.user_id && (() => {
+                                    const profile = getProfile(task.user_id);
+                                    return profile ? (
+                                      <div className="flex items-center gap-1.5 ml-6 mt-1">
+                                        <Avatar className="h-5 w-5">
+                                          <AvatarImage src={profile.avatar_url || undefined} />
+                                          <AvatarFallback className="text-[10px]">
+                                            {(profile.display_name || '?').charAt(0).toUpperCase()}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-xs text-muted-foreground">{profile.display_name}</span>
+                                      </div>
+                                    ) : null;
+                                  })()}
                                   {task.description && (
                                     <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
                                   )}
@@ -3592,9 +3677,20 @@ export function MeetingsView() {
                                                   <StickyNote className="h-3.5 w-3.5 text-amber-500" />
                                                   <span className="text-sm font-medium">{note.title || `Notiz ${noteIdx + 1}`}</span>
                                                 </div>
-                                                {note.user_id && (
-                                                  <span className="text-xs text-muted-foreground ml-6">von {getDisplayName(note.user_id)}</span>
-                                                )}
+                                                {note.user_id && (() => {
+                                                  const profile = getProfile(note.user_id);
+                                                  return profile ? (
+                                                    <div className="flex items-center gap-1.5 ml-6 mt-1">
+                                                      <Avatar className="h-5 w-5">
+                                                        <AvatarImage src={profile.avatar_url || undefined} />
+                                                        <AvatarFallback className="text-[10px]">
+                                                          {(profile.display_name || '?').charAt(0).toUpperCase()}
+                                                        </AvatarFallback>
+                                                      </Avatar>
+                                                      <span className="text-xs text-muted-foreground">{profile.display_name}</span>
+                                                    </div>
+                                                  ) : null;
+                                                })()}
                                                 <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
                                                 <div>
                                                   <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
@@ -3634,9 +3730,20 @@ export function MeetingsView() {
                                                     <ListTodo className="h-3.5 w-3.5 text-green-500" />
                                                     <span className="text-sm font-medium">{task.title}</span>
                                                   </div>
-                                                  {task.user_id && (
-                                                    <span className="text-xs text-muted-foreground ml-6">von {getDisplayName(task.user_id)}</span>
-                                                  )}
+                                                  {task.user_id && (() => {
+                                                    const profile = getProfile(task.user_id);
+                                                    return profile ? (
+                                                      <div className="flex items-center gap-1.5 ml-6 mt-1">
+                                                        <Avatar className="h-5 w-5">
+                                                          <AvatarImage src={profile.avatar_url || undefined} />
+                                                          <AvatarFallback className="text-[10px]">
+                                                            {(profile.display_name || '?').charAt(0).toUpperCase()}
+                                                          </AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="text-xs text-muted-foreground">{profile.display_name}</span>
+                                                      </div>
+                                                    ) : null;
+                                                  })()}
                                                   {task.description && (
                                                     <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
                                                   )}
@@ -3926,9 +4033,7 @@ export function MeetingsView() {
                                 {note.title && (
                                   <h4 className="font-medium mb-1">{note.title}</h4>
                                 )}
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                  {note.content}
-                                </p>
+                                <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
                                 <p className="text-xs text-muted-foreground mt-2">
                                   Erstellt: {format(new Date(note.created_at), 'dd.MM.yyyy HH:mm', { locale: de })}
                                 </p>
@@ -4061,6 +4166,7 @@ export function MeetingsView() {
                                         allowStarring={true}
                                         linkedQuickNotes={linkedQuickNotes}
                                         linkedTasks={meetingLinkedTasks}
+                                        profiles={profiles}
                                         isEmbedded={true}
                                         defaultCollapsed={item.system_type === 'upcoming_appointments'}
                                         onDelete={hasEditPermission ? () => deleteAgendaItem(item, index) : undefined}
@@ -4141,6 +4247,37 @@ export function MeetingsView() {
                                                     <Plus className="h-4 w-4 mr-2" />
                                                     Freien Unterpunkt hinzufügen
                                                   </Button>
+                                                  {/* System items as sub-items */}
+                                                  <div className="border-t pt-2 mt-2">
+                                                    <p className="text-xs text-muted-foreground mb-1">System-Punkt als Unterpunkt:</p>
+                                                    <Button 
+                                                      variant="outline" 
+                                                      className="w-full justify-start border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400"
+                                                      onClick={() => addSystemAgendaItem('upcoming_appointments', item)}
+                                                      disabled={agendaItems.some(i => i.system_type === 'upcoming_appointments')}
+                                                    >
+                                                      <CalendarDays className="h-4 w-4 mr-2" />
+                                                      Kommende Termine
+                                                    </Button>
+                                                    <Button 
+                                                      variant="outline" 
+                                                      className="w-full justify-start border-amber-200 text-amber-700 dark:border-amber-800 dark:text-amber-400"
+                                                      onClick={() => addSystemAgendaItem('quick_notes', item)}
+                                                      disabled={agendaItems.some(i => i.system_type === 'quick_notes')}
+                                                    >
+                                                      <StickyNote className="h-4 w-4 mr-2" />
+                                                      Meine Notizen
+                                                    </Button>
+                                                    <Button 
+                                                      variant="outline" 
+                                                      className="w-full justify-start border-green-200 text-green-700 dark:border-green-800 dark:text-green-400"
+                                                      onClick={() => addSystemAgendaItem('tasks', item)}
+                                                      disabled={agendaItems.some(i => i.system_type === 'tasks')}
+                                                    >
+                                                      <ListTodo className="h-4 w-4 mr-2" />
+                                                      Aufgaben
+                                                    </Button>
+                                                  </div>
                                                 </div>
                                               </PopoverContent>
                                             </Popover>

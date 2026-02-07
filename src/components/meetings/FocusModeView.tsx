@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
@@ -51,6 +52,7 @@ interface Meeting {
 interface Profile {
   user_id: string;
   display_name: string | null;
+  avatar_url?: string | null;
 }
 
 interface NavigableItem {
@@ -565,9 +567,22 @@ export function FocusModeView({
                   <RichTextDisplay content={sourceData.content} className="text-sm text-muted-foreground line-clamp-2" />
                 </div>
               )}
-              {(sourceType === 'quick_note' || sourceType === 'task') && sourceData.user_id && (
-                <span className="text-xs text-muted-foreground">von {getDisplayName(sourceData.user_id)}</span>
-              )}
+              {(sourceType === 'quick_note' || sourceType === 'task') && sourceData.user_id && (() => {
+                const profile = profiles.find(p => p.user_id === sourceData.user_id);
+                return profile ? (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={profile.avatar_url || undefined} />
+                      <AvatarFallback className="text-[10px]">
+                        {(profile.display_name || '?').charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs text-muted-foreground">{profile.display_name}</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground">von {getDisplayName(sourceData.user_id)}</span>
+                );
+              })()}
               {sourceType === 'appointment' && (
                 <p className="text-xs text-muted-foreground mt-1">
                   {sourceData.start_time && format(new Date(sourceData.start_time), "dd.MM.yyyy HH:mm", { locale: de })}
