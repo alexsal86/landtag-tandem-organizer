@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, StickyNote, ListTodo, Trash } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
 import { cn } from '@/lib/utils';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
@@ -15,6 +16,13 @@ interface LinkedTask {
   due_date?: string | null;
   priority?: string;
   status?: string;
+  user_id?: string;
+}
+
+interface ProfileInfo {
+  user_id: string;
+  display_name: string | null;
+  avatar_url?: string | null;
 }
 
 interface SystemAgendaItemProps {
@@ -24,11 +32,29 @@ interface SystemAgendaItemProps {
   allowStarring?: boolean;
   linkedQuickNotes?: any[];
   linkedTasks?: LinkedTask[];
+  profiles?: ProfileInfo[];
   onUpdateNoteResult?: (noteId: string, result: string) => void;
   onDelete?: () => void;
   className?: string;
   isEmbedded?: boolean;
   defaultCollapsed?: boolean;
+}
+
+function ProfileBadge({ userId, profiles }: { userId?: string; profiles?: ProfileInfo[] }) {
+  if (!userId || !profiles) return null;
+  const profile = profiles.find(p => p.user_id === userId);
+  if (!profile) return null;
+  return (
+    <div className="flex items-center gap-1.5 mt-1">
+      <Avatar className="h-5 w-5">
+        <AvatarImage src={profile.avatar_url || undefined} />
+        <AvatarFallback className="text-[10px]">
+          {(profile.display_name || '?').charAt(0).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+      <span className="text-xs text-muted-foreground">{profile.display_name}</span>
+    </div>
+  );
 }
 
 export function SystemAgendaItem({
@@ -38,6 +64,7 @@ export function SystemAgendaItem({
   allowStarring = false,
   linkedQuickNotes = [],
   linkedTasks = [],
+  profiles,
   onUpdateNoteResult,
   onDelete,
   className,
@@ -47,66 +74,46 @@ export function SystemAgendaItem({
   // Color scheme based on system type
   const getBorderColor = () => {
     switch (systemType) {
-      case 'upcoming_appointments':
-        return 'border-l-blue-500';
-      case 'quick_notes':
-        return 'border-l-amber-500';
-      case 'tasks':
-        return 'border-l-green-500';
-      default:
-        return 'border-l-muted';
+      case 'upcoming_appointments': return 'border-l-blue-500';
+      case 'quick_notes': return 'border-l-amber-500';
+      case 'tasks': return 'border-l-green-500';
+      default: return 'border-l-muted';
     }
   };
 
   const getBadgeColors = () => {
     switch (systemType) {
-      case 'upcoming_appointments':
-        return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800';
-      case 'quick_notes':
-        return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
-      case 'tasks':
-        return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800';
-      default:
-        return '';
+      case 'upcoming_appointments': return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800';
+      case 'quick_notes': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
+      case 'tasks': return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800';
+      default: return '';
     }
   };
 
   const getIcon = () => {
     switch (systemType) {
-      case 'upcoming_appointments':
-        return <CalendarDays className="h-4 w-4 text-blue-500" />;
-      case 'quick_notes':
-        return <StickyNote className="h-4 w-4 text-amber-500" />;
-      case 'tasks':
-        return <ListTodo className="h-4 w-4 text-green-500" />;
-      default:
-        return null;
+      case 'upcoming_appointments': return <CalendarDays className="h-4 w-4 text-blue-500" />;
+      case 'quick_notes': return <StickyNote className="h-4 w-4 text-amber-500" />;
+      case 'tasks': return <ListTodo className="h-4 w-4 text-green-500" />;
+      default: return null;
     }
   };
 
   const getTitle = () => {
     switch (systemType) {
-      case 'upcoming_appointments':
-        return 'Kommende Termine';
-      case 'quick_notes':
-        return 'Meine Notizen';
-      case 'tasks':
-        return 'Aufgaben';
-      default:
-        return '';
+      case 'upcoming_appointments': return 'Kommende Termine';
+      case 'quick_notes': return 'Meine Notizen';
+      case 'tasks': return 'Aufgaben';
+      default: return '';
     }
   };
 
   const getBadgeIcon = () => {
     switch (systemType) {
-      case 'upcoming_appointments':
-        return <CalendarDays className="h-3 w-3 mr-1" />;
-      case 'quick_notes':
-        return <StickyNote className="h-3 w-3 mr-1" />;
-      case 'tasks':
-        return <ListTodo className="h-3 w-3 mr-1" />;
-      default:
-        return null;
+      case 'upcoming_appointments': return <CalendarDays className="h-3 w-3 mr-1" />;
+      case 'quick_notes': return <StickyNote className="h-3 w-3 mr-1" />;
+      case 'tasks': return <ListTodo className="h-3 w-3 mr-1" />;
+      default: return null;
     }
   };
 
@@ -141,11 +148,7 @@ export function SystemAgendaItem({
 
   if (systemType === 'upcoming_appointments') {
     return (
-      <Card className={cn(
-        "border-l-4",
-        getBorderColor(),
-        className
-      )}>
+      <Card className={cn("border-l-4", getBorderColor(), className)}>
         {renderHeader()}
         <CardContent className="px-3 pb-2 pt-0">
           <UpcomingAppointmentsSection 
@@ -162,11 +165,7 @@ export function SystemAgendaItem({
 
   if (systemType === 'quick_notes') {
     return (
-      <Card className={cn(
-        "border-l-4",
-        getBorderColor(),
-        className
-      )}>
+      <Card className={cn("border-l-4", getBorderColor(), className)}>
         {renderHeader(
           linkedQuickNotes.length > 0 ? <Badge variant="secondary">{linkedQuickNotes.length}</Badge> : undefined
         )}
@@ -178,6 +177,7 @@ export function SystemAgendaItem({
                   {note.title && (
                     <h4 className="font-semibold text-sm mb-1">{note.title}</h4>
                   )}
+                  <ProfileBadge userId={note.user_id} profiles={profiles} />
                   <RichTextDisplay content={note.content} className="text-sm" />
                   {note.meeting_result && (
                     <p className="text-xs text-muted-foreground mt-1">
@@ -199,11 +199,7 @@ export function SystemAgendaItem({
 
   if (systemType === 'tasks') {
     return (
-      <Card className={cn(
-        "border-l-4",
-        getBorderColor(),
-        className
-      )}>
+      <Card className={cn("border-l-4", getBorderColor(), className)}>
         {renderHeader(
           linkedTasks.length > 0 ? <Badge variant="secondary">{linkedTasks.length}</Badge> : undefined
         )}
@@ -213,6 +209,7 @@ export function SystemAgendaItem({
               {linkedTasks.map((task) => (
                 <div key={task.id} className="p-3 bg-muted/50 rounded-md">
                   <h4 className="font-semibold text-sm mb-1">{task.title}</h4>
+                  <ProfileBadge userId={task.user_id} profiles={profiles} />
                   {task.description && (
                     <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
                   )}
