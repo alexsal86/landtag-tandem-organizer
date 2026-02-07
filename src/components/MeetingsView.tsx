@@ -2561,6 +2561,7 @@ export function MeetingsView() {
         onClose={() => setIsFocusMode(false)}
         onUpdateItem={updateAgendaItem}
         onUpdateResult={updateAgendaItemResult}
+        onUpdateNoteResult={updateQuickNoteResult}
         onArchive={() => archiveMeeting(activeMeeting)}
       />
     );
@@ -3155,37 +3156,91 @@ export function MeetingsView() {
                         </div>
                       )}
 
-                      {/* Show system content based on system_type */}
+                      {/* Show system content as individual sub-items */}
                       {item.system_type === 'upcoming_appointments' && (
                         <div className="ml-12 mb-4">
-                          <SystemAgendaItem 
-                            systemType="upcoming_appointments" 
+                          <UpcomingAppointmentsSection 
                             meetingDate={activeMeeting.meeting_date}
                             meetingId={activeMeeting.id}
                             allowStarring={true}
-                            isEmbedded={true}
+                            className="border-0 shadow-none bg-transparent p-0"
+                            defaultCollapsed={false}
                           />
                         </div>
                       )}
                       
                       {item.system_type === 'quick_notes' && (
-                        <div className="ml-12 mb-4">
-                          <SystemAgendaItem 
-                            systemType="quick_notes"
-                            linkedQuickNotes={linkedQuickNotes}
-                            onUpdateNoteResult={updateQuickNoteResult}
-                            isEmbedded={true}
-                          />
+                        <div className="ml-12 mb-4 space-y-3">
+                          {linkedQuickNotes.length > 0 ? (
+                            linkedQuickNotes.map((note, noteIdx) => (
+                              <div key={note.id} className="pl-4 border-l-2 border-l-amber-500 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium text-muted-foreground">
+                                    {String.fromCharCode(97 + noteIdx)})
+                                  </span>
+                                  <StickyNote className="h-3.5 w-3.5 text-amber-500" />
+                                  <span className="text-sm font-medium">{note.title || `Notiz ${noteIdx + 1}`}</span>
+                                </div>
+                                <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
+                                <div>
+                                  <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                  <Textarea
+                                    value={note.meeting_result || ''}
+                                    onChange={(e) => updateQuickNoteResult(note.id, e.target.value)}
+                                    placeholder="Ergebnis für diese Notiz..."
+                                    className="min-h-[60px] text-xs"
+                                  />
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground pl-4">Keine Notizen vorhanden.</p>
+                          )}
                         </div>
                       )}
 
                       {item.system_type === 'tasks' && (
-                        <div className="ml-12 mb-4">
-                          <SystemAgendaItem 
-                            systemType="tasks"
-                            linkedTasks={meetingLinkedTasks}
-                            isEmbedded={true}
-                          />
+                        <div className="ml-12 mb-4 space-y-3">
+                          {meetingLinkedTasks.length > 0 ? (
+                            (() => {
+                              const taskResults = (() => {
+                                try { return JSON.parse(item.result_text || '{}'); } catch { return {}; }
+                              })();
+                              return meetingLinkedTasks.map((task, taskIdx) => (
+                                <div key={task.id} className="pl-4 border-l-2 border-l-green-500 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                      {String.fromCharCode(97 + taskIdx)})
+                                    </span>
+                                    <ListTodo className="h-3.5 w-3.5 text-green-500" />
+                                    <span className="text-sm font-medium">{task.title}</span>
+                                  </div>
+                                  {task.description && (
+                                    <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
+                                  )}
+                                  {task.due_date && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Frist: {format(new Date(task.due_date), "dd.MM.yyyy", { locale: de })}
+                                    </p>
+                                  )}
+                                  <div>
+                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                    <Textarea
+                                      value={taskResults[task.id] || ''}
+                                      onChange={(e) => {
+                                        const newResults = { ...taskResults, [task.id]: e.target.value };
+                                        updateAgendaItemResult(item.id!, 'result_text', JSON.stringify(newResults));
+                                      }}
+                                      placeholder="Ergebnis für diese Aufgabe..."
+                                      className="min-h-[60px] text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              ));
+                            })()
+                          ) : (
+                            <p className="text-sm text-muted-foreground pl-4">Keine Aufgaben vorhanden.</p>
+                          )}
                         </div>
                       )}
 
@@ -3287,56 +3342,108 @@ export function MeetingsView() {
                                           ? "border-l-green-500"
                                           : "border-muted"
                                   )}>
-                                   {/* Render system items with proper numbering and header */}
-                                     {subItem.system_type === 'upcoming_appointments' ? (
-                                       <div className="space-y-2">
-                                         <div className="flex items-center gap-2 mb-2">
-                                           <span className="text-xs font-medium text-muted-foreground">
-                                             {index + 1}.{subIndex + 1}
-                                           </span>
-                                           <CalendarDays className="h-4 w-4 text-blue-500" />
-                                           <span className="text-sm font-medium">Kommende Termine</span>
-                                         </div>
-                                         <SystemAgendaItem 
-                                           systemType="upcoming_appointments" 
-                                           meetingDate={activeMeeting.meeting_date}
-                                           meetingId={activeMeeting.id}
-                                           allowStarring={true}
-                                           isEmbedded={true}
-                                         />
-                                       </div>
-                                    ) : subItem.system_type === 'quick_notes' ? (
-                                      <div className="space-y-2">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <span className="text-xs font-medium text-muted-foreground">
-                                            {index + 1}.{subIndex + 1}
-                                          </span>
-                                          <StickyNote className="h-4 w-4 text-amber-500" />
-                                          <span className="text-sm font-medium">Meine Notizen</span>
+                                    {/* Render system items with individual sub-items */}
+                                      {subItem.system_type === 'upcoming_appointments' ? (
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              {index + 1}.{subIndex + 1}
+                                            </span>
+                                            <CalendarDays className="h-4 w-4 text-blue-500" />
+                                            <span className="text-sm font-medium">Kommende Termine</span>
+                                          </div>
+                                          <UpcomingAppointmentsSection 
+                                            meetingDate={activeMeeting.meeting_date}
+                                            meetingId={activeMeeting.id}
+                                            allowStarring={true}
+                                            className="border-0 shadow-none bg-transparent p-0"
+                                            defaultCollapsed={false}
+                                          />
                                         </div>
-                                        <SystemAgendaItem 
-                                          systemType="quick_notes"
-                                          linkedQuickNotes={linkedQuickNotes}
-                                          onUpdateNoteResult={updateQuickNoteResult}
-                                          isEmbedded={true}
-                                        />
-                                       </div>
-                                     ) : subItem.system_type === 'tasks' ? (
+                                     ) : subItem.system_type === 'quick_notes' ? (
                                        <div className="space-y-2">
                                          <div className="flex items-center gap-2 mb-2">
                                            <span className="text-xs font-medium text-muted-foreground">
                                              {index + 1}.{subIndex + 1}
                                            </span>
-                                           <ListTodo className="h-4 w-4 text-green-500" />
-                                           <span className="text-sm font-medium">Aufgaben</span>
+                                           <StickyNote className="h-4 w-4 text-amber-500" />
+                                           <span className="text-sm font-medium">Meine Notizen</span>
                                          </div>
-                                         <SystemAgendaItem 
-                                           systemType="tasks"
-                                           linkedTasks={meetingLinkedTasks}
-                                           isEmbedded={true}
-                                         />
-                                       </div>
-                                     ) : (
+                                         {linkedQuickNotes.length > 0 ? (
+                                           linkedQuickNotes.map((note, noteIdx) => (
+                                             <div key={note.id} className="pl-4 border-l-2 border-l-amber-500 space-y-2 ml-4">
+                                               <div className="flex items-center gap-2">
+                                                 <span className="text-xs font-medium text-muted-foreground">
+                                                   {String.fromCharCode(97 + noteIdx)})
+                                                 </span>
+                                                 <span className="text-sm font-medium">{note.title || `Notiz ${noteIdx + 1}`}</span>
+                                               </div>
+                                               <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
+                                               <div>
+                                                 <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                                 <Textarea
+                                                   value={note.meeting_result || ''}
+                                                   onChange={(e) => updateQuickNoteResult(note.id, e.target.value)}
+                                                   placeholder="Ergebnis für diese Notiz..."
+                                                   className="min-h-[60px] text-xs"
+                                                 />
+                                               </div>
+                                             </div>
+                                           ))
+                                         ) : (
+                                           <p className="text-sm text-muted-foreground pl-4">Keine Notizen vorhanden.</p>
+                                         )}
+                                        </div>
+                                      ) : subItem.system_type === 'tasks' ? (
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              {index + 1}.{subIndex + 1}
+                                            </span>
+                                            <ListTodo className="h-4 w-4 text-green-500" />
+                                            <span className="text-sm font-medium">Aufgaben</span>
+                                          </div>
+                                          {meetingLinkedTasks.length > 0 ? (
+                                            (() => {
+                                              const taskResults = (() => {
+                                                try { return JSON.parse(subItem.result_text || '{}'); } catch { return {}; }
+                                              })();
+                                              return meetingLinkedTasks.map((task, taskIdx) => (
+                                                <div key={task.id} className="pl-4 border-l-2 border-l-green-500 space-y-2 ml-4">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-medium text-muted-foreground">
+                                                      {String.fromCharCode(97 + taskIdx)})
+                                                    </span>
+                                                    <span className="text-sm font-medium">{task.title}</span>
+                                                  </div>
+                                                  {task.description && (
+                                                    <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
+                                                  )}
+                                                  {task.due_date && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                      Frist: {format(new Date(task.due_date), "dd.MM.yyyy", { locale: de })}
+                                                    </p>
+                                                  )}
+                                                  <div>
+                                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                                    <Textarea
+                                                      value={taskResults[task.id] || ''}
+                                                      onChange={(e) => {
+                                                        const newResults = { ...taskResults, [task.id]: e.target.value };
+                                                        updateAgendaItemResult(subItem.id!, 'result_text', JSON.stringify(newResults));
+                                                      }}
+                                                      placeholder="Ergebnis für diese Aufgabe..."
+                                                      className="min-h-[60px] text-xs"
+                                                    />
+                                                  </div>
+                                                </div>
+                                              ));
+                                            })()
+                                          ) : (
+                                            <p className="text-sm text-muted-foreground pl-4">Keine Aufgaben vorhanden.</p>
+                                          )}
+                                        </div>
+                                      ) : (
                                    <>
                                    <div className="flex items-center gap-2 mb-2">
                                      <span className="text-xs font-medium text-muted-foreground">
@@ -3539,6 +3646,8 @@ export function MeetingsView() {
                         </div>
                       )}
                       
+                      {/* Result section - hide for system items since results are per-sub-item */}
+                      {!item.system_type && (
                       <div className="ml-12 space-y-3">
                         <div>
                           <label className="text-sm font-medium mb-2 block">Ergebnis der Besprechung</label>
@@ -3566,6 +3675,7 @@ export function MeetingsView() {
                           </label>
                         </div>
                       </div>
+                      )}
                       </div>
                     );
                   });
