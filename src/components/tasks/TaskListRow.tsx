@@ -37,6 +37,7 @@ interface TaskListRowProps {
   task: Task;
   subtasks?: Subtask[];
   assigneeName?: string;
+  hasMeetingLink?: boolean;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
@@ -54,6 +55,7 @@ export function TaskListRow({
   task,
   subtasks = [],
   assigneeName,
+  hasMeetingLink,
   onComplete,
   onSubtaskComplete,
   onNavigate,
@@ -230,6 +232,7 @@ export function TaskListRow({
             <Separator orientation="vertical" className="h-4 mx-1" />
             <TaskActionIcons
               taskId={task.id}
+              hasMeetingLink={hasMeetingLink}
               onReminder={onReminder}
               onAssign={onAssign}
               onComment={onComment}
