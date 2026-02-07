@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,8 @@ interface Meeting {
   meeting_time?: string | null;
   status: string;
   description?: string | null;
+  is_public?: boolean;
+  user_id?: string;
 }
 
 interface AgendaItem {
@@ -93,26 +95,25 @@ export function MyWorkJourFixeTab() {
     
     try {
       const now = new Date().toISOString();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const selectFields = "id, title, meeting_date, meeting_time, status, description, is_public, user_id";
       
-      // Load upcoming meetings
-      const { data: upcoming, error: upcomingError } = await supabase
+      // 1. Own meetings (creator) - upcoming
+      const { data: ownUpcoming } = await supabase
         .from("meetings")
-        .select("id, title, meeting_date, meeting_time, status, description")
+        .select(selectFields)
         .eq("user_id", user.id)
         .neq("status", "archived")
         .gte("meeting_date", now)
         .order("meeting_date", { ascending: true })
         .limit(20);
 
-      if (upcomingError) throw upcomingError;
-
-      // Load recent past meetings (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      const { data: past, error: pastError } = await supabase
+      // 2. Own meetings (creator) - past
+      const { data: ownPast } = await supabase
         .from("meetings")
-        .select("id, title, meeting_date, meeting_time, status, description")
+        .select(selectFields)
         .eq("user_id", user.id)
         .neq("status", "archived")
         .lt("meeting_date", now)
@@ -120,10 +121,60 @@ export function MyWorkJourFixeTab() {
         .order("meeting_date", { ascending: false })
         .limit(10);
 
-      if (pastError) throw pastError;
+      // 3. Participant meetings (where user is added as participant)
+      const { data: participantData } = await supabase
+        .from("meeting_participants")
+        .select(`meeting_id, meetings(${selectFields})`)
+        .eq("user_id", user.id);
 
-      setUpcomingMeetings(upcoming || []);
-      setPastMeetings(past || []);
+      // 4. Public meetings in tenant
+      const { data: publicMeetings } = await supabase
+        .from("meetings")
+        .select(selectFields)
+        .eq("is_public", true)
+        .neq("status", "archived")
+        .gte("meeting_date", thirtyDaysAgo.toISOString());
+
+      // Combine and deduplicate
+      const ownIds = new Set([
+        ...(ownUpcoming || []).map(m => m.id),
+        ...(ownPast || []).map(m => m.id)
+      ]);
+      
+      const participantMeetings = (participantData || [])
+        .filter((p: any) => p.meetings && !ownIds.has(p.meetings.id) && p.meetings.status !== 'archived')
+        .map((p: any) => p.meetings as Meeting);
+      
+      const allIds = new Set([...ownIds, ...participantMeetings.map(m => m.id)]);
+      const publicExtra = (publicMeetings || []).filter(m => !allIds.has(m.id));
+      
+      const allMeetings: Meeting[] = [
+        ...(ownUpcoming || []),
+        ...(ownPast || []),
+        ...participantMeetings,
+        ...publicExtra
+      ];
+
+      // Split into upcoming/past and deduplicate by id
+      const seenIds = new Set<string>();
+      const deduped = allMeetings.filter(m => {
+        if (seenIds.has(m.id)) return false;
+        seenIds.add(m.id);
+        return true;
+      });
+
+      const upcoming = deduped
+        .filter(m => new Date(m.meeting_date) >= new Date(now))
+        .sort((a, b) => new Date(a.meeting_date).getTime() - new Date(b.meeting_date).getTime())
+        .slice(0, 20);
+
+      const past = deduped
+        .filter(m => new Date(m.meeting_date) < new Date(now))
+        .sort((a, b) => new Date(b.meeting_date).getTime() - new Date(a.meeting_date).getTime())
+        .slice(0, 10);
+
+      setUpcomingMeetings(upcoming);
+      setPastMeetings(past);
     } catch (error) {
       console.error("Error loading meetings:", error);
     } finally {
@@ -293,6 +344,9 @@ export function MyWorkJourFixeTab() {
                 <span className={cn("font-medium text-sm truncate", getMeetingStatusColor(meeting))}>
                   {meeting.title}
                 </span>
+                {meeting.is_public && meeting.user_id !== user?.id && (
+                  <Globe className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                )}
                 {isToday(meetingDate) && (
                   <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-orange-100 text-orange-700">
                     Heute

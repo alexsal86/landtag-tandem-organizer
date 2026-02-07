@@ -31,6 +31,8 @@ interface Task {
   user_id: string;
   created_at: string;
   category?: string;
+  meeting_id?: string | null;
+  pending_for_jour_fixe?: boolean | null;
 }
 
 interface Subtask {
@@ -126,15 +128,17 @@ export function MyWorkTasksTab() {
       const allAssigned = assigned || [];
       const allCreated = created || [];
       
-      // Filter: created = tasks user created but are NOT assigned to them
-      const assignedIds = new Set(allAssigned.map(t => t.id));
-      const filteredCreated = allCreated.filter(t => !assignedIds.has(t.id));
+      // Links: Alle selbst erstellten Aufgaben (user_id = eigene ID)
+      const createdByMe = allCreated;
       
-      setAssignedTasks(allAssigned);
-      setCreatedTasks(filteredCreated);
+      // Rechts: Nur Aufgaben, die von ANDEREN erstellt und mir zugewiesen wurden
+      const assignedByOthers = allAssigned.filter(t => t.user_id !== user.id);
+      
+      setCreatedTasks(createdByMe);
+      setAssignedTasks(assignedByOthers);
 
       // Load subtasks for all tasks
-      const allTaskIds = [...allAssigned, ...filteredCreated].map(t => t.id);
+      const allTaskIds = [...new Set([...createdByMe, ...assignedByOthers].map(t => t.id))];
       if (allTaskIds.length > 0) {
         const { data: subtasksData, error: subtasksError } = await supabase
           .from("subtasks")
@@ -512,6 +516,7 @@ export function MyWorkTasksTab() {
                   key={task.id}
                   task={task}
                   subtasks={subtasks[task.id]}
+                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
                   onComplete={handleToggleComplete}
                   onSubtaskComplete={handleToggleSubtaskComplete}
                   onNavigate={(id) => navigate(`/tasks?id=${id}`)}
