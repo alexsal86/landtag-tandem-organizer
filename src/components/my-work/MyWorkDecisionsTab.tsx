@@ -1,52 +1,50 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
-import { UserBadge } from "@/components/ui/user-badge";
-import { Check, X, MessageCircle, Clock, Globe } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
+import { useTenant } from "@/hooks/useTenant";
+import { useToast } from "@/hooks/use-toast";
+import { useDecisionComments } from "@/hooks/useDecisionComments";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
-
-interface CreatorProfile {
-  user_id: string;
-  display_name: string | null;
-  badge_color: string | null;
-}
-
-interface Decision {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  created_at: string;
-  created_by: string;
-  participant_id: string | null;
-  hasResponded: boolean;
-  isCreator: boolean;
-  pendingCount: number;
-  responseType?: 'yes' | 'no' | 'question' | null;
-  isPublic?: boolean;
-  creator?: CreatorProfile;
-}
+import { DecisionEditDialog } from "@/components/task-decisions/DecisionEditDialog";
+import { DecisionComments } from "@/components/task-decisions/DecisionComments";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { MyWorkDecisionCard } from "./decisions/MyWorkDecisionCard";
+import { MyWorkDecisionSidebar } from "./decisions/MyWorkDecisionSidebar";
+import { MyWorkDecision, SidebarOpenQuestion, SidebarNewComment, getResponseSummary } from "./decisions/types";
 
 export function MyWorkDecisionsTab() {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [decisions, setDecisions] = useState<MyWorkDecision[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("for-me");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Dialog states
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
+  const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
+  const [creatingTaskId, setCreatingTaskId] = useState<string | null>(null);
+  const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
+  const [commentsDecisionTitle, setCommentsDecisionTitle] = useState("");
 
-  // Handle action parameter from URL
+  // Comment counts
+  const decisionIds = useMemo(() => decisions.map(d => d.id), [decisions]);
+  const { getCommentCount, refresh: refreshCommentCounts } = useDecisionComments(decisionIds);
+
+  // Handle URL action param
   useEffect(() => {
     const action = searchParams.get('action');
     if (action === 'create-decision') {
@@ -57,75 +55,50 @@ export function MyWorkDecisionsTab() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (user) {
-      loadDecisions();
-    }
+    if (user) loadDecisions();
   }, [user]);
 
   const loadDecisions = async () => {
     if (!user) return;
     
     try {
-      // Load decisions where user is participant
+      // Load participant decisions
       const { data: participantData, error: participantError } = await supabase
         .from("task_decision_participants")
         .select(`
           id,
           decision_id,
           task_decisions!inner (
-            id,
-            title,
-            description,
-            status,
-            created_at,
-            created_by
+            id, title, description, status, created_at, created_by, visible_to_all,
+            task_decision_attachments (count)
           ),
-          task_decision_responses (
-            id,
-            response_type
-          )
+          task_decision_responses (id, response_type)
         `)
         .eq("user_id", user.id)
         .in("task_decisions.status", ["active", "open"]);
 
       if (participantError) throw participantError;
 
-      // Load decisions created by user - include response types for summary
+      // Load creator decisions
       const { data: creatorData, error: creatorError } = await supabase
         .from("task_decisions")
         .select(`
-          id,
-          title,
-          description,
-          status,
-          created_at,
-          created_by,
-          task_decision_participants (
-            id,
-            task_decision_responses (id, response_type)
-          )
+          id, title, description, status, created_at, created_by, visible_to_all,
+          task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
+          task_decision_attachments (count)
         `)
         .eq("created_by", user.id)
         .in("status", ["active", "open"]);
 
       if (creatorError) throw creatorError;
 
-      // Load public decisions (visible_to_all = true) where user is not creator and not participant
+      // Load public decisions
       const { data: publicData, error: publicError } = await supabase
         .from("task_decisions")
         .select(`
-          id,
-          title,
-          description,
-          status,
-          created_at,
-          created_by,
-          visible_to_all,
-          task_decision_participants (
-            id,
-            user_id,
-            task_decision_responses (id, response_type)
-          )
+          id, title, description, status, created_at, created_by, visible_to_all,
+          task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
+          task_decision_attachments (count)
         `)
         .eq("visible_to_all", true)
         .in("status", ["active", "open"])
@@ -134,7 +107,7 @@ export function MyWorkDecisionsTab() {
       if (publicError) throw publicError;
 
       // Format participant decisions
-      const participantDecisions: Decision[] = (participantData || []).map((item: any) => ({
+      const participantDecisions: MyWorkDecision[] = (participantData || []).map((item: any) => ({
         id: item.task_decisions.id,
         title: item.task_decisions.title,
         description: item.task_decisions.description,
@@ -144,78 +117,47 @@ export function MyWorkDecisionsTab() {
         participant_id: item.id,
         hasResponded: item.task_decision_responses.length > 0,
         isCreator: item.task_decisions.created_by === user.id,
+        isParticipant: true,
         pendingCount: 0,
         responseType: item.task_decision_responses[0]?.response_type || null,
+        visible_to_all: item.task_decisions.visible_to_all,
+        attachmentCount: item.task_decisions.task_decision_attachments?.[0]?.count || 0,
       }));
 
-      // Format creator decisions and calculate pending + dominant response
-      const creatorDecisions: Decision[] = (creatorData || [])
-        .filter((item: any) => item.created_by === user.id)
-        .map((item: any) => {
-          const participants = item.task_decision_participants || [];
-          const responses = participants.flatMap((p: any) => p.task_decision_responses || []);
-          
-          const pendingCount = participants.filter(
-            (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0
-          ).length;
+      // Format creator decisions
+      const creatorDecisions: MyWorkDecision[] = (creatorData || []).map((item: any) => {
+        const participants = item.task_decision_participants || [];
+        const pendingCount = participants.filter(
+          (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0
+        ).length;
 
-          // Calculate dominant response for creator view
-          const hasQuestions = responses.some((r: any) => r.response_type === 'question');
-          const hasNo = responses.some((r: any) => r.response_type === 'no');
-          const allYes = responses.length > 0 && 
-                         participants.length === responses.length && 
-                         responses.every((r: any) => r.response_type === 'yes');
+        return {
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          status: item.status,
+          created_at: item.created_at,
+          created_by: item.created_by,
+          participant_id: null,
+          hasResponded: true,
+          isCreator: true,
+          isParticipant: false,
+          pendingCount,
+          visible_to_all: item.visible_to_all,
+          attachmentCount: item.task_decision_attachments?.[0]?.count || 0,
+        };
+      });
 
-          // Determine dominant response type for card color
-          let dominantResponse: 'yes' | 'no' | 'question' | null = null;
-          if (pendingCount === 0 && responses.length > 0) {
-            if (hasNo) dominantResponse = 'no';
-            else if (hasQuestions) dominantResponse = 'question';
-            else if (allYes) dominantResponse = 'yes';
-          }
-
-          return {
-            id: item.id,
-            title: item.title,
-            description: item.description,
-            status: item.status,
-            created_at: item.created_at,
-            created_by: item.created_by,
-            participant_id: null,
-            hasResponded: true,
-            isCreator: true,
-            pendingCount,
-            responseType: dominantResponse,
-          };
-        });
-
-      // Get participant decision IDs to filter public decisions
+      // Format public decisions
       const participantDecisionIds = new Set(participantDecisions.map(d => d.id));
-
-      // Format public decisions (exclude those where user is already participant)
-      const publicDecisions: Decision[] = (publicData || [])
+      const publicDecisions: MyWorkDecision[] = (publicData || [])
         .filter((item: any) => !participantDecisionIds.has(item.id))
         .map((item: any) => {
           const participants = item.task_decision_participants || [];
           const userParticipant = participants.find((p: any) => p.user_id === user.id);
-          const responses = participants.flatMap((p: any) => p.task_decision_responses || []);
           const pendingCount = participants.filter(
             (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0
           ).length;
-
-          // Calculate dominant response for public view
-          const hasQuestions = responses.some((r: any) => r.response_type === 'question');
-          const hasNo = responses.some((r: any) => r.response_type === 'no');
-          const allYes = responses.length > 0 && 
-                         participants.length === responses.length && 
-                         responses.every((r: any) => r.response_type === 'yes');
-
-          let dominantResponse: 'yes' | 'no' | 'question' | null = null;
-          if (pendingCount === 0 && responses.length > 0) {
-            if (hasNo) dominantResponse = 'no';
-            else if (hasQuestions) dominantResponse = 'question';
-            else if (allYes) dominantResponse = 'yes';
-          }
 
           return {
             id: item.id,
@@ -227,59 +169,117 @@ export function MyWorkDecisionsTab() {
             participant_id: userParticipant?.id || null,
             hasResponded: userParticipant ? userParticipant.task_decision_responses.length > 0 : true,
             isCreator: false,
+            isParticipant: !!userParticipant,
             pendingCount,
-            responseType: dominantResponse,
             isPublic: true,
+            visible_to_all: true,
+            attachmentCount: item.task_decision_attachments?.[0]?.count || 0,
           };
         });
 
       // Merge and deduplicate
-      const allDecisions = new Map<string, Decision>();
-      participantDecisions.forEach(d => allDecisions.set(d.id, d));
+      const allDecisionsMap = new Map<string, MyWorkDecision>();
+      participantDecisions.forEach(d => allDecisionsMap.set(d.id, d));
       creatorDecisions.forEach(d => {
-        if (!allDecisions.has(d.id)) {
-          allDecisions.set(d.id, d);
+        if (!allDecisionsMap.has(d.id)) {
+          allDecisionsMap.set(d.id, d);
         } else {
-          // Merge pendingCount
-          const existing = allDecisions.get(d.id)!;
+          const existing = allDecisionsMap.get(d.id)!;
           existing.pendingCount = d.pendingCount;
+          existing.isCreator = true;
         }
       });
-      // Add public decisions
       publicDecisions.forEach(d => {
-        if (!allDecisions.has(d.id)) {
-          allDecisions.set(d.id, d);
-        }
+        if (!allDecisionsMap.has(d.id)) allDecisionsMap.set(d.id, d);
       });
 
-      // Load creator profiles for all decisions
-      const allCreatorIds = [...new Set(Array.from(allDecisions.values()).map(d => d.created_by))];
-      const { data: creatorProfiles } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, badge_color')
-        .in('user_id', allCreatorIds);
+      const allDecisionsList = Array.from(allDecisionsMap.values());
+      const allDecisionIds = allDecisionsList.map(d => d.id);
 
-      const creatorProfileMap = new Map<string, CreatorProfile>(
-        creatorProfiles?.map(p => [p.user_id, p]) || []
-      );
+      if (allDecisionIds.length > 0) {
+        // Load participants with profiles and responses
+        const { data: participantsWithProfiles } = await supabase
+          .from('task_decision_participants')
+          .select(`
+            id, user_id, decision_id,
+            task_decision_responses (id, response_type, comment, creator_response, created_at)
+          `)
+          .in('decision_id', allDecisionIds);
 
-      // Add creator info to all decisions
-      allDecisions.forEach((decision, id) => {
-        decision.creator = creatorProfileMap.get(decision.created_by) || {
-          user_id: decision.created_by,
-          display_name: null,
-          badge_color: null,
-        };
-      });
+        // Load topics
+        const { data: topicsData } = await supabase
+          .from('task_decision_topics')
+          .select('decision_id, topic_id')
+          .in('decision_id', allDecisionIds);
 
-      // Sort: unanswered first, then by date
-      const sorted = Array.from(allDecisions.values()).sort((a, b) => {
-        if (!a.hasResponded && b.hasResponded) return -1;
-        if (a.hasResponded && !b.hasResponded) return 1;
+        // Load all user profiles
+        const allUserIds = [...new Set([
+          ...(participantsWithProfiles || []).map(p => p.user_id),
+          ...allDecisionsList.map(d => d.created_by),
+        ])];
+
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, badge_color, avatar_url')
+          .in('user_id', allUserIds);
+
+        const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+
+        // Build topics map
+        const topicsByDecision = new Map<string, string[]>();
+        topicsData?.forEach(t => {
+          if (!topicsByDecision.has(t.decision_id)) topicsByDecision.set(t.decision_id, []);
+          topicsByDecision.get(t.decision_id)!.push(t.topic_id);
+        });
+
+        // Build participants map
+        const participantsByDecision = new Map<string, any[]>();
+        participantsWithProfiles?.forEach(p => {
+          if (!participantsByDecision.has(p.decision_id)) participantsByDecision.set(p.decision_id, []);
+          participantsByDecision.get(p.decision_id)!.push({
+            id: p.id,
+            user_id: p.user_id,
+            profile: {
+              display_name: profileMap.get(p.user_id)?.display_name || null,
+              badge_color: profileMap.get(p.user_id)?.badge_color || null,
+              avatar_url: profileMap.get(p.user_id)?.avatar_url || null,
+            },
+            responses: (p.task_decision_responses || [])
+              .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .map((r: any) => ({ ...r, response_type: r.response_type as 'yes' | 'no' | 'question' })),
+          });
+        });
+
+        // Enrich decisions
+        allDecisionsList.forEach(d => {
+          d.participants = participantsByDecision.get(d.id) || [];
+          d.topicIds = topicsByDecision.get(d.id) || [];
+          const cp = profileMap.get(d.created_by);
+          d.creator = {
+            user_id: d.created_by,
+            display_name: cp?.display_name || null,
+            badge_color: cp?.badge_color || null,
+            avatar_url: cp?.avatar_url || null,
+          };
+        });
+      }
+
+      // Sort: unanswered first, then questions, then by date
+      allDecisionsList.sort((a, b) => {
+        const aUnanswered = a.isParticipant && !a.hasResponded;
+        const bUnanswered = b.isParticipant && !b.hasResponded;
+        if (aUnanswered && !bUnanswered) return -1;
+        if (!aUnanswered && bUnanswered) return 1;
+
+        const summA = getResponseSummary(a.participants);
+        const summB = getResponseSummary(b.participants);
+        if (summA.questionCount > 0 && summB.questionCount === 0) return -1;
+        if (summA.questionCount === 0 && summB.questionCount > 0) return 1;
+
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
-      setDecisions(sorted);
+      setDecisions(allDecisionsList);
     } catch (error) {
       console.error("Error loading decisions:", error);
     } finally {
@@ -287,162 +287,299 @@ export function MyWorkDecisionsTab() {
     }
   };
 
-  const getResponseIcon = (responseType: string | null | undefined) => {
-    switch (responseType) {
-      case 'yes': return <Check className="h-4 w-4 text-green-500" />;
-      case 'no': return <X className="h-4 w-4 text-red-600" />;
-      case 'question': return <MessageCircle className="h-4 w-4 text-yellow-500" />;
-      default: return <Clock className="h-4 w-4 text-muted-foreground" />;
+  // Tab counts
+  const tabCounts = useMemo(() => ({
+    forMe: decisions.filter(d => d.isParticipant && !d.hasResponded).length,
+    answered: decisions.filter(d => d.isParticipant && d.hasResponded && !d.isCreator).length,
+    myDecisions: decisions.filter(d => d.isCreator).length,
+    public: decisions.filter(d => d.visible_to_all && !d.isCreator && !d.isParticipant).length,
+  }), [decisions]);
+
+  // Filtered decisions
+  const filteredDecisions = useMemo(() => {
+    let filtered = decisions;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(d => 
+        d.title.toLowerCase().includes(q) || 
+        (d.description && d.description.toLowerCase().includes(q))
+      );
+    }
+
+    switch (activeTab) {
+      case "for-me":
+        return filtered.filter(d => d.isParticipant && !d.hasResponded);
+      case "answered":
+        return filtered.filter(d => d.isParticipant && d.hasResponded && !d.isCreator);
+      case "my-decisions":
+        return filtered.filter(d => d.isCreator);
+      case "public":
+        return filtered.filter(d => d.visible_to_all && !d.isCreator && !d.isParticipant);
+      default:
+        return filtered;
+    }
+  }, [decisions, activeTab, searchQuery]);
+
+  // Sidebar data
+  const sidebarData = useMemo(() => {
+    const openQuestions: SidebarOpenQuestion[] = [];
+    const newComments: SidebarNewComment[] = [];
+
+    decisions.forEach(decision => {
+      decision.participants?.forEach(participant => {
+        const latest = participant.responses[0];
+        if (!latest) return;
+
+        if (decision.isCreator && latest.response_type === 'question' && !latest.creator_response) {
+          openQuestions.push({
+            id: latest.id,
+            decisionId: decision.id,
+            decisionTitle: decision.title,
+            participantName: participant.profile?.display_name || null,
+            participantBadgeColor: participant.profile?.badge_color || null,
+            participantAvatarUrl: participant.profile?.avatar_url || null,
+            comment: latest.comment,
+          });
+        }
+
+        if (decision.isCreator && latest.comment && latest.response_type !== 'question') {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          if (new Date(latest.created_at) > sevenDaysAgo) {
+            newComments.push({
+              id: latest.id,
+              decisionId: decision.id,
+              decisionTitle: decision.title,
+              participantName: participant.profile?.display_name || null,
+              participantBadgeColor: participant.profile?.badge_color || null,
+              participantAvatarUrl: participant.profile?.avatar_url || null,
+              responseType: latest.response_type,
+              comment: latest.comment,
+            });
+          }
+        }
+      });
+    });
+
+    return { openQuestions, newComments };
+  }, [decisions]);
+
+  // Actions
+  const handleOpenDetails = (decisionId: string) => {
+    setSelectedDecisionId(decisionId);
+    setIsDetailsOpen(true);
+  };
+
+  const archiveDecision = async (decisionId: string) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ status: 'archived', archived_at: new Date().toISOString(), archived_by: user.id })
+        .eq('id', decisionId);
+      if (error) throw error;
+      toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
+      loadDecisions();
+    } catch (error) {
+      console.error('Error archiving:', error);
+      toast({ title: "Fehler", description: "Archivierung fehlgeschlagen.", variant: "destructive" });
     }
   };
 
-  const getBorderColor = (decision: Decision) => {
-    // Wenn User Teilnehmer ist: Farbe basiert auf eigener Antwort
-    if (decision.participant_id) {
-      if (!decision.hasResponded) return 'border-l-gray-400';
-      if (decision.responseType === 'question') return 'border-l-orange-500';
-      if (decision.responseType === 'yes') return 'border-l-green-500';
-      if (decision.responseType === 'no') return 'border-l-red-600';
-      return 'border-l-gray-400';
+  const handleDelete = async () => {
+    if (!deletingDecisionId) return;
+    try {
+      const { error } = await supabase.from('task_decisions').delete().eq('id', deletingDecisionId);
+      if (error) throw error;
+      toast({ title: "Gelöscht", description: "Entscheidung wurde gelöscht." });
+      setDeletingDecisionId(null);
+      loadDecisions();
+    } catch (error) {
+      console.error('Error deleting:', error);
+      toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
     }
+  };
+
+  const createTaskFromDecision = async (decision: MyWorkDecision) => {
+    if (!user?.id || !currentTenant?.id) return;
+    setCreatingTaskId(decision.id);
+    const summary = getResponseSummary(decision.participants);
     
-    // Wenn User Ersteller ist: basiert auf Gesamtergebnis
-    if (decision.isCreator) {
-      if (decision.responseType === 'question') return 'border-l-orange-500';
-      if (decision.pendingCount > 0) return 'border-l-gray-400';
-      if (decision.responseType === 'yes') return 'border-l-green-500';
-      if (decision.responseType === 'no') return 'border-l-red-600';
-      return 'border-l-gray-400';
+    let resultText = 'Ergebnis: ';
+    if (summary.yesCount > summary.noCount) resultText += 'Angenommen';
+    else if (summary.noCount > summary.yesCount) resultText += 'Abgelehnt';
+    else resultText += 'Unentschieden';
+    
+    try {
+      const { error } = await supabase.from('tasks').insert({
+        user_id: user.id,
+        title: `[Entscheidung] ${decision.title}`,
+        description: `<h3>Aus Entscheidung: ${decision.title}</h3><p><strong>${resultText}</strong> (Ja: ${summary.yesCount}, Nein: ${summary.noCount})</p>${decision.description ? `<div>${decision.description}</div>` : ''}`,
+        assigned_to: user.id,
+        tenant_id: currentTenant.id,
+        status: 'todo',
+        priority: 'medium',
+        category: 'personal'
+      });
+      if (error) throw error;
+      toast({ title: "Aufgabe erstellt", description: "Aufgabe wurde aus der Entscheidung erstellt." });
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast({ title: "Fehler", description: "Aufgabe konnte nicht erstellt werden.", variant: "destructive" });
+    } finally {
+      setCreatingTaskId(null);
     }
-    
-    // Öffentliche Entscheidung als Viewer: basiert auf Gesamtergebnis
-    if (decision.isPublic) {
-      if (decision.responseType === 'question') return 'border-l-orange-500';
-      if (decision.responseType === 'yes') return 'border-l-green-500';
-      if (decision.responseType === 'no') return 'border-l-red-600';
-      // Grau wenn noch Antworten ausstehen oder keine Antworten
-      if (decision.pendingCount > 0) return 'border-l-gray-400';
-    }
-    
-    return 'border-l-gray-400';
+  };
+
+  const emptyMessages: Record<string, string> = {
+    "for-me": "Keine offenen Entscheidungen für Sie.",
+    "answered": "Keine beantworteten Entscheidungen.",
+    "my-decisions": "Noch keine eigenen Entscheidungen erstellt.",
+    "public": "Keine öffentlichen Entscheidungen.",
   };
 
   if (loading) {
     return (
       <div className="space-y-2 p-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />
+          <div key={i} className="h-20 bg-muted animate-pulse rounded-md" />
         ))}
       </div>
     );
   }
 
-  const handleDecisionClick = (decisionId: string) => {
-    setSelectedDecisionId(decisionId);
-    setIsDetailsOpen(true);
-  };
-
-  const handleDetailsClose = () => {
-    setIsDetailsOpen(false);
-    setSelectedDecisionId(null);
-  };
-
-  const handleDecisionCreated = () => {
-    loadDecisions();
-  };
-
   return (
     <>
-      <ScrollArea className="h-[calc(100vh-20rem)]">
-        <div className="space-y-2 p-4">
-          {decisions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Keine offenen Entscheidungen</p>
-              <StandaloneDecisionCreator 
-                isOpen={isCreateOpen}
-                onOpenChange={setIsCreateOpen}
-                onDecisionCreated={handleDecisionCreated}
-                variant="button"
+      <div className="space-y-3 p-4">
+        {/* Search + Create */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Suchen..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+          <StandaloneDecisionCreator 
+            isOpen={isCreateOpen}
+            onOpenChange={setIsCreateOpen}
+            onDecisionCreated={loadDecisions}
+          />
+        </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-4 h-8">
+            <TabsTrigger value="for-me" className="text-[10px] px-1">
+              Für mich
+              {tabCounts.forMe > 0 && (
+                <Badge variant="destructive" className="ml-1 text-[9px] px-1 py-0 h-4">
+                  {tabCounts.forMe}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="answered" className="text-[10px] px-1">
+              Beantwortet ({tabCounts.answered})
+            </TabsTrigger>
+            <TabsTrigger value="my-decisions" className="text-[10px] px-1">
+              Von mir ({tabCounts.myDecisions})
+            </TabsTrigger>
+            <TabsTrigger value="public" className="text-[10px] px-1">
+              Öffentlich ({tabCounts.public})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={activeTab} className="mt-3">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4">
+              {/* Main cards */}
+              <ScrollArea className="h-[calc(100vh-22rem)]">
+                {filteredDecisions.length === 0 ? (
+                  <div className="text-center py-8 text-xs text-muted-foreground">
+                    {emptyMessages[activeTab] || "Keine Entscheidungen."}
+                  </div>
+                ) : (
+                  <div className="space-y-2 pr-2">
+                    {filteredDecisions.map(decision => (
+                      <MyWorkDecisionCard
+                        key={decision.id}
+                        decision={decision}
+                        onOpenDetails={handleOpenDetails}
+                        onEdit={setEditingDecisionId}
+                        onArchive={archiveDecision}
+                        onDelete={setDeletingDecisionId}
+                        onCreateTask={createTaskFromDecision}
+                        onResponseSubmitted={loadDecisions}
+                        onOpenComments={(id, title) => { setCommentsDecisionId(id); setCommentsDecisionTitle(title); }}
+                        commentCount={getCommentCount(decision.id)}
+                        creatingTaskId={creatingTaskId}
+                        currentUserId={user?.id || ""}
+                      />
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+
+              {/* Sidebar */}
+              <MyWorkDecisionSidebar
+                openQuestions={sidebarData.openQuestions}
+                newComments={sidebarData.newComments}
+                onQuestionClick={handleOpenDetails}
+                onCommentClick={handleOpenDetails}
+                onResponseSent={loadDecisions}
               />
             </div>
-          ) : (
-            decisions.map((decision) => (
-              <div
-                key={decision.id}
-                onClick={() => handleDecisionClick(decision.id)}
-                className={cn(
-                  "flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer",
-                  "border-l-4",
-                  getBorderColor(decision)
-                )}
-              >
-                <div className="mt-0.5">
-                  {getResponseIcon(decision.responseType)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-sm">{decision.title}</span>
-                    {decision.isPublic && (
-                      <Badge variant="outline" className="text-xs gap-1">
-                        <Globe className="h-3 w-3" />
-                        Öffentlich
-                      </Badge>
-                    )}
-                    {!decision.hasResponded && (
-                      <Badge variant="destructive" className="text-xs">Ausstehend</Badge>
-                    )}
-                    {decision.isCreator && decision.pendingCount > 0 && (
-                      <Badge variant="secondary" className="text-xs">
-                        {decision.pendingCount} warten
-                      </Badge>
-                    )}
-                  </div>
-                  {decision.description && (
-                    <RichTextDisplay 
-                      content={decision.description} 
-                      className="text-xs line-clamp-1 mt-0.5" 
-                    />
-                  )}
-                  <div className="flex items-center gap-2 flex-wrap mt-1">
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(decision.created_at), "dd.MM.yyyy", { locale: de })}
-                    </p>
-                    {decision.creator && !decision.isCreator && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <span>·</span>
-                        <span>Von:</span>
-                        <UserBadge 
-                          userId={decision.creator.user_id}
-                          displayName={decision.creator.display_name}
-                          badgeColor={decision.creator.badge_color}
-                          size="sm"
-                        />
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </ScrollArea>
+          </TabsContent>
+        </Tabs>
+      </div>
 
-      {/* Decision Details Popup */}
-      <TaskDecisionDetails
-        decisionId={selectedDecisionId}
-        isOpen={isDetailsOpen}
-        onClose={handleDetailsClose}
-        onArchived={loadDecisions}
-      />
-
-      {/* Create Decision Dialog - only show when there are decisions (otherwise it's in the empty state) */}
-      {decisions.length > 0 && (
-        <StandaloneDecisionCreator 
-          isOpen={isCreateOpen}
-          onOpenChange={setIsCreateOpen}
-          onDecisionCreated={handleDecisionCreated}
+      {/* Dialogs */}
+      {selectedDecisionId && (
+        <TaskDecisionDetails
+          decisionId={selectedDecisionId}
+          isOpen={isDetailsOpen}
+          onClose={() => { setIsDetailsOpen(false); setSelectedDecisionId(null); }}
+          onArchived={loadDecisions}
         />
       )}
+
+      {editingDecisionId && (
+        <DecisionEditDialog
+          decisionId={editingDecisionId}
+          isOpen={true}
+          onClose={() => setEditingDecisionId(null)}
+          onUpdated={() => { setEditingDecisionId(null); loadDecisions(); }}
+        />
+      )}
+
+      {commentsDecisionId && (
+        <DecisionComments
+          decisionId={commentsDecisionId}
+          decisionTitle={commentsDecisionTitle}
+          isOpen={!!commentsDecisionId}
+          onClose={() => setCommentsDecisionId(null)}
+          onCommentAdded={() => { refreshCommentCounts(); loadDecisions(); }}
+        />
+      )}
+
+      <AlertDialog open={!!deletingDecisionId} onOpenChange={() => setDeletingDecisionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Entscheidung löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Diese Aktion löscht die Entscheidung unwiderruflich mit allen Antworten und Kommentaren.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
