@@ -19,12 +19,11 @@ import {
 import { 
   X, Keyboard, ChevronDown, ChevronUp, CheckCircle, 
   ArrowUp, ArrowDown, CornerDownRight, StickyNote,
-  Maximize2, Users, Archive, Star
+  Maximize2, Users, Archive, CalendarDays, ListTodo
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { FocusModeUpcomingAppointments, FocusModeUpcomingAppointmentsHandle } from './FocusModeUpcomingAppointments';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 
 interface AgendaItem {
@@ -102,17 +101,81 @@ export function FocusModeView({
   const [showLegend, setShowLegend] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
-  const [focusedAppointmentIndex, setFocusedAppointmentIndex] = useState(-1);
-  const [appointmentsCount, setAppointmentsCount] = useState(0);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const mainContainerRef = useRef<HTMLDivElement>(null);
-  const upcomingApptsRef = useRef<FocusModeUpcomingAppointmentsHandle>(null);
   // Ref to track when dialog just closed to prevent Enter from marking items
   const justClosedDialogRef = useRef(false);
 
   // Build flat list of all navigable items (main items + sub-items + system sub-items)
   const allNavigableItems: NavigableItem[] = useMemo(() => {
     const result: NavigableItem[] = [];
+  // Helper to inject system children (notes/appointments/tasks) under a system item
+  const injectSystemChildren = (
+    result: NavigableItem[],
+    systemItem: AgendaItem,
+    parentForChildren: AgendaItem
+  ) => {
+    if (systemItem.system_type === 'quick_notes' && linkedQuickNotes.length > 0) {
+      linkedQuickNotes.forEach((note, i) => {
+        result.push({
+          item: {
+            id: `note-${note.id}`,
+            title: note.title || `Notiz ${i + 1}`,
+            is_completed: false,
+            order_index: systemItem.order_index + i + 1,
+            system_type: 'quick_note_item',
+          } as AgendaItem,
+          isSubItem: true,
+          parentItem: parentForChildren,
+          globalIndex: -1,
+          isSystemSubItem: true,
+          sourceId: note.id,
+          sourceType: 'quick_note',
+          sourceData: note
+        });
+      });
+    }
+    if (systemItem.system_type === 'upcoming_appointments' && upcomingAppointments.length > 0) {
+      upcomingAppointments.forEach((appt, i) => {
+        result.push({
+          item: {
+            id: `appt-${appt.id}`,
+            title: appt.title || `Termin ${i + 1}`,
+            is_completed: false,
+            order_index: systemItem.order_index + i + 1,
+            system_type: 'appointment_item',
+          } as AgendaItem,
+          isSubItem: true,
+          parentItem: parentForChildren,
+          globalIndex: -1,
+          isSystemSubItem: true,
+          sourceId: appt.id,
+          sourceType: 'appointment',
+          sourceData: appt
+        });
+      });
+    }
+    if (systemItem.system_type === 'tasks' && linkedTasks.length > 0) {
+      linkedTasks.forEach((task, i) => {
+        result.push({
+          item: {
+            id: `task-${task.id}`,
+            title: task.title || `Aufgabe ${i + 1}`,
+            is_completed: false,
+            order_index: systemItem.order_index + i + 1,
+            system_type: 'task_item',
+          } as AgendaItem,
+          isSubItem: true,
+          parentItem: parentForChildren,
+          globalIndex: -1,
+          isSystemSubItem: true,
+          sourceId: task.id,
+          sourceType: 'task',
+          sourceData: task
+        });
+      });
+    }
+  };
     
     // Get main items (no parent)
     const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
@@ -127,85 +190,40 @@ export function FocusModeView({
         isSystemSubItem: false
       });
       
-      // Get regular sub-items for this main item (excluding system sub-items)
-      const subItems = agendaItems.filter(sub => 
-        (sub.parent_id === mainItem.id || sub.parentLocalKey === mainItem.id) &&
-        !sub.system_type
-      );
+      // Get ALL sub-items for this main item (INCLUDING system_type)
+      const allSubItems = agendaItems.filter(sub => 
+        sub.parent_id === mainItem.id || sub.parentLocalKey === mainItem.id
+      ).sort((a, b) => a.order_index - b.order_index);
       
-      subItems.forEach(subItem => {
+      allSubItems.forEach(subItem => {
         const subGlobalIndex = agendaItems.findIndex(i => i.id === subItem.id);
-        result.push({ 
-          item: subItem, 
-          isSubItem: true, 
-          parentItem: mainItem,
-          globalIndex: subGlobalIndex,
-          isSystemSubItem: false
-        });
+        
+        if (subItem.system_type) {
+          // System sub-item: add as navigable point
+          result.push({
+            item: subItem,
+            isSubItem: true,
+            parentItem: mainItem,
+            globalIndex: subGlobalIndex,
+            isSystemSubItem: false
+          });
+          // Then inject its children (notes/appointments/tasks)
+          injectSystemChildren(result, subItem, subItem);
+        } else {
+          // Regular sub-item
+          result.push({ 
+            item: subItem, 
+            isSubItem: true, 
+            parentItem: mainItem,
+            globalIndex: subGlobalIndex,
+            isSystemSubItem: false
+          });
+        }
       });
       
-      // Add individual system sub-items as navigable elements
-      if (mainItem.system_type === 'quick_notes' && linkedQuickNotes.length > 0) {
-        linkedQuickNotes.forEach((note, noteIndex) => {
-          result.push({
-            item: {
-              id: `note-${note.id}`,
-              title: note.title || `Notiz ${noteIndex + 1}`,
-              is_completed: false,
-              order_index: mainItem.order_index + noteIndex + 1,
-              system_type: 'quick_note_item',
-            } as AgendaItem,
-            isSubItem: true,
-            parentItem: mainItem,
-            globalIndex: -1, // Virtual items don't have a real index
-            isSystemSubItem: true,
-            sourceId: note.id,
-            sourceType: 'quick_note',
-            sourceData: note
-          });
-        });
-      }
-      
-      if (mainItem.system_type === 'upcoming_appointments' && upcomingAppointments.length > 0) {
-        upcomingAppointments.forEach((appt, apptIndex) => {
-          result.push({
-            item: {
-              id: `appt-${appt.id}`,
-              title: appt.title || `Termin ${apptIndex + 1}`,
-              is_completed: false,
-              order_index: mainItem.order_index + apptIndex + 1,
-              system_type: 'appointment_item',
-            } as AgendaItem,
-            isSubItem: true,
-            parentItem: mainItem,
-            globalIndex: -1,
-            isSystemSubItem: true,
-            sourceId: appt.id,
-            sourceType: 'appointment',
-            sourceData: appt
-          });
-        });
-      }
-      
-      if (mainItem.system_type === 'tasks' && linkedTasks.length > 0) {
-        linkedTasks.forEach((task, taskIndex) => {
-          result.push({
-            item: {
-              id: `task-${task.id}`,
-              title: task.title || `Aufgabe ${taskIndex + 1}`,
-              is_completed: false,
-              order_index: mainItem.order_index + taskIndex + 1,
-              system_type: 'task_item',
-            } as AgendaItem,
-            isSubItem: true,
-            parentItem: mainItem,
-            globalIndex: -1,
-            isSystemSubItem: true,
-            sourceId: task.id,
-            sourceType: 'task',
-            sourceData: task
-          });
-        });
+      // If the main item itself is a system type, inject children
+      if (mainItem.system_type) {
+        injectSystemChildren(result, mainItem, mainItem);
       }
     });
     
@@ -289,49 +307,12 @@ export function FocusModeView({
         case 'ArrowDown':
         case 'j':
           e.preventDefault();
-          // If we're in appointment navigation mode, move within appointments
-          if (currentItem?.system_type === 'upcoming_appointments' && focusedAppointmentIndex >= 0) {
-            setFocusedAppointmentIndex(prev => Math.min(prev + 1, appointmentsCount - 1));
-          } else {
-            setFlatFocusIndex(prev => Math.min(prev + 1, allNavigableItems.length - 1));
-            setFocusedAppointmentIndex(-1); // Reset appointment navigation
-          }
+          setFlatFocusIndex(prev => Math.min(prev + 1, allNavigableItems.length - 1));
           break;
         case 'ArrowUp':
         case 'k':
           e.preventDefault();
-          // If we're in appointment navigation mode, move within appointments
-          if (currentItem?.system_type === 'upcoming_appointments' && focusedAppointmentIndex >= 0) {
-            setFocusedAppointmentIndex(prev => Math.max(prev - 1, 0));
-          } else {
-            setFlatFocusIndex(prev => Math.max(prev - 1, 0));
-            setFocusedAppointmentIndex(-1); // Reset appointment navigation
-          }
-          break;
-        case 'n':
-          e.preventDefault();
-          // Next appointment within system item OR next navigable item
-          if (currentItem?.system_type === 'upcoming_appointments') {
-            if (focusedAppointmentIndex < 0) {
-              setFocusedAppointmentIndex(0);
-            } else if (appointmentsCount > 0) {
-              setFocusedAppointmentIndex(prev => Math.min(prev + 1, appointmentsCount - 1));
-            }
-          }
-          break;
-        case 'p':
-          e.preventDefault();
-          // Previous appointment within system item
-          if (currentItem?.system_type === 'upcoming_appointments' && focusedAppointmentIndex >= 0) {
-            setFocusedAppointmentIndex(prev => Math.max(prev - 1, 0));
-          }
-          break;
-        case 's':
-          e.preventDefault();
-          // Toggle star for focused appointment
-          if (currentItem?.system_type === 'upcoming_appointments' && focusedAppointmentIndex >= 0) {
-            upcomingApptsRef.current?.toggleStarAtIndex(focusedAppointmentIndex);
-          }
+          setFlatFocusIndex(prev => Math.max(prev - 1, 0));
           break;
         case 'PageDown':
         case 'd':
@@ -408,12 +389,7 @@ export function FocusModeView({
           break;
         case 'Escape':
           e.preventDefault();
-          // If in appointment navigation mode, exit it first
-          if (focusedAppointmentIndex >= 0) {
-            setFocusedAppointmentIndex(-1);
-          } else {
-            onClose();
-          }
+          onClose();
           break;
         case '?':
           e.preventDefault();
@@ -424,7 +400,7 @@ export function FocusModeView({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [flatFocusIndex, allNavigableItems.length, currentItem, currentGlobalIndex, currentNavigable, onUpdateItem, onUpdateResult, onClose, showAssignDialog, focusedAppointmentIndex, appointmentsCount]);
+  }, [flatFocusIndex, allNavigableItems.length, currentItem, currentGlobalIndex, currentNavigable, onUpdateItem, onUpdateResult, onClose, showAssignDialog]);
 
   // Auto-scroll to focused item
   useEffect(() => {
@@ -435,13 +411,6 @@ export function FocusModeView({
       });
     }
   }, [flatFocusIndex]);
-
-  // Reset appointment focus when leaving upcoming_appointments item
-  useEffect(() => {
-    if (currentItem?.system_type !== 'upcoming_appointments') {
-      setFocusedAppointmentIndex(-1);
-    }
-  }, [currentItem?.system_type]);
 
   const getDisplayName = (userId: string) => {
     const profile = profiles.find(p => p.user_id === userId);
@@ -477,6 +446,12 @@ export function FocusModeView({
       // Get result for this system sub-item
       const getSubItemResult = () => {
         if (sourceType === 'quick_note') return sourceData.meeting_result || '';
+        if (sourceType === 'appointment' && parentItem) {
+          try {
+            const results = JSON.parse(parentItem.result_text || '{}');
+            return results[sourceData.id] || '';
+          } catch { return ''; }
+        }
         if (sourceType === 'task' && parentItem) {
           try {
             const results = JSON.parse(parentItem.result_text || '{}');
@@ -489,7 +464,7 @@ export function FocusModeView({
       const updateSubItemResult = (value: string) => {
         if (sourceType === 'quick_note' && onUpdateNoteResult) {
           onUpdateNoteResult(sourceData.id, value);
-        } else if (sourceType === 'task' && parentItem?.id) {
+        } else if ((sourceType === 'task' || sourceType === 'appointment') && parentItem?.id) {
           try {
             const results = JSON.parse(parentItem.result_text || '{}');
             results[sourceData.id] = value;
@@ -519,7 +494,9 @@ export function FocusModeView({
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <CornerDownRight className="h-4 w-4 text-muted-foreground" />
+                {sourceType === 'quick_note' && <StickyNote className="h-3.5 w-3.5 text-amber-500" />}
+                {sourceType === 'appointment' && <CalendarDays className="h-3.5 w-3.5 text-blue-500" />}
+                {sourceType === 'task' && <ListTodo className="h-3.5 w-3.5 text-green-500" />}
                 <span className="text-sm font-medium">{item.title}</span>
               </div>
               {sourceType === 'quick_note' && sourceData.content && (
@@ -554,7 +531,7 @@ export function FocusModeView({
               )}
 
               {/* Result input for focused system sub-item */}
-              {isFocused && (sourceType === 'quick_note' || sourceType === 'task') && (
+              {isFocused && (sourceType === 'quick_note' || sourceType === 'task' || sourceType === 'appointment') && (
                 <div className="mt-4 pt-3 border-t">
                   <label className="text-sm font-medium block mb-2">Ergebnis / Notizen</label>
                   <Textarea
@@ -584,7 +561,10 @@ export function FocusModeView({
         ref={el => itemRefs.current[navIndex] = el}
         className={cn(
           "p-6 rounded-xl border transition-all duration-300",
-          isSubItem && "ml-8 border-l-4 border-l-primary/30",
+          isSubItem && !item.system_type && "ml-8 border-l-4 border-l-primary/30",
+          isSubItem && item.system_type === 'upcoming_appointments' && "ml-8 border-l-4 border-l-blue-500",
+          isSubItem && item.system_type === 'quick_notes' && "ml-8 border-l-4 border-l-amber-500",
+          isSubItem && item.system_type === 'tasks' && "ml-8 border-l-4 border-l-green-500",
           isFocused && "ring-2 ring-primary bg-primary/5 scale-[1.01] shadow-lg",
           item.is_completed && "bg-muted/50",
           !isFocused && !item.is_completed && "bg-card hover:bg-muted/30"
@@ -604,8 +584,17 @@ export function FocusModeView({
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              {isSubItem && (
+              {isSubItem && !item.system_type && (
                 <CornerDownRight className="h-4 w-4 text-muted-foreground" />
+              )}
+              {item.system_type === 'upcoming_appointments' && (
+                <CalendarDays className="h-4 w-4 text-blue-500" />
+              )}
+              {item.system_type === 'quick_notes' && (
+                <StickyNote className="h-4 w-4 text-amber-500" />
+              )}
+              {item.system_type === 'tasks' && (
+                <ListTodo className="h-4 w-4 text-green-500" />
               )}
               <span className={cn(
                 isSubItem ? "text-base" : "text-lg font-semibold",
@@ -645,16 +634,11 @@ export function FocusModeView({
               </div>
             )}
 
-            {/* System content: Upcoming Appointments - keep full view for appointments */}
-            {item.system_type === 'upcoming_appointments' && (
-              <div className="mt-4">
-                <FocusModeUpcomingAppointments 
-                  ref={upcomingApptsRef}
-                  meetingDate={meeting.meeting_date}
-                  meetingId={meeting.id}
-                  focusedIndex={isFocused ? focusedAppointmentIndex : -1}
-                  onAppointmentsLoaded={setAppointmentsCount}
-                />
+            {/* System content: Upcoming Appointments - show count info */}
+            {item.system_type === 'upcoming_appointments' && upcomingAppointments.length > 0 && (
+              <div className="mt-3 text-sm text-muted-foreground flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-blue-500" />
+                {upcomingAppointments.length} {upcomingAppointments.length === 1 ? 'Termin' : 'Termine'} — einzeln navigierbar
               </div>
             )}
 
@@ -867,27 +851,7 @@ export function FocusModeView({
               </div>
             </div>
             
-            {/* Star navigation section */}
-            <div className="border-t pt-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Star className="h-4 w-4 text-amber-500" />
-                <span className="text-sm font-medium">Bei "Kommende Termine"</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-3 p-2 rounded bg-amber-50 dark:bg-amber-950/30">
-                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">n</kbd>
-                  <span className="text-sm">Nächster Termin</span>
-                </div>
-                <div className="flex items-center gap-3 p-2 rounded bg-amber-50 dark:bg-amber-950/30">
-                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">p</kbd>
-                  <span className="text-sm">Vorheriger Termin</span>
-                </div>
-                <div className="flex items-center gap-3 p-2 rounded bg-amber-50 dark:bg-amber-950/30 col-span-2">
-                  <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">s</kbd>
-                  <span className="text-sm">Stern setzen/entfernen</span>
-                </div>
-              </div>
-            </div>
+            
           </div>
         </DialogContent>
       </Dialog>
