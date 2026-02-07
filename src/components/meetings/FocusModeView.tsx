@@ -25,7 +25,6 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { FocusModeUpcomingAppointments, FocusModeUpcomingAppointmentsHandle } from './FocusModeUpcomingAppointments';
-import { SystemAgendaItem } from './SystemAgendaItem';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 
 interface AgendaItem {
@@ -76,6 +75,7 @@ interface FocusModeViewProps {
   onClose: () => void;
   onUpdateItem: (index: number, field: keyof AgendaItem, value: any) => void;
   onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => void;
+  onUpdateNoteResult?: (noteId: string, result: string) => void;
   onArchive: () => void;
 }
 
@@ -95,6 +95,7 @@ export function FocusModeView({
   onClose,
   onUpdateItem,
   onUpdateResult,
+  onUpdateNoteResult,
   onArchive
 }: FocusModeViewProps) {
   const [flatFocusIndex, setFlatFocusIndex] = useState(0);
@@ -471,8 +472,34 @@ export function FocusModeView({
     const { item, isSubItem, parentItem, isSystemSubItem, sourceType, sourceData } = navigable;
     const isFocused = navIndex === flatFocusIndex;
     
-    // Render system sub-items (individual notes, appointments, tasks) differently
+    // Render system sub-items (individual notes, appointments, tasks) as autonomous items
     if (isSystemSubItem && sourceData) {
+      // Get result for this system sub-item
+      const getSubItemResult = () => {
+        if (sourceType === 'quick_note') return sourceData.meeting_result || '';
+        if (sourceType === 'task' && parentItem) {
+          try {
+            const results = JSON.parse(parentItem.result_text || '{}');
+            return results[sourceData.id] || '';
+          } catch { return ''; }
+        }
+        return '';
+      };
+
+      const updateSubItemResult = (value: string) => {
+        if (sourceType === 'quick_note' && onUpdateNoteResult) {
+          onUpdateNoteResult(sourceData.id, value);
+        } else if (sourceType === 'task' && parentItem?.id) {
+          try {
+            const results = JSON.parse(parentItem.result_text || '{}');
+            results[sourceData.id] = value;
+            onUpdateResult(parentItem.id, 'result_text', JSON.stringify(results));
+          } catch {
+            onUpdateResult(parentItem.id, 'result_text', JSON.stringify({ [sourceData.id]: value }));
+          }
+        }
+      };
+
       return (
         <div
           key={item.id || navIndex}
@@ -496,7 +523,9 @@ export function FocusModeView({
                 <span className="text-sm font-medium">{item.title}</span>
               </div>
               {sourceType === 'quick_note' && sourceData.content && (
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{sourceData.content}</p>
+                <div className="mt-1">
+                  <RichTextDisplay content={sourceData.content} className="text-sm text-muted-foreground line-clamp-2" />
+                </div>
               )}
               {sourceType === 'appointment' && (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -505,17 +534,36 @@ export function FocusModeView({
                 </p>
               )}
               {sourceType === 'task' && (
-                <div className="flex items-center gap-2 mt-1">
-                  {sourceData.due_date && (
-                    <span className="text-xs text-muted-foreground">
-                      Frist: {format(new Date(sourceData.due_date), "dd.MM.yyyy", { locale: de })}
-                    </span>
+                <div className="mt-1">
+                  {sourceData.description && (
+                    <RichTextDisplay content={sourceData.description} className="text-sm text-muted-foreground" />
                   )}
-                  {sourceData.priority && (
-                    <Badge variant="outline" className="text-xs">
-                      {sourceData.priority}
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    {sourceData.due_date && (
+                      <span className="text-xs text-muted-foreground">
+                        Frist: {format(new Date(sourceData.due_date), "dd.MM.yyyy", { locale: de })}
+                      </span>
+                    )}
+                    {sourceData.priority && (
+                      <Badge variant="outline" className="text-xs">
+                        {sourceData.priority}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Result input for focused system sub-item */}
+              {isFocused && (sourceType === 'quick_note' || sourceType === 'task') && (
+                <div className="mt-4 pt-3 border-t">
+                  <label className="text-sm font-medium block mb-2">Ergebnis / Notizen</label>
+                  <Textarea
+                    id={`result-input-${item.id}`}
+                    value={getSubItemResult()}
+                    onChange={(e) => updateSubItemResult(e.target.value)}
+                    placeholder="Was wurde besprochen? Was sind die nächsten Schritte?"
+                    className="min-h-[80px]"
+                  />
                 </div>
               )}
             </div>
@@ -523,12 +571,6 @@ export function FocusModeView({
         </div>
       );
     }
-    
-    // Get system sub-items to render inline (only for main items)
-    const systemSubItems = !isSubItem ? agendaItems.filter(sub => 
-      (sub.parent_id === item.id || sub.parentLocalKey === item.id) &&
-      sub.system_type
-    ) : [];
     
     // Get regular sub-items for display (only for main items that are NOT sub-items themselves)
     const regularSubItems = !isSubItem ? agendaItems.filter(sub => 
@@ -603,7 +645,7 @@ export function FocusModeView({
               </div>
             )}
 
-            {/* System content: Upcoming Appointments */}
+            {/* System content: Upcoming Appointments - keep full view for appointments */}
             {item.system_type === 'upcoming_appointments' && (
               <div className="mt-4">
                 <FocusModeUpcomingAppointments 
@@ -616,25 +658,17 @@ export function FocusModeView({
               </div>
             )}
 
-            {/* System content: Quick Notes */}
+            {/* System content: Quick Notes - show count info, items are rendered as separate navigable entries */}
             {item.system_type === 'quick_notes' && linkedQuickNotes.length > 0 && (
-              <div className="mt-4">
-                <SystemAgendaItem 
-                  systemType="quick_notes"
-                  linkedQuickNotes={linkedQuickNotes}
-                  isEmbedded={true}
-                />
+              <div className="mt-3 text-sm text-muted-foreground">
+                {linkedQuickNotes.length} {linkedQuickNotes.length === 1 ? 'Notiz' : 'Notizen'} — einzeln navigierbar
               </div>
             )}
 
-            {/* System content: Tasks */}
-            {item.system_type === 'tasks' && (
-              <div className="mt-4">
-                <SystemAgendaItem 
-                  systemType="tasks"
-                  linkedTasks={linkedTasks}
-                  isEmbedded={true}
-                />
+            {/* System content: Tasks - show count info, items are rendered as separate navigable entries */}
+            {item.system_type === 'tasks' && linkedTasks.length > 0 && (
+              <div className="mt-3 text-sm text-muted-foreground">
+                {linkedTasks.length} {linkedTasks.length === 1 ? 'Aufgabe' : 'Aufgaben'} — einzeln navigierbar
               </div>
             )}
 
@@ -648,52 +682,15 @@ export function FocusModeView({
               </div>
             )}
 
-            {/* Show sub-item count for main items (sub-items shown separately in flat list) */}
+            {/* Show sub-item count for main items */}
             {!isSubItem && regularSubItems.length > 0 && (
               <div className="mt-3 text-sm text-muted-foreground">
                 {regularSubItems.filter(s => s.is_completed).length} von {regularSubItems.length} Unterpunkten besprochen
               </div>
             )}
 
-            {/* System sub-items (render inline) */}
-            {systemSubItems.map((sub, subIndex) => (
-              <div 
-                key={sub.id || subIndex}
-                className={cn(
-                  "mt-4 pl-4 border-l-2",
-                  sub.system_type === 'upcoming_appointments' 
-                    ? "border-l-blue-500" 
-                    : sub.system_type === 'quick_notes'
-                      ? "border-l-amber-500"
-                      : sub.system_type === 'tasks'
-                        ? "border-l-green-500"
-                        : "border-muted"
-                )}
-              >
-                {sub.system_type === 'upcoming_appointments' ? (
-                  <FocusModeUpcomingAppointments 
-                    meetingDate={meeting.meeting_date}
-                    meetingId={meeting.id}
-                    focusedIndex={-1}
-                  />
-                ) : sub.system_type === 'quick_notes' ? (
-                  <SystemAgendaItem 
-                    systemType="quick_notes"
-                    linkedQuickNotes={linkedQuickNotes}
-                    isEmbedded={true}
-                  />
-                ) : sub.system_type === 'tasks' ? (
-                  <SystemAgendaItem 
-                    systemType="tasks"
-                    linkedTasks={linkedTasks}
-                    isEmbedded={true}
-                  />
-                ) : null}
-              </div>
-            ))}
-
-            {/* Result input (expanded for focused item) */}
-            {isFocused && (
+            {/* Result input (expanded for focused item) - hide for system items with sub-items */}
+            {isFocused && !item.system_type && (
               <div className="mt-4 pt-4 border-t">
                 <label className="text-sm font-medium block mb-2">Ergebnis / Notizen</label>
                 <Textarea
