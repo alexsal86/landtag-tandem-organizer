@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe, Star, MessageSquarePlus } from "lucide-react";
+import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe, Star, MessageSquarePlus, ChevronRight } from "lucide-react";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { format, startOfDay, endOfDay, addDays } from "date-fns";
 import { de } from "date-fns/locale";
@@ -1824,7 +1825,7 @@ export function MeetingsView() {
     setAgendaItems(next);
   };
 
-  const addSystemAgendaItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks', parentItem?: AgendaItem) => {
+  const addSystemAgendaItem = async (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks', parentItem?: AgendaItem) => {
     if (!selectedMeeting?.id) return;
     
     // Check if already exists
@@ -1842,46 +1843,110 @@ export function MeetingsView() {
       'quick_notes': 'Meine Notizen',
       'tasks': 'Aufgaben'
     };
-    
-    const localKey = `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-    const newItem: AgendaItem = {
-      title: titles[systemType],
-      description: "",
-      assigned_to: [],
-      notes: "",
-      is_completed: false,
-      is_recurring: false,
-      order_index: 0, // will be reindexed
-      localKey,
-      system_type: systemType,
-      parent_id: parentItem?.id || null,
-      parentLocalKey: parentItem?.id || parentItem?.localKey || undefined,
-    };
 
-    if (parentItem) {
-      // Insert right after parent and its existing children
-      const parentKey = parentItem.id || parentItem.localKey;
-      const parentIndex = agendaItems.findIndex(
-        item => item.id === parentItem.id || item.localKey === parentItem.localKey
-      );
-      let insertIndex = parentIndex + 1;
-      while (insertIndex < agendaItems.length && 
-             (agendaItems[insertIndex].parent_id === parentItem.id || 
-              agendaItems[insertIndex].parentLocalKey === parentKey)) {
-        insertIndex++;
+    try {
+      let parentId: string | null = null;
+      let parentIndex = -1;
+
+      if (parentItem) {
+        parentId = parentItem.id || null;
+        parentIndex = agendaItems.findIndex(
+          item => item.id === parentItem.id || item.localKey === parentItem.localKey
+        );
+
+        // If parent doesn't have an ID yet, save it first
+        if (!parentId) {
+          const { data: parentData, error: parentError } = await supabase
+            .from('meeting_agenda_items')
+            .insert({
+              meeting_id: selectedMeeting.id,
+              title: parentItem.title,
+              description: parentItem.description || null,
+              order_index: parentItem.order_index,
+              is_completed: false,
+              is_recurring: false,
+            })
+            .select()
+            .single();
+          
+          if (parentError) throw parentError;
+          parentId = parentData.id;
+          
+          // Update parent in local state
+          const updatedItems = [...agendaItems];
+          updatedItems[parentIndex] = { ...parentItem, id: parentId, localKey: parentId };
+          setAgendaItems(updatedItems);
+        }
       }
+
+      // Calculate insertion index
+      let insertIndex: number;
+      if (parentItem && parentIndex !== -1) {
+        insertIndex = parentIndex + 1;
+        const parentKey = parentItem.id || parentItem.localKey;
+        while (insertIndex < agendaItems.length && 
+               (agendaItems[insertIndex].parent_id === parentId || 
+                agendaItems[insertIndex].parentLocalKey === parentKey)) {
+          insertIndex++;
+        }
+      } else {
+        insertIndex = agendaItems.length;
+      }
+
+      // Insert into database
+      const { data: savedItem, error } = await supabase
+        .from('meeting_agenda_items')
+        .insert({
+          meeting_id: selectedMeeting.id,
+          title: titles[systemType],
+          description: null,
+          system_type: systemType,
+          parent_id: parentId,
+          order_index: insertIndex,
+          is_completed: false,
+          is_recurring: false,
+          is_visible: true,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Create new item for local state
+      const newItem: AgendaItem = {
+        ...savedItem,
+        localKey: savedItem.id,
+        parentLocalKey: parentId || undefined,
+      };
+
+      // Update local state
       const next = [...agendaItems];
       next.splice(insertIndex, 0, newItem);
-      setAgendaItems(next.map((it, idx) => ({ ...it, order_index: idx })));
-    } else {
-      const next = [...agendaItems, newItem].map((it, idx) => ({ ...it, order_index: idx }));
-      setAgendaItems(next);
+      const reindexed = next.map((it, idx) => ({ ...it, order_index: idx }));
+      setAgendaItems(reindexed);
+
+      // Update order_index in DB for shifted items
+      for (const item of reindexed) {
+        if (item.id && item.id !== savedItem.id) {
+          await supabase
+            .from('meeting_agenda_items')
+            .update({ order_index: item.order_index })
+            .eq('id', item.id);
+        }
+      }
+
+      toast({
+        title: "Dynamischer Punkt hinzugefügt",
+        description: `"${titles[systemType]}" wurde zur Agenda hinzugefügt.`,
+      });
+    } catch (error) {
+      console.error('Error saving system agenda item:', error);
+      toast({
+        title: "Fehler",
+        description: "Der dynamische Punkt konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
     }
-    
-    toast({
-      title: "Dynamischer Punkt hinzugefügt",
-      description: `"${titles[systemType]}" wurde zur Agenda hinzugefügt.`,
-    });
   };
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
@@ -2077,7 +2142,10 @@ export function MeetingsView() {
         documentPath = taskDocs[0].file_path;
       }
 
-      // Insert the task as a sub-item with correct parent_id
+      // Determine the assignee: task.assigned_to, then task.user_id, then current user
+      const taskOwner = task.assigned_to || task.user_id || user?.id;
+
+      // Insert the task as a sub-item with correct parent_id and automatic assignment
       const { data: taskData, error: taskError } = await supabase
         .from('meeting_agenda_items')
         .insert({
@@ -2090,6 +2158,7 @@ export function MeetingsView() {
           is_completed: false,
           is_recurring: false,
           file_path: documentPath,
+          assigned_to: taskOwner ? [taskOwner] : null, // Automatic assignment from task owner
         })
         .select()
         .single();
@@ -2214,7 +2283,7 @@ export function MeetingsView() {
       // Calculate the correct order index for the sub-item (right after parent)
       const subItemOrderIndex = parentIndex + 1;
 
-      // Insert the sub-item with correct parent_id
+      // Insert the sub-item with correct parent_id and current user as default assignee
       const { data: subItemData, error: subItemError } = await supabase
         .from('meeting_agenda_items')
         .insert({
@@ -2225,6 +2294,7 @@ export function MeetingsView() {
           order_index: subItemOrderIndex,
           is_completed: false,
           is_recurring: false,
+          assigned_to: user?.id ? [user.id] : null, // Current user as default assignee
         })
         .select()
         .single();
@@ -2760,438 +2830,352 @@ export function MeetingsView() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Meeting Agenda</h1>
-          <p className="text-muted-foreground">
-            Verwalten Sie Ihre wöchentlichen Besprechungen und Agenda-Punkte
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Dialog open={isNewMeetingOpen} onOpenChange={setIsNewMeetingOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Neues Meeting
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Neues Meeting erstellen</DialogTitle>
-              <DialogDescription>
-                Erstellen Sie ein neues Meeting mit Agenda
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Titel</label>
-                <Input
-                  value={newMeeting.title}
-                  onChange={(e) => setNewMeeting({ ...newMeeting, title: e.target.value })}
-                  placeholder="Meeting Titel"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Beschreibung</label>
-                <Textarea
-                  value={newMeeting.description || ''}
-                  onChange={(e) => setNewMeeting({ ...newMeeting, description: e.target.value })}
-                  placeholder="Meeting Beschreibung"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Ort</label>
-                <Input
-                  value={newMeeting.location || ''}
-                  onChange={(e) => setNewMeeting({ ...newMeeting, location: e.target.value })}
-                  placeholder="Meeting Ort"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Template</label>
-                <Select
-                  value={newMeeting.template_id || 'none'}
-                  onValueChange={(value) => {
-                    const templateId = value === 'none' ? undefined : value;
-                    setNewMeeting({ ...newMeeting, template_id: templateId });
-                    
-                    // Load default participants and recurrence from template
-                    if (templateId) {
-                      const template = meetingTemplates.find(t => t.id === templateId);
-                      if (template) {
-                        // Load default participants if available (now user IDs)
-                        if (template.default_participants && template.default_participants.length > 0) {
-                          // Fetch user details for default participants
-                          supabase
-                            .from('profiles')
-                            .select('user_id, display_name, avatar_url')
-                            .in('user_id', template.default_participants)
-                            .then(({ data }) => {
-                              if (data) {
-                                setNewMeetingParticipants(data.map(u => ({
-                                  userId: u.user_id,
-                                  role: 'participant' as const,
-                                  user: {
-                                    id: u.user_id,
-                                    display_name: u.display_name || 'Unbekannt',
-                                    avatar_url: u.avatar_url
-                                  }
-                                })));
+    <div className="min-h-screen bg-gradient-subtle p-4">
+      <ResizablePanelGroup direction="horizontal" className="min-h-[calc(100vh-2rem)] rounded-lg">
+        {/* Sidebar */}
+        <ResizablePanel defaultSize={28} minSize={22} maxSize={38}>
+          <div className="h-full flex flex-col pr-4 space-y-4 overflow-y-auto">
+            {/* Header & Buttons */}
+            <div>
+              <h1 className="text-2xl font-bold mb-1">Meeting Agenda</h1>
+              <p className="text-sm text-muted-foreground mb-4">
+                Ihre wöchentlichen Besprechungen
+              </p>
+              <div className="flex gap-2">
+                <Dialog open={isNewMeetingOpen} onOpenChange={setIsNewMeetingOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="flex-1" size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Neues Meeting
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Neues Meeting erstellen</DialogTitle>
+                      <DialogDescription>
+                        Erstellen Sie ein neues Meeting mit Agenda
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium">Titel</label>
+                        <Input
+                          value={newMeeting.title}
+                          onChange={(e) => setNewMeeting({ ...newMeeting, title: e.target.value })}
+                          placeholder="Meeting Titel"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Beschreibung</label>
+                        <Textarea
+                          value={newMeeting.description || ''}
+                          onChange={(e) => setNewMeeting({ ...newMeeting, description: e.target.value })}
+                          placeholder="Meeting Beschreibung"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Ort</label>
+                        <Input
+                          value={newMeeting.location || ''}
+                          onChange={(e) => setNewMeeting({ ...newMeeting, location: e.target.value })}
+                          placeholder="Meeting Ort"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Template</label>
+                        <Select
+                          value={newMeeting.template_id || 'none'}
+                          onValueChange={(value) => {
+                            const templateId = value === 'none' ? undefined : value;
+                            setNewMeeting({ ...newMeeting, template_id: templateId });
+                            
+                            if (templateId) {
+                              const template = meetingTemplates.find(t => t.id === templateId);
+                              if (template) {
+                                if (template.default_participants && template.default_participants.length > 0) {
+                                  supabase
+                                    .from('profiles')
+                                    .select('user_id, display_name, avatar_url')
+                                    .in('user_id', template.default_participants)
+                                    .then(({ data }) => {
+                                      if (data) {
+                                        setNewMeetingParticipants(data.map(u => ({
+                                          userId: u.user_id,
+                                          role: 'participant' as const,
+                                          user: {
+                                            id: u.user_id,
+                                            display_name: u.display_name || 'Unbekannt',
+                                            avatar_url: u.avatar_url
+                                          }
+                                        })));
+                                      }
+                                    });
+                                }
+                                if (template.default_recurrence) {
+                                  setNewMeetingRecurrence(template.default_recurrence);
+                                }
                               }
-                            });
-                        }
-                        // Load default recurrence if available
-                        if (template.default_recurrence) {
-                          setNewMeetingRecurrence(template.default_recurrence);
-                        }
-                      }
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Template auswählen (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Kein Template</SelectItem>
-                    {meetingTemplates.map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Datum</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left font-normal">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(newMeeting.meeting_date, "PPP", { locale: de })}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={newMeeting.meeting_date instanceof Date ? newMeeting.meeting_date : new Date(newMeeting.meeting_date)}
-                        onSelect={(date) => date && setNewMeeting({ ...newMeeting, meeting_date: date })}
-                        initialFocus
-                        className={cn("p-3 pointer-events-auto")}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Startzeit</label>
-                  <TimePickerCombobox
-                    value={newMeetingTime}
-                    onChange={setNewMeetingTime}
-                  />
-                </div>
-              </div>
-
-              {/* Participants Section */}
-              <div className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <label className="text-sm font-medium">Teilnehmer</label>
-                </div>
-                <UserSelector
-                  onSelect={(user) => {
-                    if (!newMeetingParticipants.some(p => p.userId === user.id)) {
-                      setNewMeetingParticipants(prev => [...prev, {
-                        userId: user.id,
-                        role: 'participant',
-                        user: {
-                          id: user.id,
-                          display_name: user.display_name,
-                          avatar_url: user.avatar_url
-                        }
-                      }]);
-                    }
-                  }}
-                  placeholder="Teammitglied hinzufügen..."
-                  clearAfterSelect
-                  excludeUserIds={newMeetingParticipants.map(p => p.userId)}
-                />
-                {newMeetingParticipants.length > 0 && (
-                  <div className="space-y-2">
-                    {newMeetingParticipants.map((p, idx) => (
-                      <div key={p.userId} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-                        <span className="flex-1 text-sm">{p.user?.display_name}</span>
-                        <Select 
-                          value={p.role} 
-                          onValueChange={(v) => {
-                            const updated = [...newMeetingParticipants];
-                            updated[idx] = { ...p, role: v as any };
-                            setNewMeetingParticipants(updated);
+                            }
                           }}
                         >
-                          <SelectTrigger className="w-28 h-7 text-xs">
-                            <SelectValue />
+                          <SelectTrigger>
+                            <SelectValue placeholder="Template auswählen (optional)" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="organizer">Organisator</SelectItem>
-                            <SelectItem value="participant">Teilnehmer</SelectItem>
-                            <SelectItem value="optional">Optional</SelectItem>
+                            <SelectItem value="none">Kein Template</SelectItem>
+                            {meetingTemplates.map((template) => (
+                              <SelectItem key={template.id} value={template.id}>
+                                {template.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          onClick={() => setNewMeetingParticipants(prev => prev.filter((_, i) => i !== idx))}
-                        >
-                          <X className="h-3 w-3" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium">Datum</label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {format(newMeeting.meeting_date, "PPP", { locale: de })}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={newMeeting.meeting_date instanceof Date ? newMeeting.meeting_date : new Date(newMeeting.meeting_date)}
+                                onSelect={(date) => date && setNewMeeting({ ...newMeeting, meeting_date: date })}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Startzeit</label>
+                          <TimePickerCombobox
+                            value={newMeetingTime}
+                            onChange={setNewMeetingTime}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Participants Section */}
+                      <div className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <label className="text-sm font-medium">Teilnehmer</label>
+                        </div>
+                        <UserSelector
+                          onSelect={(user) => {
+                            if (!newMeetingParticipants.some(p => p.userId === user.id)) {
+                              setNewMeetingParticipants(prev => [...prev, {
+                                userId: user.id,
+                                role: 'participant',
+                                user: {
+                                  id: user.id,
+                                  display_name: user.display_name,
+                                  avatar_url: user.avatar_url
+                                }
+                              }]);
+                            }
+                          }}
+                          placeholder="Teammitglied hinzufügen..."
+                          clearAfterSelect
+                          excludeUserIds={newMeetingParticipants.map(p => p.userId)}
+                        />
+                        {newMeetingParticipants.length > 0 && (
+                          <div className="space-y-2">
+                            {newMeetingParticipants.map((p, idx) => (
+                              <div key={p.userId} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+                                <span className="flex-1 text-sm">{p.user?.display_name}</span>
+                                <Select 
+                                  value={p.role} 
+                                  onValueChange={(v) => {
+                                    const updated = [...newMeetingParticipants];
+                                    updated[idx] = { ...p, role: v as any };
+                                    setNewMeetingParticipants(updated);
+                                  }}
+                                >
+                                  <SelectTrigger className="w-28 h-7 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="organizer">Organisator</SelectItem>
+                                    <SelectItem value="participant">Teilnehmer</SelectItem>
+                                    <SelectItem value="optional">Optional</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => setNewMeetingParticipants(prev => prev.filter((_, i) => i !== idx))}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Public Meeting Option */}
+                      <div className="flex items-center space-x-2 p-3 border rounded-lg bg-muted/30">
+                        <Checkbox 
+                          id="is_public" 
+                          checked={newMeeting.is_public || false}
+                          onCheckedChange={(checked) => setNewMeeting({ ...newMeeting, is_public: !!checked })}
+                        />
+                        <div className="flex-1">
+                          <label htmlFor="is_public" className="text-sm font-medium cursor-pointer">
+                            Öffentliches Meeting
+                          </label>
+                          <p className="text-xs text-muted-foreground">
+                            Alle Teammitglieder können dieses Meeting sehen
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Recurrence Section */}
+                      <RecurrenceSelector
+                        value={newMeetingRecurrence}
+                        onChange={setNewMeetingRecurrence}
+                        startDate={format(newMeeting.meeting_date instanceof Date ? newMeeting.meeting_date : new Date(newMeeting.meeting_date), 'yyyy-MM-dd')}
+                      />
+
+                      <div className="flex justify-end space-x-2 pt-4">
+                        <Button variant="outline" onClick={() => setIsNewMeetingOpen(false)}>
+                          Abbrechen
+                        </Button>
+                        <Button onClick={createMeeting}>
+                          Meeting erstellen
                         </Button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Public Meeting Option */}
-              <div className="flex items-center space-x-2 p-3 border rounded-lg bg-muted/30">
-                <Checkbox 
-                  id="is_public" 
-                  checked={newMeeting.is_public || false}
-                  onCheckedChange={(checked) => setNewMeeting({ ...newMeeting, is_public: !!checked })}
-                />
-                <div className="flex-1">
-                  <label htmlFor="is_public" className="text-sm font-medium cursor-pointer">
-                    Öffentliches Meeting
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    Alle Teammitglieder können dieses Meeting sehen (nur lesen)
-                  </p>
-                </div>
-              </div>
-
-              {/* Recurrence Section */}
-              <RecurrenceSelector
-                value={newMeetingRecurrence}
-                onChange={setNewMeetingRecurrence}
-                startDate={format(newMeeting.meeting_date instanceof Date ? newMeeting.meeting_date : new Date(newMeeting.meeting_date), 'yyyy-MM-dd')}
-              />
-
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={() => setIsNewMeetingOpen(false)}>
-                  Abbrechen
-                </Button>
-                <Button onClick={createMeeting}>
-                  Meeting erstellen
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <Button variant="outline" size="sm" onClick={() => setShowArchive(true)}>
+                  <Archive className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
-          <Button variant="outline" onClick={() => setShowArchive(true)}>
-            <Archive className="h-4 w-4 mr-2" />
-            Archiv
-          </Button>
-        </div>
-      </div>
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl font-semibold">Nächste Besprechungen</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {upcomingMeetings.map((meeting) => (
-            <Card key={meeting.id} className="hover:shadow-elegant transition">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 cursor-pointer" onClick={() => { 
-                    setSelectedMeeting(meeting); 
-                    if (meeting.id) {
-                      setAgendaItems([]);
-                      loadAgendaItems(meeting.id as string);
-                    }
-                  }}>
-                    {editingMeeting?.id === meeting.id ? (
-                      <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                            <Edit className="h-3 w-3" />
-                            Titel
-                          </label>
-                          <Input
-                            value={editingMeeting.title}
-                            onChange={(e) => setEditingMeeting({ ...editingMeeting, title: e.target.value })}
-                            className="font-semibold"
-                          />
-                        </div>
-                        
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                            <FileText className="h-3 w-3" />
-                            Beschreibung
-                          </label>
-                          <Textarea
-                            value={editingMeeting.description || ''}
-                            onChange={(e) => setEditingMeeting({ ...editingMeeting, description: e.target.value })}
-                            placeholder="Beschreibung hinzufügen..."
-                            className="text-sm min-h-[60px]"
-                          />
-                        </div>
-                        
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                            <MapPin className="h-3 w-3" />
-                            Ort
-                          </label>
-                          <Input
-                            value={editingMeeting.location || ''}
-                            onChange={(e) => setEditingMeeting({ ...editingMeeting, location: e.target.value })}
-                            placeholder="Ort hinzufügen..."
-                            className="text-sm"
-                          />
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                              <CalendarIcon className="h-3 w-3" />
-                              Datum
-                            </label>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal">
-                                  {format(new Date(editingMeeting.meeting_date), "dd.MM.yyyy", { locale: de })}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={new Date(editingMeeting.meeting_date)}
-                                  onSelect={(date) => date && setEditingMeeting({ ...editingMeeting, meeting_date: date })}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                              <Clock className="h-3 w-3" />
-                              Uhrzeit
-                            </label>
-                            <TimePickerCombobox
-                              value={(editingMeeting.meeting_time || '10:00').substring(0, 5)}
-                              onChange={(time) => setEditingMeeting({ ...editingMeeting, meeting_time: time })}
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                            <Users className="h-3 w-3" />
-                            Teilnehmer
-                          </label>
-                          {meeting.id && (
-                            <InlineMeetingParticipantsEditor
-                              meetingId={meeting.id}
-                            />
-                          )}
-                        </div>
-                        
-                        {/* Public/Private Toggle */}
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                            <Globe className="h-3 w-3" />
-                            Sichtbarkeit
-                          </label>
-                          <div className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md">
-                            <Checkbox 
-                              id={`edit_is_public_${meeting.id}`}
-                              checked={editingMeeting?.is_public || false}
-                              onCheckedChange={(checked) => setEditingMeeting({ 
-                                ...editingMeeting!, 
-                                is_public: !!checked 
-                              })}
-                            />
-                            <label htmlFor={`edit_is_public_${meeting.id}`} className="text-sm cursor-pointer">
-                              Öffentlich für alle Teammitglieder
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <CardTitle className="text-base flex items-center gap-2">
-                          {meeting.title}
-                          {meeting.is_public && (
-                            <Badge variant="outline" className="text-xs font-normal">
-                              <Globe className="h-3 w-3 mr-1" />
-                              Öffentlich
-                            </Badge>
-                          )}
-                        </CardTitle>
-                        {meeting.description && (
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{meeting.description}</p>
-                        )}
-                        <CardDescription className="mt-2 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <CalendarIcon className="h-3.5 w-3.5" />
-                            <span>{format(new Date(meeting.meeting_date), 'EEEE, d. MMMM yyyy', { locale: de })}</span>
-                          </div>
-                          {meeting.meeting_time && (
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-3.5 w-3.5" />
-                              <span>{meeting.meeting_time.substring(0, 5)} Uhr</span>
-                            </div>
-                          )}
-                          {meeting.location && (
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-3.5 w-3.5" />
-                              <span>{meeting.location}</span>
-                            </div>
-                          )}
-                        </CardDescription>
-                        {/* Participant Avatars on Card */}
-                        <MeetingParticipantAvatars meetingId={meeting.id} />
-                      </>
+
+            {/* Meeting List */}
+            <div className="flex-1 space-y-2">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Nächste Besprechungen
+              </h3>
+              <div className="space-y-2">
+                {upcomingMeetings.map((meeting) => (
+                  <Card 
+                    key={meeting.id} 
+                    className={cn(
+                      "cursor-pointer hover:shadow-sm transition-all",
+                      selectedMeeting?.id === meeting.id && "border-primary ring-1 ring-primary bg-primary/5"
                     )}
-                  </div>
-                  <div className="flex gap-1 ml-2">
-                    {editingMeeting?.id === meeting.id ? (
+                    onClick={() => { 
+                      setSelectedMeeting(meeting); 
+                      if (meeting.id) {
+                        setAgendaItems([]);
+                        loadAgendaItems(meeting.id as string);
+                      }
+                    }}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium text-sm truncate">{meeting.title}</h4>
+                            {meeting.is_public && (
+                              <Globe className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <CalendarIcon className="h-3 w-3" />
+                            <span>{format(new Date(meeting.meeting_date), 'dd.MM.', { locale: de })}</span>
+                            {meeting.meeting_time && (
+                              <>
+                                <Clock className="h-3 w-3 ml-1" />
+                                <span>{meeting.meeting_time.substring(0, 5)}</span>
+                              </>
+                            )}
+                          </div>
+                          {meeting.location && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                              <MapPin className="h-3 w-3" />
+                              <span className="truncate">{meeting.location}</span>
+                            </div>
+                          )}
+                          <MeetingParticipantAvatars meetingId={meeting.id} size="xs" />
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      </div>
+                      
+                      {/* Start/Stop Button */}
+                      <div className="mt-2 pt-2 border-t">
+                        {activeMeetingId === meeting.id ? (
+                          <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); stopMeeting(); }} className="w-full h-7 text-xs bg-green-600 hover:bg-green-700">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Laufend
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); startMeeting(meeting); }} className="w-full h-7 text-xs" disabled={activeMeetingId !== null}>
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Starten
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {upcomingMeetings.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    Keine anstehenden Besprechungen
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Selected Meeting Details */}
+            {selectedMeeting && !activeMeeting && (
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Details
+                  </h3>
+                  <div className="flex gap-1">
+                    {editingMeeting?.id === selectedMeeting.id ? (
                       <>
-                        <Button size="icon" variant="ghost" className="h-8 w-8" 
-                          onClick={() => {
-                            updateMeeting(meeting.id!, editingMeeting);
-                            setEditingMeeting(null);
-                          }}>
-                          <Check className="h-4 w-4" />
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { updateMeeting(selectedMeeting.id!, editingMeeting); setEditingMeeting(null); }}>
+                          <Check className="h-3 w-3" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8" 
-                          onClick={() => setEditingMeeting(null)}>
-                          <X className="h-4 w-4" />
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingMeeting(null)}>
+                          <X className="h-3 w-3" />
                         </Button>
                       </>
                     ) : (
                       <>
-                        <Button size="icon" variant="ghost" className="h-8 w-8" 
-                          onClick={() => setEditingMeeting(meeting)}>
-                          <Edit className="h-4 w-4" />
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingMeeting(selectedMeeting)}>
+                          <Edit className="h-3 w-3" />
                         </Button>
-                         <AlertDialog>
-                           <AlertDialogTrigger asChild>
-                             <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
-                               <Trash className="h-4 w-4" />
-                             </Button>
-                           </AlertDialogTrigger>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive hover:text-destructive">
+                              <Trash className="h-3 w-3" />
+                            </Button>
+                          </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Meeting löschen</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Sind Sie sicher, dass Sie das Meeting "{meeting.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
+                                Sind Sie sicher, dass Sie das Meeting "{selectedMeeting.title}" löschen möchten?
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteMeeting(meeting.id!)}>
-                                Löschen
-                              </AlertDialogAction>
+                              <AlertDialogAction onClick={() => deleteMeeting(selectedMeeting.id!)}>Löschen</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -3199,34 +3183,86 @@ export function MeetingsView() {
                     )}
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex justify-end">
-                  {activeMeetingId === meeting.id ? (
-                    <Button size="sm" variant="default" 
-                      onClick={stopMeeting}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white">
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Laufend
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="default" 
-                      onClick={() => startMeeting(meeting)}
-                      className="w-full"
-                      disabled={activeMeetingId !== null}>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Start
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          {upcomingMeetings.length === 0 && (
-            <Card className="md:col-span-3"><CardContent className="p-4 text-muted-foreground">Keine anstehenden Besprechungen</CardContent></Card>
-          )}
-        </div>
-      </div>
+                
+                {editingMeeting?.id === selectedMeeting.id ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Titel</label>
+                      <Input value={editingMeeting.title} onChange={(e) => setEditingMeeting({ ...editingMeeting, title: e.target.value })} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Beschreibung</label>
+                      <Textarea value={editingMeeting.description || ''} onChange={(e) => setEditingMeeting({ ...editingMeeting, description: e.target.value })} className="text-sm min-h-[60px]" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Ort</label>
+                      <Input value={editingMeeting.location || ''} onChange={(e) => setEditingMeeting({ ...editingMeeting, location: e.target.value })} className="h-8 text-sm" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Datum</label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal text-xs">
+                              {format(new Date(editingMeeting.meeting_date), "dd.MM.yy", { locale: de })}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={new Date(editingMeeting.meeting_date)} onSelect={(date) => date && setEditingMeeting({ ...editingMeeting, meeting_date: date })} initialFocus />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Uhrzeit</label>
+                        <TimePickerCombobox value={(editingMeeting.meeting_time || '10:00').substring(0, 5)} onChange={(time) => setEditingMeeting({ ...editingMeeting, meeting_time: time })} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Teilnehmer</label>
+                      {selectedMeeting.id && <InlineMeetingParticipantsEditor meetingId={selectedMeeting.id} />}
+                    </div>
+                    <div className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md">
+                      <Checkbox id={`edit_public_${selectedMeeting.id}`} checked={editingMeeting?.is_public || false} onCheckedChange={(checked) => setEditingMeeting({ ...editingMeeting!, is_public: !!checked })} />
+                      <label htmlFor={`edit_public_${selectedMeeting.id}`} className="text-xs cursor-pointer">Öffentlich</label>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    {selectedMeeting.description && (
+                      <p className="text-muted-foreground text-xs">{selectedMeeting.description}</p>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <CalendarIcon className="h-3 w-3" />
+                      <span>{format(new Date(selectedMeeting.meeting_date), 'EEEE, d. MMMM yyyy', { locale: de })}</span>
+                    </div>
+                    {selectedMeeting.meeting_time && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>{selectedMeeting.meeting_time.substring(0, 5)} Uhr</span>
+                      </div>
+                    )}
+                    {selectedMeeting.location && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <MapPin className="h-3 w-3" />
+                        <span>{selectedMeeting.location}</span>
+                      </div>
+                    )}
+                    <div className="pt-2">
+                      <label className="text-xs font-medium text-muted-foreground">Teilnehmer</label>
+                      {selectedMeeting.id && <InlineMeetingParticipantsEditor meetingId={selectedMeeting.id} />}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        {/* Main Content Area */}
+        <ResizablePanel defaultSize={72}>
+          <div className="h-full pl-4 overflow-y-auto">
 
       {/* Active Meeting View */}
       {activeMeeting && (
@@ -4636,7 +4672,10 @@ export function MeetingsView() {
               </CardContent>
             </Card>
           ) : null}
-      </div>
+        </div>
+        </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }

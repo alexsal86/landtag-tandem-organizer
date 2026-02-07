@@ -13,9 +13,10 @@ interface Participant {
 
 interface MeetingParticipantAvatarsProps {
   meetingId?: string;
+  size?: 'xs' | 'sm' | 'default';
 }
 
-export function MeetingParticipantAvatars({ meetingId }: MeetingParticipantAvatarsProps) {
+export function MeetingParticipantAvatars({ meetingId, size = 'default' }: MeetingParticipantAvatarsProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
 
   useEffect(() => {
@@ -61,20 +62,27 @@ export function MeetingParticipantAvatars({ meetingId }: MeetingParticipantAvata
 
   if (participants.length === 0) return null;
 
+  const sizeClasses = {
+    xs: { wrapper: 'gap-0.5 mt-1', icon: 'h-2.5 w-2.5', avatar: 'h-4 w-4', text: 'text-[10px]' },
+    sm: { wrapper: 'gap-0.5 mt-1.5', icon: 'h-3 w-3', avatar: 'h-5 w-5', text: 'text-xs' },
+    default: { wrapper: 'gap-1 mt-2', icon: 'h-3.5 w-3.5', avatar: 'h-6 w-6', text: 'text-xs' },
+  };
+  const s = sizeClasses[size];
+
   return (
-    <div className="flex items-center gap-1 mt-2">
-      <Users className="h-3.5 w-3.5 text-muted-foreground" />
-      <div className="flex -space-x-2">
+    <div className={`flex items-center ${s.wrapper}`}>
+      <Users className={`${s.icon} text-muted-foreground`} />
+      <div className="flex -space-x-1">
         {participants.slice(0, 5).map(p => (
-          <Avatar key={p.user_id} className="h-6 w-6 border-2 border-background">
+          <Avatar key={p.user_id} className={`${s.avatar} border-2 border-background`}>
             <AvatarImage src={p.user?.avatar_url || undefined} />
-            <AvatarFallback className="text-xs">
+            <AvatarFallback className={s.text}>
               {getInitials(p.user?.display_name)}
             </AvatarFallback>
           </Avatar>
         ))}
         {participants.length > 5 && (
-          <span className="text-xs text-muted-foreground ml-2">
+          <span className={`${s.text} text-muted-foreground ml-1`}>
             +{participants.length - 5}
           </span>
         )}
