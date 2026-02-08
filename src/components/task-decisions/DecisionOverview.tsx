@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -124,6 +125,7 @@ export const DecisionOverview = () => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
   const [decisions, setDecisions] = useState<DecisionRequest[]>([]);
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -817,10 +819,12 @@ export const DecisionOverview = () => {
 
     return (
       <Card 
-        key={decision.id} 
+        key={decision.id}
+        ref={highlightRef(decision.id)}
         className={cn(
           "border-l-4 hover:bg-muted/50 transition-colors cursor-pointer",
-          getBorderColor(summary)
+          getBorderColor(summary),
+          isHighlighted(decision.id) && "notification-highlight"
         )}
         onClick={() => handleOpenDetails(decision.id)}
       >
@@ -1053,8 +1057,13 @@ export const DecisionOverview = () => {
     
     return (
       <Card 
-        key={decision.id} 
-        className={cn("border-l-4 bg-muted/30", getBorderColor(summary))}
+        key={decision.id}
+        ref={highlightRef(decision.id)}
+        className={cn(
+          "border-l-4 bg-muted/30",
+          getBorderColor(summary),
+          isHighlighted(decision.id) && "notification-highlight"
+        )}
         onClick={() => handleOpenDetails(decision.id)}
       >
         <CardContent className="p-4">
