@@ -81,7 +81,7 @@ const AppContent = () => {
           <Route path="/editor-test" element={<EditorTest />} />
           <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          
+          <Route path="/:section" element={<Index />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
