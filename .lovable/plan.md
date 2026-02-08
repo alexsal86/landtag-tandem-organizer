@@ -1,268 +1,211 @@
 
-# Plan: Verteiler-Bearbeitung, Presse-E-Mail-Versand, Benachrichtigungs-Groesse und FallAkten-Fehler beheben
 
-## Uebersicht der 7 Punkte
+# Konzept: Neue FallAkten-Detailansicht -- Drei-Spalten-Layout mit Chronologie, Kontext und Aktionsbereich
 
-| Nr | Problem | Loesung |
-|----|---------|---------|
-| 1 | Verteiler: Bearbeiten/Speichern funktioniert nicht, Mitglieder werden nur als Badges ohne Details angezeigt | Speicherfunktion in `DistributionListForm` pruefen/fixen, Mitglieder als Tabelle mit E-Mail, Organisation, Telefon anzeigen |
-| 2 | Verteiler bearbeiten hat eigene Seite ohne Navigation/Header | Route `/distribution-lists/:id/edit` in Index.tsx einbetten oder Dialog-basiert in ContactsView loesen |
-| 3 | Bei Presse nach Ghost-Veroeffentlichung fehlt die Info wer veroeffentlicht hat | Bereits implementiert -- published_by wird gespeichert und angezeigt. Pruefen ob es korrekt funktioniert |
-| 4 | Nach Veroeffentlichung: Button/Link fuer E-Mail-Versand an Presse mit Template | Neues Presse-Template-System in Einstellungen + Button im PressReleaseEditor nach Veroeffentlichung |
-| 5 | E-Mail-Versand der Pressemitteilung soll in der Presse-Card protokolliert werden | Neue DB-Spalten `email_sent_at` und `email_sent_by` auf `press_releases` |
-| 6 | Benachrichtigungs-Groesse: Normal und Gross sehen gleich aus | Sonner-CSS reparieren -- `!important`-Styles werden von Sonner ueberschrieben, alternative Loesung noetig |
-| 7 | Fehler auf FallAkten-Seite, Akte "Karl Kinski" ist weg | **RLS-Policy hat infinite recursion** -- die SELECT-Policy auf `case_files` verweist auf `case_file_participants`, deren SELECT-Policy wiederum auf `case_files` verweist |
+## Analyse des ChatGPT-Vorschlags
+
+Das Bild zeigt ein Drei-Spalten-Layout fuer die FallAkten-Detailansicht:
+
+| Bereich | Inhalt im Bild | Unsere Bewertung |
+|---------|---------------|-----------------|
+| **Linke Spalte** | Beteiligte (Hauptkontakt + weitere), Politischer Kontext (Thema + Ausschuss), Metadaten | Uebernehmen -- sinnvolle Kontextinformationen auf einen Blick |
+| **Mitte** | Chronologie mit Filter-Tabs (Alle, Notizen, Dokumente, Termine, Aufgaben), Suchleiste, farbige Timeline-Eintraege | Uebernehmen und verbessern -- ersetzt unser aktuelles Tab-System |
+| **Rechte Spalte** | Aktueller Stand (editierbare Notiz), Naechste Schritte (Checkliste), Risiken und Chancen | Uebernehmen -- diese Elemente fehlen uns komplett |
+
+## Was wir uebernehmen
+
+1. **Drei-Spalten-Layout** statt dem aktuellen vertikalen Aufbau (Header-Card oben, Tabs darunter)
+2. **Vereinigte Chronologie** statt separater Tabs -- alle Ereignisse in einem Strom mit Filter-Tabs
+3. **Aktueller Stand** -- eine editierbare, hervorgehobene Statusnotiz
+4. **Naechste Schritte** -- eine Checkliste mit Zustaendigkeit direkt in der Akte
+5. **Risiken und Chancen** -- strukturiertes Freitextfeld
+6. **Kontakt-Schnellaktionen** -- Telefon/E-Mail/Nachricht direkt bei Kontakten
+7. **Politischer Kontext** -- Themen und Ausschusszuordnung sichtbar in der Sidebar
+8. **Schnell-Buttons im Header** -- "+ Notiz", "+ Aufgabe", "+ Termin", "+ Dokument" prominent oben
+
+## Was wir anders machen
+
+| ChatGPT-Vorschlag | Unsere Anpassung | Grund |
+|-------------------|------------------|-------|
+| Statisches Drei-Spalten-Layout | Responsive: 3 Spalten auf Desktop, Tabs/Accordion auf Mobil | Unsere App wird auch mobil genutzt |
+| Separate "Beteiligte" und "Weitere Beteiligte" | Einheitliche Kontaktliste mit Rollen-Badges und dem bestehenden Rollen-System | Wir haben bereits CONTACT_ROLES definiert |
+| Feste Kontaktaktions-Icons | Dynamische Icons basierend auf verfuegbaren Daten (Telefon nur wenn vorhanden) | Vermeidet leere Aktionen |
+| Timeline nur mit manuellen Eintraegen | Automatische + manuelle Eintraege (bereits implementiert) mit verbesserter Darstellung | Automatische Eintraege sind ein Mehrwert |
+| Einfache Checkliste fuer "Naechste Schritte" | Verknuepfung mit unserem bestehenden Aufgabensystem (Tasks) + Inline-Quick-Tasks | Integration statt Parallelstruktur |
+
+## Was wir ergaenzen
+
+| Ergaenzung | Beschreibung |
+|-----------|-------------|
+| **Pinned Notes als "Aktueller Stand"** | Die bestehende Notiz-Pin-Funktion wird zur "Aktueller Stand"-Karte umgebaut |
+| **Quick-Add in der Timeline** | Direkt in der Timeline Notizen, Aufgaben etc. hinzufuegen ohne Dialog-Umweg |
+| **Sichtbarkeits-Indikator** | Privat/Geteilt/Oeffentlich prominent im Header anzeigen |
+| **Teilnehmer-Sidebar** | Die neuen case_file_participants mit Viewer/Editor-Rollen in der linken Spalte |
+| **E-Mails in der Timeline** | E-Mails (Briefe) werden auch in der Timeline-Ansicht angezeigt |
+| **Druckansicht / PDF-Export** | Ein "Drucken"-Button im Header-Menue fuer eine zusammengefasste Aktenansicht |
 
 ---
 
-## Technische Details
+## Technische Umsetzung
 
-### 1. Verteiler bearbeiten und Mitglieder-Tabelle
+### 1. Neues Layout: CaseFileDetail.tsx komplett umbauen
 
-**Problem A: Speichern**
-Der `DistributionListForm` navigiert nach dem Speichern zu `/contacts`. Beim Bearbeiten wird die bestehende Liste korrekt geladen und aktualisiert (Zeile 148-167). Das Speichern selbst sollte funktionieren. Falls es trotzdem nicht klappt, muss die `handleSave`-Funktion genauer getestet werden.
+Das aktuelle `CaseFileDetail.tsx` hat:
+- Eine Header-Card mit Statistiken (Zaehler fuer Kontakte, Dokumente etc.)
+- Ein 7-Tab-Layout (Uebersicht, Kontakte, Dokumente, Aufgaben, Termine, Briefe, Notizen)
 
-**Problem B: Mitglieder-Anzeige**
-In `ContactsView.tsx` (Zeile 1224-1239) werden die Mitglieder nur als einfache `Badge`-Elemente angezeigt mit maximal 5 sichtbar:
-```tsx
-// Aktuell:
-<Badge variant="secondary">{member.name}</Badge>
+**Neues Layout:**
+
+```text
++--------------------------------------------------------------------------+
+| Header: Titel, Aktenzeichen, Typ-Badge, Status-Badge, Sichtbarkeit      |
+| [+ Notiz] [+ Aufgabe] [+ Termin] [+ Dokument] [... Mehr]               |
++--------------------------------------------------------------------------+
+|                    |                              |                       |
+| LINKE SIDEBAR      | CHRONOLOGIE (MITTE)          | RECHTE SIDEBAR        |
+| (280px, fixiert)   | (flex-1, scrollbar)          | (300px, fixiert)      |
+|                    |                              |                       |
+| Beteiligte         | Filter-Tabs:                 | Aktueller Stand       |
+|  - Ersteller       |  Alle | Notizen | Dokumente  |  (editierbare Notiz)  |
+|  - Kontakte        |  Termine | Aufgaben          |                       |
+|    mit Rollen      |                              | Naechste Schritte     |
+|  - Teilnehmer      | Suchfeld                     |  (Aufgaben-Checklist) |
+|                    |                              |                       |
+| Themen/Kontext     | Timeline-Eintraege           | Risiken und Chancen   |
+|  - Zugewiesene     |  chronologisch sortiert      |  (strukturiertes      |
+|    Themen          |  mit farbigen Typen          |   Freitextfeld)       |
+|  - Ausschuss       |  und Aktionen                |                       |
+|                    |                              | Metadaten             |
+| Metadaten          |                              |  - Erstellt am        |
+|  - Start/Ziel      |                              |  - Letzte Aenderung   |
+|  - Tags            |                              |  - Zustaendig         |
++--------------------+------------------------------+-----------------------+
 ```
 
-**Loesung: Mitglieder als Tabelle anzeigen**
-Ersetze die Badge-Darstellung in der Verteilerliste durch eine kompakte Tabelle mit Spalten: Name, E-Mail, Organisation, Kategorie.
+Auf Mobilgeraeten (< 1024px) wird das Layout zu einem Single-Column mit collapsible Sektionen.
 
-```tsx
-<Table>
-  <TableHeader>
-    <TableRow>
-      <TableHead>Name</TableHead>
-      <TableHead>E-Mail</TableHead>
-      <TableHead>Organisation</TableHead>
-    </TableRow>
-  </TableHeader>
-  <TableBody>
-    {list.members.map((member) => (
-      <TableRow key={member.id}>
-        <TableCell>{member.name}</TableCell>
-        <TableCell>{member.email || '-'}</TableCell>
-        <TableCell>{member.organization || '-'}</TableCell>
-      </TableRow>
-    ))}
-  </TableBody>
-</Table>
-```
+### 2. Datenbank-Erweiterungen
 
-Ausserdem muss im `DistributionListForm` die "Ausgewaehlte Kontakte"-Vorschau ebenfalls als Tabelle dargestellt werden statt als Badges.
-
-**Dateien:**
-- `src/components/ContactsView.tsx` (Mitglieder-Tabelle)
-- `src/components/DistributionListForm.tsx` (Ausgewaehlte-Kontakte-Tabelle)
-
----
-
-### 2. Verteiler bearbeiten innerhalb des Layouts
-
-**Problem:** Die Routen `/distribution-lists/new` und `/distribution-lists/:id/edit` sind in `App.tsx` als eigenstaendige Routen definiert -- ohne das Index-Layout mit Header und Navigation.
-
-**Loesung:** Zwei Moeglichkeiten:
-
-**Option A (empfohlen): In Index.tsx einbetten**
-- In `Index.tsx` die Faelle `distribution-lists-new` und `distribution-lists-edit` hinzufuegen
-- Navigation aus der Kontakte-Seite heraus per `handleSectionChange` statt `<Link to="/distribution-lists/...">`
-- `DistributionListForm` bekommt einen `onBack`-Callback statt `useNavigate`
-
-**Option B: Routen in App.tsx behalten, aber Index-Layout wrappen**
-Weniger ideal, da es doppelte Layout-Logik erfordern wuerde.
-
-Ich waehle Option A:
-- `App.tsx`: Routen fuer `/distribution-lists/*` entfernen (werden durch `/:section` in Index aufgefangen)
-- `Index.tsx`: Cases `distribution-lists/new` und `distribution-lists/:id/edit` im Router einbauen. Da die URL `distribution-lists/new` bereits vom `/:section`-Catch uebernommen wird, koennen wir alternativ die Verteiler-Bearbeitung als eingebetteten Zustand in `ContactsView` behandeln (Dialog-basiert oder Inline).
-
-Noch besser: Die Verteiler-Bearbeitung als eingebettete Ansicht direkt in ContactsView laufen lassen (aehnlich wie CaseFileDetail in CaseFilesView):
-- State `editingDistributionListId` und `creatingDistribution` in ContactsView
-- Wenn aktiv: `DistributionListForm` als Overlay/Inline rendern statt auf separate Seite navigieren
-- `DistributionListForm` bekommt `onBack`/`onSuccess` Callbacks
-
-**Dateien:**
-- `src/components/ContactsView.tsx` (eingebettete Bearbeitung)
-- `src/components/DistributionListForm.tsx` (Navigation entfernen, Callbacks nutzen)
-- `src/App.tsx` (Routen entfernen)
-- `src/pages/CreateDistributionList.tsx` und `src/pages/EditDistributionList.tsx` (koennen entfernt werden)
-
----
-
-### 3. Presse: Veroeffentlichungs-Info in der Card
-
-**Status:** Bereits implementiert. Die Edge Function `publish-to-ghost` speichert `published_by` und `published_at`. Die `PressReleasesList.tsx` zeigt diese Info in der Card an (Zeile 276-284). Der `PressReleaseEditor.tsx` laedt den Publisher-Namen und zeigt ihn im blauen Banner an (Zeile 456-478).
-
-Hier ist keine Aenderung noetig -- die Funktionalitaet existiert bereits. Ich werde pruefen ob es live korrekt funktioniert und ggf. kleine Verbesserungen machen (z.B. Publisher-Info auch anzeigen wenn `ghost_post_url` fehlt).
-
----
-
-### 4. Presse: E-Mail-Versand-Button nach Veroeffentlichung
-
-**Konzept:**
-- Nach der Veroeffentlichung auf Ghost erscheint ein neuer Button "Per E-Mail an Presse senden" im blauen Banner des `PressReleaseEditor`
-- Klick auf den Button navigiert zu Dokumente/E-Mails und befuellt den E-Mail-Composer mit Daten aus der Pressemitteilung
-- In den Presse-Einstellungen (Settings-Dialog in `PressReleasesList`) kann man ein Presse-E-Mail-Template vorbereiten
-
-**Template-System in Presse-Einstellungen:**
-- Neues app_settings Feld: `press_email_template_subject` und `press_email_template_body`
-- Variablen die im Template verfuegbar sind:
-  - `{{titel}}` -- Titel der Pressemitteilung
-  - `{{excerpt}}` -- Zusammenfassung/Excerpt
-  - `{{link}}` -- Ghost-Post-URL
-  - `{{datum}}` -- Veroeffentlichungsdatum
-  - `{{inhalt}}` -- Volltext (HTML)
-- Einstellungen-UI: Betreff-Feld und Body-Editor mit Variablen-Hilfe
-
-**E-Mail-Versand-Flow:**
-1. User klickt "Per E-Mail an Presse senden" im PressReleaseEditor
-2. Navigation zu `/documents` mit Query-Parametern: `?tab=emails&action=compose-press&pressReleaseId=xxx`
-3. `DocumentsView` erkennt die Parameter und oeffnet den EmailComposer mit vorbefuellten Daten
-4. Das Template wird aus `app_settings` geladen und die Variablen ersetzt
-
-**Dateien:**
-- `src/components/press/PressReleaseEditor.tsx` (Button hinzufuegen)
-- `src/components/press/PressReleasesList.tsx` (Template-Einstellungen im Settings-Dialog)
-- `src/components/DocumentsView.tsx` (Query-Parameter fuer Presse-E-Mail erkennen)
-- `src/components/emails/EmailComposer.tsx` (Presse-Daten vorbefuellen)
-
----
-
-### 5. Presse: E-Mail-Versand protokollieren
-
-**DB-Migration:**
-```sql
-ALTER TABLE public.press_releases
-  ADD COLUMN email_sent_at timestamptz,
-  ADD COLUMN email_sent_by uuid;
-```
-
-**Implementierung:**
-- Nach dem Versand einer E-Mail mit Presse-Bezug: `press_releases`-Eintrag aktualisieren
-- In der PressReleasesList-Card und im PressReleaseEditor anzeigen: "Per E-Mail versandt am ... von ..."
-- Im EmailComposer: Nach erfolgreichem Senden der E-Mail die `press_releases`-Tabelle aktualisieren
-
-**Dateien:**
-- DB-Migration (neue Spalten)
-- `src/components/emails/EmailComposer.tsx` (nach Versand protokollieren)
-- `src/components/press/PressReleasesList.tsx` (Versand-Info in Card)
-- `src/components/press/PressReleaseEditor.tsx` (Versand-Info im Banner)
-
----
-
-### 6. Benachrichtigungs-Groesse reparieren
-
-**Problem:** Die Sonner-Toasts ignorieren die `!important`-Styles weil Sonner intern eigene Styles setzt die hoehere Spezifitaet haben. Die aktuelle Loesung nutzt `group-[.toaster]:!w-[520px]` etc., aber das wird von Sonners internem CSS ueberschrieben.
-
-**Root Cause:** Sonner rendert Toasts in einem Shadow-DOM-aehnlichen Container mit festen Inline-Styles. Die Tailwind `!important`-Klassen koennen Inline-Styles nicht ueberschreiben.
-
-**Loesung:**
-1. Globale CSS-Styles mit hoher Spezifitaet in `index.css`:
-```css
-/* Grosse Benachrichtigungen */
-[data-sonner-toaster][data-theme] [data-sonner-toast].toast-large {
-  width: 520px !important;
-  max-width: 90vw !important;
-  font-size: 1.125rem !important;
-  padding: 1.5rem !important;
-  border-radius: 0.75rem !important;
-  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25) !important;
-  border-width: 2px !important;
-}
-
-[data-sonner-toaster][data-theme] [data-sonner-toast].toast-large [data-description] {
-  font-size: 1rem !important;
-}
-```
-
-2. In `sonner.tsx` die `className` auf dem Toast verwenden statt `classNames`:
-```tsx
-toastOptions={{
-  className: isLarge ? 'toast-large' : '',
-  ...
-}}
-```
-
-3. Alternative: Sonner's `style` Prop verwenden, die Inline-Styles direkt setzt und damit garantiert wirkt.
-
-**Dateien:**
-- `src/components/ui/sonner.tsx` (Toast-Klasse/Style anwenden)
-- `src/index.css` (Globale CSS-Regeln fuer grosse Toasts)
-
----
-
-### 7. FallAkten-Fehler: Infinite Recursion in RLS-Policy (KRITISCH)
-
-**Root Cause gefunden:** Die Postgres-Logs zeigen dutzende `infinite recursion detected in policy for relation "case_files"` Fehler.
-
-Die aktuelle RLS-Policy-Kette:
-1. **`case_files` SELECT Policy** prueft: `id IN (SELECT case_file_id FROM case_file_participants WHERE user_id = auth.uid())`
-2. **`case_file_participants` SELECT Policy** prueft: `case_file_id IN (SELECT id FROM case_files WHERE tenant_id IN (...))`
-
-Dies erzeugt eine zirkulaere Abhaengigkeit: Um `case_files` zu lesen, muss man `case_file_participants` lesen, was wiederum `case_files` liest.
-
-**Die Akte "Karl Kinski" ist NICHT geloescht** -- sie existiert noch in der Datenbank (visibility: public, status: active). Sie wird nur nicht angezeigt weil die RLS-Policy fehlschlaegt.
-
-**Loesung: RLS-Policies entkoppeln**
-
-Die `case_file_participants` SELECT-Policy darf nicht auf `case_files` zurueckverweisen. Stattdessen:
+Neue Spalten auf `case_files`:
 
 ```sql
--- 1. Alte Policies entfernen
-DROP POLICY IF EXISTS "Users can view accessible case files" ON public.case_files;
-DROP POLICY IF EXISTS "Users can view participants of their tenant case files" ON public.case_file_participants;
-
--- 2. case_files: Verwende user_tenant_memberships direkt + participants ohne Umweg
-CREATE POLICY "Users can view accessible case files"
-  ON public.case_files FOR SELECT
-  USING (
-    tenant_id IN (
-      SELECT utm.tenant_id FROM user_tenant_memberships utm
-      WHERE utm.user_id = auth.uid() AND utm.is_active = true
-    )
-    AND (
-      visibility = 'public'
-      OR user_id = auth.uid()
-      OR EXISTS (
-        SELECT 1 FROM case_file_participants cfp
-        WHERE cfp.case_file_id = id AND cfp.user_id = auth.uid()
-      )
-    )
-  );
-
--- 3. case_file_participants: Keine Abhaengigkeit auf case_files
--- Stattdessen: User kann Teilnehmer sehen wenn er selbst Teilnehmer ist,
--- Ersteller ist, oder die Akte oeffentlich ist
-CREATE POLICY "Users can view case file participants"
-  ON public.case_file_participants FOR SELECT
-  USING (
-    user_id = auth.uid()
-    OR case_file_id IN (
-      SELECT cf.id FROM case_files cf
-      WHERE cf.user_id = auth.uid()
-    )
-  );
+ALTER TABLE public.case_files
+  ADD COLUMN current_status_note text,           -- "Aktueller Stand" Freitext
+  ADD COLUMN current_status_updated_at timestamptz,
+  ADD COLUMN risks_and_opportunities jsonb DEFAULT '{"risks": [], "opportunities": []}',
+  ADD COLUMN assigned_to uuid;                    -- Hauptverantwortlicher
 ```
 
-Aber auch Policy 3 verweist noch auf `case_files`. Um die Rekursion komplett zu brechen, muss die `case_file_participants`-Policy **nicht** auf `case_files` zugreifen:
+Fuer "Naechste Schritte" nutzen wir das bestehende Task-System: Die verknuepften Aufgaben (`case_file_tasks`) mit Status `todo` oder `in_progress` werden automatisch als "Naechste Schritte" angezeigt. Zusaetzlich ermoeglichen wir Inline-Quick-Tasks:
 
 ```sql
--- Einfachste sichere Loesung:
--- Jeder authentifizierte Benutzer kann Teilnehmer-Eintraege sehen,
--- die Sicherheit wird durch die case_files-Policy gewaehrleistet
--- (man sieht nur Akten die man sehen darf, und damit auch nur deren Teilnehmer)
-CREATE POLICY "Authenticated users can view participants"
-  ON public.case_file_participants FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+-- Keine neue Tabelle noetig, wir nutzen die bestehende tasks + case_file_tasks Verknuepfung
 ```
 
-Da die `case_file_participants`-Daten nur ueber JOINs mit `case_files` abgefragt werden und `case_files` bereits durch RLS geschuetzt ist, ist dies sicher.
+### 3. Komponenten-Struktur
 
-**Dateien:**
-- DB-Migration (RLS-Policies korrigieren)
+Neue und ueberarbeitete Dateien:
+
+| Datei | Beschreibung |
+|-------|-------------|
+| `CaseFileDetail.tsx` | Komplett umbauen: Drei-Spalten-Layout |
+| `CaseFileDetailHeader.tsx` (NEU) | Header mit Quick-Action-Buttons |
+| `CaseFileLeftSidebar.tsx` (NEU) | Beteiligte, Themen, Metadaten |
+| `CaseFileTimeline.tsx` (NEU) | Vereinigte Chronologie mit Filter-Tabs und Suche |
+| `CaseFileRightSidebar.tsx` (NEU) | Aktueller Stand, Naechste Schritte, Risiken |
+| `CaseFileCurrentStatus.tsx` (NEU) | Editierbare Statusnotiz-Karte |
+| `CaseFileNextSteps.tsx` (NEU) | Aufgaben-Checkliste mit Quick-Add |
+| `CaseFileRisksOpportunities.tsx` (NEU) | Risiken und Chancen Editor |
+
+Die bestehenden Tab-Komponenten (`CaseFileContactsTab`, `CaseFileDocumentsTab` etc.) werden nicht geloescht, aber ihre Inhalte werden in die neuen Sidebar- und Timeline-Komponenten integriert. Die Dialoge zum Hinzufuegen bleiben erhalten.
+
+### 4. Chronologie -- vereinigtes Timeline-System
+
+Die bestehende `CaseFileTimelineTab` zeigt nur manuelle Timeline-Eintraege. In der neuen Version wird die Chronologie ALLE verknuepften Elemente zusammenfuehren:
+
+```typescript
+// Pseudocode fuer die vereinigte Timeline
+const unifiedTimeline = [
+  ...timeline.map(t => ({ ...t, category: 'timeline' })),
+  ...notes.map(n => ({ 
+    id: n.id, category: 'note', 
+    event_date: n.created_at, title: 'Notiz', 
+    description: n.content 
+  })),
+  ...documents.map(d => ({
+    id: d.id, category: 'document',
+    event_date: d.created_at, title: d.document?.title,
+    description: d.document?.file_name
+  })),
+  ...tasks.map(t => ({
+    id: t.id, category: 'task',
+    event_date: t.created_at, title: t.task?.title,
+    description: `Status: ${t.task?.status}`
+  })),
+  ...appointments.map(a => ({
+    id: a.id, category: 'appointment',
+    event_date: a.appointment?.start_time || a.created_at,
+    title: a.appointment?.title,
+    description: a.appointment?.location
+  })),
+  ...letters.map(l => ({
+    id: l.id, category: 'letter',
+    event_date: l.created_at, title: l.letter?.title,
+    description: l.letter?.subject
+  })),
+].sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
+```
+
+Filter-Tabs ueber der Timeline:
+- **Alle** -- alles anzeigen
+- **Notizen** -- nur Notizen
+- **Dokumente** -- nur Dokumente
+- **Termine** -- nur Termine
+- **Aufgaben** -- nur Aufgaben
+- **Briefe** -- nur Briefe/Korrespondenz
+
+Plus eine Suchleiste und ein "Nur offene Punkte"-Toggle.
+
+### 5. "Aktueller Stand" -- hervorgehobene Statusnotiz
+
+- Ein prominenter, farblich hervorgehobener Bereich in der rechten Sidebar
+- Der Benutzer kann den Text inline bearbeiten (Textarea mit "Notiz bearbeiten"-Button)
+- Wird in `case_files.current_status_note` gespeichert
+- Zeigt Zeitstempel der letzten Aktualisierung
+
+### 6. "Naechste Schritte" -- Aufgaben-Checkliste
+
+- Zeigt die mit der FallAkte verknuepften offenen Aufgaben als Checkliste
+- Checkbox zum Abschliessen direkt in der Liste (aendert Task-Status auf `completed`)
+- Zustaendige Person und Frist werden angezeigt
+- "Quick-Add"-Feld: Schnell eine neue Aufgabe erstellen, die automatisch mit der Akte verknuepft wird
+- Sortierung: Ueberfaellige zuerst, dann nach Frist
+
+### 7. "Risiken und Chancen"
+
+- Zwei getrennte Listen (Bullet-Points) in einer Karte
+- Inline-Bearbeitung: Klick auf "Bearbeiten" oeffnet jeweils ein Textarea
+- Gespeichert als JSONB in `case_files.risks_and_opportunities`:
+  ```json
+  {
+    "risks": ["Mehr Verbreitenwirkung", "Lack von Refant"],
+    "opportunities": ["Anzeigen und eine Presse"]
+  }
+  ```
+
+### 8. Integration mit bestehendem System
+
+| System-Bestandteil | Integration |
+|---------------------|-------------|
+| **Themen (Topics)** | Werden in der linken Sidebar unter "Politischer Kontext" angezeigt, mit `TopicSelector` zum Hinzufuegen |
+| **Kontakte** | Verknuepfte Kontakte mit Rollen in der linken Sidebar, mit Schnellaktionen (Telefon, E-Mail) |
+| **Aufgaben** | Offene Aufgaben als "Naechste Schritte" in rechter Sidebar, alle in der Timeline |
+| **Dokumente** | In der Timeline mit Download-Link, "Hinzufuegen" per Quick-Button im Header |
+| **Termine** | In der Timeline mit Ort und Zeit, "Hinzufuegen" per Quick-Button |
+| **Briefe** | In der Timeline mit Status-Badge |
+| **Teilnehmer** | In der linken Sidebar unter "Team" mit Viewer/Editor-Rollen |
+| **Sichtbarkeit** | Indikator (Icon + Text) im Header |
+| **Notizen** | In der Timeline als eigener Typ, angepinnte Notizen als "Aktueller Stand" |
 
 ---
 
@@ -270,25 +213,27 @@ Da die `case_file_participants`-Daten nur ueber JOINs mit `case_files` abgefragt
 
 | Aktion | Datei |
 |--------|-------|
-| Bearbeiten | `src/components/ContactsView.tsx` (Mitglieder-Tabelle, eingebettete Verteiler-Bearbeitung) |
-| Bearbeiten | `src/components/DistributionListForm.tsx` (Kontakte-Tabelle, Navigation-Callbacks) |
-| Bearbeiten | `src/App.tsx` (Distribution-Routes entfernen) |
-| Loeschen | `src/pages/CreateDistributionList.tsx` (nicht mehr noetig) |
-| Loeschen | `src/pages/EditDistributionList.tsx` (nicht mehr noetig) |
-| Bearbeiten | `src/components/press/PressReleaseEditor.tsx` (E-Mail-Button nach Veroeffentlichung) |
-| Bearbeiten | `src/components/press/PressReleasesList.tsx` (Presse-Template-Einstellungen, E-Mail-Versand-Info) |
-| Bearbeiten | `src/components/DocumentsView.tsx` (Presse-E-Mail Query-Parameter) |
-| Bearbeiten | `src/components/emails/EmailComposer.tsx` (Presse-Daten vorbefuellen, Versand protokollieren) |
-| Bearbeiten | `src/components/ui/sonner.tsx` (Groesse-Fix) |
-| Bearbeiten | `src/index.css` (Globale Toast-Styles) |
-| DB-Migration | `email_sent_at` und `email_sent_by` auf `press_releases` |
-| DB-Migration | RLS-Policies fuer `case_files` und `case_file_participants` korrigieren |
+| DB-Migration | Neue Spalten: `current_status_note`, `current_status_updated_at`, `risks_and_opportunities`, `assigned_to` |
+| Komplett umbauen | `src/components/case-files/CaseFileDetail.tsx` |
+| Neu | `src/components/case-files/CaseFileDetailHeader.tsx` |
+| Neu | `src/components/case-files/CaseFileLeftSidebar.tsx` |
+| Neu | `src/components/case-files/CaseFileTimeline.tsx` |
+| Neu | `src/components/case-files/CaseFileRightSidebar.tsx` |
+| Neu | `src/components/case-files/CaseFileCurrentStatus.tsx` |
+| Neu | `src/components/case-files/CaseFileNextSteps.tsx` |
+| Neu | `src/components/case-files/CaseFileRisksOpportunities.tsx` |
+| Bearbeiten | `src/hooks/useCaseFileDetails.tsx` (neue Felder + updateCurrentStatus + updateRisksOpportunities) |
+| Bearbeiten | `src/hooks/useCaseFiles.tsx` (CaseFile Interface erweitern) |
+| Bearbeiten | `src/integrations/supabase/types.ts` (neue Spalten) |
+
+Bestehende Tab-Dateien bleiben vorerst erhalten fuer die Add-Dialoge, werden aber nicht mehr als eigenstaendige Tabs gerendert.
 
 ## Reihenfolge
 
-1. **KRITISCH: FallAkten RLS-Fix** -- behebt den Fehler und macht "Karl Kinski" wieder sichtbar
-2. Verteiler: Mitglieder als Tabelle anzeigen + Bearbeitung ins Layout einbetten
-3. Benachrichtigungs-Groesse reparieren (CSS-Fix)
-4. Presse: E-Mail-Template-System in Einstellungen
-5. Presse: E-Mail-Button nach Veroeffentlichung + DB-Migration
-6. Presse: E-Mail-Versand protokollieren
+1. DB-Migration: Neue Spalten auf `case_files`
+2. Types + Hook erweitern (`useCaseFileDetails`, `useCaseFiles`)
+3. Neue Komponenten erstellen (Header, Left Sidebar, Right Sidebar, Timeline)
+4. `CaseFileDetail.tsx` zum Drei-Spalten-Layout umbauen
+5. Responsive Anpassungen fuer Mobil
+6. Bestehende Add-Dialoge in das neue Layout integrieren
+
