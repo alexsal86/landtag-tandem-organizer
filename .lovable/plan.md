@@ -1,254 +1,211 @@
 
-# Plan: FallAkten-Sichtbarkeit, Benachrichtigungs-Layout und Standard-Teilnehmer
 
-## Uebersicht
+# Plan: Benachrichtigungssystem verbessern -- Toene, Darstellung und Vorschau
 
-| Nr | Thema | Loesung |
-|----|-------|---------|
-| 1 | FallAkten: Sichtbarkeit (oeffentlich / bestimmte Personen / privat) | Neue DB-Tabelle `case_file_participants` + Spalte `visibility` auf `case_files`, UI im Create/Edit-Dialog |
-| 2 | Meine Arbeit: FallAkten-Tab filtert nach Sichtbarkeit | Query anpassen: oeffentlich ODER Teilnehmer ODER Ersteller |
-| 3 | Benachrichtigungseinstellungen ohne Header/Navigation | `/notifications` Route in `Index.tsx` einbetten statt standalone in `App.tsx` |
-| 4 | Benachrichtigungsposition und -groesse konfigurierbar | Einstellungen in `user_preferences` (localStorage), Sonner-Position dynamisch, zwei Groessen |
-| 5 | Benachrichtigungston + individuelle Toene | Ton-Abspielen bei neuer Notification, Ton-Auswahl pro Kategorie |
-| 6 | Standard-Benutzer fuer Entscheidungen | Settings-UI in MyWorkDecisionsTab und DecisionOverview, gespeichert in `user_preferences` |
+## Uebersicht der Probleme und Loesungen
 
----
-
-## Technische Details
-
-### 1. FallAkten: Sichtbarkeitsmodell
-
-**Aktueller Zustand:** `case_files` hat nur `is_private: boolean`. Es gibt kein Teilnehmer-System.
-
-**Neues Modell:** Drei Sichtbarkeits-Stufen:
-- **`private`** -- Nur der Ersteller sieht die Akte
-- **`shared`** -- Bestimmte Personen mit Rollen (viewer/editor) koennen die Akte sehen/bearbeiten
-- **`public`** -- Alle Mandanten-Mitglieder koennen die Akte sehen
-
-**DB-Migration:**
-
-1. Neue Spalte `visibility` auf `case_files`:
-```sql
-ALTER TABLE public.case_files 
-  ADD COLUMN visibility text NOT NULL DEFAULT 'private';
-
--- Bestehende Daten migrieren
-UPDATE public.case_files SET visibility = CASE 
-  WHEN is_private = true THEN 'private'
-  ELSE 'public' 
-END;
-```
-
-2. Neue Tabelle `case_file_participants`:
-```sql
-CREATE TABLE public.case_file_participants (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  case_file_id uuid NOT NULL REFERENCES public.case_files(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL,
-  role text NOT NULL DEFAULT 'viewer', -- 'viewer' oder 'editor'
-  created_at timestamptz DEFAULT now(),
-  UNIQUE(case_file_id, user_id)
-);
-
--- RLS
-ALTER TABLE public.case_file_participants ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view participants of accessible case files"
-  ON public.case_file_participants FOR SELECT
-  USING (case_file_id IN (
-    SELECT id FROM public.case_files 
-    WHERE tenant_id = ANY(get_user_tenant_ids(auth.uid()))
-  ));
-
-CREATE POLICY "Case file owners can manage participants"
-  ON public.case_file_participants FOR ALL
-  USING (case_file_id IN (
-    SELECT id FROM public.case_files WHERE user_id = auth.uid()
-  ));
-```
-
-3. RLS-Policy fuer `case_files` SELECT aktualisieren:
-```sql
--- Alte Policy ersetzen
-DROP POLICY "Users can view case files in their tenant" ON public.case_files;
-
-CREATE POLICY "Users can view accessible case files"
-  ON public.case_files FOR SELECT
-  USING (
-    tenant_id = ANY(get_user_tenant_ids(auth.uid()))
-    AND (
-      visibility = 'public'
-      OR user_id = auth.uid()
-      OR id IN (SELECT case_file_id FROM public.case_file_participants WHERE user_id = auth.uid())
-    )
-  );
-```
-
-**UI-Aenderungen:**
-
-- `CaseFileCreateDialog.tsx`: `is_private`-Switch ersetzen durch Sichtbarkeits-Auswahl (RadioGroup: Privat / Geteilt / Oeffentlich) + Benutzerauswahl mit Rollen-Dropdown bei "Geteilt"
-- `CaseFileEditDialog.tsx`: Gleiche Aenderungen
-- `CaseFileFormData`: `is_private` durch `visibility` und `participants` ersetzen
-- `useCaseFiles.tsx`: `createCaseFile` und `updateCaseFile` erweitern, um Teilnehmer zu speichern
-
-**Dateien:**
-- DB-Migration (neue Tabelle + Spalte + RLS)
-- `src/hooks/useCaseFiles.tsx`
-- `src/components/case-files/CaseFileCreateDialog.tsx`
-- `src/components/case-files/CaseFileEditDialog.tsx`
+| Problem | Loesung |
+|---------|---------|
+| Toene zu kurz und zu aehnlich (nur "Klang" gut) | Alle Toene komplett ueberarbeiten: laenger, melodischer, deutlich unterscheidbar |
+| Kein individueller Ton moeglich | Upload-Option fuer eigene Audio-Dateien (MP3/WAV/OGG) via FileReader + localStorage |
+| Position "Oben Mitte" fehlt | `top-center` als dritte Positions-Option hinzufuegen (Sonner unterstuetzt das nativ) |
+| Vorschau zeigt alle Groessen/Positionen gleich | Sonner-Konfiguration in `sonner.tsx` korrigieren: grosse Variante deutlich groesser (600px breit, groessere Schrift, mehr Padding), Position korrekt uebernehmen |
+| "Nicht ausblenden" -- wie wegklicken? | `closeButton` in Sonner aktivieren, damit ein X-Button zum Schliessen erscheint. Hinweistext in den Einstellungen ergaenzen |
+| Weitere Ergaenzungen | "Nicht stoeren"-Modus (setzt alle Toasts stumm), Animations-Auswahl (Slide/Fade) |
 
 ---
 
-### 2. Meine Arbeit: FallAkten-Tab
+## 1. Toene komplett ueberarbeiten (`notificationSounds.ts`)
 
-**Aktuell:** `MyWorkCaseFilesTab.tsx` filtert nur `.eq("user_id", user.id)` -- zeigt also nur eigene Akten.
+**Problem:** Alle Toene dauern 0.08-0.4 Sekunden und bestehen aus einem einzelnen Oszillator. Sie klingen fast identisch.
 
-**Neu:** Alle Akten anzeigen, die der Benutzer sehen darf:
-```tsx
-const { data, error } = await supabase
-  .from("case_files")
-  .select("*, case_file_participants!inner(user_id)")
-  .or(`user_id.eq.${user.id},visibility.eq.public,case_file_participants.user_id.eq.${user.id}`)
-  .in("status", ["active", "pending"])
-  .order("updated_at", { ascending: false })
-  .limit(20);
-```
+**Neue Toene (laenger, melodischer, unterscheidbar):**
 
-Da die OR-Verknuepfung mit einem inner join komplex ist, wird alternativ die RLS-Policy genutzt (die bereits filtert) und nur der `user_id`-Filter entfernt:
-```tsx
-const { data, error } = await supabase
-  .from("case_files")
-  .select("*")
-  .in("status", ["active", "pending"])
-  .order("updated_at", { ascending: false })
-  .limit(20);
-```
-Die RLS-Policy stellt sicher, dass nur sichtbare Akten zurueckgegeben werden.
+| Ton | Beschreibung | Dauer | Technik |
+|-----|-------------|-------|---------|
+| **Ping** | Zwei aufsteigende Toene, klar und freundlich | ~0.5s | Zwei Oszillatoren nacheinander, hoehere Frequenzen |
+| **Glocke** | Glockenartig mit Nachhall, metallischer Klang | ~0.8s | Mehrere ueberlagerte Sinustoene mit Decay, verschiedene Harmonische |
+| **Plopp** | Tiefer, runder Ton wie ein Wassertropfen | ~0.4s | Sinus mit schnellem Frequency-Sweep von tief nach hoch, dann runter |
+| **Dezent** | Sanftes Zweiklang-Motiv | ~0.6s | Triangle-Welle, zwei Noten leise hintereinander |
+| **Klang** | Dreiklang aufsteigend (bleibt wie bisher, da beliebt) | ~0.8s | Drei Sinustoene (C-E-G), laengerer Nachhall |
+| **Melodie** (NEU) | Kurze 4-Noten-Melodie | ~1.2s | Vier aufeinanderfolgende Toene mit verschiedenen Intervallen |
+| **Harfe** (NEU) | Harfenartige aufsteigende Arpeggio | ~1.0s | Schnelle Folge von 5 Toenen mit Triangle-Welle |
+| **Alarm** (NEU) | Doppelton, aufmerksamkeitsstark | ~0.6s | Zwei identische kurze Toene mit Pause dazwischen |
 
-**Datei:** `src/components/my-work/MyWorkCaseFilesTab.tsx`
+**Technische Verbesserungen:**
+- Alle Toene verwenden Gain-Envelope (Attack-Decay-Sustain-Release) fuer natuerlicheren Klang
+- Mehrere ueberlagerte Oszillatoren fuer reicheren Sound
+- Laengere Ausklingzeiten (mindestens 0.4s, maximal 1.2s)
 
----
+### Individueller Ton (Custom Sound Upload)
 
-### 3. Benachrichtigungsseite mit Header/Navigation
-
-**Problem:** `/notifications` ist in `App.tsx` (Zeile 82) als standalone Route definiert -- ausserhalb des Index-Layouts mit AppNavigation und AppHeader.
-
-**Loesung:** 
-- Route aus `App.tsx` entfernen
-- In `Index.tsx` den Case `notifications` im `renderActiveSection` hinzufuegen
-- Dadurch wird die Seite innerhalb des Layouts mit Sidebar und Header gerendert
-
-**Dateien:**
-- `src/App.tsx` (Route entfernen)
-- `src/pages/Index.tsx` (`notifications` Case hinzufuegen)
-
----
-
-### 4. Benachrichtigungsposition und -groesse
-
-**Konzept:**
-- In den Benachrichtigungseinstellungen (`NotificationsPage.tsx`, Tab "Einstellungen") einen neuen Bereich hinzufuegen
-- **Position:** Oben rechts (`top-right`) oder Unten rechts (`bottom-right`)
-- **Groesse:** Normal oder Gross (erweiterte Darstellung mit mehr Details)
-- **Vorschau:** Live-Preview-Button, der eine Beispiel-Benachrichtigung in der gewaehlten Position und Groesse anzeigt
-- Gespeichert in `localStorage` unter `notification_display_preferences`
-
-**Sonner-Konfiguration:**
-- `src/components/ui/sonner.tsx` liest die Position aus `localStorage` und setzt `position` entsprechend
-- Fuer die grosse Variante: Custom CSS-Klassen auf den Toast anwenden (breitere Darstellung, groessere Schrift)
-
-**Ergaenzungen:**
-- Dauer der Benachrichtigung konfigurierbar (3s, 5s, 8s, 10s)
-- Option "Benachrichtigungen nicht automatisch ausblenden" (persist)
-
-**Dateien:**
-- `src/components/ui/sonner.tsx` (dynamische Position + Groesse)
-- `src/pages/NotificationsPage.tsx` (Einstellungs-UI mit Vorschau)
-- Neuer Hook: `src/hooks/useNotificationDisplayPreferences.ts`
-
----
-
-### 5. Benachrichtigungston + individuelle Toene
-
-**Konzept:**
-- Standard-Ton bei jeder neuen Benachrichtigung (sofern aktiviert)
-- Verschiedene Toene zur Auswahl (z.B. "Ping", "Glocke", "Plopp", "Dezent")
-- Pro Benachrichtigungs-Kategorie ein eigener Ton waehlbar
-- Lautstaerke regelbar
+Neue Funktion: Benutzer koennen eine eigene Audio-Datei hochladen.
 
 **Technische Umsetzung:**
-- Audio-Dateien als Data-URIs oder kurze synthetische Toene via Web Audio API
-- Im `useNotifications.tsx` Hook: Bei neuer Notification (Realtime-Event) den konfigurierten Ton abspielen
-- Einstellungen in `localStorage` unter `notification_sound_preferences`
+- File-Input fuer MP3/WAV/OGG (max 500KB)
+- `FileReader.readAsDataURL()` konvertiert die Datei in einen Base64-String
+- Speicherung in `localStorage` unter `custom_notification_sound`
+- Abspielen ueber `new Audio(dataUrl)` statt Web Audio API
+- In der Tonliste erscheint "Eigener Ton" als zusaetzliche Option
+- Loeschen-Button zum Entfernen des eigenen Tons
 
-**UI:**
-- In `NotificationsPage.tsx` (Tab "Einstellungen"): Neuer Bereich "Toene"
-- Master-Toggle: Ton ein/aus
-- Ton-Auswahl mit Vorhoer-Button (Play-Icon)
-- Optional: Pro Kategorie eigener Ton (Collapsible)
-- Lautstaerke-Slider
+**Aenderungen in `notificationSounds.ts`:**
+```typescript
+export const NOTIFICATION_SOUNDS = [
+  { value: 'ping', label: 'Ping' },
+  { value: 'bell', label: 'Glocke' },
+  { value: 'pop', label: 'Plopp' },
+  { value: 'subtle', label: 'Dezent' },
+  { value: 'chime', label: 'Klang' },
+  { value: 'melody', label: 'Melodie' },
+  { value: 'harp', label: 'Harfe' },
+  { value: 'alert', label: 'Alarm' },
+  { value: 'custom', label: 'Eigener Ton' },
+] as const;
 
-**Dateien:**
-- `src/hooks/useNotificationSounds.ts` (neuer Hook)
-- `src/hooks/useNotifications.tsx` (Ton abspielen bei Realtime-Event)
-- `src/pages/NotificationsPage.tsx` (UI in Einstellungen)
-- `src/utils/notificationSounds.ts` (Ton-Definitionen via Web Audio API)
+export function playNotificationSound(soundName: SoundName, volume: number = 0.5) {
+  if (soundName === 'custom') {
+    playCustomSound(volume);
+    return;
+  }
+  // ... bestehende Web Audio API Logik
+}
+
+function playCustomSound(volume: number) {
+  const dataUrl = localStorage.getItem('custom_notification_sound');
+  if (!dataUrl) return;
+  const audio = new Audio(dataUrl);
+  audio.volume = volume;
+  audio.play().catch(console.error);
+}
+```
 
 ---
 
-### 6. Standard-Benutzer fuer Entscheidungen
+## 2. Position "Oben Mitte" hinzufuegen
 
-**Konzept:** Ein kleines Settings-Icon/Button in der Entscheidungs-Ansicht, das einen Dialog oeffnet, in dem man Standard-Teilnehmer festlegen kann. Diese werden dann beim Erstellen einer neuen Entscheidung automatisch vorausgewaehlt.
+**Sonner unterstuetzt nativ:** `top-left`, `top-center`, `top-right`, `bottom-left`, `bottom-center`, `bottom-right`
 
-**Speicherung:** `localStorage` unter `default_decision_participants` (Array von User-IDs)
+**Aenderungen:**
 
-**UI-Platzierung:**
-- `MyWorkDecisionsTab.tsx`: Settings-Icon neben dem "Neue Entscheidung"-Button
-- `DecisionOverview.tsx`: Gleicher Settings-Bereich
-- Ein kleiner Dialog/Popover mit MultiSelect fuer Benutzer
+In `useNotificationDisplayPreferences.ts`:
+```typescript
+position: 'top-right' | 'top-center' | 'bottom-right';
+```
 
-**Integration in StandaloneDecisionCreator:**
-- Beim Oeffnen des Dialogs: Gespeicherte Standard-Teilnehmer laden und als `selectedUsers` vorauswaehlen
-- Aktuell wird bereits der "Abgeordneter" vorselektiert -- die Standard-Teilnehmer haben Vorrang, falls konfiguriert
+In `NotificationsPage.tsx` -- RadioGroup von 2 auf 3 Optionen erweitern:
+- Oben rechts (`top-right`)
+- Oben Mitte (`top-center`)
+- Unten rechts (`bottom-right`)
 
-**Dateien:**
-- Neuer Hook: `src/hooks/useDefaultDecisionParticipants.ts`
-- `src/components/task-decisions/StandaloneDecisionCreator.tsx`
-- `src/components/my-work/MyWorkDecisionsTab.tsx` (Settings-Button)
-- `src/components/task-decisions/DecisionOverview.tsx` (Settings-Button)
-- Neuer Dialog: `src/components/task-decisions/DefaultParticipantsDialog.tsx`
+Grid-Layout: `grid-cols-3` statt `grid-cols-2`
+
+---
+
+## 3. Vorschau korrigieren -- Groesse und Position
+
+**Problem:** Die Vorschau ruft `toast()` auf, aber Sonner verwendet die globale Konfiguration aus `sonner.tsx`. Die aktuelle `isLarge`-Klasse ist zu subtil (nur 420px Breite und `text-base`).
+
+**Loesung in `sonner.tsx`:**
+
+Die grosse Variante muss deutlich auffaelliger sein:
+
+```typescript
+// Normal: Standard-Sonner-Darstellung (~356px)
+// Gross: Deutlich groesser
+
+const largeStyles = isLarge ? [
+  'group-[.toaster]:!w-[520px]',      // Breiter (statt 420px)
+  'group-[.toaster]:!max-w-[90vw]',   // Responsiv
+  'group-[.toaster]:!text-lg',         // Groessere Schrift (statt text-base)
+  'group-[.toaster]:!p-6',            // Mehr Padding (statt p-5)
+  'group-[.toaster]:!rounded-xl',     // Groessere Rundung
+  'group-[.toaster]:!shadow-2xl',     // Staerkerer Schatten
+  'group-[.toaster]:!border-2',       // Dickerer Rand
+].join(' ') : '';
+
+// Description bei gross:
+const largeDescStyles = isLarge
+  ? 'group-[.toast]:!text-base'  // statt text-sm
+  : '';
+```
+
+**Position:** Die Position wird bereits korrekt ueber `preferences.position` an Sonner weitergegeben. Das sollte schon funktionieren -- falls nicht, liegt es daran, dass die Preferences nicht sofort nach Aenderung den Sonner-State aktualisieren. Wir stellen sicher, dass die Vorschau-Benachrichtigung die aktuell gewaehlte Position/Groesse live widerspiegelt (kein Page-Reload noetig).
+
+**Vorschau-Verbesserung in `NotificationsPage.tsx`:**
+```typescript
+const handlePreview = () => {
+  // Alle bestehenden Toasts entfernen, damit man die neue Position sieht
+  toast.dismiss();
+  
+  // Kurze Verzoegerung damit das Dismiss wirkt
+  setTimeout(() => {
+    toast('Beispiel-Benachrichtigung', {
+      description: 'So werden Ihre Benachrichtigungen angezeigt. Bei "Nicht ausblenden" koennen Sie diese mit dem X-Button schliessen.',
+      duration: preferences.persist ? Infinity : preferences.duration,
+      position: preferences.position, // Explizit die Position setzen
+      closeButton: true, // Immer Close-Button in der Vorschau zeigen
+    });
+  }, 100);
+};
+```
+
+---
+
+## 4. "Nicht ausblenden" -- Close-Button
+
+**Problem:** Wenn `persist: true` (Dauer = Infinity), bleiben Toasts fuer immer sichtbar, aber der Benutzer kann sie nicht schliessen.
+
+**Loesung in `sonner.tsx`:**
+```typescript
+<Sonner
+  closeButton={preferences.persist}  // Close-Button anzeigen bei persistenten Toasts
+  // ... rest
+/>
+```
+
+Alternativ immer einen Close-Button anzeigen -- das ist nutzerfreundlicher:
+```typescript
+<Sonner
+  closeButton={true}  // Immer einen X-Button anzeigen
+/>
+```
+
+**Zusaetzlich:** Hinweistext in den Einstellungen unter "Nicht ausblenden":
+> "Benachrichtigungen bleiben sichtbar, bis Sie diese manuell mit dem X-Button schliessen."
+
+---
+
+## 5. Weitere Ergaenzungen
+
+### "Nicht stoeren"-Modus
+- Ein einfacher Toggle in den Einstellungen: "Nicht stoeren"
+- Wenn aktiviert: Keine Toast-Einblendungen und keine Toene
+- Die Benachrichtigungen werden weiterhin in der Liste gespeichert, nur nicht eingeblendet
+- Visueller Indikator (z.B. durchgestrichenes Glocken-Icon) im Header
+
+### Visuelle Vorschau-Box
+Statt nur einen Button "Vorschau anzeigen" -- ein kleines visuelles Schema der Bildschirm-Position:
+- Ein Mini-Bildschirm (160x100px Box) mit markierter Position wo der Toast erscheint
+- Klick auf die Position aendert diese direkt
+- Zeigt auch die relative Groesse an (Normal vs. Gross)
 
 ---
 
 ## Betroffene Dateien
 
-| Aktion | Datei |
-|--------|-------|
-| DB-Migration | `visibility`-Spalte, `case_file_participants`-Tabelle, RLS-Policies |
-| Bearbeiten | `src/hooks/useCaseFiles.tsx` (visibility + participants) |
-| Bearbeiten | `src/components/case-files/CaseFileCreateDialog.tsx` (Sichtbarkeits-UI) |
-| Bearbeiten | `src/components/case-files/CaseFileEditDialog.tsx` (Sichtbarkeits-UI) |
-| Bearbeiten | `src/components/my-work/MyWorkCaseFilesTab.tsx` (Query anpassen) |
-| Bearbeiten | `src/App.tsx` (notifications Route entfernen) |
-| Bearbeiten | `src/pages/Index.tsx` (notifications Case hinzufuegen) |
-| Bearbeiten | `src/pages/NotificationsPage.tsx` (Layout entfernen, Einstellungen erweitern) |
-| Bearbeiten | `src/components/ui/sonner.tsx` (dynamische Position + Groesse) |
-| Bearbeiten | `src/hooks/useNotifications.tsx` (Ton bei neuer Notification) |
-| Bearbeiten | `src/components/task-decisions/StandaloneDecisionCreator.tsx` (Default-Teilnehmer) |
-| Bearbeiten | `src/components/my-work/MyWorkDecisionsTab.tsx` (Settings-Button) |
-| Bearbeiten | `src/components/task-decisions/DecisionOverview.tsx` (Settings-Button) |
-| Neu | `src/hooks/useNotificationDisplayPreferences.ts` |
-| Neu | `src/hooks/useNotificationSounds.ts` |
-| Neu | `src/utils/notificationSounds.ts` |
-| Neu | `src/hooks/useDefaultDecisionParticipants.ts` |
-| Neu | `src/components/task-decisions/DefaultParticipantsDialog.tsx` |
+| Datei | Aenderung |
+|-------|-----------|
+| `src/utils/notificationSounds.ts` | Alle Toene ueberarbeiten (laenger, reichhaltiger), 3 neue Toene, Custom-Sound-Support |
+| `src/hooks/useNotificationDisplayPreferences.ts` | Position-Typ um `top-center` erweitern, `closeButton`-Preference hinzufuegen |
+| `src/components/ui/sonner.tsx` | `closeButton` aktivieren, grosse Variante deutlich groesser (520px, text-lg, p-6, shadow-2xl) |
+| `src/pages/NotificationsPage.tsx` | 3 Positions-Optionen, Custom-Sound-Upload UI, Vorschau mit `toast.dismiss()` + position-Override, Hinweistext bei "Nicht ausblenden", visuelle Position-Preview-Box |
 
 ## Reihenfolge
 
-1. DB-Migration: `visibility`-Spalte + `case_file_participants`-Tabelle + RLS
-2. FallAkten Create/Edit Dialoge mit Sichtbarkeitsmodell
-3. Meine Arbeit FallAkten-Tab anpassen
-4. Benachrichtigungsseite in Layout einbetten
-5. Benachrichtigungs-Position und -Groesse konfigurierbar
-6. Benachrichtigungstoene
-7. Standard-Teilnehmer fuer Entscheidungen
+1. Toene ueberarbeiten und neue Toene hinzufuegen (`notificationSounds.ts`)
+2. Custom-Sound Upload-Logik (`notificationSounds.ts`)
+3. Position `top-center` + Close-Button (`useNotificationDisplayPreferences.ts`)
+4. Sonner grosse Variante korrigieren + closeButton (`sonner.tsx`)
+5. Einstellungs-UI aktualisieren: 3 Positionen, Upload, Hinweistexte, visuelle Vorschau (`NotificationsPage.tsx`)
+
