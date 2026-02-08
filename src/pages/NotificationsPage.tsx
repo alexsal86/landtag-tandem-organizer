@@ -1,20 +1,27 @@
 import React, { useState, useMemo } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { useNavigate } from 'react-router-dom';
 import {
   Bell, CheckCheck, Calendar, MessageSquare, FileText, Users,
   BookOpen, Clock, BarChart3, MapPin, StickyNote, Settings,
-  Search, Filter, X, DollarSign
+  Search, Filter, X, DollarSign, Volume2, VolumeX, Play,
+  Monitor, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
 import { useNotifications, type Notification } from '@/contexts/NotificationContext';
 import { NotificationSettings } from '@/components/NotificationSettings';
+import { useNotificationDisplayPreferences } from '@/hooks/useNotificationDisplayPreferences';
+import { NOTIFICATION_SOUNDS, playNotificationSound, type SoundName } from '@/utils/notificationSounds';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const getNotificationIcon = (type: string) => {
@@ -43,9 +50,183 @@ const getNotificationIcon = (type: string) => {
   }
 };
 
+// Display settings component
+function NotificationDisplaySettings() {
+  const { preferences, setPreferences } = useNotificationDisplayPreferences();
+
+  const handlePreview = () => {
+    toast('Beispiel-Benachrichtigung', {
+      description: 'So werden Ihre Benachrichtigungen angezeigt.',
+      duration: preferences.persist ? Infinity : preferences.duration,
+    });
+    if (preferences.soundEnabled) {
+      playNotificationSound(preferences.soundName as SoundName, preferences.soundVolume);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Position */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Monitor className="h-5 w-5" />
+            Darstellung
+          </CardTitle>
+          <CardDescription>Position und Größe der Benachrichtigungen</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-3">
+            <Label>Position</Label>
+            <RadioGroup
+              value={preferences.position}
+              onValueChange={(v) => setPreferences({ position: v as any })}
+              className="grid grid-cols-2 gap-3"
+            >
+              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="top-right" id="pos-top" />
+                <Label htmlFor="pos-top" className="flex items-center gap-2 cursor-pointer font-normal">
+                  <ArrowUpRight className="h-4 w-4" />
+                  Oben rechts
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="bottom-right" id="pos-bottom" />
+                <Label htmlFor="pos-bottom" className="flex items-center gap-2 cursor-pointer font-normal">
+                  <ArrowDownRight className="h-4 w-4" />
+                  Unten rechts
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div className="space-y-3">
+            <Label>Größe</Label>
+            <RadioGroup
+              value={preferences.size}
+              onValueChange={(v) => setPreferences({ size: v as any })}
+              className="grid grid-cols-2 gap-3"
+            >
+              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="normal" id="size-normal" />
+                <Label htmlFor="size-normal" className="cursor-pointer font-normal">Normal</Label>
+              </div>
+              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="large" id="size-large" />
+                <Label htmlFor="size-large" className="cursor-pointer font-normal">Groß</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div className="space-y-3">
+            <Label>Anzeigedauer</Label>
+            <div className="flex items-center gap-3">
+              <Select
+                value={preferences.persist ? 'persist' : String(preferences.duration)}
+                onValueChange={(v) => {
+                  if (v === 'persist') {
+                    setPreferences({ persist: true });
+                  } else {
+                    setPreferences({ persist: false, duration: Number(v) });
+                  }
+                }}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3000">3 Sekunden</SelectItem>
+                  <SelectItem value="5000">5 Sekunden</SelectItem>
+                  <SelectItem value="8000">8 Sekunden</SelectItem>
+                  <SelectItem value="10000">10 Sekunden</SelectItem>
+                  <SelectItem value="persist">Nicht ausblenden</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Button variant="outline" onClick={handlePreview} className="w-full">
+            <Play className="h-4 w-4 mr-2" />
+            Vorschau anzeigen
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Sound */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            {preferences.soundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+            Töne
+          </CardTitle>
+          <CardDescription>Benachrichtigungstöne konfigurieren</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center justify-between">
+            <Label>Ton aktiviert</Label>
+            <Switch
+              checked={preferences.soundEnabled}
+              onCheckedChange={(checked) => setPreferences({ soundEnabled: checked })}
+            />
+          </div>
+
+          {preferences.soundEnabled && (
+            <>
+              <div className="space-y-3">
+                <Label>Ton auswählen</Label>
+                <div className="space-y-2">
+                  {NOTIFICATION_SOUNDS.map((sound) => (
+                    <div
+                      key={sound.value}
+                      className={cn(
+                        "flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors",
+                        preferences.soundName === sound.value
+                          ? "border-primary bg-primary/5"
+                          : "hover:bg-muted/50"
+                      )}
+                      onClick={() => setPreferences({ soundName: sound.value })}
+                    >
+                      <span className="text-sm">{sound.label}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playNotificationSound(sound.value, preferences.soundVolume);
+                        }}
+                      >
+                        <Play className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label>Lautstärke</Label>
+                <div className="flex items-center gap-3">
+                  <VolumeX className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Slider
+                    value={[preferences.soundVolume * 100]}
+                    onValueChange={([v]) => setPreferences({ soundVolume: v / 100 })}
+                    max={100}
+                    step={5}
+                    className="flex-1"
+                  />
+                  <Volume2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export function NotificationsPage() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'all' | 'settings'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'read'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,7 +246,7 @@ export function NotificationsPage() {
   }, [notifications, filterStatus, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
+    <div className="p-6">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground mb-2">Benachrichtigungen</h1>
@@ -185,7 +366,10 @@ export function NotificationsPage() {
           </TabsContent>
 
           <TabsContent value="settings">
-            <NotificationSettings />
+            <div className="space-y-6">
+              <NotificationDisplaySettings />
+              <NotificationSettings />
+            </div>
           </TabsContent>
         </Tabs>
       </div>

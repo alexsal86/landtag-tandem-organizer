@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search } from "lucide-react";
+import { Search, Settings2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -14,6 +15,7 @@ import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDet
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { DecisionEditDialog } from "@/components/task-decisions/DecisionEditDialog";
 import { DecisionComments } from "@/components/task-decisions/DecisionComments";
+import { DefaultParticipantsDialog } from "@/components/task-decisions/DefaultParticipantsDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { MyWorkDecisionCard } from "./decisions/MyWorkDecisionCard";
 import { MyWorkDecisionSidebar } from "./decisions/MyWorkDecisionSidebar";
@@ -39,6 +41,7 @@ export function MyWorkDecisionsTab() {
   const [creatingTaskId, setCreatingTaskId] = useState<string | null>(null);
   const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
   const [commentsDecisionTitle, setCommentsDecisionTitle] = useState("");
+  const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
 
   // Comment counts
   const decisionIds = useMemo(() => decisions.map(d => d.id), [decisions]);
@@ -468,6 +471,15 @@ export function MyWorkDecisionsTab() {
             onOpenChange={setIsCreateOpen}
             onDecisionCreated={loadDecisions}
           />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setDefaultParticipantsOpen(true)}
+            title="Standard-Teilnehmer"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+          </Button>
         </div>
 
         {/* Tabs */}
@@ -563,6 +575,11 @@ export function MyWorkDecisionsTab() {
           onCommentAdded={() => { refreshCommentCounts(); loadDecisions(); }}
         />
       )}
+
+      <DefaultParticipantsDialog
+        open={defaultParticipantsOpen}
+        onOpenChange={setDefaultParticipantsOpen}
+      />
 
       <AlertDialog open={!!deletingDecisionId} onOpenChange={() => setDeletingDecisionId(null)}>
         <AlertDialogContent>
