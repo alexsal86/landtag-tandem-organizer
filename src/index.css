@@ -545,6 +545,46 @@ All colors MUST be HSL.
   @apply my-2;
 }
 
+/* Typeahead / Mentions Popover Styles */
+.typeahead-popover {
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.typeahead-popover ul {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.typeahead-popover .item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.15s ease;
+}
+
+.typeahead-popover .item.selected,
+.typeahead-popover .item:hover {
+  background: hsl(var(--accent));
+}
+
+.typeahead-popover .item .text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Phase 2 & 3: Enhanced Utilities and Animations */
 @layer utilities {
   /* Navigation Icon Bounce Animation */

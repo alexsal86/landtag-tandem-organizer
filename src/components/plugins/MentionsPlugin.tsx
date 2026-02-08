@@ -1,269 +1,243 @@
-import React, { useState, useEffect, useCallback } from 'react';
+/**
+ * MentionsPlugin - based on the official Lexical Playground MentionsPlugin
+ * Uses LexicalTypeaheadMenuPlugin for proper trigger matching and menu rendering.
+ * Loads users from profiles table filtered by tenant_id.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import * as React from 'react';
+import * as ReactDOM from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $createTextNode, $getSelection, $isRangeSelection, TextNode } from 'lexical';
-import { mergeRegister } from '@lexical/utils';
-import { KEY_ARROW_DOWN_COMMAND, KEY_ARROW_UP_COMMAND, KEY_ENTER_COMMAND, KEY_ESCAPE_COMMAND, COMMAND_PRIORITY_NORMAL } from 'lexical';
-import { Card, CardContent } from '@/components/ui/card';
+import {
+  LexicalTypeaheadMenuPlugin,
+  MenuOption,
+  useBasicTypeaheadTriggerMatch,
+} from '@lexical/react/LexicalTypeaheadMenuPlugin';
+import { TextNode } from 'lexical';
+
+import { $createMentionNode } from '@/components/nodes/MentionNode';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
+import { getHashedColor, AVAILABLE_COLORS } from '@/utils/userColors';
 
-interface User {
-  id: string;
+const SUGGESTION_LIST_LENGTH_LIMIT = 8;
+
+interface MentionsPluginProps {
+  onMentionInsert?: (userId: string, displayName: string) => void;
+}
+
+interface UserProfile {
+  user_id: string;
   display_name: string;
-  avatar_url?: string;
+  avatar_url: string | null;
+  badge_color: string | null;
 }
 
-interface MentionSuggestionsProps {
-  users: User[];
-  selectedIndex: number;
-  onSelect: (user: User) => void;
-  position: { x: number; y: number };
+class MentionTypeaheadOption extends MenuOption {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  badgeColor: string;
+
+  constructor(
+    userId: string,
+    displayName: string,
+    avatarUrl: string | null,
+    badgeColor: string,
+  ) {
+    super(displayName);
+    this.userId = userId;
+    this.displayName = displayName;
+    this.avatarUrl = avatarUrl;
+    this.badgeColor = badgeColor;
+  }
 }
 
-const MentionSuggestions: React.FC<MentionSuggestionsProps> = ({
-  users,
-  selectedIndex,
-  onSelect,
-  position
-}) => {
+/**
+ * Resolve a Tailwind badge_color class like 'bg-blue-500' to its hex value.
+ */
+function resolveBadgeColor(badgeColor: string | null, userId: string): string {
+  if (!badgeColor) {
+    const fallbackClass = getHashedColor(userId);
+    const found = AVAILABLE_COLORS.find(c => c.value === fallbackClass);
+    return found?.hex || '#3b82f6';
+  }
+
+  // If it's already a hex color, return it
+  if (badgeColor.startsWith('#')) return badgeColor;
+
+  // Try to resolve from AVAILABLE_COLORS
+  const found = AVAILABLE_COLORS.find(c => c.value === badgeColor);
+  return found?.hex || '#3b82f6';
+}
+
+function MentionsTypeaheadMenuItem({
+  index,
+  isSelected,
+  onClick,
+  onMouseEnter,
+  option,
+}: {
+  index: number;
+  isSelected: boolean;
+  onClick: () => void;
+  onMouseEnter: () => void;
+  option: MentionTypeaheadOption;
+}) {
   return (
-    <Card 
-      className="absolute z-50 w-64 max-h-48 overflow-y-auto shadow-lg border"
-      style={{ left: position.x, top: position.y }}
+    <li
+      key={option.key}
+      tabIndex={-1}
+      className={`item ${isSelected ? 'selected' : ''}`}
+      ref={option.setRefElement}
+      role="option"
+      aria-selected={isSelected}
+      id={'typeahead-item-' + index}
+      onMouseEnter={onMouseEnter}
+      onClick={onClick}
     >
-      <CardContent className="p-0">
-        {users.map((user, index) => (
-          <div
-            key={user.id}
-            className={`flex items-center gap-2 p-2 cursor-pointer hover:bg-accent ${
-              index === selectedIndex ? 'bg-accent' : ''
-            }`}
-            onClick={() => onSelect(user)}
-          >
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={user.avatar_url} />
-              <AvatarFallback className="text-xs">
-                {user.display_name.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-sm">{user.display_name}</span>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+      <Avatar className="h-6 w-6 flex-shrink-0">
+        <AvatarImage src={option.avatarUrl || undefined} />
+        <AvatarFallback
+          className="text-xs text-white"
+          style={{ backgroundColor: option.badgeColor }}
+        >
+          {option.displayName.charAt(0).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+      <span className="text">{option.displayName}</span>
+      <span
+        className="color-dot"
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          backgroundColor: option.badgeColor,
+          marginLeft: 'auto',
+          flexShrink: 0,
+        }}
+      />
+    </li>
   );
-};
+}
 
-export function MentionsPlugin() {
+export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): React.JSX.Element | null {
   const [editor] = useLexicalComposerContext();
   const { currentTenant } = useTenant();
-  const [users, setUsers] = useState<User[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [mentionPosition, setMentionPosition] = useState({ x: 0, y: 0 });
-  const [currentMentionText, setCurrentMentionText] = useState('');
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [queryString, setQueryString] = useState<string | null>(null);
 
+  // Fetch tenant users
   useEffect(() => {
-    if (currentTenant) {
-      fetchUsers();
-    }
-  }, [currentTenant]);
-
-  const fetchUsers = async () => {
     if (!currentTenant) return;
 
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, avatar_url')
-        .eq('tenant_id', currentTenant.id);
+    const fetchUsers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url, badge_color')
+          .eq('tenant_id', currentTenant.id);
 
-      if (error) throw error;
-
-      const formattedUsers = data.map(profile => ({
-        id: profile.user_id,
-        display_name: profile.display_name || 'Unknown User',
-        avatar_url: profile.avatar_url
-      }));
-
-      setUsers(formattedUsers);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
-  };
-
-  const insertMention = useCallback((user: User) => {
-    editor.update(() => {
-      const selection = $getSelection();
-      if ($isRangeSelection(selection)) {
-        // Remove the @ and any typed text
-        const anchor = selection.anchor;
-        const focus = selection.focus;
-        const anchorNode = anchor.getNode();
-        
-        if (anchorNode instanceof TextNode) {
-          const text = anchorNode.getTextContent();
-          const atIndex = text.lastIndexOf('@', anchor.offset);
-          
-          if (atIndex !== -1) {
-            // Replace from @ to current position with mention
-            const beforeAt = text.substring(0, atIndex);
-            const afterMention = text.substring(anchor.offset);
-            
-            const mentionText = `@${user.display_name}`;
-            const newText = beforeAt + mentionText + afterMention;
-            
-            anchorNode.setTextContent(newText);
-            
-            // Set cursor after mention
-            const newOffset = atIndex + mentionText.length;
-            selection.setTextNodeRange(anchorNode, newOffset, anchorNode, newOffset);
-          }
-        }
+        if (error) throw error;
+        setUsers(
+          (data || []).map((p) => ({
+            user_id: p.user_id,
+            display_name: p.display_name || 'Unbekannt',
+            avatar_url: p.avatar_url,
+            badge_color: p.badge_color,
+          })),
+        );
+      } catch (error) {
+        console.error('Error fetching users for mentions:', error);
       }
-    });
-    
-    setShowSuggestions(false);
-    setCurrentMentionText('');
-    setSelectedIndex(0);
-  }, [editor]);
+    };
 
-  useEffect(() => {
-    return mergeRegister(
-      editor.registerCommand(
-        KEY_ARROW_DOWN_COMMAND,
-        () => {
-          if (showSuggestions) {
-            setSelectedIndex(prev => 
-              prev < filteredUsers.length - 1 ? prev + 1 : 0
-            );
-            return true;
-          }
-          return false;
-        },
-        COMMAND_PRIORITY_NORMAL
-      ),
-      editor.registerCommand(
-        KEY_ARROW_UP_COMMAND,
-        () => {
-          if (showSuggestions) {
-            setSelectedIndex(prev => 
-              prev > 0 ? prev - 1 : filteredUsers.length - 1
-            );
-            return true;
-          }
-          return false;
-        },
-        COMMAND_PRIORITY_NORMAL
-      ),
-      editor.registerCommand(
-        KEY_ENTER_COMMAND,
-        () => {
-          if (showSuggestions && filteredUsers[selectedIndex]) {
-            insertMention(filteredUsers[selectedIndex]);
-            return true;
-          }
-          return false;
-        },
-        COMMAND_PRIORITY_NORMAL
-      ),
-      editor.registerCommand(
-        KEY_ESCAPE_COMMAND,
-        () => {
-          if (showSuggestions) {
-            setShowSuggestions(false);
-            return true;
-          }
-          return false;
-        },
-        COMMAND_PRIORITY_NORMAL
+    fetchUsers();
+  }, [currentTenant]);
+
+  // Use official trigger match for '@'
+  const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
+    minLength: 0,
+  });
+
+  // Filter users based on query
+  const options = useMemo(() => {
+    const query = (queryString || '').toLowerCase();
+    return users
+      .filter((u) => u.display_name.toLowerCase().includes(query))
+      .map(
+        (u) =>
+          new MentionTypeaheadOption(
+            u.user_id,
+            u.display_name,
+            u.avatar_url,
+            resolveBadgeColor(u.badge_color, u.user_id),
+          ),
       )
-    );
-  }, [editor, showSuggestions, filteredUsers, selectedIndex, insertMention]);
+      .slice(0, SUGGESTION_LIST_LENGTH_LIMIT);
+  }, [users, queryString]);
 
-  useEffect(() => {
-    const unregister = editor.registerTextContentListener(() => {
-      editor.getEditorState().read(() => {
-        const selection = $getSelection();
-        if (!$isRangeSelection(selection)) {
-          setShowSuggestions(false);
-          return;
+  const onSelectOption = useCallback(
+    (
+      selectedOption: MentionTypeaheadOption,
+      nodeToReplace: TextNode | null,
+      closeMenu: () => void,
+    ) => {
+      editor.update(() => {
+        const mentionNode = $createMentionNode(
+          selectedOption.displayName,
+          selectedOption.userId,
+          selectedOption.badgeColor,
+        );
+        if (nodeToReplace) {
+          nodeToReplace.replace(mentionNode);
         }
-
-        const anchor = selection.anchor;
-        const anchorNode = anchor.getNode();
-        
-        if (anchorNode instanceof TextNode) {
-          const text = anchorNode.getTextContent();
-          const cursorOffset = anchor.offset;
-          
-          // Find the last @ before cursor
-          const atIndex = text.lastIndexOf('@', cursorOffset - 1);
-          
-          if (atIndex !== -1 && atIndex < cursorOffset) {
-            const mentionText = text.substring(atIndex + 1, cursorOffset);
-            
-            // Check if there's a space after @, if so, hide suggestions
-            if (mentionText.includes(' ') || mentionText.includes('\n')) {
-              setShowSuggestions(false);
-              return;
-            }
-            
-            setCurrentMentionText(mentionText);
-            
-            // Filter users based on mention text
-            const filtered = users.filter(user =>
-              user.display_name.toLowerCase().includes(mentionText.toLowerCase())
-            );
-            
-            setFilteredUsers(filtered);
-            setSelectedIndex(0);
-            
-            if (filtered.length > 0) {
-              // Calculate position for suggestions
-              const editorElement = editor.getRootElement();
-              if (editorElement) {
-                const nativeSelection = window.getSelection();
-                const range = nativeSelection?.rangeCount ? nativeSelection.getRangeAt(0) : null;
-                const rect = range?.getBoundingClientRect();
-                if (rect) {
-                  const editorRect = editorElement.getBoundingClientRect();
-                  
-                  setMentionPosition({
-                    x: rect.left - editorRect.left,
-                    y: rect.bottom - editorRect.top + 5
-                  });
-                }
-                
-                setShowSuggestions(true);
-              }
-            } else {
-              setShowSuggestions(false);
-            }
-          } else {
-            setShowSuggestions(false);
-          }
-        } else {
-          setShowSuggestions(false);
-        }
+        mentionNode.select();
+        closeMenu();
       });
-    });
 
-    return unregister;
-  }, [editor, users]);
+      // Notify parent about the mention
+      onMentionInsert?.(selectedOption.userId, selectedOption.displayName);
+    },
+    [editor, onMentionInsert],
+  );
 
   return (
-    <>
-      {showSuggestions && filteredUsers.length > 0 && (
-        <MentionSuggestions
-          users={filteredUsers}
-          selectedIndex={selectedIndex}
-          onSelect={insertMention}
-          position={mentionPosition}
-        />
-      )}
-    </>
+    <LexicalTypeaheadMenuPlugin<MentionTypeaheadOption>
+      onQueryChange={setQueryString}
+      onSelectOption={onSelectOption}
+      triggerFn={checkForTriggerMatch}
+      options={options}
+      menuRenderFn={(
+        anchorElementRef,
+        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
+      ) =>
+        anchorElementRef.current && options.length
+          ? ReactDOM.createPortal(
+              <div className="typeahead-popover mentions-menu">
+                <ul>
+                  {options.map((option, i: number) => (
+                    <MentionsTypeaheadMenuItem
+                      index={i}
+                      isSelected={selectedIndex === i}
+                      onClick={() => {
+                        setHighlightedIndex(i);
+                        selectOptionAndCleanUp(option);
+                      }}
+                      onMouseEnter={() => {
+                        setHighlightedIndex(i);
+                      }}
+                      key={option.key}
+                      option={option}
+                    />
+                  ))}
+                </ul>
+              </div>,
+              anchorElementRef.current,
+            )
+          : null
+      }
+    />
   );
 }

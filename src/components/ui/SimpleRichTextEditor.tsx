@@ -18,6 +18,8 @@ import { $getSelection, $isRangeSelection } from 'lexical';
 import { Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { MentionNode } from '@/components/nodes/MentionNode';
+import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 
 interface SimpleRichTextEditorProps {
   initialContent?: string;
@@ -25,6 +27,7 @@ interface SimpleRichTextEditorProps {
   placeholder?: string;
   disabled?: boolean;
   minHeight?: string;
+  onMentionInsert?: (userId: string, displayName: string) => void;
 }
 
 // Toolbar Component
@@ -155,7 +158,8 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   onChange,
   placeholder = "Text eingeben...",
   disabled = false,
-  minHeight = "120px"
+  minHeight = "120px",
+  onMentionInsert,
 }) => {
   const initialConfig = {
     namespace: 'SimpleRichTextEditor',
@@ -176,6 +180,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
     nodes: [
       ListNode,
       ListItemNode,
+      MentionNode,
     ],
     onError: (error: Error) => {
       console.error('Lexical Error:', error);
@@ -220,6 +225,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         <HistoryPlugin />
         <OnChangePlugin onChange={handleChange} />
         <ListPlugin />
+        <MentionsPlugin onMentionInsert={onMentionInsert} />
         <InitialContentPlugin initialContent={initialContent} />
       </LexicalComposer>
     </div>
