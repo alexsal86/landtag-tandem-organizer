@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { PressReleaseStatusBadge } from "./PressReleaseStatusBadge";
-import { Plus, Search, FileText, Calendar, User, Settings, Globe } from "lucide-react";
+import { Plus, Search, FileText, Calendar, User, Settings, Globe, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -25,6 +26,8 @@ interface PressRelease {
   ghost_post_url?: string | null;
   published_at?: string | null;
   published_by?: string | null;
+  email_sent_at?: string | null;
+  email_sent_by?: string | null;
 }
 
 interface PressReleasesListProps {
@@ -46,6 +49,8 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
   // Settings dialog state
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [defaultTags, setDefaultTags] = useState("");
+  const [emailTemplateSubject, setEmailTemplateSubject] = useState("");
+  const [emailTemplateBody, setEmailTemplateBody] = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
@@ -59,40 +64,39 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
     if (!currentTenant) return;
     const { data } = await supabase
       .from('app_settings')
-      .select('setting_value')
+      .select('setting_key, setting_value')
       .eq('tenant_id', currentTenant.id)
-      .eq('setting_key', 'press_default_tags')
-      .maybeSingle();
-    if (data?.setting_value) {
-      setDefaultTags(data.setting_value);
-    }
+      .in('setting_key', ['press_default_tags', 'press_email_template_subject', 'press_email_template_body']);
+    (data || []).forEach(s => {
+      if (s.setting_key === 'press_default_tags') setDefaultTags(s.setting_value || '');
+      if (s.setting_key === 'press_email_template_subject') setEmailTemplateSubject(s.setting_value || '');
+      if (s.setting_key === 'press_email_template_body') setEmailTemplateBody(s.setting_value || '');
+    });
   };
 
   const saveSettings = async () => {
     if (!currentTenant) return;
     setSavingSettings(true);
     try {
-      // Upsert default tags
-      const { data: existing } = await supabase
-        .from('app_settings')
-        .select('id')
-        .eq('tenant_id', currentTenant.id)
-        .eq('setting_key', 'press_default_tags')
-        .maybeSingle();
+      const settings = [
+        { key: 'press_default_tags', value: defaultTags.trim() },
+        { key: 'press_email_template_subject', value: emailTemplateSubject.trim() },
+        { key: 'press_email_template_body', value: emailTemplateBody.trim() },
+      ];
 
-      if (existing) {
-        await supabase
+      for (const { key, value } of settings) {
+        const { data: existing } = await supabase
           .from('app_settings')
-          .update({ setting_value: defaultTags.trim() })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('app_settings')
-          .insert({
-            tenant_id: currentTenant.id,
-            setting_key: 'press_default_tags',
-            setting_value: defaultTags.trim(),
-          });
+          .select('id')
+          .eq('tenant_id', currentTenant.id)
+          .eq('setting_key', key)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase.from('app_settings').update({ setting_value: value }).eq('id', existing.id);
+        } else {
+          await supabase.from('app_settings').insert({ tenant_id: currentTenant.id, setting_key: key, setting_value: value });
+        }
       }
 
       toast({ title: "Einstellungen gespeichert" });
@@ -110,17 +114,18 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
     try {
       const { data, error } = await supabase
         .from('press_releases')
-        .select('id, title, status, created_at, created_by, updated_at, excerpt, ghost_post_url, published_at, published_by')
+        .select('id, title, status, created_at, created_by, updated_at, excerpt, ghost_post_url, published_at, published_by, email_sent_at, email_sent_by')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setPressReleases(data || []);
 
-      // Load profiles for creators and publishers
+      // Load profiles for creators, publishers, and email senders
       const userIds = [...new Set([
         ...(data || []).map(pr => pr.created_by),
         ...(data || []).map(pr => pr.published_by).filter(Boolean),
+        ...(data || []).map(pr => pr.email_sent_by).filter(Boolean),
       ] as string[])];
       
       if (userIds.length > 0) {
@@ -202,6 +207,30 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
                   <p className="text-xs text-muted-foreground">
                     Kommagetrennte Tags, die jeder neuen Pressemitteilung automatisch zugewiesen werden.
                   </p>
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="font-semibold">E-Mail-Template für Pressemitteilungen</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Variablen: {"{{titel}}"}, {"{{excerpt}}"}, {"{{link}}"}, {"{{datum}}"}
+                  </p>
+                  <div className="space-y-2">
+                    <Label>Betreff</Label>
+                    <Input
+                      value={emailTemplateSubject}
+                      onChange={(e) => setEmailTemplateSubject(e.target.value)}
+                      placeholder="Pressemitteilung: {{titel}}"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nachrichtentext</Label>
+                    <textarea
+                      className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      value={emailTemplateBody}
+                      onChange={(e) => setEmailTemplateBody(e.target.value)}
+                      placeholder={"Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unsere aktuelle Pressemitteilung:\n\n{{titel}}\n\n{{excerpt}}\n\nDen vollständigen Beitrag finden Sie unter:\n{{link}}"}
+                    />
+                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -292,6 +321,15 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
                         >
                           Auf Webseite ansehen →
                         </a>
+                      )}
+                      {pr.email_sent_at && (
+                        <span className="flex items-center gap-1 text-green-600">
+                          <Mail className="h-3 w-3" />
+                          E-Mail versandt am {format(new Date(pr.email_sent_at), "dd.MM.yyyy", { locale: de })}
+                          {pr.email_sent_by && profiles[pr.email_sent_by] && (
+                            <> von {profiles[pr.email_sent_by]}</>
+                          )}
+                        </span>
                       )}
                     </div>
                   </div>

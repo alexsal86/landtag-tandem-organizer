@@ -6663,6 +6663,8 @@ export type Database = {
           content_nodes: Json | null
           created_at: string
           created_by: string
+          email_sent_at: string | null
+          email_sent_by: string | null
           excerpt: string | null
           feature_image_url: string | null
           ghost_post_id: string | null
@@ -6692,6 +6694,8 @@ export type Database = {
           content_nodes?: Json | null
           created_at?: string
           created_by: string
+          email_sent_at?: string | null
+          email_sent_by?: string | null
           excerpt?: string | null
           feature_image_url?: string | null
           ghost_post_id?: string | null
@@ -6721,6 +6725,8 @@ export type Database = {
           content_nodes?: Json | null
           created_at?: string
           created_by?: string
+          email_sent_at?: string | null
+          email_sent_by?: string | null
           excerpt?: string | null
           feature_image_url?: string | null
           ghost_post_id?: string | null

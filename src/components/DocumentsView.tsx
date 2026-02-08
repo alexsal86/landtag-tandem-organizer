@@ -236,10 +236,18 @@ export function DocumentsView() {
   // Handle URL action parameter for QuickActions
   useEffect(() => {
     const action = searchParams.get('action');
+    const tab = searchParams.get('tab');
     if (action === 'create-document') {
       setShowUploadDialog(true);
       searchParams.delete('action');
       setSearchParams(searchParams, { replace: true });
+    }
+    if (tab === 'emails') {
+      setActiveTab('emails');
+    }
+    if (action === 'compose-press') {
+      setActiveTab('emails');
+      setEmailSubTab('compose');
     }
   }, [searchParams, setSearchParams]);
 

@@ -10,14 +10,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
   const isLarge = preferences.size === 'large'
 
-  const largeToastStyles = isLarge
-    ? 'group-[.toaster]:!w-[520px] group-[.toaster]:!max-w-[90vw] group-[.toaster]:!text-lg group-[.toaster]:!p-6 group-[.toaster]:!rounded-xl group-[.toaster]:!shadow-2xl group-[.toaster]:!border-2'
-    : ''
-
-  const largeDescStyles = isLarge
-    ? 'group-[.toast]:!text-base'
-    : ''
-
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
@@ -26,9 +18,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       closeButton={true}
       duration={preferences.persist ? Infinity : preferences.duration}
       toastOptions={{
+        className: isLarge ? 'toast-large' : '',
         classNames: {
-          toast: `group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg ${largeToastStyles}`,
-          description: `group-[.toast]:text-muted-foreground ${largeDescStyles}`,
+          toast: "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
+          description: "group-[.toast]:text-muted-foreground",
           actionButton:
             "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
           cancelButton:
