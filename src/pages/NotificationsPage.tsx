@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
   Bell, CheckCheck, Calendar, MessageSquare, FileText, Users,
   BookOpen, Clock, BarChart3, MapPin, StickyNote, Settings,
   Search, Filter, X, DollarSign, Volume2, VolumeX, Play,
-  Monitor, ArrowUpRight, ArrowDownRight
+  Monitor, ArrowUpRight, ArrowDownRight, ArrowUp, Upload, Trash2, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { useNotifications, type Notification } from '@/contexts/NotificationContext';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { useNotificationDisplayPreferences } from '@/hooks/useNotificationDisplayPreferences';
-import { NOTIFICATION_SOUNDS, playNotificationSound, type SoundName } from '@/utils/notificationSounds';
+import { NOTIFICATION_SOUNDS, playNotificationSound, type SoundName, hasCustomSound, saveCustomSound, removeCustomSound } from '@/utils/notificationSounds';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -50,23 +50,94 @@ const getNotificationIcon = (type: string) => {
   }
 };
 
-// Display settings component
-function NotificationDisplaySettings() {
-  const { preferences, setPreferences } = useNotificationDisplayPreferences();
+// Visual position preview box
+function PositionPreviewBox({ position, size }: { position: string; size: string }) {
+  const isLarge = size === 'large';
 
-  const handlePreview = () => {
-    toast('Beispiel-Benachrichtigung', {
-      description: 'So werden Ihre Benachrichtigungen angezeigt.',
-      duration: preferences.persist ? Infinity : preferences.duration,
-    });
-    if (preferences.soundEnabled) {
-      playNotificationSound(preferences.soundName as SoundName, preferences.soundVolume);
+  const getToastPosition = () => {
+    switch (position) {
+      case 'top-right': return 'top-1 right-1';
+      case 'top-center': return 'top-1 left-1/2 -translate-x-1/2';
+      case 'bottom-right': return 'bottom-1 right-1';
+      default: return 'bottom-1 right-1';
     }
   };
 
   return (
+    <div className="relative w-40 h-24 border-2 border-border rounded-lg bg-muted/30 mx-auto">
+      {/* Mini screen label */}
+      <div className="absolute top-0 left-0 right-0 h-2 bg-muted rounded-t-md" />
+      {/* Toast indicator */}
+      <div
+        className={cn(
+          "absolute rounded-sm bg-primary/80 transition-all duration-300",
+          getToastPosition(),
+          isLarge ? "w-12 h-4" : "w-8 h-3"
+        )}
+      />
+    </div>
+  );
+}
+
+// Display settings component
+function NotificationDisplaySettings() {
+  const { preferences, setPreferences } = useNotificationDisplayPreferences();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [customSoundLoaded, setCustomSoundLoaded] = useState(hasCustomSound());
+
+  const handlePreview = () => {
+    // Dismiss existing toasts first so new position/size is visible
+    toast.dismiss();
+    setTimeout(() => {
+      toast('Beispiel-Benachrichtigung', {
+        description: preferences.persist
+          ? 'So werden Ihre Benachrichtigungen angezeigt. Schließen Sie diese mit dem X-Button.'
+          : 'So werden Ihre Benachrichtigungen angezeigt.',
+        duration: preferences.persist ? Infinity : preferences.duration,
+        position: preferences.position,
+        closeButton: true,
+      });
+      if (preferences.soundEnabled) {
+        playNotificationSound(preferences.soundName as SoundName, preferences.soundVolume);
+      }
+    }, 150);
+  };
+
+  const handleCustomSoundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 500 * 1024) {
+      toast.error('Datei zu groß', { description: 'Maximale Größe: 500 KB' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      saveCustomSound(dataUrl);
+      setCustomSoundLoaded(true);
+      setPreferences({ soundName: 'custom' });
+      toast.success('Eigener Ton gespeichert');
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRemoveCustomSound = () => {
+    removeCustomSound();
+    setCustomSoundLoaded(false);
+    if (preferences.soundName === 'custom') {
+      setPreferences({ soundName: 'ping' });
+    }
+    toast.success('Eigener Ton entfernt');
+  };
+
+  return (
     <div className="space-y-6">
-      {/* Position */}
+      {/* Position & Size */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -76,23 +147,33 @@ function NotificationDisplaySettings() {
           <CardDescription>Position und Größe der Benachrichtigungen</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
+          {/* Visual preview */}
+          <PositionPreviewBox position={preferences.position} size={preferences.size} />
+
           <div className="space-y-3">
             <Label>Position</Label>
             <RadioGroup
               value={preferences.position}
               onValueChange={(v) => setPreferences({ position: v as any })}
-              className="grid grid-cols-2 gap-3"
+              className="grid grid-cols-3 gap-3"
             >
               <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
-                <RadioGroupItem value="top-right" id="pos-top" />
-                <Label htmlFor="pos-top" className="flex items-center gap-2 cursor-pointer font-normal">
+                <RadioGroupItem value="top-right" id="pos-top-right" />
+                <Label htmlFor="pos-top-right" className="flex items-center gap-1.5 cursor-pointer font-normal text-sm">
                   <ArrowUpRight className="h-4 w-4" />
                   Oben rechts
                 </Label>
               </div>
               <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
-                <RadioGroupItem value="bottom-right" id="pos-bottom" />
-                <Label htmlFor="pos-bottom" className="flex items-center gap-2 cursor-pointer font-normal">
+                <RadioGroupItem value="top-center" id="pos-top-center" />
+                <Label htmlFor="pos-top-center" className="flex items-center gap-1.5 cursor-pointer font-normal text-sm">
+                  <ArrowUp className="h-4 w-4" />
+                  Oben Mitte
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="bottom-right" id="pos-bottom-right" />
+                <Label htmlFor="pos-bottom-right" className="flex items-center gap-1.5 cursor-pointer font-normal text-sm">
                   <ArrowDownRight className="h-4 w-4" />
                   Unten rechts
                 </Label>
@@ -143,6 +224,12 @@ function NotificationDisplaySettings() {
                 </SelectContent>
               </Select>
             </div>
+            {preferences.persist && (
+              <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                Benachrichtigungen bleiben sichtbar, bis Sie diese manuell mit dem X-Button schließen.
+              </p>
+            )}
           </div>
 
           <Button variant="outline" onClick={handlePreview} className="w-full">
@@ -175,31 +262,74 @@ function NotificationDisplaySettings() {
               <div className="space-y-3">
                 <Label>Ton auswählen</Label>
                 <div className="space-y-2">
-                  {NOTIFICATION_SOUNDS.map((sound) => (
-                    <div
-                      key={sound.value}
-                      className={cn(
-                        "flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors",
-                        preferences.soundName === sound.value
-                          ? "border-primary bg-primary/5"
-                          : "hover:bg-muted/50"
-                      )}
-                      onClick={() => setPreferences({ soundName: sound.value })}
-                    >
-                      <span className="text-sm">{sound.label}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          playNotificationSound(sound.value, preferences.soundVolume);
-                        }}
+                  {NOTIFICATION_SOUNDS.map((sound) => {
+                    // Hide custom option if no custom sound uploaded
+                    if (sound.value === 'custom' && !customSoundLoaded) return null;
+
+                    return (
+                      <div
+                        key={sound.value}
+                        className={cn(
+                          "flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors",
+                          preferences.soundName === sound.value
+                            ? "border-primary bg-primary/5"
+                            : "hover:bg-muted/50"
+                        )}
+                        onClick={() => setPreferences({ soundName: sound.value })}
                       >
-                        <Play className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
+                        <span className="text-sm">{sound.label}</span>
+                        <div className="flex items-center gap-1">
+                          {sound.value === 'custom' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveCustomSound();
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              playNotificationSound(sound.value, preferences.soundVolume);
+                            }}
+                          >
+                            <Play className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Custom sound upload */}
+                <div className="pt-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".mp3,.wav,.ogg,audio/mpeg,audio/wav,audio/ogg"
+                    className="hidden"
+                    onChange={handleCustomSoundUpload}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {customSoundLoaded ? 'Eigenen Ton ersetzen' : 'Eigenen Ton hochladen'}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    MP3, WAV oder OGG · max. 500 KB
+                  </p>
                 </div>
               </div>
 
