@@ -1,41 +1,11 @@
-import { useState, useEffect } from "react";
-import { useCaseFileDetails, CONTACT_ROLES, DOCUMENT_RELEVANCE } from "@/hooks/useCaseFileDetails";
-import { useCaseFiles, CASE_STATUSES } from "@/hooks/useCaseFiles";
-import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
+import { useState } from "react";
+import { useCaseFileDetails } from "@/hooks/useCaseFileDetails";
+import { useCaseFiles } from "@/hooks/useCaseFiles";
 import { useCaseFileTopics } from "@/hooks/useTopics";
-import { icons, LucideIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  ArrowLeft, 
-  Edit2, 
-  Trash2, 
-  Users, 
-  FileText, 
-  CheckSquare, 
-  Calendar, 
-  Mail,
-  MessageSquare,
-  Clock,
-  MoreVertical,
-  Plus,
-  Pin,
-  Eye,
-  Tag
-} from "lucide-react";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
-import { cn } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +17,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CaseFileEditDialog } from "./CaseFileEditDialog";
+import { CaseFileDetailHeader } from "./CaseFileDetailHeader";
+import { CaseFileLeftSidebar } from "./CaseFileLeftSidebar";
+import { CaseFileRightSidebar } from "./CaseFileRightSidebar";
+import { CaseFileUnifiedTimeline } from "./CaseFileUnifiedTimeline";
+
+// Tab dialogs — still needed for Add actions
 import { CaseFileContactsTab } from "./tabs/CaseFileContactsTab";
 import { CaseFileDocumentsTab } from "./tabs/CaseFileDocumentsTab";
 import { CaseFileTasksTab } from "./tabs/CaseFileTasksTab";
@@ -54,7 +30,6 @@ import { CaseFileAppointmentsTab } from "./tabs/CaseFileAppointmentsTab";
 import { CaseFileLettersTab } from "./tabs/CaseFileLettersTab";
 import { CaseFileNotesTab } from "./tabs/CaseFileNotesTab";
 import { CaseFileTimelineTab } from "./tabs/CaseFileTimelineTab";
-import { TopicSelector, TopicDisplay } from "@/components/topics/TopicSelector";
 
 interface CaseFileDetailProps {
   caseFileId: string;
@@ -64,19 +39,31 @@ interface CaseFileDetailProps {
 export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
   const details = useCaseFileDetails(caseFileId);
   const { deleteCaseFile } = useCaseFiles();
-  const { caseFileTypes } = useCaseFileTypes();
   const { assignedTopics, setTopics: setAssignedTopics } = useCaseFileTopics(caseFileId);
+
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
 
-  const { caseFile, contacts, documents, tasks, appointments, letters, notes, timeline, loading } = details;
+  // Dialog states for quick-add actions
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [showAddDocument, setShowAddDocument] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [showAddAppointment, setShowAddAppointment] = useState(false);
+  const [showAddLetter, setShowAddLetter] = useState(false);
+  const [showAddNote, setShowAddNote] = useState(false);
+  const [showAddTimeline, setShowAddTimeline] = useState(false);
 
-  const getIconComponent = (iconName?: string | null): LucideIcon | null => {
-    if (!iconName) return null;
-    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
-    return Icon || null;
-  };
+  const {
+    caseFile,
+    contacts,
+    documents,
+    tasks,
+    appointments,
+    letters,
+    notes,
+    timeline,
+    loading,
+  } = details;
 
   if (loading) {
     return (
@@ -104,251 +91,72 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
     );
   }
 
-  const statusConfig = CASE_STATUSES.find(s => s.value === caseFile.status);
-  const typeConfig = caseFileTypes.find(t => t.name === caseFile.case_type);
-  const TypeIcon = getIconComponent(typeConfig?.icon);
-
   const handleDelete = async () => {
     const success = await deleteCaseFile(caseFile.id);
-    if (success) {
-      onBack();
-    }
+    if (success) onBack();
     setDeleteDialogOpen(false);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={onBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Zurück zur Übersicht
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
-              <Edit2 className="mr-2 h-4 w-4" />
-              Bearbeiten
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={() => setDeleteDialogOpen(true)}
-              className="text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Löschen
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <CaseFileDetailHeader
+        caseFile={caseFile}
+        onBack={onBack}
+        onEdit={() => setEditDialogOpen(true)}
+        onDelete={() => setDeleteDialogOpen(true)}
+        onAddNote={() => setShowAddNote(true)}
+        onAddTask={() => setShowAddTask(true)}
+        onAddAppointment={() => setShowAddAppointment(true)}
+        onAddDocument={() => setShowAddDocument(true)}
+      />
+
+      {/* Three-Column Layout */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        {/* Left Sidebar */}
+        <div className="w-full lg:w-[280px] lg:shrink-0">
+          <CaseFileLeftSidebar
+            caseFile={caseFile}
+            contacts={contacts}
+            assignedTopics={assignedTopics}
+            onTopicsChange={setAssignedTopics}
+            onAddContact={() => setShowAddContact(true)}
+          />
+        </div>
+
+        {/* Center: Unified Timeline */}
+        <div className="flex-1 min-w-0">
+          <CaseFileUnifiedTimeline
+            timeline={timeline}
+            notes={notes}
+            documents={documents}
+            tasks={tasks}
+            appointments={appointments}
+            letters={letters}
+            onAddTimelineEntry={() => setShowAddTimeline(true)}
+            onDeleteTimelineEntry={details.deleteTimelineEntry}
+          />
+        </div>
+
+        {/* Right Sidebar */}
+        <div className="w-full lg:w-[300px] lg:shrink-0">
+          <CaseFileRightSidebar
+            caseFile={caseFile}
+            tasks={tasks}
+            caseFileId={caseFileId}
+            onUpdateCurrentStatus={details.updateCurrentStatus}
+            onUpdateRisksOpportunities={details.updateRisksOpportunities}
+            onCompleteTask={details.completeTask}
+            onAddTask={details.addTask}
+            onRefresh={details.refresh}
+          />
+        </div>
       </div>
 
-      {/* Case File Header */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Badge className={cn("text-white", statusConfig?.color || "bg-gray-500")}>
-                  {statusConfig?.label || caseFile.status}
-                </Badge>
-                <Badge 
-                  variant="outline"
-                  style={{ 
-                    borderColor: typeConfig?.color,
-                    color: typeConfig?.color
-                  }}
-                >
-                  {TypeIcon && <TypeIcon className="h-3 w-3 mr-1" />}
-                  {typeConfig?.label || caseFile.case_type}
-                </Badge>
-                {caseFile.is_private && (
-                  <Badge variant="secondary">
-                    <Eye className="h-3 w-3 mr-1" />
-                    Privat
-                  </Badge>
-                )}
-              </div>
-              <CardTitle className="text-2xl">{caseFile.title}</CardTitle>
-              {caseFile.reference_number && (
-                <CardDescription className="mt-1">
-                  Aktenzeichen: {caseFile.reference_number}
-                </CardDescription>
-              )}
-            </div>
-          </div>
-          {caseFile.description && (
-            <p className="text-muted-foreground mt-4">{caseFile.description}</p>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center p-3 rounded-lg bg-muted/50">
-              <Users className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-              <div className="text-2xl font-bold">{contacts.length}</div>
-              <p className="text-xs text-muted-foreground">Kontakte</p>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-muted/50">
-              <FileText className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-              <div className="text-2xl font-bold">{documents.length}</div>
-              <p className="text-xs text-muted-foreground">Dokumente</p>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-muted/50">
-              <CheckSquare className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-              <div className="text-2xl font-bold">{tasks.length}</div>
-              <p className="text-xs text-muted-foreground">Aufgaben</p>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-muted/50">
-              <Calendar className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-              <div className="text-2xl font-bold">{appointments.length}</div>
-              <p className="text-xs text-muted-foreground">Termine</p>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-muted/50">
-              <Mail className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-              <div className="text-2xl font-bold">{letters.length}</div>
-              <p className="text-xs text-muted-foreground">Briefe</p>
-            </div>
-          </div>
-
-          {(caseFile.start_date || caseFile.target_date) && (
-            <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-              {caseFile.start_date && (
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  <span>Start: {format(new Date(caseFile.start_date), 'dd.MM.yyyy', { locale: de })}</span>
-                </div>
-              )}
-              {caseFile.target_date && (
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  <span>Ziel: {format(new Date(caseFile.target_date), 'dd.MM.yyyy', { locale: de })}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Topics Section */}
-          <div className="mt-4 pt-4 border-t">
-            <div className="flex items-center gap-2 mb-2">
-              <Tag className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Themen</span>
-            </div>
-            <TopicSelector
-              selectedTopicIds={assignedTopics}
-              onTopicsChange={setAssignedTopics}
-              compact
-            />
-          </div>
-
-          {caseFile.tags && caseFile.tags.length > 0 && (
-            <div className="flex items-center gap-2 mt-4 flex-wrap">
-              {caseFile.tags.map((tag) => (
-                <Badge key={tag} variant="secondary">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="overview">Übersicht</TabsTrigger>
-          <TabsTrigger value="contacts">
-            Kontakte
-            {contacts.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {contacts.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="documents">
-            Dokumente
-            {documents.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {documents.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="tasks">
-            Aufgaben
-            {tasks.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {tasks.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="appointments">Termine</TabsTrigger>
-          <TabsTrigger value="letters">Briefe</TabsTrigger>
-          <TabsTrigger value="notes">Notizen</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <CaseFileTimelineTab 
-            timeline={timeline}
-            onAddEntry={details.addTimelineEntry}
-            onDeleteEntry={details.deleteTimelineEntry}
-          />
-        </TabsContent>
-
-        <TabsContent value="contacts">
-          <CaseFileContactsTab 
-            contacts={contacts}
-            onAdd={details.addContact}
-            onRemove={details.removeContact}
-          />
-        </TabsContent>
-
-        <TabsContent value="documents">
-          <CaseFileDocumentsTab 
-            documents={documents}
-            onAdd={details.addDocument}
-            onRemove={details.removeDocument}
-          />
-        </TabsContent>
-
-        <TabsContent value="tasks">
-          <CaseFileTasksTab 
-            tasks={tasks}
-            onAdd={details.addTask}
-            onRemove={details.removeTask}
-          />
-        </TabsContent>
-
-        <TabsContent value="appointments">
-          <CaseFileAppointmentsTab 
-            appointments={appointments}
-            onAdd={details.addAppointment}
-            onRemove={details.removeAppointment}
-          />
-        </TabsContent>
-
-        <TabsContent value="letters">
-          <CaseFileLettersTab 
-            letters={letters}
-            onAdd={details.addLetter}
-            onRemove={details.removeLetter}
-          />
-        </TabsContent>
-
-        <TabsContent value="notes">
-          <CaseFileNotesTab 
-            notes={notes}
-            onAdd={details.addNote}
-            onUpdate={details.updateNote}
-            onDelete={details.deleteNote}
-          />
-        </TabsContent>
-      </Tabs>
+      {/* ---- Dialogs ---- */}
 
       {/* Edit Dialog */}
-      <CaseFileEditDialog 
+      <CaseFileEditDialog
         caseFile={caseFile}
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
@@ -360,17 +168,143 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>FallAkte löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Aktion kann nicht rückgängig gemacht werden. Die FallAkte und alle Verknüpfungen werden permanent gelöscht.
+              Diese Aktion kann nicht rückgängig gemacht werden. Die FallAkte und
+              alle Verknüpfungen werden permanent gelöscht.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground"
+            >
               Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Contact Dialog (reuses existing tab as dialog) */}
+      {showAddContact && (
+        <DialogWrapper open={showAddContact} onClose={() => setShowAddContact(false)} title="Kontakt verknüpfen">
+          <CaseFileContactsTab
+            contacts={contacts}
+            onAdd={async (...args) => {
+              const result = await details.addContact(...args);
+              if (result) setShowAddContact(false);
+              return result;
+            }}
+            onRemove={details.removeContact}
+          />
+        </DialogWrapper>
+      )}
+
+      {/* Add Document Dialog */}
+      {showAddDocument && (
+        <DialogWrapper open={showAddDocument} onClose={() => setShowAddDocument(false)} title="Dokument verknüpfen">
+          <CaseFileDocumentsTab
+            documents={documents}
+            onAdd={async (...args) => {
+              const result = await details.addDocument(...args);
+              if (result) setShowAddDocument(false);
+              return result;
+            }}
+            onRemove={details.removeDocument}
+          />
+        </DialogWrapper>
+      )}
+
+      {/* Add Task Dialog */}
+      {showAddTask && (
+        <DialogWrapper open={showAddTask} onClose={() => setShowAddTask(false)} title="Aufgabe verknüpfen">
+          <CaseFileTasksTab
+            tasks={tasks}
+            onAdd={async (...args) => {
+              const result = await details.addTask(...args);
+              if (result) setShowAddTask(false);
+              return result;
+            }}
+            onRemove={details.removeTask}
+          />
+        </DialogWrapper>
+      )}
+
+      {/* Add Appointment Dialog */}
+      {showAddAppointment && (
+        <DialogWrapper open={showAddAppointment} onClose={() => setShowAddAppointment(false)} title="Termin verknüpfen">
+          <CaseFileAppointmentsTab
+            appointments={appointments}
+            onAdd={async (...args) => {
+              const result = await details.addAppointment(...args);
+              if (result) setShowAddAppointment(false);
+              return result;
+            }}
+            onRemove={details.removeAppointment}
+          />
+        </DialogWrapper>
+      )}
+
+      {/* Add Note Dialog */}
+      {showAddNote && (
+        <DialogWrapper open={showAddNote} onClose={() => setShowAddNote(false)} title="Notiz hinzufügen">
+          <CaseFileNotesTab
+            notes={notes}
+            onAdd={async (content) => {
+              const result = await details.addNote(content);
+              if (result) setShowAddNote(false);
+              return result;
+            }}
+            onUpdate={details.updateNote}
+            onDelete={details.deleteNote}
+          />
+        </DialogWrapper>
+      )}
+
+      {/* Add Timeline Entry Dialog */}
+      {showAddTimeline && (
+        <DialogWrapper open={showAddTimeline} onClose={() => setShowAddTimeline(false)} title="Ereignis hinzufügen">
+          <CaseFileTimelineTab
+            timeline={timeline}
+            onAddEntry={async (entry) => {
+              const result = await details.addTimelineEntry(entry);
+              if (result) setShowAddTimeline(false);
+              return result;
+            }}
+            onDeleteEntry={details.deleteTimelineEntry}
+          />
+        </DialogWrapper>
+      )}
     </div>
+  );
+}
+
+// Simple full-screen dialog wrapper for reusing tab components
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+function DialogWrapper({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        {children}
+      </DialogContent>
+    </Dialog>
   );
 }
