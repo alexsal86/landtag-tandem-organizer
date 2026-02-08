@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 export interface NotificationDisplayPreferences {
-  position: 'top-right' | 'bottom-right';
+  position: 'top-right' | 'top-center' | 'bottom-right';
   size: 'normal' | 'large';
   duration: number; // in milliseconds
   persist: boolean;
