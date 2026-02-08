@@ -6633,6 +6633,7 @@ export type Database = {
           meta_description: string | null
           meta_title: string | null
           published_at: string | null
+          published_by: string | null
           revision_comment: string | null
           revision_requested_at: string | null
           revision_requested_by: string | null
@@ -6661,6 +6662,7 @@ export type Database = {
           meta_description?: string | null
           meta_title?: string | null
           published_at?: string | null
+          published_by?: string | null
           revision_comment?: string | null
           revision_requested_at?: string | null
           revision_requested_by?: string | null
@@ -6689,6 +6691,7 @@ export type Database = {
           meta_description?: string | null
           meta_title?: string | null
           published_at?: string | null
+          published_by?: string | null
           revision_comment?: string | null
           revision_requested_at?: string | null
           revision_requested_by?: string | null

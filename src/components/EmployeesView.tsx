@@ -1139,8 +1139,8 @@ export function EmployeesView() {
       (selfLeaveAgg?.pending.other ?? 0);
 
     return (
-      <main>
-        <header className="p-4 sm:p-6">
+      <div className="min-h-screen bg-gradient-subtle p-6">
+        <header>
           <h1 className="text-2xl font-semibold">Mitarbeiter</h1>
           <p className="text-muted-foreground">Ihre Einstellungen & Abwesenheiten</p>
         </header>
@@ -1338,13 +1338,13 @@ export function EmployeesView() {
             </CardContent>
           </Card>
         </section>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main>
-      <header className="p-4 sm:p-6">
+    <div className="min-h-screen bg-gradient-subtle p-6">
+      <header>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-2xl font-semibold">Mitarbeiterverwaltung</h1>
@@ -1837,7 +1837,7 @@ export function EmployeesView() {
         isOpen={yearlyStatsOpen}
         onClose={() => setYearlyStatsOpen(false)}
       />
-    </main>
+    </div>
     );
 }
 

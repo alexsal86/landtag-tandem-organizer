@@ -24,7 +24,7 @@ import PollGuest from "./pages/PollGuest";
 import DecisionResponse from "./pages/DecisionResponse";
 import GuestResponse from "./pages/GuestResponse";
 import AppointmentPreparationDetail from "./pages/AppointmentPreparationDetail";
-import Decisions from "./pages/Decisions";
+
 import EditorTest from "./pages/EditorTest";
 import EmployeeMeetingDetail from "./pages/EmployeeMeetingDetail";
 import MapsView from "./pages/MapsView";
@@ -68,7 +68,7 @@ const AppContent = () => {
           <Route path="/tasks/new" element={<CreateTask />} />
           <Route path="/tasks/archive" element={<TaskArchiveView />} />
           <Route path="/contacts/import" element={<ImportContacts />} />
-          <Route path="/decisions" element={<Decisions />} />
+          
           <Route path="/maps" element={<MapsView />} />
           <Route path="/distribution-lists/new" element={<CreateDistributionList />} />
           <Route path="/distribution-lists/:id/edit" element={<EditDistributionList />} />

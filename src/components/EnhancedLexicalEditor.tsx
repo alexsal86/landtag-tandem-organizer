@@ -205,7 +205,7 @@ export default function EnhancedLexicalEditor({
             <RichTextPlugin
               contentEditable={
                 <ContentEditable
-                  className="editor-input min-h-[300px] p-4 focus:outline-none resize-none prose prose-sm max-w-none"
+                  className="editor-input min-h-[300px] p-4 focus:outline-none resize-none prose prose-sm max-w-none bg-white dark:bg-card"
                 />
               }
               placeholder={

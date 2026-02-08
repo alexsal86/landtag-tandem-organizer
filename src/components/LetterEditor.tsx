@@ -1066,7 +1066,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+    <div className="flex flex-col h-full bg-background border rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex-none border-b bg-card/50 p-4">
         <div className="flex items-center justify-between">
