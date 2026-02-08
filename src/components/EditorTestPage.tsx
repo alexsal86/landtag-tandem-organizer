@@ -72,17 +72,25 @@ export default function EditorTestPage() {
               </div>
 
               <div className="bg-muted/50 p-4 rounded-lg">
-                <h4 className="font-medium mb-2">Rich Text Features:</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                <h4 className="font-medium mb-2">Alle Features (Playground-Parität):</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-muted-foreground">
                   <ul className="space-y-1">
-                    <li>• <strong>Text:</strong> Bold, Italic, Underline, Strikethrough</li>
-                    <li>• <strong>Überschriften:</strong> H1, H2, H3</li>
-                    <li>• <strong>Listen:</strong> Aufzählung, Nummeriert, Checkliste</li>
+                    <li>✅ <strong>Text:</strong> Bold, Italic, Underline, Strikethrough</li>
+                    <li>✅ <strong>Überschriften:</strong> H1, H2, H3</li>
+                    <li>✅ <strong>Listen:</strong> Aufzählung, Nummeriert, Checkliste</li>
+                    <li>✅ <strong>Code:</strong> Inline-Code, Code-Block</li>
                   </ul>
                   <ul className="space-y-1">
-                    <li>• <strong>Blöcke:</strong> Zitat, Code-Block</li>
-                    <li>• <strong>Einfügen:</strong> Tabelle, Link, Bild</li>
-                    <li>• <strong>Shortcuts:</strong> Ctrl+B, Ctrl+I, Ctrl+U, Markdown</li>
+                    <li>✅ <strong>Tabelle:</strong> Offizielles Plugin mit Merge</li>
+                    <li>✅ <strong>Links:</strong> Manuell + AutoLink + ClickableLink</li>
+                    <li>✅ <strong>Bild:</strong> Echter ImageNode mit Resize</li>
+                    <li>✅ <strong>HR:</strong> Horizontale Linie</li>
+                  </ul>
+                  <ul className="space-y-1">
+                    <li>✅ <strong>Schrift:</strong> Familie, Größe, Farbe, Highlight</li>
+                    <li>✅ <strong>Ausrichtung:</strong> Links, Zentriert, Rechts, Blocksatz</li>
+                    <li>✅ <strong>Sub/Superscript:</strong> Hoch-/Tiefgestellt</li>
+                    <li>✅ <strong>Sonstiges:</strong> Zeilenhöhe, Markdown-Shortcuts</li>
                   </ul>
                 </div>
               </div>
