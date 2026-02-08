@@ -1,267 +1,187 @@
 
-# Plan: Pressemitteilungen mit Ghost CMS Integration
 
-## Uebersicht
+# Analyse und Plan: Lexical-Editor Optimierung
 
-Ein neues Modul "Pressemitteilungen" in der Dokumentenverwaltung, das den bestehenden Lexical-Editor nutzt und einen mehrstufigen Freigabe-Workflow implementiert. Am Ende wird die Pressemitteilung per Edge Function an die Ghost CMS Admin API uebermittelt.
+## Aktueller Zustand -- Zusammenfassung der Probleme
 
-## Warum ein eigener Workflow statt Entscheidungen/Aufgaben?
+### 1. Lexical-Version ist veraltet
+- **Installiert**: v0.35.0
+- **Aktuell verfuegbar**: v0.40.0 (veroeffentlicht am 01.02.2026)
+- **Delta**: 5 Minor-Versionen mit mehreren Breaking Changes, Bug-Fixes und Performance-Verbesserungen
+- Betrifft: `lexical`, `@lexical/react`, `@lexical/rich-text`, `@lexical/table`, `@lexical/list`, `@lexical/link`, `@lexical/code`, `@lexical/html`, `@lexical/mark`, `@lexical/yjs` (installiert aber nicht verwendet!)
 
-- **Entscheidungen** sind fuer Ja/Nein/Rueckfrage-Abstimmungen konzipiert -- nicht fuer iterative Textueberarbeitung
-- **Aufgaben** haben keinen eingebauten Review-Zyklus
-- Der bestehende **Brief-Workflow** (LetterEditor) ist das perfekte Vorbild: Er hat bereits den Zyklus Entwurf -> Pruefung -> Genehmigt -> Versendet mit Reviewer-Zuweisung
-- Fuer Pressemitteilungen wird ein angepasster Workflow verwendet, der **mehrfache Schleifen** explizit unterstuetzt (Abgeordneter kann zurueckweisen mit Kommentar)
+### 2. Die Kollaboration ist eine Eigenentwicklung -- und kaputt
+Lexical bietet ein **offizielles** Collaboration-Plugin (`@lexical/react/LexicalCollaborationPlugin`), das direkt mit Yjs integriert. Dieses wird **nicht verwendet**. Stattdessen gibt es eine komplexe Eigenentwicklung mit drei verschiedenen Ansaetzen, die nebeneinander existieren:
 
-## Workflow-Design
+| Komponente | Ansatz | Probleme |
+|------------|--------|----------|
+| `LexicalYjsCollaborationPlugin.tsx` | Serialisiert den gesamten Lexical EditorState als JSON-String in ein `Y.Text`-Feld | Zerstoert die CRDT-Vorteile von Yjs komplett -- bei gleichzeitiger Bearbeitung ueberschreibt der letzte Schreiber alles |
+| `ManualYjsCollaborationPlugin.tsx` | Gleicher Ansatz, aber mit `observeDeep` | Selbes Problem, leicht andere Race-Condition-Behandlung |
+| `CollaborationPlugin` (in EnhancedLexicalEditor) | Supabase Realtime Broadcast fuer Content-Updates | Funktioniert nur als "Last-Write-Wins" -- keine echte Merge-Logik |
+| `YjsProvider.tsx` | Eigener `SupabaseYjsProvider` mit Supabase Broadcast als Transport | Funktioniert technisch, aber die Yjs-Nutzung ist falsch (ganzer State statt Diff) |
 
-```text
-Mitarbeiter                          Abgeordneter
-    |                                     |
-    | 1. Erstellt Pressemitteilung        |
-    |    (Status: Entwurf)                |
-    |                                     |
-    | 2. Sendet zur Freigabe ---------->  |
-    |    (Status: Zur Freigabe)           |
-    |                                     |
-    |                              3a. Genehmigt
-    |                                (Status: Freigegeben)
-    |                                     |
-    |                              3b. Lehnt ab + Kommentar
-    |  <---------- Zurueck an Mitarbeiter |
-    |    (Status: Ueberarbeitung)         |
-    |                                     |
-    | 4. Ueberarbeitet und sendet         |
-    |    erneut zur Freigabe -------->    |
-    |    (Schleife beliebig oft)          |
-    |                                     |
-    | 5. Nach Freigabe:                   |
-    |    [An Ghost senden] Button         |
-    |    (Status: Veroeffentlicht)        |
-    |                                     |
+**Das Kernproblem**: Der gesamte EditorState wird als JSON-String serialisiert und bei jeder Aenderung komplett in `Y.Text` geschrieben. Y.Text ist fuer zeichenweises Merge konzipiert -- nicht fuer den Austausch ganzer JSON-Objekte. Das fuehrt zu:
+- Textverlust bei gleichzeitiger Bearbeitung
+- "Content-Corruption" (mehrere JSON-Objekte verketten sich)
+- Die `contentValidation.ts`-Utility existiert nur, um diese Corruption aufzufangen
+- Race Conditions trotz Debouncing
+
+### 3. Plugins sind Platzhalter-Implementierungen
+Mehrere "Enhanced"-Plugins sind nur Stubs:
+
+| Plugin | Problem |
+|--------|---------|
+| `ImagePlugin` | Fuegt Bilder als Markdown-Text ein (`![alt](url)`) statt als echten Image-Node |
+| `CheckListPlugin` | Fuegt Unicode-Zeichen ein (`☐ `) statt echte CheckListItem-Nodes zu nutzen |
+| `FileAttachmentPlugin` | Fuegt Dateien als Text-Link ein (`📎 [name](url)`) statt als Custom Node |
+| `CollaborationDashboard` | Zeigt nur Hardcoded Mock-Daten im Activity-Feed |
+| `AdvancedCursorPlugin` | Verwendet Pixel-Positionen fuer Cursor-Anzeige -- fragil und ungenau |
+| `CommentPlugin` | Funktioniert grundsaetzlich, aber `CommentMarkNode` hat Serialisierungs-Probleme |
+
+### 4. Doppelte Toolbar-Implementierungen
+Es gibt **drei** Toolbar-Varianten:
+- `ToolbarPlugin` (inline in `EnhancedLexicalEditor.tsx`, ~120 Zeilen, Unicode-Icons)
+- `EnhancedLexicalToolbar` (separate Datei, ~420 Zeilen, Lucide-Icons)
+- `FloatingTextFormatToolbar` (Schwebendes Format-Menue bei Textauswahl)
+
+Die `ToolbarPlugin`-Variante wird bei Nicht-Yjs-Nutzung angezeigt, obwohl sie identische Features bietet wie `EnhancedLexicalToolbar`. Beide haben zudem fehlerhafte Heading-Formatierung (nested Paragraphs in Headings).
+
+### 5. Presse-Editor hat keine Kollaboration
+`PressReleaseEditor` verwendet `EnhancedLexicalEditor` ohne `enableCollaboration` oder `documentId`. Das ist vermutlich gewollt fuer den Moment, aber sobald mehrere Mitarbeiter gleichzeitig an einer Pressemitteilung arbeiten, fehlt die Funktion.
+
+---
+
+## Empfehlung: Editor zuerst perfektionieren, dann Kollaboration
+
+**Klare Empfehlung: Zuerst den Editor stabil und perfekt machen, dann Kollaboration hinzufuegen.**
+
+Gruende:
+1. Die aktuelle Kollaboration ist grundsaetzlich fehlerhaft konzipiert -- sie kann nicht "repariert" werden, sie muss neu gebaut werden
+2. Lexical bietet mit `@lexical/yjs` ein **offizielles** Collaboration-Plugin, das richtig funktioniert
+3. Ein Update auf v0.40 kann Breaking Changes in der Eigenentwicklung verursachen -- weniger Code = weniger Migrationsprobleme
+4. Die Eigenentwicklung (LexicalYjsCollaborationPlugin, ManualYjsCollaborationPlugin, SupabaseYjsProvider) kann komplett entfernt werden
+
+---
+
+## Umsetzungsplan: 3 Phasen
+
+### Phase 1: Lexical auf v0.40 updaten und aufräumen
+
+**Schritt 1.1: Pakete aktualisieren**
+Alle Lexical-Pakete auf v0.40.0 aktualisieren:
+- `lexical`
+- `@lexical/react`
+- `@lexical/rich-text`, `@lexical/table`, `@lexical/list`, `@lexical/link`, `@lexical/code`
+- `@lexical/html`, `@lexical/mark`, `@lexical/hashtag`
+- `@lexical/yjs` (wird fuer Phase 3 benoetigt)
+
+**Schritt 1.2: Breaking Changes behandeln**
+Bekannte Breaking Changes v0.35 -> v0.40:
+- `$createTableCellNode` Signatur: `headerState` ist jetzt `number` (war schon so, aber Defaults haben sich geaendert)
+- JSON-Serialisierung: `textFormat` und `textStyle` bei ElementNode werden nur noch bei Bedarf serialisiert
+- `mergeRegister` und andere Utilities sind von `@lexical/utils` nach `lexical` verschoben (beide Orte funktionieren weiterhin)
+- `$config` als neuer Mechanismus fuer Node-Konfiguration
+
+**Schritt 1.3: Kollaborations-Code entfernen**
+Folgende Dateien und Code-Abschnitte werden **entfernt** (werden in Phase 3 durch die offizielle Loesung ersetzt):
+- `src/components/collaboration/LexicalYjsCollaborationPlugin.tsx`
+- `src/components/collaboration/ManualYjsCollaborationPlugin.tsx`
+- `src/components/collaboration/YjsProvider.tsx`
+- `src/components/collaboration/YjsSyncStatus.tsx`
+- `src/components/collaboration/CollaborationDashboard.tsx`
+- `src/components/plugins/AdvancedCursorPlugin.tsx`
+- `src/hooks/useCollaboration.tsx`
+- `src/components/CollaborationStatus.tsx`
+- `src/components/CollaborationTest.tsx`
+- `src/utils/contentValidation.ts`
+
+In `EnhancedLexicalEditor.tsx` und `SimpleLexicalEditor.tsx` werden alle Kollaborations-Abschnitte entfernt. Die Editoren werden zu sauberen Single-User-Editoren vereinfacht.
+
+**Schritt 1.4: Toolbar konsolidieren**
+- Die inline `ToolbarPlugin` aus `EnhancedLexicalEditor.tsx` entfernen
+- Nur `EnhancedLexicalToolbar` verwenden (ueberall)
+- `FloatingTextFormatToolbar` beibehalten (ist nuetzlich)
+- Heading-Formatierung korrigieren (keine verschachtelten Paragraphs)
+
+### Phase 2: Editor-Qualitaet verbessern
+
+**Schritt 2.1: Echte Image-Nodes**
+`ImagePlugin` umbauen, damit Bilder als Custom `ImageNode` (extends `DecoratorNode`) eingefuegt werden -- mit Resize, Alt-Text und korrekter Serialisierung.
+
+**Schritt 2.2: Echte CheckList-Nodes**
+`CheckListPlugin` auf Lexicals eingebaute CheckList-Unterstuetzung umstellen (`ListNode` mit `__listType = 'check'`).
+
+**Schritt 2.3: Datei-Attachments verbessern**
+`FileAttachmentPlugin` auf einen Custom `FileAttachmentNode` umstellen, der als dekorierter Block mit Download-Button gerendert wird.
+
+**Schritt 2.4: ContentPlugin stabilisieren**
+Den `ContentPlugin` in `EnhancedLexicalEditor.tsx` vereinfachen -- er soll nur beim **ersten Mount** den initialen Content laden, nicht bei jeder Prop-Aenderung (was zu Cursor-Spruengen fuehrt).
+
+**Schritt 2.5: Testseiten aufraeumen**
+- `EditorTestPage` aktualisieren fuer den neuen Editor
+- `YjsCollaborationTestPage` entfernen (wird in Phase 3 neu gebaut)
+
+### Phase 3: Kollaboration mit offiziellem @lexical/yjs (spaeterer Schritt)
+
+Diese Phase wird als separates Projekt umgesetzt, nachdem der Editor stabil laeuft:
+
+**Schritt 3.1: Offizielles CollaborationPlugin einbinden**
+Lexical bietet ein fertiges Plugin:
+
+```tsx
+import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
+
+<CollaborationPlugin
+  id={documentId}
+  providerFactory={(id, yjsDocMap) => {
+    const doc = new Y.Doc();
+    yjsDocMap.set(id, doc);
+    // Eigener SupabaseWebsocketProvider oder y-websocket
+    return provider;
+  }}
+  shouldBootstrap={true}
+/>
 ```
 
-Statusfluss: `draft` -> `pending_approval` -> `approved` / `revision_requested` -> `pending_approval` -> `approved` -> `published`
+Dieses Plugin:
+- Nutzt `Y.XmlFragment` (nicht `Y.Text`) fuer echtes strukturiertes Merge
+- Handhabt Cursor-Awareness automatisch
+- Unterstuetzt alle Node-Typen nativ
+- Wird von Facebook/Meta aktiv gepflegt
 
-## Datenbank-Design
+**Schritt 3.2: Supabase als Transport**
+Die bestehende `SupabaseYjsProvider`-Logik (Broadcast ueber Supabase Realtime) kann als Transport wiederverwendet werden, muss aber an die offizielle Provider-Schnittstelle angepasst werden.
 
-### Neue Tabelle: `press_releases`
+**Schritt 3.3: Selektive Kollaboration**
+Da nicht immer gleichzeitig bearbeitet wird, einen Toggle einbauen:
+- Standard: Normaler Editor (schnell, kein Overhead)
+- Bei Bedarf: "Gemeinsam bearbeiten" aktivieren -- laedt das CollaborationPlugin
 
-| Spalte | Typ | Beschreibung |
-|--------|-----|--------------|
-| id | uuid PK | |
-| tenant_id | uuid NOT NULL | Mandantentrennung |
-| created_by | uuid NOT NULL | Ersteller (Mitarbeiter) |
-| title | text NOT NULL | Titel / Ueberschrift |
-| content | text NOT NULL | Plaintext-Inhalt (Lexical) |
-| content_html | text | HTML-Version |
-| content_nodes | jsonb | Lexical EditorState JSON |
-| slug | text | URL-Slug fuer Ghost |
-| excerpt | text | Kurzfassung / Teaser |
-| feature_image_url | text | Titelbild-URL |
-| tags | text[] | Tags fuer Ghost |
-| meta_title | text | SEO-Titel |
-| meta_description | text | SEO-Beschreibung |
-| status | text NOT NULL DEFAULT 'draft' | Workflow-Status |
-| submitted_at | timestamptz | Zeitpunkt der Freigabeanfrage |
-| submitted_by | uuid | Wer hat zur Freigabe gesendet |
-| approved_at | timestamptz | Zeitpunkt der Genehmigung |
-| approved_by | uuid | Wer hat genehmigt (Abgeordneter) |
-| revision_comment | text | Kommentar bei Ablehnung |
-| revision_requested_at | timestamptz | Zeitpunkt der Ablehnnung |
-| revision_requested_by | uuid | Wer hat abgelehnt |
-| published_at | timestamptz | Zeitpunkt der Ghost-Veroeffentlichung |
-| ghost_post_id | text | ID des Posts in Ghost |
-| ghost_post_url | text | URL des veroeffentlichten Posts |
-| created_at | timestamptz DEFAULT now() | |
-| updated_at | timestamptz DEFAULT now() | |
+---
 
-### RLS-Policies
+## Auswirkungen auf bestehende Module
 
-- Mitarbeiter im selben Tenant koennen alle Pressemitteilungen sehen und bearbeiten (im Status `draft` und `revision_requested`)
-- Abgeordneter kann alle sehen und den Status zu `approved` oder `revision_requested` aendern
-- Alle authentifizierten Tenant-Mitglieder haben Lesezugriff
+| Modul | Auswirkung |
+|-------|-----------|
+| **Briefe (LetterEditor)** | Editor wird einfacher und stabiler. Kollaboration faellt vorerst weg, kommt in Phase 3 zurueck |
+| **Presse (PressReleaseEditor)** | Profitiert sofort von stabilerem Editor. Hat ohnehin keine Kollaboration |
+| **Wissen (KnowledgeBaseView)** | Profitiert von stabilem Editor. Hatte keine Kollaboration |
+| **E-Mails (EmailRichTextEditor)** | Nutzt eigenen einfachen Editor, nicht betroffen |
+| **SimpleRichTextEditor** | Nutzt eigenen einfachen Editor, nicht betroffen |
 
-```sql
-CREATE POLICY "Tenant members can view press releases"
-ON press_releases FOR SELECT
-USING (tenant_id IN (
-  SELECT tenant_id FROM user_tenant_memberships
-  WHERE user_id = auth.uid() AND is_active = true
-));
+---
 
-CREATE POLICY "Tenant members can insert press releases"
-ON press_releases FOR INSERT
-WITH CHECK (tenant_id IN (
-  SELECT tenant_id FROM user_tenant_memberships
-  WHERE user_id = auth.uid() AND is_active = true
-) AND created_by = auth.uid());
+## Zusammenfassung der Dateiaenderungen
 
-CREATE POLICY "Tenant members can update press releases"
-ON press_releases FOR UPDATE
-USING (tenant_id IN (
-  SELECT tenant_id FROM user_tenant_memberships
-  WHERE user_id = auth.uid() AND is_active = true
-));
+| Aktion | Dateien |
+|--------|---------|
+| **Loeschen** | 10+ Dateien (Kollaboration, Tests, ContentValidation) |
+| **Stark aendern** | `EnhancedLexicalEditor.tsx` (von 844 auf ca. 300 Zeilen), `SimpleLexicalEditor.tsx` (von 465 auf ca. 100 Zeilen) |
+| **Anpassen** | `LetterEditor.tsx` (Kollaborations-Props entfernen), `PressReleaseEditor.tsx` (minimal), `KnowledgeBaseView.tsx` (minimal) |
+| **Verbessern** | `ImagePlugin`, `CheckListPlugin`, `FileAttachmentPlugin`, `EnhancedLexicalToolbar` |
+| **Aktualisieren** | `package.json` (alle Lexical-Pakete auf v0.40) |
 
-CREATE POLICY "Creator can delete draft press releases"
-ON press_releases FOR DELETE
-USING (created_by = auth.uid() AND status = 'draft');
-```
+## Vorgeschlagene Reihenfolge
 
-## Edge Function: `publish-to-ghost`
+Ich wuerde Phase 1 und Phase 2 zusammen umsetzen (ein grosser Schritt), da sie eng zusammenhaengen. Phase 3 (Kollaboration) kommt danach als separater Schritt.
 
-Eine neue Supabase Edge Function, die:
-1. Die Pressemitteilung aus der DB laedt
-2. Einen JWT fuer die Ghost Admin API generiert (mit dem Admin API Key)
-3. Den Inhalt als HTML an Ghost sendet (`POST /ghost/api/admin/posts/`)
-4. Die Ghost-Post-ID und URL zurueckspeichert
-
-### Ghost API Key Handling
-
-Zwei neue Secrets werden benoetigt:
-- `GHOST_ADMIN_API_KEY`: Der Admin API Key aus Ghost (Format: `{id}:{secret}`)
-- `GHOST_API_URL`: Die Ghost-Blog-URL (z.B. `https://meine-webseite.de`)
-
-### JWT-Generierung fuer Ghost
-
-```typescript
-// Ghost Admin API Key format: {id}:{secret}
-const [keyId, keySecret] = adminApiKey.split(':');
-
-// Create JWT header and payload
-const header = { alg: 'HS256', typ: 'JWT', kid: keyId };
-const now = Math.floor(Date.now() / 1000);
-const payload = { iat: now, exp: now + 300, aud: '/admin/' };
-
-// Sign with HMAC-SHA256 using the hex-decoded secret
-```
-
-### Ghost Post-Erstellung
-
-```typescript
-const ghostPayload = {
-  posts: [{
-    title: pressRelease.title,
-    html: pressRelease.content_html,  // Ghost konvertiert HTML zu Lexical
-    status: 'published',              // Direkt veroeffentlichen
-    tags: pressRelease.tags?.map(t => ({ name: t })) || [],
-    excerpt: pressRelease.excerpt || undefined,
-    feature_image: pressRelease.feature_image_url || undefined,
-    meta_title: pressRelease.meta_title || undefined,
-    meta_description: pressRelease.meta_description || undefined,
-    slug: pressRelease.slug || undefined,
-  }]
-};
-
-const response = await fetch(
-  `${ghostUrl}/ghost/api/admin/posts/?source=html`,
-  {
-    method: 'POST',
-    headers: {
-      'Authorization': `Ghost ${token}`,
-      'Content-Type': 'application/json',
-      'Accept-Version': 'v5.0'
-    },
-    body: JSON.stringify(ghostPayload)
-  }
-);
-```
-
-## UI-Komponenten
-
-### 1. Neuer Tab in DocumentsView
-
-Ein vierter Tab "Presse" wird neben Dokumente, Briefe und E-Mails hinzugefuegt:
-
-```text
-[Dokumente] [Briefe] [E-Mails] [Presse]
-```
-
-### 2. PressReleasesList -- Listenansicht
-
-Zeigt alle Pressemitteilungen mit:
-- Status-Badge (farbcodiert: Grau=Entwurf, Orange=Zur Freigabe, Gelb=Ueberarbeitung, Gruen=Freigegeben, Blau=Veroeffentlicht)
-- Titel, Ersteller, Datum
-- Filter nach Status
-- Button "Neue Pressemitteilung"
-
-### 3. PressReleaseEditor -- Haupteditor
-
-Aehnlich dem LetterEditor, aber spezialisiert fuer Pressemitteilungen:
-
-```text
-+---[Sidebar]---+---[Editor]-----------------------------+
-| Metadaten     | EnhancedLexicalEditor                   |
-|               |                                         |
-| Titel         | [Toolbar: Bold, Italic, H1, H2, ...]   |
-| Slug          |                                         |
-| Excerpt       | Inhalt der Pressemitteilung...           |
-| Tags          |                                         |
-| Titelbild-URL |                                         |
-| SEO-Titel     |                                         |
-| SEO-Beschr.   |                                         |
-|               |                                         |
-| --- Status -- |                                         |
-| [Entwurf]     |                                         |
-|               |                                         |
-| --- Aktionen  |                                         |
-| [Speichern]   |                                         |
-| [Zur Freigabe]|                                         |
-|               |                                         |
-| --- Workflow  |                                         |
-| Historie...   |                                         |
-+---------------+-----------------------------------------+
-```
-
-#### Workflow-Aktionen je nach Rolle und Status:
-
-| Status | Mitarbeiter | Abgeordneter |
-|--------|-------------|--------------|
-| Entwurf | Bearbeiten, Zur Freigabe senden | Bearbeiten |
-| Zur Freigabe | Nur lesen | Genehmigen, Zurueckweisen (mit Kommentar) |
-| Ueberarbeitung | Bearbeiten, Erneut zur Freigabe | Lesen |
-| Freigegeben | An Ghost senden | An Ghost senden |
-| Veroeffentlicht | Link zur Webseite anzeigen | Link zur Webseite anzeigen |
-
-### 4. Zurueckweisung mit Kommentar
-
-Wenn der Abgeordnete zurueckweist, erscheint ein Dialog:
-- Textfeld fuer Aenderungswuensche / Kommentar
-- Der Kommentar wird als `revision_comment` gespeichert und dem Mitarbeiter angezeigt
-- Der Kommentar ist im Editor in einer gelben Info-Box sichtbar
-
-### 5. Ghost-Versand-Bestaetigung
-
-Vor dem Senden an Ghost erscheint ein Bestaetigungsdialog:
-- Vorschau der wichtigsten Felder (Titel, Excerpt, Tags)
-- Hinweis "Wird auf [Ghost-URL] veroeffentlicht"
-- Bestaetigungs-Button
-
-## Technische Umsetzung -- Dateien
-
-| Datei | Typ | Beschreibung |
-|-------|-----|--------------|
-| **Migration SQL** | DB | Tabelle `press_releases` erstellen mit RLS |
-| **supabase/functions/publish-to-ghost/index.ts** | Edge Function | Ghost Admin API Integration |
-| **src/components/press/PressReleasesList.tsx** | Neu | Listenansicht mit Status-Filter |
-| **src/components/press/PressReleaseEditor.tsx** | Neu | Editor mit Sidebar-Metadaten und Workflow |
-| **src/components/press/PressReleaseStatusBadge.tsx** | Neu | Status-Badges mit Farben |
-| **src/components/press/GhostPublishDialog.tsx** | Neu | Bestaetigungsdialog vor Ghost-Versand |
-| **src/components/press/RevisionCommentDialog.tsx** | Neu | Dialog fuer Zurueckweisung mit Kommentar |
-| **src/components/DocumentsView.tsx** | Aenderung | Neuer Tab "Presse" hinzufuegen |
-
-## Ablauf der Implementierung
-
-1. **Secrets einrichten**: `GHOST_ADMIN_API_KEY` und `GHOST_API_URL` muessen als Supabase Secrets hinterlegt werden
-2. **Datenbank**: Migration fuer `press_releases`-Tabelle
-3. **Edge Function**: `publish-to-ghost` mit JWT-Generierung und Ghost API-Aufruf
-4. **UI-Komponenten**: PressReleasesList, PressReleaseEditor, Dialoge
-5. **DocumentsView**: Tab-Integration
-6. **Rollen-Pruefung**: Abgeordneter-Rolle wird per `supabase.rpc('is_admin')` geprueft (da `abgeordneter` = Admin-Rolle im System)
-
-## Hinweise
-
-- Ghost nutzt ebenfalls Lexical als Editor-Format -- der Inhalt wird aber als HTML gesendet, da Ghost HTML automatisch in sein Lexical-Format konvertiert. Das ist der empfohlene Weg laut Ghost-Dokumentation.
-- Der `EnhancedLexicalEditor` wird wiederverwendet (gleicher Editor wie in Briefen und Wissen).
-- Die Schleife Ueberarbeitung -> Zur Freigabe -> Genehmigt kann beliebig oft durchlaufen werden.
-- Nach der Veroeffentlichung wird die Ghost-Post-URL gespeichert und als Link angezeigt.
