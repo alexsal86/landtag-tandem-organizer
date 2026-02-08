@@ -6,9 +6,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PressReleaseStatusBadge, PressReleaseStatus } from "./PressReleaseStatusBadge";
-import { Plus, Search, FileText, Calendar, User } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { PressReleaseStatusBadge } from "./PressReleaseStatusBadge";
+import { Plus, Search, FileText, Calendar, User, Settings, Globe } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -21,6 +23,8 @@ interface PressRelease {
   updated_at: string;
   excerpt?: string | null;
   ghost_post_url?: string | null;
+  published_at?: string | null;
+  published_by?: string | null;
 }
 
 interface PressReleasesListProps {
@@ -39,11 +43,66 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
   const [filterStatus, setFilterStatus] = useState("all");
   const [profiles, setProfiles] = useState<Record<string, string>>({});
 
+  // Settings dialog state
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [defaultTags, setDefaultTags] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
+
   useEffect(() => {
     if (user && currentTenant) {
       fetchPressReleases();
+      loadSettings();
     }
   }, [user, currentTenant]);
+
+  const loadSettings = async () => {
+    if (!currentTenant) return;
+    const { data } = await supabase
+      .from('app_settings')
+      .select('setting_value')
+      .eq('tenant_id', currentTenant.id)
+      .eq('setting_key', 'press_default_tags')
+      .maybeSingle();
+    if (data?.setting_value) {
+      setDefaultTags(data.setting_value);
+    }
+  };
+
+  const saveSettings = async () => {
+    if (!currentTenant) return;
+    setSavingSettings(true);
+    try {
+      // Upsert default tags
+      const { data: existing } = await supabase
+        .from('app_settings')
+        .select('id')
+        .eq('tenant_id', currentTenant.id)
+        .eq('setting_key', 'press_default_tags')
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from('app_settings')
+          .update({ setting_value: defaultTags.trim() })
+          .eq('id', existing.id);
+      } else {
+        await supabase
+          .from('app_settings')
+          .insert({
+            tenant_id: currentTenant.id,
+            setting_key: 'press_default_tags',
+            setting_value: defaultTags.trim(),
+          });
+      }
+
+      toast({ title: "Einstellungen gespeichert" });
+      setSettingsOpen(false);
+    } catch (error: any) {
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   const fetchPressReleases = async () => {
     if (!currentTenant) return;
@@ -51,15 +110,19 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
     try {
       const { data, error } = await supabase
         .from('press_releases')
-        .select('id, title, status, created_at, created_by, updated_at, excerpt, ghost_post_url')
+        .select('id, title, status, created_at, created_by, updated_at, excerpt, ghost_post_url, published_at, published_by')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setPressReleases(data || []);
 
-      // Load profiles for creators
-      const userIds = [...new Set((data || []).map(pr => pr.created_by))];
+      // Load profiles for creators and publishers
+      const userIds = [...new Set([
+        ...(data || []).map(pr => pr.created_by),
+        ...(data || []).map(pr => pr.published_by).filter(Boolean),
+      ] as string[])];
+      
       if (userIds.length > 0) {
         const { data: profileData } = await supabase
           .from('profiles')
@@ -117,10 +180,43 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={onCreateNew} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Neue Pressemitteilung
-        </Button>
+        <div className="flex items-center gap-2">
+          <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Presse-Einstellungen</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Standard-Tags für neue Pressemitteilungen</Label>
+                  <Input
+                    value={defaultTags}
+                    onChange={(e) => setDefaultTags(e.target.value)}
+                    placeholder="Pressemitteilung, Politik, ..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Kommagetrennte Tags, die jeder neuen Pressemitteilung automatisch zugewiesen werden.
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSettingsOpen(false)}>Abbrechen</Button>
+                <Button onClick={saveSettings} disabled={savingSettings}>
+                  {savingSettings ? "Speichern..." : "Speichern"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Button onClick={onCreateNew} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Neue Pressemitteilung
+          </Button>
+        </div>
       </div>
 
       {/* List */}
@@ -177,6 +273,15 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
                         <Calendar className="h-3 w-3" />
                         {format(new Date(pr.created_at), "dd.MM.yyyy", { locale: de })}
                       </span>
+                      {pr.status === 'published' && pr.published_at && (
+                        <span className="flex items-center gap-1 text-blue-600">
+                          <Globe className="h-3 w-3" />
+                          Veröffentlicht am {format(new Date(pr.published_at), "dd.MM.yyyy", { locale: de })}
+                          {pr.published_by && profiles[pr.published_by] && (
+                            <> von {profiles[pr.published_by]}</>
+                          )}
+                        </span>
+                      )}
                       {pr.ghost_post_url && (
                         <a 
                           href={pr.ghost_post_url} 

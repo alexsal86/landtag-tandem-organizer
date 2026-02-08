@@ -902,7 +902,7 @@ export function DocumentsView() {
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
-      <div className="max-w-7xl mx-auto">
+      <div>
         {/* Header */}
         <div className="mb-8">
             <div className="flex justify-between items-center mb-6">

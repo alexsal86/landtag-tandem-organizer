@@ -1,0 +1,1 @@
+ALTER TABLE public.press_releases ADD COLUMN published_by uuid;

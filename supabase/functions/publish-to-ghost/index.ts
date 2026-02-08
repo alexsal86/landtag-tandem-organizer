@@ -198,6 +198,7 @@ Deno.serve(async (req) => {
       .update({
         status: 'published',
         published_at: new Date().toISOString(),
+        published_by: userId,
         ghost_post_id: ghostPost?.id || null,
         ghost_post_url: ghostPost?.url || null,
       })

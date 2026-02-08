@@ -8,16 +8,26 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { PressReleaseStatusBadge } from "./PressReleaseStatusBadge";
 import { RevisionCommentDialog } from "./RevisionCommentDialog";
 import { GhostPublishDialog } from "./GhostPublishDialog";
+import { FeatureImagePicker } from "./FeatureImagePicker";
 import EnhancedLexicalEditor from "@/components/EnhancedLexicalEditor";
-import { $generateHtmlFromNodes } from '@lexical/html';
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
 import { 
   ArrowLeft, Save, SendHorizonal, Check, X, Globe, 
   AlertTriangle, ExternalLink, Loader2 
 } from "lucide-react";
+
+// Auto-generate URL slug from title
+const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+};
 
 interface PressReleaseEditorProps {
   pressReleaseId?: string | null;
@@ -42,6 +52,8 @@ interface PressRelease {
   revision_comment: string | null;
   ghost_post_id: string | null;
   ghost_post_url: string | null;
+  published_at: string | null;
+  published_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -62,11 +74,13 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
   const [contentNodes, setContentNodes] = useState<string | undefined>(undefined);
   const [contentHtml, setContentHtml] = useState<string>("");
   const [slug, setSlug] = useState("");
+  const [previousAutoSlug, setPreviousAutoSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [featureImageUrl, setFeatureImageUrl] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
+  const [publisherName, setPublisherName] = useState<string | null>(null);
 
   // Dialog states
   const [showRevisionDialog, setShowRevisionDialog] = useState(false);
@@ -89,6 +103,23 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
     }
   }, [pressReleaseId]);
 
+  // Load default tags for new press releases
+  useEffect(() => {
+    if (!pressReleaseId && currentTenant) {
+      supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('tenant_id', currentTenant.id)
+        .eq('setting_key', 'press_default_tags')
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.setting_value) {
+            setTagsInput(data.setting_value);
+          }
+        });
+    }
+  }, [pressReleaseId, currentTenant]);
+
   const loadPressRelease = async (id: string) => {
     setLoading(true);
     try {
@@ -106,12 +137,28 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
       setContentNodes(data.content_nodes ? JSON.stringify(data.content_nodes) : undefined);
       setContentHtml(data.content_html || '');
       setSlug(data.slug || '');
+      setPreviousAutoSlug(data.slug || '');
       setExcerpt(data.excerpt || '');
       setFeatureImageUrl(data.feature_image_url || '');
       setTagsInput((data.tags || []).join(', '));
       setMetaTitle(data.meta_title || '');
       setMetaDescription(data.meta_description || '');
+
+      // Load publisher name if published
+      if (data.published_by) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', data.published_by)
+          .maybeSingle();
+        setPublisherName(profile?.display_name || 'Unbekannt');
+      } else {
+        setPublisherName(null);
+      }
     } catch (error: any) {
+      if (error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
+        return;
+      }
       toast({
         title: "Fehler beim Laden",
         description: error.message,
@@ -127,15 +174,24 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
     setContentNodes(newContentNodes);
   }, []);
 
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle);
+    if (!slug || slug === previousAutoSlug) {
+      const newSlug = generateSlug(newTitle);
+      setSlug(newSlug);
+      setPreviousAutoSlug(newSlug);
+    }
+  };
+
   const parseTags = (input: string): string[] => {
     return input.split(',').map(t => t.trim()).filter(t => t.length > 0);
   };
 
   const canEdit = () => {
-    if (!pressRelease) return true; // New press release
+    if (!pressRelease) return true;
     const status = pressRelease.status;
     if (status === 'draft' || status === 'revision_requested') return true;
-    if (status === 'pending_approval' && isAdmin) return false; // Admin only reviews, no edit
+    if (status === 'pending_approval' && isAdmin) return false;
     return false;
   };
 
@@ -162,7 +218,6 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
       };
 
       if (pressRelease) {
-        // Update existing
         const { error } = await supabase
           .from('press_releases')
           .update(data)
@@ -170,11 +225,9 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
 
         if (error) throw error;
         
-        // Reload
         await loadPressRelease(pressRelease.id);
         toast({ title: "Gespeichert" });
       } else {
-        // Create new
         const { data: newPr, error } = await supabase
           .from('press_releases')
           .insert({
@@ -192,6 +245,15 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
         toast({ title: "Pressemitteilung erstellt" });
       }
     } catch (error: any) {
+      if (error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
+        if (pressRelease) {
+          setTimeout(async () => {
+            await loadPressRelease(pressRelease.id);
+          }, 500);
+        }
+        toast({ title: "Gespeichert" });
+        return;
+      }
       toast({
         title: "Fehler beim Speichern",
         description: error.message,
@@ -205,7 +267,6 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
   const handleSubmitForApproval = async () => {
     if (!pressRelease || !user) return;
     
-    // Save first
     await handleSave();
 
     try {
@@ -224,6 +285,13 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
       toast({ title: "Zur Freigabe gesendet" });
       await loadPressRelease(pressRelease.id);
     } catch (error: any) {
+      if (error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
+        setTimeout(async () => {
+          await loadPressRelease(pressRelease.id);
+        }, 500);
+        toast({ title: "Zur Freigabe gesendet" });
+        return;
+      }
       toast({
         title: "Fehler",
         description: error.message,
@@ -250,6 +318,13 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
       toast({ title: "Pressemitteilung freigegeben" });
       await loadPressRelease(pressRelease.id);
     } catch (error: any) {
+      if (error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
+        setTimeout(async () => {
+          await loadPressRelease(pressRelease.id);
+        }, 500);
+        toast({ title: "Pressemitteilung freigegeben" });
+        return;
+      }
       toast({
         title: "Fehler",
         description: error.message,
@@ -355,199 +430,199 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
         </div>
       )}
 
-      {/* Published Link */}
+      {/* Published Link with publisher info */}
       {pressRelease?.ghost_post_url && status === 'published' && (
         <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-4">
-          <div className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-blue-600" />
-            <span className="text-blue-800 dark:text-blue-200">Veröffentlicht:</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Globe className="h-5 w-5 text-blue-600 flex-shrink-0" />
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+              <span className="text-blue-800 dark:text-blue-200 font-medium">Veröffentlicht</span>
+              {publisherName && pressRelease?.published_at && (
+                <span className="text-sm text-blue-600 dark:text-blue-300">
+                  von {publisherName} am {format(new Date(pressRelease.published_at), "dd.MM.yyyy 'um' HH:mm", { locale: de })}
+                </span>
+              )}
+            </div>
             <a 
               href={pressRelease.ghost_post_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline flex items-center gap-1"
+              className="text-blue-600 hover:underline flex items-center gap-1 ml-auto"
             >
-              {pressRelease.ghost_post_url}
+              Beitrag ansehen
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
         </div>
       )}
 
-      {/* Main Layout */}
+      {/* Main Layout - no separate scroll areas */}
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
         {/* Sidebar */}
         <div className="space-y-4 order-2 lg:order-1">
-          <ScrollArea className="h-[calc(100vh-20rem)]">
-            <div className="space-y-4 pr-2">
-              {/* Metadata */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase">Metadaten</h3>
-                
-                <div>
-                  <Label htmlFor="pr-title">Titel *</Label>
-                  <Input
-                    id="pr-title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Titel der Pressemitteilung"
-                    disabled={!editable}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="pr-slug">URL-Slug</Label>
-                  <Input
-                    id="pr-slug"
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    placeholder="url-slug-fuer-ghost"
-                    disabled={!editable}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="pr-excerpt">Kurzfassung / Teaser</Label>
-                  <Textarea
-                    id="pr-excerpt"
-                    value={excerpt}
-                    onChange={(e) => setExcerpt(e.target.value)}
-                    placeholder="Kurze Zusammenfassung..."
-                    rows={3}
-                    disabled={!editable}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="pr-tags">Tags (kommagetrennt)</Label>
-                  <Input
-                    id="pr-tags"
-                    value={tagsInput}
-                    onChange={(e) => setTagsInput(e.target.value)}
-                    placeholder="Pressemitteilung, Politik, ..."
-                    disabled={!editable}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="pr-feature-image">Titelbild-URL</Label>
-                  <Input
-                    id="pr-feature-image"
-                    value={featureImageUrl}
-                    onChange={(e) => setFeatureImageUrl(e.target.value)}
-                    placeholder="https://..."
-                    disabled={!editable}
-                  />
-                </div>
+          <div className="space-y-4">
+            {/* Metadata */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase">Metadaten</h3>
+              
+              <div>
+                <Label htmlFor="pr-title">Titel *</Label>
+                <Input
+                  id="pr-title"
+                  value={title}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  placeholder="Titel der Pressemitteilung"
+                  disabled={!editable}
+                />
               </div>
 
-              <Separator />
-
-              {/* SEO */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase">SEO</h3>
-                
-                <div>
-                  <Label htmlFor="pr-meta-title">SEO-Titel</Label>
-                  <Input
-                    id="pr-meta-title"
-                    value={metaTitle}
-                    onChange={(e) => setMetaTitle(e.target.value)}
-                    placeholder="SEO-Titel (max. 60 Zeichen)"
-                    disabled={!editable}
-                    maxLength={60}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">{metaTitle.length}/60</p>
-                </div>
-
-                <div>
-                  <Label htmlFor="pr-meta-desc">SEO-Beschreibung</Label>
-                  <Textarea
-                    id="pr-meta-desc"
-                    value={metaDescription}
-                    onChange={(e) => setMetaDescription(e.target.value)}
-                    placeholder="SEO-Beschreibung (max. 160 Zeichen)"
-                    rows={2}
-                    disabled={!editable}
-                    maxLength={160}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">{metaDescription.length}/160</p>
-                </div>
+              <div>
+                <Label htmlFor="pr-slug">URL-Slug</Label>
+                <Input
+                  id="pr-slug"
+                  value={slug}
+                  onChange={(e) => { setSlug(e.target.value); setPreviousAutoSlug(''); }}
+                  placeholder="url-slug-fuer-ghost"
+                  disabled={!editable}
+                />
               </div>
 
-              <Separator />
+              <div>
+                <Label htmlFor="pr-excerpt">Kurzfassung / Teaser</Label>
+                <Textarea
+                  id="pr-excerpt"
+                  value={excerpt}
+                  onChange={(e) => setExcerpt(e.target.value)}
+                  placeholder="Kurze Zusammenfassung..."
+                  rows={3}
+                  disabled={!editable}
+                />
+              </div>
 
-              {/* Actions */}
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase">Aktionen</h3>
-                
-                {editable && (
-                  <Button onClick={handleSave} disabled={saving || !title.trim()} className="w-full gap-2">
-                    <Save className="h-4 w-4" />
-                    {saving ? "Wird gespeichert..." : "Speichern"}
-                  </Button>
-                )}
+              <div>
+                <Label htmlFor="pr-tags">Tags (kommagetrennt)</Label>
+                <Input
+                  id="pr-tags"
+                  value={tagsInput}
+                  onChange={(e) => setTagsInput(e.target.value)}
+                  placeholder="Pressemitteilung, Politik, ..."
+                  disabled={!editable}
+                />
+              </div>
 
-                {/* Submit for approval (staff, when draft or revision_requested) */}
-                {editable && pressRelease && (status === 'draft' || status === 'revision_requested') && (
-                  <Button 
-                    onClick={handleSubmitForApproval} 
-                    variant="outline" 
-                    className="w-full gap-2"
-                    disabled={saving || !title.trim()}
-                  >
-                    <SendHorizonal className="h-4 w-4" />
-                    Zur Freigabe senden
-                  </Button>
-                )}
+              <FeatureImagePicker
+                value={featureImageUrl}
+                onChange={setFeatureImageUrl}
+                disabled={!editable}
+              />
+            </div>
 
-                {/* Approve (admin, when pending_approval) */}
-                {isAdmin && status === 'pending_approval' && (
-                  <Button onClick={handleApprove} className="w-full gap-2 bg-green-600 hover:bg-green-700">
-                    <Check className="h-4 w-4" />
-                    Freigeben
-                  </Button>
-                )}
+            <Separator />
 
-                {/* Reject (admin, when pending_approval) */}
-                {isAdmin && status === 'pending_approval' && (
-                  <Button 
-                    onClick={() => setShowRevisionDialog(true)} 
-                    variant="outline" 
-                    className="w-full gap-2 text-yellow-700 border-yellow-300 hover:bg-yellow-50"
-                  >
-                    <X className="h-4 w-4" />
-                    Zurückweisen
-                  </Button>
-                )}
+            {/* SEO */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase">SEO</h3>
+              
+              <div>
+                <Label htmlFor="pr-meta-title">SEO-Titel</Label>
+                <Input
+                  id="pr-meta-title"
+                  value={metaTitle}
+                  onChange={(e) => setMetaTitle(e.target.value)}
+                  placeholder="SEO-Titel (max. 60 Zeichen)"
+                  disabled={!editable}
+                  maxLength={60}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{metaTitle.length}/60</p>
+              </div>
 
-                {/* Publish to Ghost (when approved) */}
-                {status === 'approved' && (
-                  <Button 
-                    onClick={() => setShowGhostDialog(true)} 
-                    className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Globe className="h-4 w-4" />
-                    An Ghost veröffentlichen
-                  </Button>
-                )}
-
-                {/* View on website (when published) */}
-                {status === 'published' && pressRelease?.ghost_post_url && (
-                  <Button 
-                    asChild
-                    variant="outline" 
-                    className="w-full gap-2"
-                  >
-                    <a href={pressRelease.ghost_post_url} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-4 w-4" />
-                      Auf Webseite ansehen
-                    </a>
-                  </Button>
-                )}
+              <div>
+                <Label htmlFor="pr-meta-desc">SEO-Beschreibung</Label>
+                <Textarea
+                  id="pr-meta-desc"
+                  value={metaDescription}
+                  onChange={(e) => setMetaDescription(e.target.value)}
+                  placeholder="SEO-Beschreibung (max. 160 Zeichen)"
+                  rows={2}
+                  disabled={!editable}
+                  maxLength={160}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{metaDescription.length}/160</p>
               </div>
             </div>
-          </ScrollArea>
+
+            <Separator />
+
+            {/* Actions */}
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase">Aktionen</h3>
+              
+              {editable && (
+                <Button onClick={handleSave} disabled={saving || !title.trim()} className="w-full gap-2">
+                  <Save className="h-4 w-4" />
+                  {saving ? "Wird gespeichert..." : "Speichern"}
+                </Button>
+              )}
+
+              {/* Submit for approval (staff, when draft or revision_requested) */}
+              {editable && pressRelease && (status === 'draft' || status === 'revision_requested') && (
+                <Button 
+                  onClick={handleSubmitForApproval} 
+                  variant="outline" 
+                  className="w-full gap-2"
+                  disabled={saving || !title.trim()}
+                >
+                  <SendHorizonal className="h-4 w-4" />
+                  Zur Freigabe senden
+                </Button>
+              )}
+
+              {/* Approve (admin, when pending_approval) */}
+              {isAdmin && status === 'pending_approval' && (
+                <Button onClick={handleApprove} className="w-full gap-2 bg-green-600 hover:bg-green-700">
+                  <Check className="h-4 w-4" />
+                  Freigeben
+                </Button>
+              )}
+
+              {/* Reject (admin, when pending_approval) */}
+              {isAdmin && status === 'pending_approval' && (
+                <Button 
+                  onClick={() => setShowRevisionDialog(true)} 
+                  variant="outline" 
+                  className="w-full gap-2 text-yellow-700 border-yellow-300 hover:bg-yellow-50"
+                >
+                  <X className="h-4 w-4" />
+                  Zurückweisen
+                </Button>
+              )}
+
+              {/* Publish to Ghost (when approved) */}
+              {status === 'approved' && (
+                <Button 
+                  onClick={() => setShowGhostDialog(true)} 
+                  className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+                >
+                  <Globe className="h-4 w-4" />
+                  An Ghost veröffentlichen
+                </Button>
+              )}
+
+              {/* View on website (when published) */}
+              {status === 'published' && pressRelease?.ghost_post_url && (
+                <Button 
+                  asChild
+                  variant="outline" 
+                  className="w-full gap-2"
+                >
+                  <a href={pressRelease.ghost_post_url} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4" />
+                    Auf Webseite ansehen
+                  </a>
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Editor */}

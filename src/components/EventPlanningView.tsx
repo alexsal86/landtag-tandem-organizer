@@ -2810,7 +2810,7 @@ export function EventPlanningView() {
   if (!selectedPlanning) {
     return (
       <div className="min-h-screen bg-gradient-subtle p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold">Veranstaltungsplanung</h1>
             <div className="flex items-center gap-4">
@@ -3348,7 +3348,7 @@ export function EventPlanningView() {
 
   return (
       <div className="min-h-screen bg-gradient-subtle p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button variant="ghost" onClick={() => setSelectedPlanning(null)}>
