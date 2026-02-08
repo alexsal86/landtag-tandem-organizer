@@ -146,6 +146,30 @@ export const useNotifications = () => {
     }
   }, [user]);
 
+  // Delete a single notification
+  const deleteNotification = useCallback(async (notificationId: string) => {
+    if (!user) return;
+
+    // Optimistic update
+    const wasUnread = notifications.find(n => n.id === notificationId && !n.is_read);
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    if (wasUnread) setUnreadCount(prev => Math.max(0, prev - 1));
+
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      // Reload to restore state
+      loadNotifications();
+    }
+  }, [user, notifications, loadNotifications]);
+
   // Mark all notifications as read with cross-tab sync
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
@@ -538,6 +562,7 @@ export const useNotifications = () => {
     loadNotifications,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
     requestPushPermission,
     subscribeToPush,
   };

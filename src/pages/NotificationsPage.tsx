@@ -1,0 +1,196 @@
+import React, { useState, useMemo } from 'react';
+import { formatDistanceToNow, format } from 'date-fns';
+import { de } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
+import {
+  Bell, CheckCheck, Calendar, MessageSquare, FileText, Users,
+  BookOpen, Clock, BarChart3, MapPin, StickyNote, Settings,
+  Search, Filter, X, DollarSign
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNotifications, type Notification } from '@/contexts/NotificationContext';
+import { NotificationSettings } from '@/components/NotificationSettings';
+import { cn } from '@/lib/utils';
+
+const getNotificationIcon = (type: string) => {
+  switch (type) {
+    case 'task_created': case 'task_due': case 'task_assigned': case 'task_updated': return CheckCheck;
+    case 'appointment_reminder': return Calendar;
+    case 'message_received': return MessageSquare;
+    case 'budget_exceeded': return DollarSign;
+    case 'system_update': case 'team_announcement_created': return Settings;
+    case 'employee_meeting_overdue': case 'employee_meeting_due_soon': case 'employee_meeting_due':
+    case 'employee_meeting_reminder': case 'employee_meeting_request_overdue':
+    case 'employee_meeting_requested': case 'employee_meeting_request_declined':
+    case 'employee_meeting_action_item_overdue': case 'employee_meeting_scheduled': return Users;
+    case 'task_decision_request': case 'task_decision_completed': case 'task_decision_complete':
+    case 'task_decision_comment_received': case 'task_decision_creator_response': return MessageSquare;
+    case 'document_created': case 'document_mention': case 'letter_review_requested':
+    case 'letter_review_completed': case 'letter_sent': return FileText;
+    case 'knowledge_document_created': return BookOpen;
+    case 'meeting_created': return Calendar;
+    case 'note_follow_up': return StickyNote;
+    case 'poll_auto_cancelled': case 'poll_auto_completed': case 'poll_restored': return BarChart3;
+    case 'vacation_request_pending': case 'sick_leave_request_pending':
+    case 'leave_request_approved': case 'leave_request_rejected': return Clock;
+    case 'planning_collaborator_added': return MapPin;
+    default: return Bell;
+  }
+};
+
+export function NotificationsPage() {
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'all' | 'settings'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'read'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredNotifications = useMemo(() => {
+    let filtered = notifications;
+    if (filterStatus === 'unread') filtered = filtered.filter(n => !n.is_read);
+    if (filterStatus === 'read') filtered = filtered.filter(n => n.is_read);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(n =>
+        n.title.toLowerCase().includes(q) ||
+        n.message.toLowerCase().includes(q)
+      );
+    }
+    return filtered;
+  }, [notifications, filterStatus, searchQuery]);
+
+  return (
+    <div className="min-h-screen bg-gradient-subtle p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Benachrichtigungen</h1>
+          <p className="text-muted-foreground">
+            Alle Benachrichtigungen und Einstellungen
+          </p>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="all" className="gap-2">
+              <Bell className="h-4 w-4" />
+              Alle Benachrichtigungen
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="text-xs ml-1">{unreadCount}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Einstellungen
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="all">
+            {/* Filters */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Benachrichtigungen durchsuchen..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as any)}>
+                <SelectTrigger className="w-40">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle</SelectItem>
+                  <SelectItem value="unread">Ungelesen</SelectItem>
+                  <SelectItem value="read">Gelesen</SelectItem>
+                </SelectContent>
+              </Select>
+              {unreadCount > 0 && (
+                <Button variant="outline" size="sm" onClick={markAllAsRead}>
+                  <CheckCheck className="h-4 w-4 mr-1" />
+                  Alle lesen
+                </Button>
+              )}
+            </div>
+
+            {/* Notification list */}
+            <Card>
+              <CardContent className="p-0">
+                {filteredNotifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Bell className="h-10 w-10 text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">
+                      {searchQuery ? 'Keine Benachrichtigungen gefunden' : 'Keine Benachrichtigungen vorhanden'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {filteredNotifications.map((notification) => {
+                      const Icon = getNotificationIcon(notification.notification_types?.name || 'default');
+                      return (
+                        <div
+                          key={notification.id}
+                          className={cn(
+                            "flex items-start gap-3 p-4 hover:bg-accent cursor-pointer transition-colors group",
+                            !notification.is_read && "bg-accent/5"
+                          )}
+                          onClick={() => {
+                            if (!notification.is_read) markAsRead(notification.id);
+                          }}
+                        >
+                          <div className={cn(
+                            "p-2 rounded-full flex-shrink-0 mt-0.5",
+                            notification.is_read ? "bg-muted" : "bg-primary/10"
+                          )}>
+                            <Icon className={cn("h-4 w-4", notification.is_read ? "text-muted-foreground" : "text-primary")} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className={cn("text-sm leading-tight", !notification.is_read && "font-medium")}>
+                                {notification.title}
+                              </h4>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {!notification.is_read && <div className="h-2 w-2 bg-primary rounded-full" />}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
+                                >
+                                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Button>
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
+                            <span className="text-xs text-muted-foreground mt-2 block">
+                              {format(new Date(notification.created_at), "dd.MM.yyyy 'um' HH:mm", { locale: de })}
+                              {' · '}
+                              {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: de })}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <NotificationSettings />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
+
+export default NotificationsPage;

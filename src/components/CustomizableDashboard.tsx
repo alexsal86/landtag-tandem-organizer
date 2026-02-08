@@ -271,25 +271,25 @@ export const CustomizableDashboard: React.FC = () => {
       
       {/* Content Container */}
       <div className="p-6">
-        {/* News Section - MOVED UP */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground mb-4">
-            Aktuelle Nachrichten
-          </h2>
-          <NewsWidget />
+        {/* Greeting (40%) + News (60%) side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+          <div className="lg:col-span-2">
+            <DashboardGreetingSection />
+          </div>
+          <div className="lg:col-span-3">
+            <h2 className="text-2xl font-bold text-foreground mb-4">
+              Aktuelle Nachrichten
+            </h2>
+            <NewsWidget />
+          </div>
         </div>
 
-        {/* Quick Actions - Full Width Separator */}
+        {/* Quick Actions */}
         <div className="mb-6">
           <QuickActionsWidget 
             className="shadow-sm"
             widgetSize="full-width"
           />
-        </div>
-
-        {/* Dynamic Greeting Section - MOVED DOWN */}
-        <div className="mb-8">
-          <DashboardGreetingSection />
         </div>
 
       <Separator className="my-8" />
