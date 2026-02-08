@@ -122,6 +122,9 @@ function MentionsTypeaheadMenuItem({
   );
 }
 
+// Cast to avoid JSX generic syntax which breaks the build tooling
+const TypeaheadMenuPlugin = LexicalTypeaheadMenuPlugin as React.ComponentType<any>;
+
 export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): React.JSX.Element | null {
   const [editor] = useLexicalComposerContext();
   const { currentTenant } = useTenant();
@@ -204,14 +207,18 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
   );
 
   return (
-    <LexicalTypeaheadMenuPlugin<MentionTypeaheadOption>
+    <TypeaheadMenuPlugin
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
       options={options}
       menuRenderFn={(
-        anchorElementRef,
-        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
+        anchorElementRef: React.MutableRefObject<HTMLElement | null>,
+        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }: {
+          selectedIndex: number | null;
+          selectOptionAndCleanUp: (option: MentionTypeaheadOption) => void;
+          setHighlightedIndex: (index: number) => void;
+        },
       ) =>
         anchorElementRef.current && options.length
           ? ReactDOM.createPortal(
