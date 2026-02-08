@@ -14,6 +14,7 @@ interface NotificationContextType {
   loadNotifications: () => Promise<void>;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  deleteNotification: (notificationId: string) => Promise<void>;
   requestPushPermission: () => Promise<boolean>;
   subscribeToPush: () => Promise<void>;
 }
@@ -28,6 +29,7 @@ const defaultContextValue: NotificationContextType = {
   loadNotifications: async () => {},
   markAsRead: async () => {},
   markAllAsRead: async () => {},
+  deleteNotification: async () => {},
   requestPushPermission: async () => false,
   subscribeToPush: async () => {},
 };

@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Clock, MessageSquare, Settings, Smile } from 'lucide-react';
 
 // Emoji categories
@@ -41,6 +42,8 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
     loading 
   } = useUserStatus();
   
+  const [profileData, setProfileData] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
+  
   const [isOpen, setIsOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string>('online');
   const [customMessage, setCustomMessage] = useState('');
@@ -48,6 +51,20 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
   const [statusUntil, setStatusUntil] = useState('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [activeEmojiCategory, setActiveEmojiCategory] = useState<keyof typeof emojiCategories>('status');
+
+  // Load profile from DB for correct avatar
+  React.useEffect(() => {
+    const loadProfile = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, avatar_url')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      setProfileData(data);
+    };
+    loadProfile();
+  }, [user]);
 
   React.useEffect(() => {
     if (currentStatus) {
@@ -104,9 +121,9 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
           {/* Current Status Display */}
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
             <Avatar className="w-10 h-10">
-              <AvatarImage src={user?.user_metadata?.avatar_url} />
+              <AvatarImage src={profileData?.avatar_url || undefined} />
               <AvatarFallback>
-                {user?.user_metadata?.display_name?.charAt(0) || user?.email?.charAt(0)}
+                {profileData?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
@@ -115,7 +132,7 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
                 <span className="font-medium">{currentDisplay.label}</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                {user?.user_metadata?.display_name || user?.email}
+                {profileData?.display_name || user?.email}
               </p>
             </div>
           </div>

@@ -26,6 +26,7 @@ import GuestResponse from "./pages/GuestResponse";
 import AppointmentPreparationDetail from "./pages/AppointmentPreparationDetail";
 
 import EditorTest from "./pages/EditorTest";
+import NotificationsPage from "./pages/NotificationsPage";
 import EmployeeMeetingDetail from "./pages/EmployeeMeetingDetail";
 import MapsView from "./pages/MapsView";
 
@@ -72,12 +73,13 @@ const AppContent = () => {
           <Route path="/maps" element={<MapsView />} />
           <Route path="/distribution-lists/new" element={<CreateDistributionList />} />
           <Route path="/distribution-lists/:id/edit" element={<EditDistributionList />} />
-          <Route path="/profile/edit" element={<EditProfile />} />
+          <Route path="/profile/edit" element={<Navigate to="/profile-edit" replace />} />
           <Route path="/poll-guest/:pollId" element={<PollGuest />} />
           <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
           <Route path="/guest-response/:token" element={<GuestResponse />} />
           <Route path="/appointment-preparation" element={<AppointmentPreparationDetail />} />
           <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/editor-test" element={<EditorTest />} />
           <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

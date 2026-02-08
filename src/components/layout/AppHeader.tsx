@@ -264,7 +264,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
               </Avatar>
               {/* Status indicator */}
               {statusDisplay && (
-                <span className="absolute -bottom-0.5 -right-0.5 text-sm">
+                <span className="absolute -bottom-1 -right-1 text-sm">
                   {statusDisplay.emoji}
                 </span>
               )}

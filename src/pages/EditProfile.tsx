@@ -281,11 +281,11 @@ export function EditProfile() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/settings")}
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Zurück
+              Zurück zu Einstellungen
             </Button>
           </div>
           <div>

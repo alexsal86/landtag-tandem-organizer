@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import { 
   Bell, 
   CheckCheck, 
@@ -14,7 +15,9 @@ import {
   Clock,
   BarChart3,
   MapPin,
-  StickyNote
+  StickyNote,
+  X,
+  History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -177,7 +180,7 @@ const buildDeepLinkPath = (notification: Notification): string => {
       if (data.meeting_id) {
         return `/employee-meeting/${data.meeting_id}`;
       }
-      return '/employees';
+      return '/employee';
 
     // Notes
     case 'note_follow_up':
@@ -215,9 +218,11 @@ const buildDeepLinkPath = (notification: Notification): string => {
 const NotificationItem: React.FC<{
   notification: Notification;
   onMarkRead: (id: string) => void;
+  onDelete: (id: string) => void;
   onClose?: () => void;
-}> = ({ notification, onMarkRead, onClose }) => {
+}> = ({ notification, onMarkRead, onDelete, onClose }) => {
   const Icon = getNotificationIcon(notification.notification_types?.name || 'default');
+  const navigate = useNavigate();
   
   const handleClick = () => {
     if (!notification.is_read) {
@@ -225,14 +230,19 @@ const NotificationItem: React.FC<{
     }
     
     const path = buildDeepLinkPath(notification);
-    window.location.href = '/#' + path;
+    navigate(path);
     onClose?.();
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(notification.id);
   };
 
   return (
     <div
       className={cn(
-        "flex items-start gap-3 p-3 hover:bg-accent cursor-pointer transition-colors border-l-4",
+        "flex items-start gap-3 p-3 hover:bg-accent cursor-pointer transition-colors border-l-4 relative group",
         notification.is_read ? "opacity-60" : "bg-accent/5",
         `border-l-${getPriorityColor(notification.priority)}`
       )}
@@ -255,9 +265,19 @@ const NotificationItem: React.FC<{
           <h4 className="text-sm font-medium leading-tight">
             {notification.title}
           </h4>
-          {!notification.is_read && (
-            <div className="h-2 w-2 bg-primary rounded-full flex-shrink-0 mt-1" />
-          )}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {!notification.is_read && (
+              <div className="h-2 w-2 bg-primary rounded-full mt-1" />
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={handleDelete}
+            >
+              <X className="h-3 w-3 text-muted-foreground" />
+            </Button>
+          </div>
         </div>
         
         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
@@ -294,8 +314,10 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose 
     unreadCount, 
     loading, 
     markAsRead, 
-    markAllAsRead 
+    markAllAsRead,
+    deleteNotification
   } = useNotifications();
+  const navigate = useNavigate();
 
   return (
     <div className="w-full">
@@ -346,6 +368,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose 
                 key={notification.id}
                 notification={notification}
                 onMarkRead={markAsRead}
+                onDelete={deleteNotification}
                 onClose={onClose}
               />
             ))}
@@ -354,25 +377,33 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose 
       </ScrollArea>
 
       {/* Footer */}
-      {notifications.length > 0 && (
-        <>
-          <Separator />
-          <div className="p-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-center text-xs"
-              onClick={() => {
-                window.location.href = '/#/settings';
-                onClose?.();
-              }}
-            >
-              <Settings className="h-4 w-4 mr-1" />
-              Benachrichtigungseinstellungen
-            </Button>
-          </div>
-        </>
-      )}
+      <Separator />
+      <div className="p-3 flex gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex-1 justify-center text-xs"
+          onClick={() => {
+            navigate('/notifications');
+            onClose?.();
+          }}
+        >
+          <History className="h-4 w-4 mr-1" />
+          Alle anzeigen
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex-1 justify-center text-xs"
+          onClick={() => {
+            navigate('/notifications');
+            onClose?.();
+          }}
+        >
+          <Settings className="h-4 w-4 mr-1" />
+          Einstellungen
+        </Button>
+      </div>
     </div>
   );
 };

@@ -47,6 +47,8 @@ export function SettingsView() {
   // My Work Settings
   const { badgeDisplayMode, updateBadgeDisplayMode, isLoading: myWorkSettingsLoading } = useMyWorkSettings();
 
+  const [userRole, setUserRole] = useState<string>('Benutzer');
+
   useEffect(() => {
     if (!user) return;
     const loadUserData = async () => {
@@ -56,9 +58,27 @@ export function SettingsView() {
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
-        .single();
+        .eq("user_id", user.id)
+        .maybeSingle();
       setUserProfile(profile);
+
+      // Load role from user_roles table
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (roleData?.role) {
+        const roleLabels: Record<string, string> = {
+          'super_admin': 'Super-Admin',
+          'admin': 'Administrator',
+          'abgeordneter': 'Abgeordneter',
+          'moderator': 'Moderator',
+          'user': 'Benutzer',
+        };
+        setUserRole(roleLabels[roleData.role] || roleData.role);
+      }
     };
     loadUserData();
   }, [user]);
@@ -244,7 +264,7 @@ export function SettingsView() {
                   </Avatar>
                   <div>
                     <p className="font-medium">{userProfile?.display_name || user?.email}</p>
-                    <p className="text-sm text-muted-foreground">{userProfile?.role || 'Benutzer'}</p>
+                    <p className="text-sm text-muted-foreground">{userRole}</p>
                   </div>
                 </div>
               </div>

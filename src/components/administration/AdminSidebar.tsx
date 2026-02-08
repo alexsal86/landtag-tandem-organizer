@@ -39,7 +39,8 @@ import {
   MapPin,
   CreditCard,
   Rss,
-  CircleCheck
+  CircleCheck,
+  ShieldAlert,
 } from "lucide-react";
 
 export interface AdminMenuItem {
@@ -48,6 +49,7 @@ export interface AdminMenuItem {
   icon: React.ComponentType<{ className?: string }>;
   badge?: number;
   children?: AdminSubItem[];
+  superAdminOnly?: boolean;
 }
 
 export interface AdminSubItem {
@@ -73,8 +75,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     children: [
       { id: "general", label: "Allgemein", icon: Settings },
       { id: "login", label: "Login-Anpassung", icon: LogIn },
-      { id: "tenants", label: "Tenants", icon: Building2, superAdminOnly: true },
-      { id: "roles", label: "Rechte & Rollen", icon: UserCheck, superAdminOnly: true },
+      { id: "expense", label: "Verwaltung", icon: CreditCard },
       { id: "auditlogs", label: "Audit-Logs", icon: History },
       { id: "archiving", label: "Archivierung", icon: Archive },
     ],
@@ -127,17 +128,6 @@ export const adminMenuItems: AdminMenuItem[] = [
     ],
   },
   {
-    id: "politics",
-    label: "Politik & Organisation",
-    icon: Building2,
-    children: [
-      { id: "associations", label: "Kreisverbände", icon: Landmark },
-      { id: "districts", label: "Betreuungswahlkreise", icon: MapPin },
-      { id: "mapping", label: "Wahlkreis-Zuordnung", icon: Building2 },
-      { id: "expense", label: "Verwaltung", icon: CreditCard },
-    ],
-  },
-  {
     id: "automation",
     label: "Automatisierung",
     icon: Workflow,
@@ -145,6 +135,19 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "rss-sources", label: "RSS-Quellen", icon: Rss },
       { id: "rss-settings", label: "RSS-Einstellungen", icon: Settings },
       { id: "annual", label: "Jährliche Aufgaben", icon: CircleCheck },
+    ],
+  },
+  {
+    id: "superadmin",
+    label: "Super-Admin",
+    icon: ShieldAlert,
+    superAdminOnly: true,
+    children: [
+      { id: "tenants", label: "Tenants", icon: Building2 },
+      { id: "roles", label: "Rechte & Rollen", icon: UserCheck },
+      { id: "associations", label: "Kreisverbände", icon: Landmark },
+      { id: "districts", label: "Betreuungswahlkreise", icon: MapPin },
+      { id: "mapping", label: "Wahlkreis-Zuordnung", icon: Building2 },
     ],
   },
 ];
@@ -172,7 +175,6 @@ export function AdminSidebar({
     } else if (!item.children) {
       onNavigate(item.id);
     } else {
-      // Toggle section and navigate to first child
       toggleSection(item.id);
       if (!openSections.includes(item.id) && item.children.length > 0) {
         const firstVisible = item.children.find(
@@ -185,6 +187,11 @@ export function AdminSidebar({
     }
   };
 
+  // Filter top-level items by superAdminOnly
+  const visibleMenuItems = adminMenuItems.filter(
+    (item) => !item.superAdminOnly || isSuperAdmin
+  );
+
   return (
     <div className="w-64 border-r bg-muted/30 h-full">
       <div className="p-4 border-b">
@@ -193,7 +200,7 @@ export function AdminSidebar({
       </div>
       <ScrollArea className="h-[calc(100vh-180px)]">
         <div className="p-2 space-y-1">
-          {adminMenuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
             const isOpen = openSections.includes(item.id);
@@ -202,7 +209,6 @@ export function AdminSidebar({
               (c) => !c.superAdminOnly || isSuperAdmin
             );
 
-            // Handle badge for annual tasks
             const showAnnualBadge = item.id === "automation" && annualTasksBadge && annualTasksBadge > 0;
 
             if (!hasChildren) {
@@ -257,7 +263,6 @@ export function AdminSidebar({
                     const isSubActive =
                       activeSection === item.id && activeSubSection === subItem.id;
 
-                    // Show badge on annual tasks sub-item
                     const showSubBadge = item.id === "automation" && subItem.id === "annual" && annualTasksBadge && annualTasksBadge > 0;
 
                     return (

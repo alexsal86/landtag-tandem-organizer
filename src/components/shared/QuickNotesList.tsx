@@ -371,20 +371,27 @@ export function QuickNotesList({
     return () => window.removeEventListener('quick-note-created', handleNoteCreated);
   }, [loadNotes]);
 
-  // Send notifications for due follow-up notes (once per session)
+  // Send notifications for due follow-up notes (once per day, deduplicated via localStorage)
   const followUpNotifiedRef = useRef(false);
   useEffect(() => {
     if (!user || followUpNotifiedRef.current || notes.length === 0) return;
     
+    const today = new Date().toISOString().split('T')[0];
+    const storageKey = `follow_up_notified_${today}`;
+    const alreadyNotified: string[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    
     const now = startOfDay(new Date());
     const dueFollowUps = notes.filter(n => 
       n.follow_up_date && 
-      n.user_id === user.id && // Only own notes
+      n.user_id === user.id &&
+      !alreadyNotified.includes(n.id) &&
       isBefore(startOfDay(new Date(n.follow_up_date)), addDays(now, 1))
     );
     
     if (dueFollowUps.length > 0) {
       followUpNotifiedRef.current = true;
+      const newNotified = [...alreadyNotified];
+      
       dueFollowUps.forEach(async (note) => {
         try {
           await supabase.rpc('create_notification', {
@@ -392,13 +399,27 @@ export function QuickNotesList({
             type_name: 'note_follow_up',
             title_param: 'Fällige Wiedervorlage',
             message_param: `Notiz "${note.title || 'Ohne Titel'}" hat eine fällige Wiedervorlage`,
-            data_param: JSON.stringify({ noteId: note.id }),
+            data_param: JSON.stringify({ noteId: note.id, date: today }),
             priority_param: 'high',
           });
+          newNotified.push(note.id);
         } catch (e) {
           console.error('Follow-up notification error:', e);
         }
       });
+      
+      localStorage.setItem(storageKey, JSON.stringify(newNotified));
+      
+      // Clean up old day keys
+      try {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('follow_up_notified_') && key !== storageKey) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch {}
+    } else {
+      followUpNotifiedRef.current = true;
     }
   }, [notes, user]);
 

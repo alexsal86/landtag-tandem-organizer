@@ -495,13 +495,13 @@ export function MyWorkDecisionsTab() {
           <TabsContent value={activeTab} className="mt-3">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4">
               {/* Main cards */}
-              <ScrollArea className="h-[calc(100vh-22rem)]">
+              <div>
                 {filteredDecisions.length === 0 ? (
                   <div className="text-center py-8 text-xs text-muted-foreground">
                     {emptyMessages[activeTab] || "Keine Entscheidungen."}
                   </div>
                 ) : (
-                  <div className="space-y-2 pr-2">
+                  <div className="space-y-2">
                     {filteredDecisions.map(decision => (
                       <MyWorkDecisionCard
                         key={decision.id}
@@ -520,7 +520,7 @@ export function MyWorkDecisionsTab() {
                     ))}
                   </div>
                 )}
-              </ScrollArea>
+              </div>
 
               {/* Sidebar */}
               <MyWorkDecisionSidebar
