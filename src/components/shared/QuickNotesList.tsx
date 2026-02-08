@@ -131,7 +131,7 @@ export function QuickNotesList({
   const [editingNote, setEditingNote] = useState<QuickNote | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
-  const [followUpExpanded, setFollowUpExpanded] = useState(false);
+  const [followUpExpanded, setFollowUpExpanded] = useState(true);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [noteForDatePicker, setNoteForDatePicker] = useState<QuickNote | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -1337,7 +1337,7 @@ export function QuickNotesList({
 
   // Simple HTML sanitizer for safe rendering
   const sanitizeHtml = (html: string) => {
-    // Allow only basic formatting tags
+    // Allow only basic formatting tags - preserve data-* and style attributes on spans
     const allowedTags = ['b', 'i', 'u', 'strong', 'em', 'br', 'p', 'ul', 'ol', 'li', 'span'];
     const tagPattern = new RegExp(`<(?!\/?(${allowedTags.join('|')})(\\s|>))[^>]*>`, 'gi');
     return html
@@ -1354,15 +1354,6 @@ export function QuickNotesList({
     const hasLinkedItems = note.task_id || note.decision_id || note.meeting_id;
     const hasShared = (note.share_count || 0) > 0 || note.is_shared === true;
     
-    // Helper to get preview text with inline "..." - properly decode HTML entities
-    const getPreviewText = (content: string, maxLength = 150) => {
-      // Create a temporary element to properly decode HTML entities
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = content;
-      const text = (tempDiv.textContent || tempDiv.innerText || '').trim();
-      if (text.length <= maxLength) return text;
-      return text.substring(0, maxLength).trim() + '...';
-    };
     
     return (
       <div
@@ -1379,11 +1370,34 @@ export function QuickNotesList({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             {/* Title - larger */}
-            {note.title && (
-              <h4 className="font-semibold text-base break-words line-clamp-2 mb-1">
-                {note.title}
-              </h4>
-            )}
+            <div className="flex items-start gap-2">
+              {note.title && (
+                <h4 className="font-semibold text-base break-words line-clamp-2 mb-1 flex-1">
+                  {note.title}
+                </h4>
+              )}
+              {/* Follow-up badge with remove button */}
+              {showFollowUpBadge && note.follow_up_date && (
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/30">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {format(new Date(note.follow_up_date), "dd.MM.yy", { locale: de })}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 hover:bg-destructive/10 rounded-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSetFollowUp(note.id, null);
+                    }}
+                    title="Wiedervorlage entfernen"
+                  >
+                    <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                  </Button>
+                </div>
+              )}
+            </div>
             {/* Description - gray, with INLINE expand arrow after "..." */}
             {isExpanded ? (
               <div>
@@ -1403,17 +1417,18 @@ export function QuickNotesList({
               </div>
             ) : (
               <div className="text-sm text-muted-foreground/70">
-                <span>
-                  {getPreviewText(note.content, 150)}
-                  {needsTruncation && (
-                    <button 
-                      className="inline-flex items-center text-primary hover:underline align-baseline"
-                      onClick={(e) => toggleNoteExpand(note.id, e)}
-                    >
-                      <ArrowRight className="h-3.5 w-3.5 inline ml-0.5" strokeWidth={2.5} />
-                    </button>
-                  )}
-                </span>
+                <div 
+                  className="line-clamp-2 prose prose-sm max-w-none [&>p]:mb-0 [&>ul]:mb-0 [&>ol]:mb-0"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
+                />
+                {needsTruncation && (
+                  <button 
+                    className="inline-flex items-center text-primary hover:underline align-baseline mt-0.5"
+                    onClick={(e) => toggleNoteExpand(note.id, e)}
+                  >
+                    <ArrowRight className="h-3.5 w-3.5 inline ml-0.5" strokeWidth={2.5} />
+                  </button>
+                )}
               </div>
             )}
             
@@ -2054,6 +2069,34 @@ export function QuickNotesList({
       <ScrollArea style={{ height: maxHeight }}>
         <DragDropContext onDragEnd={handleNoteDragEnd}>
           <div className="space-y-4 p-4 pt-0">
+            {/* Follow-up Section - shown BEFORE priorities only when due follow-ups exist */}
+            {followUpNotes.length > 0 && (
+              <>
+                <Collapsible open={followUpExpanded} onOpenChange={setFollowUpExpanded}>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <ChevronDown className={cn(
+                        "h-4 w-4 transition-transform",
+                        !followUpExpanded && "-rotate-90"
+                      )} />
+                      <Clock className="h-4 w-4 text-amber-600" />
+                      <span className="text-xs font-medium text-amber-600">Fällige Wiedervorlagen</span>
+                      <Badge variant="destructive" className="text-xs px-1.5 py-0">
+                        {followUpNotes.length}
+                      </Badge>
+                    </div>
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent>
+                    <div className="space-y-2 mt-2">
+                      {followUpNotes.map(note => renderNoteCard(note, true))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+                <Separator className="my-3" />
+              </>
+            )}
+
             {/* Priority Groups */}
             {groups.map((group, index) => (
               <div key={group.level}>
@@ -2106,42 +2149,6 @@ export function QuickNotesList({
                 </Droppable>
               </div>
             ))}
-
-            {/* Follow-up Section (collapsible) */}
-            {(followUpNotes.length > 0 || notes.some(n => n.follow_up_date)) && (
-              <>
-                <Separator className="my-3" />
-                <Collapsible open={followUpExpanded} onOpenChange={setFollowUpExpanded}>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-2">
-                      <ChevronDown className={cn(
-                        "h-4 w-4 transition-transform",
-                        !followUpExpanded && "-rotate-90"
-                      )} />
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-xs font-medium text-muted-foreground">Fällige Wiedervorlagen</span>
-                      {followUpNotes.length > 0 && (
-                        <Badge variant="destructive" className="text-xs px-1.5 py-0">
-                          {followUpNotes.length}
-                        </Badge>
-                      )}
-                    </div>
-                  </CollapsibleTrigger>
-                  
-                  <CollapsibleContent>
-                    <div className="space-y-2 mt-2">
-                      {followUpNotes.length > 0 ? (
-                        followUpNotes.map(note => renderNoteCard(note, true))
-                      ) : (
-                        <p className="text-xs text-muted-foreground text-center py-4">
-                          Keine fälligen Wiedervorlagen
-                        </p>
-                      )}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </>
-            )}
 
             {/* Scheduled Follow-ups Section (future dates - hidden from main list) */}
             {scheduledFollowUps.length > 0 && (

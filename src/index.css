@@ -554,6 +554,7 @@ All colors MUST be HSL.
   max-height: 200px;
   overflow-y: auto;
   z-index: 50;
+  min-width: 250px;
 }
 
 .typeahead-popover ul {
