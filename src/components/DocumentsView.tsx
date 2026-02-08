@@ -47,11 +47,14 @@ import {
   Info,
   Inbox,
   Save,
-  UserPlus
+  UserPlus,
+  Newspaper
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import LetterEditor from "./LetterEditor";
+import { PressReleasesList } from "./press/PressReleasesList";
+import { PressReleaseEditor } from "./press/PressReleaseEditor";
 import LetterTemplateSelector from "./LetterTemplateSelector";
 import LetterPDFExport from "./LetterPDFExport";
 import LetterDOCXExport from "./LetterDOCXExport";
@@ -146,7 +149,9 @@ export function DocumentsView() {
   const [showLetterEditor, setShowLetterEditor] = useState(false);
   const [selectedLetter, setSelectedLetter] = useState<Letter | undefined>(undefined);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
-  const [activeTab, setActiveTab] = useState<'documents' | 'letters' | 'emails'>('documents');
+  const [activeTab, setActiveTab] = useState<'documents' | 'letters' | 'emails' | 'press'>('documents');
+  const [showPressEditor, setShowPressEditor] = useState(false);
+  const [selectedPressReleaseId, setSelectedPressReleaseId] = useState<string | null>(null);
   const [emailSubTab, setEmailSubTab] = useState<'compose' | 'history' | 'templates'>('compose');
   const [letterSubTab, setLetterSubTab] = useState<'active' | 'archived'>('active');
   const [autoArchiveDays, setAutoArchiveDays] = useState(30);
@@ -903,16 +908,19 @@ export function DocumentsView() {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h1 className="text-3xl font-bold text-foreground mb-2">
-                  {activeTab === 'documents' ? 'Dokumentenverwaltung' : 'Briefverwaltung'}
+                  {activeTab === 'documents' ? 'Dokumentenverwaltung' : 
+                   activeTab === 'press' ? 'Pressemitteilungen' : 'Briefverwaltung'}
                 </h1>
                 <p className="text-muted-foreground">
                   {activeTab === 'documents' 
                     ? 'Verwalten Sie Ihre parlamentarischen Dokumente' 
+                    : activeTab === 'press'
+                    ? 'Erstellen und veröffentlichen Sie Pressemitteilungen'
                     : 'Erstellen und verwalten Sie Ihre Abgeordnetenbriefe'
                   }
                 </p>
               </div>
-              <div className="flex gap-2">
+              {activeTab !== 'press' && activeTab !== 'emails' && <div className="flex gap-2">
                 {activeTab === 'documents' ? (
                   <>
                     <Dialog open={showCreateFolderDialog} onOpenChange={setShowCreateFolderDialog}>
@@ -1286,7 +1294,7 @@ export function DocumentsView() {
                      </Button>
                    </div>
                  )}
-              </div>
+              </div>}
             </div>
 
             {/* Tab Navigation */}
@@ -1325,6 +1333,17 @@ export function DocumentsView() {
                   <Send className="h-4 w-4 inline mr-2" />
                   E-Mails
                 </button>
+                <button
+                  onClick={() => { setActiveTab('press'); setShowPressEditor(false); setSelectedPressReleaseId(null); }}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'press'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Newspaper className="h-4 w-4 inline mr-2" />
+                  Presse
+                </button>
               </div>
                
                {/* Letter Sub-tabs */}
@@ -1355,7 +1374,7 @@ export function DocumentsView() {
              </div>
 
           {/* Filters */}
-          {activeTab !== 'emails' && (
+          {activeTab !== 'emails' && activeTab !== 'press' && (
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-wrap gap-4 items-center justify-between">
@@ -1467,7 +1486,19 @@ export function DocumentsView() {
         )}
 
         {/* Content Grid */}
-        {loading && (activeTab === 'documents' ? documents.length === 0 : activeTab === 'letters' ? letters.length === 0 : false) ? (
+        {activeTab === 'press' ? (
+          showPressEditor ? (
+            <PressReleaseEditor
+              pressReleaseId={selectedPressReleaseId}
+              onBack={() => { setShowPressEditor(false); setSelectedPressReleaseId(null); }}
+            />
+          ) : (
+            <PressReleasesList
+              onCreateNew={() => { setSelectedPressReleaseId(null); setShowPressEditor(true); }}
+              onSelect={(id) => { setSelectedPressReleaseId(id); setShowPressEditor(true); }}
+            />
+          )
+        ) : loading && (activeTab === 'documents' ? documents.length === 0 : activeTab === 'letters' ? letters.length === 0 : false) ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">
               {activeTab === 'documents' ? 'Dokumente werden geladen...' : 'Briefe werden geladen...'}
