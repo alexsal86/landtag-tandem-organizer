@@ -20,6 +20,7 @@ import { DashboardGreetingSection } from './dashboard/DashboardGreetingSection';
 import { DashboardCoverImage } from './dashboard/DashboardCoverImage';
 import { QuickActionsWidget } from './widgets/QuickActionsWidget';
 import { NewsWidget } from './widgets/NewsWidget';
+import { WidgetQuickAccess } from './dashboard/WidgetQuickAccess';
 import { toast } from 'sonner';
 import {
   Settings,
@@ -73,6 +74,7 @@ export const CustomizableDashboard: React.FC = () => {
   const [newLayoutName, setNewLayoutName] = useState('');
   const [showLayoutDialog, setShowLayoutDialog] = useState(false);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('classic');
+  const [activeWidget, setActiveWidget] = useState<string>('quicknotes');
 
   // Convert our widget format to react-grid-layout format
   const gridLayouts = useMemo(() => {
@@ -271,12 +273,17 @@ export const CustomizableDashboard: React.FC = () => {
       
       {/* Content Container */}
       <div className="p-6">
-        {/* News full width */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground mb-4">
-            Aktuelle Nachrichten
-          </h2>
-          <NewsWidget />
+        {/* Greeting (40%) + News (60%) */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+          <div className="lg:col-span-2">
+            <DashboardGreetingSection />
+          </div>
+          <div className="lg:col-span-3">
+            <h2 className="text-2xl font-bold text-foreground mb-4">
+              Aktuelle Nachrichten
+            </h2>
+            <NewsWidget />
+          </div>
         </div>
 
         {/* Quick Actions */}
@@ -287,9 +294,12 @@ export const CustomizableDashboard: React.FC = () => {
           />
         </div>
 
-        {/* Greeting Section below QuickActions */}
-        <div className="mb-6">
-          <DashboardGreetingSection />
+        {/* Widget Quick Access */}
+        <div className="mb-8">
+          <WidgetQuickAccess
+            activeWidget={activeWidget}
+            onWidgetChange={setActiveWidget}
+          />
         </div>
 
       <Separator className="my-8" />
