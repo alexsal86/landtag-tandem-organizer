@@ -271,17 +271,12 @@ export const CustomizableDashboard: React.FC = () => {
       
       {/* Content Container */}
       <div className="p-6">
-        {/* Greeting (40%) + News (60%) side by side */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
-          <div className="lg:col-span-2">
-            <DashboardGreetingSection />
-          </div>
-          <div className="lg:col-span-3">
-            <h2 className="text-2xl font-bold text-foreground mb-4">
-              Aktuelle Nachrichten
-            </h2>
-            <NewsWidget />
-          </div>
+        {/* News full width */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-foreground mb-4">
+            Aktuelle Nachrichten
+          </h2>
+          <NewsWidget />
         </div>
 
         {/* Quick Actions */}
@@ -290,6 +285,11 @@ export const CustomizableDashboard: React.FC = () => {
             className="shadow-sm"
             widgetSize="full-width"
           />
+        </div>
+
+        {/* Greeting Section below QuickActions */}
+        <div className="mb-6">
+          <DashboardGreetingSection />
         </div>
 
       <Separator className="my-8" />
