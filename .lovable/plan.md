@@ -1,238 +1,267 @@
 
+# Plan: Pressemitteilungen mit Ghost CMS Integration
 
-# Plan: Entscheidungen-Tab unter Meine Arbeit redesignen
+## Uebersicht
 
-## Ziel
+Ein neues Modul "Pressemitteilungen" in der Dokumentenverwaltung, das den bestehenden Lexical-Editor nutzt und einen mehrstufigen Freigabe-Workflow implementiert. Am Ende wird die Pressemitteilung per Edge Function an die Ghost CMS Admin API uebermittelt.
 
-Den bestehenden `MyWorkDecisionsTab` von einer einfachen, flachen Liste zu einem kompakten Schnellzugriff umbauen, der die wichtigsten Elemente der vollstaendigen `DecisionOverview`-Seite adaptiert -- aber bewusst kompakter und auf schnelle Aktionen optimiert.
+## Warum ein eigener Workflow statt Entscheidungen/Aufgaben?
 
-## Vergleich: Aktuell vs. Neu
+- **Entscheidungen** sind fuer Ja/Nein/Rueckfrage-Abstimmungen konzipiert -- nicht fuer iterative Textueberarbeitung
+- **Aufgaben** haben keinen eingebauten Review-Zyklus
+- Der bestehende **Brief-Workflow** (LetterEditor) ist das perfekte Vorbild: Er hat bereits den Zyklus Entwurf -> Pruefung -> Genehmigt -> Versendet mit Reviewer-Zuweisung
+- Fuer Pressemitteilungen wird ein angepasster Workflow verwendet, der **mehrfache Schleifen** explizit unterstuetzt (Abgeordneter kann zurueckweisen mit Kommentar)
 
-### Aktuell (MyWorkDecisionsTab)
-- Flache Liste aller Entscheidungen ohne Filter-Tabs
-- Einfache Karten mit Icon, Titel, Badge, Datum
-- Keine Abstimmungsmoeglichkeit direkt in der Karte
-- Keine Sidebar fuer Rueckfragen/Kommentare
-- Kein Suchfeld
-- Kein Ersteller-Aktionsmenue (Archivieren, Bearbeiten)
-
-### DecisionOverview (volle Seite)
-- 6 Filter-Tabs: Fuer mich, Beantwortet, Von mir, Oeffentlich, Rueckfragen, Archiv
-- Detaillierte Karten mit Status-Badges, Beschreibung, Ersteller-Avatar, AvatarStack, Abstimmungsstand
-- Inline-Abstimmung (Ja/Nein/Rueckfrage) direkt in der Karte
-- Rechte Sidebar mit offenen Rueckfragen und neuen Kommentaren
-- Suche, Ersteller-Aktionen, Kommentar-Sheet
-- Aufgabe aus Entscheidung erstellen
-
-### Neues Design (kompakter Schnellzugriff)
-Die besten Elemente beider Welten:
+## Workflow-Design
 
 ```text
-+------------------------------------------------------------+
-| [Suche...]                          [+ Neue Entscheidung]  |
-+------------------------------------------------------------+
-| [Fuer mich (3)] [Beantwortet] [Von mir] [Oeffentlich]      |
-+------------------------------------------------------------+
-|                                                             |
-| Hauptbereich (75%)              | Sidebar (25%)            |
-|                                 |                          |
-| +--[orange]--------------------+| Offene Rueckfragen (2)   |
-| | ! Rueckfrage offen           || +---------------------+  |
-| | Titel der Entscheidung       || | Entscheidungstitel  |  |
-| | Kurze Beschreibung...        || | von Max Mueller     |  |
-| | Avatar Name | 07.02 | Stand  || | "Wie sollen wir..." |  |
-| | [Ja] [Nein] [Rueckfrage]     || | [Antworten]         |  |
-| +------------------------------+| +---------------------+  |
-|                                 |                          |
-| +--[grau]----- ----------------+| Neue Kommentare (1)     |
-| | 2 ausstehend                 || +---------------------+  |
-| | Titel der Entscheidung       || | Entscheidungstitel  |  |
-| | Avatar Name | 05.02 | Stand  || | Anna -> Ja          |  |
-| +------------------------------+| +---------------------+  |
-|                                 |                          |
-+------------------------------------------------------------+
+Mitarbeiter                          Abgeordneter
+    |                                     |
+    | 1. Erstellt Pressemitteilung        |
+    |    (Status: Entwurf)                |
+    |                                     |
+    | 2. Sendet zur Freigabe ---------->  |
+    |    (Status: Zur Freigabe)           |
+    |                                     |
+    |                              3a. Genehmigt
+    |                                (Status: Freigegeben)
+    |                                     |
+    |                              3b. Lehnt ab + Kommentar
+    |  <---------- Zurueck an Mitarbeiter |
+    |    (Status: Ueberarbeitung)         |
+    |                                     |
+    | 4. Ueberarbeitet und sendet         |
+    |    erneut zur Freigabe -------->    |
+    |    (Schleife beliebig oft)          |
+    |                                     |
+    | 5. Nach Freigabe:                   |
+    |    [An Ghost senden] Button         |
+    |    (Status: Veroeffentlicht)        |
+    |                                     |
 ```
 
-## Konkrete Aenderungen
+Statusfluss: `draft` -> `pending_approval` -> `approved` / `revision_requested` -> `pending_approval` -> `approved` -> `published`
 
-### 1. Filter-Tabs hinzufuegen (4 statt 6)
+## Datenbank-Design
 
-Kompaktere Auswahl als die volle Seite -- kein Archiv und keine separaten Rueckfragen (die sind in der Sidebar):
+### Neue Tabelle: `press_releases`
 
-- **Fuer mich**: Offene Entscheidungen, auf die ich antworten muss (Badge mit Anzahl)
-- **Beantwortet**: Entscheidungen, bei denen ich bereits abgestimmt habe
-- **Von mir**: Entscheidungen, die ich erstellt habe
-- **Oeffentlich**: Oeffentliche Entscheidungen anderer
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| id | uuid PK | |
+| tenant_id | uuid NOT NULL | Mandantentrennung |
+| created_by | uuid NOT NULL | Ersteller (Mitarbeiter) |
+| title | text NOT NULL | Titel / Ueberschrift |
+| content | text NOT NULL | Plaintext-Inhalt (Lexical) |
+| content_html | text | HTML-Version |
+| content_nodes | jsonb | Lexical EditorState JSON |
+| slug | text | URL-Slug fuer Ghost |
+| excerpt | text | Kurzfassung / Teaser |
+| feature_image_url | text | Titelbild-URL |
+| tags | text[] | Tags fuer Ghost |
+| meta_title | text | SEO-Titel |
+| meta_description | text | SEO-Beschreibung |
+| status | text NOT NULL DEFAULT 'draft' | Workflow-Status |
+| submitted_at | timestamptz | Zeitpunkt der Freigabeanfrage |
+| submitted_by | uuid | Wer hat zur Freigabe gesendet |
+| approved_at | timestamptz | Zeitpunkt der Genehmigung |
+| approved_by | uuid | Wer hat genehmigt (Abgeordneter) |
+| revision_comment | text | Kommentar bei Ablehnung |
+| revision_requested_at | timestamptz | Zeitpunkt der Ablehnnung |
+| revision_requested_by | uuid | Wer hat abgelehnt |
+| published_at | timestamptz | Zeitpunkt der Ghost-Veroeffentlichung |
+| ghost_post_id | text | ID des Posts in Ghost |
+| ghost_post_url | text | URL des veroeffentlichten Posts |
+| created_at | timestamptz DEFAULT now() | |
+| updated_at | timestamptz DEFAULT now() | |
 
-### 2. Karten wie DecisionOverview, aber kompakter
+### RLS-Policies
 
-Jede Karte erhaelt:
-- **Header**: Status-Badge (farbig ausgefuellt: Orange/Gruen/Grau) -- wie in DecisionOverview
-- **Titel**: Fett, `text-base` -- wie in DecisionOverview
-- **Beschreibung**: Truncated, 1 Zeile
-- **Footer**: Ersteller-Avatar + Name (fett), Datum, Sichtbarkeit, Abstimmungsstand (`Stand: 2/1/0`)
-- **Inline-Abstimmung**: Wenn Teilnehmer und noch nicht geantwortet: `TaskDecisionResponse`-Buttons direkt in der Karte
-- **Aktionsmenue**: Fuer eigene Entscheidungen: 3-Punkte-Menue mit Bearbeiten, Archivieren, Aufgabe erstellen
+- Mitarbeiter im selben Tenant koennen alle Pressemitteilungen sehen und bearbeiten (im Status `draft` und `revision_requested`)
+- Abgeordneter kann alle sehen und den Status zu `approved` oder `revision_requested` aendern
+- Alle authentifizierten Tenant-Mitglieder haben Lesezugriff
 
-### 3. Kompakte Sidebar
+```sql
+CREATE POLICY "Tenant members can view press releases"
+ON press_releases FOR SELECT
+USING (tenant_id IN (
+  SELECT tenant_id FROM user_tenant_memberships
+  WHERE user_id = auth.uid() AND is_active = true
+));
 
-Rechts neben den Karten eine schmale Sidebar (adaptiert von `DecisionSidebar`):
-- Offene Rueckfragen: Klick oeffnet Details-Dialog
-- Neue Kommentare: Klick oeffnet Details-Dialog
-- Inline-Antwort-Moeglichkeit bei Rueckfragen
-- Nur auf groesseren Bildschirmen sichtbar (`hidden lg:block`)
+CREATE POLICY "Tenant members can insert press releases"
+ON press_releases FOR INSERT
+WITH CHECK (tenant_id IN (
+  SELECT tenant_id FROM user_tenant_memberships
+  WHERE user_id = auth.uid() AND is_active = true
+) AND created_by = auth.uid());
 
-### 4. Daten-Laden erweitern
+CREATE POLICY "Tenant members can update press releases"
+ON press_releases FOR UPDATE
+USING (tenant_id IN (
+  SELECT tenant_id FROM user_tenant_memberships
+  WHERE user_id = auth.uid() AND is_active = true
+));
 
-Die `loadDecisions`-Funktion muss erweitert werden, um dieselben Daten wie `DecisionOverview` zu laden:
-- Teilnehmer mit Profilen und Antworten (fuer AvatarStack und Abstimmungsstand)
-- Ersteller-Avatare
-- Attachment-Count
-- Topic-IDs
-
-Die bestehende Lade-Logik wird angepasst, um aus den Participant-Daten auch die `getResponseSummary`-Werte zu berechnen (analog zu DecisionOverview).
-
-### 5. Dialoge und Aktionen
-
-Folgende Aktionen werden integriert (via bestehende Komponenten):
-- `TaskDecisionDetails`: Oeffnet sich bei Klick auf eine Karte (bereits vorhanden)
-- `TaskDecisionResponse`: Inline-Abstimmung in der Karte (neu)
-- `DecisionEditDialog`: Bearbeitung via Aktionsmenue (neu)
-- `StandaloneDecisionCreator`: Erstellen (bereits vorhanden)
-- Archivieren/Loeschen (neu, Code aus DecisionOverview uebernommen)
-
-## Technische Details
-
-### Dateiaenderungen
-
-| Datei | Aenderung |
-|-------|-----------|
-| **MyWorkDecisionsTab.tsx** | Kompletter Umbau: Tabs, erweiterte Karten, Sidebar, Inline-Abstimmung, Aktionsmenue |
-
-### Wiederverwendete Komponenten (kein Code-Dopplung)
-
-- `TaskDecisionResponse` -- Abstimmungsbuttons
-- `TaskDecisionDetails` -- Detail-Dialog
-- `DecisionEditDialog` -- Bearbeitungsdialog
-- `StandaloneDecisionCreator` -- Erstellungsdialog
-- `DecisionViewerComment` -- Viewer-Kommentar bei oeffentlichen
-- `UserBadge` -- Ersteller-Anzeige
-- `AvatarStack` -- Teilnehmer-Anzeige
-- `TopicDisplay` -- Themen
-- `RichTextDisplay` -- Beschreibung
-
-### Neue Importe in MyWorkDecisionsTab
-
-```tsx
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AvatarStack } from "@/components/ui/AvatarStack";
-import { TaskDecisionResponse } from "@/components/task-decisions/TaskDecisionResponse";
-import { DecisionEditDialog } from "@/components/task-decisions/DecisionEditDialog";
-import { DecisionViewerComment } from "@/components/task-decisions/DecisionViewerComment";
-import { TopicDisplay } from "@/components/topics/TopicSelector";
+CREATE POLICY "Creator can delete draft press releases"
+ON press_releases FOR DELETE
+USING (created_by = auth.uid() AND status = 'draft');
 ```
 
-### Erweitertes Decision-Interface
+## Edge Function: `publish-to-ghost`
 
-```tsx
-interface Decision {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  created_at: string;
-  created_by: string;
-  participant_id: string | null;
-  hasResponded: boolean;
-  isCreator: boolean;
-  isParticipant: boolean;
-  pendingCount: number;
-  responseType?: string | null;
-  isPublic?: boolean;
-  visible_to_all?: boolean;
-  attachmentCount?: number;
-  topicIds?: string[];
-  creator?: {
-    user_id: string;
-    display_name: string | null;
-    badge_color: string | null;
-    avatar_url: string | null;
-  };
-  participants?: Array<{
-    id: string;
-    user_id: string;
-    profile?: {
-      display_name: string | null;
-      badge_color: string | null;
-      avatar_url: string | null;
-    };
-    responses: Array<{
-      id: string;
-      response_type: 'yes' | 'no' | 'question';
-      comment: string | null;
-      creator_response: string | null;
-      created_at: string;
-    }>;
-  }>;
-}
+Eine neue Supabase Edge Function, die:
+1. Die Pressemitteilung aus der DB laedt
+2. Einen JWT fuer die Ghost Admin API generiert (mit dem Admin API Key)
+3. Den Inhalt als HTML an Ghost sendet (`POST /ghost/api/admin/posts/`)
+4. Die Ghost-Post-ID und URL zurueckspeichert
+
+### Ghost API Key Handling
+
+Zwei neue Secrets werden benoetigt:
+- `GHOST_ADMIN_API_KEY`: Der Admin API Key aus Ghost (Format: `{id}:{secret}`)
+- `GHOST_API_URL`: Die Ghost-Blog-URL (z.B. `https://meine-webseite.de`)
+
+### JWT-Generierung fuer Ghost
+
+```typescript
+// Ghost Admin API Key format: {id}:{secret}
+const [keyId, keySecret] = adminApiKey.split(':');
+
+// Create JWT header and payload
+const header = { alg: 'HS256', typ: 'JWT', kid: keyId };
+const now = Math.floor(Date.now() / 1000);
+const payload = { iat: now, exp: now + 300, aud: '/admin/' };
+
+// Sign with HMAC-SHA256 using the hex-decoded secret
 ```
 
-### Sidebar-Daten (inline berechnet, keine separate Komponente)
+### Ghost Post-Erstellung
 
-Die Sidebar-Logik wird direkt im Tab berechnet (aehnlich wie `sidebarData` in DecisionOverview), aber kompakter gerendert -- keine separate `DecisionSidebar`-Komponente, sondern ein leichtgewichtiger Inline-Block, der nur die wesentlichen Informationen anzeigt.
+```typescript
+const ghostPayload = {
+  posts: [{
+    title: pressRelease.title,
+    html: pressRelease.content_html,  // Ghost konvertiert HTML zu Lexical
+    status: 'published',              // Direkt veroeffentlichen
+    tags: pressRelease.tags?.map(t => ({ name: t })) || [],
+    excerpt: pressRelease.excerpt || undefined,
+    feature_image: pressRelease.feature_image_url || undefined,
+    meta_title: pressRelease.meta_title || undefined,
+    meta_description: pressRelease.meta_description || undefined,
+    slug: pressRelease.slug || undefined,
+  }]
+};
 
-### Layout-Struktur
-
-```tsx
-<div className="space-y-3">
-  {/* Suchleiste + Erstellen-Button */}
-  <div className="flex items-center gap-3">
-    <Input ... />
-    <StandaloneDecisionCreator ... />
-  </div>
-
-  {/* Tabs */}
-  <Tabs value={activeTab} onValueChange={setActiveTab}>
-    <TabsList className="grid w-full grid-cols-4 h-9">
-      <TabsTrigger value="for-me">Fuer mich {count}</TabsTrigger>
-      <TabsTrigger value="answered">Beantwortet ({count})</TabsTrigger>
-      <TabsTrigger value="my-decisions">Von mir ({count})</TabsTrigger>
-      <TabsTrigger value="public">Oeffentlich ({count})</TabsTrigger>
-    </TabsList>
-
-    <TabsContent value={activeTab} className="mt-3">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
-        {/* Karten */}
-        <ScrollArea>
-          <div className="space-y-2">
-            {filteredDecisions.map(renderCard)}
-          </div>
-        </ScrollArea>
-
-        {/* Kompakte Sidebar */}
-        <aside className="hidden lg:block space-y-3">
-          {/* Offene Rueckfragen */}
-          {/* Neue Kommentare */}
-        </aside>
-      </div>
-    </TabsContent>
-  </Tabs>
-</div>
+const response = await fetch(
+  `${ghostUrl}/ghost/api/admin/posts/?source=html`,
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': `Ghost ${token}`,
+      'Content-Type': 'application/json',
+      'Accept-Version': 'v5.0'
+    },
+    body: JSON.stringify(ghostPayload)
+  }
+);
 ```
 
-### Unterschiede zur DecisionOverview (bewusst kompakter)
+## UI-Komponenten
 
-| Feature | DecisionOverview | MyWork Tab |
-|---------|-----------------|------------|
-| Tabs | 6 (inkl. Rueckfragen, Archiv) | 4 (ohne Archiv/Rueckfragen) |
-| Sidebar-Breite | 340px | 280px |
-| Beschreibung | Expandierbar (mehr/weniger) | Nur 1 Zeile, truncated |
-| Suche | Volle Breite | Kompakter |
-| Ersteller-Aktionen | Umfangreiches Dropdown | Gleiches Dropdown, aber nur fuer eigene |
-| Aufgabe erstellen | Ja (wenn alle geantwortet) | Ja (uebernommen) |
-| Karten-Padding | p-4 | p-3 (kompakter) |
-| Seitenheader | Grosser Titel + Untertitel | Kein separater Header (Tab-Kontext reicht) |
+### 1. Neuer Tab in DocumentsView
 
+Ein vierter Tab "Presse" wird neben Dokumente, Briefe und E-Mails hinzugefuegt:
+
+```text
+[Dokumente] [Briefe] [E-Mails] [Presse]
+```
+
+### 2. PressReleasesList -- Listenansicht
+
+Zeigt alle Pressemitteilungen mit:
+- Status-Badge (farbcodiert: Grau=Entwurf, Orange=Zur Freigabe, Gelb=Ueberarbeitung, Gruen=Freigegeben, Blau=Veroeffentlicht)
+- Titel, Ersteller, Datum
+- Filter nach Status
+- Button "Neue Pressemitteilung"
+
+### 3. PressReleaseEditor -- Haupteditor
+
+Aehnlich dem LetterEditor, aber spezialisiert fuer Pressemitteilungen:
+
+```text
++---[Sidebar]---+---[Editor]-----------------------------+
+| Metadaten     | EnhancedLexicalEditor                   |
+|               |                                         |
+| Titel         | [Toolbar: Bold, Italic, H1, H2, ...]   |
+| Slug          |                                         |
+| Excerpt       | Inhalt der Pressemitteilung...           |
+| Tags          |                                         |
+| Titelbild-URL |                                         |
+| SEO-Titel     |                                         |
+| SEO-Beschr.   |                                         |
+|               |                                         |
+| --- Status -- |                                         |
+| [Entwurf]     |                                         |
+|               |                                         |
+| --- Aktionen  |                                         |
+| [Speichern]   |                                         |
+| [Zur Freigabe]|                                         |
+|               |                                         |
+| --- Workflow  |                                         |
+| Historie...   |                                         |
++---------------+-----------------------------------------+
+```
+
+#### Workflow-Aktionen je nach Rolle und Status:
+
+| Status | Mitarbeiter | Abgeordneter |
+|--------|-------------|--------------|
+| Entwurf | Bearbeiten, Zur Freigabe senden | Bearbeiten |
+| Zur Freigabe | Nur lesen | Genehmigen, Zurueckweisen (mit Kommentar) |
+| Ueberarbeitung | Bearbeiten, Erneut zur Freigabe | Lesen |
+| Freigegeben | An Ghost senden | An Ghost senden |
+| Veroeffentlicht | Link zur Webseite anzeigen | Link zur Webseite anzeigen |
+
+### 4. Zurueckweisung mit Kommentar
+
+Wenn der Abgeordnete zurueckweist, erscheint ein Dialog:
+- Textfeld fuer Aenderungswuensche / Kommentar
+- Der Kommentar wird als `revision_comment` gespeichert und dem Mitarbeiter angezeigt
+- Der Kommentar ist im Editor in einer gelben Info-Box sichtbar
+
+### 5. Ghost-Versand-Bestaetigung
+
+Vor dem Senden an Ghost erscheint ein Bestaetigungsdialog:
+- Vorschau der wichtigsten Felder (Titel, Excerpt, Tags)
+- Hinweis "Wird auf [Ghost-URL] veroeffentlicht"
+- Bestaetigungs-Button
+
+## Technische Umsetzung -- Dateien
+
+| Datei | Typ | Beschreibung |
+|-------|-----|--------------|
+| **Migration SQL** | DB | Tabelle `press_releases` erstellen mit RLS |
+| **supabase/functions/publish-to-ghost/index.ts** | Edge Function | Ghost Admin API Integration |
+| **src/components/press/PressReleasesList.tsx** | Neu | Listenansicht mit Status-Filter |
+| **src/components/press/PressReleaseEditor.tsx** | Neu | Editor mit Sidebar-Metadaten und Workflow |
+| **src/components/press/PressReleaseStatusBadge.tsx** | Neu | Status-Badges mit Farben |
+| **src/components/press/GhostPublishDialog.tsx** | Neu | Bestaetigungsdialog vor Ghost-Versand |
+| **src/components/press/RevisionCommentDialog.tsx** | Neu | Dialog fuer Zurueckweisung mit Kommentar |
+| **src/components/DocumentsView.tsx** | Aenderung | Neuer Tab "Presse" hinzufuegen |
+
+## Ablauf der Implementierung
+
+1. **Secrets einrichten**: `GHOST_ADMIN_API_KEY` und `GHOST_API_URL` muessen als Supabase Secrets hinterlegt werden
+2. **Datenbank**: Migration fuer `press_releases`-Tabelle
+3. **Edge Function**: `publish-to-ghost` mit JWT-Generierung und Ghost API-Aufruf
+4. **UI-Komponenten**: PressReleasesList, PressReleaseEditor, Dialoge
+5. **DocumentsView**: Tab-Integration
+6. **Rollen-Pruefung**: Abgeordneter-Rolle wird per `supabase.rpc('is_admin')` geprueft (da `abgeordneter` = Admin-Rolle im System)
+
+## Hinweise
+
+- Ghost nutzt ebenfalls Lexical als Editor-Format -- der Inhalt wird aber als HTML gesendet, da Ghost HTML automatisch in sein Lexical-Format konvertiert. Das ist der empfohlene Weg laut Ghost-Dokumentation.
+- Der `EnhancedLexicalEditor` wird wiederverwendet (gleicher Editor wie in Briefen und Wissen).
+- Die Schleife Ueberarbeitung -> Zur Freigabe -> Genehmigt kann beliebig oft durchlaufen werden.
+- Nach der Veroeffentlichung wird die Ghost-Post-URL gespeichert und als Link angezeigt.
