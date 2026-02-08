@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +40,7 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const [pressReleases, setPressReleases] = useState<PressRelease[]>([]);
   const [loading, setLoading] = useState(false);
@@ -330,6 +332,18 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
                             <> von {profiles[pr.email_sent_by]}</>
                           )}
                         </span>
+                      )}
+                      {pr.status === 'published' && pr.ghost_post_url && !pr.email_sent_at && (
+                        <button
+                          className="flex items-center gap-1 text-primary hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/documents?tab=emails&action=compose-press&pressReleaseId=${pr.id}`);
+                          }}
+                        >
+                          <Mail className="h-3 w-3" />
+                          Per E-Mail versenden
+                        </button>
                       )}
                     </div>
                   </div>

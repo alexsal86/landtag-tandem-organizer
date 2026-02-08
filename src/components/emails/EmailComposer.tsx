@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,7 @@ export function EmailComposer() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [subject, setSubject] = useState("");
   const [bodyHtml, setBodyHtml] = useState("");
@@ -102,6 +104,9 @@ export function EmailComposer() {
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [previewContact, setPreviewContact] = useState<Contact | null>(null);
+
+  // Press release email tracking
+  const [pressReleaseId, setPressReleaseId] = useState<string | null>(null);
 
   // Recipients
   const [distributionLists, setDistributionLists] = useState<DistributionList[]>([]);
@@ -125,6 +130,83 @@ export function EmailComposer() {
       fetchEmailTemplates();
     }
   }, [currentTenant]);
+
+  // Handle press release compose action from URL params
+  useEffect(() => {
+    const action = searchParams.get('action');
+    const prId = searchParams.get('pressReleaseId');
+    if (action === 'compose-press' && prId && currentTenant) {
+      setPressReleaseId(prId);
+      loadPressReleaseForEmail(prId);
+      // Clean up URL params
+      searchParams.delete('action');
+      searchParams.delete('pressReleaseId');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, currentTenant]);
+
+  const loadPressReleaseForEmail = async (prId: string) => {
+    try {
+      // Load press release data
+      const { data: pr, error: prError } = await supabase
+        .from('press_releases')
+        .select('id, title, excerpt, content_html, ghost_post_url, published_at')
+        .eq('id', prId)
+        .single();
+
+      if (prError) throw prError;
+
+      // Load press email template from app_settings
+      const { data: settings } = await supabase
+        .from('app_settings')
+        .select('setting_key, setting_value')
+        .eq('tenant_id', currentTenant!.id)
+        .in('setting_key', ['press_email_template_subject', 'press_email_template_body']);
+
+      let templateSubject = 'Pressemitteilung: {{titel}}';
+      let templateBody = 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unsere aktuelle Pressemitteilung:\n\n{{titel}}\n\n{{excerpt}}\n\nDen vollständigen Beitrag finden Sie unter:\n{{link}}';
+
+      (settings || []).forEach(s => {
+        if (s.setting_key === 'press_email_template_subject' && s.setting_value) {
+          templateSubject = s.setting_value;
+        }
+        if (s.setting_key === 'press_email_template_body' && s.setting_value) {
+          templateBody = s.setting_value;
+        }
+      });
+
+      // Replace template variables
+      const publishedDate = pr.published_at
+        ? format(new Date(pr.published_at), "dd.MM.yyyy", { locale: de })
+        : format(new Date(), "dd.MM.yyyy", { locale: de });
+
+      const replacePressVars = (text: string) => {
+        return text
+          .replace(/\{\{titel\}\}/g, pr.title || '')
+          .replace(/\{\{excerpt\}\}/g, pr.excerpt || '')
+          .replace(/\{\{link\}\}/g, pr.ghost_post_url || '')
+          .replace(/\{\{datum\}\}/g, publishedDate);
+      };
+
+      setSubject(replacePressVars(templateSubject));
+      // Convert plain text newlines to HTML for the editor
+      const bodyWithVars = replacePressVars(templateBody);
+      const bodyAsHtml = bodyWithVars.replace(/\n/g, '<br>');
+      setBodyHtml(bodyAsHtml);
+
+      toast({
+        title: "Presse-E-Mail vorbereitet",
+        description: `Daten aus "${pr.title}" wurden geladen.`,
+      });
+    } catch (error: any) {
+      console.error('Error loading press release for email:', error);
+      toast({
+        title: "Fehler",
+        description: "Pressemitteilung konnte nicht geladen werden.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchSenderInfos = async () => {
     try {
@@ -396,6 +478,18 @@ export function EmailComposer() {
             title: "E-Mails versendet",
             description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet.`,
           });
+        }
+
+        // Update press_releases if this was a press email
+        if (pressReleaseId && user) {
+          await supabase
+            .from('press_releases')
+            .update({
+              email_sent_at: new Date().toISOString(),
+              email_sent_by: user.id,
+            })
+            .eq('id', pressReleaseId);
+          setPressReleaseId(null);
         }
       }
 
