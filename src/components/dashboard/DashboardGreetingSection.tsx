@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { TypewriterText } from './TypewriterText';
 import { supabase } from '@/integrations/supabase/client';
-import { WidgetQuickAccess } from './WidgetQuickAccess';
+
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
@@ -9,9 +9,6 @@ import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getWeather, translateCondition, getWeatherIcon } from '@/utils/dashboard/weatherApi';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { CallLogWidget } from '@/components/widgets/CallLogWidget';
-import { PomodoroWidget } from '@/components/widgets/PomodoroWidget';
-import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
 
 interface AppointmentData {
   id: string;
@@ -40,7 +37,7 @@ export const DashboardGreetingSection = () => {
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
   const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeWidget, setActiveWidget] = useState<string>('quicknotes');
+  
 
   // Load user name
   useEffect(() => {
@@ -310,22 +307,11 @@ export const DashboardGreetingSection = () => {
   }, [isLoading, userName, weatherKarlsruhe, weatherStuttgart, appointments, isShowingTomorrow]);
 
   return (
-    <div className="mb-6 flex items-start gap-4">
-      {/* Left column: Greeting only */}
-      <div className="flex-1 min-w-0">
-        <TypewriterText
-          text={fullText}
-          className="text-xl lg:text-2xl font-light tracking-tight text-foreground/90 block whitespace-pre-wrap"
-        />
-      </div>
-
-      {/* Right column: Widget Buttons + Content (Desktop only) */}
-      <div className="hidden lg:flex flex-col gap-2 w-[420px]">
-        <WidgetQuickAccess
-          activeWidget={activeWidget}
-          onWidgetChange={setActiveWidget}
-        />
-      </div>
+    <div>
+      <TypewriterText
+        text={fullText}
+        className="text-xl lg:text-2xl font-light tracking-tight text-foreground/90 block whitespace-pre-wrap"
+      />
     </div>
   );
 };
