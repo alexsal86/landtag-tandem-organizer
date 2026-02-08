@@ -200,19 +200,31 @@ export const useNotifications = () => {
       // Also trigger navigation notifications update
       localStorage.setItem('notifications_marked_read', Date.now().toString());
       localStorage.removeItem('notifications_marked_read');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error marking all notifications as read:', error);
-      // Revert optimistic update on error
-      setNotifications(previousNotifications);
-      setUnreadCount(previousUnreadCount);
       
-      toast({
-        title: 'Fehler',
-        description: 'Benachrichtigungen konnten nicht als gelesen markiert werden.',
-        variant: 'destructive',
-      });
+      // Check if it's a network error - the operation may have succeeded
+      const isNetworkError = error?.message?.includes('Failed to fetch') || 
+                             error?.message?.includes('NetworkError') ||
+                             error?.message?.includes('fetch');
+      
+      if (isNetworkError) {
+        // Don't revert - operation likely succeeded, reload to confirm
+        console.log('Network error during markAllAsRead - reloading to verify state');
+        setTimeout(() => loadNotifications(), 1000);
+      } else {
+        // Revert optimistic update on real error
+        setNotifications(previousNotifications);
+        setUnreadCount(previousUnreadCount);
+        
+        toast({
+          title: 'Fehler',
+          description: 'Benachrichtigungen konnten nicht als gelesen markiert werden.',
+          variant: 'destructive',
+        });
+      }
     }
-  }, [user, toast, notifications, unreadCount]);
+  }, [user, toast, notifications, unreadCount, loadNotifications]);
 
   // Request push permission
   const requestPushPermission = useCallback(async (): Promise<boolean> => {
