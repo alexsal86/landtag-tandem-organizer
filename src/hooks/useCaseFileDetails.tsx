@@ -668,6 +668,64 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     }
   };
 
+  const updateCurrentStatus = async (note: string) => {
+    if (!caseFileId) return false;
+
+    try {
+      const { error } = await supabase
+        .from('case_files')
+        .update({
+          current_status_note: note,
+          current_status_updated_at: new Date().toISOString(),
+        } as any)
+        .eq('id', caseFileId);
+
+      if (error) throw error;
+      await fetchCaseFile();
+      toast({ title: "Aktueller Stand aktualisiert" });
+      return true;
+    } catch (error) {
+      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
+      return false;
+    }
+  };
+
+  const updateRisksOpportunities = async (data: { risks: string[]; opportunities: string[] }) => {
+    if (!caseFileId) return false;
+
+    try {
+      const { error } = await supabase
+        .from('case_files')
+        .update({ risks_and_opportunities: data } as any)
+        .eq('id', caseFileId);
+
+      if (error) throw error;
+      await fetchCaseFile();
+      toast({ title: "Risiken & Chancen aktualisiert" });
+      return true;
+    } catch (error) {
+      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
+      return false;
+    }
+  };
+
+  const completeTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: 'completed' })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      await fetchTasks();
+      toast({ title: "Aufgabe abgeschlossen" });
+      return true;
+    } catch (error) {
+      toast({ title: "Fehler beim Abschließen", variant: "destructive" });
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (caseFileId) {
       fetchAll();
@@ -700,5 +758,8 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     deleteNote,
     addTimelineEntry,
     deleteTimelineEntry,
+    updateCurrentStatus,
+    updateRisksOpportunities,
+    completeTask,
   };
 };

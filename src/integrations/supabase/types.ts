@@ -1563,13 +1563,17 @@ export type Database = {
       }
       case_files: {
         Row: {
+          assigned_to: string | null
           case_type: string
           created_at: string
+          current_status_note: string | null
+          current_status_updated_at: string | null
           description: string | null
           id: string
           is_private: boolean | null
           priority: string | null
           reference_number: string | null
+          risks_and_opportunities: Json | null
           start_date: string | null
           status: string
           tags: string[] | null
@@ -1581,13 +1585,17 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          assigned_to?: string | null
           case_type?: string
           created_at?: string
+          current_status_note?: string | null
+          current_status_updated_at?: string | null
           description?: string | null
           id?: string
           is_private?: boolean | null
           priority?: string | null
           reference_number?: string | null
+          risks_and_opportunities?: Json | null
           start_date?: string | null
           status?: string
           tags?: string[] | null
@@ -1599,13 +1607,17 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          assigned_to?: string | null
           case_type?: string
           created_at?: string
+          current_status_note?: string | null
+          current_status_updated_at?: string | null
           description?: string | null
           id?: string
           is_private?: boolean | null
           priority?: string | null
           reference_number?: string | null
+          risks_and_opportunities?: Json | null
           start_date?: string | null
           status?: string
           tags?: string[] | null

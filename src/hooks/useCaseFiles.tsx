@@ -18,6 +18,11 @@ export interface CaseFile {
   target_date: string | null;
   tags: string[] | null;
   is_private: boolean;
+  visibility: string;
+  current_status_note: string | null;
+  current_status_updated_at: string | null;
+  risks_and_opportunities: any;
+  assigned_to: string | null;
   created_at: string;
   updated_at: string;
   // Counts from relations
