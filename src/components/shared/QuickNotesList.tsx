@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -370,6 +370,37 @@ export function QuickNotesList({
     window.addEventListener('quick-note-created', handleNoteCreated);
     return () => window.removeEventListener('quick-note-created', handleNoteCreated);
   }, [loadNotes]);
+
+  // Send notifications for due follow-up notes (once per session)
+  const followUpNotifiedRef = useRef(false);
+  useEffect(() => {
+    if (!user || followUpNotifiedRef.current || notes.length === 0) return;
+    
+    const now = startOfDay(new Date());
+    const dueFollowUps = notes.filter(n => 
+      n.follow_up_date && 
+      n.user_id === user.id && // Only own notes
+      isBefore(startOfDay(new Date(n.follow_up_date)), addDays(now, 1))
+    );
+    
+    if (dueFollowUps.length > 0) {
+      followUpNotifiedRef.current = true;
+      dueFollowUps.forEach(async (note) => {
+        try {
+          await supabase.rpc('create_notification', {
+            user_id_param: user.id,
+            type_name: 'note_follow_up',
+            title_param: 'Fällige Wiedervorlage',
+            message_param: `Notiz "${note.title || 'Ohne Titel'}" hat eine fällige Wiedervorlage`,
+            data_param: JSON.stringify({ noteId: note.id }),
+            priority_param: 'high',
+          });
+        } catch (e) {
+          console.error('Follow-up notification error:', e);
+        }
+      });
+    }
+  }, [notes, user]);
 
   // Group notes by priority and follow-up
   const groupNotesByPriority = useCallback((allNotes: QuickNote[]) => {

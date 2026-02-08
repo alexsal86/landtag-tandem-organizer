@@ -1043,7 +1043,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               type_name: 'document_mention',
               title_param: 'Erwähnung in Brief',
               message_param: `Sie wurden in dem Brief "${editedLetter.title || 'Unbenannt'}" erwähnt`,
-              data_param: { documentId: letter?.id, documentType: 'letter' },
+              data_param: JSON.stringify({ documentId: letter?.id, documentType: 'letter' }),
+              priority_param: 'medium',
             });
           } catch (e) {
             console.error('Failed to send mention notification:', e);

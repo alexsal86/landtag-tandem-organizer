@@ -59,6 +59,8 @@ export function MyWorkTasksTab() {
   const [createdTasks, setCreatedTasks] = useState<Task[]>([]);
   const [subtasks, setSubtasks] = useState<Record<string, Subtask[]>>({});
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [taskStatuses, setTaskStatuses] = useState<{name: string, label: string}[]>([]);
 
   // Dialog states
   const [snoozeDialogOpen, setSnoozeDialogOpen] = useState(false);
@@ -98,8 +100,22 @@ export function MyWorkTasksTab() {
     if (user) {
       loadTasks();
       loadProfiles();
+      loadTaskStatuses();
     }
   }, [user]);
+
+  const loadTaskStatuses = async () => {
+    try {
+      const { data: statuses } = await supabase
+        .from('task_statuses')
+        .select('name, label')
+        .eq('is_active', true)
+        .order('order_index');
+      setTaskStatuses(statuses || []);
+    } catch (error) {
+      console.error('Error loading task statuses:', error);
+    }
+  };
 
   const loadTasks = async () => {
     if (!user) return;
@@ -128,11 +144,19 @@ export function MyWorkTasksTab() {
       const allAssigned = assigned || [];
       const allCreated = created || [];
       
-      // Links: Alle selbst erstellten Aufgaben (user_id = eigene ID)
-      const createdByMe = allCreated;
+      // Links: Selbst erstellte Aufgaben, ABER Meeting-Aufgaben ausschließen, die einem zugewiesen sind
+      const createdByMe = allCreated.filter(t => 
+        !(t.category === 'meeting' && t.assigned_to && (t.assigned_to === user.id || t.assigned_to.includes(user.id)))
+      );
       
-      // Rechts: Nur Aufgaben, die von ANDEREN erstellt und mir zugewiesen wurden
-      const assignedByOthers = allAssigned.filter(t => t.user_id !== user.id);
+      // Rechts: Von ANDEREN erstellte + Meeting-Aufgaben, die mir zugewiesen sind
+      const meetingTasksAssignedToMe = allCreated.filter(t => 
+        t.category === 'meeting' && t.assigned_to && (t.assigned_to === user.id || t.assigned_to.includes(user.id))
+      );
+      const assignedByOthers = [
+        ...allAssigned.filter(t => t.user_id !== user.id),
+        ...meetingTasksAssignedToMe
+      ];
       
       setCreatedTasks(createdByMe);
       setAssignedTasks(assignedByOthers);
@@ -554,40 +578,63 @@ export function MyWorkTasksTab() {
     );
   }
 
-  const totalTasks = assignedTasks.length + createdTasks.length;
+  // Apply status filter
+  const filteredCreatedTasks = statusFilter === 'all' 
+    ? createdTasks 
+    : createdTasks.filter(t => t.status === statusFilter);
+  const filteredAssignedTasks = statusFilter === 'all' 
+    ? assignedTasks 
+    : assignedTasks.filter(t => t.status === statusFilter);
+
+  const totalTasks = filteredAssignedTasks.length + filteredCreatedTasks.length;
 
   return (
     <div className="h-[calc(100vh-20rem)] flex flex-col">
-      {/* Header with view toggle */}
+      {/* Header with view toggle and status filter */}
       <div className="flex items-center justify-between px-4 py-2 border-b">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Aufgaben</span>
           <Badge variant="outline">{totalTasks}</Badge>
         </div>
-        <ToggleGroup 
-          type="single" 
-          value={viewType} 
-          onValueChange={(value) => value && setViewType(value as ViewType)}
-          className="bg-muted rounded-md p-0.5"
-        >
-          <ToggleGroupItem value="card" aria-label="Kartenansicht" className="h-7 w-7 p-0">
-            <LayoutGrid className="h-4 w-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem value="list" aria-label="Listenansicht" className="h-7 w-7 p-0">
-            <List className="h-4 w-4" />
-          </ToggleGroupItem>
-        </ToggleGroup>
+        <div className="flex items-center gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Status</SelectItem>
+              {taskStatuses.map(status => (
+                <SelectItem key={status.name} value={status.name}>
+                  {status.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <ToggleGroup 
+            type="single" 
+            value={viewType} 
+            onValueChange={(value) => value && setViewType(value as ViewType)}
+            className="bg-muted rounded-md p-0.5"
+          >
+            <ToggleGroupItem value="card" aria-label="Kartenansicht" className="h-7 w-7 p-0">
+              <LayoutGrid className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="list" aria-label="Listenansicht" className="h-7 w-7 p-0">
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
       </div>
 
-      {/* Main content - 50/50 split - SWAPPED: Created left, Assigned right */}
+      {/* Main content - 50/50 split */}
       {totalTasks === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground">Keine offenen Aufgaben</p>
         </div>
       ) : (
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 min-h-0">
-          {renderTaskList(createdTasks, "Von mir erstellt", "Keine eigenen Aufgaben")}
-          {renderTaskList(assignedTasks, "Mir zugewiesen", "Keine Aufgaben zugewiesen")}
+          {renderTaskList(filteredCreatedTasks, "Von mir erstellt", "Keine eigenen Aufgaben")}
+          {renderTaskList(filteredAssignedTasks, "Mir zugewiesen", "Keine Aufgaben zugewiesen")}
         </div>
       )}
 

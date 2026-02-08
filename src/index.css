@@ -740,6 +740,20 @@ All colors MUST be HSL.
   }
 }
 
+/* Mention styling for RichTextDisplay and rendered HTML */
+span[data-lexical-mention="true"] {
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background-color: hsl(217 91% 60% / 0.2);
+  color: hsl(217 91% 60%);
+}
+
+.dark span[data-lexical-mention="true"] {
+  background-color: hsl(217 91% 60% / 0.25);
+  color: hsl(217 91% 70%);
+}
+
 /* Grayscale filter for OpenStreetMap tiles */
 .grayscale-map {
   filter: grayscale(100%);
