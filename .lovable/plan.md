@@ -1,123 +1,192 @@
 
+# Plan: 7 Verbesserungen fuer Mentions, Wiedervorlagen, Aufgaben-Sortierung und Filter
 
-# Plan: Erwaehnung (@Mention) mit offiziellem Lexical-Plugin
+## Uebersicht
 
-## Zusammenfassung
-
-Die aktuelle `MentionsPlugin`-Implementation ist eine Eigenentwicklung, die Text manuell manipuliert statt echte Lexical-Nodes zu verwenden. Sie wird komplett ersetzt durch:
-
-1. Einen echten `MentionNode` (basierend auf dem Playground-Pattern, erweitert um `userId` und `badgeColor`)
-2. Ein neues `MentionsPlugin` basierend auf dem offiziellen `LexicalTypeaheadMenuPlugin`
-3. Eine `onMentionsChange`-Callback-Schnittstelle am `EnhancedLexicalEditor`, damit Eltern-Komponenten (Briefe, Presse, Quick Notes, Aufgaben) bei Erwaehnung Benachrichtigungen erzeugen koennen
+| Nr | Problem | Loesung |
+|----|---------|---------|
+| 1 | Mention-Benachrichtigungen werden nicht erzeugt | RPC-Aufruf `create_notification` mit `data_param` als JSON-String statt Objekt senden; Fehlerbehandlung pruefen |
+| 2 | Mentions in Quick Notes und Aufgaben ohne Farbe/Erkennung | `RichTextDisplay` erweitern, um `data-lexical-mention`-Spans mit ihren Inline-Styles korrekt zu erhalten |
+| 3 | Wiedervorlagen bei Notizen koennen uebersehen werden | Fällige Wiedervorlagen als Benachrichtigung ausloesen und im Dashboard/MyWork prominent mit Badge anzeigen |
+| 4 | Meeting-Aufgaben erscheinen bei "Von mir erstellt" statt "Mir zugewiesen" | Filterlogik in MyWorkTasksTab anpassen: Meeting-Aufgaben (Kategorie 'meeting'), die dem Benutzer zugewiesen sind, muessen in "Mir zugewiesen" erscheinen |
+| 5 | Erledigte Aufgaben in MyWork Planungen nicht nach unten sortiert | Sortierung in MyWorkPlanningsTab: `is_completed` Planungen ans Ende |
+| 6 | Erledigte Planungen auf der Veranstaltungsplanung-Seite nicht nach unten sortiert | Sortierung in EventPlanningView: `is_completed` Planungen ans Ende |
+| 7 | Statusfilter bei Aufgaben fehlt | Status-Filter in MyWorkTasksTab hinzufuegen, der `task_statuses` laedt |
 
 ---
 
 ## Technische Details
 
-### Schritt 1: MentionNode erstellen
+### 1. Mention-Benachrichtigungen reparieren
 
-**Neue Datei:** `src/components/nodes/MentionNode.ts`
+**Dateien:** `src/components/press/PressReleaseEditor.tsx`, `src/components/LetterEditor.tsx`
 
-Basierend auf dem offiziellen Playground `MentionNode` (extends `TextNode`), erweitert um:
-- `userId: string` -- zum Identifizieren des erwaehnten Benutzers fuer Benachrichtigungen
-- `badgeColor: string` -- fuer die farbliche Darstellung im Editor
-
-```text
-Serialisiertes Format:
-{
-  type: 'mention',
-  mentionName: string,   // Display-Name
-  userId: string,        // User-ID fuer Benachrichtigungen
-  badgeColor: string,    // z.B. '#3b82f6'
-  ...TextNode-Felder
-}
-```
-
-Der Node rendert sich als `<span>` mit der badge_color des Benutzers als Hintergrund (abgedunkelt auf 20% Opazitaet). Er ist nicht editierbar (segmented mode), d.h. er wird als Einheit behandelt -- Loeschen entfernt die komplette Erwaehnung.
-
-### Schritt 2: MentionsPlugin komplett neu schreiben
-
-**Datei:** `src/components/plugins/MentionsPlugin.tsx` (komplett ersetzen)
-
-Nutzt das offizielle `LexicalTypeaheadMenuPlugin` aus `@lexical/react/LexicalTypeaheadMenuPlugin`:
-- `useBasicTypeaheadTriggerMatch('@', { minLength: 0 })` fuer die Trigger-Erkennung
-- `MenuOption`-Klasse wird erweitert um `userId`, `displayName`, `avatarUrl`, `badgeColor`
-- Benutzer werden aus der `profiles`-Tabelle geladen (gefiltert nach `tenant_id`)
-- Badge-Color kommt aus `profiles.badge_color`, Fallback ueber `getHashedColor(userId)`
-- Dropdown zeigt Avatar, Name und Farbpunkt fuer jeden Benutzer
-- Bei Auswahl wird ein `MentionNode` mit userId und badgeColor eingefuegt
-- Das Menu wird als React-Portal gerendert (wie im Playground)
-
-**Neue Props:**
-```tsx
-interface MentionsPluginProps {
-  onMentionInsert?: (userId: string, displayName: string) => void;
-}
-```
-
-Der Callback `onMentionInsert` wird aufgerufen, wenn ein Benutzer erwaehnt wird. Die Eltern-Komponente kann dann entscheiden, ob/wann eine Benachrichtigung gesendet wird (typischerweise beim Speichern).
-
-### Schritt 3: EnhancedLexicalEditor erweitern
-
-**Datei:** `src/components/EnhancedLexicalEditor.tsx`
-
-Aenderungen:
-1. `MentionNode` in die `nodes`-Liste aufnehmen
-2. Neue Props:
-   - `onMentionInsert?: (userId: string, displayName: string) => void` -- wird an MentionsPlugin weitergereicht
-3. Theme erweitern fuer `.mention`-Klasse (wird aber hauptsaechlich inline via createDOM gehandhabt)
-
-### Schritt 4: Benachrichtigungen bei Speichern
-
-**Dateien:** `PressReleaseEditor.tsx`, `LetterEditor.tsx`
-
-Pattern:
-- Beim Einfuegen einer Erwaehnung wird die userId in ein lokales Set `pendingMentions` gespeichert (via `onMentionInsert`)
-- Beim Speichern des Dokuments werden fuer alle neuen Erwaehungen Benachrichtigungen via `create_notification` erzeugt
-- Nach dem Senden werden die pending Mentions geleert
+Das Problem: Der `create_notification` RPC erwartet `data_param` als `jsonb`, aber das Objekt wird moeglicherweise nicht korrekt serialisiert. Zusaetzlich fehlt ein `priority_param`. Die Loesung:
 
 ```tsx
-// Beispiel: Benachrichtigung erzeugen
 await supabase.rpc('create_notification', {
   user_id_param: mentionedUserId,
   type_name: 'document_mention',
-  title_param: 'Erwaehnung in Dokument',
-  message_param: `${currentUserName} hat Sie in "${documentTitle}" erwaehnt`,
-  data_param: { documentId, documentType: 'press_release' | 'letter' }
+  title_param: 'Erwaehnung in Pressemitteilung',
+  message_param: `Sie wurden in der Pressemitteilung "${title}" erwaehnt`,
+  data_param: JSON.stringify({ documentId: pressRelease.id, documentType: 'press_release' }),
+  priority_param: 'medium',
 });
 ```
 
-### Schritt 5: Quick Notes und Aufgaben
+Ausserdem muss geprueft werden, dass der `priority_param` immer uebergeben wird (Standardwert 'medium'), da die DB-Funktion ihn mit `DEFAULT 'medium'` definiert hat, aber der RPC-Client ihn moeglicherweise nicht als optional behandelt.
 
-Fuer Quick Notes (`SimpleRichTextEditor`) und Aufgaben-Beschreibungen, die den `SimpleRichTextEditor` nutzen:
-- Der `SimpleRichTextEditor` ist ein minimaler Editor ohne MentionNode-Support
-- Statt den `SimpleRichTextEditor` umzubauen, wird in den relevanten Stellen (Quick Notes, Aufgaben-Beschreibung) geprueft, ob `EnhancedLexicalEditor` besser passt oder ob ein leichtgewichtiger Ansatz gewuenscht ist
-- Da die Aufgabe "in den Editor integrieren, den ich bei Quick Notes und Aufgaben nutze" lautet, wird der `SimpleRichTextEditor` um den `MentionNode` und ein vereinfachtes `MentionsPlugin` erweitert
+### 2. Mentions in RichTextDisplay sichtbar machen
 
-### Schritt 6: CSS-Styles fuer Mention-Dropdown
+**Datei:** `src/components/ui/RichTextDisplay.tsx`
 
-Globales CSS fuer das Typeahead-Menu:
+Das Problem: Der HTML-Sanitizer entfernt die `style`-Attribute der Mention-Spans. Der `exportDOM()` des MentionNode setzt Inline-Styles wie `background-color: #3b82f633; color: #3b82f6; font-weight: 600; padding: 1px 4px; border-radius: 4px;` -- diese werden aber vom `sanitizeHtml` nicht explizit entfernt, **aber** die Spans haben keine `data-lexical-mention`-Attribut-basierte CSS-Klasse.
+
+Die Loesung: Globales CSS in `index.css` hinzufuegen, das `[data-lexical-mention]`-Spans styled, und sicherstellen, dass der Sanitizer die `data-lexical-mention`-Attribute und `style`-Attribute auf Spans nicht entfernt. Alternativ: CSS-Regel fuer `.mention`-Klasse und `[data-lexical-mention]`-Selektor.
+
 ```css
-.typeahead-popover {
-  background: white;
-  border: 1px solid hsl(var(--border));
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 50;
+/* Mention styling in RichTextDisplay */
+[data-lexical-mention] {
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 4px;
 }
-.typeahead-popover .item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
+```
+
+Da die Inline-Styles bereits in `exportDOM()` korrekt gesetzt werden und der Sanitizer `style`-Attribute nicht explizit entfernt, sollten die Mentions eigentlich sichtbar sein. Das eigentliche Problem: Der Sanitizer entfernt moeglicherweise `data-*`-Attribute oder der Content wird ueber `$generateHtmlFromNodes` ohne MentionNode generiert (weil der SimpleRichTextEditor den Content als HTML-String exportiert, aber beim erneuten Laden den MentionNode nicht erkennt).
+
+Eigentliche Ursache: Im `SimpleRichTextEditor` wird `$generateHtmlFromNodes` aufgerufen, was `exportDOM()` nutzt -- das setzt Inline-Styles. Diese werden ueber `onChange(html)` nach aussen gegeben und in der DB gespeichert. Beim Anzeigen via `RichTextDisplay` wird der HTML-String mit `dangerouslySetInnerHTML` gerendert. Der Sanitizer entfernt `style`-Attribute nicht, also sollte es funktionieren.
+
+Moegliches Problem: Der `sanitizeHtml`-Regex `sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')` koennte auch Attribute wie `style` matchen, wenn ein Style-Wert `on` enthaelt. Allerdings ist `style` kein `on*`-Attribut. Wahrscheinlicher: Der Inline-Style wird korrekt beibehalten, aber die Farbe passt nicht zum Hintergrund (z.B. im Dark Mode).
+
+Zur Sicherheit fuege ich CSS hinzu, das `data-lexical-mention`-Spans explizit styled, falls die Inline-Styles verloren gehen:
+
+```css
+span[data-lexical-mention="true"] {
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 4px;
 }
-.typeahead-popover .item.selected,
-.typeahead-popover .item:hover {
-  background: hsl(var(--accent));
-}
+```
+
+### 3. Wiedervorlagen: Faellige Notizen als Benachrichtigung
+
+Aktuell: Wiedervorlagen werden nur angezeigt, wenn der Benutzer aktiv den Tab "Faellige Wiedervorlagen" oeffnet. Wenn das Datum erreicht ist, gibt es keine aktive Benachrichtigung.
+
+**Loesung:**
+
+1. **Notification-Typ registrieren:** Ein neuer Typ `note_follow_up` in `notification_types` wird per Migration eingefuegt.
+
+2. **Pruefung beim Laden der Quick Notes:** Wenn faellige Wiedervorlagen erkannt werden, wird fuer jede eine Benachrichtigung erzeugt (mit Deduplizierungsschutz durch `create_notification` -- verhindert Duplikate innerhalb 1 Minute).
+
+3. **Sichtbarkeit in MyWork:** Faellige Wiedervorlagen werden im Quick Notes-Tab prominent oben angezeigt (das passiert bereits). Zusaetzlich wird ein Badge auf dem "Quick Notes"-Tab angezeigt, wenn faellige Wiedervorlagen existieren.
+
+4. **Implementierung in `QuickNotesList`:** Nach dem Laden der Notizen wird fuer jede faellige Wiedervorlage `create_notification` aufgerufen (nur einmal pro Session, gesteuert durch ein `useRef`).
+
+```tsx
+// In QuickNotesList, nach loadNotes:
+const notifiedRef = useRef(false);
+useEffect(() => {
+  if (followUpNotes.length > 0 && user && !notifiedRef.current) {
+    notifiedRef.current = true;
+    followUpNotes.forEach(note => {
+      supabase.rpc('create_notification', {
+        user_id_param: user.id,
+        type_name: 'note_follow_up',
+        title_param: 'Faellige Wiedervorlage',
+        message_param: `Notiz "${note.title || 'Ohne Titel'}" hat eine faellige Wiedervorlage`,
+        data_param: JSON.stringify({ noteId: note.id }),
+        priority_param: 'high',
+      });
+    });
+  }
+}, [followUpNotes, user]);
+```
+
+### 4. Meeting-Aufgaben bei "Mir zugewiesen" anzeigen
+
+**Datei:** `src/components/my-work/MyWorkTasksTab.tsx`
+
+Das Problem: Zeile 1296 in MeetingsView zeigt, dass Meeting-Aufgaben mit `user_id: user.id` (dem aktuell angemeldeten Benutzer = Meeting-Ersteller) erstellt werden. Wenn der Meeting-Ersteller auch der zugewiesene Benutzer ist, erscheint die Aufgabe in "Von mir erstellt", weil `user_id === user.id`.
+
+Loesung: Die Filterlogik in `loadTasks()` anpassen. Aufgaben mit `category: 'meeting'` und `assigned_to` sollen als "zugewiesen" behandelt werden, auch wenn `user_id === user.id`:
+
+```tsx
+// Links: Selbst erstellte Aufgaben (user_id = eigene ID), ABER Meeting-Aufgaben ausschliessen, die einem zugewiesen sind
+const createdByMe = allCreated.filter(t => 
+  !(t.category === 'meeting' && t.assigned_to && (t.assigned_to === user.id || t.assigned_to.includes(user.id)))
+);
+
+// Rechts: Von ANDEREN erstellte + Meeting-Aufgaben, die mir zugewiesen sind
+const meetingTasksAssignedToMe = allCreated.filter(t => 
+  t.category === 'meeting' && t.assigned_to && (t.assigned_to === user.id || t.assigned_to.includes(user.id))
+);
+const assignedByOthers = [...allAssigned.filter(t => t.user_id !== user.id), ...meetingTasksAssignedToMe];
+```
+
+### 5. Erledigte Aufgaben in MyWork Planungen nach unten sortieren
+
+**Datei:** `src/components/my-work/MyWorkPlanningsTab.tsx`
+
+Zeile 157: `setPlannings(Array.from(allPlannings.values()))` -- keine Sortierung nach `is_completed`.
+
+Loesung: Vor dem Setzen sortieren:
+
+```tsx
+const sorted = Array.from(allPlannings.values()).sort((a, b) => {
+  // Erledigte nach unten
+  if (a.is_completed !== b.is_completed) return a.is_completed ? 1 : -1;
+  // Sonst nach Datum
+  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+});
+setPlannings(sorted);
+```
+
+### 6. Erledigte Planungen auf der Veranstaltungsplanung-Seite nach unten
+
+**Datei:** `src/components/EventPlanningView.tsx`
+
+Zeile 412: `.order("created_at", { ascending: false })` -- keine Sortierung nach `is_completed`.
+
+Da Supabase kein `.order("is_completed")` vor `.order("created_at")` unterstuetzt (ohne Index), wird die Sortierung client-seitig gemacht:
+
+```tsx
+// Nach dem Fetch in fetchPlannings:
+const sortedData = (data || []).sort((a: any, b: any) => {
+  if ((a.is_completed || false) !== (b.is_completed || false)) {
+    return (a.is_completed ? 1 : -1);
+  }
+  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+});
+setPlannings(sortedData);
+```
+
+### 7. Statusfilter bei Aufgaben hinzufuegen
+
+**Datei:** `src/components/my-work/MyWorkTasksTab.tsx`
+
+Aenderungen:
+1. Lade `task_statuses` aus der DB (wie in TasksView)
+2. Fuege ein `Select`-Dropdown neben dem View-Toggle hinzu
+3. Filtere beide Aufgabenlisten (`createdTasks`, `assignedTasks`) nach dem gewaehlten Status
+4. Standardmaessig: "Alle" (kein Filter)
+
+```tsx
+const [statusFilter, setStatusFilter] = useState<string>('all');
+const [taskStatuses, setTaskStatuses] = useState<{name: string, label: string}[]>([]);
+
+// In loadTasks oder separatem useEffect:
+const { data: statuses } = await supabase
+  .from('task_statuses')
+  .select('name, label')
+  .eq('is_active', true)
+  .order('order_index');
+setTaskStatuses(statuses || []);
+
+// Beim Rendern:
+const filteredCreatedTasks = statusFilter === 'all' 
+  ? createdTasks 
+  : createdTasks.filter(t => t.status === statusFilter);
 ```
 
 ---
@@ -126,23 +195,25 @@ Globales CSS fuer das Typeahead-Menu:
 
 | Aktion | Datei |
 |--------|-------|
-| Neu | `src/components/nodes/MentionNode.ts` |
-| Komplett ersetzen | `src/components/plugins/MentionsPlugin.tsx` |
-| Bearbeiten | `src/components/EnhancedLexicalEditor.tsx` (MentionNode registrieren, Props erweitern) |
-| Bearbeiten | `src/components/press/PressReleaseEditor.tsx` (onMentionInsert + Benachrichtigung bei Speichern) |
-| Bearbeiten | `src/components/LetterEditor.tsx` (onMentionInsert + Benachrichtigung bei Speichern) |
-| Bearbeiten | `src/components/ui/SimpleRichTextEditor.tsx` (MentionNode + MentionsPlugin hinzufuegen) |
-| Bearbeiten | `src/index.css` (Typeahead-Styles hinzufuegen) |
+| Bearbeiten | `src/components/press/PressReleaseEditor.tsx` (Notification-Fix) |
+| Bearbeiten | `src/components/LetterEditor.tsx` (Notification-Fix) |
+| Bearbeiten | `src/components/ui/RichTextDisplay.tsx` (Mention-Styling) |
+| Bearbeiten | `src/index.css` (Mention-CSS fuer RichTextDisplay) |
+| Bearbeiten | `src/components/shared/QuickNotesList.tsx` (Wiedervorlage-Benachrichtigungen) |
+| Bearbeiten | `src/components/my-work/MyWorkTasksTab.tsx` (Meeting-Aufgaben-Filter, Status-Filter) |
+| Bearbeiten | `src/components/my-work/MyWorkPlanningsTab.tsx` (Sortierung erledigter Planungen) |
+| Bearbeiten | `src/components/EventPlanningView.tsx` (Sortierung erledigter Planungen) |
+| DB-Migration | `note_follow_up` Notification-Typ registrieren |
 
 ---
 
 ## Reihenfolge
 
-1. `MentionNode.ts` erstellen (Playground-basiert, erweitert um userId + badgeColor)
-2. `MentionsPlugin.tsx` komplett neu schreiben (LexicalTypeaheadMenuPlugin)
-3. `EnhancedLexicalEditor.tsx` aktualisieren (Node + Props)
-4. CSS-Styles hinzufuegen
-5. `PressReleaseEditor.tsx` + `LetterEditor.tsx` integrieren (Benachrichtigungen)
-6. `SimpleRichTextEditor.tsx` erweitern (fuer Quick Notes / Aufgaben)
-7. Testen
-
+1. DB-Migration: `note_follow_up` Notification-Typ
+2. Mention-Benachrichtigungen reparieren (PressReleaseEditor + LetterEditor)
+3. Mention-Styling in RichTextDisplay + CSS
+4. Wiedervorlage-Benachrichtigungen in QuickNotesList
+5. Meeting-Aufgaben Filterlogik in MyWorkTasksTab
+6. Sortierung in MyWorkPlanningsTab
+7. Sortierung in EventPlanningView
+8. Status-Filter in MyWorkTasksTab
