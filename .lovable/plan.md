@@ -1,211 +1,294 @@
 
+# Plan: Verteiler-Bearbeitung, Presse-E-Mail-Versand, Benachrichtigungs-Groesse und FallAkten-Fehler beheben
 
-# Plan: Benachrichtigungssystem verbessern -- Toene, Darstellung und Vorschau
+## Uebersicht der 7 Punkte
 
-## Uebersicht der Probleme und Loesungen
-
-| Problem | Loesung |
-|---------|---------|
-| Toene zu kurz und zu aehnlich (nur "Klang" gut) | Alle Toene komplett ueberarbeiten: laenger, melodischer, deutlich unterscheidbar |
-| Kein individueller Ton moeglich | Upload-Option fuer eigene Audio-Dateien (MP3/WAV/OGG) via FileReader + localStorage |
-| Position "Oben Mitte" fehlt | `top-center` als dritte Positions-Option hinzufuegen (Sonner unterstuetzt das nativ) |
-| Vorschau zeigt alle Groessen/Positionen gleich | Sonner-Konfiguration in `sonner.tsx` korrigieren: grosse Variante deutlich groesser (600px breit, groessere Schrift, mehr Padding), Position korrekt uebernehmen |
-| "Nicht ausblenden" -- wie wegklicken? | `closeButton` in Sonner aktivieren, damit ein X-Button zum Schliessen erscheint. Hinweistext in den Einstellungen ergaenzen |
-| Weitere Ergaenzungen | "Nicht stoeren"-Modus (setzt alle Toasts stumm), Animations-Auswahl (Slide/Fade) |
+| Nr | Problem | Loesung |
+|----|---------|---------|
+| 1 | Verteiler: Bearbeiten/Speichern funktioniert nicht, Mitglieder werden nur als Badges ohne Details angezeigt | Speicherfunktion in `DistributionListForm` pruefen/fixen, Mitglieder als Tabelle mit E-Mail, Organisation, Telefon anzeigen |
+| 2 | Verteiler bearbeiten hat eigene Seite ohne Navigation/Header | Route `/distribution-lists/:id/edit` in Index.tsx einbetten oder Dialog-basiert in ContactsView loesen |
+| 3 | Bei Presse nach Ghost-Veroeffentlichung fehlt die Info wer veroeffentlicht hat | Bereits implementiert -- published_by wird gespeichert und angezeigt. Pruefen ob es korrekt funktioniert |
+| 4 | Nach Veroeffentlichung: Button/Link fuer E-Mail-Versand an Presse mit Template | Neues Presse-Template-System in Einstellungen + Button im PressReleaseEditor nach Veroeffentlichung |
+| 5 | E-Mail-Versand der Pressemitteilung soll in der Presse-Card protokolliert werden | Neue DB-Spalten `email_sent_at` und `email_sent_by` auf `press_releases` |
+| 6 | Benachrichtigungs-Groesse: Normal und Gross sehen gleich aus | Sonner-CSS reparieren -- `!important`-Styles werden von Sonner ueberschrieben, alternative Loesung noetig |
+| 7 | Fehler auf FallAkten-Seite, Akte "Karl Kinski" ist weg | **RLS-Policy hat infinite recursion** -- die SELECT-Policy auf `case_files` verweist auf `case_file_participants`, deren SELECT-Policy wiederum auf `case_files` verweist |
 
 ---
 
-## 1. Toene komplett ueberarbeiten (`notificationSounds.ts`)
+## Technische Details
 
-**Problem:** Alle Toene dauern 0.08-0.4 Sekunden und bestehen aus einem einzelnen Oszillator. Sie klingen fast identisch.
+### 1. Verteiler bearbeiten und Mitglieder-Tabelle
 
-**Neue Toene (laenger, melodischer, unterscheidbar):**
+**Problem A: Speichern**
+Der `DistributionListForm` navigiert nach dem Speichern zu `/contacts`. Beim Bearbeiten wird die bestehende Liste korrekt geladen und aktualisiert (Zeile 148-167). Das Speichern selbst sollte funktionieren. Falls es trotzdem nicht klappt, muss die `handleSave`-Funktion genauer getestet werden.
 
-| Ton | Beschreibung | Dauer | Technik |
-|-----|-------------|-------|---------|
-| **Ping** | Zwei aufsteigende Toene, klar und freundlich | ~0.5s | Zwei Oszillatoren nacheinander, hoehere Frequenzen |
-| **Glocke** | Glockenartig mit Nachhall, metallischer Klang | ~0.8s | Mehrere ueberlagerte Sinustoene mit Decay, verschiedene Harmonische |
-| **Plopp** | Tiefer, runder Ton wie ein Wassertropfen | ~0.4s | Sinus mit schnellem Frequency-Sweep von tief nach hoch, dann runter |
-| **Dezent** | Sanftes Zweiklang-Motiv | ~0.6s | Triangle-Welle, zwei Noten leise hintereinander |
-| **Klang** | Dreiklang aufsteigend (bleibt wie bisher, da beliebt) | ~0.8s | Drei Sinustoene (C-E-G), laengerer Nachhall |
-| **Melodie** (NEU) | Kurze 4-Noten-Melodie | ~1.2s | Vier aufeinanderfolgende Toene mit verschiedenen Intervallen |
-| **Harfe** (NEU) | Harfenartige aufsteigende Arpeggio | ~1.0s | Schnelle Folge von 5 Toenen mit Triangle-Welle |
-| **Alarm** (NEU) | Doppelton, aufmerksamkeitsstark | ~0.6s | Zwei identische kurze Toene mit Pause dazwischen |
+**Problem B: Mitglieder-Anzeige**
+In `ContactsView.tsx` (Zeile 1224-1239) werden die Mitglieder nur als einfache `Badge`-Elemente angezeigt mit maximal 5 sichtbar:
+```tsx
+// Aktuell:
+<Badge variant="secondary">{member.name}</Badge>
+```
 
-**Technische Verbesserungen:**
-- Alle Toene verwenden Gain-Envelope (Attack-Decay-Sustain-Release) fuer natuerlicheren Klang
-- Mehrere ueberlagerte Oszillatoren fuer reicheren Sound
-- Laengere Ausklingzeiten (mindestens 0.4s, maximal 1.2s)
+**Loesung: Mitglieder als Tabelle anzeigen**
+Ersetze die Badge-Darstellung in der Verteilerliste durch eine kompakte Tabelle mit Spalten: Name, E-Mail, Organisation, Kategorie.
 
-### Individueller Ton (Custom Sound Upload)
+```tsx
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Name</TableHead>
+      <TableHead>E-Mail</TableHead>
+      <TableHead>Organisation</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {list.members.map((member) => (
+      <TableRow key={member.id}>
+        <TableCell>{member.name}</TableCell>
+        <TableCell>{member.email || '-'}</TableCell>
+        <TableCell>{member.organization || '-'}</TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
+</Table>
+```
 
-Neue Funktion: Benutzer koennen eine eigene Audio-Datei hochladen.
+Ausserdem muss im `DistributionListForm` die "Ausgewaehlte Kontakte"-Vorschau ebenfalls als Tabelle dargestellt werden statt als Badges.
 
-**Technische Umsetzung:**
-- File-Input fuer MP3/WAV/OGG (max 500KB)
-- `FileReader.readAsDataURL()` konvertiert die Datei in einen Base64-String
-- Speicherung in `localStorage` unter `custom_notification_sound`
-- Abspielen ueber `new Audio(dataUrl)` statt Web Audio API
-- In der Tonliste erscheint "Eigener Ton" als zusaetzliche Option
-- Loeschen-Button zum Entfernen des eigenen Tons
+**Dateien:**
+- `src/components/ContactsView.tsx` (Mitglieder-Tabelle)
+- `src/components/DistributionListForm.tsx` (Ausgewaehlte-Kontakte-Tabelle)
 
-**Aenderungen in `notificationSounds.ts`:**
-```typescript
-export const NOTIFICATION_SOUNDS = [
-  { value: 'ping', label: 'Ping' },
-  { value: 'bell', label: 'Glocke' },
-  { value: 'pop', label: 'Plopp' },
-  { value: 'subtle', label: 'Dezent' },
-  { value: 'chime', label: 'Klang' },
-  { value: 'melody', label: 'Melodie' },
-  { value: 'harp', label: 'Harfe' },
-  { value: 'alert', label: 'Alarm' },
-  { value: 'custom', label: 'Eigener Ton' },
-] as const;
+---
 
-export function playNotificationSound(soundName: SoundName, volume: number = 0.5) {
-  if (soundName === 'custom') {
-    playCustomSound(volume);
-    return;
-  }
-  // ... bestehende Web Audio API Logik
+### 2. Verteiler bearbeiten innerhalb des Layouts
+
+**Problem:** Die Routen `/distribution-lists/new` und `/distribution-lists/:id/edit` sind in `App.tsx` als eigenstaendige Routen definiert -- ohne das Index-Layout mit Header und Navigation.
+
+**Loesung:** Zwei Moeglichkeiten:
+
+**Option A (empfohlen): In Index.tsx einbetten**
+- In `Index.tsx` die Faelle `distribution-lists-new` und `distribution-lists-edit` hinzufuegen
+- Navigation aus der Kontakte-Seite heraus per `handleSectionChange` statt `<Link to="/distribution-lists/...">`
+- `DistributionListForm` bekommt einen `onBack`-Callback statt `useNavigate`
+
+**Option B: Routen in App.tsx behalten, aber Index-Layout wrappen**
+Weniger ideal, da es doppelte Layout-Logik erfordern wuerde.
+
+Ich waehle Option A:
+- `App.tsx`: Routen fuer `/distribution-lists/*` entfernen (werden durch `/:section` in Index aufgefangen)
+- `Index.tsx`: Cases `distribution-lists/new` und `distribution-lists/:id/edit` im Router einbauen. Da die URL `distribution-lists/new` bereits vom `/:section`-Catch uebernommen wird, koennen wir alternativ die Verteiler-Bearbeitung als eingebetteten Zustand in `ContactsView` behandeln (Dialog-basiert oder Inline).
+
+Noch besser: Die Verteiler-Bearbeitung als eingebettete Ansicht direkt in ContactsView laufen lassen (aehnlich wie CaseFileDetail in CaseFilesView):
+- State `editingDistributionListId` und `creatingDistribution` in ContactsView
+- Wenn aktiv: `DistributionListForm` als Overlay/Inline rendern statt auf separate Seite navigieren
+- `DistributionListForm` bekommt `onBack`/`onSuccess` Callbacks
+
+**Dateien:**
+- `src/components/ContactsView.tsx` (eingebettete Bearbeitung)
+- `src/components/DistributionListForm.tsx` (Navigation entfernen, Callbacks nutzen)
+- `src/App.tsx` (Routen entfernen)
+- `src/pages/CreateDistributionList.tsx` und `src/pages/EditDistributionList.tsx` (koennen entfernt werden)
+
+---
+
+### 3. Presse: Veroeffentlichungs-Info in der Card
+
+**Status:** Bereits implementiert. Die Edge Function `publish-to-ghost` speichert `published_by` und `published_at`. Die `PressReleasesList.tsx` zeigt diese Info in der Card an (Zeile 276-284). Der `PressReleaseEditor.tsx` laedt den Publisher-Namen und zeigt ihn im blauen Banner an (Zeile 456-478).
+
+Hier ist keine Aenderung noetig -- die Funktionalitaet existiert bereits. Ich werde pruefen ob es live korrekt funktioniert und ggf. kleine Verbesserungen machen (z.B. Publisher-Info auch anzeigen wenn `ghost_post_url` fehlt).
+
+---
+
+### 4. Presse: E-Mail-Versand-Button nach Veroeffentlichung
+
+**Konzept:**
+- Nach der Veroeffentlichung auf Ghost erscheint ein neuer Button "Per E-Mail an Presse senden" im blauen Banner des `PressReleaseEditor`
+- Klick auf den Button navigiert zu Dokumente/E-Mails und befuellt den E-Mail-Composer mit Daten aus der Pressemitteilung
+- In den Presse-Einstellungen (Settings-Dialog in `PressReleasesList`) kann man ein Presse-E-Mail-Template vorbereiten
+
+**Template-System in Presse-Einstellungen:**
+- Neues app_settings Feld: `press_email_template_subject` und `press_email_template_body`
+- Variablen die im Template verfuegbar sind:
+  - `{{titel}}` -- Titel der Pressemitteilung
+  - `{{excerpt}}` -- Zusammenfassung/Excerpt
+  - `{{link}}` -- Ghost-Post-URL
+  - `{{datum}}` -- Veroeffentlichungsdatum
+  - `{{inhalt}}` -- Volltext (HTML)
+- Einstellungen-UI: Betreff-Feld und Body-Editor mit Variablen-Hilfe
+
+**E-Mail-Versand-Flow:**
+1. User klickt "Per E-Mail an Presse senden" im PressReleaseEditor
+2. Navigation zu `/documents` mit Query-Parametern: `?tab=emails&action=compose-press&pressReleaseId=xxx`
+3. `DocumentsView` erkennt die Parameter und oeffnet den EmailComposer mit vorbefuellten Daten
+4. Das Template wird aus `app_settings` geladen und die Variablen ersetzt
+
+**Dateien:**
+- `src/components/press/PressReleaseEditor.tsx` (Button hinzufuegen)
+- `src/components/press/PressReleasesList.tsx` (Template-Einstellungen im Settings-Dialog)
+- `src/components/DocumentsView.tsx` (Query-Parameter fuer Presse-E-Mail erkennen)
+- `src/components/emails/EmailComposer.tsx` (Presse-Daten vorbefuellen)
+
+---
+
+### 5. Presse: E-Mail-Versand protokollieren
+
+**DB-Migration:**
+```sql
+ALTER TABLE public.press_releases
+  ADD COLUMN email_sent_at timestamptz,
+  ADD COLUMN email_sent_by uuid;
+```
+
+**Implementierung:**
+- Nach dem Versand einer E-Mail mit Presse-Bezug: `press_releases`-Eintrag aktualisieren
+- In der PressReleasesList-Card und im PressReleaseEditor anzeigen: "Per E-Mail versandt am ... von ..."
+- Im EmailComposer: Nach erfolgreichem Senden der E-Mail die `press_releases`-Tabelle aktualisieren
+
+**Dateien:**
+- DB-Migration (neue Spalten)
+- `src/components/emails/EmailComposer.tsx` (nach Versand protokollieren)
+- `src/components/press/PressReleasesList.tsx` (Versand-Info in Card)
+- `src/components/press/PressReleaseEditor.tsx` (Versand-Info im Banner)
+
+---
+
+### 6. Benachrichtigungs-Groesse reparieren
+
+**Problem:** Die Sonner-Toasts ignorieren die `!important`-Styles weil Sonner intern eigene Styles setzt die hoehere Spezifitaet haben. Die aktuelle Loesung nutzt `group-[.toaster]:!w-[520px]` etc., aber das wird von Sonners internem CSS ueberschrieben.
+
+**Root Cause:** Sonner rendert Toasts in einem Shadow-DOM-aehnlichen Container mit festen Inline-Styles. Die Tailwind `!important`-Klassen koennen Inline-Styles nicht ueberschreiben.
+
+**Loesung:**
+1. Globale CSS-Styles mit hoher Spezifitaet in `index.css`:
+```css
+/* Grosse Benachrichtigungen */
+[data-sonner-toaster][data-theme] [data-sonner-toast].toast-large {
+  width: 520px !important;
+  max-width: 90vw !important;
+  font-size: 1.125rem !important;
+  padding: 1.5rem !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25) !important;
+  border-width: 2px !important;
 }
 
-function playCustomSound(volume: number) {
-  const dataUrl = localStorage.getItem('custom_notification_sound');
-  if (!dataUrl) return;
-  const audio = new Audio(dataUrl);
-  audio.volume = volume;
-  audio.play().catch(console.error);
+[data-sonner-toaster][data-theme] [data-sonner-toast].toast-large [data-description] {
+  font-size: 1rem !important;
 }
 ```
 
----
-
-## 2. Position "Oben Mitte" hinzufuegen
-
-**Sonner unterstuetzt nativ:** `top-left`, `top-center`, `top-right`, `bottom-left`, `bottom-center`, `bottom-right`
-
-**Aenderungen:**
-
-In `useNotificationDisplayPreferences.ts`:
-```typescript
-position: 'top-right' | 'top-center' | 'bottom-right';
+2. In `sonner.tsx` die `className` auf dem Toast verwenden statt `classNames`:
+```tsx
+toastOptions={{
+  className: isLarge ? 'toast-large' : '',
+  ...
+}}
 ```
 
-In `NotificationsPage.tsx` -- RadioGroup von 2 auf 3 Optionen erweitern:
-- Oben rechts (`top-right`)
-- Oben Mitte (`top-center`)
-- Unten rechts (`bottom-right`)
+3. Alternative: Sonner's `style` Prop verwenden, die Inline-Styles direkt setzt und damit garantiert wirkt.
 
-Grid-Layout: `grid-cols-3` statt `grid-cols-2`
+**Dateien:**
+- `src/components/ui/sonner.tsx` (Toast-Klasse/Style anwenden)
+- `src/index.css` (Globale CSS-Regeln fuer grosse Toasts)
 
 ---
 
-## 3. Vorschau korrigieren -- Groesse und Position
+### 7. FallAkten-Fehler: Infinite Recursion in RLS-Policy (KRITISCH)
 
-**Problem:** Die Vorschau ruft `toast()` auf, aber Sonner verwendet die globale Konfiguration aus `sonner.tsx`. Die aktuelle `isLarge`-Klasse ist zu subtil (nur 420px Breite und `text-base`).
+**Root Cause gefunden:** Die Postgres-Logs zeigen dutzende `infinite recursion detected in policy for relation "case_files"` Fehler.
 
-**Loesung in `sonner.tsx`:**
+Die aktuelle RLS-Policy-Kette:
+1. **`case_files` SELECT Policy** prueft: `id IN (SELECT case_file_id FROM case_file_participants WHERE user_id = auth.uid())`
+2. **`case_file_participants` SELECT Policy** prueft: `case_file_id IN (SELECT id FROM case_files WHERE tenant_id IN (...))`
 
-Die grosse Variante muss deutlich auffaelliger sein:
+Dies erzeugt eine zirkulaere Abhaengigkeit: Um `case_files` zu lesen, muss man `case_file_participants` lesen, was wiederum `case_files` liest.
 
-```typescript
-// Normal: Standard-Sonner-Darstellung (~356px)
-// Gross: Deutlich groesser
+**Die Akte "Karl Kinski" ist NICHT geloescht** -- sie existiert noch in der Datenbank (visibility: public, status: active). Sie wird nur nicht angezeigt weil die RLS-Policy fehlschlaegt.
 
-const largeStyles = isLarge ? [
-  'group-[.toaster]:!w-[520px]',      // Breiter (statt 420px)
-  'group-[.toaster]:!max-w-[90vw]',   // Responsiv
-  'group-[.toaster]:!text-lg',         // Groessere Schrift (statt text-base)
-  'group-[.toaster]:!p-6',            // Mehr Padding (statt p-5)
-  'group-[.toaster]:!rounded-xl',     // Groessere Rundung
-  'group-[.toaster]:!shadow-2xl',     // Staerkerer Schatten
-  'group-[.toaster]:!border-2',       // Dickerer Rand
-].join(' ') : '';
+**Loesung: RLS-Policies entkoppeln**
 
-// Description bei gross:
-const largeDescStyles = isLarge
-  ? 'group-[.toast]:!text-base'  // statt text-sm
-  : '';
+Die `case_file_participants` SELECT-Policy darf nicht auf `case_files` zurueckverweisen. Stattdessen:
+
+```sql
+-- 1. Alte Policies entfernen
+DROP POLICY IF EXISTS "Users can view accessible case files" ON public.case_files;
+DROP POLICY IF EXISTS "Users can view participants of their tenant case files" ON public.case_file_participants;
+
+-- 2. case_files: Verwende user_tenant_memberships direkt + participants ohne Umweg
+CREATE POLICY "Users can view accessible case files"
+  ON public.case_files FOR SELECT
+  USING (
+    tenant_id IN (
+      SELECT utm.tenant_id FROM user_tenant_memberships utm
+      WHERE utm.user_id = auth.uid() AND utm.is_active = true
+    )
+    AND (
+      visibility = 'public'
+      OR user_id = auth.uid()
+      OR EXISTS (
+        SELECT 1 FROM case_file_participants cfp
+        WHERE cfp.case_file_id = id AND cfp.user_id = auth.uid()
+      )
+    )
+  );
+
+-- 3. case_file_participants: Keine Abhaengigkeit auf case_files
+-- Stattdessen: User kann Teilnehmer sehen wenn er selbst Teilnehmer ist,
+-- Ersteller ist, oder die Akte oeffentlich ist
+CREATE POLICY "Users can view case file participants"
+  ON public.case_file_participants FOR SELECT
+  USING (
+    user_id = auth.uid()
+    OR case_file_id IN (
+      SELECT cf.id FROM case_files cf
+      WHERE cf.user_id = auth.uid()
+    )
+  );
 ```
 
-**Position:** Die Position wird bereits korrekt ueber `preferences.position` an Sonner weitergegeben. Das sollte schon funktionieren -- falls nicht, liegt es daran, dass die Preferences nicht sofort nach Aenderung den Sonner-State aktualisieren. Wir stellen sicher, dass die Vorschau-Benachrichtigung die aktuell gewaehlte Position/Groesse live widerspiegelt (kein Page-Reload noetig).
+Aber auch Policy 3 verweist noch auf `case_files`. Um die Rekursion komplett zu brechen, muss die `case_file_participants`-Policy **nicht** auf `case_files` zugreifen:
 
-**Vorschau-Verbesserung in `NotificationsPage.tsx`:**
-```typescript
-const handlePreview = () => {
-  // Alle bestehenden Toasts entfernen, damit man die neue Position sieht
-  toast.dismiss();
-  
-  // Kurze Verzoegerung damit das Dismiss wirkt
-  setTimeout(() => {
-    toast('Beispiel-Benachrichtigung', {
-      description: 'So werden Ihre Benachrichtigungen angezeigt. Bei "Nicht ausblenden" koennen Sie diese mit dem X-Button schliessen.',
-      duration: preferences.persist ? Infinity : preferences.duration,
-      position: preferences.position, // Explizit die Position setzen
-      closeButton: true, // Immer Close-Button in der Vorschau zeigen
-    });
-  }, 100);
-};
+```sql
+-- Einfachste sichere Loesung:
+-- Jeder authentifizierte Benutzer kann Teilnehmer-Eintraege sehen,
+-- die Sicherheit wird durch die case_files-Policy gewaehrleistet
+-- (man sieht nur Akten die man sehen darf, und damit auch nur deren Teilnehmer)
+CREATE POLICY "Authenticated users can view participants"
+  ON public.case_file_participants FOR SELECT
+  USING (auth.uid() IS NOT NULL);
 ```
 
----
+Da die `case_file_participants`-Daten nur ueber JOINs mit `case_files` abgefragt werden und `case_files` bereits durch RLS geschuetzt ist, ist dies sicher.
 
-## 4. "Nicht ausblenden" -- Close-Button
-
-**Problem:** Wenn `persist: true` (Dauer = Infinity), bleiben Toasts fuer immer sichtbar, aber der Benutzer kann sie nicht schliessen.
-
-**Loesung in `sonner.tsx`:**
-```typescript
-<Sonner
-  closeButton={preferences.persist}  // Close-Button anzeigen bei persistenten Toasts
-  // ... rest
-/>
-```
-
-Alternativ immer einen Close-Button anzeigen -- das ist nutzerfreundlicher:
-```typescript
-<Sonner
-  closeButton={true}  // Immer einen X-Button anzeigen
-/>
-```
-
-**Zusaetzlich:** Hinweistext in den Einstellungen unter "Nicht ausblenden":
-> "Benachrichtigungen bleiben sichtbar, bis Sie diese manuell mit dem X-Button schliessen."
-
----
-
-## 5. Weitere Ergaenzungen
-
-### "Nicht stoeren"-Modus
-- Ein einfacher Toggle in den Einstellungen: "Nicht stoeren"
-- Wenn aktiviert: Keine Toast-Einblendungen und keine Toene
-- Die Benachrichtigungen werden weiterhin in der Liste gespeichert, nur nicht eingeblendet
-- Visueller Indikator (z.B. durchgestrichenes Glocken-Icon) im Header
-
-### Visuelle Vorschau-Box
-Statt nur einen Button "Vorschau anzeigen" -- ein kleines visuelles Schema der Bildschirm-Position:
-- Ein Mini-Bildschirm (160x100px Box) mit markierter Position wo der Toast erscheint
-- Klick auf die Position aendert diese direkt
-- Zeigt auch die relative Groesse an (Normal vs. Gross)
+**Dateien:**
+- DB-Migration (RLS-Policies korrigieren)
 
 ---
 
 ## Betroffene Dateien
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/utils/notificationSounds.ts` | Alle Toene ueberarbeiten (laenger, reichhaltiger), 3 neue Toene, Custom-Sound-Support |
-| `src/hooks/useNotificationDisplayPreferences.ts` | Position-Typ um `top-center` erweitern, `closeButton`-Preference hinzufuegen |
-| `src/components/ui/sonner.tsx` | `closeButton` aktivieren, grosse Variante deutlich groesser (520px, text-lg, p-6, shadow-2xl) |
-| `src/pages/NotificationsPage.tsx` | 3 Positions-Optionen, Custom-Sound-Upload UI, Vorschau mit `toast.dismiss()` + position-Override, Hinweistext bei "Nicht ausblenden", visuelle Position-Preview-Box |
+| Aktion | Datei |
+|--------|-------|
+| Bearbeiten | `src/components/ContactsView.tsx` (Mitglieder-Tabelle, eingebettete Verteiler-Bearbeitung) |
+| Bearbeiten | `src/components/DistributionListForm.tsx` (Kontakte-Tabelle, Navigation-Callbacks) |
+| Bearbeiten | `src/App.tsx` (Distribution-Routes entfernen) |
+| Loeschen | `src/pages/CreateDistributionList.tsx` (nicht mehr noetig) |
+| Loeschen | `src/pages/EditDistributionList.tsx` (nicht mehr noetig) |
+| Bearbeiten | `src/components/press/PressReleaseEditor.tsx` (E-Mail-Button nach Veroeffentlichung) |
+| Bearbeiten | `src/components/press/PressReleasesList.tsx` (Presse-Template-Einstellungen, E-Mail-Versand-Info) |
+| Bearbeiten | `src/components/DocumentsView.tsx` (Presse-E-Mail Query-Parameter) |
+| Bearbeiten | `src/components/emails/EmailComposer.tsx` (Presse-Daten vorbefuellen, Versand protokollieren) |
+| Bearbeiten | `src/components/ui/sonner.tsx` (Groesse-Fix) |
+| Bearbeiten | `src/index.css` (Globale Toast-Styles) |
+| DB-Migration | `email_sent_at` und `email_sent_by` auf `press_releases` |
+| DB-Migration | RLS-Policies fuer `case_files` und `case_file_participants` korrigieren |
 
 ## Reihenfolge
 
-1. Toene ueberarbeiten und neue Toene hinzufuegen (`notificationSounds.ts`)
-2. Custom-Sound Upload-Logik (`notificationSounds.ts`)
-3. Position `top-center` + Close-Button (`useNotificationDisplayPreferences.ts`)
-4. Sonner grosse Variante korrigieren + closeButton (`sonner.tsx`)
-5. Einstellungs-UI aktualisieren: 3 Positionen, Upload, Hinweistexte, visuelle Vorschau (`NotificationsPage.tsx`)
-
+1. **KRITISCH: FallAkten RLS-Fix** -- behebt den Fehler und macht "Karl Kinski" wieder sichtbar
+2. Verteiler: Mitglieder als Tabelle anzeigen + Bearbeitung ins Layout einbetten
+3. Benachrichtigungs-Groesse reparieren (CSS-Fix)
+4. Presse: E-Mail-Template-System in Einstellungen
+5. Presse: E-Mail-Button nach Veroeffentlichung + DB-Migration
+6. Presse: E-Mail-Versand protokollieren
