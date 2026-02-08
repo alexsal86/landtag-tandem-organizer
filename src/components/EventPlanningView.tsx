@@ -425,7 +425,14 @@ export function EventPlanningView() {
       }
 
       console.log('Successfully fetched plannings:', data);
-      setPlannings(data || []);
+      // Sort: completed plannings to the bottom
+      const sortedData = (data || []).sort((a: any, b: any) => {
+        if ((a.is_completed || false) !== (b.is_completed || false)) {
+          return a.is_completed ? 1 : -1;
+        }
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      setPlannings(sortedData);
       
       // Also fetch all collaborators for all plannings
       if (data && data.length > 0) {

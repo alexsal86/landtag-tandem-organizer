@@ -236,7 +236,8 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
                 type_name: 'document_mention',
                 title_param: 'Erwähnung in Pressemitteilung',
                 message_param: `Sie wurden in der Pressemitteilung "${title}" erwähnt`,
-                data_param: { documentId: pressRelease.id, documentType: 'press_release' },
+                data_param: JSON.stringify({ documentId: pressRelease.id, documentType: 'press_release' }),
+                priority_param: 'medium',
               });
             } catch (e) {
               console.error('Failed to send mention notification:', e);

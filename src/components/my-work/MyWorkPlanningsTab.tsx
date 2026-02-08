@@ -154,7 +154,13 @@ export function MyWorkPlanningsTab() {
         }
       });
 
-      setPlannings(Array.from(allPlannings.values()));
+      const sorted = Array.from(allPlannings.values()).sort((a, b) => {
+        // Erledigte nach unten
+        if ((a.is_completed || false) !== (b.is_completed || false)) return a.is_completed ? 1 : -1;
+        // Sonst nach Datum
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      setPlannings(sorted);
     } catch (error) {
       console.error("Error loading plannings:", error);
     } finally {
