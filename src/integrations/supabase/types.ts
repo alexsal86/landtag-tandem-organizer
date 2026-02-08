@@ -6616,6 +6616,101 @@ export type Database = {
         }
         Relationships: []
       }
+      press_releases: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          content: string
+          content_html: string | null
+          content_nodes: Json | null
+          created_at: string
+          created_by: string
+          excerpt: string | null
+          feature_image_url: string | null
+          ghost_post_id: string | null
+          ghost_post_url: string | null
+          id: string
+          meta_description: string | null
+          meta_title: string | null
+          published_at: string | null
+          revision_comment: string | null
+          revision_requested_at: string | null
+          revision_requested_by: string | null
+          slug: string | null
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          tags: string[] | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          content?: string
+          content_html?: string | null
+          content_nodes?: Json | null
+          created_at?: string
+          created_by: string
+          excerpt?: string | null
+          feature_image_url?: string | null
+          ghost_post_id?: string | null
+          ghost_post_url?: string | null
+          id?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          published_at?: string | null
+          revision_comment?: string | null
+          revision_requested_at?: string | null
+          revision_requested_by?: string | null
+          slug?: string | null
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tags?: string[] | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          content?: string
+          content_html?: string | null
+          content_nodes?: Json | null
+          created_at?: string
+          created_by?: string
+          excerpt?: string | null
+          feature_image_url?: string | null
+          ghost_post_id?: string | null
+          ghost_post_url?: string | null
+          id?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          published_at?: string | null
+          revision_comment?: string | null
+          revision_requested_at?: string | null
+          revision_requested_by?: string | null
+          slug?: string | null
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tags?: string[] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "press_releases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
