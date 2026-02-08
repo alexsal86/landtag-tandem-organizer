@@ -28,6 +28,7 @@ const MatrixChatView = lazy(() => import("@/components/chat/MatrixChatView").the
 const MyWorkView = lazy(() => import("@/components/MyWorkView").then(m => ({ default: m.MyWorkView })));
 const CallsView = lazy(() => import("@/components/CallsView").then(m => ({ default: m.CallsView })));
 const EditProfile = lazy(() => import("@/pages/EditProfile"));
+const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
 import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
 import { GlobalQuickActionHandler } from "@/components/layout/GlobalQuickActionHandler";
 import { GlobalAnnouncementBanner } from "@/components/announcements/GlobalAnnouncementBanner";
@@ -176,6 +177,8 @@ const Index = () => {
         return <MatrixChatView />;
       case "calls":
         return <CallsView />;
+      case "notifications":
+        return <NotificationsPage />;
       case "profile-edit":
         return <EditProfile />;
       default:

@@ -79,7 +79,7 @@ const AppContent = () => {
           <Route path="/guest-response/:token" element={<GuestResponse />} />
           <Route path="/appointment-preparation" element={<AppointmentPreparationDetail />} />
           <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
-          <Route path="/notifications" element={<NotificationsPage />} />
+          {/* notifications is now handled by /:section in Index */}
           <Route path="/editor-test" element={<EditorTest />} />
           <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

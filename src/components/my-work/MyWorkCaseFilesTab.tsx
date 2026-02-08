@@ -58,11 +58,10 @@ export function MyWorkCaseFilesTab() {
     if (!user) return;
     
     try {
-      // Load case files created by user or where user is involved
+      // Load case files visible to user (RLS handles visibility filtering)
       const { data, error } = await supabase
         .from("case_files")
         .select("*")
-        .eq("user_id", user.id)
         .in("status", ["active", "pending"])
         .order("updated_at", { ascending: false })
         .limit(20);

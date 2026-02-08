@@ -96,8 +96,18 @@ export const StandaloneDecisionCreator = ({
       if (error) throw error;
       setProfiles(data || []);
       
-      // Pre-select Abgeordneter from the same tenant - nur wenn noch keine Auswahl getroffen wurde
+      // Pre-select from localStorage defaults first, then fall back to Abgeordneter
       if (tenantData?.tenant_id && selectedUsers.length === 0) {
+        // Check localStorage for default participants
+        let defaultIds: string[] = [];
+        try {
+          const stored = localStorage.getItem('default_decision_participants');
+          if (stored) defaultIds = JSON.parse(stored);
+        } catch (e) {}
+
+        if (defaultIds.length > 0) {
+          setSelectedUsers(defaultIds);
+        } else {
         const { data: roleData } = await supabase
           .from('user_roles')
           .select('user_id')
@@ -123,6 +133,7 @@ export const StandaloneDecisionCreator = ({
           console.log("Abgeordnete in tenant (pre-selected):", abgeordneteInTenant);
           setSelectedUsers(abgeordneteInTenant);
         }
+        } // close else block for defaultIds
       }
       
       setProfilesLoaded(true);

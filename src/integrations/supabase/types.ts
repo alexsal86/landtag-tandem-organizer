@@ -1371,6 +1371,38 @@ export type Database = {
           },
         ]
       }
+      case_file_participants: {
+        Row: {
+          case_file_id: string
+          created_at: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          case_file_id: string
+          created_at?: string | null
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          case_file_id?: string
+          created_at?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_file_participants_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_file_tasks: {
         Row: {
           case_file_id: string
@@ -1546,6 +1578,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           case_type?: string
@@ -1563,6 +1596,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           case_type?: string
@@ -1580,6 +1614,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
