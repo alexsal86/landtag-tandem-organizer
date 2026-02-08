@@ -207,7 +207,7 @@ export function NoteDecisionCreator({
           // Create notification
           await supabase.rpc("create_notification", {
             user_id_param: userId,
-            type_name: "task_decision_requested",
+            type_name: "task_decision_request",
             title_param: "Neue Entscheidungsanfrage",
             message_param: `${profiles.find(p => p.user_id === user.id)?.display_name || 'Jemand'} bittet um Ihre Entscheidung: "${title}"`,
             data_param: { decision_id: decision.id, link: `/mywork?tab=decisions` }

@@ -760,3 +760,15 @@ span[data-lexical-mention="true"] {
   filter: grayscale(100%);
   -webkit-filter: grayscale(100%);
 }
+
+/* Notification highlight animation for deep-linked items */
+@keyframes notification-highlight {
+  0% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4); }
+  50% { box-shadow: 0 0 0 4px hsl(var(--primary) / 0.2); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+}
+
+.notification-highlight {
+  animation: notification-highlight 1.5s ease-in-out 3;
+  border-radius: var(--radius);
+}
