@@ -137,3 +137,6 @@ verify_jwt = false
 
 [functions.manage-tenant-user]
 verify_jwt = false
+
+[functions.publish-to-ghost]
+verify_jwt = false
