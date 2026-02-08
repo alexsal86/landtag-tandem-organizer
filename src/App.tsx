@@ -17,8 +17,6 @@ import CreateTask from "./pages/CreateTask";
 import ContactDetail from "./pages/ContactDetail";
 import EditContact from "./pages/EditContact";
 import EditProfile from "./pages/EditProfile";
-import CreateDistributionList from "./pages/CreateDistributionList";
-import EditDistributionList from "./pages/EditDistributionList";
 import ImportContacts from "./pages/ImportContacts";
 import PollGuest from "./pages/PollGuest";
 import DecisionResponse from "./pages/DecisionResponse";
@@ -71,8 +69,8 @@ const AppContent = () => {
           <Route path="/contacts/import" element={<ImportContacts />} />
           
           <Route path="/maps" element={<MapsView />} />
-          <Route path="/distribution-lists/new" element={<CreateDistributionList />} />
-          <Route path="/distribution-lists/:id/edit" element={<EditDistributionList />} />
+            
+            
           <Route path="/profile/edit" element={<Navigate to="/profile-edit" replace />} />
           <Route path="/poll-guest/:pollId" element={<PollGuest />} />
           <Route path="/decision-response/:participantId" element={<DecisionResponse />} />

@@ -41,6 +41,9 @@ interface DistributionList {
   members: Contact[];
 }
 
+// Lazy load DistributionListForm to avoid circular imports
+import { DistributionListForm } from "@/components/DistributionListForm";
+
 export function ContactsView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,6 +77,8 @@ export function ContactsView() {
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [expandedDocuments, setExpandedDocuments] = useState<Set<string>>(new Set());
+  const [editingDistributionListId, setEditingDistributionListId] = useState<string | null>(null);
+  const [creatingDistribution, setCreatingDistribution] = useState(false);
   
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -436,12 +441,10 @@ export function ContactsView() {
               <Merge className="h-4 w-4" />
               Duplikate prüfen
             </Button>
-            <Link to="/distribution-lists/new">
-              <Button variant="outline" className="gap-2">
-                <Users className="h-4 w-4" />
-                Neuer Verteiler
-              </Button>
-            </Link>
+            <Button variant="outline" className="gap-2" onClick={() => { setActiveTab("distribution-lists"); setCreatingDistribution(true); }}>
+              <Users className="h-4 w-4" />
+              Neuer Verteiler
+            </Button>
           </div>
         </div>
 
@@ -1173,7 +1176,21 @@ export function ContactsView() {
       ) : (
         // Distribution Lists Display
         <div className="space-y-6">
-          {distributionListsLoading ? (
+          {/* Inline Distribution List Form */}
+          {(creatingDistribution || editingDistributionListId) ? (
+            <DistributionListForm
+              distributionListId={editingDistributionListId || undefined}
+              onSuccess={() => {
+                setCreatingDistribution(false);
+                setEditingDistributionListId(null);
+                fetchDistributionLists();
+              }}
+              onBack={() => {
+                setCreatingDistribution(false);
+                setEditingDistributionListId(null);
+              }}
+            />
+          ) : distributionListsLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
               <p className="text-muted-foreground">Verteiler werden geladen...</p>
@@ -1196,12 +1213,15 @@ export function ContactsView() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Link to={`/distribution-lists/${list.id}/edit`}>
-                          <Button variant="outline" size="sm" className="gap-1">
-                            <Edit className="h-4 w-4" />
-                            Bearbeiten
-                          </Button>
-                        </Link>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-1"
+                          onClick={() => setEditingDistributionListId(list.id)}
+                        >
+                          <Edit className="h-4 w-4" />
+                          Bearbeiten
+                        </Button>
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -1218,28 +1238,44 @@ export function ContactsView() {
                       </div>
                     </div>
                   </CardHeader>
-                  {list.description && (
-                    <CardContent className="pt-0">
+                  <CardContent className="pt-0">
+                    {list.description && (
                       <p className="text-sm text-muted-foreground mb-4">{list.description}</p>
-                      {list.members.length > 0 && (
-                        <div>
-                          <p className="text-sm font-medium mb-2">Mitglieder:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {list.members.slice(0, 5).map((member) => (
-                              <Badge key={member.id} variant="secondary" className="text-xs">
-                                {member.name}
-                              </Badge>
-                            ))}
-                            {list.members.length > 5 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{list.members.length - 5} weitere
-                              </Badge>
-                            )}
-                          </div>
+                    )}
+                    {list.members.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium mb-2">Mitglieder ({list.members.length}):</p>
+                        <div className="border rounded-md overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="h-8 text-xs">Name</TableHead>
+                                <TableHead className="h-8 text-xs">E-Mail</TableHead>
+                                <TableHead className="h-8 text-xs hidden sm:table-cell">Organisation</TableHead>
+                                <TableHead className="h-8 text-xs hidden md:table-cell">Kategorie</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {list.members.map((member) => (
+                                <TableRow key={member.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedContactId(member.id); setIsSheetOpen(true); }}>
+                                  <TableCell className="py-1.5 text-sm font-medium">{member.name}</TableCell>
+                                  <TableCell className="py-1.5 text-sm text-muted-foreground">{member.email || '–'}</TableCell>
+                                  <TableCell className="py-1.5 text-sm text-muted-foreground hidden sm:table-cell">{member.organization || '–'}</TableCell>
+                                  <TableCell className="py-1.5 hidden md:table-cell">
+                                    {member.category && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {member.category === "citizen" ? "Bürger" : member.category === "colleague" ? "Kollege" : member.category === "business" ? "Wirtschaft" : member.category === "media" ? "Medien" : member.category === "lobbyist" ? "Lobbyist" : member.category}
+                                      </Badge>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         </div>
-                      )}
-                    </CardContent>
-                  )}
+                      </div>
+                    )}
+                  </CardContent>
                 </Card>
               ))}
               
@@ -1251,12 +1287,10 @@ export function ContactsView() {
                     <p className="text-muted-foreground mb-4">
                       Erstellen Sie Ihren ersten Verteiler, um Kontakte zu organisieren.
                     </p>
-                    <Link to="/distribution-lists/new">
-                      <Button className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Ersten Verteiler erstellen
-                      </Button>
-                    </Link>
+                    <Button className="gap-2" onClick={() => setCreatingDistribution(true)}>
+                      <Plus className="h-4 w-4" />
+                      Ersten Verteiler erstellen
+                    </Button>
                   </CardContent>
                 </Card>
               )}

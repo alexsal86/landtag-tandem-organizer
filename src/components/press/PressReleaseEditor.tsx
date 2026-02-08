@@ -17,8 +17,9 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { 
   ArrowLeft, Save, SendHorizonal, Check, X, Globe, 
-  AlertTriangle, ExternalLink, Loader2 
+  AlertTriangle, ExternalLink, Loader2, Mail
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // Auto-generate URL slug from title
 const generateSlug = (title: string): string => {
@@ -54,11 +55,14 @@ interface PressRelease {
   ghost_post_url: string | null;
   published_at: string | null;
   published_by: string | null;
+  email_sent_at: string | null;
+  email_sent_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEditorProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -81,6 +85,7 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [publisherName, setPublisherName] = useState<string | null>(null);
+  const [emailSenderName, setEmailSenderName] = useState<string | null>(null);
 
   // Dialog states
   const [showRevisionDialog, setShowRevisionDialog] = useState(false);
@@ -155,6 +160,18 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
         setPublisherName(profile?.display_name || 'Unbekannt');
       } else {
         setPublisherName(null);
+      }
+
+      // Load email sender name if sent
+      if (data.email_sent_by) {
+        const { data: senderProfile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', data.email_sent_by)
+          .maybeSingle();
+        setEmailSenderName(senderProfile?.display_name || 'Unbekannt');
+      } else {
+        setEmailSenderName(null);
       }
     } catch (error: any) {
       if (error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
@@ -454,7 +471,7 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
 
       {/* Published Link with publisher info */}
       {pressRelease?.ghost_post_url && status === 'published' && (
-        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-4 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
             <Globe className="h-5 w-5 text-blue-600 flex-shrink-0" />
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
@@ -475,6 +492,34 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
+
+          {/* Email sent info */}
+          {pressRelease?.email_sent_at && (
+            <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300 border-t border-blue-200 dark:border-blue-700 pt-2">
+              <Mail className="h-4 w-4" />
+              <span>
+                Per E-Mail versandt am {format(new Date(pressRelease.email_sent_at), "dd.MM.yyyy 'um' HH:mm", { locale: de })}
+                {emailSenderName && <> von {emailSenderName}</>}
+              </span>
+            </div>
+          )}
+
+          {/* Send via email button */}
+          {!pressRelease?.email_sent_at && (
+            <div className="border-t border-blue-200 dark:border-blue-700 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-blue-700 border-blue-300 hover:bg-blue-100 dark:text-blue-300 dark:border-blue-600 dark:hover:bg-blue-900"
+                onClick={() => {
+                  navigate(`/documents?tab=emails&action=compose-press&pressReleaseId=${pressRelease.id}`);
+                }}
+              >
+                <Mail className="h-4 w-4" />
+                Per E-Mail an Presse senden
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
