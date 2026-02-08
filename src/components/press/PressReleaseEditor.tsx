@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,6 +86,7 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
   const [showRevisionDialog, setShowRevisionDialog] = useState(false);
   const [showGhostDialog, setShowGhostDialog] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const pendingMentionsRef = useRef<Set<string>>(new Set());
 
   // Check admin role
   useEffect(() => {
@@ -225,6 +226,26 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
 
         if (error) throw error;
         
+        // Send mention notifications
+        if (pendingMentionsRef.current.size > 0 && user) {
+          const mentionPromises = Array.from(pendingMentionsRef.current).map(async (mentionedUserId) => {
+            if (mentionedUserId === user.id) return;
+            try {
+              await supabase.rpc('create_notification', {
+                user_id_param: mentionedUserId,
+                type_name: 'document_mention',
+                title_param: 'Erwähnung in Pressemitteilung',
+                message_param: `Sie wurden in der Pressemitteilung "${title}" erwähnt`,
+                data_param: { documentId: pressRelease.id, documentType: 'press_release' },
+              });
+            } catch (e) {
+              console.error('Failed to send mention notification:', e);
+            }
+          });
+          await Promise.allSettled(mentionPromises);
+          pendingMentionsRef.current.clear();
+        }
+
         await loadPressRelease(pressRelease.id);
         toast({ title: "Gespeichert" });
       } else {
@@ -632,6 +653,9 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
             contentNodes={contentNodes}
             onChange={(newContent, newContentNodes) => {
               handleContentChange(newContent, newContentNodes);
+            }}
+            onMentionInsert={(userId, displayName) => {
+              pendingMentionsRef.current.add(userId);
             }}
             placeholder="Schreiben Sie Ihre Pressemitteilung..."
             editable={editable}

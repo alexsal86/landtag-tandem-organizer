@@ -31,6 +31,7 @@ import { TRANSFORMERS } from '@lexical/markdown';
 
 // Custom nodes
 import { ImageNode } from './nodes/ImageNode';
+import { MentionNode } from './nodes/MentionNode';
 
 // UI
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
@@ -63,6 +64,7 @@ interface EnhancedLexicalEditorProps {
   documentId?: string;
   showToolbar?: boolean;
   editable?: boolean;
+  onMentionInsert?: (userId: string, displayName: string) => void;
   // Legacy props - kept for API compatibility
   enableCollaboration?: boolean;
   useYjsCollaboration?: boolean;
@@ -153,6 +155,7 @@ export default function EnhancedLexicalEditor({
   documentId,
   showToolbar = true,
   editable = true,
+  onMentionInsert,
 }: EnhancedLexicalEditorProps) {
   const initialConfig = useMemo(() => ({
     namespace: 'EnhancedEditor',
@@ -174,6 +177,7 @@ export default function EnhancedLexicalEditor({
       HashtagNode,
       MarkNode,
       ImageNode,
+      MentionNode,
       CommentMarkNode,
     ],
     onError: (error: Error) => {
@@ -235,7 +239,7 @@ export default function EnhancedLexicalEditor({
 
           {/* Custom Plugins */}
           <ImagePlugin />
-          <MentionsPlugin />
+          <MentionsPlugin onMentionInsert={onMentionInsert} />
           <CommentPlugin documentId={documentId} />
           <VersionHistoryPlugin documentId={documentId} />
         </div>

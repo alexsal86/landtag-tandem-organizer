@@ -150,6 +150,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const isUpdatingFromRemoteRef = useRef(false);
   const latestContentRef = useRef<{content: string, contentNodes?: any}>({ content: '' });
+  const pendingMentionsRef = useRef<Set<string>>(new Set());
 
   const statusLabels = {
     draft: 'Entwurf',
@@ -1031,6 +1032,27 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       console.log('=== MANUAL SAVE SUCCESSFUL ===');
       console.log('Saved content_nodes successfully:', !!contentNodesToSave);
       setLastSaved(new Date());
+
+      // Send mention notifications
+      if (pendingMentionsRef.current.size > 0 && user) {
+        const mentionPromises = Array.from(pendingMentionsRef.current).map(async (mentionedUserId) => {
+          if (mentionedUserId === user.id) return; // Don't notify self
+          try {
+            await supabase.rpc('create_notification', {
+              user_id_param: mentionedUserId,
+              type_name: 'document_mention',
+              title_param: 'Erwähnung in Brief',
+              message_param: `Sie wurden in dem Brief "${editedLetter.title || 'Unbenannt'}" erwähnt`,
+              data_param: { documentId: letter?.id, documentType: 'letter' },
+            });
+          } catch (e) {
+            console.error('Failed to send mention notification:', e);
+          }
+        });
+        await Promise.allSettled(mentionPromises);
+        pendingMentionsRef.current.clear();
+      }
+
       onSave();
       toast({
         title: "Brief gespeichert",
@@ -1713,6 +1735,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 <EnhancedLexicalEditor
                   content={editedLetter.content || ''}
                   contentNodes={editedLetter.content_nodes}
+                  onMentionInsert={(userId, displayName) => {
+                    pendingMentionsRef.current.add(userId);
+                  }}
                    onChange={(content, contentNodes) => {
                      if (isUpdatingFromRemoteRef.current || !canEdit) return;
                      
