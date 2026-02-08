@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
-import { sanitizeContent, parseContentSafely } from '@/utils/contentValidation';
+
 import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
@@ -129,7 +129,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [activeUsers, setActiveUsers] = useState<string[]>([]);
-  const [collaborationStatus, setCollaborationStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
   const [isProofreadingMode, setIsProofreadingMode] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [showCommentDialog, setShowCommentDialog] = useState(false);
@@ -138,7 +137,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [collaborators, setCollaborators] = useState<LetterCollaborator[]>([]);
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
   const [showDINPreview, setShowDINPreview] = useState(false);
-  const [showCollabDashboard, setShowCollabDashboard] = useState(false);
+  
   const [senderInfos, setSenderInfos] = useState<any[]>([]);
   const [informationBlocks, setInformationBlocks] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -349,22 +348,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     };
   }, [editedLetter, canEdit, letter?.id, showPagination]); // WICHTIG: showPagination als Dependency hinzugefügt
 
-  // Real-time collaboration status (now handled by Yjs)
-  useEffect(() => {
-    if (!isOpen || !user || !letter?.id) return;
-
-    // Set collaboration as connected since Yjs handles real-time sync
-    setCollaborationStatus('connected');
-    
-    // Clear active users since Yjs awareness will handle this
-    setActiveUsers([]);
-    
-    console.log('[LetterEditor] Yjs collaboration mode - Supabase Realtime disabled');
-
-    return () => {
-      setCollaborationStatus('disconnected');
-    };
-  }, [isOpen, user, letter?.id]);
 
   const fetchContacts = async () => {
     if (!currentTenant) return;
@@ -1099,18 +1082,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   {activeUsers.length}
                 </Badge>
               )}
-              {letter?.id && (
-                <Badge 
-                  variant={collaborationStatus === 'connected' ? 'default' : 'outline'} 
-                  className="text-xs"
-                >
-                  {collaborationStatus === 'connected' ? (
-                    <><Wifi className="h-3 w-3 mr-1" />Online</>
-                  ) : (
-                    <><WifiOff className="h-3 w-3 mr-1" />Offline</>
-                  )}
-                </Badge>
-              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1141,18 +1112,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               Vorschau Brief
             </Button>
 
-            {/* Collaboration Dashboard Toggle */}
-            {letter?.id && (
-              <Button
-                variant={showCollabDashboard ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowCollabDashboard(!showCollabDashboard)}
-                title="Aktivitäts-Stream"
-              >
-                <Activity className="h-4 w-4 mr-2" />
-                Aktivitäten
-              </Button>
-            )}
 
             {/* Proofreading Mode Toggle - nur bei draft/review */}
             {editedLetter.status !== 'approved' && editedLetter.status !== 'sent' && (
@@ -1791,11 +1750,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                    }}
                   placeholder="Hier können Sie Ihren Brief verfassen..."
                   documentId={letter?.id}
-                  enableCollaboration={!!letter?.id}
-                  useYjsCollaboration={true}
                   showToolbar={true}
-                  showCollabDashboard={showCollabDashboard}
-                  onCollabDashboardToggle={() => setShowCollabDashboard(!showCollabDashboard)}
                 />
               </div>
 

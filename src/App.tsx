@@ -25,13 +25,11 @@ import DecisionResponse from "./pages/DecisionResponse";
 import GuestResponse from "./pages/GuestResponse";
 import AppointmentPreparationDetail from "./pages/AppointmentPreparationDetail";
 import Decisions from "./pages/Decisions";
-import YjsCollaborationTestPage from "./pages/YjsCollaborationTestPage";
 import EditorTest from "./pages/EditorTest";
 import EmployeeMeetingDetail from "./pages/EmployeeMeetingDetail";
 import MapsView from "./pages/MapsView";
 
 import { TaskArchiveView } from "./components/TaskArchiveView";
-import CollaborationTest from "./components/CollaborationTest";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -49,69 +47,47 @@ const AppContent = () => {
         setQuickNoteOpen(true);
       }
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   return (
     <>
+      <GlobalSearchCommand />
+      <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
       <Toaster />
       <Sonner />
-      <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
       <BrowserRouter>
-        <GlobalSearchCommand />
         <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/dashboard" element={<Index />} />
-                <Route path="/mywork" element={<Index />} />
-                <Route path="/calendar" element={<Index />} />
-                <Route path="/contacts" element={<Index />} />
-                <Route path="/tasks" element={<Index />} />
-                <Route path="/decisions" element={<Index />} />
-                <Route path="/meetings" element={<Index />} />
-                <Route path="/eventplanning" element={<Index />} />
-                <Route path="/documents" element={<Index />} />
-                <Route path="/knowledge" element={<Index />} />
-                <Route path="/knowledge/:documentId" element={<Index />} />
-                  <Route path="/karten" element={<Index />} />
-                  <Route path="/wahlkreise" element={<Navigate to="/karten?tab=wahlkreise" replace />} />
-                  <Route path="/stadtteile-karlsruhe" element={<Navigate to="/karten?tab=stadtteile" replace />} />
-                  <Route path="/casefiles" element={<Index />} />
-                  <Route path="/chat" element={<Index />} />
-                  <Route path="/settings" element={<Index />} />
-                  <Route path="/time" element={<Index />} />
-                  <Route path="/employee" element={<Index />} />
-                  <Route path="/administration" element={<Index />} />
-                  <Route path="/drucksachen" element={<Index />} />
-                  <Route path="/calls" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                <Route path="/contacts/new" element={<CreateContact />} />
-                <Route path="/contacts/import" element={<ImportContacts />} />
-                <Route path="/appointments/new" element={<Navigate to="/calendar?action=create-appointment" replace />} />
-                <Route path="/tasks/new" element={<CreateTask />} />
-                
-                <Route path="/contacts/:id" element={<ContactDetail />} />
-                <Route path="/contacts/:id/edit" element={<EditContact />} />
-                <Route path="/distribution-lists/new" element={<CreateDistributionList />} />
-                <Route path="/distribution-lists/:id/edit" element={<EditDistributionList />} />
-                <Route path="/profile/edit" element={<EditProfile />} />
-                <Route path="/poll-guest/:pollId" element={<PollGuest />} />
-                <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
-                <Route path="/guest-response/:token" element={<GuestResponse />} />
-                <Route path="/appointment-preparation" element={<AppointmentPreparationDetail />} />
-                <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
-                <Route path="/collaboration-test" element={<CollaborationTest />} />
-                <Route path="/yjs-collaboration-test" element={<YjsCollaborationTestPage />} />
-                <Route path="/editor-test" element={<EditorTest />} />
-                <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </>
-          );
-        };
+          <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/contacts/new" element={<CreateContact />} />
+          <Route path="/contacts/:id" element={<ContactDetail />} />
+          <Route path="/contacts/:id/edit" element={<EditContact />} />
+          <Route path="/tasks/new" element={<CreateTask />} />
+          <Route path="/tasks/archive" element={<TaskArchiveView />} />
+          <Route path="/contacts/import" element={<ImportContacts />} />
+          <Route path="/decisions" element={<Decisions />} />
+          <Route path="/maps" element={<MapsView />} />
+          <Route path="/distribution-lists/new" element={<CreateDistributionList />} />
+          <Route path="/distribution-lists/:id/edit" element={<EditDistributionList />} />
+          <Route path="/profile/edit" element={<EditProfile />} />
+          <Route path="/poll-guest/:pollId" element={<PollGuest />} />
+          <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
+          <Route path="/guest-response/:token" element={<GuestResponse />} />
+          <Route path="/appointment-preparation" element={<AppointmentPreparationDetail />} />
+          <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
+          <Route path="/editor-test" element={<EditorTest />} />
+          <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </>
+    );
+  };
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
