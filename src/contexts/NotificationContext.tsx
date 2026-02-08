@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+// @refresh reset
+import React, { createContext, useContext } from 'react';
 import { useNotifications as useNotificationsHook } from '@/hooks/useNotifications';
 import type { Notification } from '@/hooks/useNotifications';
 
