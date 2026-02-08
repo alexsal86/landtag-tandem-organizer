@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { $getRoot, $getSelection, EditorState, $isRangeSelection } from 'lexical';
+import React, { useCallback, useMemo, useRef } from 'react';
+import { $getRoot, EditorState, $createParagraphNode, $createTextNode } from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -9,10 +9,14 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
+import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
+import { HorizontalRulePlugin } from '@lexical/react/LexicalHorizontalRulePlugin';
+import { ClickableLinkPlugin } from '@lexical/react/LexicalClickableLinkPlugin';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
-import { $generateHtmlFromNodes } from '@lexical/html';
-import { FORMAT_TEXT_COMMAND, TextFormatType, $createParagraphNode, $createTextNode } from 'lexical';
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
+import { AutoLinkPlugin, createLinkMatcherWithRegExp } from '@lexical/react/LexicalAutoLinkPlugin';
+import { useEffect } from 'react';
 
 // Lexical nodes
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
@@ -20,23 +24,36 @@ import { ListNode, ListItemNode } from '@lexical/list';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { LinkNode, AutoLinkNode } from '@lexical/link';
 import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
+import { HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode';
 import { HashtagNode } from '@lexical/hashtag';
 import { MarkNode } from '@lexical/mark';
 import { TRANSFORMERS } from '@lexical/markdown';
 
+// Custom nodes
+import { ImageNode } from './nodes/ImageNode';
+
+// UI
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
 import { EnhancedLexicalToolbar } from './EnhancedLexicalToolbar';
 
 // Plugins
-import { EnhancedTablePlugin } from './plugins/EnhancedTablePlugin';
-import { FixedTablePlugin } from './plugins/FixedTablePlugin';
-import { EnhancedLinkPlugin } from './plugins/EnhancedLinkPlugin';
-import { DraggableBlocksPlugin } from './plugins/DraggableBlocksPlugin';
-import { MentionsPlugin } from './plugins/MentionsPlugin';
 import { ImagePlugin } from './plugins/ImagePlugin';
-import { FileAttachmentPlugin } from './plugins/FileAttachmentPlugin';
 import { CommentPlugin, CommentMarkNode } from './plugins/CommentPlugin';
 import { VersionHistoryPlugin } from './plugins/VersionHistoryPlugin';
+import { MentionsPlugin } from './plugins/MentionsPlugin';
+
+// AutoLink matchers
+const URL_REGEX =
+  /((https?:\/\/(www\.)?)|(www\.))[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/;
+const EMAIL_REGEX =
+  /(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/;
+
+const MATCHERS = [
+  createLinkMatcherWithRegExp(URL_REGEX, (text) =>
+    text.startsWith('http') ? text : `https://${text}`,
+  ),
+  createLinkMatcherWithRegExp(EMAIL_REGEX, (text) => `mailto:${text}`),
+];
 
 interface EnhancedLexicalEditorProps {
   content: string;
@@ -46,43 +63,12 @@ interface EnhancedLexicalEditorProps {
   documentId?: string;
   showToolbar?: boolean;
   editable?: boolean;
-  // Legacy props - kept for API compatibility, no-op now
+  // Legacy props - kept for API compatibility
   enableCollaboration?: boolean;
   useYjsCollaboration?: boolean;
   onConnectionChange?: (connected: boolean) => void;
   showCollabDashboard?: boolean;
   onCollabDashboardToggle?: () => void;
-}
-
-// Keyboard shortcuts plugin
-function KeyboardShortcutsPlugin() {
-  const [editor] = useLexicalComposerContext();
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey) {
-        switch (event.key) {
-          case 'b':
-            event.preventDefault();
-            editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
-            break;
-          case 'i':
-            event.preventDefault();
-            editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic');
-            break;
-          case 'u':
-            event.preventDefault();
-            editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline');
-            break;
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [editor]);
-
-  return null;
 }
 
 // Content Plugin - loads initial content ONCE on mount
@@ -94,14 +80,13 @@ function ContentPlugin({ content, contentNodes }: { content: string; contentNode
     if (!editor || hasLoadedRef.current) return;
     hasLoadedRef.current = true;
 
-    // Priority: JSON contentNodes > plain text content
     if (contentNodes && contentNodes.trim()) {
       try {
         const editorState = editor.parseEditorState(contentNodes);
         editor.setEditorState(editorState);
         return;
       } catch (error) {
-        console.warn('[ContentPlugin] Failed to parse contentNodes, falling back to plain text:', error);
+        console.warn('[ContentPlugin] Failed to parse contentNodes:', error);
       }
     }
 
@@ -114,10 +99,51 @@ function ContentPlugin({ content, contentNodes }: { content: string; contentNode
         root.append(paragraph);
       });
     }
-  }, [editor]); // Only run once on mount
+  }, [editor]);
 
   return null;
 }
+
+const editorTheme = {
+  text: {
+    bold: 'font-bold',
+    italic: 'italic',
+    underline: 'underline',
+    strikethrough: 'line-through',
+    code: 'bg-muted px-1.5 py-0.5 rounded text-sm font-mono',
+    subscript: 'text-[0.8em] align-sub',
+    superscript: 'text-[0.8em] align-super',
+  },
+  heading: {
+    h1: 'text-2xl font-bold mt-4 mb-2',
+    h2: 'text-xl font-bold mt-3 mb-2',
+    h3: 'text-lg font-bold mt-3 mb-1',
+  },
+  quote: 'border-l-4 border-primary pl-4 italic my-2 text-muted-foreground',
+  code: 'bg-muted p-3 rounded font-mono text-sm block my-2 overflow-x-auto',
+  list: {
+    ul: 'list-disc list-outside ml-6',
+    ol: 'list-decimal list-outside ml-6',
+    listitem: 'mb-1',
+    listitemChecked:
+      'list-none relative pl-6 line-through text-muted-foreground before:absolute before:left-0 before:content-["✓"] before:text-primary',
+    listitemUnchecked:
+      'list-none relative pl-6 before:absolute before:left-0 before:content-["☐"]',
+    nested: {
+      listitem: 'list-none',
+    },
+  },
+  link: 'text-primary underline cursor-pointer hover:text-primary/80',
+  table: 'border-collapse border border-border w-full my-2',
+  tableCell: 'border border-border p-2 min-w-[60px] relative',
+  tableCellHeader: 'border border-border p-2 font-bold bg-muted/50',
+  tableRow: 'border-b border-border',
+  hashtag: 'text-primary font-medium',
+  image: 'inline-block max-w-full',
+  horizontalRule: 'my-4 border-t-2 border-border',
+  paragraph: 'mb-1',
+  mark: 'bg-yellow-200 dark:bg-yellow-800',
+};
 
 export default function EnhancedLexicalEditor({
   content,
@@ -131,33 +157,7 @@ export default function EnhancedLexicalEditor({
   const initialConfig = useMemo(() => ({
     namespace: 'EnhancedEditor',
     editable,
-    theme: {
-      text: {
-        bold: 'font-bold',
-        italic: 'italic',
-        underline: 'underline',
-        strikethrough: 'line-through',
-        code: 'bg-muted px-1 rounded text-sm font-mono'
-      },
-      heading: {
-        h1: 'text-2xl font-bold mt-4 mb-2',
-        h2: 'text-xl font-bold mt-3 mb-2',
-        h3: 'text-lg font-bold mt-3 mb-1'
-      },
-      quote: 'border-l-4 border-primary pl-4 italic my-2',
-      code: 'bg-muted p-2 rounded font-mono text-sm block my-2',
-      list: {
-        ul: 'list-disc list-outside ml-4',
-        ol: 'list-decimal list-outside ml-4',
-        listitem: 'mb-1',
-        listitemChecked: 'list-none line-through text-muted-foreground',
-        listitemUnchecked: 'list-none',
-      },
-      table: 'border-collapse border border-border',
-      tableCell: 'border border-border p-2',
-      tableRow: 'border-b border-border',
-      hashtag: 'text-primary font-medium'
-    },
+    theme: editorTheme,
     nodes: [
       HeadingNode,
       QuoteNode,
@@ -170,13 +170,15 @@ export default function EnhancedLexicalEditor({
       TableNode,
       TableCellNode,
       TableRowNode,
+      HorizontalRuleNode,
       HashtagNode,
       MarkNode,
+      ImageNode,
       CommentMarkNode,
     ],
     onError: (error: Error) => {
       console.error('Lexical error:', error);
-    }
+    },
   }), [editable]);
 
   const handleChange = useCallback((editorState: EditorState) => {
@@ -219,22 +221,21 @@ export default function EnhancedLexicalEditor({
           <OnChangePlugin onChange={handleChange} />
           <ContentPlugin content={content} contentNodes={contentNodes} />
 
-          {/* Core Plugins */}
+          {/* Official Lexical Plugins */}
           <HistoryPlugin />
           <ListPlugin />
+          <CheckListPlugin />
           <LinkPlugin />
-          <KeyboardShortcutsPlugin />
+          <HorizontalRulePlugin />
+          <ClickableLinkPlugin newTab />
+          <AutoLinkPlugin matchers={MATCHERS} />
+          <TablePlugin hasCellMerge hasCellBackgroundColor hasTabHandler />
           <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
           <TabIndentationPlugin />
 
-          {/* Enhanced Plugins */}
-          <FixedTablePlugin />
-          <EnhancedTablePlugin />
-          <EnhancedLinkPlugin />
-          <DraggableBlocksPlugin />
-          <MentionsPlugin />
+          {/* Custom Plugins */}
           <ImagePlugin />
-          <FileAttachmentPlugin />
+          <MentionsPlugin />
           <CommentPlugin documentId={documentId} />
           <VersionHistoryPlugin documentId={documentId} />
         </div>

@@ -1,27 +1,31 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode } from 'lexical';
+import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $isTextNode, TextNode } from 'lexical';
 import {
   $createHeadingNode,
   $createQuoteNode,
   HeadingTagType
 } from '@lexical/rich-text';
 import { $createCodeNode } from '@lexical/code';
-import { $createTableNode, $createTableRowNode, $createTableCellNode } from '@lexical/table';
 import { $createLinkNode } from '@lexical/link';
 import {
   FORMAT_TEXT_COMMAND,
+  FORMAT_ELEMENT_COMMAND,
   UNDO_COMMAND,
   REDO_COMMAND,
   TextFormatType,
-  $isElementNode,
+  ElementFormatType,
+  $insertNodes,
 } from 'lexical';
 import {
   INSERT_UNORDERED_LIST_COMMAND,
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_CHECK_LIST_COMMAND,
 } from '@lexical/list';
+import { INSERT_HORIZONTAL_RULE_COMMAND } from '@lexical/react/LexicalHorizontalRuleNode';
+import { INSERT_TABLE_COMMAND } from '@lexical/table';
 import { $setBlocksType } from '@lexical/selection';
+import { $createImageNode } from './nodes/ImageNode';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -35,25 +39,37 @@ import {
   Table,
   CheckSquare,
   AtSign,
-  Hash,
   Undo,
   Redo,
   Type,
-  MessageCircle,
-  History,
   List,
   ListOrdered,
+  Minus,
+  Image,
+  Subscript,
+  Superscript,
+  RemoveFormatting,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { CommentPlugin } from './plugins/CommentPlugin';
 import { VersionHistoryPlugin } from './plugins/VersionHistoryPlugin';
 import FontSizePlugin from './plugins/FontSizePlugin';
 import FontFamilyPlugin from './plugins/FontFamilyPlugin';
+import { TextColorPlugin } from './plugins/TextColorPlugin';
+import { TextAlignmentPlugin } from './plugins/TextAlignmentPlugin';
+import { LineHeightPlugin } from './plugins/LineHeightPlugin';
+import { ImageUploadDialog } from './plugins/ImagePlugin';
+import { Input } from '@/components/ui/input';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
@@ -66,6 +82,10 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
 }) => {
   const [editor] = useLexicalComposerContext();
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
+  const [showImageDialog, setShowImageDialog] = useState(false);
+  const [showTableDialog, setShowTableDialog] = useState(false);
+  const [tableRows, setTableRows] = useState('3');
+  const [tableCols, setTableCols] = useState('3');
 
   // Track active formats
   useEffect(() => {
@@ -79,6 +99,8 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           if (selection.hasFormat('underline')) formats.push('underline');
           if (selection.hasFormat('strikethrough')) formats.push('strikethrough');
           if (selection.hasFormat('code')) formats.push('code');
+          if (selection.hasFormat('subscript')) formats.push('subscript');
+          if (selection.hasFormat('superscript')) formats.push('superscript');
         }
         setActiveFormats(formats);
       });
@@ -125,36 +147,46 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     });
   }, [editor]);
 
-  const insertBulletList = useCallback(() => {
-    editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-  }, [editor]);
-
-  const insertNumberedList = useCallback(() => {
-    editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
-  }, [editor]);
-
-  const insertCheckList = useCallback(() => {
-    editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
-  }, [editor]);
-
-  const insertTable = useCallback((rows: number = 3, cols: number = 3) => {
+  const clearFormatting = useCallback(() => {
     editor.update(() => {
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
-        const tableNode = $createTableNode();
-        for (let i = 0; i < rows; i++) {
-          const rowNode = $createTableRowNode();
-          for (let j = 0; j < cols; j++) {
-            const cellNode = $createTableCellNode(0);
-            cellNode.append($createParagraphNode());
-            rowNode.append(cellNode);
-          }
-          tableNode.append(rowNode);
+        const anchor = selection.anchor;
+        const focus = selection.focus;
+        const nodes = selection.getNodes();
+
+        if (anchor.key === focus.key && anchor.offset === focus.offset) {
+          return;
         }
-        selection.insertNodes([tableNode]);
+
+        nodes.forEach((node) => {
+          if ($isTextNode(node)) {
+            const formats: Array<'bold' | 'italic' | 'underline' | 'strikethrough' | 'code' | 'subscript' | 'superscript'> = 
+              ['bold', 'italic', 'underline', 'strikethrough', 'code', 'subscript', 'superscript'];
+            formats.forEach((format) => {
+              if (node.hasFormat(format)) {
+                node.toggleFormat(format);
+              }
+            });
+            node.setStyle('');
+          }
+        });
+
+        $setBlocksType(selection, () => $createParagraphNode());
       }
     });
   }, [editor]);
+
+  const insertTable = useCallback(() => {
+    const rows = parseInt(tableRows) || 3;
+    const cols = parseInt(tableCols) || 3;
+    editor.dispatchCommand(INSERT_TABLE_COMMAND, {
+      columns: String(cols),
+      rows: String(rows),
+      includeHeaders: true,
+    });
+    setShowTableDialog(false);
+  }, [editor, tableRows, tableCols]);
 
   const insertLink = useCallback(() => {
     const url = prompt('URL eingeben:');
@@ -171,20 +203,15 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     }
   }, [editor]);
 
+  const insertHorizontalRule = useCallback(() => {
+    editor.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND, undefined);
+  }, [editor]);
+
   const insertMention = useCallback(() => {
     editor.update(() => {
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
         selection.insertText('@');
-      }
-    });
-  }, [editor]);
-
-  const insertHashtag = useCallback(() => {
-    editor.update(() => {
-      const selection = $getSelection();
-      if ($isRangeSelection(selection)) {
-        selection.insertText('#');
       }
     });
   }, [editor]);
@@ -200,80 +227,138 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   }
 
   return (
-    <div className="flex flex-wrap gap-1 p-2 border-b bg-background">
-      {/* History */}
-      <div className="flex gap-1 items-center">
-        <Button variant="ghost" size="sm" onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)} className="h-8" title="Rückgängig"><Undo className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="sm" onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)} className="h-8" title="Wiederholen"><Redo className="h-4 w-4" /></Button>
-      </div>
+    <>
+      <div className="flex flex-wrap gap-1 p-2 border-b bg-background items-center">
+        {/* History */}
+        <div className="flex gap-0.5 items-center">
+          <Button variant="ghost" size="sm" onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)} className="h-8 w-8 p-0" title="Rückgängig"><Undo className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="sm" onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)} className="h-8 w-8 p-0" title="Wiederholen"><Redo className="h-4 w-4" /></Button>
+        </div>
 
-      <Separator orientation="vertical" className="h-6 mx-1" />
+        <Separator orientation="vertical" className="h-6 mx-1" />
 
-      {/* Font controls */}
-      <div className="flex gap-1 items-center">
-        <FontFamilyPlugin />
-        <FontSizePlugin />
-      </div>
-
-      <Separator orientation="vertical" className="h-6 mx-1" />
-
-      {/* Text formatting */}
-      <div className="flex gap-1 items-center">
-        <Button variant={activeFormats.includes('bold') ? "default" : "ghost"} size="sm" onClick={() => formatText('bold')} className="h-8" title="Fett"><Bold className="h-4 w-4" /></Button>
-        <Button variant={activeFormats.includes('italic') ? "default" : "ghost"} size="sm" onClick={() => formatText('italic')} className="h-8" title="Kursiv"><Italic className="h-4 w-4" /></Button>
-        <Button variant={activeFormats.includes('underline') ? "default" : "ghost"} size="sm" onClick={() => formatText('underline')} className="h-8" title="Unterstrichen"><Underline className="h-4 w-4" /></Button>
-        <Button variant={activeFormats.includes('strikethrough') ? "default" : "ghost"} size="sm" onClick={() => formatText('strikethrough')} className="h-8" title="Durchgestrichen"><Strikethrough className="h-4 w-4" /></Button>
-        <Button variant={activeFormats.includes('code') ? "default" : "ghost"} size="sm" onClick={() => formatText('code')} className="h-8" title="Code"><Code className="h-4 w-4" /></Button>
-      </div>
-
-      <Separator orientation="vertical" className="h-6 mx-1" />
-
-      {/* Block formatting */}
-      <div className="flex gap-1 items-center">
+        {/* Block type */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8">
-              <Type className="h-4 w-4 mr-1" />
-              Überschriften
+            <Button variant="ghost" size="sm" className="h-8 gap-1 px-2">
+              <Type className="h-4 w-4" />
+              <span className="text-xs">Block</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onClick={formatParagraph}>Normal</DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => formatHeading('h1')}>Überschrift 1</DropdownMenuItem>
             <DropdownMenuItem onClick={() => formatHeading('h2')}>Überschrift 2</DropdownMenuItem>
             <DropdownMenuItem onClick={() => formatHeading('h3')}>Überschrift 3</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={formatQuote}>Zitat</DropdownMenuItem>
+            <DropdownMenuItem onClick={formatCode}>Code-Block</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button variant="ghost" size="sm" onClick={formatQuote} className="h-8" title="Zitat"><Quote className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="sm" onClick={formatCode} className="h-8" title="Code-Block"><Code className="h-4 w-4" /></Button>
+
+        {/* Font controls */}
+        <FontFamilyPlugin />
+        <FontSizePlugin />
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* Text formatting */}
+        <div className="flex gap-0.5 items-center">
+          <Button variant={activeFormats.includes('bold') ? "default" : "ghost"} size="sm" onClick={() => formatText('bold')} className="h-8 w-8 p-0" title="Fett (Ctrl+B)"><Bold className="h-4 w-4" /></Button>
+          <Button variant={activeFormats.includes('italic') ? "default" : "ghost"} size="sm" onClick={() => formatText('italic')} className="h-8 w-8 p-0" title="Kursiv (Ctrl+I)"><Italic className="h-4 w-4" /></Button>
+          <Button variant={activeFormats.includes('underline') ? "default" : "ghost"} size="sm" onClick={() => formatText('underline')} className="h-8 w-8 p-0" title="Unterstrichen (Ctrl+U)"><Underline className="h-4 w-4" /></Button>
+          <Button variant={activeFormats.includes('strikethrough') ? "default" : "ghost"} size="sm" onClick={() => formatText('strikethrough')} className="h-8 w-8 p-0" title="Durchgestrichen"><Strikethrough className="h-4 w-4" /></Button>
+          <Button variant={activeFormats.includes('code') ? "default" : "ghost"} size="sm" onClick={() => formatText('code')} className="h-8 w-8 p-0" title="Inline-Code"><Code className="h-4 w-4" /></Button>
+          <Button variant={activeFormats.includes('subscript') ? "default" : "ghost"} size="sm" onClick={() => formatText('subscript')} className="h-8 w-8 p-0" title="Tiefgestellt"><Subscript className="h-4 w-4" /></Button>
+          <Button variant={activeFormats.includes('superscript') ? "default" : "ghost"} size="sm" onClick={() => formatText('superscript')} className="h-8 w-8 p-0" title="Hochgestellt"><Superscript className="h-4 w-4" /></Button>
+        </div>
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* Colors */}
+        <TextColorPlugin />
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* Alignment */}
+        <TextAlignmentPlugin />
+
+        {/* Line height */}
+        <LineHeightPlugin />
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* Lists */}
+        <div className="flex gap-0.5 items-center">
+          <Button variant="ghost" size="sm" onClick={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)} className="h-8 w-8 p-0" title="Aufzählung"><List className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="sm" onClick={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)} className="h-8 w-8 p-0" title="Nummerierte Liste"><ListOrdered className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="sm" onClick={() => editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined)} className="h-8 w-8 p-0" title="Checkliste"><CheckSquare className="h-4 w-4" /></Button>
+        </div>
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* Insert */}
+        <div className="flex gap-0.5 items-center">
+          <Button variant="ghost" size="sm" onClick={() => setShowTableDialog(true)} className="h-8 w-8 p-0" title="Tabelle"><Table className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="sm" onClick={insertLink} className="h-8 w-8 p-0" title="Link"><Link className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="sm" onClick={insertHorizontalRule} className="h-8 w-8 p-0" title="Horizontale Linie"><Minus className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowImageDialog(true)} className="h-8 w-8 p-0" title="Bild einfügen"><Image className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="sm" onClick={insertMention} className="h-8 w-8 p-0" title="Erwähnung"><AtSign className="h-4 w-4" /></Button>
+        </div>
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* Clear formatting */}
+        <Button variant="ghost" size="sm" onClick={clearFormatting} className="h-8 w-8 p-0" title="Formatierung entfernen"><RemoveFormatting className="h-4 w-4" /></Button>
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* Document features */}
+        <div className="flex gap-0.5 items-center">
+          {documentId && <CommentPlugin documentId={documentId} />}
+          {documentId && <VersionHistoryPlugin documentId={documentId} />}
+        </div>
       </div>
 
-      <Separator orientation="vertical" className="h-6 mx-1" />
+      {/* Table insert dialog */}
+      {showTableDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowTableDialog(false)}>
+          <div className="bg-background border rounded-lg p-4 space-y-3 w-64" onClick={(e) => e.stopPropagation()}>
+            <h4 className="font-medium text-sm">Tabelle einfügen</h4>
+            <div className="flex gap-2 items-center">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground">Zeilen</label>
+                <Input type="number" value={tableRows} onChange={(e) => setTableRows(e.target.value)} min="1" max="20" className="h-8" />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground">Spalten</label>
+                <Input type="number" value={tableCols} onChange={(e) => setTableCols(e.target.value)} min="1" max="10" className="h-8" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={insertTable}>Einfügen</Button>
+              <Button size="sm" variant="outline" onClick={() => setShowTableDialog(false)}>Abbrechen</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Lists */}
-      <div className="flex gap-1 items-center">
-        <Button variant="ghost" size="sm" onClick={insertBulletList} className="h-8" title="Aufzählung"><List className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="sm" onClick={insertNumberedList} className="h-8" title="Nummerierte Liste"><ListOrdered className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="sm" onClick={insertCheckList} className="h-8" title="Checkliste"><CheckSquare className="h-4 w-4" /></Button>
-      </div>
-
-      <Separator orientation="vertical" className="h-6 mx-1" />
-
-      {/* Insert */}
-      <div className="flex gap-1 items-center">
-        <Button variant="ghost" size="sm" onClick={() => insertTable()} className="h-8" title="Tabelle"><Table className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="sm" onClick={insertLink} className="h-8" title="Link"><Link className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="sm" onClick={insertMention} className="h-8" title="Erwähnung"><AtSign className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="sm" onClick={insertHashtag} className="h-8" title="Hashtag"><Hash className="h-4 w-4" /></Button>
-      </div>
-
-      <Separator orientation="vertical" className="h-6 mx-1" />
-
-      {/* Collaboration features */}
-      <div className="flex gap-1 items-center">
-        {documentId && <CommentPlugin documentId={documentId} />}
-        {documentId && <VersionHistoryPlugin documentId={documentId} />}
-      </div>
-    </div>
+      {/* Image insert dialog */}
+      {showImageDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <ImageUploadDialog
+            onInsert={(payload) => {
+              editor.update(() => {
+                const imageNode = $createImageNode(payload);
+                $insertNodes([imageNode]);
+              });
+              setShowImageDialog(false);
+            }}
+            onCancel={() => setShowImageDialog(false)}
+          />
+        </div>
+      )}
+    </>
   );
 };
