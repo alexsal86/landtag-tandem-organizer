@@ -54,11 +54,11 @@ const AppContent = () => {
 
   return (
     <>
-      <GlobalSearchCommand />
-      <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <GlobalSearchCommand />
+        <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
