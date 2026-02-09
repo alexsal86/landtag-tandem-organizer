@@ -9277,6 +9277,10 @@ export type Database = {
         Args: { message_id_param: string }
         Returns: boolean
       }
+      check_and_archive_decision: {
+        Args: { p_decision_id: string }
+        Returns: undefined
+      }
       create_default_checklist_items:
         | { Args: { planning_id: string }; Returns: undefined }
         | {

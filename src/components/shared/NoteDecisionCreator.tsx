@@ -111,29 +111,36 @@ export function NoteDecisionCreator({
       let defaultIds: string[] = [];
       try {
         const stored = localStorage.getItem('default_decision_participants');
-        if (stored) defaultIds = JSON.parse(stored);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) defaultIds = parsed;
+        }
       } catch (e) {
         console.error('Error loading default participants:', e);
       }
 
       if (defaultIds.length > 0) {
-        // Use stored default participants (filter to valid tenant members)
+        // Use stored default participants (filter to valid tenant members, exclude self)
         const validDefaults = defaultIds.filter(id => userIds.includes(id) && id !== user?.id);
         if (validDefaults.length > 0) {
           setSelectedUsers(validDefaults);
+          return; // Early return - don't fall through to Abgeordneter fallback
         }
-      } else {
-        // Fallback: Auto-select Abgeordneter
-        const { data: abgeordneterRoles } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "abgeordneter")
-          .in("user_id", userIds);
+        // If all defaults were invalid, fall through to Abgeordneter fallback
+      }
+      
+      // Fallback: Auto-select Abgeordneter
+      const { data: abgeordneterRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "abgeordneter")
+        .in("user_id", userIds);
 
-        if (abgeordneterRoles && abgeordneterRoles.length > 0) {
-          const abgeordneterIds = abgeordneterRoles
-            .map(r => r.user_id)
-            .filter(id => id !== user?.id);
+      if (abgeordneterRoles && abgeordneterRoles.length > 0) {
+        const abgeordneterIds = abgeordneterRoles
+          .map(r => r.user_id)
+          .filter(id => id !== user?.id);
+        if (abgeordneterIds.length > 0) {
           setSelectedUsers(abgeordneterIds);
         }
       }
