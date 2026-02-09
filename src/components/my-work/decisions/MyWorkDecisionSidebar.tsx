@@ -6,10 +6,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { MessageCircle, Bell, ChevronRight, Send } from "lucide-react";
+import { MessageCircle, Bell, Send, AtSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
+import { de } from "date-fns/locale";
+import { SidebarDiscussionComment } from "./types";
 
 interface OpenQuestion {
   id: string;
@@ -35,8 +38,10 @@ interface NewComment {
 interface MyWorkDecisionSidebarProps {
   openQuestions: OpenQuestion[];
   newComments: NewComment[];
+  discussionComments?: SidebarDiscussionComment[];
   onQuestionClick: (decisionId: string) => void;
   onCommentClick: (decisionId: string) => void;
+  onDiscussionClick?: (decisionId: string) => void;
   onResponseSent?: () => void;
 }
 
@@ -48,15 +53,17 @@ const getInitials = (name: string | null) => {
 export function MyWorkDecisionSidebar({
   openQuestions,
   newComments,
+  discussionComments = [],
   onQuestionClick,
   onCommentClick,
+  onDiscussionClick,
   onResponseSent,
 }: MyWorkDecisionSidebarProps) {
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [responseText, setResponseText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const totalItems = openQuestions.length + newComments.length;
+  const totalItems = openQuestions.length + newComments.length + discussionComments.length;
 
   const handleSendResponse = async (responseId: string) => {
     if (!responseText.trim()) return;
@@ -220,6 +227,48 @@ export function MyWorkDecisionSidebar({
                             <RichTextDisplay content={c.comment} className="text-[9px]" />
                           </div>
                         )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Discussion Comments */}
+                {discussionComments.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1 text-[10px] font-medium text-blue-600">
+                      <AtSign className="h-3 w-3" />
+                      <span>Diskussion</span>
+                      <Badge variant="outline" className="text-blue-600 border-blue-600 text-[9px] px-1 py-0">
+                        {discussionComments.length}
+                      </Badge>
+                    </div>
+                    {discussionComments.slice(0, 5).map((dc) => (
+                      <button
+                        key={dc.id}
+                        onClick={() => onDiscussionClick?.(dc.decisionId)}
+                        className="w-full text-left p-2 rounded-md border-l-2 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors"
+                      >
+                        <p className="text-xs font-semibold truncate">{dc.decisionTitle}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Avatar className="h-3.5 w-3.5">
+                            {dc.authorAvatarUrl && <AvatarImage src={dc.authorAvatarUrl} />}
+                            <AvatarFallback className="text-[7px]" style={{ backgroundColor: dc.authorBadgeColor || undefined }}>
+                              {getInitials(dc.authorName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-[9px] text-muted-foreground">{dc.authorName || 'Unbekannt'}</span>
+                          {dc.isMention && (
+                            <Badge variant="outline" className="text-[7px] px-1 py-0 text-blue-600 border-blue-400">
+                              @Erwähnt
+                            </Badge>
+                          )}
+                          <span className="text-[9px] text-muted-foreground ml-auto">
+                            {formatDistanceToNow(new Date(dc.createdAt), { addSuffix: true, locale: de })}
+                          </span>
+                        </div>
+                        <div className="text-[9px] text-muted-foreground mt-1 line-clamp-1">
+                          <RichTextDisplay content={dc.content} className="text-[9px]" />
+                        </div>
                       </button>
                     ))}
                   </div>

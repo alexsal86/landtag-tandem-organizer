@@ -60,6 +60,18 @@ export interface SidebarNewComment {
   comment: string | null;
 }
 
+export interface SidebarDiscussionComment {
+  id: string;
+  decisionId: string;
+  decisionTitle: string;
+  authorName: string | null;
+  authorBadgeColor: string | null;
+  authorAvatarUrl: string | null;
+  content: string;
+  createdAt: string;
+  isMention: boolean;
+}
+
 export const getResponseSummary = (participants: MyWorkDecision['participants'] = []) => {
   const yesCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'yes').length;
   const noCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'no').length;
