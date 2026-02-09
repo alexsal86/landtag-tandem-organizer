@@ -870,6 +870,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
               </CardContent>
             </Card>
           );
+        case "expense":
+          return <ExpenseManagement />;
         default:
           return <GeneralSettings />;
       }
@@ -1875,8 +1877,6 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
               </CardContent>
             </Card>
           );
-        case "expense":
-          return <ExpenseManagement />;
         default:
           return <PartyAssociationsAdmin />;
       }

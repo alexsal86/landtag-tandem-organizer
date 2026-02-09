@@ -401,10 +401,10 @@ serve(async (req) => {
     }
 
     if (!subscriptions?.length) {
-      console.log('📋 No active subscriptions found');
+      console.log(`📋 No active subscriptions found for user: ${targetUserId || 'ALL'}. ${isFromTrigger ? '(triggered by DB insert — user likely has not enabled push notifications in settings)' : ''}`);
       return new Response(JSON.stringify({
         success: true, sent: 0, failed: 0, total_subscriptions: 0,
-        message: 'No active push subscriptions found'
+        message: `No active push subscriptions found${targetUserId ? ` for user ${targetUserId}` : ''}`
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

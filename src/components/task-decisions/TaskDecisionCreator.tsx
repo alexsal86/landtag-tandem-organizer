@@ -69,10 +69,13 @@ export const TaskDecisionCreator = ({
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState(DEFAULT_TEMPLATE_ID);
-  const [customOptions, setCustomOptions] = useState<ResponseOption[]>([
-    { key: "option_1", label: "Option 1", color: "blue" },
-    { key: "option_2", label: "Option 2", color: "green" }
-  ]);
+  const defaultTemplate = getTemplateById(DEFAULT_TEMPLATE_ID);
+  const [customOptions, setCustomOptions] = useState<ResponseOption[]>(
+    defaultTemplate ? defaultTemplate.options.map(o => ({ ...o })) : [
+      { key: "option_1", label: "Option 1", color: "blue" },
+      { key: "option_2", label: "Option 2", color: "green" }
+    ]
+  );
   const { toast } = useToast();
   
   // Load profiles when controlled dialog opens; reset when closing
