@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, StickyNote, ListTodo, Trash } from 'lucide-react';
+import { CalendarDays, StickyNote, ListTodo, Trash, Cake } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
+import { BirthdayAgendaItem } from './BirthdayAgendaItem';
 import { cn } from '@/lib/utils';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 import { format } from 'date-fns';
@@ -26,14 +27,16 @@ interface ProfileInfo {
 }
 
 interface SystemAgendaItemProps {
-  systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks';
+  systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays';
   meetingDate?: string | Date;
   meetingId?: string;
   allowStarring?: boolean;
   linkedQuickNotes?: any[];
   linkedTasks?: LinkedTask[];
   profiles?: ProfileInfo[];
+  resultText?: string | null;
   onUpdateNoteResult?: (noteId: string, result: string) => void;
+  onUpdateResult?: (result: string) => void;
   onDelete?: () => void;
   className?: string;
   isEmbedded?: boolean;
@@ -65,7 +68,9 @@ export function SystemAgendaItem({
   linkedQuickNotes = [],
   linkedTasks = [],
   profiles,
+  resultText,
   onUpdateNoteResult,
+  onUpdateResult,
   onDelete,
   className,
   isEmbedded = false,
@@ -77,6 +82,7 @@ export function SystemAgendaItem({
       case 'upcoming_appointments': return 'border-l-blue-500';
       case 'quick_notes': return 'border-l-amber-500';
       case 'tasks': return 'border-l-green-500';
+      case 'birthdays': return 'border-l-pink-500';
       default: return 'border-l-muted';
     }
   };
@@ -86,6 +92,7 @@ export function SystemAgendaItem({
       case 'upcoming_appointments': return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800';
       case 'quick_notes': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
       case 'tasks': return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800';
+      case 'birthdays': return 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950 dark:text-pink-300 dark:border-pink-800';
       default: return '';
     }
   };
@@ -95,6 +102,7 @@ export function SystemAgendaItem({
       case 'upcoming_appointments': return <CalendarDays className="h-4 w-4 text-blue-500" />;
       case 'quick_notes': return <StickyNote className="h-4 w-4 text-amber-500" />;
       case 'tasks': return <ListTodo className="h-4 w-4 text-green-500" />;
+      case 'birthdays': return <Cake className="h-4 w-4 text-pink-500" />;
       default: return null;
     }
   };
@@ -104,6 +112,7 @@ export function SystemAgendaItem({
       case 'upcoming_appointments': return 'Kommende Termine';
       case 'quick_notes': return 'Meine Notizen';
       case 'tasks': return 'Aufgaben';
+      case 'birthdays': return 'Geburtstage';
       default: return '';
     }
   };
@@ -113,6 +122,7 @@ export function SystemAgendaItem({
       case 'upcoming_appointments': return <CalendarDays className="h-3 w-3 mr-1" />;
       case 'quick_notes': return <StickyNote className="h-3 w-3 mr-1" />;
       case 'tasks': return <ListTodo className="h-3 w-3 mr-1" />;
+      case 'birthdays': return <Cake className="h-3 w-3 mr-1" />;
       default: return null;
     }
   };
@@ -228,6 +238,19 @@ export function SystemAgendaItem({
           )}
         </CardContent>
       </Card>
+    );
+  }
+  if (systemType === 'birthdays') {
+    return (
+      <BirthdayAgendaItem
+        meetingDate={meetingDate}
+        meetingId={meetingId}
+        resultText={resultText}
+        onUpdateResult={onUpdateResult}
+        onDelete={onDelete}
+        className={className}
+        isEmbedded={isEmbedded}
+      />
     );
   }
 

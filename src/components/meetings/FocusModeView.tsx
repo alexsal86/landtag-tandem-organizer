@@ -430,6 +430,35 @@ export function FocusModeView({
             onUpdateResult(currentItem.id, 'carry_over_to_next', !currentItem.carry_over_to_next);
           }
           break;
+        case 's':
+          e.preventDefault();
+          // Toggle star on current appointment
+          if (currentNavigable?.sourceType === 'appointment' && onToggleStar && currentNavigable.sourceData) {
+            onToggleStar(currentNavigable.sourceData);
+          }
+          break;
+        case 'n':
+          e.preventDefault();
+          {
+            // Jump to next appointment
+            const nextApptIdx = allNavigableItems.findIndex(
+              (nav, i) => i > flatFocusIndex && nav.sourceType === 'appointment'
+            );
+            if (nextApptIdx !== -1) setFlatFocusIndex(nextApptIdx);
+          }
+          break;
+        case 'p':
+          e.preventDefault();
+          {
+            // Jump to previous appointment
+            for (let i = flatFocusIndex - 1; i >= 0; i--) {
+              if (allNavigableItems[i].sourceType === 'appointment') {
+                setFlatFocusIndex(i);
+                break;
+              }
+            }
+          }
+          break;
         case 'Escape':
           e.preventDefault();
           onClose();
@@ -919,6 +948,18 @@ export function FocusModeView({
               <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
                 <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">a</kbd>
                 <span className="text-sm">Punkt zuweisen</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">s</kbd>
+                <span className="text-sm">Termin markieren (Stern)</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">n</kbd>
+                <span className="text-sm">Nächster Termin</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
+                <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">p</kbd>
+                <span className="text-sm">Vorheriger Termin</span>
               </div>
               <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
                 <kbd className="px-2 py-1 bg-background rounded text-xs font-mono border">?</kbd>

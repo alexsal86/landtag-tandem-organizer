@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote, MoveVertical, ArrowUp, ArrowDown, ChevronUp, ChevronDown, CornerUpLeft, ListTodo } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote, MoveVertical, ArrowUp, ArrowDown, ChevronUp, ChevronDown, CornerUpLeft, ListTodo, Cake } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
@@ -488,11 +488,12 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       case 'upcoming_appointments': return 'Kommende Termine';
       case 'quick_notes': return 'Meine Notizen';
       case 'tasks': return 'Aufgaben';
+      case 'birthdays': return 'Geburtstage';
       default: return systemType;
     }
   };
 
-  const addSystemTemplateItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks', parentIndex?: number) => {
+  const addSystemTemplateItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays', parentIndex?: number) => {
     if (!selectedTemplate) return;
     
     // Check if this system type already exists in main items OR in children
@@ -1227,6 +1228,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                           ? 'border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20'
                                           : item.system_type === 'tasks'
                                           ? 'border-l-4 border-l-green-500 bg-green-50/50 dark:bg-green-950/20'
+                                          : item.system_type === 'birthdays'
+                                          ? 'border-l-4 border-l-pink-500 bg-pink-50/50 dark:bg-pink-950/20'
                                           : ''
                                         : ''
                                     }`}>
@@ -1243,6 +1246,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                             <StickyNote className="h-4 w-4 text-amber-600" />
                                           ) : item.system_type === 'tasks' ? (
                                             <ListTodo className="h-4 w-4 text-green-600" />
+                                          ) : item.system_type === 'birthdays' ? (
+                                            <Cake className="h-4 w-4 text-pink-600" />
                                           ) : null}
                                           <span className="font-medium">{item.title}</span>
                                           <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
@@ -1388,6 +1393,9 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                               {child.system_type === 'tasks' && (
                                                                 <ListTodo className="h-3 w-3 text-green-600 shrink-0" />
                                                               )}
+                                                              {child.system_type === 'birthdays' && (
+                                                                <Cake className="h-3 w-3 text-pink-600 shrink-0" />
+                                                              )}
                                                               {child.title}
                                                             </span>
                                                             <CornerUpLeft className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -1475,6 +1483,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                     ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
                                                     : child.system_type === 'tasks'
                                                     ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                                                    : child.system_type === 'birthdays'
+                                                    ? 'bg-pink-50 border-pink-200 dark:bg-pink-950/30 dark:border-pink-800'
                                                     : 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
                                                   : 'bg-muted/30 border-border'
                                               }`}
@@ -1536,6 +1546,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                         <CalendarDays className="h-3.5 w-3.5 text-blue-600 shrink-0" />
                                                       ) : child.system_type === 'tasks' ? (
                                                         <ListTodo className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                                      ) : child.system_type === 'birthdays' ? (
+                                                        <Cake className="h-3.5 w-3.5 text-pink-600 shrink-0" />
                                                       ) : (
                                                         <StickyNote className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                                                       )}

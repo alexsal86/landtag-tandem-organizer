@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe, Star, MessageSquarePlus, ChevronRight } from "lucide-react";
+import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe, Star, MessageSquarePlus, ChevronRight, Cake } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { format, startOfDay, endOfDay, addDays } from "date-fns";
@@ -1261,54 +1261,75 @@ export function MeetingsView() {
       }
 
       // Step 3: Create standalone tasks for items with assigned_to AND result_text
+      // Also handle items that already have a task_id - append result to existing task
       const itemsWithAssignment = agendaItemsData?.filter(item => 
-        item.assigned_to && item.result_text?.trim() && !item.task_id
+        item.assigned_to && item.result_text?.trim()
       ) || [];
       
       for (const item of itemsWithAssignment) {
         try {
-          // Handle assigned_to as array - tasks table only accepts single string, use first assignee
-          let assignedUserId: string | null = null;
-          if (Array.isArray(item.assigned_to)) {
-            const flattened = item.assigned_to.flat().filter(Boolean) as string[];
-            assignedUserId = flattened[0] || null;
-          } else if (typeof item.assigned_to === 'string') {
-            assignedUserId = item.assigned_to;
+          if (item.task_id) {
+            // Item already has a linked task - append result to existing task description
+            const { data: existingTask } = await supabase
+              .from('tasks')
+              .select('description')
+              .eq('id', item.task_id)
+              .maybeSingle();
+
+            if (existingTask) {
+              const meetingResult = `\n\n--- Ergebnis aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}: ---\n${item.result_text}`;
+              await supabase
+                .from('tasks')
+                .update({
+                  description: (existingTask.description || '') + meetingResult,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', item.task_id);
+              console.log(`Updated existing task with result for: ${item.title}`);
+            }
+          } else {
+            // No linked task - create new standalone task
+            let assignedUserId: string | null = null;
+            if (Array.isArray(item.assigned_to)) {
+              const flattened = item.assigned_to.flat().filter(Boolean) as string[];
+              assignedUserId = flattened[0] || null;
+            } else if (typeof item.assigned_to === 'string') {
+              assignedUserId = item.assigned_to;
+            }
+            
+            const assigneeNames = Array.isArray(item.assigned_to) 
+              ? item.assigned_to.flat().filter(Boolean).map(id => {
+                  const profile = profiles.find(p => p.user_id === id);
+                  return profile?.display_name || 'Unbekannt';
+                }).join(', ')
+              : '';
+            
+            const multiAssigneeNote = assigneeNames && item.assigned_to && item.assigned_to.length > 1
+              ? `\n\n**Zuständige:** ${assigneeNames}`
+              : '';
+            
+            const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Ergebnis:**\n${item.result_text}${item.description ? `\n\n**Details:**\n${item.description}` : ''}${item.notes ? `\n\n**Notizen:**\n${item.notes}` : ''}${multiAssigneeNote}`;
+            
+            const { error: taskInsertError } = await supabase
+              .from('tasks')
+              .insert({
+                user_id: user.id,
+                title: item.title,
+                description: taskDescription,
+                priority: 'medium',
+                category: 'meeting',
+                status: 'todo',
+                assigned_to: assignedUserId,
+                tenant_id: currentTenant?.id || '',
+                due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+              });
+            
+            if (taskInsertError) {
+              console.error('Error inserting task for assigned item:', taskInsertError);
+            }
+            
+            console.log(`Created task for assigned item: ${item.title}`);
           }
-          
-          // Build description with all assignees listed if multiple
-          const assigneeNames = Array.isArray(item.assigned_to) 
-            ? item.assigned_to.flat().filter(Boolean).map(id => {
-                const profile = profiles.find(p => p.user_id === id);
-                return profile?.display_name || 'Unbekannt';
-              }).join(', ')
-            : '';
-          
-          const multiAssigneeNote = assigneeNames && item.assigned_to && item.assigned_to.length > 1
-            ? `\n\n**Zuständige:** ${assigneeNames}`
-            : '';
-          
-          const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Ergebnis:**\n${item.result_text}${item.description ? `\n\n**Details:**\n${item.description}` : ''}${item.notes ? `\n\n**Notizen:**\n${item.notes}` : ''}${multiAssigneeNote}`;
-          
-          const { error: taskInsertError } = await supabase
-            .from('tasks')
-            .insert({
-              user_id: user.id,
-              title: item.title,
-              description: taskDescription,
-              priority: 'medium',
-              category: 'meeting',
-              status: 'todo',
-              assigned_to: assignedUserId,
-              tenant_id: currentTenant?.id || '',
-              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-            });
-          
-          if (taskInsertError) {
-            console.error('Error inserting task for assigned item:', taskInsertError);
-          }
-          
-          console.log(`Created task for assigned item: ${item.title}`);
         } catch (taskCreateError) {
           console.error('Error creating task for assigned item (non-fatal):', taskCreateError);
         }
@@ -1324,10 +1345,11 @@ export function MeetingsView() {
             title: `Nachbereitung ${meeting.title} vom ${format(new Date(), 'dd.MM.yyyy')}`,
             description: `Nachbereitung der Besprechung "${meeting.title}"`,
             priority: 'medium',
-            category: 'personal',
+            category: 'meeting',
             status: 'todo',
             tenant_id: currentTenant?.id || '',
             due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            assigned_to: user.id,
           })
           .select()
           .single();
@@ -1343,8 +1365,10 @@ export function MeetingsView() {
         const subtasksToCreate = [];
         
         for (const item of agendaItemsData) {
-          // Skip items that already have tasks or were assigned (already created standalone tasks)
-          if (item.task_id || (item.assigned_to && item.result_text?.trim())) continue;
+          // Skip items that were assigned (already handled in Step 3, including those with task_id)
+          if (item.assigned_to && item.result_text?.trim()) continue;
+          // Skip items with task_id that were already handled in Step 3
+          if (item.task_id) continue;
           
           if (item.result_text?.trim()) {
             let description = item.title;
@@ -1362,30 +1386,6 @@ export function MeetingsView() {
               order_index: subtasksToCreate.length,
               due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
             });
-          }
-          
-          // Update existing linked tasks with results
-          if (item.task_id && item.result_text?.trim()) {
-            try {
-              const { data: existingTask } = await supabase
-                .from('tasks')
-                .select('description')
-                .eq('id', item.task_id)
-                .maybeSingle();
-
-              if (existingTask) {
-                const meetingResult = `\n\n--- Ergänzung aus Besprechung "${meeting.title}": ---\n${item.result_text}`;
-                await supabase
-                  .from('tasks')
-                  .update({
-                    description: (existingTask.description || '') + meetingResult,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('id', item.task_id);
-              }
-            } catch (updateError) {
-              console.error('Error updating linked task (non-fatal):', updateError);
-            }
           }
         }
         
@@ -1493,43 +1493,44 @@ export function MeetingsView() {
               .eq('meeting_id', meeting.id);
             
             const participantIds = participants?.map(p => p.user_id) || [user.id];
-            const firstParticipant = participantIds[0] || user.id;
-            
-            const participantNames = participantIds.map(id => {
-              const profile = profiles.find(p => p.user_id === id);
-              return profile?.display_name || 'Unbekannt';
-            }).join(', ');
-            
-            const { data: apptTask } = await supabase
-              .from('tasks')
-              .insert({
-                user_id: user.id,
-                title: `Vorbereitung: Markierte Termine aus ${meeting.title}`,
-                description: `Folgende Termine wurden in der Besprechung als wichtig markiert.\n\n**Zuständige:** ${participantNames}`,
-                priority: 'medium',
-                category: 'meeting',
-                status: 'todo',
-                assigned_to: firstParticipant,
-                tenant_id: currentTenant?.id || '',
-                due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-              })
-              .select()
-              .single();
-            
-            if (apptTask) {
-              const subtasks = allAppointments.map((apt, idx) => ({
-                task_id: apptTask.id,
-                user_id: user.id,
-                description: `${apt.title} (${format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`,
-                assigned_to: null,
-                is_completed: false,
-                order_index: idx,
-              }));
-              
-              await supabase.from('subtasks').insert(subtasks);
+            // Ensure the meeting creator is also included
+            if (!participantIds.includes(user.id)) {
+              participantIds.push(user.id);
             }
             
-            console.log(`Created starred appointments task with ${allAppointments.length} subtasks`);
+            // Create one task per participant with the same subtasks
+            for (const participantId of participantIds) {
+              const { data: apptTask } = await supabase
+                .from('tasks')
+                .insert({
+                  user_id: user.id,
+                  title: `Vorbereitung: Markierte Termine aus ${meeting.title}`,
+                  description: `Folgende Termine wurden in der Besprechung als wichtig markiert.`,
+                  priority: 'medium',
+                  category: 'meeting',
+                  status: 'todo',
+                  assigned_to: participantId,
+                  tenant_id: currentTenant?.id || '',
+                  due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+                })
+                .select()
+                .single();
+              
+              if (apptTask) {
+                const subtasks = allAppointments.map((apt, idx) => ({
+                  task_id: apptTask.id,
+                  user_id: user.id,
+                  description: `${apt.title} (${format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`,
+                  assigned_to: null,
+                  is_completed: false,
+                  order_index: idx,
+                }));
+                
+                await supabase.from('subtasks').insert(subtasks);
+              }
+            }
+            
+            console.log(`Created starred appointments tasks for ${participantIds.length} participants with ${allAppointments.length} subtasks each`);
           }
         }
       } catch (starredError) {
@@ -1825,7 +1826,7 @@ export function MeetingsView() {
     setAgendaItems(next);
   };
 
-  const addSystemAgendaItem = async (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks', parentItem?: AgendaItem) => {
+  const addSystemAgendaItem = async (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays', parentItem?: AgendaItem) => {
     if (!selectedMeeting?.id) return;
     
     // Check if already exists
@@ -1841,7 +1842,8 @@ export function MeetingsView() {
     const titles: Record<string, string> = {
       'upcoming_appointments': 'Kommende Termine',
       'quick_notes': 'Meine Notizen',
-      'tasks': 'Aufgaben'
+      'tasks': 'Aufgaben',
+      'birthdays': 'Geburtstage'
     };
 
     try {
@@ -4165,6 +4167,15 @@ export function MeetingsView() {
                           <ListTodo className="h-4 w-4 mr-2" />
                           Aufgaben
                         </Button>
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start border-pink-200 text-pink-700 dark:border-pink-800 dark:text-pink-400"
+                          onClick={() => addSystemAgendaItem('birthdays')}
+                          disabled={agendaItems.some(i => i.system_type === 'birthdays')}
+                        >
+                          <Cake className="h-4 w-4 mr-2" />
+                          Geburtstage
+                        </Button>
                       </div>
                     </PopoverContent>
                   </Popover>
@@ -4213,13 +4224,15 @@ export function MeetingsView() {
                                     </div>
                                     <div className="flex-1">
                                       <SystemAgendaItem 
-                                        systemType={item.system_type as 'upcoming_appointments' | 'quick_notes' | 'tasks'}
+                                        systemType={item.system_type as 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays'}
                                         meetingDate={selectedMeeting?.meeting_date}
                                         meetingId={selectedMeeting?.id}
                                         allowStarring={true}
                                         linkedQuickNotes={linkedQuickNotes}
                                         linkedTasks={meetingLinkedTasks}
                                         profiles={profiles}
+                                        resultText={item.result_text}
+                                        onUpdateResult={item.system_type === 'birthdays' ? (result: string) => updateAgendaItem(index, 'result_text', result) : undefined}
                                         isEmbedded={true}
                                         defaultCollapsed={item.system_type === 'upcoming_appointments'}
                                         onDelete={hasEditPermission ? () => deleteAgendaItem(item, index) : undefined}
@@ -4329,6 +4342,15 @@ export function MeetingsView() {
                                                     >
                                                       <ListTodo className="h-4 w-4 mr-2" />
                                                       Aufgaben
+                                                    </Button>
+                                                    <Button 
+                                                      variant="outline" 
+                                                      className="w-full justify-start border-pink-200 text-pink-700 dark:border-pink-800 dark:text-pink-400"
+                                                      onClick={() => addSystemAgendaItem('birthdays', item)}
+                                                      disabled={agendaItems.some(i => i.system_type === 'birthdays')}
+                                                    >
+                                                      <Cake className="h-4 w-4 mr-2" />
+                                                      Geburtstage
                                                     </Button>
                                                   </div>
                                                 </div>
