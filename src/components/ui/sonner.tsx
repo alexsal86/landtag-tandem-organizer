@@ -18,9 +18,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       closeButton={true}
       duration={preferences.persist ? Infinity : preferences.duration}
       toastOptions={{
-        className: isLarge ? 'toast-large' : '',
         classNames: {
-          toast: "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
+          toast: `group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg ${isLarge ? 'toast-large' : ''}`,
           description: "group-[.toast]:text-muted-foreground",
           actionButton:
             "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
