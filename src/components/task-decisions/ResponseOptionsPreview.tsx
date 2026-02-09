@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
-import { Check, X, MessageCircle, Star, Circle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Check, X, MessageCircle, Star, Circle, Info } from "lucide-react";
 import { ResponseOption, getColorClasses } from "@/lib/decisionTemplates";
 
 interface ResponseOptionsPreviewProps {
@@ -32,7 +33,7 @@ export const ResponseOptionsPreview = ({ options }: ResponseOptionsPreviewProps)
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {
           const colorClasses = getColorClasses(option.color);
-          return (
+          const badge = (
             <Badge
               key={option.key}
               variant="outline"
@@ -41,8 +42,24 @@ export const ResponseOptionsPreview = ({ options }: ResponseOptionsPreviewProps)
               {option.icon && getIcon(option.icon)}
               {!option.icon && <Circle className="h-3 w-3 mr-1" />}
               <span className="ml-1">{option.label || "..."}</span>
+              {option.description && <Info className="h-2.5 w-2.5 ml-1 opacity-50" />}
             </Badge>
           );
+
+          if (option.description) {
+            return (
+              <TooltipProvider key={option.key}>
+                <Tooltip>
+                  <TooltipTrigger asChild>{badge}</TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">{option.description}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
+          }
+
+          return badge;
         })}
       </div>
     </div>

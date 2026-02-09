@@ -345,6 +345,9 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
             
             const hasResponded = currentUserParticipant.responses && currentUserParticipant.responses.length > 0;
             
+            // Don't show voting section for creator
+            if (isCreator) return null;
+            
             return (
               <Card className="border-primary/30 bg-primary/5">
                 <CardHeader className="pb-2">
@@ -359,6 +362,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                     participantId={currentUserParticipant.id}
                     onResponseSubmitted={loadDecisionDetails}
                     hasResponded={hasResponded}
+                    creatorId={decision.created_by}
                   />
                 </CardContent>
               </Card>
@@ -432,9 +436,12 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                           
                           {/* Creator Response - RichText */}
                           {latestResponse.creator_response && (
-                            <div className="bg-muted p-2 rounded text-sm">
-                              <strong>Antwort:</strong>
-                              <RichTextDisplay content={latestResponse.creator_response} className="mt-1" />
+                            <div className="bg-muted p-2 rounded text-sm flex items-start gap-2">
+                              <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 text-primary flex-shrink-0" />
+                              <div className="flex-1">
+                                <span className="text-xs font-medium">Antwort des Erstellers:</span>
+                                <RichTextDisplay content={latestResponse.creator_response} className="mt-1" />
+                              </div>
                             </div>
                           )}
 

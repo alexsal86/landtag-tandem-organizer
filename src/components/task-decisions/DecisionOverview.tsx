@@ -845,7 +845,7 @@ export const DecisionOverview = () => {
                   Entschieden
                 </Badge>
               ) : summary.total > 0 ? (
-                <Badge className="bg-gray-400 hover:bg-gray-400 text-white text-xs px-3 py-1">
+                <Badge className="bg-blue-500 hover:bg-blue-500 text-white text-xs px-3 py-1">
                   {summary.pending} ausstehend
                 </Badge>
               ) : null}
@@ -988,17 +988,23 @@ export const DecisionOverview = () => {
             participants={decision.participants} 
             maxItems={2} 
             isCreator={decision.isCreator}
+            creatorProfile={decision.creator ? {
+              display_name: decision.creator.display_name,
+              badge_color: decision.creator.badge_color,
+              avatar_url: decision.creator.avatar_url,
+            } : undefined}
             onReply={(responseId, text) => sendCreatorResponse(responseId, text)}
           />
 
           {/* Response buttons for participants */}
-          {decision.isParticipant && decision.participant_id && !decision.hasResponded && (
+          {decision.isParticipant && decision.participant_id && !decision.hasResponded && !decision.isCreator && (
             <div className="mt-3 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
               <TaskDecisionResponse 
                 decisionId={decision.id}
                 participantId={decision.participant_id}
                 onResponseSubmitted={handleResponseSubmitted}
                 hasResponded={decision.hasResponded}
+                creatorId={decision.created_by}
               />
             </div>
           )}
