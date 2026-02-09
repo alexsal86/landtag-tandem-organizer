@@ -25,6 +25,7 @@ interface MyWorkDecisionCardProps {
   onCreateTask: (decision: MyWorkDecision) => void;
   onResponseSubmitted: () => void;
   onOpenComments: (decisionId: string, title: string) => void;
+  onReply?: (responseId: string, text: string) => Promise<void>;
   commentCount: number;
   creatingTaskId: string | null;
   currentUserId: string;
@@ -44,6 +45,7 @@ export function MyWorkDecisionCard({
   onCreateTask,
   onResponseSubmitted,
   onOpenComments,
+  onReply,
   commentCount,
   creatingTaskId,
   currentUserId,
@@ -208,7 +210,12 @@ export function MyWorkDecisionCard({
         </div>
 
         {/* Activity preview */}
-        <DecisionCardActivity participants={decision.participants} maxItems={2} />
+        <DecisionCardActivity 
+          participants={decision.participants} 
+          maxItems={2} 
+          isCreator={decision.isCreator}
+          onReply={onReply}
+        />
 
         {/* Inline voting for unanswered participants */}
         {decision.isParticipant && decision.participant_id && !decision.hasResponded && (

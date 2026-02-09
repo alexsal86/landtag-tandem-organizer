@@ -75,10 +75,13 @@ export const TaskDecisionCreator = ({
   ]);
   const { toast } = useToast();
   
-  // Load profiles when controlled dialog opens
+  // Load profiles when controlled dialog opens; reset when closing
   useEffect(() => {
     if (isControlled && isOpen && !profilesLoaded) {
       loadProfiles();
+    }
+    if (isControlled && !isOpen) {
+      setProfilesLoaded(false); // Reset beim Schliessen
     }
   }, [isControlled, isOpen, profilesLoaded]);
 
@@ -452,6 +455,7 @@ export const TaskDecisionCreator = ({
         { key: "option_1", label: "Option 1", color: "blue" },
         { key: "option_2", label: "Option 2", color: "green" }
       ]);
+      setProfilesLoaded(false); // Reset so defaults reload on next open
       handleOpenChange(false);
       onDecisionCreated();
     } catch (error) {
