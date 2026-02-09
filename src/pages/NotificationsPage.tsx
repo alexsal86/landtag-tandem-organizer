@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
+import { buildDeepLinkPath } from '@/utils/notificationDeepLinks';
 import {
   Bell, CheckCheck, Calendar, MessageSquare, FileText, Users,
   BookOpen, Clock, BarChart3, MapPin, StickyNote, Settings,
@@ -357,6 +359,7 @@ function NotificationDisplaySettings() {
 
 export function NotificationsPage() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'all' | 'settings'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'read'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -454,6 +457,8 @@ export function NotificationsPage() {
                           )}
                           onClick={() => {
                             if (!notification.is_read) markAsRead(notification.id);
+                            const path = buildDeepLinkPath(notification);
+                            navigate(path);
                           }}
                         >
                           <div className={cn(

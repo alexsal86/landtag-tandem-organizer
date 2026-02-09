@@ -12,6 +12,7 @@ export interface Notification {
   is_read: boolean;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   created_at: string;
+  navigation_context?: string;
   notification_types: {
     name: string;
     label: string;
@@ -466,9 +467,17 @@ export const useNotifications = () => {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
-        (payload) => {
+        async (payload) => {
           console.log('📥 New notification received via realtime:', payload);
-          const newNotification = payload.new as Notification;
+          
+          // Re-fetch the full notification with joined notification_types
+          const { data: fullNotification, error } = await supabase
+            .from('notifications')
+            .select('*, notification_types(name, label)')
+            .eq('id', (payload.new as any).id)
+            .maybeSingle();
+          
+          const newNotification = (fullNotification || payload.new) as Notification;
           
           // Check for duplicates and add with additional metadata check
           setNotifications(prev => {
