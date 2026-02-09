@@ -81,9 +81,19 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
           )
         `)
         .eq('id', decisionId)
-        .single();
+        .maybeSingle();
 
       if (decisionError) throw decisionError;
+      
+      if (!decisionData) {
+        // Decision not accessible (archived/deleted/RLS filtered)
+        toast({
+          title: "Info",
+          description: "Diese Entscheidung ist nicht mehr verfügbar.",
+        });
+        onClose();
+        return;
+      }
 
       // Load participants with responses
       const { data: participantsData, error: participantsError } = await supabase

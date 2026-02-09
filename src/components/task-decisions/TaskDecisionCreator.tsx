@@ -110,22 +110,46 @@ export const TaskDecisionCreator = ({
       if (error) throw error;
       setProfiles(data || []);
       
-      // Pre-select Abgeordneter from the same tenant
       if (tenantData?.tenant_id) {
+        // Get tenant members for validation
+        const { data: tenantMembers } = await supabase
+          .from('user_tenant_memberships')
+          .select('user_id')
+          .eq('tenant_id', tenantData.tenant_id)
+          .eq('is_active', true);
+        
+        const tenantUserIds = new Set(tenantMembers?.map(m => m.user_id) || []);
+
+        // Check for default participants from settings FIRST
+        let defaultIds: string[] = [];
+        try {
+          const stored = localStorage.getItem('default_decision_participants');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) defaultIds = parsed;
+          }
+        } catch (e) {
+          console.error('Error loading default participants:', e);
+        }
+
+        if (defaultIds.length > 0) {
+          const validDefaults = defaultIds.filter(id => 
+            tenantUserIds.has(id) && id !== userData.user.id
+          );
+          if (validDefaults.length > 0) {
+            setSelectedUsers(validDefaults);
+            setProfilesLoaded(true);
+            return; // Early return - don't fall through to Abgeordneter
+          }
+        }
+
+        // Fallback: Pre-select Abgeordneter from the same tenant
         const { data: roleData } = await supabase
           .from('user_roles')
           .select('user_id')
           .eq('role', 'abgeordneter');
         
         if (roleData && roleData.length > 0) {
-          // Filter to only include users in the same tenant
-          const { data: tenantMembers } = await supabase
-            .from('user_tenant_memberships')
-            .select('user_id')
-            .eq('tenant_id', tenantData.tenant_id)
-            .eq('is_active', true);
-          
-          const tenantUserIds = new Set(tenantMembers?.map(m => m.user_id) || []);
           const abgeordneteInTenant = roleData
             .filter(r => tenantUserIds.has(r.user_id))
             .map(r => r.user_id);
