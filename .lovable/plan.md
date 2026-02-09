@@ -1,236 +1,172 @@
 
-# Plan: Jour Fixe Korrekturen, Geburtstags-System und Benachrichtigungs-Groesse
+# Plan: 7 Korrekturen und Verbesserungen am Entscheidungssystem
 
-## Uebersicht der 7 Punkte
+## Uebersicht
 
 | Nr | Problem | Root Cause | Loesung |
 |----|---------|-----------|---------|
-| 1 | Ergebnisse aus zugewiesenen Punkten werden nach Archivierung nicht als Aufgabe mit Inhalt angezeigt | Filter `item.result_text?.trim() && !item.task_id` in Step 3 schliesst Punkte aus die result_text haben aber task_id gesetzt haben, da das Ergebnis nicht in die Beschreibung uebernommen wird | Logik in Step 3 korrigieren: Auch Punkte mit task_id muessen ihr Ergebnis in die Aufgabe schreiben |
-| 2 | Markierte Termine werden nur als Aufgabe fuer den ersten Teilnehmer erstellt | Step 5d erstellt nur EINE Aufgabe mit `assigned_to: firstParticipant` | Fuer JEDEN Teilnehmer eine eigene Aufgabe mit Unteraufgaben erstellen |
-| 3 | Ergebnis bei fremden Notizen in der Besprechung kann nicht gespeichert werden | RLS-Policy auf `quick_notes`: UPDATE erfordert `user_id = auth.uid()`. Meeting-Teilnehmer duerfen `meeting_result` nicht aendern wenn sie nicht der Notiz-Eigentuemer sind | Neue RLS-Policy: Meeting-Teilnehmer duerfen `meeting_result` aktualisieren |
-| 4 | Tastatur-Navigation im Fokus-Modus: Kein Shortcut fuer Stern-Markierung bei Terminen | Kein `'s'`-Key-Handler im FocusModeView | Shortcut `s` hinzufuegen: Stern toggeln beim aktuellen Item, wenn es ein Termin ist. Auch `n`/`p` fuer naechsten/vorherigen Termin |
-| 5 | Nachbereitung aus Meetings erscheint bei "von mir erstellt" statt "mir zugewiesen" | Follow-up-Task (Step 4) hat `category: 'personal'` und kein `assigned_to`. Die Filterlogik in MyWorkTasksTab verschiebt nur `category: 'meeting'` Tasks nach rechts | `category: 'meeting'` und `assigned_to: user.id` setzen |
-| 6 | Neuer Systempunkt "Geburtstage" | Feature existiert nicht | Neuen system_type `birthdays` implementieren mit Kontakt-Geburtstagen der naechsten 14 Tage |
-| 7 | Toast-Groesse Normal vs. Gross identisch | Sonner's `toastOptions.classNames.toast` ueberschreibt `toastOptions.className`. Die Klasse `toast-large` wird nie angewendet | `toast-large` in `classNames.toast` statt in `className` integrieren |
+| 1 | Archivierung zeigt Fehler, funktioniert aber | CHECK-Constraint `task_decisions_status_check` erlaubt nur `active` und `archived`. Der Code setzt `status: 'archived'` korrekt, aber die RLS UPDATE-Policy hat `WITH CHECK (created_by = auth.uid())` -- redundante Policies erzeugen Konflikte, und `select()` nach Update ohne `.select('*')` kann leere Ergebnisse liefern, was als Fehler interpretiert wird | Redundante RLS UPDATE-Policies bereinigen, Fehlerbehandlung bei leerem Ergebnis verbessern |
+| 2 | Wiederherstellen von Entscheidungen scheitert | `restoreDecision()` setzt `status: 'open'` -- aber der CHECK-Constraint erlaubt NUR `active` und `archived`. `open` ist kein gueltiger Status | Status auf `'active'` statt `'open'` setzen und CHECK-Constraint um `open` erweitern oder konsequent `active` verwenden |
+| 3 | Bearbeiten zeigt Fehler beim Speichern | Drei redundante UPDATE-Policies auf `task_decisions`: zwei mit `WITH CHECK (created_by = auth.uid())`, eine ohne. Postgres evaluiert alle Policies mit OR fuer USING, aber WITH CHECK muss bei ALLEN Policies erfuellt sein, die matchen. Die `onUpdated`/`onClose` Callbacks im `DecisionEditDialog` werden innerhalb eines `setTimeout` aufgerufen, was Race Conditions erzeugen kann | RLS-Policies konsolidieren: nur EINE UPDATE-Policy behalten |
+| 4 | Rueckfragen/Kommentare in der Card anzeigen | Aktuell werden Kommentare nur im Sheet und offene Rueckfragen nur fuer den Ersteller angezeigt | Kompakte Anzeige der letzten 1-2 Responses/Kommentare direkt in der Card |
+| 5 | Antworten auf Rueckfragen/Kommentare scheitert | Die UPDATE-RLS-Policy auf `task_decision_responses` prueft nur ob der User der Teilnehmer oder Ersteller der *Entscheidung* ist. Der Ersteller muss die `creator_response`-Spalte updaten, was durch die Policy gedeckt sein sollte -- aber die redundanten Policies auf `task_decisions` (fuer den Sub-Select) und moegliche `WITH CHECK`-Konflikte blockieren den Zugriff | RLS-Policies bereinigen |
+| 6 | Kommentare zur Abstimmung vs. Kommentare zur Sache unterscheiden | Zwei verschiedene Systeme: `task_decision_responses` (Abstimmung mit Kommentar) und `task_decision_comments` (Diskussion). Beide werden in der UI als "Kommentar" bezeichnet | Klare Bezeichnungen: "Abstimmungskommentar" vs. "Diskussionsbeitrag" einfuehren |
+| 7 | Meine Notizen: Standard-Teilnehmer bei Entscheidungserstellung nicht vorausgewaehlt | `NoteDecisionCreator` liest Standard-Teilnehmer nicht aus `localStorage` -- stattdessen werden nur Abgeordnete auto-selektiert | `useDefaultDecisionParticipants` in `NoteDecisionCreator` integrieren |
 
 ---
 
 ## Technische Details
 
-### 1. Archivierung: Ergebnisse korrekt in Aufgaben uebernehmen
+### 1 + 2 + 3 + 5: RLS-Policies bereinigen und CHECK-Constraint korrigieren (KRITISCH)
 
-**Problem im Detail:** In `MeetingsView.tsx` Zeile 1264-1265 filtert Step 3:
+**Root Cause aller Fehler:** Es gibt drei redundante UPDATE-Policies auf `task_decisions`:
+
 ```
-item.assigned_to && item.result_text?.trim() && !item.task_id
-```
-Das `!item.task_id` schliesst Punkte aus, die bereits eine verknuepfte Aufgabe haben. Aber selbst wenn der Punkt eine task_id hat, sollte das Ergebnis als Ergaenzung in diese bestehende Aufgabe geschrieben werden.
-
-Gleichzeitig werden in Step 5 (Zeile 1342-1398) Punkte MIT task_id und result_text behandelt (Zeile 1368-1389), aber NUR wenn sie vorher nicht schon in Step 3 verarbeitet wurden. Das Problem: Step 3 ueberspringt Punkte mit task_id, und Step 5 ueberspringt Punkte die assigned_to haben (Zeile 1347: `if (item.task_id || (item.assigned_to && item.result_text?.trim())) continue`).
-
-**Loesung:**
-- Step 3: Auch Punkte mit `task_id` verarbeiten - wenn `assigned_to` UND `result_text` vorhanden, das Ergebnis an die bestehende Aufgabe anhaengen (statt neue zu erstellen)
-- Step 5: Deduplizierung beibehalten
-
-**Datei:** `src/components/MeetingsView.tsx` (archiveMeeting, ca. Zeile 1263-1315)
-
-### 2. Markierte Termine: Aufgabe fuer ALLE Teilnehmer
-
-**Problem:** Step 5d (Zeile 1503-1517) erstellt nur eine Aufgabe mit `assigned_to: firstParticipant`.
-
-**Loesung:** Fuer jeden Teilnehmer eine eigene Aufgabe mit den gleichen Unteraufgaben erstellen:
-```
-for (const participantId of participantIds) {
-  const task = await supabase.from('tasks').insert({
-    user_id: user.id,
-    title: `Termine aus Besprechung "${meeting.title}"`,
-    category: 'meeting',
-    assigned_to: participantId,
-    ...
-  });
-  // Subtasks fuer jeden Termin
-  await supabase.from('subtasks').insert(subtasks);
-}
+1. "Users can update their decisions"     - USING: tenant + created_by   WITH CHECK: (none)
+2. "Users can update their own decisions" - USING: created_by            WITH CHECK: created_by = auth.uid()
+3. "task_decisions_update_policy"          - USING: created_by            WITH CHECK: created_by = auth.uid()
 ```
 
-**Datei:** `src/components/MeetingsView.tsx` (archiveMeeting, ca. Zeile 1460-1537)
+Wenn Postgres mehrere Policies evaluiert, muessen ALLE `WITH CHECK`-Bedingungen der matchenden Policies erfuellt sein. Da Policy 1 kein `WITH CHECK` hat, aber Policy 2 und 3 schon, kann es zu Konflikten kommen je nach PostgreSQL-Version und Evaluierungsreihenfolge.
 
-### 3. RLS-Policy: Meeting-Teilnehmer duerfen Notiz-Ergebnis aendern
+Zusaetzlich: Der CHECK-Constraint `task_decisions_status_check` erlaubt nur `active` und `archived`. Bei `restoreDecision()` wird `status: 'open'` gesetzt, was der Constraint ablehnt.
 
-**Problem:** Die UPDATE-Policy auf `quick_notes` erlaubt nur Eigentuemern (`user_id = auth.uid()`) und Nutzern mit Edit-Freigabe das Aktualisieren. Meeting-Teilnehmer koennen aber `meeting_result` nicht setzen fuer Notizen anderer.
-
-**Loesung:** Neue RLS-Policy die es Meeting-Teilnehmern erlaubt, das `meeting_result`-Feld zu aktualisieren:
+**Loesung via DB-Migration:**
 
 ```sql
-CREATE POLICY "Meeting participants can update note results"
-  ON public.quick_notes FOR UPDATE
-  USING (
-    meeting_id IS NOT NULL
-    AND (
-      EXISTS (
-        SELECT 1 FROM meeting_participants mp
-        WHERE mp.meeting_id = quick_notes.meeting_id
-        AND mp.user_id = auth.uid()
-      )
-      OR EXISTS (
-        SELECT 1 FROM meetings m
-        WHERE m.id = quick_notes.meeting_id
-        AND m.user_id = auth.uid()
-      )
-    )
-  )
-  WITH CHECK (
-    meeting_id IS NOT NULL
-    AND (
-      EXISTS (
-        SELECT 1 FROM meeting_participants mp
-        WHERE mp.meeting_id = quick_notes.meeting_id
-        AND mp.user_id = auth.uid()
-      )
-      OR EXISTS (
-        SELECT 1 FROM meetings m
-        WHERE m.id = quick_notes.meeting_id
-        AND m.user_id = auth.uid()
-      )
-    )
-  );
+-- 1. Redundante UPDATE-Policies entfernen
+DROP POLICY IF EXISTS "Users can update their own decisions" ON public.task_decisions;
+DROP POLICY IF EXISTS "task_decisions_update_policy" ON public.task_decisions;
+
+-- 2. Verbleibende Policy beibehalten: "Users can update their decisions"
+-- (hat tenant + created_by als USING, kein WITH CHECK)
+
+-- 3. CHECK-Constraint anpassen: 'open' als gueltigen Status hinzufuegen
+ALTER TABLE public.task_decisions DROP CONSTRAINT IF EXISTS task_decisions_status_check;
+ALTER TABLE public.task_decisions ADD CONSTRAINT task_decisions_status_check
+  CHECK (status = ANY (ARRAY['active', 'open', 'archived']));
+
+-- 4. Redundante SELECT-Policies bereinigen
+DROP POLICY IF EXISTS "task_decisions_select_policy" ON public.task_decisions;
+
+-- 5. Redundante DELETE-Policies bereinigen
+DROP POLICY IF EXISTS "task_decisions_delete_policy" ON public.task_decisions;
+DROP POLICY IF EXISTS "Users can delete their own decisions" ON public.task_decisions;
 ```
 
-**Datei:** Neue DB-Migration
+**Code-Aenderungen:**
 
-### 4. Fokus-Modus: Tastatur-Shortcuts fuer Termine
+In `DecisionOverview.tsx` und `MyWorkDecisionsTab.tsx` - `restoreDecision()`:
+- Status von `'open'` auf `'active'` aendern (konsistent mit dem Erstellungsprozess)
 
-**Problem:** Im `handleKeyDown` in `FocusModeView.tsx` gibt es keinen Handler fuer das Markieren von Terminen mit Sternen via Tastatur.
+In `DecisionOverview.tsx` - `archiveDecision()`:
+- Die redundante Pruefung auf leeres Ergebnis nach `.select()` entfernen oder vereinfachen
+- Optimistic UI: Sofort aus der Liste entfernen, dann Server-Antwort abwarten
 
-**Loesung:** Neue Shortcuts hinzufuegen:
-- `s` -- Stern toggeln (wenn das aktuelle Item ein Termin/appointment ist)
-- `n` -- Zum naechsten Termin springen (nur ueber Termine navigieren)
-- `p` -- Zum vorherigen Termin springen
+In `DecisionEditDialog.tsx`:
+- `setTimeout`-Workaround entfernen, direkt `onUpdated()` und `onClose()` aufrufen
 
-Im `handleKeyDown` Switch-Block:
-```typescript
-case 's':
-  e.preventDefault();
-  if (currentNavigable?.sourceType === 'appointment' && onToggleStar) {
-    onToggleStar(currentNavigable.sourceData);
-  }
-  break;
-case 'n':
-  e.preventDefault();
-  // Zum naechsten Termin springen
-  const nextAppt = allNavigableItems.findIndex(
-    (n, i) => i > flatFocusIndex && n.sourceType === 'appointment'
-  );
-  if (nextAppt !== -1) setFlatFocusIndex(nextAppt);
-  break;
-case 'p':
-  e.preventDefault();
-  // Zum vorherigen Termin springen
-  for (let i = flatFocusIndex - 1; i >= 0; i--) {
-    if (allNavigableItems[i].sourceType === 'appointment') {
-      setFlatFocusIndex(i);
-      break;
-    }
-  }
-  break;
+**Dateien:**
+- DB-Migration (Policies + Constraint)
+- `src/components/task-decisions/DecisionOverview.tsx`
+- `src/components/my-work/MyWorkDecisionsTab.tsx`
+- `src/components/task-decisions/DecisionEditDialog.tsx`
+
+---
+
+### 4: Rueckfragen und Kommentare direkt in der Card anzeigen
+
+**Konzept:** Unter dem Footer der Entscheidungskarte werden bis zu 2 aktuelle Interaktionen kompakt angezeigt:
+- Offene Rueckfragen (response_type = 'question', ohne creator_response)
+- Letzte Abstimmungskommentare (responses mit Kommentar)
+- Letzte Diskussionskommentare (task_decision_comments)
+
+Das sieht so aus:
+
+```text
++------------------------------------------+
+| [Badge: Rueckfrage]           [Actions]   |
+| Titel der Entscheidung                    |
+| Beschreibung...                           |
+| Creator | 01.02.26 | Y:2/Q:1/N:0 | AVA  |
+|-------------------------------------------|
+| Letzte Aktivitaet:                        |
+| [orange] Erwin: "Was ist mit Budget?"     |
+|          -> Antwort: "Wird noch geklaert" |
+| [gruen]  Carla: Ja - "Gute Idee!"        |
++------------------------------------------+
 ```
-
-In der Tastenkuerzel-Legende die neuen Shortcuts dokumentieren.
-
-**Datei:** `src/components/meetings/FocusModeView.tsx`
-
-### 5. Nachbereitung: Kategorie auf 'meeting' aendern
-
-**Problem:** Die Nachbereitungs-Aufgabe (Step 4, Zeile 1327) hat `category: 'personal'` und kein `assigned_to`. Die Filterlogik in `MyWorkTasksTab.tsx` (Zeile 147-155) verschiebt nur Tasks mit `category: 'meeting'` in die rechte Spalte.
-
-**Loesung:** In Step 4 aendern:
-```typescript
-const { data: createdTask } = await supabase
-  .from('tasks')
-  .insert({
-    user_id: user.id,
-    title: `Nachbereitung ${meeting.title}...`,
-    category: 'meeting',        // statt 'personal'
-    assigned_to: user.id,        // NEU: sich selbst zuweisen
-    ...
-  });
-```
-
-**Datei:** `src/components/MeetingsView.tsx` (archiveMeeting, Zeile 1320-1333)
-
-### 6. Neuer Systempunkt: Geburtstage
-
-**Konzept:** Ein neuer `system_type = 'birthdays'` fuer Meeting-Agendapunkte. Zeigt Kontakte mit Geburtstag in den naechsten 14 Tagen an. In der Besprechung kann man fuer jeden Geburtstag eine Aktion waehlen (Karte, Mail, Anruf, Geschenk). Die gewaehlte Aktion wird als Notiz beim Kontakt hinterlegt.
 
 **Implementierung:**
+- In `DecisionOverview.tsx` (`renderCompactCard`): Nach dem Footer-Bereich einen neuen Abschnitt "Letzte Aktivitaet" einfuegen
+- Zeige max. 2 Eintraege: Prioritaet auf offene Rueckfragen, dann letzte Kommentare
+- Kompaktes Format: Avatar-Mini + Name + Typ-Icon + Kommentar (1 Zeile truncated)
+- Wenn creator_response vorhanden: darunter eingerueckt anzeigen
 
-**a) SystemAgendaItem.tsx erweitern:**
-- Neuer Case `birthdays` mit rosa/pink Farbschema
-- Laedt Kontakte mit `birthday` in den naechsten 14 Tagen
-- Zeigt Name, Geburtstag, Alter an
-- Aktions-Buttons: Karte, Mail, Anruf, Geschenk (als Toggle-Buttons)
+In `MyWorkDecisionCard.tsx`: Gleiche Logik anwenden - die `participants`-Daten enthalten bereits die Responses.
 
-**b) FocusModeView.tsx erweitern:**
-- Neuen `sourceType: 'birthday'` behandeln
-- Geburtstage als navigierbare Sub-Items einfuegen (analog zu appointments/notes/tasks)
-- Auswahloptionen (Karte/Mail/Anruf/Geschenk) als Buttons im fokussierten Item
+**Dateien:**
+- `src/components/task-decisions/DecisionOverview.tsx` (renderCompactCard erweitern)
+- `src/components/my-work/decisions/MyWorkDecisionCard.tsx` (Card erweitern)
 
-**c) MeetingsView.tsx erweitern:**
-- `addSystemAgendaItem` um `'birthdays'` erweitern
-- System-Button im Popover hinzufuegen (mit Cake-Icon und rosa Farbe)
-- Geburtstags-Daten laden: Query auf `contacts` WHERE `birthday` im 14-Tage-Fenster
-- Archivierung: Wenn Geburtstag-Aktionen gewaehlt wurden, diese als Notiz/Interaktion zum Kontakt speichern
+---
 
-**d) Administration.tsx:**
-- `birthdays` als System-Type in Template-Verwaltung aufnehmen
-- Analoger Button wie bei Termine/Notizen/Aufgaben
+### 6: Kommentare zur Abstimmung vs. Diskussionsbeitraege unterscheiden
 
-**e) handle_meeting_insert Trigger:**
-- Bereits generisch -- liest `system_type` aus `template_items`. Keine Aenderung noetig.
+**Zwei Systeme im Ueberblick:**
 
-**Datenstruktur fuer Aktionen:**
-Die Geburtstags-Aktionen werden im `result_text` des Agenda-Items als JSON gespeichert:
-```json
-{
-  "contact-uuid-1": { "action": "card", "note": "Karte geschickt" },
-  "contact-uuid-2": { "action": "call", "note": "" }
+| System | Tabelle | Zweck | Neue Bezeichnung |
+|--------|---------|-------|-----------------|
+| Abstimmungskommentar | `task_decision_responses.comment` | Begruendung der Abstimmung (z.B. "Ja, weil...") oder Rueckfrage | **"Begruendung"** oder **"Rueckfrage"** |
+| Diskussionsbeitrag | `task_decision_comments` | Allgemeine Diskussion zur Entscheidung | **"Diskussion"** |
+
+**UI-Aenderungen:**
+
+In der Card und im Detail-Dialog:
+- Abstimmungskommentare werden neben dem Vote-Badge angezeigt mit Label "Begruendung:" (fuer Ja/Nein) oder "Rueckfrage:" (fuer question)
+- Das Kommentar-Icon und Sheet-Trigger wird umbenannt zu "Diskussion" mit einem eigenen Icon (z.B. `MessageSquare`)
+- Im `DecisionViewerComment`: Button-Text aendern von "Kommentar hinzufuegen" zu "Diskussionsbeitrag schreiben" oder "Hinweis hinterlassen"
+
+Im `TaskDecisionResponse`:
+- Der optionale Kommentar-Button wird umbenannt von "Kommentar" zu "Begruendung hinzufuegen"
+- Bei Rueckfragen bleibt "Rueckfrage" als Label
+
+Im `DecisionComments` Sheet:
+- Titel aendern von "Kommentare" zu "Diskussion"
+- Platzhalter aendern von "Kommentar schreiben..." zu "Diskussionsbeitrag schreiben..."
+
+**Dateien:**
+- `src/components/task-decisions/DecisionComments.tsx`
+- `src/components/task-decisions/DecisionViewerComment.tsx`
+- `src/components/task-decisions/TaskDecisionResponse.tsx`
+- `src/components/task-decisions/DecisionOverview.tsx` (Labels)
+- `src/components/my-work/decisions/MyWorkDecisionCard.tsx` (Labels)
+
+---
+
+### 7: Standard-Teilnehmer in NoteDecisionCreator
+
+**Problem:** `NoteDecisionCreator.tsx` liest die Standard-Teilnehmer nicht aus localStorage. Stattdessen werden nur Abgeordnete auto-selektiert (Zeile 111-122).
+
+**Loesung:** Die gleiche Logik wie in `StandaloneDecisionCreator` verwenden:
+
+```typescript
+// In loadProfiles():
+// 1. Zuerst localStorage pruefen
+let defaultIds: string[] = [];
+try {
+  const stored = localStorage.getItem('default_decision_participants');
+  if (stored) defaultIds = JSON.parse(stored);
+} catch (e) {}
+
+if (defaultIds.length > 0) {
+  setSelectedUsers(defaultIds);
+} else {
+  // Fallback: Abgeordnete auto-selektieren (bestehende Logik)
 }
 ```
 
-Bei Archivierung: Fuer jeden Kontakt mit gewaehlter Aktion wird ein Eintrag in `contact_interactions` (oder alternativ als Notiz/Tag am Kontakt) erstellt.
-
-**Dateien:**
-- `src/components/meetings/SystemAgendaItem.tsx` (birthdays-Fall hinzufuegen)
-- `src/components/meetings/FocusModeView.tsx` (birthday sourceType)
-- `src/components/MeetingsView.tsx` (birthdays laden, System-Button, Archivierung)
-- `src/pages/Administration.tsx` (Template-Verwaltung)
-
-### 7. Toast-Groesse endlich fixen
-
-**Root Cause:** In `sonner.tsx` wird sowohl `className` als auch `classNames.toast` gesetzt:
-```tsx
-toastOptions={{
-  className: isLarge ? 'toast-large' : '',         // ← wird ignoriert
-  classNames: {
-    toast: "group toast group-[.toaster]:bg-...",   // ← ueberschreibt className
-  }
-}}
-```
-
-Sonner verwendet `classNames.toast` mit hoeherer Prioritaet als `className`. Daher wird `toast-large` nie angewendet.
-
-**Loesung:** `toast-large` direkt in `classNames.toast` integrieren:
-```tsx
-toastOptions={{
-  classNames: {
-    toast: `group toast group-[.toaster]:bg-background ... ${isLarge ? 'toast-large' : ''}`,
-    ...
-  }
-}}
-```
-
-Die `className` Prop wird entfernt. Die CSS-Regeln in `index.css` (Zeile 776-800) bleiben unveraendert -- sie greifen, sobald die Klasse korrekt angewendet wird.
-
-**Datei:** `src/components/ui/sonner.tsx`
+**Datei:** `src/components/shared/NoteDecisionCreator.tsx`
 
 ---
 
@@ -238,17 +174,23 @@ Die `className` Prop wird entfernt. Die CSS-Regeln in `index.css` (Zeile 776-800
 
 | Aktion | Datei |
 |--------|-------|
-| DB-Migration | RLS-Policy fuer `quick_notes` UPDATE durch Meeting-Teilnehmer |
-| Bearbeiten | `src/components/MeetingsView.tsx` (Archivierung Steps 3-5d korrigieren, Geburtstage laden und System-Button, `category: 'meeting'` fuer Nachbereitung) |
-| Bearbeiten | `src/components/meetings/FocusModeView.tsx` (Shortcuts `s`/`n`/`p`, birthday sourceType) |
-| Bearbeiten | `src/components/meetings/SystemAgendaItem.tsx` (birthdays-Rendering) |
-| Bearbeiten | `src/pages/Administration.tsx` (birthdays in Template-Verwaltung) |
-| Bearbeiten | `src/components/ui/sonner.tsx` (Toast-Groesse Fix) |
+| DB-Migration | RLS-Policies bereinigen, CHECK-Constraint erweitern |
+| Bearbeiten | `src/components/task-decisions/DecisionOverview.tsx` (archiveDecision, restoreDecision, Card-Erweiterung, Labels) |
+| Bearbeiten | `src/components/my-work/MyWorkDecisionsTab.tsx` (archiveDecision fix) |
+| Bearbeiten | `src/components/task-decisions/DecisionEditDialog.tsx` (setTimeout entfernen) |
+| Bearbeiten | `src/components/my-work/decisions/MyWorkDecisionCard.tsx` (Card-Erweiterung, Labels) |
+| Bearbeiten | `src/components/task-decisions/DecisionComments.tsx` (Labels) |
+| Bearbeiten | `src/components/task-decisions/DecisionViewerComment.tsx` (Labels) |
+| Bearbeiten | `src/components/task-decisions/TaskDecisionResponse.tsx` (Labels) |
+| Bearbeiten | `src/components/task-decisions/DecisionSidebar.tsx` (Labels) |
+| Bearbeiten | `src/components/shared/NoteDecisionCreator.tsx` (Standard-Teilnehmer) |
 
 ## Reihenfolge
 
-1. **Toast-Groesse fixen** (schnellster Fix, 1 Zeile)
-2. **RLS-Policy fuer Notiz-Ergebnisse** (DB-Migration)
-3. **Archivierung korrigieren** (Steps 3, 4, 5d in MeetingsView)
-4. **Fokus-Modus Tastatur-Shortcuts** (FocusModeView)
-5. **Geburtstags-Systempunkt** (SystemAgendaItem, FocusModeView, MeetingsView, Administration)
+1. **KRITISCH: DB-Migration** - RLS-Policies bereinigen + CHECK-Constraint erweitern (behebt Punkte 1, 2, 3, 5)
+2. **restoreDecision** auf `status: 'active'` aendern (Punkt 2)
+3. **archiveDecision** Fehlerbehandlung verbessern (Punkt 1)
+4. **DecisionEditDialog** setTimeout entfernen (Punkt 3)
+5. Rueckfragen/Kommentare in Cards anzeigen (Punkt 4)
+6. Bezeichnungen differenzieren (Punkt 6)
+7. Standard-Teilnehmer in NoteDecisionCreator (Punkt 7)
