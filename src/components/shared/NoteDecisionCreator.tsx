@@ -107,18 +107,35 @@ export function NoteDecisionCreator({
       const filteredProfiles = (profileData || []).filter(p => p.user_id !== user?.id);
       setProfiles(filteredProfiles);
 
-      // Auto-select Abgeordneter
-      const { data: abgeordneterRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "abgeordneter")
-        .in("user_id", userIds);
+      // Check for default participants from settings first
+      let defaultIds: string[] = [];
+      try {
+        const stored = localStorage.getItem('default_decision_participants');
+        if (stored) defaultIds = JSON.parse(stored);
+      } catch (e) {
+        console.error('Error loading default participants:', e);
+      }
 
-      if (abgeordneterRoles && abgeordneterRoles.length > 0) {
-        const abgeordneterIds = abgeordneterRoles
-          .map(r => r.user_id)
-          .filter(id => id !== user?.id);
-        setSelectedUsers(abgeordneterIds);
+      if (defaultIds.length > 0) {
+        // Use stored default participants (filter to valid tenant members)
+        const validDefaults = defaultIds.filter(id => userIds.includes(id) && id !== user?.id);
+        if (validDefaults.length > 0) {
+          setSelectedUsers(validDefaults);
+        }
+      } else {
+        // Fallback: Auto-select Abgeordneter
+        const { data: abgeordneterRoles } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "abgeordneter")
+          .in("user_id", userIds);
+
+        if (abgeordneterRoles && abgeordneterRoles.length > 0) {
+          const abgeordneterIds = abgeordneterRoles
+            .map(r => r.user_id)
+            .filter(id => id !== user?.id);
+          setSelectedUsers(abgeordneterIds);
+        }
       }
     } catch (error) {
       console.error('Error loading profiles:', error);

@@ -112,7 +112,7 @@ export function DecisionViewerComment({
           className="w-full justify-start text-muted-foreground hover:text-foreground"
         >
           <MessageSquare className="h-3.5 w-3.5 mr-2" />
-          Kommentar hinzufügen
+          Hinweis hinterlassen
           {isExpanded ? (
             <ChevronUp className="h-3.5 w-3.5 ml-auto" />
           ) : (
@@ -124,7 +124,7 @@ export function DecisionViewerComment({
         <SimpleRichTextEditor
           initialContent={comment}
           onChange={setComment}
-          placeholder="Ihr Kommentar oder Ihre Frage..."
+          placeholder="Ihr Hinweis oder Ihre Anmerkung..."
           minHeight="60px"
         />
         <div className="flex justify-end">

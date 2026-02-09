@@ -208,12 +208,12 @@ export function DecisionSidebar({
                   </div>
                 )}
 
-                {/* Neue Kommentare */}
+                {/* Neue Begründungen */}
                 {newComments.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
                       <Bell className="h-3.5 w-3.5" />
-                      <span>Neue Kommentare</span>
+                      <span>Neue Begründungen</span>
                       <Badge variant="outline" className="text-primary border-primary text-[10px] px-1.5 py-0">
                         {newComments.length}
                       </Badge>
