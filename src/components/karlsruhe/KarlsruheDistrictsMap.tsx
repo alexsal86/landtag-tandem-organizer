@@ -9,6 +9,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { lucideIconToSvg, isLucideIcon } from '@/utils/lucideIconToSvg';
 import { RoutingMachine } from './RoutingMachine';
 import 'leaflet.heat';
+// @ts-ignore
+import 'leaflet-routing-machine';
+
+const LRouting = (L as any).Routing;
 
 /**
  * Helper function to get icon display for Leaflet markers
@@ -559,8 +563,7 @@ export const KarlsruheDistrictsMap = ({
     const map = mapInstanceRef.current;
     const latLngs = waypoints.map(wp => L.latLng(wp.lat, wp.lng));
 
-    // @ts-ignore
-    const routingControl = L.Routing.control({
+    const routingControl = LRouting.control({
       waypoints: latLngs,
       routeWhileDragging: false,
       showAlternatives: false,
@@ -575,8 +578,7 @@ export const KarlsruheDistrictsMap = ({
         extendToWaypoints: true,
         missingRouteTolerance: 0,
       },
-      // @ts-ignore
-      router: L.Routing.osrmv1({
+      router: LRouting.osrmv1({
         serviceUrl: 'https://router.project-osrm.org/route/v1',
         profile: 'driving',
       }),
