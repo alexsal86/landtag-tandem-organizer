@@ -1,211 +1,236 @@
 
+# Plan: Jour Fixe Korrekturen, Geburtstags-System und Benachrichtigungs-Groesse
 
-# Konzept: Neue FallAkten-Detailansicht -- Drei-Spalten-Layout mit Chronologie, Kontext und Aktionsbereich
+## Uebersicht der 7 Punkte
 
-## Analyse des ChatGPT-Vorschlags
-
-Das Bild zeigt ein Drei-Spalten-Layout fuer die FallAkten-Detailansicht:
-
-| Bereich | Inhalt im Bild | Unsere Bewertung |
-|---------|---------------|-----------------|
-| **Linke Spalte** | Beteiligte (Hauptkontakt + weitere), Politischer Kontext (Thema + Ausschuss), Metadaten | Uebernehmen -- sinnvolle Kontextinformationen auf einen Blick |
-| **Mitte** | Chronologie mit Filter-Tabs (Alle, Notizen, Dokumente, Termine, Aufgaben), Suchleiste, farbige Timeline-Eintraege | Uebernehmen und verbessern -- ersetzt unser aktuelles Tab-System |
-| **Rechte Spalte** | Aktueller Stand (editierbare Notiz), Naechste Schritte (Checkliste), Risiken und Chancen | Uebernehmen -- diese Elemente fehlen uns komplett |
-
-## Was wir uebernehmen
-
-1. **Drei-Spalten-Layout** statt dem aktuellen vertikalen Aufbau (Header-Card oben, Tabs darunter)
-2. **Vereinigte Chronologie** statt separater Tabs -- alle Ereignisse in einem Strom mit Filter-Tabs
-3. **Aktueller Stand** -- eine editierbare, hervorgehobene Statusnotiz
-4. **Naechste Schritte** -- eine Checkliste mit Zustaendigkeit direkt in der Akte
-5. **Risiken und Chancen** -- strukturiertes Freitextfeld
-6. **Kontakt-Schnellaktionen** -- Telefon/E-Mail/Nachricht direkt bei Kontakten
-7. **Politischer Kontext** -- Themen und Ausschusszuordnung sichtbar in der Sidebar
-8. **Schnell-Buttons im Header** -- "+ Notiz", "+ Aufgabe", "+ Termin", "+ Dokument" prominent oben
-
-## Was wir anders machen
-
-| ChatGPT-Vorschlag | Unsere Anpassung | Grund |
-|-------------------|------------------|-------|
-| Statisches Drei-Spalten-Layout | Responsive: 3 Spalten auf Desktop, Tabs/Accordion auf Mobil | Unsere App wird auch mobil genutzt |
-| Separate "Beteiligte" und "Weitere Beteiligte" | Einheitliche Kontaktliste mit Rollen-Badges und dem bestehenden Rollen-System | Wir haben bereits CONTACT_ROLES definiert |
-| Feste Kontaktaktions-Icons | Dynamische Icons basierend auf verfuegbaren Daten (Telefon nur wenn vorhanden) | Vermeidet leere Aktionen |
-| Timeline nur mit manuellen Eintraegen | Automatische + manuelle Eintraege (bereits implementiert) mit verbesserter Darstellung | Automatische Eintraege sind ein Mehrwert |
-| Einfache Checkliste fuer "Naechste Schritte" | Verknuepfung mit unserem bestehenden Aufgabensystem (Tasks) + Inline-Quick-Tasks | Integration statt Parallelstruktur |
-
-## Was wir ergaenzen
-
-| Ergaenzung | Beschreibung |
-|-----------|-------------|
-| **Pinned Notes als "Aktueller Stand"** | Die bestehende Notiz-Pin-Funktion wird zur "Aktueller Stand"-Karte umgebaut |
-| **Quick-Add in der Timeline** | Direkt in der Timeline Notizen, Aufgaben etc. hinzufuegen ohne Dialog-Umweg |
-| **Sichtbarkeits-Indikator** | Privat/Geteilt/Oeffentlich prominent im Header anzeigen |
-| **Teilnehmer-Sidebar** | Die neuen case_file_participants mit Viewer/Editor-Rollen in der linken Spalte |
-| **E-Mails in der Timeline** | E-Mails (Briefe) werden auch in der Timeline-Ansicht angezeigt |
-| **Druckansicht / PDF-Export** | Ein "Drucken"-Button im Header-Menue fuer eine zusammengefasste Aktenansicht |
+| Nr | Problem | Root Cause | Loesung |
+|----|---------|-----------|---------|
+| 1 | Ergebnisse aus zugewiesenen Punkten werden nach Archivierung nicht als Aufgabe mit Inhalt angezeigt | Filter `item.result_text?.trim() && !item.task_id` in Step 3 schliesst Punkte aus die result_text haben aber task_id gesetzt haben, da das Ergebnis nicht in die Beschreibung uebernommen wird | Logik in Step 3 korrigieren: Auch Punkte mit task_id muessen ihr Ergebnis in die Aufgabe schreiben |
+| 2 | Markierte Termine werden nur als Aufgabe fuer den ersten Teilnehmer erstellt | Step 5d erstellt nur EINE Aufgabe mit `assigned_to: firstParticipant` | Fuer JEDEN Teilnehmer eine eigene Aufgabe mit Unteraufgaben erstellen |
+| 3 | Ergebnis bei fremden Notizen in der Besprechung kann nicht gespeichert werden | RLS-Policy auf `quick_notes`: UPDATE erfordert `user_id = auth.uid()`. Meeting-Teilnehmer duerfen `meeting_result` nicht aendern wenn sie nicht der Notiz-Eigentuemer sind | Neue RLS-Policy: Meeting-Teilnehmer duerfen `meeting_result` aktualisieren |
+| 4 | Tastatur-Navigation im Fokus-Modus: Kein Shortcut fuer Stern-Markierung bei Terminen | Kein `'s'`-Key-Handler im FocusModeView | Shortcut `s` hinzufuegen: Stern toggeln beim aktuellen Item, wenn es ein Termin ist. Auch `n`/`p` fuer naechsten/vorherigen Termin |
+| 5 | Nachbereitung aus Meetings erscheint bei "von mir erstellt" statt "mir zugewiesen" | Follow-up-Task (Step 4) hat `category: 'personal'` und kein `assigned_to`. Die Filterlogik in MyWorkTasksTab verschiebt nur `category: 'meeting'` Tasks nach rechts | `category: 'meeting'` und `assigned_to: user.id` setzen |
+| 6 | Neuer Systempunkt "Geburtstage" | Feature existiert nicht | Neuen system_type `birthdays` implementieren mit Kontakt-Geburtstagen der naechsten 14 Tage |
+| 7 | Toast-Groesse Normal vs. Gross identisch | Sonner's `toastOptions.classNames.toast` ueberschreibt `toastOptions.className`. Die Klasse `toast-large` wird nie angewendet | `toast-large` in `classNames.toast` statt in `className` integrieren |
 
 ---
 
-## Technische Umsetzung
+## Technische Details
 
-### 1. Neues Layout: CaseFileDetail.tsx komplett umbauen
+### 1. Archivierung: Ergebnisse korrekt in Aufgaben uebernehmen
 
-Das aktuelle `CaseFileDetail.tsx` hat:
-- Eine Header-Card mit Statistiken (Zaehler fuer Kontakte, Dokumente etc.)
-- Ein 7-Tab-Layout (Uebersicht, Kontakte, Dokumente, Aufgaben, Termine, Briefe, Notizen)
+**Problem im Detail:** In `MeetingsView.tsx` Zeile 1264-1265 filtert Step 3:
+```
+item.assigned_to && item.result_text?.trim() && !item.task_id
+```
+Das `!item.task_id` schliesst Punkte aus, die bereits eine verknuepfte Aufgabe haben. Aber selbst wenn der Punkt eine task_id hat, sollte das Ergebnis als Ergaenzung in diese bestehende Aufgabe geschrieben werden.
 
-**Neues Layout:**
+Gleichzeitig werden in Step 5 (Zeile 1342-1398) Punkte MIT task_id und result_text behandelt (Zeile 1368-1389), aber NUR wenn sie vorher nicht schon in Step 3 verarbeitet wurden. Das Problem: Step 3 ueberspringt Punkte mit task_id, und Step 5 ueberspringt Punkte die assigned_to haben (Zeile 1347: `if (item.task_id || (item.assigned_to && item.result_text?.trim())) continue`).
 
-```text
-+--------------------------------------------------------------------------+
-| Header: Titel, Aktenzeichen, Typ-Badge, Status-Badge, Sichtbarkeit      |
-| [+ Notiz] [+ Aufgabe] [+ Termin] [+ Dokument] [... Mehr]               |
-+--------------------------------------------------------------------------+
-|                    |                              |                       |
-| LINKE SIDEBAR      | CHRONOLOGIE (MITTE)          | RECHTE SIDEBAR        |
-| (280px, fixiert)   | (flex-1, scrollbar)          | (300px, fixiert)      |
-|                    |                              |                       |
-| Beteiligte         | Filter-Tabs:                 | Aktueller Stand       |
-|  - Ersteller       |  Alle | Notizen | Dokumente  |  (editierbare Notiz)  |
-|  - Kontakte        |  Termine | Aufgaben          |                       |
-|    mit Rollen      |                              | Naechste Schritte     |
-|  - Teilnehmer      | Suchfeld                     |  (Aufgaben-Checklist) |
-|                    |                              |                       |
-| Themen/Kontext     | Timeline-Eintraege           | Risiken und Chancen   |
-|  - Zugewiesene     |  chronologisch sortiert      |  (strukturiertes      |
-|    Themen          |  mit farbigen Typen          |   Freitextfeld)       |
-|  - Ausschuss       |  und Aktionen                |                       |
-|                    |                              | Metadaten             |
-| Metadaten          |                              |  - Erstellt am        |
-|  - Start/Ziel      |                              |  - Letzte Aenderung   |
-|  - Tags            |                              |  - Zustaendig         |
-+--------------------+------------------------------+-----------------------+
+**Loesung:**
+- Step 3: Auch Punkte mit `task_id` verarbeiten - wenn `assigned_to` UND `result_text` vorhanden, das Ergebnis an die bestehende Aufgabe anhaengen (statt neue zu erstellen)
+- Step 5: Deduplizierung beibehalten
+
+**Datei:** `src/components/MeetingsView.tsx` (archiveMeeting, ca. Zeile 1263-1315)
+
+### 2. Markierte Termine: Aufgabe fuer ALLE Teilnehmer
+
+**Problem:** Step 5d (Zeile 1503-1517) erstellt nur eine Aufgabe mit `assigned_to: firstParticipant`.
+
+**Loesung:** Fuer jeden Teilnehmer eine eigene Aufgabe mit den gleichen Unteraufgaben erstellen:
+```
+for (const participantId of participantIds) {
+  const task = await supabase.from('tasks').insert({
+    user_id: user.id,
+    title: `Termine aus Besprechung "${meeting.title}"`,
+    category: 'meeting',
+    assigned_to: participantId,
+    ...
+  });
+  // Subtasks fuer jeden Termin
+  await supabase.from('subtasks').insert(subtasks);
+}
 ```
 
-Auf Mobilgeraeten (< 1024px) wird das Layout zu einem Single-Column mit collapsible Sektionen.
+**Datei:** `src/components/MeetingsView.tsx` (archiveMeeting, ca. Zeile 1460-1537)
 
-### 2. Datenbank-Erweiterungen
+### 3. RLS-Policy: Meeting-Teilnehmer duerfen Notiz-Ergebnis aendern
 
-Neue Spalten auf `case_files`:
+**Problem:** Die UPDATE-Policy auf `quick_notes` erlaubt nur Eigentuemern (`user_id = auth.uid()`) und Nutzern mit Edit-Freigabe das Aktualisieren. Meeting-Teilnehmer koennen aber `meeting_result` nicht setzen fuer Notizen anderer.
+
+**Loesung:** Neue RLS-Policy die es Meeting-Teilnehmern erlaubt, das `meeting_result`-Feld zu aktualisieren:
 
 ```sql
-ALTER TABLE public.case_files
-  ADD COLUMN current_status_note text,           -- "Aktueller Stand" Freitext
-  ADD COLUMN current_status_updated_at timestamptz,
-  ADD COLUMN risks_and_opportunities jsonb DEFAULT '{"risks": [], "opportunities": []}',
-  ADD COLUMN assigned_to uuid;                    -- Hauptverantwortlicher
+CREATE POLICY "Meeting participants can update note results"
+  ON public.quick_notes FOR UPDATE
+  USING (
+    meeting_id IS NOT NULL
+    AND (
+      EXISTS (
+        SELECT 1 FROM meeting_participants mp
+        WHERE mp.meeting_id = quick_notes.meeting_id
+        AND mp.user_id = auth.uid()
+      )
+      OR EXISTS (
+        SELECT 1 FROM meetings m
+        WHERE m.id = quick_notes.meeting_id
+        AND m.user_id = auth.uid()
+      )
+    )
+  )
+  WITH CHECK (
+    meeting_id IS NOT NULL
+    AND (
+      EXISTS (
+        SELECT 1 FROM meeting_participants mp
+        WHERE mp.meeting_id = quick_notes.meeting_id
+        AND mp.user_id = auth.uid()
+      )
+      OR EXISTS (
+        SELECT 1 FROM meetings m
+        WHERE m.id = quick_notes.meeting_id
+        AND m.user_id = auth.uid()
+      )
+    )
+  );
 ```
 
-Fuer "Naechste Schritte" nutzen wir das bestehende Task-System: Die verknuepften Aufgaben (`case_file_tasks`) mit Status `todo` oder `in_progress` werden automatisch als "Naechste Schritte" angezeigt. Zusaetzlich ermoeglichen wir Inline-Quick-Tasks:
+**Datei:** Neue DB-Migration
 
-```sql
--- Keine neue Tabelle noetig, wir nutzen die bestehende tasks + case_file_tasks Verknuepfung
-```
+### 4. Fokus-Modus: Tastatur-Shortcuts fuer Termine
 
-### 3. Komponenten-Struktur
+**Problem:** Im `handleKeyDown` in `FocusModeView.tsx` gibt es keinen Handler fuer das Markieren von Terminen mit Sternen via Tastatur.
 
-Neue und ueberarbeitete Dateien:
+**Loesung:** Neue Shortcuts hinzufuegen:
+- `s` -- Stern toggeln (wenn das aktuelle Item ein Termin/appointment ist)
+- `n` -- Zum naechsten Termin springen (nur ueber Termine navigieren)
+- `p` -- Zum vorherigen Termin springen
 
-| Datei | Beschreibung |
-|-------|-------------|
-| `CaseFileDetail.tsx` | Komplett umbauen: Drei-Spalten-Layout |
-| `CaseFileDetailHeader.tsx` (NEU) | Header mit Quick-Action-Buttons |
-| `CaseFileLeftSidebar.tsx` (NEU) | Beteiligte, Themen, Metadaten |
-| `CaseFileTimeline.tsx` (NEU) | Vereinigte Chronologie mit Filter-Tabs und Suche |
-| `CaseFileRightSidebar.tsx` (NEU) | Aktueller Stand, Naechste Schritte, Risiken |
-| `CaseFileCurrentStatus.tsx` (NEU) | Editierbare Statusnotiz-Karte |
-| `CaseFileNextSteps.tsx` (NEU) | Aufgaben-Checkliste mit Quick-Add |
-| `CaseFileRisksOpportunities.tsx` (NEU) | Risiken und Chancen Editor |
-
-Die bestehenden Tab-Komponenten (`CaseFileContactsTab`, `CaseFileDocumentsTab` etc.) werden nicht geloescht, aber ihre Inhalte werden in die neuen Sidebar- und Timeline-Komponenten integriert. Die Dialoge zum Hinzufuegen bleiben erhalten.
-
-### 4. Chronologie -- vereinigtes Timeline-System
-
-Die bestehende `CaseFileTimelineTab` zeigt nur manuelle Timeline-Eintraege. In der neuen Version wird die Chronologie ALLE verknuepften Elemente zusammenfuehren:
-
+Im `handleKeyDown` Switch-Block:
 ```typescript
-// Pseudocode fuer die vereinigte Timeline
-const unifiedTimeline = [
-  ...timeline.map(t => ({ ...t, category: 'timeline' })),
-  ...notes.map(n => ({ 
-    id: n.id, category: 'note', 
-    event_date: n.created_at, title: 'Notiz', 
-    description: n.content 
-  })),
-  ...documents.map(d => ({
-    id: d.id, category: 'document',
-    event_date: d.created_at, title: d.document?.title,
-    description: d.document?.file_name
-  })),
-  ...tasks.map(t => ({
-    id: t.id, category: 'task',
-    event_date: t.created_at, title: t.task?.title,
-    description: `Status: ${t.task?.status}`
-  })),
-  ...appointments.map(a => ({
-    id: a.id, category: 'appointment',
-    event_date: a.appointment?.start_time || a.created_at,
-    title: a.appointment?.title,
-    description: a.appointment?.location
-  })),
-  ...letters.map(l => ({
-    id: l.id, category: 'letter',
-    event_date: l.created_at, title: l.letter?.title,
-    description: l.letter?.subject
-  })),
-].sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
+case 's':
+  e.preventDefault();
+  if (currentNavigable?.sourceType === 'appointment' && onToggleStar) {
+    onToggleStar(currentNavigable.sourceData);
+  }
+  break;
+case 'n':
+  e.preventDefault();
+  // Zum naechsten Termin springen
+  const nextAppt = allNavigableItems.findIndex(
+    (n, i) => i > flatFocusIndex && n.sourceType === 'appointment'
+  );
+  if (nextAppt !== -1) setFlatFocusIndex(nextAppt);
+  break;
+case 'p':
+  e.preventDefault();
+  // Zum vorherigen Termin springen
+  for (let i = flatFocusIndex - 1; i >= 0; i--) {
+    if (allNavigableItems[i].sourceType === 'appointment') {
+      setFlatFocusIndex(i);
+      break;
+    }
+  }
+  break;
 ```
 
-Filter-Tabs ueber der Timeline:
-- **Alle** -- alles anzeigen
-- **Notizen** -- nur Notizen
-- **Dokumente** -- nur Dokumente
-- **Termine** -- nur Termine
-- **Aufgaben** -- nur Aufgaben
-- **Briefe** -- nur Briefe/Korrespondenz
+In der Tastenkuerzel-Legende die neuen Shortcuts dokumentieren.
 
-Plus eine Suchleiste und ein "Nur offene Punkte"-Toggle.
+**Datei:** `src/components/meetings/FocusModeView.tsx`
 
-### 5. "Aktueller Stand" -- hervorgehobene Statusnotiz
+### 5. Nachbereitung: Kategorie auf 'meeting' aendern
 
-- Ein prominenter, farblich hervorgehobener Bereich in der rechten Sidebar
-- Der Benutzer kann den Text inline bearbeiten (Textarea mit "Notiz bearbeiten"-Button)
-- Wird in `case_files.current_status_note` gespeichert
-- Zeigt Zeitstempel der letzten Aktualisierung
+**Problem:** Die Nachbereitungs-Aufgabe (Step 4, Zeile 1327) hat `category: 'personal'` und kein `assigned_to`. Die Filterlogik in `MyWorkTasksTab.tsx` (Zeile 147-155) verschiebt nur Tasks mit `category: 'meeting'` in die rechte Spalte.
 
-### 6. "Naechste Schritte" -- Aufgaben-Checkliste
+**Loesung:** In Step 4 aendern:
+```typescript
+const { data: createdTask } = await supabase
+  .from('tasks')
+  .insert({
+    user_id: user.id,
+    title: `Nachbereitung ${meeting.title}...`,
+    category: 'meeting',        // statt 'personal'
+    assigned_to: user.id,        // NEU: sich selbst zuweisen
+    ...
+  });
+```
 
-- Zeigt die mit der FallAkte verknuepften offenen Aufgaben als Checkliste
-- Checkbox zum Abschliessen direkt in der Liste (aendert Task-Status auf `completed`)
-- Zustaendige Person und Frist werden angezeigt
-- "Quick-Add"-Feld: Schnell eine neue Aufgabe erstellen, die automatisch mit der Akte verknuepft wird
-- Sortierung: Ueberfaellige zuerst, dann nach Frist
+**Datei:** `src/components/MeetingsView.tsx` (archiveMeeting, Zeile 1320-1333)
 
-### 7. "Risiken und Chancen"
+### 6. Neuer Systempunkt: Geburtstage
 
-- Zwei getrennte Listen (Bullet-Points) in einer Karte
-- Inline-Bearbeitung: Klick auf "Bearbeiten" oeffnet jeweils ein Textarea
-- Gespeichert als JSONB in `case_files.risks_and_opportunities`:
-  ```json
-  {
-    "risks": ["Mehr Verbreitenwirkung", "Lack von Refant"],
-    "opportunities": ["Anzeigen und eine Presse"]
+**Konzept:** Ein neuer `system_type = 'birthdays'` fuer Meeting-Agendapunkte. Zeigt Kontakte mit Geburtstag in den naechsten 14 Tagen an. In der Besprechung kann man fuer jeden Geburtstag eine Aktion waehlen (Karte, Mail, Anruf, Geschenk). Die gewaehlte Aktion wird als Notiz beim Kontakt hinterlegt.
+
+**Implementierung:**
+
+**a) SystemAgendaItem.tsx erweitern:**
+- Neuer Case `birthdays` mit rosa/pink Farbschema
+- Laedt Kontakte mit `birthday` in den naechsten 14 Tagen
+- Zeigt Name, Geburtstag, Alter an
+- Aktions-Buttons: Karte, Mail, Anruf, Geschenk (als Toggle-Buttons)
+
+**b) FocusModeView.tsx erweitern:**
+- Neuen `sourceType: 'birthday'` behandeln
+- Geburtstage als navigierbare Sub-Items einfuegen (analog zu appointments/notes/tasks)
+- Auswahloptionen (Karte/Mail/Anruf/Geschenk) als Buttons im fokussierten Item
+
+**c) MeetingsView.tsx erweitern:**
+- `addSystemAgendaItem` um `'birthdays'` erweitern
+- System-Button im Popover hinzufuegen (mit Cake-Icon und rosa Farbe)
+- Geburtstags-Daten laden: Query auf `contacts` WHERE `birthday` im 14-Tage-Fenster
+- Archivierung: Wenn Geburtstag-Aktionen gewaehlt wurden, diese als Notiz/Interaktion zum Kontakt speichern
+
+**d) Administration.tsx:**
+- `birthdays` als System-Type in Template-Verwaltung aufnehmen
+- Analoger Button wie bei Termine/Notizen/Aufgaben
+
+**e) handle_meeting_insert Trigger:**
+- Bereits generisch -- liest `system_type` aus `template_items`. Keine Aenderung noetig.
+
+**Datenstruktur fuer Aktionen:**
+Die Geburtstags-Aktionen werden im `result_text` des Agenda-Items als JSON gespeichert:
+```json
+{
+  "contact-uuid-1": { "action": "card", "note": "Karte geschickt" },
+  "contact-uuid-2": { "action": "call", "note": "" }
+}
+```
+
+Bei Archivierung: Fuer jeden Kontakt mit gewaehlter Aktion wird ein Eintrag in `contact_interactions` (oder alternativ als Notiz/Tag am Kontakt) erstellt.
+
+**Dateien:**
+- `src/components/meetings/SystemAgendaItem.tsx` (birthdays-Fall hinzufuegen)
+- `src/components/meetings/FocusModeView.tsx` (birthday sourceType)
+- `src/components/MeetingsView.tsx` (birthdays laden, System-Button, Archivierung)
+- `src/pages/Administration.tsx` (Template-Verwaltung)
+
+### 7. Toast-Groesse endlich fixen
+
+**Root Cause:** In `sonner.tsx` wird sowohl `className` als auch `classNames.toast` gesetzt:
+```tsx
+toastOptions={{
+  className: isLarge ? 'toast-large' : '',         // ← wird ignoriert
+  classNames: {
+    toast: "group toast group-[.toaster]:bg-...",   // ← ueberschreibt className
   }
-  ```
+}}
+```
 
-### 8. Integration mit bestehendem System
+Sonner verwendet `classNames.toast` mit hoeherer Prioritaet als `className`. Daher wird `toast-large` nie angewendet.
 
-| System-Bestandteil | Integration |
-|---------------------|-------------|
-| **Themen (Topics)** | Werden in der linken Sidebar unter "Politischer Kontext" angezeigt, mit `TopicSelector` zum Hinzufuegen |
-| **Kontakte** | Verknuepfte Kontakte mit Rollen in der linken Sidebar, mit Schnellaktionen (Telefon, E-Mail) |
-| **Aufgaben** | Offene Aufgaben als "Naechste Schritte" in rechter Sidebar, alle in der Timeline |
-| **Dokumente** | In der Timeline mit Download-Link, "Hinzufuegen" per Quick-Button im Header |
-| **Termine** | In der Timeline mit Ort und Zeit, "Hinzufuegen" per Quick-Button |
-| **Briefe** | In der Timeline mit Status-Badge |
-| **Teilnehmer** | In der linken Sidebar unter "Team" mit Viewer/Editor-Rollen |
-| **Sichtbarkeit** | Indikator (Icon + Text) im Header |
-| **Notizen** | In der Timeline als eigener Typ, angepinnte Notizen als "Aktueller Stand" |
+**Loesung:** `toast-large` direkt in `classNames.toast` integrieren:
+```tsx
+toastOptions={{
+  classNames: {
+    toast: `group toast group-[.toaster]:bg-background ... ${isLarge ? 'toast-large' : ''}`,
+    ...
+  }
+}}
+```
+
+Die `className` Prop wird entfernt. Die CSS-Regeln in `index.css` (Zeile 776-800) bleiben unveraendert -- sie greifen, sobald die Klasse korrekt angewendet wird.
+
+**Datei:** `src/components/ui/sonner.tsx`
 
 ---
 
@@ -213,27 +238,17 @@ Plus eine Suchleiste und ein "Nur offene Punkte"-Toggle.
 
 | Aktion | Datei |
 |--------|-------|
-| DB-Migration | Neue Spalten: `current_status_note`, `current_status_updated_at`, `risks_and_opportunities`, `assigned_to` |
-| Komplett umbauen | `src/components/case-files/CaseFileDetail.tsx` |
-| Neu | `src/components/case-files/CaseFileDetailHeader.tsx` |
-| Neu | `src/components/case-files/CaseFileLeftSidebar.tsx` |
-| Neu | `src/components/case-files/CaseFileTimeline.tsx` |
-| Neu | `src/components/case-files/CaseFileRightSidebar.tsx` |
-| Neu | `src/components/case-files/CaseFileCurrentStatus.tsx` |
-| Neu | `src/components/case-files/CaseFileNextSteps.tsx` |
-| Neu | `src/components/case-files/CaseFileRisksOpportunities.tsx` |
-| Bearbeiten | `src/hooks/useCaseFileDetails.tsx` (neue Felder + updateCurrentStatus + updateRisksOpportunities) |
-| Bearbeiten | `src/hooks/useCaseFiles.tsx` (CaseFile Interface erweitern) |
-| Bearbeiten | `src/integrations/supabase/types.ts` (neue Spalten) |
-
-Bestehende Tab-Dateien bleiben vorerst erhalten fuer die Add-Dialoge, werden aber nicht mehr als eigenstaendige Tabs gerendert.
+| DB-Migration | RLS-Policy fuer `quick_notes` UPDATE durch Meeting-Teilnehmer |
+| Bearbeiten | `src/components/MeetingsView.tsx` (Archivierung Steps 3-5d korrigieren, Geburtstage laden und System-Button, `category: 'meeting'` fuer Nachbereitung) |
+| Bearbeiten | `src/components/meetings/FocusModeView.tsx` (Shortcuts `s`/`n`/`p`, birthday sourceType) |
+| Bearbeiten | `src/components/meetings/SystemAgendaItem.tsx` (birthdays-Rendering) |
+| Bearbeiten | `src/pages/Administration.tsx` (birthdays in Template-Verwaltung) |
+| Bearbeiten | `src/components/ui/sonner.tsx` (Toast-Groesse Fix) |
 
 ## Reihenfolge
 
-1. DB-Migration: Neue Spalten auf `case_files`
-2. Types + Hook erweitern (`useCaseFileDetails`, `useCaseFiles`)
-3. Neue Komponenten erstellen (Header, Left Sidebar, Right Sidebar, Timeline)
-4. `CaseFileDetail.tsx` zum Drei-Spalten-Layout umbauen
-5. Responsive Anpassungen fuer Mobil
-6. Bestehende Add-Dialoge in das neue Layout integrieren
-
+1. **Toast-Groesse fixen** (schnellster Fix, 1 Zeile)
+2. **RLS-Policy fuer Notiz-Ergebnisse** (DB-Migration)
+3. **Archivierung korrigieren** (Steps 3, 4, 5d in MeetingsView)
+4. **Fokus-Modus Tastatur-Shortcuts** (FocusModeView)
+5. **Geburtstags-Systempunkt** (SystemAgendaItem, FocusModeView, MeetingsView, Administration)
