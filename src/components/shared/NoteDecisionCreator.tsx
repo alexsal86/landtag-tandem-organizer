@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,14 +56,17 @@ export function NoteDecisionCreator({
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
+  const hasInitializedRef = useRef(false);
 
   // Initialize from note content
   useEffect(() => {
     if (open && note) {
-      // Extract title from note title or first line of content
       const noteTitle = note.title || note.content.split('\n')[0].replace(/<[^>]*>/g, '').substring(0, 100);
       setTitle(noteTitle);
       setDescription(note.content);
+    }
+    if (!open) {
+      hasInitializedRef.current = false; // Reset when dialog closes
     }
   }, [open, note]);
 
@@ -103,9 +106,12 @@ export function NoteDecisionCreator({
 
       if (profileError) throw profileError;
       
-      // Filter out current user
       const filteredProfiles = (profileData || []).filter(p => p.user_id !== user?.id);
       setProfiles(filteredProfiles);
+
+      // Only set selected users on first initialization (prevents overwriting user changes)
+      if (hasInitializedRef.current) return;
+      hasInitializedRef.current = true;
 
       // Check for default participants from settings first
       let defaultIds: string[] = [];
