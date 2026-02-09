@@ -368,6 +368,24 @@ export function MyWorkDecisionsTab() {
     return { openQuestions, newComments };
   }, [decisions]);
 
+  // Inline reply to questions from card
+  const sendCreatorResponse = async (responseId: string, responseText: string) => {
+    if (!responseText?.trim()) return;
+
+    const { error } = await supabase
+      .from('task_decision_responses')
+      .update({ creator_response: responseText.trim() })
+      .eq('id', responseId);
+
+    if (error) {
+      toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
+      throw error;
+    }
+
+    toast({ title: "Erfolgreich", description: "Antwort wurde gesendet." });
+    loadDecisions();
+  };
+
   // Actions
   const handleOpenDetails = (decisionId: string) => {
     setSelectedDecisionId(decisionId);
@@ -525,6 +543,7 @@ export function MyWorkDecisionsTab() {
                         onCreateTask={createTaskFromDecision}
                         onResponseSubmitted={loadDecisions}
                         onOpenComments={(id, title) => { setCommentsDecisionId(id); setCommentsDecisionTitle(title); }}
+                        onReply={sendCreatorResponse}
                         commentCount={getCommentCount(decision.id)}
                         creatingTaskId={creatingTaskId}
                         currentUserId={user?.id || ""}

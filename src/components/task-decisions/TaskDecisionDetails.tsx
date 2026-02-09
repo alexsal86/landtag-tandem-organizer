@@ -186,12 +186,6 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
   const archiveDecision = async () => {
     if (!decision || !currentUserId) return;
 
-    console.log("TaskDecisionDetails - Archiving decision:", { 
-      decisionId: decision.id, 
-      currentUserId,
-      decisionCreator: decision.created_by 
-    });
-
     setIsLoading(true);
     try {
       const { error } = await supabase
@@ -205,13 +199,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
 
       if (error) throw error;
 
-      // Mark related notifications as read
-      await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', currentUserId)
-        .eq('navigation_context', 'decisions');
-
+      // Erfolg melden BEVOR optionale Operationen laufen
       toast({
         title: "Erfolgreich",
         description: "Entscheidung wurde archiviert.",
@@ -219,6 +207,17 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
 
       onArchived?.();
       onClose();
+
+      // Best-effort: Notifications als gelesen markieren
+      try {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', currentUserId)
+          .eq('navigation_context', 'decisions');
+      } catch (e) {
+        console.warn('Notifications update failed:', e);
+      }
     } catch (error) {
       console.error('Error archiving decision:', error);
       toast({

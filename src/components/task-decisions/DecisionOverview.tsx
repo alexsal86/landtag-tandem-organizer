@@ -442,59 +442,65 @@ export const DecisionOverview = () => {
     }
   };
 
-  const sendCreatorResponse = async (responseId: string) => {
-    const responseText = creatorResponses[responseId];
-    if (!responseText?.trim()) return;
+  const sendCreatorResponse = async (responseId: string, responseText?: string) => {
+    const text = responseText || creatorResponses[responseId];
+    if (!text?.trim()) return;
 
     setIsLoading(true);
     
     try {
-      const { data: responseData, error: fetchError } = await supabase
-        .from('task_decision_responses')
-        .select(`
-          id,
-          participant_id,
-          decision_id,
-          task_decision_participants!inner(user_id),
-          task_decisions!inner(title)
-        `)
-        .eq('id', responseId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
+      // Kernoperation ZUERST: Update der creator_response
       const { error: updateError } = await supabase
         .from('task_decision_responses')
-        .update({ creator_response: responseText.trim() })
+        .update({ creator_response: text.trim() })
         .eq('id', responseId);
 
       if (updateError) throw updateError;
 
-      if (responseData) {
-        const participantUserId = (responseData as any).task_decision_participants?.user_id;
-        const decisionTitle = (responseData as any).task_decisions?.title;
-
-        if (participantUserId && participantUserId !== user?.id) {
-          await supabase.rpc('create_notification', {
-            user_id_param: participantUserId,
-            type_name: 'task_decision_creator_response',
-            title_param: 'Antwort auf Ihren Kommentar',
-            message_param: `Der Ersteller hat auf Ihren Kommentar zu "${decisionTitle}" geantwortet.`,
-            data_param: {
-              decision_id: responseData.decision_id,
-              decision_title: decisionTitle
-            },
-            priority_param: 'medium'
-          });
-        }
-      }
-
+      // Erfolg melden sofort
       toast({
         title: "Erfolgreich",
         description: "Antwort wurde gesendet.",
       });
 
       setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
+
+      // Best-effort: Notification senden (in separatem try/catch)
+      try {
+        const { data: responseData } = await supabase
+          .from('task_decision_responses')
+          .select(`
+            id,
+            decision_id,
+            task_decision_participants!inner(user_id),
+            task_decisions!inner(title)
+          `)
+          .eq('id', responseId)
+          .maybeSingle();
+
+        if (responseData) {
+          const participantUserId = (responseData as any).task_decision_participants?.user_id;
+          const decisionTitle = (responseData as any).task_decisions?.title;
+
+          if (participantUserId && participantUserId !== user?.id) {
+            await supabase.rpc('create_notification', {
+              user_id_param: participantUserId,
+              type_name: 'task_decision_creator_response',
+              title_param: 'Antwort auf Ihren Kommentar',
+              message_param: `Der Ersteller hat auf Ihren Kommentar zu "${decisionTitle}" geantwortet.`,
+              data_param: {
+                decision_id: responseData.decision_id,
+                decision_title: decisionTitle
+              },
+              priority_param: 'medium'
+            });
+          }
+        }
+      } catch (notifError) {
+        console.warn('Notification send failed (non-critical):', notifError);
+      }
+
+      // Liste neu laden
       if (user?.id) await loadDecisionRequests(user.id);
     } catch (error) {
       console.error('Error sending creator response:', error);
@@ -978,7 +984,12 @@ export const DecisionOverview = () => {
           </div>
 
           {/* Activity preview */}
-          <DecisionCardActivity participants={decision.participants} maxItems={2} />
+          <DecisionCardActivity 
+            participants={decision.participants} 
+            maxItems={2} 
+            isCreator={decision.isCreator}
+            onReply={(responseId, text) => sendCreatorResponse(responseId, text)}
+          />
 
           {/* Response buttons for participants */}
           {decision.isParticipant && decision.participant_id && !decision.hasResponded && (
