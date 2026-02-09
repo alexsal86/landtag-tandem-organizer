@@ -763,9 +763,9 @@ span[data-lexical-mention="true"] {
 
 /* Notification highlight animation for deep-linked items */
 @keyframes notification-highlight {
-  0% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4); }
-  50% { box-shadow: 0 0 0 4px hsl(var(--primary) / 0.2); }
-  100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+  0% { box-shadow: 0 0 0 0 hsl(var(--secondary) / 0.4); }
+  50% { box-shadow: 0 0 0 4px hsl(var(--secondary) / 0.2); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--secondary) / 0); }
 }
 
 .notification-highlight {
