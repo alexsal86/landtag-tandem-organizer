@@ -63,11 +63,19 @@ export const StandaloneDecisionCreator = ({
   const { toast } = useToast();
 
   const currentOptions = useMemo(() => {
-    if (selectedTemplateId === "custom") {
-      return customOptions;
+    return customOptions;
+  }, [customOptions]);
+
+  // Sync template options into customOptions when template changes
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    if (templateId !== "custom") {
+      const tpl = getTemplateById(templateId);
+      if (tpl) {
+        setCustomOptions(tpl.options.map(o => ({ ...o })));
+      }
     }
-    return getTemplateById(selectedTemplateId)?.options || [];
-  }, [selectedTemplateId, customOptions]);
+  };
 
   const loadProfiles = async () => {
     console.log("Loading profiles for decision creator...");
@@ -515,7 +523,7 @@ export const StandaloneDecisionCreator = ({
 
           <div>
             <label className="text-sm font-medium">Antworttyp</label>
-            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+            <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Vorlage auswählen" />
               </SelectTrigger>
@@ -532,7 +540,7 @@ export const StandaloneDecisionCreator = ({
             </p>
           </div>
 
-          {selectedTemplateId === "custom" && (
+          {selectedTemplateId !== "yesNo" && selectedTemplateId !== "yesNoQuestion" && (
             <ResponseOptionsEditor
               options={customOptions}
               onChange={setCustomOptions}

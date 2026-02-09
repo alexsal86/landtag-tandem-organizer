@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,35 @@ interface MyWorkDecisionCardProps {
 const getInitials = (name: string | null) => {
   if (!name) return '?';
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+};
+
+const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; maxLength?: number }) => {
+  const [expanded, setExpanded] = useState(false);
+  const plainText = content.replace(/<[^>]*>/g, '');
+  const isTruncated = plainText.length > maxLength;
+
+  if (!isTruncated || expanded) {
+    return (
+      <div>
+        <RichTextDisplay content={content} className="text-sm text-muted-foreground" />
+        {isTruncated && (
+          <Button variant="link" size="sm" onClick={(e) => { e.stopPropagation(); setExpanded(false); }} className="text-xs p-0 h-auto text-muted-foreground hover:text-primary">
+            weniger
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  const truncatedPlain = plainText.substring(0, maxLength).replace(/\s+\S*$/, '') + '...';
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground">{truncatedPlain}</p>
+      <Button variant="link" size="sm" onClick={(e) => { e.stopPropagation(); setExpanded(true); }} className="text-xs p-0 h-auto text-muted-foreground hover:text-primary">
+        mehr
+      </Button>
+    </div>
+  );
 };
 
 export function MyWorkDecisionCard({
@@ -137,7 +167,7 @@ export function MyWorkDecisionCard({
         {/* Description */}
         {decision.description && (
           <div onClick={(e) => e.stopPropagation()}>
-            <RichTextDisplay content={decision.description} className="text-sm text-muted-foreground line-clamp-1" />
+            <TruncatedDescription content={decision.description} maxLength={150} />
           </div>
         )}
 

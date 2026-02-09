@@ -348,7 +348,8 @@ export const DecisionOverview = () => {
               response_type,
               comment,
               creator_response,
-              created_at
+              created_at,
+              updated_at
             )
           `)
           .in('decision_id', decisionIds);
@@ -1026,47 +1027,6 @@ export const DecisionOverview = () => {
             onReply={(responseId, text) => sendCreatorResponse(responseId, text)}
           />
 
-          {/* Open questions for creator */}
-          {user?.id === decision.created_by && decision.participants?.some(p => 
-            p.responses[0]?.response_type === 'question' && !p.responses[0]?.creator_response
-          ) && (
-            <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
-              {decision.participants.map(participant => {
-                const latestResponse = participant.responses[0];
-                if (!latestResponse || latestResponse.response_type !== 'question' || latestResponse.creator_response) return null;
-                
-                return (
-                  <div key={participant.id} className="bg-orange-50 dark:bg-orange-950/20 p-2 rounded text-sm space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-orange-700 dark:text-orange-400">Rückfrage von</span>
-                      <UserBadge 
-                        userId={participant.user_id}
-                        displayName={participant.profile?.display_name}
-                        badgeColor={participant.profile?.badge_color}
-                        size="sm"
-                      />
-                    </div>
-                    <p className="text-muted-foreground">{latestResponse.comment}</p>
-                    <div className="space-y-2 mt-2">
-                      <SimpleRichTextEditor
-                        initialContent={creatorResponses[latestResponse.id] || ''}
-                        onChange={(html) => setCreatorResponses(prev => ({ ...prev, [latestResponse.id]: html }))}
-                        placeholder="Antwort eingeben..."
-                        minHeight="50px"
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => sendCreatorResponse(latestResponse.id)}
-                        disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}
-                      >
-                        <Send className="h-3 w-3 mr-1" />Senden
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </CardContent>
       </Card>
     );

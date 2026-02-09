@@ -436,10 +436,9 @@ export const TaskDecisionResponse = ({
         
         <Collapsible open={showCommentField} onOpenChange={setShowCommentField}>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
-              <MessageCircle className="h-3 w-3 mr-1" />
+            <Button variant="outline" size="sm" className="text-xs text-muted-foreground">
               Begründung
-              <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${showCommentField ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-3 w-3 ml-0.5 transition-transform ${showCommentField ? 'rotate-180' : ''}`} />
             </Button>
           </CollapsibleTrigger>
         </Collapsible>

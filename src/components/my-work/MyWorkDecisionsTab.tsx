@@ -205,7 +205,7 @@ export function MyWorkDecisionsTab() {
           .from('task_decision_participants')
           .select(`
             id, user_id, decision_id,
-            task_decision_responses (id, response_type, comment, creator_response, created_at)
+            task_decision_responses (id, response_type, comment, creator_response, created_at, updated_at)
           `)
           .in('decision_id', allDecisionIds);
 
@@ -249,7 +249,7 @@ export function MyWorkDecisionsTab() {
             },
             responses: (p.task_decision_responses || [])
               .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-              .map((r: any) => ({ ...r, response_type: r.response_type as 'yes' | 'no' | 'question' })),
+              .map((r: any) => ({ ...r, response_type: r.response_type as string })),
           });
         });
 
@@ -291,12 +291,21 @@ export function MyWorkDecisionsTab() {
   };
 
   // Tab counts
-  const tabCounts = useMemo(() => ({
-    forMe: decisions.filter(d => d.isParticipant && !d.hasResponded).length,
-    answered: decisions.filter(d => d.isParticipant && d.hasResponded && !d.isCreator).length,
-    myDecisions: decisions.filter(d => d.isCreator).length,
-    public: decisions.filter(d => d.visible_to_all && !d.isCreator && !d.isParticipant).length,
-  }), [decisions]);
+  const tabCounts = useMemo(() => {
+    const forMeParticipant = decisions.filter(d => d.isParticipant && !d.hasResponded && !d.isCreator);
+    const forMeCreatorActivity = decisions.filter(d => {
+      if (!d.isCreator) return false;
+      const s = getResponseSummary(d.participants);
+      return s.questionCount > 0 || (s.total > 0 && s.pending < s.total);
+    });
+    const forMeIds = new Set([...forMeParticipant.map(d => d.id), ...forMeCreatorActivity.map(d => d.id)]);
+    return {
+      forMe: forMeIds.size,
+      answered: decisions.filter(d => d.isParticipant && d.hasResponded && !d.isCreator).length,
+      myDecisions: decisions.filter(d => d.isCreator).length,
+      public: decisions.filter(d => d.visible_to_all && !d.isCreator && !d.isParticipant).length,
+    };
+  }, [decisions]);
 
   // Filtered decisions
   const filteredDecisions = useMemo(() => {
@@ -311,8 +320,16 @@ export function MyWorkDecisionsTab() {
     }
 
     switch (activeTab) {
-      case "for-me":
-        return filtered.filter(d => d.isParticipant && !d.hasResponded);
+      case "for-me": {
+        const forMeParticipant = filtered.filter(d => d.isParticipant && !d.hasResponded && !d.isCreator);
+        const forMeCreatorActivity = filtered.filter(d => {
+          if (!d.isCreator) return false;
+          const s = getResponseSummary(d.participants);
+          return s.questionCount > 0 || (s.total > 0 && s.pending < s.total);
+        });
+        const seen = new Set(forMeParticipant.map(d => d.id));
+        return [...forMeParticipant, ...forMeCreatorActivity.filter(d => !seen.has(d.id))];
+      }
       case "answered":
         return filtered.filter(d => d.isParticipant && d.hasResponded && !d.isCreator);
       case "my-decisions":
