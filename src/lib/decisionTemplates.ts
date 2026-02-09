@@ -4,6 +4,7 @@ export interface ResponseOption {
   color: string;
   icon?: string;
   requires_comment?: boolean;
+  description?: string;
 }
 
 export interface DecisionTemplate {
@@ -38,11 +39,11 @@ export const DECISION_TEMPLATES: Record<string, DecisionTemplate> = {
     name: "Bewertung 1-5",
     description: "Skala von 1 (schlecht) bis 5 (sehr gut)",
     options: [
-      { key: "1", label: "1", color: "red" },
-      { key: "2", label: "2", color: "orange" },
-      { key: "3", label: "3", color: "yellow" },
-      { key: "4", label: "4", color: "lime" },
-      { key: "5", label: "5", color: "green" }
+      { key: "1", label: "1", color: "red", description: "Schlecht / Nicht geeignet" },
+      { key: "2", label: "2", color: "orange", description: "Unterdurchschnittlich / Eher nicht" },
+      { key: "3", label: "3", color: "yellow", description: "Neutral / Akzeptabel" },
+      { key: "4", label: "4", color: "lime", description: "Gut / Geeignet" },
+      { key: "5", label: "5", color: "green", description: "Sehr gut / Vollste Zustimmung" }
     ]
   },
   optionABC: {
@@ -50,9 +51,9 @@ export const DECISION_TEMPLATES: Record<string, DecisionTemplate> = {
     name: "Option A / B / C",
     description: "Drei alternative Vorschläge",
     options: [
-      { key: "a", label: "Option A", color: "blue" },
-      { key: "b", label: "Option B", color: "purple" },
-      { key: "c", label: "Option C", color: "gray" }
+      { key: "a", label: "Option A", color: "blue", description: "Erste Alternative" },
+      { key: "b", label: "Option B", color: "purple", description: "Zweite Alternative" },
+      { key: "c", label: "Option C", color: "gray", description: "Dritte Alternative" }
     ]
   },
   custom: {

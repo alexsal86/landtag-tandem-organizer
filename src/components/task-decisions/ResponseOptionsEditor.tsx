@@ -41,56 +41,65 @@ export const ResponseOptionsEditor = ({ options, onChange }: ResponseOptionsEdit
       
       <div className="space-y-2">
         {options.map((option, index) => (
-          <div key={`option-${index}`} className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
-            <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-            
-            <Input
-              value={option.label}
-              onChange={(e) => updateOption(index, { label: e.target.value })}
-              placeholder="Bezeichnung"
-              className="flex-1 h-8"
-            />
-            
-            <Select
-              value={option.color}
-              onValueChange={(value) => updateOption(index, { color: value })}
-            >
-              <SelectTrigger className="w-28 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {COLOR_OPTIONS.map((color) => (
-                  <SelectItem key={color.value} value={color.value}>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${color.bgClass} ${color.borderClass} border`} />
-                      {color.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <div className="flex items-center gap-1">
-              <Checkbox
-                id={`comment-${index}`}
-                checked={option.requires_comment || false}
-                onCheckedChange={(checked) => updateOption(index, { requires_comment: checked === true })}
+          <div key={`option-${index}`} className="space-y-1.5 p-2 border rounded-md bg-muted/30">
+            <div className="flex items-center gap-2">
+              <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
+              
+              <Input
+                value={option.label}
+                onChange={(e) => updateOption(index, { label: e.target.value })}
+                placeholder="Bezeichnung"
+                className="flex-1 h-8"
               />
-              <label htmlFor={`comment-${index}`} className="text-xs text-muted-foreground whitespace-nowrap">
-                Kommentar
-              </label>
+              
+              <Select
+                value={option.color}
+                onValueChange={(value) => updateOption(index, { color: value })}
+              >
+                <SelectTrigger className="w-28 h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COLOR_OPTIONS.map((color) => (
+                    <SelectItem key={color.value} value={color.value}>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${color.bgClass} ${color.borderClass} border`} />
+                        {color.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <div className="flex items-center gap-1">
+                <Checkbox
+                  id={`comment-${index}`}
+                  checked={option.requires_comment || false}
+                  onCheckedChange={(checked) => updateOption(index, { requires_comment: checked === true })}
+                />
+                <label htmlFor={`comment-${index}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                  Kommentar
+                </label>
+              </div>
+              
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeOption(index)}
+                disabled={options.length <= 2}
+                className="h-8 w-8 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
             
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => removeOption(index)}
-              disabled={options.length <= 2}
-              className="h-8 w-8 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <Input
+              value={option.description || ""}
+              onChange={(e) => updateOption(index, { description: e.target.value })}
+              placeholder="Beschreibung (Tooltip beim Hovern)"
+              className="h-7 text-xs ml-6"
+            />
           </div>
         ))}
       </div>

@@ -83,7 +83,7 @@ export function MyWorkDecisionCard({
                 Entschieden
               </Badge>
             ) : summary.total > 0 ? (
-              <Badge className="bg-gray-400 hover:bg-gray-400 text-white text-[10px] px-2 py-0.5">
+              <Badge className="bg-blue-500 hover:bg-blue-500 text-white text-[10px] px-2 py-0.5">
                 {summary.pending} ausstehend
               </Badge>
             ) : null}
@@ -214,17 +214,23 @@ export function MyWorkDecisionCard({
           participants={decision.participants} 
           maxItems={2} 
           isCreator={decision.isCreator}
+          creatorProfile={decision.creator ? {
+            display_name: decision.creator.display_name,
+            badge_color: decision.creator.badge_color,
+            avatar_url: decision.creator.avatar_url,
+          } : undefined}
           onReply={onReply}
         />
 
         {/* Inline voting for unanswered participants */}
-        {decision.isParticipant && decision.participant_id && !decision.hasResponded && (
+        {decision.isParticipant && decision.participant_id && !decision.hasResponded && !decision.isCreator && (
           <div className="mt-2 pt-1.5 border-t" onClick={(e) => e.stopPropagation()}>
             <TaskDecisionResponse 
               decisionId={decision.id}
               participantId={decision.participant_id}
               onResponseSubmitted={onResponseSubmitted}
               hasResponded={decision.hasResponded}
+              creatorId={decision.created_by}
             />
           </div>
         )}

@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Check, X, MessageCircle, Edit2, Paperclip, Circle, Star, ChevronDown } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Check, X, MessageCircle, Edit2, Paperclip, Circle, Star, ChevronDown, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
@@ -16,6 +17,7 @@ interface TaskDecisionResponseProps {
   participantId: string;
   onResponseSubmitted: () => void;
   hasResponded?: boolean;
+  creatorId?: string;
 }
 
 interface ResponseData {
@@ -45,7 +47,8 @@ export const TaskDecisionResponse = ({
   decisionId, 
   participantId, 
   onResponseSubmitted,
-  hasResponded = false 
+  hasResponded = false,
+  creatorId,
 }: TaskDecisionResponseProps) => {
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [questionComment, setQuestionComment] = useState("");
@@ -54,14 +57,21 @@ export const TaskDecisionResponse = ({
   const [showEdit, setShowEdit] = useState(false);
   const [showCommentField, setShowCommentField] = useState(false);
   const [responseOptions, setResponseOptions] = useState<ResponseOption[]>(getDefaultOptions());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
+    loadCurrentUser();
     loadDecisionOptions();
     if (hasResponded) {
       loadCurrentResponse();
     }
   }, [hasResponded, participantId, decisionId]);
+
+  const loadCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUserId(user?.id || null);
+  };
 
   const loadDecisionOptions = async () => {
     try {
@@ -72,7 +82,6 @@ export const TaskDecisionResponse = ({
         .single();
 
       if (error) {
-        // Don't throw - just log and keep default options as fallback
         console.error('Error loading decision options (using defaults):', error);
         return;
       }
@@ -81,7 +90,6 @@ export const TaskDecisionResponse = ({
       }
     } catch (error) {
       console.error('Error loading decision options (using defaults):', error);
-      // Keep default options on error - don't fail
     }
   };
 
@@ -107,10 +115,12 @@ export const TaskDecisionResponse = ({
     }
   };
 
+  // Block creator from voting
+  const isCreator = creatorId && currentUserId && creatorId === currentUserId;
+
   const handleResponse = async (responseType: string, comment?: string) => {
     setIsLoading(true);
     try {
-      // Check if response already exists
       const { data: existingResponse, error: checkError } = await supabase
         .from('task_decision_responses')
         .select('id')
@@ -124,7 +134,6 @@ export const TaskDecisionResponse = ({
       }
 
       if (existingResponse) {
-        // UPDATE existing response
         const { error } = await supabase
           .from('task_decision_responses')
           .update({
@@ -139,7 +148,6 @@ export const TaskDecisionResponse = ({
           throw new Error('Antwort konnte nicht aktualisiert werden');
         }
       } else {
-        // INSERT new response
         const { error } = await supabase
           .from('task_decision_responses')
           .insert({
@@ -166,7 +174,6 @@ export const TaskDecisionResponse = ({
         .select('participant_id')
         .eq('decision_id', decisionId);
 
-      // If all participants have responded, notify the creator
       if (participants && responses && participants.length === responses.length) {
         const { data: decision } = await supabase
           .from('task_decisions')
@@ -189,7 +196,6 @@ export const TaskDecisionResponse = ({
         }
       }
 
-      // Notify creator if participant submitted a comment
       if (comment?.trim()) {
         const { data: decision } = await supabase
           .from('task_decisions')
@@ -220,7 +226,6 @@ export const TaskDecisionResponse = ({
         }
       }
 
-      // Mark related decision notifications as read for this user
       const currentUser = (await supabase.auth.getUser()).data.user;
       if (currentUser) {
         await supabase
@@ -279,19 +284,20 @@ export const TaskDecisionResponse = ({
             {option?.icon && getIcon(option.icon)}
             <span className="ml-1">{option?.label || currentResponse.response_type}</span>
           </Badge>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              // Pre-fill editor with existing comment
-              setQuestionComment(currentResponse?.comment || "");
-              setShowEdit(true);
-            }}
-            className="text-xs"
-          >
-            <Edit2 className="h-3 w-3 mr-1" />
-            Ändern
-          </Button>
+          {!isCreator && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setQuestionComment(currentResponse?.comment || "");
+                setShowEdit(true);
+              }}
+              className="text-xs"
+            >
+              <Edit2 className="h-3 w-3 mr-1" />
+              Ändern
+            </Button>
+          )}
         </div>
         
         <span className="text-xs text-muted-foreground">
@@ -304,7 +310,7 @@ export const TaskDecisionResponse = ({
           })}
         </span>
         
-         {currentResponse.comment && (
+        {currentResponse.comment && (
           <div className="text-xs">
             <strong className="text-muted-foreground">Ihre Begründung:</strong>
             <RichTextDisplay content={currentResponse.comment} className="mt-1" />
@@ -321,93 +327,113 @@ export const TaskDecisionResponse = ({
     );
   }
 
-  // Find option that requires comment for dialog
+  // Block creator from voting
+  if (isCreator) {
+    return (
+      <div className="text-xs text-muted-foreground italic py-2">
+        Als Ersteller können Sie nur auf Rückmeldungen antworten, nicht selbst abstimmen.
+      </div>
+    );
+  }
+
   const optionRequiringComment = responseOptions.find(o => o.requires_comment);
 
-  // Show response buttons
+  const renderOptionButton = (option: ResponseOption) => {
+    const colorClasses = getColorClasses(option.color);
+    
+    const button = option.requires_comment ? (
+      <Dialog key={option.key} open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isLoading}
+            className={`${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass}`}
+          >
+            {getIcon(option.icon)}
+            <span className="ml-1">{option.label}</span>
+            {option.description && <Info className="h-2.5 w-2.5 ml-1 opacity-50" />}
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>{option.label}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <SimpleRichTextEditor
+              initialContent={questionComment}
+              onChange={setQuestionComment}
+              placeholder="Ihre Frage oder Ihr Kommentar..."
+              minHeight="100px"
+            />
+            
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-2 flex items-center">
+                <Paperclip className="h-4 w-4 mr-2" />
+                Dateien anhängen (optional)
+              </p>
+              <DecisionFileUpload 
+                decisionId={decisionId}
+                canUpload={true}
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsQuestionDialogOpen(false)}
+                disabled={isLoading}
+              >
+                Abbrechen
+              </Button>
+              <Button 
+                onClick={() => handleQuestionSubmit(option)}
+                disabled={isLoading}
+              >
+                {isLoading ? "Sende..." : "Senden"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    ) : (
+      <Button
+        key={option.key}
+        variant="outline"
+        size="sm"
+        onClick={() => handleResponse(option.key, questionComment.trim() || undefined)}
+        disabled={isLoading}
+        className={`${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass}`}
+      >
+        {getIcon(option.icon)}
+        <span className="ml-1">{option.label}</span>
+        {option.description && <Info className="h-2.5 w-2.5 ml-1 opacity-50" />}
+      </Button>
+    );
+
+    if (option.description) {
+      return (
+        <TooltipProvider key={option.key}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {button}
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">{option.description}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return button;
+  };
+
   return (
     <div className="space-y-3">
-      {/* Abstimmungsbuttons + Kommentar-Trigger in einer Reihe */}
       <div className="flex items-center flex-wrap gap-2">
-        {responseOptions.map((option) => {
-          const colorClasses = getColorClasses(option.color);
-          
-          // Options requiring comment open a dialog
-          if (option.requires_comment) {
-            return (
-              <Dialog key={option.key} open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isLoading}
-                    className={`${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass}`}
-                  >
-                    {getIcon(option.icon)}
-                    <span className="ml-1">{option.label}</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[400px]">
-                  <DialogHeader>
-                    <DialogTitle>{option.label}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <SimpleRichTextEditor
-                      initialContent={questionComment}
-                      onChange={setQuestionComment}
-                      placeholder="Ihre Frage oder Ihr Kommentar..."
-                      minHeight="100px"
-                    />
-                    
-                    <div className="border-t pt-4">
-                      <p className="text-sm font-medium mb-2 flex items-center">
-                        <Paperclip className="h-4 w-4 mr-2" />
-                        Dateien anhängen (optional)
-                      </p>
-                      <DecisionFileUpload 
-                        decisionId={decisionId}
-                        canUpload={true}
-                      />
-                    </div>
-                    
-                    <div className="flex justify-end space-x-2">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setIsQuestionDialogOpen(false)}
-                        disabled={isLoading}
-                      >
-                        Abbrechen
-                      </Button>
-                      <Button 
-                        onClick={() => handleQuestionSubmit(option)}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? "Sende..." : "Senden"}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            );
-          }
-
-          // Regular options submit directly
-          return (
-            <Button
-              key={option.key}
-              variant="outline"
-              size="sm"
-              onClick={() => handleResponse(option.key, questionComment.trim() || undefined)}
-              disabled={isLoading}
-              className={`${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass}`}
-            >
-              {getIcon(option.icon)}
-              <span className="ml-1">{option.label}</span>
-            </Button>
-          );
-        })}
+        {responseOptions.map(renderOptionButton)}
         
-        {/* Begründung-Trigger DIREKT in der Button-Reihe */}
         <Collapsible open={showCommentField} onOpenChange={setShowCommentField}>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
@@ -434,7 +460,6 @@ export const TaskDecisionResponse = ({
         )}
       </div>
 
-      {/* Kommentarfeld unter den Buttons wenn geöffnet */}
       {showCommentField && (
         <div className="mt-2">
           <SimpleRichTextEditor

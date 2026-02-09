@@ -3,8 +3,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
-import { MessageCircle, Check, X, ArrowRight, Reply, Send, Loader2 } from "lucide-react";
+import { MessageCircle, Check, X, ArrowRight, Reply, Send, Loader2, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
+import { de } from "date-fns/locale";
 
 interface Participant {
   id: string;
@@ -27,6 +29,11 @@ interface DecisionCardActivityProps {
   participants?: Participant[];
   maxItems?: number;
   isCreator?: boolean;
+  creatorProfile?: {
+    display_name: string | null;
+    badge_color: string | null;
+    avatar_url: string | null;
+  };
   onReply?: (responseId: string, text: string) => Promise<void>;
 }
 
@@ -35,12 +42,11 @@ const getInitials = (name: string | null) => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 };
 
-export function DecisionCardActivity({ participants = [], maxItems = 2, isCreator = false, onReply }: DecisionCardActivityProps) {
+export function DecisionCardActivity({ participants = [], maxItems = 2, isCreator = false, creatorProfile, onReply }: DecisionCardActivityProps) {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [isSending, setIsSending] = useState(false);
 
-  // Collect activity items: open inquiries first, then responses with comments
   const activityItems: Array<{
     id: string;
     type: 'question' | 'yes' | 'no';
@@ -56,7 +62,6 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
     const latest = p.responses[0];
     if (!latest) return;
 
-    // Prioritize open inquiries
     if (latest.response_type === 'question') {
       activityItems.unshift({
         id: latest.id,
@@ -100,6 +105,14 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
     }
   };
 
+  const timeAgo = (dateStr: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: de });
+    } catch {
+      return '';
+    }
+  };
+
   return (
     <div className="mt-2 pt-2 border-t space-y-1.5">
       <span className="text-[10px] font-medium text-muted-foreground">Letzte Aktivität:</span>
@@ -134,21 +147,33 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
                 {item.type === 'no' && (
                   <X className="h-3 w-3 text-red-600 flex-shrink-0" />
                 )}
+                <span className="text-[9px] text-muted-foreground ml-auto flex-shrink-0">
+                  {timeAgo(item.createdAt)}
+                </span>
               </div>
               {item.comment && (
                 <div className="text-muted-foreground line-clamp-1">
                   <RichTextDisplay content={item.comment} className="text-[11px] [&_p]:m-0" />
                 </div>
               )}
+              {/* Creator response with avatar + name + checkmark */}
               {item.creatorResponse && (
-                <div className="flex items-start gap-1 mt-0.5 text-muted-foreground">
-                  <ArrowRight className="h-2.5 w-2.5 mt-0.5 flex-shrink-0" />
-                  <div className="line-clamp-1">
+                <div className="flex items-start gap-1 mt-0.5 text-muted-foreground bg-muted/50 rounded px-1 py-0.5">
+                  <CheckCheck className="h-2.5 w-2.5 mt-0.5 flex-shrink-0 text-primary" />
+                  {creatorProfile && (
+                    <Avatar className="h-3 w-3 flex-shrink-0 mt-0.5">
+                      {creatorProfile.avatar_url && <AvatarImage src={creatorProfile.avatar_url} />}
+                      <AvatarFallback className="text-[6px]" style={{ backgroundColor: creatorProfile.badge_color || undefined }}>
+                        {getInitials(creatorProfile.display_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className="line-clamp-1 flex-1">
                     <RichTextDisplay content={item.creatorResponse} className="text-[11px] [&_p]:m-0" />
                   </div>
                 </div>
               )}
-              {/* Inline reply button for unanswered questions (creator only) */}
+              {/* Reply button for unanswered questions (creator only) */}
               {isCreator && item.type === 'question' && !item.creatorResponse && onReply && replyingTo !== item.id && (
                 <Button
                   variant="ghost"
