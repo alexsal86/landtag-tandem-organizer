@@ -1,79 +1,110 @@
 
+# Plan: Highlight-Farbe auf Magenta aendern + Web-Push automatisch senden
 
-# Plan: NotificationCenter Deep-Links reparieren
+## 1. Highlight-Farbe auf Magenta (#e60073) aendern
 
-## Problemanalyse
+**Problem:** Die Highlight-Animation fuer Deep-Links nutzt `hsl(var(--primary))`, was Gruen (#57ab27) ist.
 
-Es gibt drei Ursachen, warum Klicks auf Benachrichtigungen immer zum Dashboard fuehren:
-
-1. **Echtzeit-Benachrichtigungen verlieren den Typ:** Neue Benachrichtigungen, die ueber die Supabase-Echtzeit-Verbindung ankommen, enthalten nur die Rohdaten ohne die verkuepfte `notification_types`-Tabelle. Dadurch ist `notification_types.name` immer `undefined`.
-
-2. **Der Fallback funktioniert nicht:** Der Code versucht als Fallback `notification.data.type` zu lesen, aber dieses Feld existiert in keiner einzigen Benachrichtigung in der Datenbank.
-
-3. **Die Benachrichtigungsseite navigiert nicht:** Auf der Seite `/notifications` (Alle anzeigen) wird beim Klick auf eine Benachrichtigung nur "gelesen" markiert, aber es findet keine Navigation zum Ziel statt.
-
-## Loesung
-
-### 1. Echtzeit-Benachrichtigungen korrekt laden
-
-In `src/hooks/useNotifications.tsx` wird der Echtzeit-Handler so angepasst, dass bei einer neuen Benachrichtigung sofort die vollstaendigen Daten inklusive `notification_types` nachgeladen werden, statt nur die Rohdaten aus dem Payload zu verwenden.
+**Loesung:** In `src/index.css` die `notification-highlight`-Animation auf `hsl(var(--secondary))` umstellen. Die `--secondary`-Variable ist bereits als Magenta definiert (`330 100% 45%` = #E6007E, sehr nah an #e60073).
 
 ```text
-// Statt: payload.new direkt verwenden
-// Neu: Nach Empfang des Payloads die Benachrichtigung mit JOIN nachladen
-const { data } = await supabase
-  .from('notifications')
-  .select('*, notification_types(name, label)')
-  .eq('id', payload.new.id)
-  .single();
+Zeile 766-768 aendern:
+  0% { box-shadow: 0 0 0 0 hsl(var(--secondary) / 0.4); }
+  50% { box-shadow: 0 0 0 4px hsl(var(--secondary) / 0.2); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--secondary) / 0); }
 ```
 
-### 2. navigation_context als zuverlaessigen Fallback nutzen
+**Datei:** `src/index.css` (3 Zeilen)
 
-In `src/components/NotificationCenter.tsx` wird `buildDeepLinkPath` um einen Fallback auf das Feld `navigation_context` erweitert. Dieses Feld ist in der Datenbank bei jeder Benachrichtigung gesetzt (z.B. "decisions", "tasks", "mywork") und kann direkt als Sektionspfad verwendet werden.
+---
 
-```text
-// Am Ende von buildDeepLinkPath, vor dem default-Case:
-// Falls kein Typ erkannt wurde, aber navigation_context vorhanden ist:
-if (notification.navigation_context) {
-  return '/' + notification.navigation_context;
-}
-return '/';
+## 2. Web-Push-Benachrichtigungen automatisch senden
+
+**Problem:** Das gesamte Web-Push-System ist bereits implementiert (Service Worker, VAPID-Keys, Edge Function `send-push-notification`, Subscription-Verwaltung). Aber es wird nur manuell ueber Test-Buttons ausgeloest. Es fehlt ein automatischer Trigger, der bei jeder neuen Benachrichtigung in der Datenbank auch einen Browser-Push sendet.
+
+**Loesung:** Einen PostgreSQL-Trigger auf der `notifications`-Tabelle erstellen, der ueber `pg_net` die Edge Function `send-push-notification` aufruft. So erhaelt der Benutzer automatisch eine Browser-Benachrichtigung, wenn eine neue Notification in der Datenbank angelegt wird.
+
+### DB-Migration
+
+```sql
+-- Sicherstellen dass pg_net aktiviert ist
+CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
+
+-- Trigger-Funktion: Ruft die Edge Function auf
+CREATE OR REPLACE FUNCTION notify_push_on_insert()
+RETURNS trigger AS $$
+BEGIN
+  PERFORM net.http_post(
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets 
+            WHERE name = 'supabase_url') || '/functions/v1/send-push-notification',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret 
+        FROM vault.decrypted_secrets WHERE name = 'service_role_key')
+    ),
+    body := jsonb_build_object(
+      'user_id', NEW.user_id,
+      'title', NEW.title,
+      'message', NEW.message,
+      'priority', COALESCE(NEW.priority, 'medium'),
+      'data', COALESCE(NEW.data, '{}'::jsonb),
+      'from_trigger', true
+    )
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger bei jedem INSERT
+CREATE TRIGGER trigger_push_on_notification
+  AFTER INSERT ON notifications
+  FOR EACH ROW
+  EXECUTE FUNCTION notify_push_on_insert();
 ```
 
-Das Notification-Interface in `useNotifications.tsx` muss um `navigation_context?: string` erweitert werden.
+Das `from_trigger: true`-Flag ist wichtig, weil die Edge Function bei `from_trigger` KEINE neue Notification in die DB schreibt (sonst gaebe es eine Endlosschleife).
 
-### 3. Benachrichtigungsseite mit Navigation ausstatten
+### Vault-Secrets pruefen
 
-In `src/pages/NotificationsPage.tsx` wird der Klick-Handler fuer Benachrichtigungen um eine Navigation ergaenzt. Die bestehende `buildDeepLinkPath`-Funktion wird in eine gemeinsame Datei (`src/utils/notificationDeepLinks.ts`) ausgelagert, damit sie sowohl im NotificationCenter als auch auf der NotificationsPage verwendet werden kann.
+Die Trigger-Funktion braucht die Supabase-URL und den Service-Role-Key aus dem Vault. Falls diese nicht vorhanden sind, wird eine alternative Variante mit hartcodierten Werten verwendet (oder die Secrets muessen im Vault angelegt werden).
 
-```text
-// NotificationsPage onClick wird erweitert:
-onClick={() => {
-  if (!notification.is_read) markAsRead(notification.id);
-  const path = buildDeepLinkPath(notification);
-  navigate(path);
-}}
+**Alternative ohne Vault:** Die URL und den Key direkt in der Funktion verwenden (weniger sicher, aber funktioniert sofort):
+
+```sql
+CREATE OR REPLACE FUNCTION notify_push_on_insert()
+RETURNS trigger AS $$
+BEGIN
+  PERFORM net.http_post(
+    url := 'https://wawofclbehbkebjivdte.supabase.co/functions/v1/send-push-notification',
+    headers := '{"Content-Type":"application/json","Authorization":"Bearer <service_role_key>"}'::jsonb,
+    body := jsonb_build_object(
+      'user_id', NEW.user_id,
+      'title', NEW.title,
+      'message', NEW.message,
+      'priority', COALESCE(NEW.priority, 'medium'),
+      'data', COALESCE(NEW.data, '{}'::jsonb),
+      'from_trigger', true
+    )
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
-### 4. Shared Utility fuer Deep-Link-Logik
+### Automatische Push-Registrierung
 
-Die Funktion `buildDeepLinkPath` wird aus `NotificationCenter.tsx` in eine neue Datei `src/utils/notificationDeepLinks.ts` verschoben, um Dopplung zu vermeiden. Beide Stellen (NotificationCenter und NotificationsPage) importieren die Funktion dann von dort.
+Aktuell muss der Benutzer in den Einstellungen manuell "Push aktivieren" klicken. Fuer ein besseres Erlebnis kann optional ein automatischer Prompt beim Login hinzugefuegt werden - das ist aber ein separater Schritt.
+
+---
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/utils/notificationDeepLinks.ts` | Neue Datei: `buildDeepLinkPath` ausgelagert, mit `navigation_context`-Fallback |
-| `src/hooks/useNotifications.tsx` | Notification-Interface um `navigation_context` erweitern; Echtzeit-Handler laed vollstaendige Daten nach |
-| `src/components/NotificationCenter.tsx` | `buildDeepLinkPath` importieren statt lokal definieren |
-| `src/pages/NotificationsPage.tsx` | Klick-Handler um Navigation mit `buildDeepLinkPath` ergaenzen |
+| `src/index.css` | Highlight-Animation von `--primary` auf `--secondary` (Magenta) umstellen |
+| **Neue DB-Migration** | Trigger-Funktion + Trigger auf `notifications`-Tabelle fuer automatische Web-Push-Benachrichtigungen |
 
 ## Reihenfolge
 
-1. Shared Utility erstellen (`notificationDeepLinks.ts`)
-2. Notification-Interface erweitern (`useNotifications.tsx`)
-3. Echtzeit-Handler fixen (`useNotifications.tsx`)
-4. NotificationCenter umstellen (`NotificationCenter.tsx`)
-5. NotificationsPage Navigation hinzufuegen (`NotificationsPage.tsx`)
-
+1. CSS-Farbe aendern (sofort sichtbar)
+2. DB-Migration fuer Push-Trigger (erfordert Vault-Secrets oder direkte URL)
