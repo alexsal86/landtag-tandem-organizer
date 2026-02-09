@@ -79,7 +79,7 @@ export const TaskDecisionResponse = ({
         .from('task_decisions')
         .select('response_options')
         .eq('id', decisionId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error loading decision options (using defaults):', error);
