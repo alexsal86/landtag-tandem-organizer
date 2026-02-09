@@ -1,107 +1,130 @@
 
-# Plan: Entscheidungssystem - 6 Korrekturen und Verbesserungen
+# Plan: 9 Korrekturen und Verbesserungen am Entscheidungssystem
 
-## 1. DB-Constraint entfernen (Kritischer Fehler bei A/B/C-Optionen)
+## 1. "Fuer mich" Tab in Meine Arbeit/Entscheidungen angleichen
 
-**Problem:** Die Tabelle `task_decision_responses` hat einen CHECK-Constraint `task_decision_responses_response_type_check`, der `response_type` auf `'yes', 'no', 'question'` beschraenkt. Bei Antworttypen wie A/B/C (Keys: `a`, `b`, `c`) oder Bewertungen 1-5 (Keys: `1`-`5`) schlaegt das Insert fehl mit Error 23514.
+**Problem:** Der Tab "Fuer mich" in `MyWorkDecisionsTab.tsx` zeigt nur Entscheidungen wo der User Teilnehmer ist und noch nicht geantwortet hat. In `DecisionOverview.tsx` zeigt der gleiche Tab zusaetzlich eigene Entscheidungen mit neuer Aktivitaet.
 
-**Loesung:** DB-Migration zum Entfernen des Constraints:
-```sql
-ALTER TABLE task_decision_responses DROP CONSTRAINT task_decision_responses_response_type_check;
+**Loesung:** Die Filter-Logik in `MyWorkDecisionsTab.tsx` (Zeile 313-315) erweitern:
+
 ```
-
-Zusaetzlich muessen die `response_type`-Typisierungen im Frontend von `'yes' | 'no' | 'question'` auf `string` erweitert werden, da die Keys jetzt beliebig sein koennen. Betrifft:
-- `src/components/my-work/decisions/types.ts` (response_type in Interfaces)
-- `src/components/task-decisions/DecisionCardActivity.tsx` (Participant Interface)
-- `src/components/task-decisions/DecisionSidebar.tsx` (NewComment Interface)
-- `src/components/task-decisions/DecisionOverview.tsx` (DecisionRequest Interface)
-- `getResponseSummary` muss angepasst werden: Alles was nicht `yes`, `no` oder `question` ist, zaehlt als "andere Stimme" (nicht als pending).
-
-## 2. Tooltips fuer A/B/C-Optionen im Editor
-
-**Problem:** Beim Erstellen/Bearbeiten von Entscheidungen mit Vorlage "Option A/B/C" werden die Beschreibungsfelder nicht vorausgefuellt, weil die Vorlage bereits `description`-Felder hat, diese aber beim Template-Wechsel korrekt gesetzt werden muessen.
-
-**Loesung:** Pruefen, ob der Template-Wechsel im Erstellungsdialog die `description`-Felder der Vorlagen korrekt uebernimmt. Falls nicht, den Template-Anwendungscode anpassen, sodass bei Auswahl von "Bewertung 1-5" oder "Option A/B/C" die Beschreibungen automatisch gesetzt werden.
-
-## 3. Texte groesser auf Aufgaben- und Entscheidungsseiten
-
-**Loesung:** 
-- In `DecisionOverview.tsx`: Seitenheading von `text-2xl` auf `text-3xl`, Beschreibungstext von `text-sm` auf `text-base`.
-- Card-Titel von `text-base` auf `text-lg`, Beschreibungen von `text-xs` auf `text-sm`.
-- Metadaten-Texte von `text-[10px]` auf `text-xs`.
-- Badges von `text-xs` auf `text-sm`.
-
-## 4. Card-Design gemaess Referenzbild
-
-Basierend auf dem Referenzbild werden folgende Aenderungen vorgenommen:
-
-**Badges:**
-- Helle Hintergrundfarbe mit dunklerer Schrift statt ausgefuellter Badge. Z.B. "Ausstehend" = `bg-blue-100 text-blue-700`, "Rueckfrage" = `bg-orange-100 text-orange-700`, "Entschieden" = `bg-green-100 text-green-700`.
-- Fetterer Text (`font-bold`) und etwas groesserer Punkt/Icon.
-
-**Titel:**
-- `font-bold text-lg` statt `font-semibold text-base`.
-- Beim Hover der Card soll der Titel vollstaendig sichtbar sein (kein `line-clamp`). Umsetzung: `group`-Klasse auf Card, `group-hover:line-clamp-none` auf Titel.
-
-**Beschreibung:**
-- Groesserer Text (`text-sm` statt `text-xs`).
-
-**Metadaten-Reihenfolge (ohne Trennstriche, mit mehr Freiraum):**
-1. Kalender-Icon + Datum
-2. Avatar + Name des Erstellers
-3. Kommentar-Icon + "X Kommentare" oder "Kommentar schreiben" falls 0
-4. Globe-Icon + "Oeffentlich" (nur wenn oeffentlich, sonst weglassen)
-
-Die `border-t` wird entfernt und durch `mt-4` (mehr Freiraum) ersetzt.
-
-**Rueckfrage-Button:** Bekommt ein spezielleres Icon (z.B. `CornerDownLeft` oder das aktuelle `MessageCircle` beibehalten, das dem Bild entspricht).
-
-**Begruendung:** Kein Button mehr, stattdessen ein Bereich mit Rand (`border rounded-md px-3 py-1.5`) und der Pfeil (`ChevronDown`) rueckt naeher an den Text.
-
-**Abstimmungsergebnis:** Deutlich groesser (`text-sm font-bold`) und zusammen mit den Avataren in die untere rechte Ecke auf Hoehe der Abstimmungsbuttons verschoben.
-
-## 5. "Hinweis hinterlassen" entfernen
-
-Die `DecisionViewerComment`-Komponente und alle Referenzen darauf werden entfernt:
-- `src/components/task-decisions/DecisionViewerComment.tsx` (Datei loeschen)
-- `DecisionOverview.tsx` Zeilen 1012-1022 (Import + Verwendung entfernen)
-- `MyWorkDecisionCard.tsx` Zeilen 239-248 (Import + Verwendung entfernen)
-
-## 6. Tab "Fuer mich" erweitern: Abgeschlossene eigene Entscheidungen anzeigen
-
-**Problem:** Wenn der Benutzer eine Entscheidung an andere sendet und diese antworten, muss er auf "Von mir" wechseln um das Ergebnis zu sehen.
-
-**Loesung:** Im Tab "Fuer mich" zusaetzlich zu den offenen Entscheidungen auch die eigenen Entscheidungen anzeigen, bei denen neue Aktivitaet (neue Antworten, Rueckfragen) vorhanden ist. Diese werden visuell getrennt unter einem "Ihre Entscheidungen - Neue Aktivitaet" Bereich angezeigt und z.B. mit einem dezenten Label "Von Ihnen erstellt" gekennzeichnet.
-
-Die Filter-Logik in `filteredDecisions` wird erweitert:
-```text
 case "for-me":
-  // Offene Entscheidungen fuer mich (wie bisher)
-  + Eigene Entscheidungen mit neuen Rueckfragen oder ungelesenen Antworten
+  // Bisher: nur d.isParticipant && !d.hasResponded
+  // Neu: + eigene Entscheidungen mit Rueckfragen oder neuen Antworten
+  const forMe = filtered.filter(d => d.isParticipant && !d.hasResponded && !d.isCreator);
+  const myWithActivity = filtered.filter(d => {
+    if (!d.isCreator) return false;
+    const s = getResponseSummary(d.participants);
+    return s.questionCount > 0 || (s.total > 0 && s.pending < s.total);
+  });
+  // Zusammenfuehren ohne Duplikate
 ```
 
-Die Tab-Reihenfolge bleibt gleich, aber "Fuer mich" wird zum Hauptarbeitsbereich fuer alles Relevante.
+Tab-Count (Zeile 294-295) ebenfalls anpassen.
+
+**Datei:** `src/components/my-work/MyWorkDecisionsTab.tsx`
+
+## 2. Doppelte Darstellung bei Franziska entfernen
+
+**Problem:** In `DecisionOverview.tsx` wird zunaechst `DecisionCardActivity` (Zeile 1017-1027) gerendert, was Rueckfragen mit Inline-Reply zeigt. Direkt danach folgt ein separater "Open questions for creator"-Block (Zeile 1029-1069), der die gleichen Rueckfragen nochmal mit einem Rich-Text-Editor anzeigt.
+
+**Loesung:** Den doppelten Block (Zeile 1029-1069) entfernen. Die `DecisionCardActivity`-Komponente hat bereits Inline-Reply-Funktionalitaet ueber den `onReply`-Prop.
+
+**Datei:** `src/components/task-decisions/DecisionOverview.tsx` (Zeilen 1029-1069 loeschen)
+
+## 3. Rueckfrage-Button Icon aendern
+
+**Problem:** Der Rueckfrage-Button in `TaskDecisionResponse.tsx` verwendet noch `MessageCircle` (Zeile 440). Gewuenscht ist ein runder Pfeil (Antwort-Icon).
+
+**Loesung:** In `TaskDecisionResponse.tsx` das Icon fuer Options mit `requires_comment` auf `CornerDownLeft` (oder `Reply`) aendern. Auch in `DecisionCardActivity.tsx` (Zeile 142) das Icon fuer Rueckfragen auf `Reply` aendern.
+
+**Dateien:** `src/components/task-decisions/TaskDecisionResponse.tsx`, `src/components/task-decisions/DecisionCardActivity.tsx`
+
+## 4. Begruendung: Icon entfernen, Rand hinzufuegen, Pfeil naeher
+
+**Problem:** Der "Begruendung"-Button (Zeile 437-445 in `TaskDecisionResponse.tsx`) hat ein `MessageCircle`-Icon und sieht aus wie ein Ghost-Button. Gewuenscht: kein Icon, dafuer ein Rand wie die anderen Buttons, und der Pfeil (ChevronDown) naeher am Text.
+
+**Loesung:** In `TaskDecisionResponse.tsx`:
+- `MessageCircle`-Icon entfernen
+- `variant="ghost"` zu `variant="outline"` aendern
+- `ml-1` beim ChevronDown auf `ml-0.5` reduzieren
+
+**Datei:** `src/components/task-decisions/TaskDecisionResponse.tsx`
+
+## 5. Beschreibung mit "mehr/weniger" Link
+
+**Problem:** Lange Beschreibungen werden abgeschnitten, aber in `MyWorkDecisionCard.tsx` fehlt die expandierbare Funktionalitaet (dort ist nur `line-clamp-1` ohne "mehr"-Link).
+
+**Loesung:** Die `TruncatedDescription`-Komponente aus `DecisionOverview.tsx` in `MyWorkDecisionCard.tsx` uebernehmen. Alternativ die Komponente in eine separate Datei auslagern und in beiden verwenden.
+
+**Datei:** `src/components/my-work/decisions/MyWorkDecisionCard.tsx`
+
+## 6. Rueckmeldedatum statt Entscheidungsdatum anzeigen
+
+**Problem:** In `DecisionCardActivity.tsx` (Zeile 150) wird `timeAgo(item.createdAt)` angezeigt. Das `createdAt` kommt von `latest.created_at` (Zeile 74), was das Erstellungsdatum der Response ist - sollte korrekt sein. Falls das Problem am `created_at` der Entscheidung statt der Response liegt, ist es wahrscheinlich ein Datenbank-Sortierungsproblem: `responses` werden nach `created_at DESC` sortiert (Zeile 398 in DecisionOverview.tsx), also sollte `responses[0]` die neueste sein.
+
+**Analyse:** Das Problem liegt wahrscheinlich darin, dass bei einem Update (`response_type`-Aenderung) das `created_at` der Response NICHT aktualisiert wird - das Update setzt nur `updated_at`. Beim ersten Anlegen bleibt das `created_at` auf dem urspruenglichen Zeitpunkt. Da die Responses nach `created_at` sortiert werden, zeigt die Aktivitaet das richtige Datum. Aber wenn eine Antwort geupdated wird, bleibt das alte `created_at` bestehen.
+
+**Loesung:** In `DecisionCardActivity.tsx` bei `createdAt` statt `latest.created_at` besser `latest.updated_at || latest.created_at` verwenden. Dafuer muss `updated_at` in die Response-Queries aufgenommen werden.
+
+**Dateien:** `src/components/task-decisions/DecisionOverview.tsx` (Query erweitern um `updated_at`), `src/components/task-decisions/DecisionCardActivity.tsx` (updatedAt-Feld nutzen), `src/components/my-work/MyWorkDecisionsTab.tsx` (Query erweitern)
+
+## 7. "Letzte Aktivitaet" fett und groesser
+
+**Problem:** In `DecisionCardActivity.tsx` Zeile 118 steht `text-[10px]` - zu klein.
+
+**Loesung:** Von `text-[10px] font-medium` auf `text-xs font-bold` aendern.
+
+**Datei:** `src/components/task-decisions/DecisionCardActivity.tsx`
+
+## 8. DB-Constraint auf `task_decision_response_history` entfernen
+
+**Problem:** Der vorherige Fix hat nur den Constraint auf `task_decision_responses` entfernt. Es gibt aber einen Trigger `log_decision_response_change`, der bei jedem INSERT/UPDATE auf `task_decision_responses` einen Eintrag in `task_decision_response_history` schreibt. Diese History-Tabelle hat NOCH den CHECK-Constraint: `CHECK (response_type IN ('yes', 'no', 'question'))` (Zeile 7 der Migration `20251008093259`).
+
+**Loesung:** Neue DB-Migration:
+```sql
+ALTER TABLE task_decision_response_history 
+  DROP CONSTRAINT IF EXISTS task_decision_response_history_response_type_check;
+```
+
+**Datei:** Neue Migration
+
+## 9. Tooltip-Beschreibungen fuer alle Templates (nicht nur Benutzerdefiniert)
+
+**Problem:** Die `ResponseOptionsEditor`-Komponente (die Beschreibungsfelder zeigt) wird nur angezeigt wenn `selectedTemplateId === "custom"` (Zeile 535 in StandaloneDecisionCreator.tsx, Zeile 560 in TaskDecisionCreator.tsx).
+
+**Loesung:** In `StandaloneDecisionCreator.tsx` und `TaskDecisionCreator.tsx`:
+- Die Template-Optionen muessen editierbar gemacht werden, wenn ein nicht-Standard-Template gewaehlt wird.
+- Wenn ein Template wie "optionABC" oder "rating5" gewaehlt wird, die Optionen in den `customOptions`-State kopieren und die `ResponseOptionsEditor` anzeigen.
+- Alternative (einfacher): Die `ResponseOptionsEditor` auch fuer Nicht-Custom-Templates anzeigen, aber dann die Template-Optionen in den editierbaren State laden.
+
+Konkret: Den Code aendern, sodass bei Template-Wechsel die Template-Optionen in `customOptions` kopiert werden, und `currentOptions` immer `customOptions` verwendet (nicht direkt die Template-Optionen). Der Editor wird fuer alle Templates ausser "yesNoQuestion" und "yesNo" angezeigt (da diese keine sinnvollen Beschreibungen brauchen).
+
+**Dateien:** `src/components/task-decisions/StandaloneDecisionCreator.tsx`, `src/components/task-decisions/TaskDecisionCreator.tsx`
 
 ---
 
-## Betroffene Dateien
+## Technische Details
+
+### Betroffene Dateien
 
 | Datei | Aenderungen |
 |-------|-------------|
-| **DB-Migration** | DROP CONSTRAINT `task_decision_responses_response_type_check` |
-| `src/components/my-work/decisions/types.ts` | `response_type: string` statt Union-Type, `getResponseSummary` anpassen |
-| `src/components/task-decisions/DecisionCardActivity.tsx` | `response_type: string`, Card-Design |
-| `src/components/task-decisions/DecisionOverview.tsx` | Card-Design, Textgroessen, Badge-Farben, "Fuer mich" Tab-Logik, DecisionViewerComment entfernen |
-| `src/components/task-decisions/DecisionSidebar.tsx` | `responseType: string` |
-| `src/components/task-decisions/TaskDecisionResponse.tsx` | Begruendungs-Bereich anpassen |
-| `src/components/my-work/decisions/MyWorkDecisionCard.tsx` | Card-Design, DecisionViewerComment entfernen |
-| `src/components/task-decisions/DecisionViewerComment.tsx` | Datei loeschen |
+| **Neue DB-Migration** | DROP CONSTRAINT auf `task_decision_response_history` |
+| `src/components/my-work/MyWorkDecisionsTab.tsx` | "Fuer mich" Tab-Logik erweitern, Query um `updated_at` erweitern |
+| `src/components/task-decisions/DecisionOverview.tsx` | Doppelten Rueckfrage-Block entfernen (Zeilen 1029-1069), Query um `updated_at` erweitern |
+| `src/components/task-decisions/TaskDecisionResponse.tsx` | Rueckfrage-Icon auf Reply, Begruendung-Icon entfernen + Rand |
+| `src/components/task-decisions/DecisionCardActivity.tsx` | "Letzte Aktivitaet" groesser/fetter, updatedAt nutzen, Reply-Icon |
+| `src/components/my-work/decisions/MyWorkDecisionCard.tsx` | TruncatedDescription einbauen |
+| `src/components/task-decisions/StandaloneDecisionCreator.tsx` | ResponseOptionsEditor fuer alle Templates anzeigen |
+| `src/components/task-decisions/TaskDecisionCreator.tsx` | ResponseOptionsEditor fuer alle Templates anzeigen |
 
-## Reihenfolge
+### Reihenfolge
 
-1. DB-Migration (Constraint entfernen) - blockiert alles andere
-2. Type-Fixes (`response_type: string`)
-3. Card-Design-Aenderungen (beide Overview-Dateien)
-4. "Hinweis hinterlassen" entfernen
-5. Tab-Logik "Fuer mich" erweitern
-6. Textgroessen anpassen
+1. DB-Migration (History-Constraint entfernen) - blockiert Punkt 8
+2. Doppelten Block entfernen (Punkt 2) 
+3. Icons und Styling (Punkte 3, 4, 7)
+4. TruncatedDescription (Punkt 5)
+5. Datum-Fix (Punkt 6)
+6. Tab-Logik (Punkt 1)
+7. Template-Editor (Punkt 9)
