@@ -86,11 +86,18 @@ export const TaskDecisionCreator = ({
   }, [isControlled, isOpen, profilesLoaded]);
 
   const currentOptions = useMemo(() => {
-    if (selectedTemplateId === "custom") {
-      return customOptions;
+    return customOptions;
+  }, [customOptions]);
+
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    if (templateId !== "custom") {
+      const tpl = getTemplateById(templateId);
+      if (tpl) {
+        setCustomOptions(tpl.options.map(o => ({ ...o })));
+      }
     }
-    return getTemplateById(selectedTemplateId)?.options || [];
-  }, [selectedTemplateId, customOptions]);
+  };
 
   const loadProfiles = async () => {
     try {
@@ -539,7 +546,7 @@ export const TaskDecisionCreator = ({
               <label className="text-sm font-medium">Antworttyp</label>
               <Select
                 value={selectedTemplateId}
-                onValueChange={setSelectedTemplateId}
+                onValueChange={handleTemplateChange}
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Antworttyp wählen" />
@@ -557,7 +564,7 @@ export const TaskDecisionCreator = ({
               </Select>
             </div>
 
-            {selectedTemplateId === "custom" && (
+            {selectedTemplateId !== "yesNo" && selectedTemplateId !== "yesNoQuestion" && (
               <ResponseOptionsEditor
                 options={customOptions}
                 onChange={setCustomOptions}

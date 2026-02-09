@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
-import { MessageCircle, Check, X, ArrowRight, Reply, Send, Loader2, CheckCheck } from "lucide-react";
+import { Check, X, ArrowRight, Reply, Send, Loader2, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
@@ -22,6 +22,7 @@ interface Participant {
     comment: string | null;
     creator_response: string | null;
     created_at: string;
+    updated_at?: string;
   }>;
 }
 
@@ -71,7 +72,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
         avatarUrl: p.profile?.avatar_url || null,
         comment: latest.comment,
         creatorResponse: latest.creator_response,
-        createdAt: latest.created_at,
+        createdAt: latest.updated_at || latest.created_at,
       });
     } else if (latest.comment) {
       activityItems.push({
@@ -82,7 +83,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
         avatarUrl: p.profile?.avatar_url || null,
         comment: latest.comment,
         creatorResponse: latest.creator_response,
-        createdAt: latest.created_at,
+        createdAt: latest.updated_at || latest.created_at,
       });
     }
   });
@@ -115,7 +116,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
 
   return (
     <div className="mt-2 pt-2 border-t space-y-1.5">
-      <span className="text-[10px] font-medium text-muted-foreground">Letzte Aktivität:</span>
+      <span className="text-xs font-bold text-muted-foreground">Letzte Aktivität:</span>
       {displayed.map(item => (
         <div key={item.id}>
           <div
@@ -139,7 +140,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
               <div className="flex items-center gap-1">
                 <span className="font-medium truncate">{item.name || 'Unbekannt'}</span>
                 {item.type === 'question' && (
-                  <MessageCircle className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                  <Reply className="h-3 w-3 text-orange-500 flex-shrink-0" />
                 )}
                 {item.type === 'yes' && (
                   <Check className="h-3 w-3 text-green-600 flex-shrink-0" />

@@ -1,0 +1,2 @@
+ALTER TABLE task_decision_response_history 
+  DROP CONSTRAINT IF EXISTS task_decision_response_history_response_type_check;
