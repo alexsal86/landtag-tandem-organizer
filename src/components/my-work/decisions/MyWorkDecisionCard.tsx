@@ -6,6 +6,7 @@ import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { AvatarStack } from "@/components/ui/AvatarStack";
 import { TaskDecisionResponse } from "@/components/task-decisions/TaskDecisionResponse";
 import { DecisionViewerComment } from "@/components/task-decisions/DecisionViewerComment";
+import { DecisionCardActivity } from "@/components/task-decisions/DecisionCardActivity";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { 
@@ -205,6 +206,9 @@ export function MyWorkDecisionCard({
             )}
           </div>
         </div>
+
+        {/* Activity preview */}
+        <DecisionCardActivity participants={decision.participants} maxItems={2} />
 
         {/* Inline voting for unanswered participants */}
         {decision.isParticipant && decision.participant_id && !decision.hasResponded && (

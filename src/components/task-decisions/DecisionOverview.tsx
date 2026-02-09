@@ -15,6 +15,7 @@ import { DecisionEditDialog } from "./DecisionEditDialog";
 import { DecisionViewerComment } from "./DecisionViewerComment";
 import { DecisionSidebar } from "./DecisionSidebar";
 import { DecisionComments } from "./DecisionComments";
+import { DecisionCardActivity } from "./DecisionCardActivity";
 import { UserBadge } from "@/components/ui/user-badge";
 import { AvatarStack } from "@/components/ui/AvatarStack";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
@@ -533,22 +534,16 @@ export const DecisionOverview = () => {
     }
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('task_decisions')
         .update({ 
           status: 'archived',
           archived_at: new Date().toISOString(),
           archived_by: user.id
         })
-        .eq('id', decisionId)
-        .select();
+        .eq('id', decisionId);
 
       if (error) throw error;
-
-      if (!data || data.length === 0) {
-        toast({ title: "Fehler", description: "Archivierung fehlgeschlagen.", variant: "destructive" });
-        return;
-      }
 
       toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
       loadDecisionRequests(user.id);
@@ -582,7 +577,7 @@ export const DecisionOverview = () => {
     try {
       const { error } = await supabase
         .from('task_decisions')
-        .update({ status: 'open', archived_at: null, archived_by: null })
+        .update({ status: 'active', archived_at: null, archived_by: null })
         .eq('id', decisionId);
 
       if (error) throw error;
@@ -981,6 +976,9 @@ export const DecisionOverview = () => {
               )}
             </div>
           </div>
+
+          {/* Activity preview */}
+          <DecisionCardActivity participants={decision.participants} maxItems={2} />
 
           {/* Response buttons for participants */}
           {decision.isParticipant && decision.participant_id && !decision.hasResponded && (

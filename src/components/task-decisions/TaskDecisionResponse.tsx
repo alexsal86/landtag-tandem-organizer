@@ -304,9 +304,9 @@ export const TaskDecisionResponse = ({
           })}
         </span>
         
-        {currentResponse.comment && (
+         {currentResponse.comment && (
           <div className="text-xs">
-            <strong className="text-muted-foreground">Ihr Kommentar:</strong>
+            <strong className="text-muted-foreground">Ihre Begründung:</strong>
             <RichTextDisplay content={currentResponse.comment} className="mt-1" />
           </div>
         )}
@@ -407,12 +407,12 @@ export const TaskDecisionResponse = ({
           );
         })}
         
-        {/* Kommentar-Trigger DIREKT in der Button-Reihe */}
+        {/* Begründung-Trigger DIREKT in der Button-Reihe */}
         <Collapsible open={showCommentField} onOpenChange={setShowCommentField}>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
               <MessageCircle className="h-3 w-3 mr-1" />
-              Kommentar
+              Begründung
               <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${showCommentField ? 'rotate-180' : ''}`} />
             </Button>
           </CollapsibleTrigger>
@@ -440,7 +440,7 @@ export const TaskDecisionResponse = ({
           <SimpleRichTextEditor
             initialContent={questionComment}
             onChange={setQuestionComment}
-            placeholder="Ihr Kommentar (optional)..."
+            placeholder="Ihre Begründung (optional)..."
             minHeight="80px"
           />
         </div>

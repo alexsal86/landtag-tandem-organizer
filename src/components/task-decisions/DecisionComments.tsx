@@ -149,7 +149,7 @@ export function DecisionComments({
 
       toast({
         title: "Erfolg",
-        description: "Kommentar wurde hinzugefügt.",
+        description: "Diskussionsbeitrag wurde hinzugefügt.",
       });
 
       setNewComment("");
@@ -184,7 +184,7 @@ export function DecisionComments({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
-            Kommentare ({totalComments})
+            Diskussion ({totalComments})
           </SheetTitle>
           <p className="text-sm text-muted-foreground truncate">{decisionTitle}</p>
         </SheetHeader>
@@ -201,8 +201,8 @@ export function DecisionComments({
             ) : comments.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
                 <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>Noch keine Kommentare.</p>
-                <p className="text-xs mt-1">Starten Sie die Diskussion!</p>
+                <p>Noch keine Diskussionsbeiträge.</p>
+                <p className="text-xs mt-1">Hinterlassen Sie einen Hinweis oder starten Sie die Diskussion!</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -223,7 +223,7 @@ export function DecisionComments({
             <SimpleRichTextEditor
               initialContent=""
               onChange={setNewComment}
-              placeholder="Kommentar schreiben..."
+              placeholder="Hinweis oder Diskussionsbeitrag schreiben..."
               minHeight="60px"
             />
             <div className="flex justify-end">
@@ -233,7 +233,7 @@ export function DecisionComments({
                 size="sm"
               >
                 <Send className="h-3 w-3 mr-1" />
-                {isSubmitting ? "Senden..." : "Kommentar senden"}
+                {isSubmitting ? "Senden..." : "Beitrag senden"}
               </Button>
             </div>
           </div>

@@ -179,12 +179,12 @@ export function MyWorkDecisionSidebar({
                   </div>
                 )}
 
-                {/* New Comments */}
+                {/* New Begründungen */}
                 {newComments.length > 0 && (
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1 text-[10px] font-medium text-primary">
                       <Bell className="h-3 w-3" />
-                      <span>Kommentare</span>
+                      <span>Begründungen</span>
                       <Badge variant="outline" className="text-primary border-primary text-[9px] px-1 py-0">
                         {newComments.length}
                       </Badge>
