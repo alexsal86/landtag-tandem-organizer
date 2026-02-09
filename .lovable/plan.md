@@ -1,196 +1,203 @@
 
-# Plan: 7 Korrekturen und Verbesserungen am Entscheidungssystem
+# Plan: 5 Entscheidungssystem-Fehler endgueltig beheben
 
-## Uebersicht
+## Zusammenfassung der Root Causes
 
-| Nr | Problem | Root Cause | Loesung |
-|----|---------|-----------|---------|
-| 1 | Archivierung zeigt Fehler, funktioniert aber | CHECK-Constraint `task_decisions_status_check` erlaubt nur `active` und `archived`. Der Code setzt `status: 'archived'` korrekt, aber die RLS UPDATE-Policy hat `WITH CHECK (created_by = auth.uid())` -- redundante Policies erzeugen Konflikte, und `select()` nach Update ohne `.select('*')` kann leere Ergebnisse liefern, was als Fehler interpretiert wird | Redundante RLS UPDATE-Policies bereinigen, Fehlerbehandlung bei leerem Ergebnis verbessern |
-| 2 | Wiederherstellen von Entscheidungen scheitert | `restoreDecision()` setzt `status: 'open'` -- aber der CHECK-Constraint erlaubt NUR `active` und `archived`. `open` ist kein gueltiger Status | Status auf `'active'` statt `'open'` setzen und CHECK-Constraint um `open` erweitern oder konsequent `active` verwenden |
-| 3 | Bearbeiten zeigt Fehler beim Speichern | Drei redundante UPDATE-Policies auf `task_decisions`: zwei mit `WITH CHECK (created_by = auth.uid())`, eine ohne. Postgres evaluiert alle Policies mit OR fuer USING, aber WITH CHECK muss bei ALLEN Policies erfuellt sein, die matchen. Die `onUpdated`/`onClose` Callbacks im `DecisionEditDialog` werden innerhalb eines `setTimeout` aufgerufen, was Race Conditions erzeugen kann | RLS-Policies konsolidieren: nur EINE UPDATE-Policy behalten |
-| 4 | Rueckfragen/Kommentare in der Card anzeigen | Aktuell werden Kommentare nur im Sheet und offene Rueckfragen nur fuer den Ersteller angezeigt | Kompakte Anzeige der letzten 1-2 Responses/Kommentare direkt in der Card |
-| 5 | Antworten auf Rueckfragen/Kommentare scheitert | Die UPDATE-RLS-Policy auf `task_decision_responses` prueft nur ob der User der Teilnehmer oder Ersteller der *Entscheidung* ist. Der Ersteller muss die `creator_response`-Spalte updaten, was durch die Policy gedeckt sein sollte -- aber die redundanten Policies auf `task_decisions` (fuer den Sub-Select) und moegliche `WITH CHECK`-Konflikte blockieren den Zugriff | RLS-Policies bereinigen |
-| 6 | Kommentare zur Abstimmung vs. Kommentare zur Sache unterscheiden | Zwei verschiedene Systeme: `task_decision_responses` (Abstimmung mit Kommentar) und `task_decision_comments` (Diskussion). Beide werden in der UI als "Kommentar" bezeichnet | Klare Bezeichnungen: "Abstimmungskommentar" vs. "Diskussionsbeitrag" einfuehren |
-| 7 | Meine Notizen: Standard-Teilnehmer bei Entscheidungserstellung nicht vorausgewaehlt | `NoteDecisionCreator` liest Standard-Teilnehmer nicht aus `localStorage` -- stattdessen werden nur Abgeordnete auto-selektiert | `useDefaultDecisionParticipants` in `NoteDecisionCreator` integrieren |
+Durch die Analyse der Datenbank-Logs, RLS-Policies, Trigger-Funktionen und des Frontend-Codes wurden die **tatsaechlichen** Ursachen identifiziert, die beim letzten Fix-Versuch nicht erkannt wurden:
+
+### Warum die vorherigen Fixes nicht gewirkt haben
+
+Die RLS-Policy-Bereinigung und der CHECK-Constraint-Fix waren korrekt und wurden erfolgreich angewendet (DB-Abfrage bestaetigt). Die Fehler kommen aber aus **zwei anderen Stellen**:
+
+1. **Trigger-Bug (KRITISCH):** Die Trigger-Funktion `check_archive_after_creator_response` ruft `PERFORM auto_archive_completed_decisions()` auf - aber `auto_archive_completed_decisions` ist als `RETURNS trigger` definiert. PostgreSQL verbietet den Aufruf von Trigger-Funktionen ausserhalb von Triggern. Dieser Fehler wird bei jedem UPDATE auf `task_decision_responses` ausgeloest, wenn `creator_response` gesetzt wird.
+
+2. **TaskDecisionDetails.tsx (KRITISCH):** Die Archivierung in `TaskDecisionDetails.tsx` (Detail-Dialog) verwendet `.select()` nach dem UPDATE. Nach dem Statuswechsel auf `archived` gibt die SELECT-RLS-Policy keine Zeile zurueck (da die Policy nach `status IN (active, open)` filtert in der Participant-Query). Der Code interpretiert leere Ergebnisse als Fehler (Zeile 201-219: `if (!data || data.length === 0) throw new Error(...)`).
+
+| Nr | Problem | Tatsaechliche Ursache | Loesung |
+|----|---------|----------------------|---------|
+| 1 | Archivieren zeigt Fehler | `TaskDecisionDetails.tsx` Zeile 195: `.select()` nach UPDATE liefert leere Daten wegen RLS, was als Fehler geworfen wird | `.select()` entfernen, nur `error` pruefen |
+| 2 | Wiederherstellen zeigt Fehler | Gleiche Logik falls aus Detail-Dialog; oder `loadDecisionRequests` wirft bei Reload | `.select()` entfernen |
+| 3 | Bearbeiten zeigt Fehler | `DecisionEditDialog.tsx` hat keinen offensichtlichen Bug - moeglicherweise wird der Fehler vom Reload-Callback ausgeloest | Fehlerbehandlung verbessern |
+| 4 | Antwort auf Begruendungen scheitert | `check_archive_after_creator_response` Trigger ruft `auto_archive_completed_decisions()` auf, was `RETURNS trigger` ist und nicht als regulaere Funktion aufrufbar | Trigger-Funktion reparieren: `auto_archive_completed_decisions` als `RETURNS void` Version erstellen |
+| 5 | Standard-Teilnehmer nicht uebernommen | Der Code ist vorhanden, aber die Filterung `userIds.includes(id)` kann fehlschlagen, wenn die Default-IDs nicht mit den Tenant-Memberships uebereinstimmen; oder `loadProfiles` wird mehrfach aufgerufen und resettet die Auswahl | Debugging hinzufuegen und Logik robuster machen |
 
 ---
 
 ## Technische Details
 
-### 1 + 2 + 3 + 5: RLS-Policies bereinigen und CHECK-Constraint korrigieren (KRITISCH)
+### Fix 1+2: TaskDecisionDetails.tsx - `.select()` entfernen
 
-**Root Cause aller Fehler:** Es gibt drei redundante UPDATE-Policies auf `task_decisions`:
+**Datei:** `src/components/task-decisions/TaskDecisionDetails.tsx`
 
-```
-1. "Users can update their decisions"     - USING: tenant + created_by   WITH CHECK: (none)
-2. "Users can update their own decisions" - USING: created_by            WITH CHECK: created_by = auth.uid()
-3. "task_decisions_update_policy"          - USING: created_by            WITH CHECK: created_by = auth.uid()
-```
-
-Wenn Postgres mehrere Policies evaluiert, muessen ALLE `WITH CHECK`-Bedingungen der matchenden Policies erfuellt sein. Da Policy 1 kein `WITH CHECK` hat, aber Policy 2 und 3 schon, kann es zu Konflikten kommen je nach PostgreSQL-Version und Evaluierungsreihenfolge.
-
-Zusaetzlich: Der CHECK-Constraint `task_decisions_status_check` erlaubt nur `active` und `archived`. Bei `restoreDecision()` wird `status: 'open'` gesetzt, was der Constraint ablehnt.
-
-**Loesung via DB-Migration:**
-
-```sql
--- 1. Redundante UPDATE-Policies entfernen
-DROP POLICY IF EXISTS "Users can update their own decisions" ON public.task_decisions;
-DROP POLICY IF EXISTS "task_decisions_update_policy" ON public.task_decisions;
-
--- 2. Verbleibende Policy beibehalten: "Users can update their decisions"
--- (hat tenant + created_by als USING, kein WITH CHECK)
-
--- 3. CHECK-Constraint anpassen: 'open' als gueltigen Status hinzufuegen
-ALTER TABLE public.task_decisions DROP CONSTRAINT IF EXISTS task_decisions_status_check;
-ALTER TABLE public.task_decisions ADD CONSTRAINT task_decisions_status_check
-  CHECK (status = ANY (ARRAY['active', 'open', 'archived']));
-
--- 4. Redundante SELECT-Policies bereinigen
-DROP POLICY IF EXISTS "task_decisions_select_policy" ON public.task_decisions;
-
--- 5. Redundante DELETE-Policies bereinigen
-DROP POLICY IF EXISTS "task_decisions_delete_policy" ON public.task_decisions;
-DROP POLICY IF EXISTS "Users can delete their own decisions" ON public.task_decisions;
-```
-
-**Code-Aenderungen:**
-
-In `DecisionOverview.tsx` und `MyWorkDecisionsTab.tsx` - `restoreDecision()`:
-- Status von `'open'` auf `'active'` aendern (konsistent mit dem Erstellungsprozess)
-
-In `DecisionOverview.tsx` - `archiveDecision()`:
-- Die redundante Pruefung auf leeres Ergebnis nach `.select()` entfernen oder vereinfachen
-- Optimistic UI: Sofort aus der Liste entfernen, dann Server-Antwort abwarten
-
-In `DecisionEditDialog.tsx`:
-- `setTimeout`-Workaround entfernen, direkt `onUpdated()` und `onClose()` aufrufen
-
-**Dateien:**
-- DB-Migration (Policies + Constraint)
-- `src/components/task-decisions/DecisionOverview.tsx`
-- `src/components/my-work/MyWorkDecisionsTab.tsx`
-- `src/components/task-decisions/DecisionEditDialog.tsx`
-
----
-
-### 4: Rueckfragen und Kommentare direkt in der Card anzeigen
-
-**Konzept:** Unter dem Footer der Entscheidungskarte werden bis zu 2 aktuelle Interaktionen kompakt angezeigt:
-- Offene Rueckfragen (response_type = 'question', ohne creator_response)
-- Letzte Abstimmungskommentare (responses mit Kommentar)
-- Letzte Diskussionskommentare (task_decision_comments)
-
-Das sieht so aus:
-
-```text
-+------------------------------------------+
-| [Badge: Rueckfrage]           [Actions]   |
-| Titel der Entscheidung                    |
-| Beschreibung...                           |
-| Creator | 01.02.26 | Y:2/Q:1/N:0 | AVA  |
-|-------------------------------------------|
-| Letzte Aktivitaet:                        |
-| [orange] Erwin: "Was ist mit Budget?"     |
-|          -> Antwort: "Wird noch geklaert" |
-| [gruen]  Carla: Ja - "Gute Idee!"        |
-+------------------------------------------+
-```
-
-**Implementierung:**
-- In `DecisionOverview.tsx` (`renderCompactCard`): Nach dem Footer-Bereich einen neuen Abschnitt "Letzte Aktivitaet" einfuegen
-- Zeige max. 2 Eintraege: Prioritaet auf offene Rueckfragen, dann letzte Kommentare
-- Kompaktes Format: Avatar-Mini + Name + Typ-Icon + Kommentar (1 Zeile truncated)
-- Wenn creator_response vorhanden: darunter eingerueckt anzeigen
-
-In `MyWorkDecisionCard.tsx`: Gleiche Logik anwenden - die `participants`-Daten enthalten bereits die Responses.
-
-**Dateien:**
-- `src/components/task-decisions/DecisionOverview.tsx` (renderCompactCard erweitern)
-- `src/components/my-work/decisions/MyWorkDecisionCard.tsx` (Card erweitern)
-
----
-
-### 6: Kommentare zur Abstimmung vs. Diskussionsbeitraege unterscheiden
-
-**Zwei Systeme im Ueberblick:**
-
-| System | Tabelle | Zweck | Neue Bezeichnung |
-|--------|---------|-------|-----------------|
-| Abstimmungskommentar | `task_decision_responses.comment` | Begruendung der Abstimmung (z.B. "Ja, weil...") oder Rueckfrage | **"Begruendung"** oder **"Rueckfrage"** |
-| Diskussionsbeitrag | `task_decision_comments` | Allgemeine Diskussion zur Entscheidung | **"Diskussion"** |
-
-**UI-Aenderungen:**
-
-In der Card und im Detail-Dialog:
-- Abstimmungskommentare werden neben dem Vote-Badge angezeigt mit Label "Begruendung:" (fuer Ja/Nein) oder "Rueckfrage:" (fuer question)
-- Das Kommentar-Icon und Sheet-Trigger wird umbenannt zu "Diskussion" mit einem eigenen Icon (z.B. `MessageSquare`)
-- Im `DecisionViewerComment`: Button-Text aendern von "Kommentar hinzufuegen" zu "Diskussionsbeitrag schreiben" oder "Hinweis hinterlassen"
-
-Im `TaskDecisionResponse`:
-- Der optionale Kommentar-Button wird umbenannt von "Kommentar" zu "Begruendung hinzufuegen"
-- Bei Rueckfragen bleibt "Rueckfrage" als Label
-
-Im `DecisionComments` Sheet:
-- Titel aendern von "Kommentare" zu "Diskussion"
-- Platzhalter aendern von "Kommentar schreiben..." zu "Diskussionsbeitrag schreiben..."
-
-**Dateien:**
-- `src/components/task-decisions/DecisionComments.tsx`
-- `src/components/task-decisions/DecisionViewerComment.tsx`
-- `src/components/task-decisions/TaskDecisionResponse.tsx`
-- `src/components/task-decisions/DecisionOverview.tsx` (Labels)
-- `src/components/my-work/decisions/MyWorkDecisionCard.tsx` (Labels)
-
----
-
-### 7: Standard-Teilnehmer in NoteDecisionCreator
-
-**Problem:** `NoteDecisionCreator.tsx` liest die Standard-Teilnehmer nicht aus localStorage. Stattdessen werden nur Abgeordnete auto-selektiert (Zeile 111-122).
-
-**Loesung:** Die gleiche Logik wie in `StandaloneDecisionCreator` verwenden:
-
+**Problem (Zeilen 187-219):**
 ```typescript
-// In loadProfiles():
-// 1. Zuerst localStorage pruefen
-let defaultIds: string[] = [];
-try {
-  const stored = localStorage.getItem('default_decision_participants');
-  if (stored) defaultIds = JSON.parse(stored);
-} catch (e) {}
+const { data, error } = await supabase
+  .from('task_decisions')
+  .update({ status: 'archived', ... })
+  .eq('id', decision.id)
+  .select();  // <-- PROBLEM: RLS filtert archived-Zeilen aus
 
-if (defaultIds.length > 0) {
-  setSelectedUsers(defaultIds);
-} else {
-  // Fallback: Abgeordnete auto-selektieren (bestehende Logik)
+if (!data || data.length === 0) {
+  throw new Error("Keine Berechtigung..."); // <-- FALSE POSITIVE
 }
 ```
 
+**Loesung:** `.select()` entfernen und nur den `error` pruefen:
+```typescript
+const { error } = await supabase
+  .from('task_decisions')
+  .update({ status: 'archived', ... })
+  .eq('id', decision.id);
+
+if (error) throw error;
+// Direkt Erfolg melden, keine data-Pruefung noetig
+```
+
+Die gesamte Fallback-Pruefung (Zeilen 201-220) entfernen.
+
+### Fix 3: DecisionEditDialog.tsx - robustere Fehlerbehandlung
+
+**Datei:** `src/components/task-decisions/DecisionEditDialog.tsx`
+
+Der Code sieht korrekt aus (Zeilen 112-119 verwenden kein `.select()`). Der Fehler kann von der `loadDecisionRequests`-Funktion kommen, die nach `onUpdated()` aufgerufen wird. 
+
+Falls die Ursache die gleiche `.select()`-Problematik in einem anderen Aufrufpfad ist, pruefen wir alle Stellen wo `.update()` mit `.select()` kombiniert wird.
+
+### Fix 4 (KRITISCH): Trigger-Funktion reparieren
+
+**Problem:** 
+```sql
+-- check_archive_after_creator_response ruft:
+PERFORM auto_archive_completed_decisions();
+-- Aber auto_archive_completed_decisions ist RETURNS trigger!
+-- -> ERROR: trigger functions can only be called as triggers
+```
+
+**Loesung via DB-Migration:**
+
+Eine neue Funktion `check_and_archive_decision` erstellen, die als `RETURNS void` definiert ist und die gleiche Logik wie `auto_archive_completed_decisions` enthaelt, aber einen `decision_id`-Parameter akzeptiert statt `NEW.decision_id` zu verwenden:
+
+```sql
+-- 1. Neue Helper-Funktion (RETURNS void, nicht trigger)
+CREATE OR REPLACE FUNCTION public.check_and_archive_decision(p_decision_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  total_participants INTEGER;
+  total_responses INTEGER;
+  open_questions INTEGER;
+  decision_status TEXT;
+  decision_title TEXT;
+  decision_creator UUID;
+BEGIN
+  SELECT status, title, created_by INTO decision_status, decision_title, decision_creator
+  FROM task_decisions WHERE id = p_decision_id;
+  
+  IF decision_status NOT IN ('active', 'open') THEN RETURN; END IF;
+
+  SELECT COUNT(*) INTO total_participants
+  FROM task_decision_participants WHERE decision_id = p_decision_id;
+  
+  SELECT COUNT(DISTINCT participant_id) INTO total_responses
+  FROM (
+    SELECT DISTINCT ON (participant_id) participant_id, response_type
+    FROM task_decision_responses WHERE decision_id = p_decision_id
+    ORDER BY participant_id, created_at DESC
+  ) latest_responses;
+  
+  SELECT COUNT(*) INTO open_questions
+  FROM (
+    SELECT DISTINCT ON (participant_id) *
+    FROM task_decision_responses WHERE decision_id = p_decision_id
+    ORDER BY participant_id, created_at DESC
+  ) latest_responses
+  WHERE response_type = 'question' AND creator_response IS NULL;
+  
+  IF total_participants = total_responses AND open_questions = 0 THEN
+    UPDATE task_decisions SET status = 'archived', archived_at = NOW(), archived_by = decision_creator
+    WHERE id = p_decision_id;
+    
+    PERFORM create_notification(decision_creator, 'task_decision_completed',
+      'Entscheidung automatisch archiviert',
+      'Die Entscheidung "' || decision_title || '" wurde automatisch archiviert.',
+      jsonb_build_object('decision_id', p_decision_id), 'low');
+  END IF;
+END;
+$$;
+
+-- 2. check_archive_after_creator_response reparieren
+CREATE OR REPLACE FUNCTION public.check_archive_after_creator_response()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF NEW.creator_response IS NOT NULL AND (OLD.creator_response IS NULL OR OLD.creator_response = '') THEN
+    PERFORM check_and_archive_decision(NEW.decision_id);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- 3. auto_archive_completed_decisions ebenfalls reparieren
+-- (wird als INSERT-Trigger auf task_decision_responses aufgerufen)
+CREATE OR REPLACE FUNCTION public.auto_archive_completed_decisions()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  PERFORM check_and_archive_decision(NEW.decision_id);
+  RETURN NEW;
+END;
+$$;
+```
+
+### Fix 5: NoteDecisionCreator - Default-Teilnehmer robuster laden
+
 **Datei:** `src/components/shared/NoteDecisionCreator.tsx`
 
+Das Problem: Der Code liest `default_decision_participants` korrekt (Zeile 113), aber die Filterung bei Zeile 121 (`userIds.includes(id) && id !== user?.id`) koennte scheitern, wenn die gespeicherten IDs nicht zum aktuellen Tenant passen, oder wenn der einzige gespeicherte Default der aktuelle User selbst ist.
+
+**Loesung:** Wenn `validDefaults` leer ist OBWOHL `defaultIds` nicht leer war, zum Fallback wechseln. Ausserdem Logging hinzufuegen fuer Debugging:
+
+```typescript
+if (defaultIds.length > 0) {
+  const validDefaults = defaultIds.filter(id => 
+    userIds.includes(id) && id !== user?.id
+  );
+  if (validDefaults.length > 0) {
+    setSelectedUsers(validDefaults);
+    return; // WICHTIG: Early return, damit Fallback nicht greift
+  }
+  // Falls alle Defaults ungueltig -> zum Fallback weiter
+}
+// Fallback: Abgeordnete
+```
+
+Zusaetzlich: pruefen, ob `loadProfiles` moeglicherweise mehrfach aufgerufen wird und `setSelectedUsers` dadurch resettet wird. Die `useEffect`-Dependency `[open, currentTenant?.id]` koennte dazu fuehren, dass die Funktion bei jedem Oeffnen nochmal laeuft und die vorherige Auswahl ueberschreibt.
+
 ---
+
+## Zusaetzliche Pruefungen
+
+Alle Stellen durchsuchen, an denen `.update().select()` auf `task_decisions` aufgerufen wird, um sicherzustellen, dass nirgends eine leere Ergebnismenge als Fehler interpretiert wird.
 
 ## Betroffene Dateien
 
 | Aktion | Datei |
 |--------|-------|
-| DB-Migration | RLS-Policies bereinigen, CHECK-Constraint erweitern |
-| Bearbeiten | `src/components/task-decisions/DecisionOverview.tsx` (archiveDecision, restoreDecision, Card-Erweiterung, Labels) |
-| Bearbeiten | `src/components/my-work/MyWorkDecisionsTab.tsx` (archiveDecision fix) |
-| Bearbeiten | `src/components/task-decisions/DecisionEditDialog.tsx` (setTimeout entfernen) |
-| Bearbeiten | `src/components/my-work/decisions/MyWorkDecisionCard.tsx` (Card-Erweiterung, Labels) |
-| Bearbeiten | `src/components/task-decisions/DecisionComments.tsx` (Labels) |
-| Bearbeiten | `src/components/task-decisions/DecisionViewerComment.tsx` (Labels) |
-| Bearbeiten | `src/components/task-decisions/TaskDecisionResponse.tsx` (Labels) |
-| Bearbeiten | `src/components/task-decisions/DecisionSidebar.tsx` (Labels) |
-| Bearbeiten | `src/components/shared/NoteDecisionCreator.tsx` (Standard-Teilnehmer) |
+| DB-Migration | Trigger-Funktionen reparieren (`check_archive_after_creator_response`, `auto_archive_completed_decisions`, neue `check_and_archive_decision`) |
+| Bearbeiten | `src/components/task-decisions/TaskDecisionDetails.tsx` (`.select()` entfernen, false-positive Fehlerbehandlung entfernen) |
+| Bearbeiten | `src/components/task-decisions/DecisionOverview.tsx` (falls `.select()` nach Updates verwendet wird) |
+| Bearbeiten | `src/components/shared/NoteDecisionCreator.tsx` (Default-Teilnehmer Logik robuster machen) |
 
 ## Reihenfolge
 
-1. **KRITISCH: DB-Migration** - RLS-Policies bereinigen + CHECK-Constraint erweitern (behebt Punkte 1, 2, 3, 5)
-2. **restoreDecision** auf `status: 'active'` aendern (Punkt 2)
-3. **archiveDecision** Fehlerbehandlung verbessern (Punkt 1)
-4. **DecisionEditDialog** setTimeout entfernen (Punkt 3)
-5. Rueckfragen/Kommentare in Cards anzeigen (Punkt 4)
-6. Bezeichnungen differenzieren (Punkt 6)
-7. Standard-Teilnehmer in NoteDecisionCreator (Punkt 7)
+1. **DB-Migration** - Trigger-Funktionen reparieren (behebt Punkt 4 komplett, moeglicherweise auch Teile von 1-3)
+2. **TaskDecisionDetails.tsx** - `.select()` nach archive/restore Updates entfernen (behebt Punkte 1+2)
+3. **DecisionOverview.tsx** - `.select()` Muster pruefen und bereinigen (behebt Punkt 3)
+4. **NoteDecisionCreator.tsx** - Default-Teilnehmer robuster laden (behebt Punkt 5)
+5. Alle Aenderungen per Browser-Test verifizieren
