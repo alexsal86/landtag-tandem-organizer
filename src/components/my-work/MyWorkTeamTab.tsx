@@ -13,6 +13,7 @@ import { de } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TeamAnnouncementsManager } from "@/components/announcements/TeamAnnouncementsManager";
+import { MyWorkExpenseWidget } from "@/components/my-work/MyWorkExpenseWidget";
 
 interface TeamMember {
   user_id: string;
@@ -102,6 +103,7 @@ export function MyWorkTeamTab() {
   const navigate = useNavigate();
   
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState("");
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -125,6 +127,7 @@ export function MyWorkTeamTab() {
       // 'abgeordneter' and 'bueroleitung' can see the team overview
       const canViewTeam = roleData?.role === "abgeordneter" || roleData?.role === "bueroleitung";
       setIsAdmin(canViewTeam);
+      setUserRole(roleData?.role || "");
 
       if (!canViewTeam || !currentTenant) {
         setLoading(false);
@@ -293,6 +296,11 @@ export function MyWorkTeamTab() {
         {/* Team Announcements Manager - only for admins */}
         {isAdmin && (
           <TeamAnnouncementsManager />
+        )}
+
+        {/* Expense Widget */}
+        {isAdmin && (
+          <MyWorkExpenseWidget userRole={userRole} />
         )}
 
         {/* Team Members Section */}

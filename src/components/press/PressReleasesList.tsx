@@ -69,11 +69,15 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
       .select('setting_key, setting_value')
       .eq('tenant_id', currentTenant.id)
       .in('setting_key', ['press_default_tags', 'press_email_template_subject', 'press_email_template_body']);
+    let loadedSubject = '';
+    let loadedBody = '';
     (data || []).forEach(s => {
       if (s.setting_key === 'press_default_tags') setDefaultTags(s.setting_value || '');
-      if (s.setting_key === 'press_email_template_subject') setEmailTemplateSubject(s.setting_value || '');
-      if (s.setting_key === 'press_email_template_body') setEmailTemplateBody(s.setting_value || '');
+      if (s.setting_key === 'press_email_template_subject') loadedSubject = s.setting_value || '';
+      if (s.setting_key === 'press_email_template_body') loadedBody = s.setting_value || '';
     });
+    setEmailTemplateSubject(loadedSubject || 'Pressemitteilung: {{titel}}');
+    setEmailTemplateBody(loadedBody || 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unsere aktuelle Pressemitteilung:\n\n{{titel}}\n\n{{excerpt}}\n\nDen vollständigen Beitrag finden Sie unter:\n{{link}}');
   };
 
   const saveSettings = async () => {
