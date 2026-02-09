@@ -32,7 +32,7 @@ interface NewComment {
   participantBadgeColor: string | null;
   participantUserId: string;
   participantAvatarUrl?: string | null;
-  responseType: 'yes' | 'no' | 'question';
+  responseType: string;
   comment: string | null;
   createdAt: string;
 }

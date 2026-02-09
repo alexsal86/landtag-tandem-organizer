@@ -12,7 +12,7 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
 import { DecisionEditDialog } from "./DecisionEditDialog";
-import { DecisionViewerComment } from "./DecisionViewerComment";
+
 import { DecisionSidebar } from "./DecisionSidebar";
 import { DecisionComments } from "./DecisionComments";
 import { DecisionCardActivity } from "./DecisionCardActivity";
@@ -44,13 +44,13 @@ const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; m
   if (!isTruncated || expanded) {
     return (
       <div>
-        <RichTextDisplay content={content} className="text-xs text-muted-foreground" />
+        <RichTextDisplay content={content} className="text-sm text-muted-foreground" />
         {isTruncated && (
           <Button 
             variant="link" 
             size="sm" 
             onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
-            className="text-[10px] p-0 h-auto text-muted-foreground hover:text-primary"
+            className="text-xs p-0 h-auto text-muted-foreground hover:text-primary"
           >
             weniger
           </Button>
@@ -63,12 +63,12 @@ const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; m
   
   return (
     <div>
-      <p className="text-xs text-muted-foreground">{truncatedPlain}</p>
+      <p className="text-sm text-muted-foreground">{truncatedPlain}</p>
       <Button 
         variant="link" 
         size="sm" 
         onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
-        className="text-[10px] p-0 h-auto text-muted-foreground hover:text-primary"
+        className="text-xs p-0 h-auto text-muted-foreground hover:text-primary"
       >
         mehr
       </Button>
@@ -113,7 +113,7 @@ interface DecisionRequest {
     };
     responses: Array<{
       id: string;
-      response_type: 'yes' | 'no' | 'question';
+      response_type: string;
       comment: string | null;
       creator_response: string | null;
       created_at: string;
@@ -395,11 +395,7 @@ export const DecisionOverview = () => {
               avatar_url: profileMap.get(participant.user_id)?.avatar_url || null,
             },
             responses: (participant.task_decision_responses || [])
-              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-              .map(response => ({
-                ...response,
-                response_type: response.response_type as 'yes' | 'no' | 'question'
-              })),
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
           });
         });
 
@@ -644,8 +640,13 @@ export const DecisionOverview = () => {
     const yesCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'yes').length;
     const noCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'no').length;
     const questionCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'question').length;
-    const pending = participants.length - (yesCount + noCount + questionCount);
-    return { yesCount, noCount, questionCount, pending, total: participants.length };
+    const otherCount = participants.filter(p => {
+      if (p.responses.length === 0) return false;
+      const rt = p.responses[0].response_type;
+      return rt !== 'yes' && rt !== 'no' && rt !== 'question';
+    }).length;
+    const pending = participants.length - (yesCount + noCount + questionCount + otherCount);
+    return { yesCount, noCount, questionCount, otherCount, pending, total: participants.length };
   };
 
   const getBorderColor = (summary: ReturnType<typeof getResponseSummary>) => {
@@ -681,7 +682,7 @@ export const DecisionOverview = () => {
       participantBadgeColor: string | null;
       participantUserId: string;
       participantAvatarUrl: string | null;
-      responseType: 'yes' | 'no' | 'question';
+      responseType: string;
       comment: string | null;
       createdAt: string;
     }> = [];
@@ -743,7 +744,10 @@ export const DecisionOverview = () => {
   const tabCounts = useMemo(() => {
     const active = decisions.filter(d => d.status !== 'archived');
     return {
-      forMe: active.filter(d => d.isParticipant && !d.hasResponded).length,
+      forMe: active.filter(d => 
+        (d.isParticipant && !d.hasResponded && !d.isCreator) ||
+        (d.isCreator && (() => { const s = getResponseSummary(d.participants); return s.questionCount > 0 || (s.total > 0 && s.pending < s.total); })())
+      ).length,
       answered: active.filter(d => d.isParticipant && d.hasResponded && !d.isCreator).length,
       myDecisions: active.filter(d => d.isCreator).length,
       public: active.filter(d => d.visible_to_all && !d.isCreator && !d.isParticipant).length,
@@ -777,8 +781,16 @@ export const DecisionOverview = () => {
     filtered = filtered.filter(d => d.status !== 'archived');
 
     switch (activeTab) {
-      case "for-me":
-        return filtered.filter(d => d.isParticipant && !d.hasResponded);
+      case "for-me": {
+        const forMe = filtered.filter(d => d.isParticipant && !d.hasResponded && !d.isCreator);
+        const myWithActivity = filtered.filter(d => {
+          if (!d.isCreator) return false;
+          const s = getResponseSummary(d.participants);
+          return s.questionCount > 0 || (s.total > 0 && s.pending < s.total);
+        });
+        const ids = new Set(forMe.map(d => d.id));
+        return [...forMe, ...myWithActivity.filter(d => !ids.has(d.id))];
+      }
       case "answered":
         return filtered.filter(d => d.isParticipant && d.hasResponded && !d.isCreator);
       case "my-decisions":
@@ -823,45 +835,43 @@ export const DecisionOverview = () => {
         key={decision.id}
         ref={highlightRef(decision.id)}
         className={cn(
-          "border-l-4 hover:bg-muted/50 transition-colors cursor-pointer",
+          "group border-l-4 hover:bg-muted/50 transition-colors cursor-pointer",
           getBorderColor(summary),
           isHighlighted(decision.id) && "notification-highlight"
         )}
         onClick={() => handleOpenDetails(decision.id)}
       >
         <CardContent className="p-4">
-          {/* Header: Status badges */}
+          {/* Header: Status badges + Actions */}
           <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2 flex-wrap text-xs">
-              {/* Status badge - größer mit ausgefülltem Hintergrund */}
+            <div className="flex items-center gap-2 flex-wrap">
               {summary.questionCount > 0 ? (
-                <Badge className="bg-orange-500 hover:bg-orange-500 text-white text-xs px-3 py-1">
-                  <MessageCircle className="h-3 w-3 mr-1.5" />
-                  Rückfrage offen
+                <Badge className="bg-orange-100 hover:bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400 text-sm px-3 py-1 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-orange-500 mr-1.5 inline-block" />
+                  Rückfrage
                 </Badge>
               ) : summary.pending === 0 && summary.total > 0 ? (
-                <Badge className="bg-green-500 hover:bg-green-500 text-white text-xs px-3 py-1">
-                  <CheckCircle className="h-3 w-3 mr-1.5" />
+                <Badge className="bg-green-100 hover:bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400 text-sm px-3 py-1 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-green-500 mr-1.5 inline-block" />
                   Entschieden
                 </Badge>
               ) : summary.total > 0 ? (
-                <Badge className="bg-blue-500 hover:bg-blue-500 text-white text-xs px-3 py-1">
-                  {summary.pending} ausstehend
+                <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 text-sm px-3 py-1 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 mr-1.5 inline-block" />
+                  Ausstehend
                 </Badge>
               ) : null}
 
-              {/* Responded indicator */}
               {decision.hasResponded && decision.isParticipant && (
-                <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
               )}
             </div>
 
-            {/* Actions dropdown */}
             {decision.isCreator && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                    <MoreVertical className="h-3.5 w-3.5" />
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                    <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -897,8 +907,8 @@ export const DecisionOverview = () => {
             )}
           </div>
 
-          {/* Title - größer und fetter */}
-          <h3 className="font-semibold text-base mb-1">{decision.title}</h3>
+          {/* Title */}
+          <h3 className="font-bold text-lg mb-1 line-clamp-1 group-hover:line-clamp-none">{decision.title}</h3>
 
           {/* Description */}
           {decision.description && (
@@ -907,81 +917,101 @@ export const DecisionOverview = () => {
             </div>
           )}
 
-          {/* Footer: Creator Avatar + Date + Visibility + Meta info */}
-          <div className="flex items-center justify-between mt-3 pt-2 border-t">
-            <div className="flex items-center gap-3">
-              {/* Creator Avatar + Name */}
-              {decision.creator && (
-                <div className="flex items-center gap-1.5">
-                  <Avatar className="h-6 w-6">
-                    {decision.creator.avatar_url && (
-                      <AvatarImage src={decision.creator.avatar_url} alt={decision.creator.display_name || 'Avatar'} />
-                    )}
-                    <AvatarFallback 
-                      className="text-[9px]"
-                      style={{ backgroundColor: decision.creator.badge_color || undefined }}
-                    >
-                      {getInitials(decision.creator.display_name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs font-semibold text-foreground">
-                    {decision.creator.display_name || 'Unbekannt'}
-                  </span>
-                </div>
-              )}
+          {/* Metadata row - no borders, more spacing */}
+          <div className="flex items-center flex-wrap gap-3 mt-4 text-xs text-muted-foreground">
+            {/* Date */}
+            <span className="flex items-center gap-1">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              {new Date(decision.created_at).toLocaleDateString('de-DE')}
+            </span>
 
-              {/* Date */}
-              <span className="text-[10px] text-muted-foreground">
-                {new Date(decision.created_at).toLocaleDateString('de-DE')}
+            {/* Creator */}
+            {decision.creator && (
+              <span className="flex items-center gap-1">
+                <Avatar className="h-5 w-5">
+                  {decision.creator.avatar_url && (
+                    <AvatarImage src={decision.creator.avatar_url} alt={decision.creator.display_name || 'Avatar'} />
+                  )}
+                  <AvatarFallback 
+                    className="text-[8px]"
+                    style={{ backgroundColor: decision.creator.badge_color || undefined }}
+                  >
+                    {getInitials(decision.creator.display_name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-medium text-foreground">{decision.creator.display_name || 'Unbekannt'}</span>
               </span>
+            )}
 
-              {/* Visibility as text with dash */}
-              {decision.visible_to_all && (
-                <span className="text-[10px] text-muted-foreground">
-                  – Öffentlich
-                </span>
-              )}
+            {/* Comments */}
+            <button
+              onClick={(e) => { e.stopPropagation(); openComments(decision.id, decision.title); }}
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              {getCommentCount(decision.id) > 0 
+                ? `${getCommentCount(decision.id)} Kommentar${getCommentCount(decision.id) !== 1 ? 'e' : ''}`
+                : 'Kommentar schreiben'
+              }
+            </button>
 
-              {/* Attachments */}
-              {(decision.attachmentCount ?? 0) > 0 && (
-                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                  <Paperclip className="h-2.5 w-2.5" />
-                  {decision.attachmentCount}
-                </span>
-              )}
+            {/* Public */}
+            {decision.visible_to_all && (
+              <span className="flex items-center gap-1">
+                <Globe className="h-3.5 w-3.5" />
+                Öffentlich
+              </span>
+            )}
 
-              {/* Topics */}
-              {decision.topicIds && decision.topicIds.length > 0 && (
-                <TopicDisplay topicIds={decision.topicIds} maxDisplay={2} />
-              )}
-            </div>
+            {/* Attachments */}
+            {(decision.attachmentCount ?? 0) > 0 && (
+              <span className="flex items-center gap-1">
+                <Paperclip className="h-3.5 w-3.5" />
+                {decision.attachmentCount}
+              </span>
+            )}
 
-            {/* Comments Icon + Avatar Stack + Voting */}
-            <div className="flex items-center gap-3">
-              {/* Comments Icon */}
-              <button
-                onClick={(e) => { e.stopPropagation(); openComments(decision.id, decision.title); }}
-                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span className="text-xs">{getCommentCount(decision.id)}</span>
-              </button>
-
-              {decision.participants && decision.participants.length > 0 && (
-                <>
-                  <div className="flex items-center gap-1 text-xs">
-                    <span className="text-muted-foreground font-medium">Stand:</span>
-                    <span className="text-green-600 font-bold">{summary.yesCount}</span>
-                    <span className="text-muted-foreground">/</span>
-                    <span className="text-orange-600 font-bold">{summary.questionCount}</span>
-                    <span className="text-muted-foreground">/</span>
-                    <span className="text-red-600 font-bold">{summary.noCount}</span>
-                  </div>
-                  <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
-                </>
-              )}
-            </div>
+            {/* Topics */}
+            {decision.topicIds && decision.topicIds.length > 0 && (
+              <TopicDisplay topicIds={decision.topicIds} maxDisplay={2} />
+            )}
           </div>
+
+          {/* Voting row: buttons left, results + avatars right */}
+          {decision.participants && decision.participants.length > 0 && (
+            <div className="flex items-center justify-between mt-4">
+              {/* Left: Inline voting for unanswered participants */}
+              <div onClick={(e) => e.stopPropagation()}>
+                {decision.isParticipant && decision.participant_id && !decision.hasResponded && !decision.isCreator ? (
+                  <TaskDecisionResponse 
+                    decisionId={decision.id}
+                    participantId={decision.participant_id}
+                    onResponseSubmitted={handleResponseSubmitted}
+                    hasResponded={decision.hasResponded}
+                    creatorId={decision.created_by}
+                  />
+                ) : null}
+              </div>
+
+              {/* Right: Voting results + AvatarStack */}
+              <div className="flex items-center gap-3 ml-auto">
+                <div className="flex items-center gap-1.5 text-sm font-bold">
+                  <span className="text-green-600">{summary.yesCount}</span>
+                  <span className="text-muted-foreground">/</span>
+                  <span className="text-orange-600">{summary.questionCount}</span>
+                  <span className="text-muted-foreground">/</span>
+                  <span className="text-red-600">{summary.noCount}</span>
+                  {summary.otherCount > 0 && (
+                    <>
+                      <span className="text-muted-foreground">/</span>
+                      <span className="text-blue-600">{summary.otherCount}</span>
+                    </>
+                  )}
+                </div>
+                <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
+              </div>
+            </div>
+          )}
 
           {/* Activity preview */}
           <DecisionCardActivity 
@@ -996,31 +1026,6 @@ export const DecisionOverview = () => {
             onReply={(responseId, text) => sendCreatorResponse(responseId, text)}
           />
 
-          {/* Response buttons for participants */}
-          {decision.isParticipant && decision.participant_id && !decision.hasResponded && !decision.isCreator && (
-            <div className="mt-3 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
-              <TaskDecisionResponse 
-                decisionId={decision.id}
-                participantId={decision.participant_id}
-                onResponseSubmitted={handleResponseSubmitted}
-                hasResponded={decision.hasResponded}
-                creatorId={decision.created_by}
-              />
-            </div>
-          )}
-
-          {/* Viewer comment option */}
-          {!decision.isParticipant && decision.visible_to_all && (
-            <div className="mt-3 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
-              <DecisionViewerComment
-                decisionId={decision.id}
-                creatorId={decision.created_by}
-                decisionTitle={decision.title}
-                onCommentSubmitted={handleResponseSubmitted}
-              />
-            </div>
-          )}
-
           {/* Open questions for creator */}
           {user?.id === decision.created_by && decision.participants?.some(p => 
             p.responses[0]?.response_type === 'question' && !p.responses[0]?.creator_response
@@ -1031,7 +1036,7 @@ export const DecisionOverview = () => {
                 if (!latestResponse || latestResponse.response_type !== 'question' || latestResponse.creator_response) return null;
                 
                 return (
-                  <div key={participant.id} className="bg-orange-50 dark:bg-orange-950/20 p-2 rounded text-xs space-y-1">
+                  <div key={participant.id} className="bg-orange-50 dark:bg-orange-950/20 p-2 rounded text-sm space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-orange-700 dark:text-orange-400">Rückfrage von</span>
                       <UserBadge 
@@ -1120,8 +1125,8 @@ export const DecisionOverview = () => {
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground mb-1">Entscheidungen</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-3xl font-bold text-foreground mb-1">Entscheidungen</h1>
+        <p className="text-base text-muted-foreground">
           Verwalten Sie Entscheidungsanfragen und Abstimmungen
         </p>
       </div>
