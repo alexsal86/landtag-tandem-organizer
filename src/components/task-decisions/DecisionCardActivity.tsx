@@ -18,7 +18,7 @@ interface Participant {
   };
   responses: Array<{
     id: string;
-    response_type: 'yes' | 'no' | 'question';
+    response_type: string;
     comment: string | null;
     creator_response: string | null;
     created_at: string;
@@ -49,7 +49,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
 
   const activityItems: Array<{
     id: string;
-    type: 'question' | 'yes' | 'no';
+    type: string;
     name: string | null;
     badgeColor: string | null;
     avatarUrl: string | null;

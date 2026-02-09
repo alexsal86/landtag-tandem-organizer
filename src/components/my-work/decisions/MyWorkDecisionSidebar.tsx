@@ -31,7 +31,7 @@ interface NewComment {
   participantName: string | null;
   participantBadgeColor: string | null;
   participantAvatarUrl: string | null;
-  responseType: 'yes' | 'no' | 'question';
+  responseType: string;
   comment: string | null;
 }
 

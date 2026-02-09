@@ -1,0 +1,1 @@
+ALTER TABLE task_decision_responses DROP CONSTRAINT IF EXISTS task_decision_responses_response_type_check;

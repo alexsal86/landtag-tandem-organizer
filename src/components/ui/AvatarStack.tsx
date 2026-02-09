@@ -8,7 +8,7 @@ interface Participant {
   display_name: string | null;
   badge_color: string | null;
   avatar_url?: string | null;
-  response_type?: 'yes' | 'no' | 'question' | null;
+  response_type?: string | null;
 }
 
 interface AvatarStackProps {
@@ -26,7 +26,7 @@ export function AvatarStack({ participants, maxVisible = 4, size = 'sm' }: Avata
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const getResponseIcon = (responseType: 'yes' | 'no' | 'question' | null | undefined) => {
+  const getResponseIcon = (responseType: string | null | undefined) => {
     switch (responseType) {
       case 'yes':
         return <Check className="h-2.5 w-2.5 text-green-600" />;
@@ -35,11 +35,12 @@ export function AvatarStack({ participants, maxVisible = 4, size = 'sm' }: Avata
       case 'question':
         return <MessageCircle className="h-2.5 w-2.5 text-orange-600" />;
       default:
+        if (responseType) return <Check className="h-2.5 w-2.5 text-blue-600" />;
         return <Clock className="h-2.5 w-2.5 text-muted-foreground" />;
     }
   };
 
-  const getResponseBorderColor = (responseType: 'yes' | 'no' | 'question' | null | undefined) => {
+  const getResponseBorderColor = (responseType: string | null | undefined) => {
     switch (responseType) {
       case 'yes':
         return 'ring-green-500';
@@ -48,6 +49,7 @@ export function AvatarStack({ participants, maxVisible = 4, size = 'sm' }: Avata
       case 'question':
         return 'ring-orange-500';
       default:
+        if (responseType) return 'ring-blue-500';
         return 'ring-muted';
     }
   };

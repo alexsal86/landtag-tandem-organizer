@@ -31,7 +31,7 @@ export interface MyWorkDecision {
     };
     responses: Array<{
       id: string;
-      response_type: 'yes' | 'no' | 'question';
+      response_type: string;
       comment: string | null;
       creator_response: string | null;
       created_at: string;
@@ -56,7 +56,7 @@ export interface SidebarNewComment {
   participantName: string | null;
   participantBadgeColor: string | null;
   participantAvatarUrl: string | null;
-  responseType: 'yes' | 'no' | 'question';
+  responseType: string;
   comment: string | null;
 }
 
@@ -76,8 +76,14 @@ export const getResponseSummary = (participants: MyWorkDecision['participants'] 
   const yesCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'yes').length;
   const noCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'no').length;
   const questionCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'question').length;
-  const pending = participants.length - (yesCount + noCount + questionCount);
-  return { yesCount, noCount, questionCount, pending, total: participants.length };
+  // Count other response types (A/B/C, 1-5, custom) as "voted" (not pending)
+  const otherCount = participants.filter(p => {
+    if (p.responses.length === 0) return false;
+    const rt = p.responses[0].response_type;
+    return rt !== 'yes' && rt !== 'no' && rt !== 'question';
+  }).length;
+  const pending = participants.length - (yesCount + noCount + questionCount + otherCount);
+  return { yesCount, noCount, questionCount, otherCount, pending, total: participants.length };
 };
 
 export const getBorderColor = (summary: ReturnType<typeof getResponseSummary>) => {
