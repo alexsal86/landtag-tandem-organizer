@@ -1,203 +1,207 @@
 
-# Plan: 5 Entscheidungssystem-Fehler endgueltig beheben
+# Plan: 3 kritische Entscheidungssystem-Fehler endgueltig beheben
 
-## Zusammenfassung der Root Causes
+## Analyse der Root Causes
 
-Durch die Analyse der Datenbank-Logs, RLS-Policies, Trigger-Funktionen und des Frontend-Codes wurden die **tatsaechlichen** Ursachen identifiziert, die beim letzten Fix-Versuch nicht erkannt wurden:
+### Issue 1: Entscheidungen verschwinden nach Abstimmung
 
-### Warum die vorherigen Fixes nicht gewirkt haben
+**Root Cause identifiziert:** Die Datenbank-Trigger-Funktion `auto_archive_completed_decisions` wird bei jedem INSERT in `task_decision_responses` ausgeloest. Sie ruft `check_and_archive_decision()` auf, die automatisch den Status auf `'archived'` setzt, sobald alle Teilnehmer abgestimmt haben UND keine offenen Rueckfragen existieren.
 
-Die RLS-Policy-Bereinigung und der CHECK-Constraint-Fix waren korrekt und wurden erfolgreich angewendet (DB-Abfrage bestaetigt). Die Fehler kommen aber aus **zwei anderen Stellen**:
+Das bedeutet: Sobald der letzte Teilnehmer seine Stimme abgibt, wird die Entscheidung **sofort automatisch archiviert**.
 
-1. **Trigger-Bug (KRITISCH):** Die Trigger-Funktion `check_archive_after_creator_response` ruft `PERFORM auto_archive_completed_decisions()` auf - aber `auto_archive_completed_decisions` ist als `RETURNS trigger` definiert. PostgreSQL verbietet den Aufruf von Trigger-Funktionen ausserhalb von Triggern. Dieser Fehler wird bei jedem UPDATE auf `task_decision_responses` ausgeloest, wenn `creator_response` gesetzt wird.
+**Frontend-Problem:** Beide Ansichten (DecisionOverview.tsx und MyWorkDecisionsTab.tsx) laden nur aktive Entscheidungen fuer die Tabs "Fuer mich", "Beantwortet", "Von mir":
+- `MyWorkDecisionsTab` Zeile 81/94: `.in("task_decisions.status", ["active", "open"])` -- archivierte werden nicht geladen
+- `DecisionOverview` Zeile 188/219: `.in('task_decisions.status', ['active', 'open'])` -- gleiche Filterung
 
-2. **TaskDecisionDetails.tsx (KRITISCH):** Die Archivierung in `TaskDecisionDetails.tsx` (Detail-Dialog) verwendet `.select()` nach dem UPDATE. Nach dem Statuswechsel auf `archived` gibt die SELECT-RLS-Policy keine Zeile zurueck (da die Policy nach `status IN (active, open)` filtert in der Participant-Query). Der Code interpretiert leere Ergebnisse als Fehler (Zeile 201-219: `if (!data || data.length === 0) throw new Error(...)`).
+Der "Beantwortet"-Tab filtert nach `d.isParticipant && d.hasResponded && !d.isCreator`, aber da die Entscheidung bereits archiviert ist, wird sie gar nicht erst geladen. Sie taucht auch nicht unter "Archiv" auf, weil der Archiv-Tab in `MyWorkDecisionsTab` gar nicht existiert.
 
-| Nr | Problem | Tatsaechliche Ursache | Loesung |
-|----|---------|----------------------|---------|
-| 1 | Archivieren zeigt Fehler | `TaskDecisionDetails.tsx` Zeile 195: `.select()` nach UPDATE liefert leere Daten wegen RLS, was als Fehler geworfen wird | `.select()` entfernen, nur `error` pruefen |
-| 2 | Wiederherstellen zeigt Fehler | Gleiche Logik falls aus Detail-Dialog; oder `loadDecisionRequests` wirft bei Reload | `.select()` entfernen |
-| 3 | Bearbeiten zeigt Fehler | `DecisionEditDialog.tsx` hat keinen offensichtlichen Bug - moeglicherweise wird der Fehler vom Reload-Callback ausgeloest | Fehlerbehandlung verbessern |
-| 4 | Antwort auf Begruendungen scheitert | `check_archive_after_creator_response` Trigger ruft `auto_archive_completed_decisions()` auf, was `RETURNS trigger` ist und nicht als regulaere Funktion aufrufbar | Trigger-Funktion reparieren: `auto_archive_completed_decisions` als `RETURNS void` Version erstellen |
-| 5 | Standard-Teilnehmer nicht uebernommen | Der Code ist vorhanden, aber die Filterung `userIds.includes(id)` kann fehlschlagen, wenn die Default-IDs nicht mit den Tenant-Memberships uebereinstimmen; oder `loadProfiles` wird mehrfach aufgerufen und resettet die Auswahl | Debugging hinzufuegen und Logik robuster machen |
+In `DecisionOverview` gibt es zwar einen Archiv-Tab, aber die Filter-Logik in Zeile 777 filtert "Beantwortet" auf `d.status !== 'archived'`, wodurch auto-archivierte Entscheidungen dort ebenfalls nicht erscheinen.
+
+**Loesung:** Das Auto-Archivieren abschalten und stattdessen nur eine visuelle Markierung als "Entschieden/Abgeschlossen" vornehmen. Die Entscheidung bleibt aktiv, bis der Ersteller sie manuell archiviert. Nur bei einer manuellen Archivierung wird der Status geaendert.
+
+Konkret:
+1. **DB-Migration:** Den Trigger `trigger_auto_archive_decisions` auf `task_decision_responses` entfernen (DROP TRIGGER). Die Trigger-Funktion und die Helper-Funktion bleiben erhalten fuer zukuenftigen Gebrauch, aber der automatische Trigger wird deaktiviert.
+2. **Alternativ:** Den `check_archive_after_creator_response` Trigger ebenfalls entfernen, da dieser nach dem Beantworten einer Rueckfrage ebenfalls auto-archiviert.
+3. Die Entscheidungskarten zeigen bereits visuell an, ob alle abgestimmt haben (gruener "Entschieden"-Badge). Das reicht als Indikator.
+
+### Issue 2: Fehler beim Archivieren/Wiederherstellen/Bearbeiten in TaskDecisionDetails
+
+**Root Cause:** In der Netzwerkanalyse ist eine fehlgeschlagene PATCH-Anfrage zu sehen:
+```
+PATCH https://...supabase.co/rest/v1/task_decisions?id=eq.8f23d4ec-...
+Error: Failed to fetch
+```
+
+Das `TaskDecisionDetails.tsx` sieht nach der letzten Korrektur korrekt aus (Zeile 187-196 verwendet kein `.select()`). Aber der **Fehler kommt von der `DecisionEditDialog`-Interaktion** -- dort wird beim Speichern (Zeile 112-119) ein UPDATE durchgefuehrt, der korrekt aussieht.
+
+Nach weiterer Analyse: Die RLS-Policies sind bereinigt und korrekt (nur eine UPDATE-Policy: `"Users can update their decisions"` mit `tenant_id + created_by` Pruefung, ohne WITH CHECK).
+
+Der "Failed to fetch"-Fehler im Netzwerk-Log deutet auf ein **Netzwerk-/Timing-Problem** hin, nicht auf eine RLS-Blockade. Der Fehler tritt auf, weil:
+1. Der User klickt "Speichern" im Edit-Dialog
+2. Die PATCH-Anfrage wird gesendet
+3. Gleichzeitig navigiert der User oder das Frontend schließt den Dialog
+4. Die laufende Anfrage wird abgebrochen ("Failed to fetch")
+
+**Aber:** Der User meldet explizit, dass Archivieren/Wiederherstellen/Bearbeiten Fehler zeigt. Da die DB-Logs keine Fehler zeigen und die Operations tatsaechlich funktionieren (Daten werden gespeichert), liegt das Problem im Frontend-Error-Handling.
+
+Moegliche weitere Ursache: Die `loadDecisionDetails()` Funktion (Zeile 64-142) laedt die Entscheidung mit `.eq('id', decisionId).single()`. Wenn der Status nach einer Archivierung auf `'archived'` gesetzt wurde, koennte die **SELECT RLS-Policy** die Zeile fuer Nicht-Ersteller ausblenden. Die SELECT-Policy erlaubt:
+- `created_by = auth.uid()` ODER
+- `visible_to_all = true` ODER  
+- User ist Teilnehmer
+
+Fuer den Ersteller sollte das funktionieren. Wenn der Ersteller archiviert und dann `onArchived()` aufruft, wird die Liste neu geladen -- aber da die Entscheidung jetzt `archived` ist, wird sie in der aktiven Liste nicht mehr gefunden.
+
+**Loesung:** 
+1. Im `TaskDecisionDetails` sicherstellen, dass nach dem Archivieren der Dialog sofort geschlossen wird OHNE die Daten nochmal zu laden
+2. `onArchived` wird aufgerufen um die uebergeordnete Liste zu aktualisieren
+3. Statt `.single()` in `loadDecisionDetails` einen Check einbauen, ob die Entscheidung existiert (`.maybeSingle()`)
+
+### Issue 3: Standard-Teilnehmer bei TaskDecisionCreator und NoteDecisionCreator
+
+**Root Cause im TaskDecisionCreator (Zeile 92-142):** Die `loadProfiles`-Funktion liest NICHT aus `localStorage`. Sie selektiert nur Abgeordnete automatisch (Zeile 113-134). Die `default_decision_participants`-Logik fehlt hier komplett.
+
+**Root Cause im NoteDecisionCreator:** Der Code sieht korrekt aus (Zeile 110-130). Aber ein Timing-Problem: Die `loadProfiles` Funktion wird durch den useEffect bei `[open, currentTenant?.id]` getriggert. Wenn `open` schnell hintereinander wechselt oder `currentTenant` sich aendert, wird die Funktion mehrfach aufgerufen und das `setSelectedUsers` wird ueberschrieben.
+
+Zusaetzlich: Der Zustand `selectedUsers` wird bei jeder Dialog-Oeffnung zurueckgesetzt, weil `loadProfiles` bei jedem `open === true` aufgerufen wird und `setSelectedUsers` in beiden Code-Pfaden (defaults oder fallback) aufgerufen wird.
+
+**Loesung:** In **beiden** Creatorn die Default-Teilnehmer-Logik einheitlich implementieren:
+1. `TaskDecisionCreator.tsx`: `localStorage.getItem('default_decision_participants')` abfragen, bevor der Abgeordneten-Fallback greift
+2. `NoteDecisionCreator.tsx`: Sicherstellen, dass die Defaults nicht ueberschrieben werden (Flag `hasLoadedDefaults`)
 
 ---
 
 ## Technische Details
 
-### Fix 1+2: TaskDecisionDetails.tsx - `.select()` entfernen
+### Fix 1: Auto-Archivierung deaktivieren
+
+**DB-Migration:**
+
+```sql
+-- Auto-Archivierungs-Trigger entfernen
+-- Die Entscheidung bleibt aktiv bis der Ersteller sie manuell archiviert
+DROP TRIGGER IF EXISTS trigger_auto_archive_decisions ON public.task_decision_responses;
+DROP TRIGGER IF EXISTS trigger_check_archive_on_creator_response ON public.task_decision_responses;
+```
+
+Die Funktionen `auto_archive_completed_decisions`, `check_archive_after_creator_response` und `check_and_archive_decision` bleiben erhalten (keine Aenderung), da sie nicht aufgerufen werden, wenn die Trigger entfernt sind.
+
+### Fix 2: TaskDecisionDetails Fehlerbehandlung
 
 **Datei:** `src/components/task-decisions/TaskDecisionDetails.tsx`
 
-**Problem (Zeilen 187-219):**
-```typescript
-const { data, error } = await supabase
-  .from('task_decisions')
-  .update({ status: 'archived', ... })
-  .eq('id', decision.id)
-  .select();  // <-- PROBLEM: RLS filtert archived-Zeilen aus
+- `loadDecisionDetails()`: `.single()` durch `.maybeSingle()` ersetzen und NULL-Check hinzufuegen
+- `archiveDecision()`: Nach erfolgreichem Update sofort `onArchived()` und `onClose()` aufrufen -- kein Reload der Details noetig
+- Das Restore-Feature fehlt im TaskDecisionDetails komplett (es gibt nur Archivieren, kein Wiederherstellen). Das Wiederherstellen funktioniert ueber die Dropdown-Menues in DecisionOverview und MyWorkDecisionsTab, deren Code korrekt aussieht.
 
-if (!data || data.length === 0) {
-  throw new Error("Keine Berechtigung..."); // <-- FALSE POSITIVE
+Aenderungen:
+```typescript
+// loadDecisionDetails - Zeile 83: .single() -> .maybeSingle()
+const { data: decisionData, error: decisionError } = await supabase
+  .from('task_decisions')
+  .select(...)
+  .eq('id', decisionId)
+  .maybeSingle();
+
+if (decisionError) throw decisionError;
+if (!decisionData) {
+  // Decision not accessible (archived/deleted)
+  toast({ title: "Info", description: "Diese Entscheidung ist nicht mehr verfuegbar." });
+  onClose();
+  return;
 }
 ```
 
-**Loesung:** `.select()` entfernen und nur den `error` pruefen:
+### Fix 3: Standard-Teilnehmer in TaskDecisionCreator
+
+**Datei:** `src/components/task-decisions/TaskDecisionCreator.tsx`
+
+In der `loadProfiles`-Funktion (Zeile 92-142), nach dem Laden der Profile und Tenant-Members, die Default-Teilnehmer aus localStorage pruefen:
+
 ```typescript
-const { error } = await supabase
-  .from('task_decisions')
-  .update({ status: 'archived', ... })
-  .eq('id', decision.id);
-
-if (error) throw error;
-// Direkt Erfolg melden, keine data-Pruefung noetig
-```
-
-Die gesamte Fallback-Pruefung (Zeilen 201-220) entfernen.
-
-### Fix 3: DecisionEditDialog.tsx - robustere Fehlerbehandlung
-
-**Datei:** `src/components/task-decisions/DecisionEditDialog.tsx`
-
-Der Code sieht korrekt aus (Zeilen 112-119 verwenden kein `.select()`). Der Fehler kann von der `loadDecisionRequests`-Funktion kommen, die nach `onUpdated()` aufgerufen wird. 
-
-Falls die Ursache die gleiche `.select()`-Problematik in einem anderen Aufrufpfad ist, pruefen wir alle Stellen wo `.update()` mit `.select()` kombiniert wird.
-
-### Fix 4 (KRITISCH): Trigger-Funktion reparieren
-
-**Problem:** 
-```sql
--- check_archive_after_creator_response ruft:
-PERFORM auto_archive_completed_decisions();
--- Aber auto_archive_completed_decisions ist RETURNS trigger!
--- -> ERROR: trigger functions can only be called as triggers
-```
-
-**Loesung via DB-Migration:**
-
-Eine neue Funktion `check_and_archive_decision` erstellen, die als `RETURNS void` definiert ist und die gleiche Logik wie `auto_archive_completed_decisions` enthaelt, aber einen `decision_id`-Parameter akzeptiert statt `NEW.decision_id` zu verwenden:
-
-```sql
--- 1. Neue Helper-Funktion (RETURNS void, nicht trigger)
-CREATE OR REPLACE FUNCTION public.check_and_archive_decision(p_decision_id UUID)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  total_participants INTEGER;
-  total_responses INTEGER;
-  open_questions INTEGER;
-  decision_status TEXT;
-  decision_title TEXT;
-  decision_creator UUID;
-BEGIN
-  SELECT status, title, created_by INTO decision_status, decision_title, decision_creator
-  FROM task_decisions WHERE id = p_decision_id;
+const loadProfiles = async () => {
+  // ... existing profile loading code ...
   
-  IF decision_status NOT IN ('active', 'open') THEN RETURN; END IF;
-
-  SELECT COUNT(*) INTO total_participants
-  FROM task_decision_participants WHERE decision_id = p_decision_id;
+  setProfiles(data || []);
   
-  SELECT COUNT(DISTINCT participant_id) INTO total_responses
-  FROM (
-    SELECT DISTINCT ON (participant_id) participant_id, response_type
-    FROM task_decision_responses WHERE decision_id = p_decision_id
-    ORDER BY participant_id, created_at DESC
-  ) latest_responses;
+  // Check for default participants from settings FIRST
+  let defaultIds: string[] = [];
+  try {
+    const stored = localStorage.getItem('default_decision_participants');
+    if (stored) defaultIds = JSON.parse(stored);
+  } catch (e) {}
   
-  SELECT COUNT(*) INTO open_questions
-  FROM (
-    SELECT DISTINCT ON (participant_id) *
-    FROM task_decision_responses WHERE decision_id = p_decision_id
-    ORDER BY participant_id, created_at DESC
-  ) latest_responses
-  WHERE response_type = 'question' AND creator_response IS NULL;
-  
-  IF total_participants = total_responses AND open_questions = 0 THEN
-    UPDATE task_decisions SET status = 'archived', archived_at = NOW(), archived_by = decision_creator
-    WHERE id = p_decision_id;
+  if (defaultIds.length > 0 && tenantData?.tenant_id) {
+    const { data: tenantMembers } = await supabase
+      .from('user_tenant_memberships')
+      .select('user_id')
+      .eq('tenant_id', tenantData.tenant_id)
+      .eq('is_active', true);
     
-    PERFORM create_notification(decision_creator, 'task_decision_completed',
-      'Entscheidung automatisch archiviert',
-      'Die Entscheidung "' || decision_title || '" wurde automatisch archiviert.',
-      jsonb_build_object('decision_id', p_decision_id), 'low');
-  END IF;
-END;
-$$;
-
--- 2. check_archive_after_creator_response reparieren
-CREATE OR REPLACE FUNCTION public.check_archive_after_creator_response()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  IF NEW.creator_response IS NOT NULL AND (OLD.creator_response IS NULL OR OLD.creator_response = '') THEN
-    PERFORM check_and_archive_decision(NEW.decision_id);
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
--- 3. auto_archive_completed_decisions ebenfalls reparieren
--- (wird als INSERT-Trigger auf task_decision_responses aufgerufen)
-CREATE OR REPLACE FUNCTION public.auto_archive_completed_decisions()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  PERFORM check_and_archive_decision(NEW.decision_id);
-  RETURN NEW;
-END;
-$$;
+    const tenantUserIds = new Set(tenantMembers?.map(m => m.user_id) || []);
+    const validDefaults = defaultIds.filter(id => 
+      tenantUserIds.has(id) && id !== userData.user.id
+    );
+    
+    if (validDefaults.length > 0) {
+      setSelectedUsers(validDefaults);
+      setProfilesLoaded(true);
+      return; // Early return - don't fall through to Abgeordneter
+    }
+  }
+  
+  // Fallback: Pre-select Abgeordneter (existing logic)
+  // ...
+};
 ```
 
-### Fix 5: NoteDecisionCreator - Default-Teilnehmer robuster laden
+### Fix 3b: NoteDecisionCreator robuster machen
 
 **Datei:** `src/components/shared/NoteDecisionCreator.tsx`
 
-Das Problem: Der Code liest `default_decision_participants` korrekt (Zeile 113), aber die Filterung bei Zeile 121 (`userIds.includes(id) && id !== user?.id`) koennte scheitern, wenn die gespeicherten IDs nicht zum aktuellen Tenant passen, oder wenn der einzige gespeicherte Default der aktuelle User selbst ist.
+Die aktuelle Logik sieht zwar korrekt aus, aber der `useEffect` laeuft bei jedem Oeffnen. Wenn der User den Dialog oeffnet, werden die Defaults geladen, aber wenn `currentTenant?.id` sich kurz danach aktualisiert, laeuft `loadProfiles` erneut und setzt die Auswahl zurueck. 
 
-**Loesung:** Wenn `validDefaults` leer ist OBWOHL `defaultIds` nicht leer war, zum Fallback wechseln. Ausserdem Logging hinzufuegen fuer Debugging:
+Loesung: Ein Flag `hasLoadedDefaults` hinzufuegen, das verhindert, dass die Auswahl beim zweiten Aufruf ueberschrieben wird:
 
 ```typescript
-if (defaultIds.length > 0) {
-  const validDefaults = defaultIds.filter(id => 
-    userIds.includes(id) && id !== user?.id
-  );
-  if (validDefaults.length > 0) {
-    setSelectedUsers(validDefaults);
-    return; // WICHTIG: Early return, damit Fallback nicht greift
+const [hasInitialized, setHasInitialized] = useState(false);
+
+useEffect(() => {
+  if (open && currentTenant?.id) {
+    loadProfiles();
   }
-  // Falls alle Defaults ungueltig -> zum Fallback weiter
-}
-// Fallback: Abgeordnete
+  if (!open) {
+    setHasInitialized(false); // Reset when dialog closes
+  }
+}, [open, currentTenant?.id]);
+
+const loadProfiles = async () => {
+  // Profile laden immer
+  // ...
+  setProfiles(filteredProfiles);
+  
+  // Aber Auswahl nur beim ersten Mal setzen
+  if (hasInitialized) return;
+  setHasInitialized(true);
+  
+  // Default-Teilnehmer Logik...
+};
 ```
 
-Zusaetzlich: pruefen, ob `loadProfiles` moeglicherweise mehrfach aufgerufen wird und `setSelectedUsers` dadurch resettet wird. Die `useEffect`-Dependency `[open, currentTenant?.id]` koennte dazu fuehren, dass die Funktion bei jedem Oeffnen nochmal laeuft und die vorherige Auswahl ueberschreibt.
-
 ---
-
-## Zusaetzliche Pruefungen
-
-Alle Stellen durchsuchen, an denen `.update().select()` auf `task_decisions` aufgerufen wird, um sicherzustellen, dass nirgends eine leere Ergebnismenge als Fehler interpretiert wird.
 
 ## Betroffene Dateien
 
 | Aktion | Datei |
 |--------|-------|
-| DB-Migration | Trigger-Funktionen reparieren (`check_archive_after_creator_response`, `auto_archive_completed_decisions`, neue `check_and_archive_decision`) |
-| Bearbeiten | `src/components/task-decisions/TaskDecisionDetails.tsx` (`.select()` entfernen, false-positive Fehlerbehandlung entfernen) |
-| Bearbeiten | `src/components/task-decisions/DecisionOverview.tsx` (falls `.select()` nach Updates verwendet wird) |
-| Bearbeiten | `src/components/shared/NoteDecisionCreator.tsx` (Default-Teilnehmer Logik robuster machen) |
+| DB-Migration | Auto-Archivierungs-Trigger entfernen |
+| Bearbeiten | `src/components/task-decisions/TaskDecisionDetails.tsx` (`.maybeSingle()`, Fehlerbehandlung) |
+| Bearbeiten | `src/components/task-decisions/TaskDecisionCreator.tsx` (Default-Teilnehmer aus localStorage) |
+| Bearbeiten | `src/components/shared/NoteDecisionCreator.tsx` (hasInitialized Flag) |
 
 ## Reihenfolge
 
-1. **DB-Migration** - Trigger-Funktionen reparieren (behebt Punkt 4 komplett, moeglicherweise auch Teile von 1-3)
-2. **TaskDecisionDetails.tsx** - `.select()` nach archive/restore Updates entfernen (behebt Punkte 1+2)
-3. **DecisionOverview.tsx** - `.select()` Muster pruefen und bereinigen (behebt Punkt 3)
-4. **NoteDecisionCreator.tsx** - Default-Teilnehmer robuster laden (behebt Punkt 5)
-5. Alle Aenderungen per Browser-Test verifizieren
+1. **DB-Migration** - Auto-Archivierungs-Trigger entfernen (behebt Punkt 1 und teilweise Punkt 2)
+2. **TaskDecisionDetails** - Fehlerbehandlung mit `.maybeSingle()` verbessern (behebt Punkt 2)
+3. **TaskDecisionCreator** - Default-Teilnehmer aus localStorage (behebt Punkt 3)
+4. **NoteDecisionCreator** - Robustere Initialisierung (behebt Punkt 3)
+5. Browser-Test aller Aenderungen
