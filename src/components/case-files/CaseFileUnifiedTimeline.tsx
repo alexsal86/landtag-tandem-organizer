@@ -82,15 +82,18 @@ export function CaseFileUnifiedTimeline({
 
   const unifiedItems = useMemo<UnifiedTimelineItem[]>(() => {
     const items: UnifiedTimelineItem[] = [
-      ...timeline.map((t) => ({
-        id: `timeline-${t.id}`,
-        category: "timeline" as const,
-        event_date: t.event_date,
-        title: t.title,
-        description: t.description,
-        source_type: t.source_type,
-        meta: { originalId: t.id, eventType: t.event_type },
-      })),
+      // Only include manual timeline entries (not auto-generated link entries)
+      ...timeline
+        .filter((t) => t.source_type === "manual" || !t.source_type)
+        .map((t) => ({
+          id: `timeline-${t.id}`,
+          category: "timeline" as const,
+          event_date: t.event_date,
+          title: t.title,
+          description: t.description,
+          source_type: t.source_type,
+          meta: { originalId: t.id, eventType: t.event_type },
+        })),
       ...notes.map((n) => ({
         id: `note-${n.id}`,
         category: "note" as const,
@@ -102,14 +105,14 @@ export function CaseFileUnifiedTimeline({
         id: `document-${d.id}`,
         category: "document" as const,
         event_date: d.created_at,
-        title: d.document?.title || "Dokument",
+        title: `Dokument hinzugefügt: ${d.document?.title || "Dokument"}`,
         description: d.document?.file_name || null,
       })),
       ...tasks.map((t) => ({
         id: `task-${t.id}`,
         category: "task" as const,
         event_date: t.created_at,
-        title: t.task?.title || "Aufgabe",
+        title: `Aufgabe: ${t.task?.title || "Aufgabe"}`,
         description: t.task ? `Status: ${t.task.status}` : null,
         meta: { status: t.task?.status, priority: t.task?.priority },
       })),
@@ -117,7 +120,7 @@ export function CaseFileUnifiedTimeline({
         id: `appointment-${a.id}`,
         category: "appointment" as const,
         event_date: a.appointment?.start_time || a.created_at,
-        title: a.appointment?.title || "Termin",
+        title: `Termin: ${a.appointment?.title || "Termin"}`,
         description: a.appointment?.location || null,
         meta: { status: a.appointment?.status },
       })),
@@ -125,7 +128,7 @@ export function CaseFileUnifiedTimeline({
         id: `letter-${l.id}`,
         category: "letter" as const,
         event_date: l.created_at,
-        title: l.letter?.title || "Brief",
+        title: `Brief: ${l.letter?.title || "Brief"}`,
         description: l.letter?.subject || null,
         meta: { status: l.letter?.status },
       })),
@@ -208,10 +211,10 @@ export function CaseFileUnifiedTimeline({
           <div className="space-y-6">
             {Object.entries(groupedItems).map(([month, items]) => (
               <div key={month}>
-                <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
+                <h3 className="text-sm font-bold text-foreground mb-3 uppercase tracking-wider">
                   {month}
                 </h3>
-                <div className="relative border-l-2 border-muted pl-5 space-y-4">
+                <div className="relative border-l-2 border-muted pl-5 space-y-3">
                   {items.map((item) => {
                     const config = CATEGORY_CONFIG[item.category];
                     const Icon = config.icon;
@@ -231,10 +234,7 @@ export function CaseFileUnifiedTimeline({
                         <div className="flex items-start justify-between gap-2">
                           <div className="space-y-0.5 min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="secondary" className="text-[10px] h-5">
-                                <Icon className="h-3 w-3 mr-1" />
-                                {config.label}
-                              </Badge>
+                              <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                               <span className="text-[10px] text-muted-foreground">
                                 {format(new Date(item.event_date), "dd. MMM yyyy, HH:mm", {
                                   locale: de,
@@ -242,7 +242,7 @@ export function CaseFileUnifiedTimeline({
                               </span>
                             </div>
                             <p className="text-sm font-medium">{item.title}</p>
-                            {item.description && (
+                            {item.description && item.category !== "document" && item.category !== "task" && (
                               <p className="text-xs text-muted-foreground line-clamp-2">
                                 {item.description}
                               </p>

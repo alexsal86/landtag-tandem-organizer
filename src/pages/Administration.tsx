@@ -1003,16 +1003,28 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
           );
         case "casefiles":
           return (
-            <ConfigurableTypeSettings
-              title="FallAkten-Typen"
-              tableName="case_file_types"
-              entityName="Typ"
-              hasIcon={true}
-              hasColor={true}
-              defaultIcon="Briefcase"
-              defaultColor="#3b82f6"
-              deleteWarning="Sind Sie sicher, dass Sie diesen Typ löschen möchten?"
-            />
+            <div className="space-y-6">
+              <ConfigurableTypeSettings
+                title="FallAkten-Typen"
+                tableName="case_file_types"
+                entityName="Typ"
+                hasIcon={true}
+                hasColor={true}
+                defaultIcon="Briefcase"
+                defaultColor="#3b82f6"
+                deleteWarning="Sind Sie sicher, dass Sie diesen Typ löschen möchten?"
+              />
+              <ConfigurableTypeSettings
+                title="Bearbeitungsstatus"
+                tableName="case_file_processing_statuses"
+                entityName="Status"
+                hasIcon={true}
+                hasColor={true}
+                defaultIcon="Circle"
+                defaultColor="#6b7280"
+                deleteWarning="Sind Sie sicher, dass Sie diesen Status löschen möchten?"
+              />
+            </div>
           );
         default:
           return <TopicSettings />;

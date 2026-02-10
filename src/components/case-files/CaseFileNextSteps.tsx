@@ -16,6 +16,8 @@ import { useTenant } from "@/hooks/useTenant";
 interface CaseFileNextStepsProps {
   tasks: CaseFileTask[];
   caseFileId: string;
+  caseFileTitle?: string;
+  assignedTo?: string | null;
   onCompleteTask: (taskId: string) => Promise<boolean>;
   onAddTask: (taskId: string, notes?: string, taskTitle?: string) => Promise<boolean>;
   onRefresh: () => void;
@@ -24,6 +26,8 @@ interface CaseFileNextStepsProps {
 export function CaseFileNextSteps({
   tasks,
   caseFileId,
+  caseFileTitle,
+  assignedTo,
   onCompleteTask,
   onAddTask,
   onRefresh,
@@ -37,12 +41,10 @@ export function CaseFileNextSteps({
   const openTasks = tasks
     .filter((t) => t.task && t.task.status !== "completed" && t.task.status !== "cancelled")
     .sort((a, b) => {
-      // Overdue first
       const aOverdue = a.task?.due_date ? isPast(new Date(a.task.due_date)) : false;
       const bOverdue = b.task?.due_date ? isPast(new Date(b.task.due_date)) : false;
       if (aOverdue && !bOverdue) return -1;
       if (!aOverdue && bOverdue) return 1;
-      // Then by due date
       if (a.task?.due_date && b.task?.due_date) {
         return new Date(a.task.due_date).getTime() - new Date(b.task.due_date).getTime();
       }
@@ -55,12 +57,54 @@ export function CaseFileNextSteps({
     (t) => t.task?.status === "completed"
   ).length;
 
+  const findOrCreateParentTask = async (): Promise<string | null> => {
+    if (!user || !currentTenant || !caseFileTitle) return null;
+
+    // Check if a parent task already exists for this case file
+    const { data: existingLinks } = await supabase
+      .from("case_file_tasks")
+      .select("task_id, task:tasks(id, title, parent_task_id)")
+      .eq("case_file_id", caseFileId);
+
+    // Find a task that has no parent (= it IS the parent task)
+    const parentLink = (existingLinks || []).find(
+      (link: any) => link.task && !link.task.parent_task_id
+    );
+
+    if (parentLink?.task?.id) return parentLink.task.id;
+
+    // Create parent task
+    const { data: parentTask, error } = await supabase
+      .from("tasks")
+      .insert({
+        title: `📂 ${caseFileTitle}`,
+        status: "todo",
+        priority: "medium",
+        category: "general",
+        user_id: user.id,
+        tenant_id: currentTenant.id,
+        assigned_to: assignedTo || null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Link parent task to case file
+    await onAddTask(parentTask.id, undefined, parentTask.title);
+
+    return parentTask.id;
+  };
+
   const handleQuickAdd = async () => {
     if (!quickTaskTitle.trim() || !user || !currentTenant) return;
     setIsAdding(true);
 
     try {
-      // Create a new task
+      // Find or create parent task
+      const parentTaskId = await findOrCreateParentTask();
+
+      // Create sub-task
       const { data: newTask, error: taskError } = await supabase
         .from("tasks")
         .insert({
@@ -70,7 +114,9 @@ export function CaseFileNextSteps({
           category: "general",
           user_id: user.id,
           tenant_id: currentTenant.id,
-        })
+          assigned_to: assignedTo || null,
+          parent_task_id: parentTaskId,
+        } as any)
         .select()
         .single();
 
