@@ -175,6 +175,11 @@ export function CaseFileNextSteps({
                 <p className="text-sm leading-tight truncate">
                   {item.task?.title}
                 </p>
+                {(item.task as any)?.description && (
+                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                    {(item.task as any).description}
+                  </p>
+                )}
                 {item.task?.due_date && (
                   <div
                     className={cn(

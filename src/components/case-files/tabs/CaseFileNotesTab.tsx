@@ -2,7 +2,8 @@ import { useState } from "react";
 import { CaseFileNote } from "@/hooks/useCaseFileDetails";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { Plus, Trash2, MessageSquare, Pin, Edit2 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -64,11 +65,11 @@ export function CaseFileNotesTab({ notes, onAdd, onUpdate, onDelete }: CaseFileN
       <CardContent className="space-y-4">
         {/* Add new note */}
         <div className="space-y-2">
-          <Textarea
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
+          <SimpleRichTextEditor
+            initialContent=""
+            onChange={(html) => setNewNote(html)}
             placeholder="Neue Notiz hinzufügen..."
-            rows={3}
+            minHeight="80px"
           />
           <Button 
             onClick={handleAdd} 
@@ -97,10 +98,10 @@ export function CaseFileNotesTab({ notes, onAdd, onUpdate, onDelete }: CaseFileN
               >
                 {editingId === note.id ? (
                   <div className="space-y-2">
-                    <Textarea
-                      value={editContent}
-                      onChange={(e) => setEditContent(e.target.value)}
-                      rows={3}
+                    <SimpleRichTextEditor
+                      initialContent={editContent}
+                      onChange={(html) => setEditContent(html)}
+                      minHeight="80px"
                     />
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => handleUpdate(note.id)}>
@@ -121,7 +122,9 @@ export function CaseFileNotesTab({ notes, onAdd, onUpdate, onDelete }: CaseFileN
                 ) : (
                   <>
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm whitespace-pre-wrap flex-1">{note.content}</p>
+                      <div className="flex-1">
+                        <RichTextDisplay content={note.content} />
+                      </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <Button
                           variant="ghost"

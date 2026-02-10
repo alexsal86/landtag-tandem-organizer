@@ -1,8 +1,10 @@
 import { CaseFile, CASE_STATUSES } from "@/hooks/useCaseFiles";
 import { CaseFileType } from "@/hooks/useCaseFileTypes";
 import { useCaseFileProcessingStatuses } from "@/hooks/useCaseFileProcessingStatuses";
+import { useUserDisplay } from "@/hooks/useUserDisplay";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users, FileText, CheckSquare, Calendar, Mail, Clock, Tag } from "lucide-react";
 import { icons, LucideIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -20,6 +22,7 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
   const statusConfig = CASE_STATUSES.find(s => s.value === caseFile.status);
   const typeConfig = caseFileTypes.find(t => t.name === caseFile.case_type);
   const { statuses: processingStatuses } = useCaseFileProcessingStatuses();
+  const { user: assignedUser } = useUserDisplay(caseFile.assigned_to);
 
   const getIconComponent = (iconName?: string | null): LucideIcon | null => {
     if (!iconName) return null;
@@ -65,6 +68,17 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
               )}
             </div>
             <div className="flex items-center gap-2">
+              {assignedUser?.display_name && (
+                <div className="flex items-center gap-1.5">
+                  <Avatar className="h-5 w-5">
+                    <AvatarImage src={assignedUser.avatar_url || undefined} />
+                    <AvatarFallback className="text-[10px]">
+                      {assignedUser.display_name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-muted-foreground">{assignedUser.display_name}</span>
+                </div>
+              )}
               {processingStatus && (
                 <Badge
                   style={{ backgroundColor: processingStatus.color || undefined, color: '#fff' }}
@@ -134,6 +148,19 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
             </Badge>
           )}
         </div>
+
+        {/* Assigned user */}
+        {assignedUser?.display_name && (
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={assignedUser.avatar_url || undefined} />
+              <AvatarFallback className="text-[10px]">
+                {assignedUser.display_name.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-xs text-muted-foreground">{assignedUser.display_name}</span>
+          </div>
+        )}
 
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1" title="Kontakte">
