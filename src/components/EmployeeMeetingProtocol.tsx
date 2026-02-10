@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Save, Check, Lock, Unlock, Plus, Trash2, Play, CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { AlertCircle, Save, Check, Lock, Unlock, Plus, Trash2, Play, CheckCircle2, Circle, Loader2, XCircle, CalendarClock, Ban } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { EmployeeMeetingPDFExport } from "@/components/EmployeeMeetingPDFExport";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
@@ -105,6 +107,18 @@ function RatingScale({
 
 // ─── Status Progress Component ──────────────────────────
 function StatusProgress({ status }: { status: string }) {
+  const isCancelled = status === "cancelled" || status === "cancelled_by_employee" || status === "rescheduled";
+  
+  if (isCancelled) {
+    const label = status === "cancelled" ? "Abgesagt" : status === "cancelled_by_employee" ? "Vom Mitarbeiter abgesagt" : "Umterminiert";
+    return (
+      <div className="flex items-center gap-2">
+        <Ban className="h-5 w-5 text-destructive" />
+        <span className="text-sm font-medium text-destructive">{label}</span>
+      </div>
+    );
+  }
+
   const steps = [
     { key: "scheduled", label: "Geplant" },
     { key: "in_progress", label: "In Durchführung" },
@@ -211,6 +225,12 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataChangedRef = useRef(false);
 
+  // Cancel/reschedule dialog state (must be before early returns)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [rescheduleReason, setRescheduleReason] = useState("");
+
   // Load meeting data
   useEffect(() => {
     if (!meetingId || !user) return;
@@ -220,17 +240,37 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const loadMeetingData = async () => {
     try {
       setLoading(true);
+      // Fetch meeting without profile joins (FK points to auth.users, not profiles)
       const { data: meetingData, error: meetingError } = await supabase
         .from("employee_meetings")
-        .select("*, employee:profiles!employee_id(display_name), supervisor:profiles!conducted_by(display_name)")
+        .select("*")
         .eq("id", meetingId)
-        .single();
+        .maybeSingle();
 
       if (meetingError) throw meetingError;
+      if (!meetingData) {
+        setMeeting(null);
+        return;
+      }
 
-      setMeeting(meetingData);
-      setIsEmployee(meetingData.employee_id === user.id);
-      setIsSupervisor(meetingData.conducted_by === user.id);
+      // Fetch profile names separately
+      const userIds = [meetingData.employee_id, meetingData.conducted_by].filter(Boolean);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .in("user_id", userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p.display_name]) || []);
+
+      const enrichedMeeting = {
+        ...meetingData,
+        employee_name: profileMap.get(meetingData.employee_id) || "Mitarbeiter",
+        supervisor_name: profileMap.get(meetingData.conducted_by) || "Vorgesetzter",
+      };
+
+      setMeeting(enrichedMeeting);
+      setIsEmployee(meetingData.employee_id === user!.id);
+      setIsSupervisor(meetingData.conducted_by === user!.id);
 
       if (meetingData.protocol_data) {
         setProtocolData(meetingData.protocol_data as ProtocolData);
@@ -238,14 +278,14 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       if (meetingData.employee_preparation) {
         const empPrep = meetingData.employee_preparation as any;
         setEmployeePrep(empPrep);
-        if (user.id === meetingData.employee_id && empPrep?.private_notes) {
+        if (user!.id === meetingData.employee_id && empPrep?.private_notes) {
           setPrivateNotes(empPrep.private_notes);
         }
       }
       if (meetingData.supervisor_preparation) {
         const supPrep = meetingData.supervisor_preparation as any;
         setSupervisorPrep(supPrep);
-        if (user.id === meetingData.conducted_by && supPrep?.private_notes) {
+        if (user!.id === meetingData.conducted_by && supPrep?.private_notes) {
           setPrivateNotes(supPrep.private_notes);
         }
       }
@@ -334,6 +374,22 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
     }
   };
 
+  const sendMeetingNotification = async (recipientId: string, title: string, message: string, type: string = "employee_meeting") => {
+    if (!currentTenant) return;
+    try {
+      await supabase.rpc("create_notification", {
+        user_id_param: recipientId,
+        type_name: type,
+        title_param: title,
+        message_param: message,
+        priority_param: "medium",
+        data_param: JSON.stringify({ meeting_id: meetingId }),
+      });
+    } catch (e) {
+      console.error("Notification error:", e);
+    }
+  };
+
   const updateStatus = async (newStatus: string) => {
     if (!meeting) return;
     try {
@@ -345,24 +401,23 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       const { error } = await supabase.from("employee_meetings").update(updates).eq("id", meetingId);
       if (error) throw error;
 
-      // If completing: update employee_settings.last_meeting_date
+      // Notifications
+      if (newStatus === "in_progress") {
+        sendMeetingNotification(meeting.employee_id, "Gespräch gestartet", `Ihr Mitarbeitergespräch wurde gestartet.`);
+      }
+
       if (newStatus === "completed") {
         const { error: settingsError } = await supabase
           .from("employee_settings")
-          .update({ 
-            last_meeting_date: meeting.meeting_date,
-          })
+          .update({ last_meeting_date: meeting.meeting_date })
           .eq("user_id", meeting.employee_id);
-        
         if (settingsError) console.error("Error updating employee_settings:", settingsError);
 
-        // Check for open action items
+        sendMeetingNotification(meeting.employee_id, "Gespräch abgeschlossen", `Ihr Mitarbeitergespräch wurde abgeschlossen.`);
+
         const openItems = actionItems.filter(i => i.status !== "completed");
         if (openItems.length > 0) {
-          toast({
-            title: "Gespräch abgeschlossen",
-            description: `Hinweis: Es gibt noch ${openItems.length} offene Maßnahme(n).`,
-          });
+          toast({ title: "Gespräch abgeschlossen", description: `Hinweis: Es gibt noch ${openItems.length} offene Maßnahme(n).` });
         } else {
           toast({ title: "Abgeschlossen", description: "Gespräch wurde als abgeschlossen markiert" });
         }
@@ -377,6 +432,54 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
     } catch (error: any) {
       console.error("Error updating status:", error);
       toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden", variant: "destructive" });
+    }
+  };
+
+  const cancelMeeting = async (reason: string) => {
+    if (!meeting) return;
+    try {
+      const newStatus = isSupervisor ? "cancelled" : "cancelled_by_employee";
+      const { error } = await supabase.from("employee_meetings")
+        .update({ status: newStatus, cancellation_reason: reason })
+        .eq("id", meetingId);
+      if (error) throw error;
+
+      const recipientId = isSupervisor ? meeting.employee_id : meeting.conducted_by;
+      const dateStr = format(new Date(meeting.meeting_date), "dd.MM.yyyy", { locale: de });
+      const senderName = isSupervisor ? meeting.supervisor_name : meeting.employee_name;
+
+      if (isSupervisor) {
+        sendMeetingNotification(recipientId, "Gespräch abgesagt", `Ihr Gespräch am ${dateStr} wurde abgesagt. Grund: ${reason}`);
+      } else {
+        sendMeetingNotification(recipientId, "Gespräch abgesagt", `${senderName} hat das Gespräch am ${dateStr} abgesagt. Grund: ${reason}`);
+      }
+
+      toast({ title: "Abgesagt", description: "Gespräch wurde abgesagt" });
+      loadMeetingData();
+    } catch (error: any) {
+      console.error("Error cancelling meeting:", error);
+      toast({ title: "Fehler", description: "Gespräch konnte nicht abgesagt werden", variant: "destructive" });
+    }
+  };
+
+  const requestReschedule = async (reason: string) => {
+    if (!meeting) return;
+    try {
+      const { error } = await supabase.from("employee_meetings")
+        .update({ reschedule_request_reason: reason })
+        .eq("id", meetingId);
+      if (error) throw error;
+
+      sendMeetingNotification(
+        meeting.conducted_by,
+        "Umterminierung angefragt",
+        `${meeting.employee_name} möchte das Gespräch am ${format(new Date(meeting.meeting_date), "dd.MM.yyyy", { locale: de })} umterminieren. Grund: ${reason}`
+      );
+
+      toast({ title: "Anfrage gesendet", description: "Umterminierungsanfrage wurde an den Vorgesetzten gesendet" });
+    } catch (error: any) {
+      console.error("Error requesting reschedule:", error);
+      toast({ title: "Fehler", description: "Anfrage konnte nicht gesendet werden", variant: "destructive" });
     }
   };
 
@@ -461,17 +564,62 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const isCompleted = meeting.status === "completed";
   const isScheduled = meeting.status === "scheduled";
   const isInProgress = meeting.status === "in_progress";
-  const canEdit = !isCompleted && (isEmployee || isSupervisor);
+  const isCancelled = meeting.status === "cancelled" || meeting.status === "cancelled_by_employee" || meeting.status === "rescheduled";
+  const canEdit = !isCompleted && !isCancelled && (isEmployee || isSupervisor);
 
   return (
     <div className="space-y-6">
+      {/* Cancel Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gespräch absagen</DialogTitle>
+            <DialogDescription>Bitte geben Sie einen Grund für die Absage an.</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Grund der Absage..."
+            className="min-h-[80px]"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Abbrechen</Button>
+            <Button variant="destructive" disabled={!cancelReason.trim()} onClick={() => { cancelMeeting(cancelReason); setCancelDialogOpen(false); setCancelReason(""); }}>
+              Absagen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Request Dialog (Employee) */}
+      <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Umterminierung anfragen</DialogTitle>
+            <DialogDescription>Teilen Sie Ihrem Vorgesetzten mit, warum Sie eine Umterminierung wünschen.</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={rescheduleReason}
+            onChange={(e) => setRescheduleReason(e.target.value)}
+            placeholder="Grund für die Umterminierung..."
+            className="min-h-[80px]"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRescheduleDialogOpen(false)}>Abbrechen</Button>
+            <Button disabled={!rescheduleReason.trim()} onClick={() => { requestReschedule(rescheduleReason); setRescheduleDialogOpen(false); setRescheduleReason(""); }}>
+              Anfrage senden
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold">Gesprächsprotokoll</h1>
             <p className="text-muted-foreground">
-              {meeting.employee?.display_name || "Mitarbeiter"} • {format(new Date(meeting.meeting_date), "PPP", { locale: de })}
+              {meeting.employee_name || "Mitarbeiter"} • {format(new Date(meeting.meeting_date), "PPP", { locale: de })}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -498,6 +646,24 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                 Gespräch starten
               </Button>
             )}
+            {isScheduled && isSupervisor && (
+              <Button onClick={() => setCancelDialogOpen(true)} size="sm" variant="destructive">
+                <XCircle className="h-4 w-4 mr-1" />
+                Absagen
+              </Button>
+            )}
+            {isScheduled && isEmployee && (
+              <>
+                <Button onClick={() => setCancelDialogOpen(true)} size="sm" variant="destructive">
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Absagen
+                </Button>
+                <Button onClick={() => setRescheduleDialogOpen(true)} size="sm" variant="outline">
+                  <CalendarClock className="h-4 w-4 mr-1" />
+                  Umterminieren anfragen
+                </Button>
+              </>
+            )}
             {isInProgress && isSupervisor && (
               <Button onClick={() => updateStatus("completed")} size="sm" variant="default">
                 <Check className="h-4 w-4 mr-1" />
@@ -506,6 +672,24 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
             )}
           </div>
         </div>
+
+        {/* Cancellation info */}
+        {isCancelled && meeting.cancellation_reason && (
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardContent className="py-3">
+              <p className="text-sm"><span className="font-medium">Absagegrund:</span> {meeting.cancellation_reason}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Reschedule request info */}
+        {meeting.reschedule_request_reason && !isCancelled && (
+          <Card className="border-accent bg-accent/5">
+            <CardContent className="py-3">
+              <p className="text-sm"><span className="font-medium">Umterminierungsanfrage:</span> {meeting.reschedule_request_reason}</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <Tabs defaultValue="preparation" className="w-full">

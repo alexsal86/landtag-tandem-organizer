@@ -3314,6 +3314,7 @@ export type Database = {
       employee_meetings: {
         Row: {
           action_items: Json | null
+          cancellation_reason: string | null
           conducted_by: string
           created_at: string
           employee_id: string
@@ -3325,6 +3326,7 @@ export type Database = {
           next_meeting_due: string | null
           protocol: Json | null
           protocol_data: Json | null
+          reschedule_request_reason: string | null
           shared_during_meeting: boolean | null
           status: string
           supervisor_notes: string | null
@@ -3334,6 +3336,7 @@ export type Database = {
         }
         Insert: {
           action_items?: Json | null
+          cancellation_reason?: string | null
           conducted_by: string
           created_at?: string
           employee_id: string
@@ -3345,6 +3348,7 @@ export type Database = {
           next_meeting_due?: string | null
           protocol?: Json | null
           protocol_data?: Json | null
+          reschedule_request_reason?: string | null
           shared_during_meeting?: boolean | null
           status?: string
           supervisor_notes?: string | null
@@ -3354,6 +3358,7 @@ export type Database = {
         }
         Update: {
           action_items?: Json | null
+          cancellation_reason?: string | null
           conducted_by?: string
           created_at?: string
           employee_id?: string
@@ -3365,6 +3370,7 @@ export type Database = {
           next_meeting_due?: string | null
           protocol?: Json | null
           protocol_data?: Json | null
+          reschedule_request_reason?: string | null
           shared_during_meeting?: boolean | null
           status?: string
           supervisor_notes?: string | null
