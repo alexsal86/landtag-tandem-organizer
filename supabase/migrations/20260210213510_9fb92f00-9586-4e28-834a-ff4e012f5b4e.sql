@@ -1,0 +1,1 @@
+ALTER TABLE public.employee_meetings ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE;
