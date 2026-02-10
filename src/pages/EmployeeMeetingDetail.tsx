@@ -27,9 +27,14 @@ export default function EmployeeMeetingDetail() {
           .from("employee_meetings")
           .select("employee_id, conducted_by")
           .eq("id", meetingId)
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
+        if (!meeting) {
+          toast({ title: "Nicht gefunden", description: "Gespräch konnte nicht gefunden werden.", variant: "destructive" });
+          navigate("/employee");
+          return;
+        }
 
         const canAccess = meeting.employee_id === user.id || meeting.conducted_by === user.id;
         setHasAccess(canAccess);

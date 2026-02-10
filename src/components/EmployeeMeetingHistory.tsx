@@ -146,15 +146,21 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "outline"> = {
+    const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
       scheduled: "default",
       in_progress: "secondary",
       completed: "outline",
+      cancelled: "destructive",
+      cancelled_by_employee: "destructive",
+      rescheduled: "secondary",
     };
     const labels: Record<string, string> = {
       scheduled: "Geplant",
       in_progress: "In Bearbeitung",
       completed: "Abgeschlossen",
+      cancelled: "Abgesagt",
+      cancelled_by_employee: "Vom MA abgesagt",
+      rescheduled: "Umterminiert",
     };
     return (
       <Badge variant={variants[status] || "default"}>

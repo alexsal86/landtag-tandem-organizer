@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format, formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { EmployeeMeetingHistory } from "@/components/EmployeeMeetingHistory";
+import { EmployeeMeetingRequestDialog } from "@/components/EmployeeMeetingRequestDialog";
 
 interface EmployeeSettingsRow {
   user_id: string;
@@ -35,6 +38,7 @@ interface EmployeeInfoTabProps {
 }
 
 export function EmployeeInfoTab({ employeeSettings }: EmployeeInfoTabProps) {
+  const { user } = useAuth();
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -233,6 +237,22 @@ export function EmployeeInfoTab({ employeeSettings }: EmployeeInfoTabProps) {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Mitarbeitergespräche */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Mitarbeitergespräche</CardTitle>
+              <CardDescription>Beantragen und verwalten Sie Ihre Gespräche</CardDescription>
+            </div>
+            <EmployeeMeetingRequestDialog />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {user && <EmployeeMeetingHistory employeeId={user.id} showFilters={false} />}
         </CardContent>
       </Card>
     </div>
