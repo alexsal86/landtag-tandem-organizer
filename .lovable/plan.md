@@ -1,199 +1,140 @@
 
 
-# Plan: FallAkten-Detailansicht ueberarbeiten (10 Punkte)
+# Plan: FallAkten-Detailansicht -- 13 Verbesserungen
 
-Das ist ein umfangreiches Refactoring der FallAkten-Detailansicht mit UI-Anpassungen, neuen Features und einer neuen Datenbank-Tabelle. Hier die Umsetzung:
+## 1. Zustaendige Person in der Uebersichts-Card anzeigen
 
----
+In `CaseFileCard.tsx` den `assigned_to`-Wert auslesen und den Namen des zugewiesenen Benutzers anzeigen. Da die Card keinen Join auf Profiles hat, wird ein kleiner Hook oder eine Inline-Abfrage benoetigt. Pragmatischer Ansatz: Im `useCaseFiles`-Hook das `assigned_to` als UUID belassen und in der Card-Komponente ueber einen kleinen Avatar+Name-Bereich anzeigen. Dafuer wird ein neuer lightweight Hook `useUserDisplay(userId)` erstellt, der gecached den Display-Namen und Avatar laedt.
 
-## 1. Abstand und Zurueck-Link entfernen
-
-**Problem:** Der Abstand zum Header/Navigation stimmt nicht und der "Zurueck"-Button auf der Detail-Seite stoert.
-
-**Loesung:**
-- In `CaseFilesView.tsx`: Das `p-6` Padding anpassen, damit es zum Sticky-Layout passt
-- In `CaseFileDetailHeader.tsx`: Den gesamten "Zurueck"-Button-Bereich entfernen
-- In `CaseFileDetail.tsx`: Die Navigation zurueck ueber den Browser oder die Seitennavigation loesen (der Zurueck-Button im Dropdown-Menue bleibt als Fallback)
+**Dateien:** `CaseFileCard.tsx`, neuer Hook `useUserDisplay.tsx`
 
 ---
 
-## 2. Badges nach rechts unten im Header verschieben
+## 2. Abstand zur Navigation und zum rechten Seitenrand korrigieren
 
-**Problem:** Badges (Status, Prioritaet) stehen ueber dem Titel. Titel und Beschreibung sollen prominent sein.
+In `CaseFilesView.tsx` hat der Container bereits `p-6`, aber wenn die Detailansicht angezeigt wird (Zeile 144-150), wird `CaseFileDetail` direkt returned -- innerhalb desselben `p-6`-Containers. Das Problem: Beim Return der Detailansicht (Zeile 144-150) fehlt das `p-6`, weil der fruehe Return VOR dem `div` mit `p-6` passiert.
 
-**Loesung:**
-- In `CaseFileDetailHeader.tsx`: Layout umbauen -- Titel und Beschreibung oben, Badges (Status, Prioritaet) nach rechts unten in der Card
-- Kategorie-Badge und Sichtbarkeits-Badge in die linke Sidebar "Metadaten"-Card verschieben (`CaseFileLeftSidebar.tsx`)
+**Loesung:** Den fruehen Return fuer die Detailansicht ebenfalls in ein `div` mit passendem Padding wrappen: `<div className="space-y-6 p-6">`.
 
----
-
-## 3. Beteiligte aufteilen: Personen vs. Institutionen
-
-**Problem:** Alle Kontakte werden in einer Liste angezeigt, unabhaengig ob Person oder Institution.
-
-**Loesung:**
-- In `CaseFileLeftSidebar.tsx`: Kontakte anhand von `contact_type` gruppieren
-  - `contact_type = 'person'` (oder null) -> Abschnitt "Personen"
-  - `contact_type = 'organization'` -> Abschnitt "Institutionen"
-- Zwei separate Abschnitte mit eigenen Icons (Users fuer Personen, Building2 fuer Institutionen)
-- Die `contacts`-Tabelle hat bereits ein `contact_type`-Feld
+**Datei:** `CaseFilesView.tsx`
 
 ---
 
-## 4. Chronologie: Verknuepfungen als kompakte Eintraege
+## 3. Card "Zustaendig" an erste Stelle in der linken Sidebar
 
-**Problem:** Reine Verknuepfungen (z.B. "Kontakt verknuepft") werden als eigenstaendige Ereignisse in der Timeline angezeigt. Das ist zu viel Rauschen.
+In `CaseFileLeftSidebar.tsx` die Reihenfolge der Cards aendern: "Zustaendig" (derzeit 3. Position, Zeile 169-184) nach ganz oben verschieben, vor "Personen".
 
-**Loesung:**
-- In `CaseFileUnifiedTimeline.tsx`: Timeline-Eintraege mit `source_type` wie 'contact', 'task', 'document', etc. nicht als separate Karten anzeigen
-- Stattdessen: Verknuepfte Elemente direkt als kompakte Zeilen darstellen: "Dokument XY hinzugefuegt" mit kleinem Icon und Datum
-- Manuelle Timeline-Eintraege (`source_type = 'manual'`) behalten ihre volle Darstellung
-- Alternativ: Die automatischen Timeline-Eintraege (`createTimelineEntry` in `useCaseFileDetails.tsx`) gar nicht mehr erzeugen, sondern die verknuepften Items (Dokumente, Aufgaben, etc.) direkt chronologisch aus ihrem `created_at` in den Feed einmischen (das passiert bereits). Die doppelte "Verknuepft"-Meldung entfaellt.
+**Datei:** `CaseFileLeftSidebar.tsx`
 
 ---
 
-## 5. Monats-Header in der Chronologie prominenter
+## 4. Beteiligte korrekt nach Personen und Institutionen aufteilen
 
-**Problem:** Monats-Ueberschriften sind klein und grau (`text-xs text-muted-foreground`).
+Die Logik in `CaseFileLeftSidebar.tsx` (Zeile 63-68) filtert bereits nach `contact_type`, aber das `contact`-Objekt im Interface hat bereits `contact_type`. Die Filterlogik sieht korrekt aus. Problem: Im `useCaseFileDetails`-Hook wird `contact_type` moeglicherweise nicht mit-abgefragt. Pruefen und sicherstellen, dass der `contacts`-Select auch `contact_type` enthaelt. 
 
-**Loesung:**
-- In `CaseFileUnifiedTimeline.tsx`: Die `h3`-Klasse aendern von `text-xs font-semibold text-muted-foreground` zu `text-sm font-bold text-foreground` -- groesser, schwarz/fett, gut lesbar
+Im Interface (Zeile 14-24 von `useCaseFileDetails.tsx`) ist `contact_type: string | null` bereits vorhanden. Der Select-Query muss gepreuft werden, ob `contact_type` im Join enthalten ist.
 
----
-
-## 6. Zustaendiger Bearbeiter zuweisen
-
-**Problem:** Die FallAkte hat bereits ein `assigned_to`-Feld (UUID) in der Datenbank, aber es gibt keine UI dafuer.
-
-**Loesung:**
-- In `CaseFileDetailHeader.tsx` oder `CaseFileLeftSidebar.tsx` (Metadaten-Bereich): Einen `UserSelector` einbauen, um den zustaendigen Bearbeiter zu setzen
-- In `useCaseFileDetails.tsx`: Neue Funktion `updateAssignedTo(userId)` die `case_files.assigned_to` aktualisiert
-- In `CaseFileCreateDialog.tsx`: Optional auch dort ein Feld fuer den Bearbeiter hinzufuegen
-- Den zugewiesenen Bearbeiter mit Avatar und Name im Header oder in der Sidebar anzeigen
+**Datei:** `useCaseFileDetails.tsx` (Query pruefen), `CaseFileLeftSidebar.tsx` (Institutions-Card immer anzeigen, nicht nur wenn > 0)
 
 ---
 
-## 7. Schnell-Aufgabe als Unteraufgabe mit Eltern-Aufgabe
+## 5. Metadaten: "Erstellt" unter "Aktualisiert"
 
-**Problem:** Die Schnell-Aufgabe erstellt eine einzelne Aufgabe, aber der Wunsch ist: Eine Hauptaufgabe (Titel = Fallakte-Titel) existiert, und Schnell-Aufgaben werden als Unteraufgaben davon erstellt.
+In `CaseFileLeftSidebar.tsx` die Reihenfolge umdrehen: Zuerst "Aktualisiert: xxx", dann darunter "Erstellt: xxx".
 
-**Loesung:**
-- In `CaseFileNextSteps.tsx`: Beim ersten Schnell-Aufgabe-Klick pruefen, ob bereits eine Hauptaufgabe fuer diese FallAkte existiert (z.B. ueber eine Konvention: Aufgabe mit identischem Titel + Verknuepfung)
-- Falls nicht: Automatisch eine Hauptaufgabe erstellen mit dem Titel der FallAkte
-- Die Schnell-Aufgabe wird als Unteraufgabe (`parent_task_id`) dieser Hauptaufgabe erstellt
-- Beide Aufgaben werden dem `assigned_to`-Bearbeiter zugewiesen (falls gesetzt)
-- Die Hauptaufgabe wird zur FallAkte verknuepft
-
-Voraussetzung: Die `tasks`-Tabelle muss ein `parent_task_id`-Feld haben. Falls nicht vorhanden, wird dieses per Migration hinzugefuegt.
+**Datei:** `CaseFileLeftSidebar.tsx` (Zeilen 238-245 tauschen)
 
 ---
 
-## 8. Aktueller Stand mit besserem Editor + Versionierung
+## 6. Suchfeld neben die Buttonleiste in der Chronologie
 
-**Problem:** Der aktuelle Stand ist nur ein einfaches Textarea. Es fehlt ein Rich-Text-Editor und eine Versionierung.
+In `CaseFileUnifiedTimeline.tsx` das Suchfeld (Zeile 194-203) in dieselbe Zeile wie die Tabs (Zeile 184-192) verschieben. Layout: Tabs links, Suchfeld rechts -- in einer `flex`-Row mit `items-center gap-2`.
 
-**Loesung:**
-- In `CaseFileCurrentStatus.tsx`: Das `Textarea` durch den `SimpleRichTextEditor` ersetzen (wie bei Quick Notes)
-- Neue DB-Tabelle `case_file_status_history`:
-  ```text
-  id (uuid), case_file_id (uuid), content (text), 
-  user_id (uuid), created_at (timestamptz)
-  ```
-- Bei jedem Speichern: Alten Stand in die History-Tabelle schreiben, neuen Stand in `current_status_note` speichern
-- Im UI: Ein kleines Dropdown oder eine ausklappbare Liste mit den letzten Versionen, jeweils mit Autor (UserBadge) und Zeitstempel
+**Datei:** `CaseFileUnifiedTimeline.tsx`
 
 ---
 
-## 9. Bearbeitungsstatus (Processing Status) mit Checkbox-Auswahl
+## 7. Chronologie-Punkte neu layouten: Icon + Titel, darunter Beschreibung, darunter Datum (Uhrzeit im Tooltip)
 
-**Problem:** Es gibt keinen strukturierten Bearbeitungsstatus fuer die Akte.
+Aktuell (Zeile 234-249): Icon + Datum in einer Zeile, Titel darunter, Beschreibung darunter.
 
-**Loesung:**
-- Neue DB-Tabelle `case_file_processing_statuses`:
-  ```text
-  id (uuid), name (text), label (text), icon (text), 
-  color (text), order_index (int), is_active (boolean),
-  created_at (timestamptz), updated_at (timestamptz)
-  ```
-- Neue DB-Spalte auf `case_files`: `processing_status` (text, nullable)
-- Default-Eintraege per Migration:
-  | Name | Label | Icon | Farbe |
-  |------|-------|------|-------|
-  | new | Neu eingegangen | Inbox | #3b82f6 (blau) |
-  | in_review | In Pruefung | Search | #8b5cf6 (lila) |
-  | in_progress_ministry | In Bearbeitung (Ministerium) | Building2 | #f59e0b (gelb) |
-  | awaiting_response | Antwort ausstehend | Clock | #ef4444 (rot) |
-  | politically_sensitive | Politisch sensibel | AlertTriangle | #dc2626 (dunkelrot) |
-  | completed | Erledigt / Abgeschlossen | CheckCircle | #22c55e (gruen) |
+Neues Layout:
+- Zeile 1: Icon + Titel (font-medium)
+- Zeile 2 (eingerueckt auf Titelhoehe): Beschreibung (text-xs, muted)
+- Zeile 3 (eingerueckt): Datum ohne Uhrzeit, Uhrzeit nur im Tooltip
 
-- Im "Aktueller Stand"-Bereich: Radio-Buttons oder Dropdown mit farbigen Icons zur Auswahl des Processing-Status
-- Der gesetzte Status wird als Badge im Header der Akte angezeigt (farbig, mit Icon)
-- Auch in der FallAkten-Uebersicht (`CaseFileCard.tsx`) als Badge sichtbar
+Verwendung von `Tooltip` aus `@radix-ui/react-tooltip` fuer die Uhrzeit.
+
+**Datei:** `CaseFileUnifiedTimeline.tsx`
 
 ---
 
-## 10. Admin-Bereich: Bearbeitungsstatus konfigurierbar
+## 8. Aktueller Stand: Rich-Text-Editor statt Textarea
 
-**Loesung:**
-- In `Administration.tsx` unter dem "casefiles"-Tab: Eine zweite `ConfigurableTypeSettings`-Instanz hinzufuegen:
-  ```text
-  <ConfigurableTypeSettings
-    title="Bearbeitungsstatus"
-    tableName="case_file_processing_statuses"
-    entityName="Status"
-    hasIcon={true}
-    hasColor={true}
-    defaultIcon="Circle"
-    defaultColor="#6b7280"
-  />
-  ```
-- Die `ConfigurableTypeSettings`-Komponente unterstuetzt bereits Icon, Farbe, Drag-and-Drop-Sortierung und Aktivierung/Deaktivierung -- passt also perfekt
-- Den `tableName`-Union-Type in der Komponente um `'case_file_processing_statuses'` erweitern
+In `CaseFileCurrentStatus.tsx` das `Textarea` (Zeile 160-166) durch `SimpleRichTextEditor` ersetzen. Die Anzeige des gespeicherten Inhalts muss dann `dangerouslySetInnerHTML` oder `RichTextDisplay` verwenden.
+
+**Datei:** `CaseFileCurrentStatus.tsx`
 
 ---
 
-## 11. Weitere Ideen und Einschaetzung
+## 9. Status- und Prioritaets-Badges aus dem Header entfernen
 
-Hier einige zusaetzliche Verbesserungsvorschlaege:
+In `CaseFileDetailHeader.tsx` die Badges fuer Status und Prioritaet (Zeile 119-141) entfernen. Nur das Processing-Status-Badge und die Quick-Action-Buttons bleiben.
 
-- **Aktivitaetsprotokoll**: Wer hat wann welche Aenderung an der Akte vorgenommen (Audit-Trail)
-- **Deadline-Warnung**: Wenn das Zieldatum naht, visuelle Warnung im Header und in der Uebersicht
-- **Fortschrittsbalken**: Basierend auf erledigten vs. offenen Aufgaben einen Fortschritt anzeigen
-- **Druckansicht / PDF-Export**: FallAkte als Zusammenfassung exportieren
-- **Kommentar-Thread**: Anstelle einzelner Notizen einen echten Kommentar-Feed mit Antwortmoeglichkeit
-- **Benachrichtigungen**: Bei Statusaenderung oder neuer Zuweisung den Bearbeiter benachrichtigen
+**Datei:** `CaseFileDetailHeader.tsx`
 
-Die aktuelle UI hat ein solides Fundament (Drei-Spalten-Layout, Timeline, Metadaten). Die vorgeschlagenen Aenderungen machen die Detailansicht deutlich praxistauglicher fuer den parlamentarischen Alltag.
+---
+
+## 10. Dokument-Link zum Oeffnen hinzufuegen
+
+In der Chronologie (`CaseFileUnifiedTimeline.tsx`) und/oder im Dokument-Dialog: Beim Klick auf ein Dokument-Item soll das Dokument geoeffnet werden. Das `CaseFileDocument`-Interface hat bereits `document.id` und `document.file_name`. Ein Link oder Button zum Download/Oeffnen wird hinzugefuegt.
+
+Loesung: Dokument-Titel in der Timeline als klickbaren Link rendern, der die Datei aus dem Storage-Bucket oeffnet. Dafuer muss die `file_path` im Document-Interface ergaenzt werden (oder aus der `documents`-Tabelle geladen werden).
+
+**Dateien:** `CaseFileUnifiedTimeline.tsx`, `useCaseFileDetails.tsx` (file_path im document-Select ergaenzen)
+
+---
+
+## 11. Beschreibungsfeld fuer Aufgaben in der FallAkte
+
+In `CaseFileNextSteps.tsx` soll neben dem Aufgabentitel auch eine kurze Beschreibung angezeigt werden koennen. Das `task`-Interface im Hook hat derzeit kein `description`-Feld. Dieses wird im Select-Query ergaenzt und in der UI angezeigt.
+
+**Dateien:** `useCaseFileDetails.tsx` (description im task-Select), `CaseFileNextSteps.tsx` (Beschreibung anzeigen), Interface `CaseFileTask` erweitern
+
+---
+
+## 12. Tooltip bei Hover ueber Chronologie-Icons: Wer hat wann hinzugefuegt
+
+Die Timeline-Items brauchen Informationen ueber den Ersteller. Fuer Notes, Documents, Tasks etc. gibt es `created_at`, aber keinen `user_id` / `created_by`. 
+
+Pragmatischer Ansatz: Fuer manuelle Timeline-Eintraege den `user_id` aus der Tabelle laden. Fuer die anderen Items (Notes, Documents etc.) den Ersteller aus den jeweiligen Tabellen laden (falls dort ein `user_id` vorhanden ist).
+
+Die Timeline-Items werden um ein `created_by_name`-Feld erweitert. Beim Hover ueber das Dot-Icon wird ein Tooltip mit "Hinzugefuegt von [Name] am [Datum]" angezeigt.
+
+**Dateien:** `CaseFileUnifiedTimeline.tsx` (Tooltip), `useCaseFileDetails.tsx` (user info mit-laden), Interface erweitern
+
+---
+
+## 13. Notiz hinzufuegen mit Rich-Text-Editor
+
+In `CaseFileNotesTab.tsx` das `Textarea` fuer neue Notizen und zum Bearbeiten durch `SimpleRichTextEditor` ersetzen. Die Anzeige der Notiz-Inhalte mit `RichTextDisplay` oder `dangerouslySetInnerHTML`.
+
+**Datei:** `CaseFileNotesTab.tsx`
 
 ---
 
 ## Technische Zusammenfassung
 
-### SQL-Migrationen
-
-1. Tabelle `case_file_processing_statuses` erstellen (mit Default-Eintraegen und RLS)
-2. Spalte `processing_status` auf `case_files` hinzufuegen
-3. Tabelle `case_file_status_history` erstellen (mit RLS)
-4. Spalte `parent_task_id` auf `tasks` pruefen/hinzufuegen (falls nicht vorhanden)
-
-### Dateien
-
-| Datei | Aenderung |
-|-------|-----------|
-| SQL-Migration | 4 Schema-Aenderungen |
-| `CaseFilesView.tsx` | Padding anpassen |
-| `CaseFileDetailHeader.tsx` | Zurueck-Button entfernen, Badges umordnen, Processing-Status-Badge, Bearbeiter anzeigen |
-| `CaseFileLeftSidebar.tsx` | Beteiligte splitten (Personen/Institutionen), Kategorie + Sichtbarkeit in Metadaten |
-| `CaseFileUnifiedTimeline.tsx` | Verknuepfungs-Eintraege kompakt, Monats-Header fetter |
-| `CaseFileCurrentStatus.tsx` | SimpleRichTextEditor, Processing-Status-Auswahl, Versionierung, User-Badge |
-| `CaseFileNextSteps.tsx` | Eltern-Aufgabe + Unteraufgaben-Logik, assigned_to |
-| `CaseFileRightSidebar.tsx` | Props durchreichen |
-| `CaseFileDetail.tsx` | Neue Props/Funktionen durchreichen |
-| `useCaseFileDetails.tsx` | `updateAssignedTo()`, `updateProcessingStatus()`, Status-History-Funktionen |
-| `useCaseFiles.tsx` | `processing_status` im CaseFile-Interface |
-| `CaseFileCard.tsx` | Processing-Status-Badge anzeigen |
-| `CaseFileCreateDialog.tsx` | Optional: Bearbeiter-Feld |
-| `Administration.tsx` | Zweite ConfigurableTypeSettings fuer Bearbeitungsstatus |
-| `ConfigurableTypeSettings.tsx` | `tableName`-Type erweitern |
-| Neuer Hook: `useCaseFileProcessingStatuses.tsx` | Bearbeitungsstatus aus DB laden |
+| Datei | Aenderungen |
+|-------|-------------|
+| `CaseFileCard.tsx` | Zustaendige Person mit Name/Avatar anzeigen |
+| `useUserDisplay.tsx` (neu) | Kleiner Hook zum Laden von User-Display-Infos |
+| `CaseFilesView.tsx` | Padding fuer Detailansicht fixen |
+| `CaseFileLeftSidebar.tsx` | "Zustaendig" nach oben, Metadaten-Reihenfolge, Institutionen immer zeigen |
+| `CaseFileUnifiedTimeline.tsx` | Suchfeld neben Tabs, neues Item-Layout, Dokument-Links, Tooltip fuer Ersteller |
+| `CaseFileCurrentStatus.tsx` | SimpleRichTextEditor statt Textarea |
+| `CaseFileDetailHeader.tsx` | Status/Prioritaet-Badges entfernen |
+| `CaseFileNextSteps.tsx` | Beschreibung bei Aufgaben anzeigen |
+| `CaseFileNotesTab.tsx` | SimpleRichTextEditor fuer Notizen |
+| `useCaseFileDetails.tsx` | file_path + description im Select, user-info fuer Timeline |
 
