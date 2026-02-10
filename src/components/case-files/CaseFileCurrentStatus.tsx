@@ -3,9 +3,9 @@ import { CaseFile } from "@/hooks/useCaseFiles";
 import { useCaseFileProcessingStatuses } from "@/hooks/useCaseFileProcessingStatuses";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { UserBadge } from "@/components/ui/user-badge";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { Info, Edit2, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { icons, LucideIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -157,12 +157,11 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
         {/* Status Note */}
         {isEditing ? (
           <div className="space-y-2">
-            <Textarea
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
+            <SimpleRichTextEditor
+              initialContent={editValue}
+              onChange={(html) => setEditValue(html)}
               placeholder="Aktuellen Stand beschreiben..."
-              rows={4}
-              className="text-sm"
+              minHeight="100px"
             />
             <div className="flex gap-2">
               <Button size="sm" onClick={handleSave} disabled={saving}>
@@ -178,7 +177,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
         ) : (
           <div>
             {caseFile.current_status_note ? (
-              <p className="text-sm whitespace-pre-wrap">{caseFile.current_status_note}</p>
+              <RichTextDisplay content={caseFile.current_status_note} className="text-foreground" />
             ) : (
               <p className="text-xs text-muted-foreground italic">
                 Noch kein aktueller Stand eingetragen. Klicke auf den Stift um einen hinzuzufügen.
@@ -214,7 +213,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
                   </span>
                 </div>
                 {entry.content && (
-                  <p className="text-muted-foreground line-clamp-3 whitespace-pre-wrap">{entry.content}</p>
+                  <RichTextDisplay content={entry.content} className="text-muted-foreground [&_p]:line-clamp-3" />
                 )}
               </div>
             ))}

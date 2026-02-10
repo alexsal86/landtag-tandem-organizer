@@ -51,6 +51,7 @@ export interface CaseFileTask {
     status: string;
     priority: string;
     due_date: string | null;
+    description: string | null;
   };
 }
 
@@ -210,7 +211,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         .from('case_file_tasks')
         .select(`
           *,
-          task:tasks(id, title, status, priority, due_date)
+          task:tasks(id, title, status, priority, due_date, description)
         `)
         .eq('case_file_id', caseFileId)
         .order('created_at', { ascending: false });

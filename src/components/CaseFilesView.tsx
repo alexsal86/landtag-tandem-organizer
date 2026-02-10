@@ -143,10 +143,12 @@ export function CaseFilesView() {
 
   if (selectedCaseFile) {
     return (
-      <CaseFileDetail 
-        caseFileId={selectedCaseFile.id} 
-        onBack={() => setSelectedCaseFile(null)} 
-      />
+      <div className="space-y-6 p-6">
+        <CaseFileDetail 
+          caseFileId={selectedCaseFile.id} 
+          onBack={() => setSelectedCaseFile(null)} 
+        />
+      </div>
     );
   }
 

@@ -116,7 +116,7 @@ export function CaseFileDetailHeader({
           </Button>
         </div>
 
-        {/* Badges: Status + Priority + Processing Status */}
+        {/* Processing Status Badge only */}
         <div className="flex items-center gap-2 flex-wrap">
           {processingStatus && (
             <Badge
@@ -124,18 +124,6 @@ export function CaseFileDetailHeader({
             >
               {ProcessingIcon && <ProcessingIcon className="h-3 w-3 mr-1" />}
               {processingStatus.label}
-            </Badge>
-          )}
-          <Badge className={cn("text-white", statusConfig?.color || "bg-gray-500")}>
-            {statusConfig?.label || caseFile.status}
-          </Badge>
-          {caseFile.priority && (
-            <Badge variant="outline" className="text-xs">
-              {caseFile.priority === "high"
-                ? "🔴 Hoch"
-                : caseFile.priority === "medium"
-                ? "🟡 Mittel"
-                : "🟢 Niedrig"}
             </Badge>
           )}
         </div>

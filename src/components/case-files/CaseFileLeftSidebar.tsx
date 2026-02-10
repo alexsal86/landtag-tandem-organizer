@@ -1,7 +1,6 @@
 import { CaseFile } from "@/hooks/useCaseFiles";
 import { CaseFileContact, CONTACT_ROLES } from "@/hooks/useCaseFileDetails";
 import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
-import { useCaseFileProcessingStatuses } from "@/hooks/useCaseFileProcessingStatuses";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,10 +60,10 @@ export function CaseFileLeftSidebar({
 
   // Split contacts into persons and organizations
   const personContacts = contacts.filter(
-    (c) => !c.contact || (c.contact as any).contact_type !== 'organization'
+    (c) => !c.contact?.contact_type || c.contact.contact_type === 'person'
   );
   const orgContacts = contacts.filter(
-    (c) => c.contact && (c.contact as any).contact_type === 'organization'
+    (c) => c.contact?.contact_type === 'organization'
   );
 
   const visibilityConfig = {
@@ -128,6 +127,23 @@ export function CaseFileLeftSidebar({
 
   return (
     <div className="space-y-4">
+      {/* Zuständiger Bearbeiter - FIRST */}
+      <Card>
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <UserCheck className="h-4 w-4" />
+            Zuständig
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <UserSelector
+            onSelect={(user) => onAssignUser?.(user.id)}
+            selectedUserId={caseFile.assigned_to || undefined}
+            placeholder="Bearbeiter zuweisen..."
+          />
+        </CardContent>
+      </Card>
+
       {/* Beteiligte Personen */}
       <Card>
         <CardHeader className="p-4 pb-2">
@@ -146,40 +162,21 @@ export function CaseFileLeftSidebar({
         </CardContent>
       </Card>
 
-      {/* Beteiligte Institutionen */}
-      {orgContacts.length > 0 && (
-        <Card>
-          <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                Institutionen
-              </span>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onAddContact}>
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            {renderContactList(orgContacts)}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Zuständiger Bearbeiter */}
+      {/* Beteiligte Institutionen - always show */}
       <Card>
         <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <UserCheck className="h-4 w-4" />
-            Zuständig
+          <CardTitle className="text-sm font-semibold flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Institutionen
+            </span>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onAddContact}>
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-0">
-          <UserSelector
-            onSelect={(user) => onAssignUser?.(user.id)}
-            selectedUserId={caseFile.assigned_to || undefined}
-            placeholder="Bearbeiter zuweisen..."
-          />
+          {renderContactList(orgContacts)}
         </CardContent>
       </Card>
 
@@ -235,13 +232,14 @@ export function CaseFileLeftSidebar({
               <span>Ziel: {format(new Date(caseFile.target_date), "dd.MM.yyyy", { locale: de })}</span>
             </div>
           )}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5 shrink-0" />
-            <span>Erstellt: {format(new Date(caseFile.created_at), "dd.MM.yyyy", { locale: de })}</span>
-          </div>
+          {/* Aktualisiert first, then Erstellt */}
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5 shrink-0" />
             <span>Aktualisiert: {format(new Date(caseFile.updated_at), "dd.MM.yyyy", { locale: de })}</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Clock className="h-3.5 w-3.5 shrink-0" />
+            <span>Erstellt: {format(new Date(caseFile.created_at), "dd.MM.yyyy", { locale: de })}</span>
           </div>
 
           {caseFile.tags && caseFile.tags.length > 0 && (

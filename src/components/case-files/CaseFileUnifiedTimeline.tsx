@@ -9,9 +9,14 @@ import {
 } from "@/hooks/useCaseFileDetails";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Clock,
   Flag,
@@ -23,10 +28,12 @@ import {
   Search,
   Plus,
   Trash2,
+  ExternalLink,
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UnifiedTimelineItem {
   id: string;
@@ -36,6 +43,7 @@ interface UnifiedTimelineItem {
   description: string | null;
   source_type?: string | null;
   meta?: Record<string, any>;
+  created_by_name?: string | null;
 }
 
 interface CaseFileUnifiedTimelineProps {
@@ -80,6 +88,30 @@ export function CaseFileUnifiedTimeline({
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const handleOpenDocument = async (documentId: string, fileName: string) => {
+    try {
+      // Try to get file_path from documents table
+      const { data } = await supabase
+        .from('documents')
+        .select('file_path')
+        .eq('id', documentId)
+        .single();
+
+      if (data?.file_path) {
+        const { data: urlData } = await supabase.storage
+          .from('documents')
+          .createSignedUrl(data.file_path, 3600);
+
+        if (urlData?.signedUrl) {
+          window.open(urlData.signedUrl, '_blank');
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error opening document:', error);
+    }
+  };
+
   const unifiedItems = useMemo<UnifiedTimelineItem[]>(() => {
     const items: UnifiedTimelineItem[] = [
       // Only include manual timeline entries (not auto-generated link entries)
@@ -98,22 +130,23 @@ export function CaseFileUnifiedTimeline({
         id: `note-${n.id}`,
         category: "note" as const,
         event_date: n.created_at,
-        title: "Notiz",
+        title: "Notiz hinzugefügt",
         description: n.content,
       })),
       ...documents.map((d) => ({
         id: `document-${d.id}`,
         category: "document" as const,
         event_date: d.created_at,
-        title: `Dokument hinzugefügt: ${d.document?.title || "Dokument"}`,
+        title: `Dokument: ${d.document?.title || d.document?.file_name || "Dokument"}`,
         description: d.document?.file_name || null,
+        meta: { documentId: d.document?.id, fileName: d.document?.file_name },
       })),
       ...tasks.map((t) => ({
         id: `task-${t.id}`,
         category: "task" as const,
         event_date: t.created_at,
         title: `Aufgabe: ${t.task?.title || "Aufgabe"}`,
-        description: t.task ? `Status: ${t.task.status}` : null,
+        description: (t.task as any)?.description || null,
         meta: { status: t.task?.status, priority: t.task?.priority },
       })),
       ...appointments.map((a) => ({
@@ -180,26 +213,26 @@ export function CaseFileUnifiedTimeline({
           </Button>
         </div>
 
-        {/* Filter Tabs */}
-        <Tabs value={filter} onValueChange={setFilter} className="mt-2">
-          <TabsList className="h-8">
-            {FILTER_TABS.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} className="text-xs px-2.5 h-7">
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-
-        {/* Search */}
-        <div className="relative mt-2">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Suchen..."
-            className="h-8 text-sm pl-8"
-          />
+        {/* Filter Tabs + Search in same row */}
+        <div className="flex items-center gap-2 mt-2">
+          <Tabs value={filter} onValueChange={setFilter} className="flex-1">
+            <TabsList className="h-8">
+              {FILTER_TABS.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value} className="text-xs px-2.5 h-7">
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <div className="relative w-40 shrink-0">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Suchen..."
+              className="h-8 text-sm pl-7"
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-2">
@@ -208,64 +241,99 @@ export function CaseFileUnifiedTimeline({
             {searchQuery ? "Keine Treffer" : "Noch keine Einträge"}
           </p>
         ) : (
-          <div className="space-y-6">
-            {Object.entries(groupedItems).map(([month, items]) => (
-              <div key={month}>
-                <h3 className="text-sm font-bold text-foreground mb-3 uppercase tracking-wider">
-                  {month}
-                </h3>
-                <div className="relative border-l-2 border-muted pl-5 space-y-3">
-                  {items.map((item) => {
-                    const config = CATEGORY_CONFIG[item.category];
-                    const Icon = config.icon;
-                    const isManualTimeline =
-                      item.category === "timeline" && item.source_type === "manual";
+          <TooltipProvider>
+            <div className="space-y-6">
+              {Object.entries(groupedItems).map(([month, items]) => (
+                <div key={month}>
+                  <h3 className="text-sm font-bold text-foreground mb-3 uppercase tracking-wider">
+                    {month}
+                  </h3>
+                  <div className="relative border-l-2 border-muted pl-5 space-y-3">
+                    {items.map((item) => {
+                      const config = CATEGORY_CONFIG[item.category];
+                      const Icon = config.icon;
+                      const isManualTimeline =
+                        item.category === "timeline" && item.source_type === "manual";
+                      const dateStr = format(new Date(item.event_date), "dd. MMMM yyyy", { locale: de });
+                      const timeStr = format(new Date(item.event_date), "HH:mm", { locale: de });
+                      const isDocument = item.category === "document" && item.meta?.documentId;
 
-                    return (
-                      <div key={item.id} className="relative">
-                        {/* Timeline dot */}
-                        <div
-                          className={cn(
-                            "absolute -left-[25px] w-3 h-3 rounded-full border-2 border-background",
-                            config.color
-                          )}
-                        />
-
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="space-y-0.5 min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="text-[10px] text-muted-foreground">
-                                {format(new Date(item.event_date), "dd. MMM yyyy, HH:mm", {
-                                  locale: de,
-                                })}
-                              </span>
-                            </div>
-                            <p className="text-sm font-medium">{item.title}</p>
-                            {item.description && item.category !== "document" && item.category !== "task" && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {item.description}
+                      return (
+                        <div key={item.id} className="relative">
+                          {/* Timeline dot with tooltip */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={cn(
+                                  "absolute -left-[25px] w-3 h-3 rounded-full border-2 border-background cursor-default",
+                                  config.color
+                                )}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="left">
+                              <p className="text-xs">
+                                {item.created_by_name
+                                  ? `Hinzugefügt von ${item.created_by_name}`
+                                  : "Hinzugefügt"}{" "}
+                                am {dateStr} um {timeStr}
                               </p>
+                            </TooltipContent>
+                          </Tooltip>
+
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              {/* Row 1: Icon + Title */}
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                {isDocument ? (
+                                  <button
+                                    onClick={() => handleOpenDocument(item.meta.documentId, item.meta.fileName)}
+                                    className="text-sm font-medium text-primary hover:underline text-left flex items-center gap-1"
+                                  >
+                                    {item.title}
+                                    <ExternalLink className="h-3 w-3" />
+                                  </button>
+                                ) : (
+                                  <p className="text-sm font-medium">{item.title}</p>
+                                )}
+                              </div>
+                              {/* Row 2: Description (indented) */}
+                              {item.description && item.category !== "document" && (
+                                <p className="text-xs text-muted-foreground line-clamp-2 ml-[22px]">
+                                  {item.description}
+                                </p>
+                              )}
+                              {/* Row 3: Date (indented), time in tooltip */}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <p className="text-[10px] text-muted-foreground ml-[22px] cursor-default">
+                                    {dateStr}
+                                  </p>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">{timeStr} Uhr</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            {isManualTimeline && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                                onClick={() => onDeleteTimelineEntry(item.meta?.originalId)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             )}
                           </div>
-                          {isManualTimeline && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                              onClick={() => onDeleteTimelineEntry(item.meta?.originalId)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </TooltipProvider>
         )}
       </CardContent>
     </Card>
