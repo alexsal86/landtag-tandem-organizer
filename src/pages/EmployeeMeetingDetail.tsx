@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { EmployeeMeetingProtocol } from "@/components/EmployeeMeetingProtocol";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -87,6 +88,12 @@ export default function EmployeeMeetingDetail() {
 
   return (
     <div className="space-y-6 p-6">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
+          <ArrowLeft className="h-4 w-4" />
+          Zurück
+        </Button>
+      </div>
       <EmployeeMeetingProtocol meetingId={meetingId} onBack={() => navigate("/employee")} />
     </div>
   );

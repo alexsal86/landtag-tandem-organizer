@@ -3315,6 +3315,7 @@ export type Database = {
         Row: {
           action_items: Json | null
           cancellation_reason: string | null
+          completed_at: string | null
           conducted_by: string
           created_at: string
           employee_id: string
@@ -3337,6 +3338,7 @@ export type Database = {
         Insert: {
           action_items?: Json | null
           cancellation_reason?: string | null
+          completed_at?: string | null
           conducted_by: string
           created_at?: string
           employee_id: string
@@ -3359,6 +3361,7 @@ export type Database = {
         Update: {
           action_items?: Json | null
           cancellation_reason?: string | null
+          completed_at?: string | null
           conducted_by?: string
           created_at?: string
           employee_id?: string
