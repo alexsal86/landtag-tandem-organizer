@@ -1,0 +1,1 @@
+ALTER TABLE public.task_decision_attachments ADD COLUMN email_metadata JSONB;
