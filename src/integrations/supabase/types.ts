@@ -3197,6 +3197,7 @@ export type Database = {
           notes: string | null
           owner: string
           status: string
+          task_id: string | null
           tenant_id: string
           updated_at: string
         }
@@ -3211,6 +3212,7 @@ export type Database = {
           notes?: string | null
           owner: string
           status?: string
+          task_id?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -3225,6 +3227,7 @@ export type Database = {
           notes?: string | null
           owner?: string
           status?: string
+          task_id?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -3234,6 +3237,13 @@ export type Database = {
             columns: ["meeting_id"]
             isOneToOne: false
             referencedRelation: "employee_meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_meeting_action_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]

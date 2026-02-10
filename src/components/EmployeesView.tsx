@@ -1291,50 +1291,24 @@ export function EmployeesView() {
           
           <Card>
             <CardHeader>
-              <CardTitle>Mitarbeitergespräche</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {selfSettings?.last_meeting_date && selfLastMeetingId ? (
-                  <Button
-                    variant="ghost"
-                    className="h-auto w-full p-3 justify-start hover:bg-muted"
-                    onClick={() => navigate(`/employee-meeting/${selfLastMeetingId}`)}
-                  >
-                    <div className="text-left space-y-1">
-                      <span className="text-sm text-muted-foreground">Letztes Gespräch:</span>
-                      <div className="font-medium">
-                        {formatDistanceToNow(new Date(selfSettings.last_meeting_date), { 
-                          addSuffix: true, 
-                          locale: de 
-                        })}
-                      </div>
-                    </div>
-                  </Button>
-                ) : selfSettings?.last_meeting_date ? (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Letztes Gespräch:</span>
-                    <div className="font-medium">
-                      {formatDistanceToNow(new Date(selfSettings.last_meeting_date), { 
-                        addSuffix: true, 
-                        locale: de 
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Noch kein Mitarbeitergespräch erfasst
-                  </div>
-                )}
-                
-                <div className="pt-2">
-                  <EmployeeMeetingRequestDialog />
-                </div>
-                
-                <p className="text-xs text-muted-foreground">
-                  Sie können jederzeit ein Gespräch mit Ihrem Vorgesetzten beantragen.
-                </p>
+              <div className="flex items-center justify-between">
+                <CardTitle>Mitarbeitergespräche</CardTitle>
+                <EmployeeMeetingRequestDialog />
               </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {selfSettings?.last_meeting_date && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Letztes Gespräch: </span>
+                  <span className="font-medium">
+                    {formatDistanceToNow(new Date(selfSettings.last_meeting_date), { addSuffix: true, locale: de })}
+                  </span>
+                </div>
+              )}
+              <EmployeeMeetingHistory employeeId={user?.id} showFilters={false} />
+              <p className="text-xs text-muted-foreground">
+                Sie können jederzeit ein Gespräch mit Ihrem Vorgesetzten beantragen.
+              </p>
             </CardContent>
           </Card>
         </section>

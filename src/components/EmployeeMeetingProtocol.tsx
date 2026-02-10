@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,15 +6,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Save, Check, Lock, Unlock, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, Save, Check, Lock, Unlock, Plus, Trash2, Play, CheckCircle2, Circle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmployeeMeetingPDFExport } from "@/components/EmployeeMeetingPDFExport";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import { cn } from "@/lib/utils";
 
 interface EmployeeMeetingProtocolProps {
   meetingId: string;
@@ -22,37 +24,25 @@ interface EmployeeMeetingProtocolProps {
 }
 
 interface ProtocolData {
-  // Befinden & Work-Life-Balance
   wellbeing_mood?: string;
   wellbeing_workload?: string;
   wellbeing_balance?: string;
-  
-  // Rückblick
+  wellbeing_mood_rating?: number;
+  wellbeing_workload_rating?: number;
+  wellbeing_balance_rating?: number;
   review_successes?: string;
   review_challenges?: string;
   review_learnings?: string;
-  
-  // Aktuelle Projekte
   projects_status?: string;
   projects_blockers?: string;
   projects_support?: string;
-  
-  // Entwicklung
   development_skills?: string;
   development_training?: string;
   development_career?: string;
-  
-  // Team & Zusammenarbeit
   team_dynamics?: string;
   team_communication?: string;
-  
-  // Zielvereinbarungen
   goals?: string;
-  
-  // Feedback
   feedback_mutual?: string;
-  
-  // Nächste Schritte
   next_steps?: string;
 }
 
@@ -69,6 +59,124 @@ interface ActionItem {
   updated_at?: string;
   meeting_id?: string;
   tenant_id?: string;
+  task_id?: string;
+}
+
+// ─── Rating Scale Component ──────────────────────────────
+function RatingScale({ 
+  value, 
+  onChange, 
+  disabled, 
+  labels 
+}: { 
+  value: number | undefined; 
+  onChange: (v: number) => void; 
+  disabled: boolean; 
+  labels: [string, string]; 
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-muted-foreground w-24 text-right">{labels[0]}</span>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(n)}
+            className={cn(
+              "h-8 w-8 rounded-full border-2 transition-all",
+              "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+              disabled && "cursor-not-allowed opacity-50",
+              !disabled && "cursor-pointer hover:scale-110",
+              value && n <= value
+                ? "bg-primary border-primary text-primary-foreground"
+                : "border-muted-foreground/30 bg-background"
+            )}
+          >
+            <span className="text-xs font-medium">{n}</span>
+          </button>
+        ))}
+      </div>
+      <span className="text-xs text-muted-foreground w-24">{labels[1]}</span>
+    </div>
+  );
+}
+
+// ─── Status Progress Component ──────────────────────────
+function StatusProgress({ status }: { status: string }) {
+  const steps = [
+    { key: "scheduled", label: "Geplant" },
+    { key: "in_progress", label: "In Durchführung" },
+    { key: "completed", label: "Abgeschlossen" },
+  ];
+  const currentIndex = steps.findIndex((s) => s.key === status);
+
+  return (
+    <div className="flex items-center gap-2">
+      {steps.map((step, i) => (
+        <div key={step.key} className="flex items-center gap-1">
+          {i <= currentIndex ? (
+            <CheckCircle2 className={cn("h-5 w-5", i < currentIndex ? "text-primary" : "text-primary animate-pulse")} />
+          ) : (
+            <Circle className="h-5 w-5 text-muted-foreground/40" />
+          )}
+          <span className={cn("text-sm", i <= currentIndex ? "font-medium text-foreground" : "text-muted-foreground")}>
+            {step.label}
+          </span>
+          {i < steps.length - 1 && <div className={cn("w-8 h-0.5 mx-1", i < currentIndex ? "bg-primary" : "bg-muted-foreground/20")} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Auto-Save Indicator ────────────────────────────────
+function SaveIndicator({ state, lastSaved }: { state: "saved" | "saving" | "unsaved"; lastSaved: Date | null }) {
+  return (
+    <div className="flex items-center gap-1.5 text-xs">
+      <div className={cn(
+      "h-2 w-2 rounded-full",
+        state === "saved" && "bg-primary",
+        state === "saving" && "bg-accent-foreground/50 animate-pulse",
+        state === "unsaved" && "bg-destructive/60"
+      )} />
+      <span className="text-muted-foreground">
+        {state === "saving" && "Speichere..."}
+        {state === "unsaved" && "Ungespeichert"}
+        {state === "saved" && lastSaved && `Gespeichert ${format(lastSaved, "HH:mm")}`}
+        {state === "saved" && !lastSaved && "Gespeichert"}
+      </span>
+    </div>
+  );
+}
+
+// ─── Rich Text Field (edit or display) ──────────────────
+function ProtocolField({ 
+  label, value, onChange, canEdit, placeholder, minHeight = "80px" 
+}: { 
+  label: string; value: string | undefined; onChange: (v: string) => void; canEdit: boolean; placeholder: string; minHeight?: string;
+}) {
+  if (!canEdit) {
+    return (
+      <div>
+        <Label>{label}</Label>
+        {value ? <RichTextDisplay content={value} /> : <p className="text-sm text-muted-foreground italic">Keine Angabe</p>}
+      </div>
+    );
+  }
+  return (
+    <div>
+      <Label className="mb-1.5 block">{label}</Label>
+      <SimpleRichTextEditor
+        initialContent={value || ""}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={!canEdit}
+        minHeight={minHeight}
+      />
+    </div>
+  );
 }
 
 export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingProtocolProps) {
@@ -81,14 +189,14 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const [meeting, setMeeting] = useState<any>(null);
   const [isEmployee, setIsEmployee] = useState(false);
   const [isSupervisor, setIsSupervisor] = useState(false);
-  
+
   // Protocol data
   const [protocolData, setProtocolData] = useState<ProtocolData>({});
   const [employeePrep, setEmployeePrep] = useState<any>({});
   const [supervisorPrep, setSupervisorPrep] = useState<any>({});
   const [privateNotes, setPrivateNotes] = useState("");
   const [sharedDuringMeeting, setSharedDuringMeeting] = useState(false);
-  
+
   // Action items
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [newActionItem, setNewActionItem] = useState<ActionItem>({
@@ -96,6 +204,12 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
     owner: "employee",
     status: "open",
   });
+
+  // Auto-save state
+  const [saveState, setSaveState] = useState<"saved" | "saving" | "unsaved">("saved");
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dataChangedRef = useRef(false);
 
   // Load meeting data
   useEffect(() => {
@@ -106,8 +220,6 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const loadMeetingData = async () => {
     try {
       setLoading(true);
-
-      // Load meeting
       const { data: meetingData, error: meetingError } = await supabase
         .from("employee_meetings")
         .select("*, employee:profiles!employee_id(display_name), supervisor:profiles!conducted_by(display_name)")
@@ -119,13 +231,10 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       setMeeting(meetingData);
       setIsEmployee(meetingData.employee_id === user.id);
       setIsSupervisor(meetingData.conducted_by === user.id);
-      
-      // Load protocol data
+
       if (meetingData.protocol_data) {
         setProtocolData(meetingData.protocol_data as ProtocolData);
       }
-
-      // Load preparation data
       if (meetingData.employee_preparation) {
         const empPrep = meetingData.employee_preparation as any;
         setEmployeePrep(empPrep);
@@ -142,7 +251,6 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       }
       setSharedDuringMeeting(meetingData.shared_during_meeting || false);
 
-      // Load action items
       const { data: actionData, error: actionError } = await supabase
         .from("employee_meeting_action_items")
         .select("*")
@@ -151,48 +259,41 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
       if (actionError) throw actionError;
       setActionItems((actionData || []) as ActionItem[]);
-
     } catch (error: any) {
       console.error("Error loading meeting:", error);
-      toast({
-        title: "Fehler",
-        description: "Besprechungsdaten konnten nicht geladen werden",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Besprechungsdaten konnten nicht geladen werden", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  // Auto-save every 30 seconds
-  useEffect(() => {
-    if (!meeting || meeting.status === 'completed') return;
-    
-    const interval = setInterval(() => {
+  // Debounced auto-save (3s after last change)
+  const triggerAutoSave = useCallback(() => {
+    dataChangedRef.current = true;
+    setSaveState("unsaved");
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
       saveProtocol(true);
-    }, 30000);
+    }, 3000);
+  }, []);
 
-    return () => clearInterval(interval);
-  }, [protocolData, privateNotes, meeting]);
+  // Cleanup timer
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, []);
 
   const saveProtocol = async (isAutoSave = false) => {
     if (!meeting || !user) return;
-
     setSaving(true);
+    setSaveState("saving");
     try {
       const updates: any = { protocol_data: protocolData };
-
-      // Update preparation with private notes
       if (isEmployee) {
-        updates.employee_preparation = {
-          ...employeePrep,
-          private_notes: privateNotes,
-        };
+        updates.employee_preparation = { ...employeePrep, private_notes: privateNotes };
       } else if (isSupervisor) {
-        updates.supervisor_preparation = {
-          ...supervisorPrep,
-          private_notes: privateNotes,
-        };
+        updates.supervisor_preparation = { ...supervisorPrep, private_notes: privateNotes };
       }
 
       const { error } = await supabase
@@ -202,20 +303,18 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
       if (error) throw error;
 
+      setSaveState("saved");
+      setLastSaved(new Date());
+      dataChangedRef.current = false;
+
       if (!isAutoSave) {
-        toast({
-          title: "Gespeichert",
-          description: "Protokoll wurde gespeichert",
-        });
+        toast({ title: "Gespeichert", description: "Protokoll wurde gespeichert" });
       }
     } catch (error: any) {
       console.error("Error saving protocol:", error);
+      setSaveState("unsaved");
       if (!isAutoSave) {
-        toast({
-          title: "Fehler",
-          description: "Protokoll konnte nicht gespeichert werden",
-          variant: "destructive",
-        });
+        toast({ title: "Fehler", description: "Protokoll konnte nicht gespeichert werden", variant: "destructive" });
       }
     } finally {
       setSaving(false);
@@ -224,63 +323,65 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
   const sharePreparation = async () => {
     if (!meeting) return;
-
     try {
-      const { error } = await supabase
-        .from("employee_meetings")
-        .update({ shared_during_meeting: true })
-        .eq("id", meetingId);
-
+      const { error } = await supabase.from("employee_meetings").update({ shared_during_meeting: true }).eq("id", meetingId);
       if (error) throw error;
-
       setSharedDuringMeeting(true);
-      toast({
-        title: "Vorbereitung geteilt",
-        description: "Beide Parteien können jetzt die Vorbereitungen sehen",
-      });
+      toast({ title: "Vorbereitung geteilt", description: "Beide Parteien können jetzt die Vorbereitungen sehen" });
     } catch (error: any) {
       console.error("Error sharing preparation:", error);
-      toast({
-        title: "Fehler",
-        description: "Vorbereitung konnte nicht geteilt werden",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Vorbereitung konnte nicht geteilt werden", variant: "destructive" });
     }
   };
 
-  const markAsCompleted = async () => {
+  const updateStatus = async (newStatus: string) => {
     if (!meeting) return;
-
     try {
-      const { error } = await supabase
-        .from("employee_meetings")
-        .update({ 
-          status: "completed",
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", meetingId);
+      const updates: any = { status: newStatus };
+      if (newStatus === "completed") {
+        updates.completed_at = new Date().toISOString();
+      }
 
+      const { error } = await supabase.from("employee_meetings").update(updates).eq("id", meetingId);
       if (error) throw error;
 
-      toast({
-        title: "Abgeschlossen",
-        description: "Gespräch wurde als abgeschlossen markiert",
-      });
+      // If completing: update employee_settings.last_meeting_date
+      if (newStatus === "completed") {
+        const { error: settingsError } = await supabase
+          .from("employee_settings")
+          .update({ 
+            last_meeting_date: meeting.meeting_date,
+          })
+          .eq("user_id", meeting.employee_id);
+        
+        if (settingsError) console.error("Error updating employee_settings:", settingsError);
+
+        // Check for open action items
+        const openItems = actionItems.filter(i => i.status !== "completed");
+        if (openItems.length > 0) {
+          toast({
+            title: "Gespräch abgeschlossen",
+            description: `Hinweis: Es gibt noch ${openItems.length} offene Maßnahme(n).`,
+          });
+        } else {
+          toast({ title: "Abgeschlossen", description: "Gespräch wurde als abgeschlossen markiert" });
+        }
+      } else {
+        toast({ 
+          title: newStatus === "in_progress" ? "Gestartet" : "Aktualisiert", 
+          description: newStatus === "in_progress" ? "Gespräch wurde gestartet" : "Status aktualisiert" 
+        });
+      }
 
       loadMeetingData();
     } catch (error: any) {
-      console.error("Error completing meeting:", error);
-      toast({
-        title: "Fehler",
-        description: "Status konnte nicht aktualisiert werden",
-        variant: "destructive",
-      });
+      console.error("Error updating status:", error);
+      toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden", variant: "destructive" });
     }
   };
 
   const addActionItem = async () => {
     if (!newActionItem.description.trim() || !currentTenant) return;
-
     try {
       const { data, error } = await supabase
         .from("employee_meeting_action_items")
@@ -297,88 +398,52 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         .single();
 
       if (error) throw error;
-
       setActionItems([data as ActionItem, ...actionItems]);
-      setNewActionItem({
-        description: "",
-        owner: "employee",
-        status: "open",
-      });
-
-      toast({
-        title: "Action Item hinzugefügt",
-        description: "Neue Maßnahme wurde erfolgreich erstellt",
-      });
+      setNewActionItem({ description: "", owner: "employee", status: "open" });
+      toast({ title: "Action Item hinzugefügt", description: "Neue Maßnahme wurde erfolgreich erstellt" });
     } catch (error: any) {
       console.error("Error adding action item:", error);
-      toast({
-        title: "Fehler",
-        description: "Action Item konnte nicht erstellt werden",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Action Item konnte nicht erstellt werden", variant: "destructive" });
     }
   };
 
   const updateActionItem = async (itemId: string, updates: Partial<ActionItem>) => {
     try {
-      const { error } = await supabase
-        .from("employee_meeting_action_items")
-        .update(updates)
-        .eq("id", itemId);
-
+      const { error } = await supabase.from("employee_meeting_action_items").update(updates).eq("id", itemId);
       if (error) throw error;
-
-      setActionItems(actionItems.map(item => 
-        item.id === itemId ? { ...item, ...updates } : item
-      ));
-
-      toast({
-        title: "Aktualisiert",
-        description: "Action Item wurde aktualisiert",
-      });
+      setActionItems(actionItems.map(item => item.id === itemId ? { ...item, ...updates } : item));
+      toast({ title: "Aktualisiert", description: "Action Item wurde aktualisiert" });
     } catch (error: any) {
       console.error("Error updating action item:", error);
-      toast({
-        title: "Fehler",
-        description: "Action Item konnte nicht aktualisiert werden",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Action Item konnte nicht aktualisiert werden", variant: "destructive" });
     }
   };
 
   const deleteActionItem = async (itemId: string) => {
     try {
-      const { error } = await supabase
-        .from("employee_meeting_action_items")
-        .delete()
-        .eq("id", itemId);
-
+      const { error } = await supabase.from("employee_meeting_action_items").delete().eq("id", itemId);
       if (error) throw error;
-
       setActionItems(actionItems.filter(item => item.id !== itemId));
-
-      toast({
-        title: "Gelöscht",
-        description: "Action Item wurde entfernt",
-      });
+      toast({ title: "Gelöscht", description: "Action Item wurde entfernt" });
     } catch (error: any) {
       console.error("Error deleting action item:", error);
-      toast({
-        title: "Fehler",
-        description: "Action Item konnte nicht gelöscht werden",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Action Item konnte nicht gelöscht werden", variant: "destructive" });
     }
   };
 
-  const updateProtocolField = (field: keyof ProtocolData, value: string) => {
-    setProtocolData({ ...protocolData, [field]: value });
-  };
+  const updateProtocolField = useCallback((field: keyof ProtocolData, value: string | number) => {
+    setProtocolData(prev => {
+      const next = { ...prev, [field]: value };
+      return next;
+    });
+    triggerAutoSave();
+  }, [triggerAutoSave]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Lade Protokoll...</div>
+      <div className="flex items-center justify-center h-64 gap-2">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        <span className="text-muted-foreground">Lade Protokoll...</span>
       </div>
     );
   }
@@ -388,56 +453,58 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       <div className="text-center space-y-4">
         <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
         <h3 className="text-lg font-medium">Gespräch nicht gefunden</h3>
-        {onBack && (
-          <Button onClick={onBack} variant="outline">
-            Zurück
-          </Button>
-        )}
+        {onBack && <Button onClick={onBack} variant="outline">Zurück</Button>}
       </div>
     );
   }
 
-  const isCompleted = meeting.status === 'completed';
+  const isCompleted = meeting.status === "completed";
+  const isScheduled = meeting.status === "scheduled";
+  const isInProgress = meeting.status === "in_progress";
   const canEdit = !isCompleted && (isEmployee || isSupervisor);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Gesprächsprotokoll</h1>
-          <p className="text-muted-foreground">
-            {meeting.employee?.display_name || 'Mitarbeiter'} • {format(new Date(meeting.meeting_date), 'PPP', { locale: de })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={isCompleted ? "default" : "secondary"}>
-            {isCompleted ? (
-              <>
-                <Lock className="h-3 w-3 mr-1" />
-                Abgeschlossen
-              </>
-            ) : (
-              <>
-                <Unlock className="h-3 w-3 mr-1" />
-                In Bearbeitung
-              </>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Gesprächsprotokoll</h1>
+            <p className="text-muted-foreground">
+              {meeting.employee?.display_name || "Mitarbeiter"} • {format(new Date(meeting.meeting_date), "PPP", { locale: de })}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <SaveIndicator state={saveState} lastSaved={lastSaved} />
+            {isCompleted && (
+              <EmployeeMeetingPDFExport
+                meeting={meeting}
+                protocolData={protocolData}
+                actionItems={actionItems}
+                employeePrep={employeePrep}
+                supervisorPrep={supervisorPrep}
+              />
             )}
-          </Badge>
-          {isCompleted && (
-            <EmployeeMeetingPDFExport 
-              meeting={meeting}
-              protocolData={protocolData}
-              actionItems={actionItems}
-              employeePrep={employeePrep}
-              supervisorPrep={supervisorPrep}
-            />
-          )}
-          {onBack && (
-            <Button variant="outline" size="sm" onClick={onBack}>
-              Zurück
-            </Button>
-          )}
+          </div>
+        </div>
+
+        {/* Status progress + action buttons */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <StatusProgress status={meeting.status} />
+          <div className="flex gap-2">
+            {isScheduled && isSupervisor && (
+              <Button onClick={() => updateStatus("in_progress")} size="sm">
+                <Play className="h-4 w-4 mr-1" />
+                Gespräch starten
+              </Button>
+            )}
+            {isInProgress && isSupervisor && (
+              <Button onClick={() => updateStatus("completed")} size="sm" variant="default">
+                <Check className="h-4 w-4 mr-1" />
+                Gespräch abschließen
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -445,7 +512,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="preparation">Vorbereitung</TabsTrigger>
           <TabsTrigger value="protocol">Protokoll</TabsTrigger>
-          <TabsTrigger value="actions">Action Items ({actionItems.length})</TabsTrigger>
+          <TabsTrigger value="actions">Maßnahmen ({actionItems.length})</TabsTrigger>
         </TabsList>
 
         {/* Tab: Vorbereitung */}
@@ -455,7 +522,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
               <div className="flex items-center justify-between">
                 <CardTitle>Vorbereitung</CardTitle>
                 {!sharedDuringMeeting && canEdit && (
-                  <Button onClick={sharePreparation} size="sm">
+                  <Button onClick={sharePreparation} size="sm" variant="outline">
                     <Unlock className="h-4 w-4 mr-2" />
                     Vorbereitung teilen
                   </Button>
@@ -467,13 +534,20 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
               <div>
                 <h3 className="font-semibold mb-2">Vorbereitung Mitarbeiter</h3>
                 {sharedDuringMeeting || isEmployee ? (
-                  <Textarea
-                    value={isEmployee ? (employeePrep.notes || "") : (employeePrep.notes || "Keine Vorbereitung")}
-                    onChange={(e) => setEmployeePrep({ ...employeePrep, notes: e.target.value })}
-                    disabled={!isEmployee || isCompleted}
-                    rows={6}
-                    placeholder="Notizen zur Vorbereitung..."
-                  />
+                  isEmployee && !isCompleted ? (
+                    <SimpleRichTextEditor
+                      initialContent={employeePrep.notes || ""}
+                      onChange={(html) => {
+                        setEmployeePrep({ ...employeePrep, notes: html });
+                        triggerAutoSave();
+                      }}
+                      placeholder="Notizen zur Vorbereitung..."
+                      disabled={isCompleted}
+                      minHeight="120px"
+                    />
+                  ) : (
+                    <RichTextDisplay content={employeePrep.notes || "Keine Vorbereitung"} />
+                  )
                 ) : (
                   <div className="text-sm text-muted-foreground italic p-4 border rounded-md">
                     Vorbereitung noch nicht geteilt
@@ -485,13 +559,20 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
               <div>
                 <h3 className="font-semibold mb-2">Vorbereitung Vorgesetzter</h3>
                 {sharedDuringMeeting || isSupervisor ? (
-                  <Textarea
-                    value={isSupervisor ? (supervisorPrep.notes || "") : (supervisorPrep.notes || "Keine Vorbereitung")}
-                    onChange={(e) => setSupervisorPrep({ ...supervisorPrep, notes: e.target.value })}
-                    disabled={!isSupervisor || isCompleted}
-                    rows={6}
-                    placeholder="Notizen zur Vorbereitung..."
-                  />
+                  isSupervisor && !isCompleted ? (
+                    <SimpleRichTextEditor
+                      initialContent={supervisorPrep.notes || ""}
+                      onChange={(html) => {
+                        setSupervisorPrep({ ...supervisorPrep, notes: html });
+                        triggerAutoSave();
+                      }}
+                      placeholder="Notizen zur Vorbereitung..."
+                      disabled={isCompleted}
+                      minHeight="120px"
+                    />
+                  ) : (
+                    <RichTextDisplay content={supervisorPrep.notes || "Keine Vorbereitung"} />
+                  )
                 ) : (
                   <div className="text-sm text-muted-foreground italic p-4 border rounded-md">
                     Vorbereitung noch nicht geteilt
@@ -505,13 +586,20 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                   <Lock className="h-4 w-4" />
                   Meine privaten Notizen
                 </h3>
-                <Textarea
-                  value={privateNotes}
-                  onChange={(e) => setPrivateNotes(e.target.value)}
-                  disabled={isCompleted}
-                  rows={4}
-                  placeholder="Nur für Sie sichtbar..."
-                />
+                {!isCompleted ? (
+                  <SimpleRichTextEditor
+                    initialContent={privateNotes}
+                    onChange={(html) => {
+                      setPrivateNotes(html);
+                      triggerAutoSave();
+                    }}
+                    placeholder="Nur für Sie sichtbar..."
+                    disabled={isCompleted}
+                    minHeight="80px"
+                  />
+                ) : (
+                  <RichTextDisplay content={privateNotes || "Keine Notizen"} />
+                )}
               </div>
 
               {canEdit && (
@@ -534,34 +622,52 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
               {/* Befinden & Work-Life-Balance */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg">Befinden & Work-Life-Balance</h3>
-                <div className="space-y-3">
-                  <div>
-                    <Label>Stimmung</Label>
-                    <Textarea
-                      value={protocolData.wellbeing_mood || ""}
-                      onChange={(e) => updateProtocolField("wellbeing_mood", e.target.value)}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Zufriedenheit</Label>
+                    <RatingScale
+                      value={protocolData.wellbeing_mood_rating}
+                      onChange={(v) => updateProtocolField("wellbeing_mood_rating", v)}
                       disabled={!canEdit}
-                      rows={2}
+                      labels={["Sehr unzufrieden", "Sehr zufrieden"]}
+                    />
+                    <ProtocolField
+                      label="Stimmung (Details)"
+                      value={protocolData.wellbeing_mood}
+                      onChange={(v) => updateProtocolField("wellbeing_mood", v)}
+                      canEdit={canEdit}
                       placeholder="Wie geht es Ihnen aktuell?"
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label>Arbeitsbelastung</Label>
-                    <Textarea
-                      value={protocolData.wellbeing_workload || ""}
-                      onChange={(e) => updateProtocolField("wellbeing_workload", e.target.value)}
+                    <RatingScale
+                      value={protocolData.wellbeing_workload_rating}
+                      onChange={(v) => updateProtocolField("wellbeing_workload_rating", v)}
                       disabled={!canEdit}
-                      rows={2}
+                      labels={["Zu wenig", "Überlastet"]}
+                    />
+                    <ProtocolField
+                      label="Details zur Belastung"
+                      value={protocolData.wellbeing_workload}
+                      onChange={(v) => updateProtocolField("wellbeing_workload", v)}
+                      canEdit={canEdit}
                       placeholder="Wie empfinden Sie die aktuelle Arbeitsbelastung?"
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label>Work-Life-Balance</Label>
-                    <Textarea
-                      value={protocolData.wellbeing_balance || ""}
-                      onChange={(e) => updateProtocolField("wellbeing_balance", e.target.value)}
+                    <RatingScale
+                      value={protocolData.wellbeing_balance_rating}
+                      onChange={(v) => updateProtocolField("wellbeing_balance_rating", v)}
                       disabled={!canEdit}
-                      rows={2}
+                      labels={["Sehr schlecht", "Sehr gut"]}
+                    />
+                    <ProtocolField
+                      label="Details zur Balance"
+                      value={protocolData.wellbeing_balance}
+                      onChange={(v) => updateProtocolField("wellbeing_balance", v)}
+                      canEdit={canEdit}
                       placeholder="Wie ist Ihre Work-Life-Balance?"
                     />
                   </div>
@@ -572,36 +678,9 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
               <div className="space-y-4 border-t pt-6">
                 <h3 className="font-semibold text-lg">Rückblick</h3>
                 <div className="space-y-3">
-                  <div>
-                    <Label>Erfolge</Label>
-                    <Textarea
-                      value={protocolData.review_successes || ""}
-                      onChange={(e) => updateProtocolField("review_successes", e.target.value)}
-                      disabled={!canEdit}
-                      rows={3}
-                      placeholder="Was lief besonders gut?"
-                    />
-                  </div>
-                  <div>
-                    <Label>Herausforderungen</Label>
-                    <Textarea
-                      value={protocolData.review_challenges || ""}
-                      onChange={(e) => updateProtocolField("review_challenges", e.target.value)}
-                      disabled={!canEdit}
-                      rows={3}
-                      placeholder="Welche Schwierigkeiten gab es?"
-                    />
-                  </div>
-                  <div>
-                    <Label>Learnings</Label>
-                    <Textarea
-                      value={protocolData.review_learnings || ""}
-                      onChange={(e) => updateProtocolField("review_learnings", e.target.value)}
-                      disabled={!canEdit}
-                      rows={3}
-                      placeholder="Was haben wir gelernt?"
-                    />
-                  </div>
+                  <ProtocolField label="Erfolge" value={protocolData.review_successes} onChange={(v) => updateProtocolField("review_successes", v)} canEdit={canEdit} placeholder="Was lief besonders gut?" />
+                  <ProtocolField label="Herausforderungen" value={protocolData.review_challenges} onChange={(v) => updateProtocolField("review_challenges", v)} canEdit={canEdit} placeholder="Welche Schwierigkeiten gab es?" />
+                  <ProtocolField label="Learnings" value={protocolData.review_learnings} onChange={(v) => updateProtocolField("review_learnings", v)} canEdit={canEdit} placeholder="Was haben wir gelernt?" />
                 </div>
               </div>
 
@@ -609,36 +688,9 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
               <div className="space-y-4 border-t pt-6">
                 <h3 className="font-semibold text-lg">Aktuelle Projekte</h3>
                 <div className="space-y-3">
-                  <div>
-                    <Label>Status</Label>
-                    <Textarea
-                      value={protocolData.projects_status || ""}
-                      onChange={(e) => updateProtocolField("projects_status", e.target.value)}
-                      disabled={!canEdit}
-                      rows={3}
-                      placeholder="Aktueller Stand der Projekte"
-                    />
-                  </div>
-                  <div>
-                    <Label>Blocker</Label>
-                    <Textarea
-                      value={protocolData.projects_blockers || ""}
-                      onChange={(e) => updateProtocolField("projects_blockers", e.target.value)}
-                      disabled={!canEdit}
-                      rows={2}
-                      placeholder="Was blockiert den Fortschritt?"
-                    />
-                  </div>
-                  <div>
-                    <Label>Benötigte Unterstützung</Label>
-                    <Textarea
-                      value={protocolData.projects_support || ""}
-                      onChange={(e) => updateProtocolField("projects_support", e.target.value)}
-                      disabled={!canEdit}
-                      rows={2}
-                      placeholder="Welche Hilfe wird benötigt?"
-                    />
-                  </div>
+                  <ProtocolField label="Status" value={protocolData.projects_status} onChange={(v) => updateProtocolField("projects_status", v)} canEdit={canEdit} placeholder="Aktueller Stand der Projekte" />
+                  <ProtocolField label="Blocker" value={protocolData.projects_blockers} onChange={(v) => updateProtocolField("projects_blockers", v)} canEdit={canEdit} placeholder="Was blockiert den Fortschritt?" />
+                  <ProtocolField label="Benötigte Unterstützung" value={protocolData.projects_support} onChange={(v) => updateProtocolField("projects_support", v)} canEdit={canEdit} placeholder="Welche Hilfe wird benötigt?" />
                 </div>
               </div>
 
@@ -646,116 +698,45 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
               <div className="space-y-4 border-t pt-6">
                 <h3 className="font-semibold text-lg">Entwicklung & Karriere</h3>
                 <div className="space-y-3">
-                  <div>
-                    <Label>Skills & Kompetenzen</Label>
-                    <Textarea
-                      value={protocolData.development_skills || ""}
-                      onChange={(e) => updateProtocolField("development_skills", e.target.value)}
-                      disabled={!canEdit}
-                      rows={3}
-                      placeholder="Welche Fähigkeiten sollen entwickelt werden?"
-                    />
-                  </div>
-                  <div>
-                    <Label>Weiterbildung</Label>
-                    <Textarea
-                      value={protocolData.development_training || ""}
-                      onChange={(e) => updateProtocolField("development_training", e.target.value)}
-                      disabled={!canEdit}
-                      rows={2}
-                      placeholder="Welche Schulungen/Trainings sind geplant?"
-                    />
-                  </div>
-                  <div>
-                    <Label>Karriereziele</Label>
-                    <Textarea
-                      value={protocolData.development_career || ""}
-                      onChange={(e) => updateProtocolField("development_career", e.target.value)}
-                      disabled={!canEdit}
-                      rows={2}
-                      placeholder="Langfristige Ziele und Perspektiven"
-                    />
-                  </div>
+                  <ProtocolField label="Skills & Kompetenzen" value={protocolData.development_skills} onChange={(v) => updateProtocolField("development_skills", v)} canEdit={canEdit} placeholder="Welche Fähigkeiten sollen entwickelt werden?" />
+                  <ProtocolField label="Weiterbildung" value={protocolData.development_training} onChange={(v) => updateProtocolField("development_training", v)} canEdit={canEdit} placeholder="Welche Schulungen/Trainings sind geplant?" />
+                  <ProtocolField label="Karriereziele" value={protocolData.development_career} onChange={(v) => updateProtocolField("development_career", v)} canEdit={canEdit} placeholder="Langfristige Ziele und Perspektiven" />
                 </div>
               </div>
 
-              {/* Team & Zusammenarbeit */}
+              {/* Team */}
               <div className="space-y-4 border-t pt-6">
                 <h3 className="font-semibold text-lg">Team & Zusammenarbeit</h3>
                 <div className="space-y-3">
-                  <div>
-                    <Label>Team-Dynamik</Label>
-                    <Textarea
-                      value={protocolData.team_dynamics || ""}
-                      onChange={(e) => updateProtocolField("team_dynamics", e.target.value)}
-                      disabled={!canEdit}
-                      rows={2}
-                      placeholder="Wie läuft die Zusammenarbeit im Team?"
-                    />
-                  </div>
-                  <div>
-                    <Label>Kommunikation</Label>
-                    <Textarea
-                      value={protocolData.team_communication || ""}
-                      onChange={(e) => updateProtocolField("team_communication", e.target.value)}
-                      disabled={!canEdit}
-                      rows={2}
-                      placeholder="Wie ist die Kommunikation?"
-                    />
-                  </div>
+                  <ProtocolField label="Team-Dynamik" value={protocolData.team_dynamics} onChange={(v) => updateProtocolField("team_dynamics", v)} canEdit={canEdit} placeholder="Wie läuft die Zusammenarbeit im Team?" />
+                  <ProtocolField label="Kommunikation" value={protocolData.team_communication} onChange={(v) => updateProtocolField("team_communication", v)} canEdit={canEdit} placeholder="Wie ist die Kommunikation?" />
                 </div>
               </div>
 
-              {/* Zielvereinbarungen */}
+              {/* Ziele */}
               <div className="space-y-4 border-t pt-6">
                 <h3 className="font-semibold text-lg">Zielvereinbarungen</h3>
-                <Textarea
-                  value={protocolData.goals || ""}
-                  onChange={(e) => updateProtocolField("goals", e.target.value)}
-                  disabled={!canEdit}
-                  rows={4}
-                  placeholder="Konkrete Ziele mit Deadlines und Erfolgskriterien"
-                />
+                <ProtocolField label="" value={protocolData.goals} onChange={(v) => updateProtocolField("goals", v)} canEdit={canEdit} placeholder="Konkrete Ziele mit Deadlines und Erfolgskriterien" minHeight="100px" />
               </div>
 
               {/* Feedback */}
               <div className="space-y-4 border-t pt-6">
                 <h3 className="font-semibold text-lg">Beidseitiges Feedback</h3>
-                <Textarea
-                  value={protocolData.feedback_mutual || ""}
-                  onChange={(e) => updateProtocolField("feedback_mutual", e.target.value)}
-                  disabled={!canEdit}
-                  rows={4}
-                  placeholder="Wechselseitiges Feedback"
-                />
+                <ProtocolField label="" value={protocolData.feedback_mutual} onChange={(v) => updateProtocolField("feedback_mutual", v)} canEdit={canEdit} placeholder="Wechselseitiges Feedback" minHeight="100px" />
               </div>
 
               {/* Nächste Schritte */}
               <div className="space-y-4 border-t pt-6">
                 <h3 className="font-semibold text-lg">Nächste Schritte</h3>
-                <Textarea
-                  value={protocolData.next_steps || ""}
-                  onChange={(e) => updateProtocolField("next_steps", e.target.value)}
-                  disabled={!canEdit}
-                  rows={3}
-                  placeholder="Was sind die nächsten konkreten Schritte?"
-                />
+                <ProtocolField label="" value={protocolData.next_steps} onChange={(v) => updateProtocolField("next_steps", v)} canEdit={canEdit} placeholder="Was sind die nächsten konkreten Schritte?" />
               </div>
 
               <div className="flex gap-2 pt-4">
                 {canEdit && (
-                  <>
-                    <Button onClick={() => saveProtocol(false)} disabled={saving}>
-                      <Save className="h-4 w-4 mr-2" />
-                      {saving ? "Speichere..." : "Speichern"}
-                    </Button>
-                    {isSupervisor && (
-                      <Button onClick={markAsCompleted} variant="default">
-                        <Check className="h-4 w-4 mr-2" />
-                        Als abgeschlossen markieren
-                      </Button>
-                    )}
-                  </>
+                  <Button onClick={() => saveProtocol(false)} disabled={saving}>
+                    <Save className="h-4 w-4 mr-2" />
+                    {saving ? "Speichere..." : "Speichern"}
+                  </Button>
                 )}
               </div>
             </CardContent>
@@ -764,7 +745,6 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
         {/* Tab: Action Items */}
         <TabsContent value="actions" className="space-y-4">
-          {/* New Action Item Form */}
           {canEdit && (
             <Card>
               <CardHeader>
@@ -773,23 +753,18 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
               <CardContent className="space-y-4">
                 <div>
                   <Label>Beschreibung</Label>
-                  <Textarea
-                    value={newActionItem.description}
-                    onChange={(e) => setNewActionItem({ ...newActionItem, description: e.target.value })}
-                    rows={2}
+                  <SimpleRichTextEditor
+                    initialContent=""
+                    onChange={(html) => setNewActionItem(prev => ({ ...prev, description: html }))}
                     placeholder="Was muss getan werden?"
+                    minHeight="60px"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Verantwortlich</Label>
-                    <Select
-                      value={newActionItem.owner}
-                      onValueChange={(value: any) => setNewActionItem({ ...newActionItem, owner: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={newActionItem.owner} onValueChange={(value: any) => setNewActionItem({ ...newActionItem, owner: value })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="employee">Mitarbeiter</SelectItem>
                         <SelectItem value="supervisor">Vorgesetzter</SelectItem>
@@ -799,11 +774,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                   </div>
                   <div>
                     <Label>Fälligkeitsdatum</Label>
-                    <Input
-                      type="date"
-                      value={newActionItem.due_date || ""}
-                      onChange={(e) => setNewActionItem({ ...newActionItem, due_date: e.target.value })}
-                    />
+                    <Input type="date" value={newActionItem.due_date || ""} onChange={(e) => setNewActionItem({ ...newActionItem, due_date: e.target.value })} />
                   </div>
                 </div>
                 <Button onClick={addActionItem} disabled={!newActionItem.description.trim()}>
@@ -814,12 +785,11 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
             </Card>
           )}
 
-          {/* Action Items List */}
           <div className="space-y-3">
             {actionItems.length === 0 ? (
               <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
-                  Noch keine Action Items vorhanden
+                  Noch keine Maßnahmen vorhanden
                 </CardContent>
               </Card>
             ) : (
@@ -828,40 +798,30 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Badge variant={item.status === 'completed' ? 'default' : 'secondary'}>
-                            {item.owner === 'employee' ? 'Mitarbeiter' : item.owner === 'supervisor' ? 'Vorgesetzter' : 'Beide'}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant={item.status === "completed" ? "default" : "secondary"}>
+                            {item.owner === "employee" ? "Mitarbeiter" : item.owner === "supervisor" ? "Vorgesetzter" : "Beide"}
                           </Badge>
-                          <Badge variant={item.status === 'completed' ? 'default' : item.status === 'in_progress' ? 'secondary' : 'outline'}>
-                            {item.status === 'completed' ? 'Erledigt' : item.status === 'in_progress' ? 'In Arbeit' : 'Offen'}
+                          <Badge variant={item.status === "completed" ? "default" : item.status === "in_progress" ? "secondary" : "outline"}>
+                            {item.status === "completed" ? "Erledigt" : item.status === "in_progress" ? "In Arbeit" : "Offen"}
                           </Badge>
                           {item.due_date && (
                             <span className="text-sm text-muted-foreground">
-                              Fällig: {format(new Date(item.due_date), 'dd.MM.yyyy', { locale: de })}
+                              Fällig: {format(new Date(item.due_date), "dd.MM.yyyy", { locale: de })}
                             </span>
                           )}
                         </div>
-                        <p className="text-sm">{item.description}</p>
-                        {item.notes && (
-                          <p className="text-sm text-muted-foreground italic">{item.notes}</p>
-                        )}
-                        {canEdit && item.status !== 'completed' && (
+                        <RichTextDisplay content={item.description} />
+                        {item.notes && <RichTextDisplay content={item.notes} className="italic" />}
+                        {canEdit && item.status !== "completed" && (
                           <div className="flex gap-2 mt-2">
-                            {item.status === 'open' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => updateActionItem(item.id!, { status: 'in_progress' })}
-                              >
+                            {item.status === "open" && (
+                              <Button size="sm" variant="outline" onClick={() => updateActionItem(item.id!, { status: "in_progress" })}>
                                 In Arbeit
                               </Button>
                             )}
-                            {item.status === 'in_progress' && (
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => updateActionItem(item.id!, { status: 'completed', completed_at: new Date().toISOString() })}
-                              >
+                            {item.status === "in_progress" && (
+                              <Button size="sm" variant="default" onClick={() => updateActionItem(item.id!, { status: "completed", completed_at: new Date().toISOString() })}>
                                 <Check className="h-4 w-4 mr-1" />
                                 Erledigt
                               </Button>
@@ -870,11 +830,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                         )}
                       </div>
                       {canEdit && isSupervisor && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteActionItem(item.id!)}
-                        >
+                        <Button size="sm" variant="ghost" onClick={() => deleteActionItem(item.id!)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
