@@ -1,143 +1,85 @@
 
 
-# Plan: Mitarbeitergespraeche -- Vollstaendige Ueberarbeitung
+# Plan: Mitarbeitergespraeche -- Fehler beheben und Features ergaenzen
 
-## Analyse: Warum funktioniert aktuell nichts?
+## Kritische Fehler
 
-### Kritisches Problem: RLS-Policy blockiert Zugriff
+### A. PGRST200-Fehler beim Laden eines Gespraechs (Punkte 2 + 4)
 
-Die RLS-Policy auf `employee_meetings` erlaubt Mitarbeitern NUR den Zugriff auf **abgeschlossene** Gespraeche:
+Der Fehler `Could not find a relationship between 'employee_meetings' and 'profiles'` tritt auf, weil `employee_meetings.employee_id` eine FK auf `auth.users(id)` hat, NICHT auf `profiles(user_id)`. PostgREST kann den impliziten Join `profiles!employee_id` daher nicht aufloesen.
 
-```
-Employees can view their own completed meetings:
-  (employee_id = auth.uid()) AND (status = 'completed')
-```
+**Betroffen:**
+- `EmployeeMeetingProtocol.tsx` Zeile 225: `select("*, employee:profiles!employee_id(...), supervisor:profiles!conducted_by(...)")`
+- `EmployeeMeetingDetail.tsx` Zeile 26-30: Access-Check nutzt `.single()` -- wenn der Query darueber fehlschlaegt, wird der User nach `/employee` weitergeleitet
 
-Das bedeutet: Wenn ein Gespraech geplant wird (`status = 'scheduled'`), kann der Mitarbeiter es **nicht oeffnen**. Auch waehrend der Durchfuehrung (`status = 'in_progress'`) hat der Mitarbeiter keinen Zugriff. Der Vorgesetzte wiederum braucht eine Zuordnung ueber `employee_settings.admin_id` -- falls diese fehlt, kann auch er nichts sehen.
-
-**Loesung:** Die RLS-Policy muss erweitert werden, damit Mitarbeiter ALLE ihre eigenen Gespraeche sehen koennen (scheduled, in_progress, completed). Zusaetzlich sollte der `conducted_by`-User immer Zugriff haben.
-
----
-
-## Umsetzungsplan
-
-### 1. RLS-Policies korrigieren (kritisch)
-
-Alte Policy `Employees can view their own completed meetings` ersetzen durch:
-
-**Neue Policies auf `employee_meetings`:**
-- `Employees can view their own meetings` (SELECT): `employee_id = auth.uid()`
-- `Employees can update their meeting data` (UPDATE): `employee_id = auth.uid()` -- damit sie Vorbereitung und Protokoll bearbeiten koennen
-- `Conductors can manage their meetings` (ALL): `conducted_by = auth.uid()` -- als Backup neben der admin_id-Policy
-
-So kann jeder Beteiligte das Gespraech oeffnen, bearbeiten und einsehen -- unabhaengig vom Status.
-
-**Datei:** SQL-Migration
+**Loesung:**
+- Den Join-Query in `EmployeeMeetingProtocol.tsx` ersetzen: Statt `profiles!employee_id` separate Queries fuer die Profildaten ausfuehren (analog zu `EmployeeMeetingHistory.tsx`, das bereits korrekt separate Profile-Queries nutzt)
+- In `EmployeeMeetingDetail.tsx`: `.single()` durch `.maybeSingle()` ersetzen, um PGRST116-Fehler bei fehlenden Ergebnissen zu vermeiden
 
 ---
 
-### 2. Protokoll-Editor: Textarea durch SimpleRichTextEditor ersetzen
+### B. Scheduler-Navigation verursacht Fehler-Toast trotz Erfolg (Punkt 2)
 
-Aktuell nutzt `EmployeeMeetingProtocol.tsx` ueberall `Textarea`-Komponenten (ca. 15 Stueck). Diese werden durch `SimpleRichTextEditor` ersetzt fuer:
+Der `EmployeeMeetingScheduler` navigiert nach erfolgreicher Erstellung zu `/employee-meeting/{id}`. Dort laedt `EmployeeMeetingProtocol` das Meeting mit dem fehlerhaften `profiles!`-Join, der schlaegt fehl, und ein Fehler-Toast erscheint -- obwohl das Meeting korrekt erstellt wurde.
 
-- Alle Protokoll-Felder (Stimmung, Arbeitsbelastung, Work-Life-Balance, etc.)
-- Vorbereitungs-Notizen (Mitarbeiter + Vorgesetzter)
-- Private Notizen
-- Action-Item-Beschreibungen
-
-Die gespeicherten Daten werden als HTML in `protocol_data` (JSONB) abgelegt. Die Anzeige im Readonly-Modus nutzt `RichTextDisplay`.
-
-**Datei:** `EmployeeMeetingProtocol.tsx`
+Dies wird durch Fix A automatisch behoben.
 
 ---
 
-### 3. Bewertungsskalen hinzufuegen
+## Feature-Erweiterungen
 
-Im Protokoll-Tab werden fuer drei Felder visuelle 1-5-Skalen hinzugefuegt:
+### 1. Mitarbeitergespraeche in Team > Mitarbeiter-Info integrieren
 
-| Feld | Skala | Labels |
-|------|-------|--------|
-| Zufriedenheit | 1-5 Sterne | Sehr unzufrieden -- Sehr zufrieden |
-| Arbeitsbelastung | 1-5 | Zu wenig -- Ueberlastet |
-| Work-Life-Balance | 1-5 | Sehr schlecht -- Sehr gut |
+Aktuell sind Mitarbeitergespraeche (Beantragen, Historie) nur unter `/employee` (EmployeesView) sichtbar. Der Wunsch ist, sie auch im Tab "Mitarbeiter-Info" in `TimeTrackingView.tsx` verfuegbar zu machen.
 
-Umsetzung: Klickbare Icon-Reihe (z.B. gefuellte/leere Kreise). Die Werte werden als `wellbeing_mood_rating`, `wellbeing_workload_rating`, `wellbeing_balance_rating` im `protocol_data`-JSONB gespeichert.
+**Loesung:**
+- In `EmployeeInfoTab.tsx` einen neuen Abschnitt "Mitarbeitergespraeche" hinzufuegen mit:
+  - Button "Gespraech beantragen" (oeffnet `EmployeeMeetingRequestDialog`)
+  - `EmployeeMeetingHistory` mit `employeeId={user.id}` und `showFilters={false}`
+- Die Komponente benoetigt Zugriff auf `useAuth()` fuer die User-ID
 
-**Datei:** `EmployeeMeetingProtocol.tsx` (neue Sub-Komponente `RatingScale`)
-
----
-
-### 4. Action Items mit dem globalen Aufgaben-System verknuepfen
-
-Beim Erstellen eines Action Items wird optional eine Aufgabe in der `tasks`-Tabelle erstellt:
-
-- Checkbox "Als Aufgabe anlegen" im Action-Item-Formular
-- Wenn aktiviert: Aufgabe mit Titel = Action-Item-Beschreibung, Deadline = Faelligkeitsdatum, zugewiesen an den `assigned_to`-User
-- Die `employee_meeting_action_items`-Tabelle bekommt ein neues Feld `task_id` (UUID, nullable) fuer die Verknuepfung
-- Status-Sync: Wenn die Aufgabe erledigt wird, wird auch das Action Item als "completed" markiert (oder umgekehrt)
-
-**Dateien:** SQL-Migration (`task_id`-Spalte), `EmployeeMeetingProtocol.tsx`
+**Dateien:** `EmployeeInfoTab.tsx`
 
 ---
 
-### 5. Auto-Save-Indikator sichtbar machen
+### 2. Absagen und Umterminieren von Gespraechen (Punkt 3)
 
-Aktuell speichert der Editor alle 30 Sekunden, aber es gibt keinen visuellen Hinweis. Ergaenzungen:
+Aktuell gibt es keine Moeglichkeit, ein geplantes Gespraech abzusagen oder umzuterminieren.
 
-- Kleine Badge/Text im Header: "Gespeichert um HH:MM" / "Speichere..." / "Ungespeicherte Aenderungen"
-- Farblicher Indikator (gruen = gespeichert, gelb = ungespeichert, grau = speichere)
-- Debounced Auto-Save (3 Sekunden nach letzter Aenderung statt fixer 30s)
+**Loesung -- Neue Aktionen im Protokoll-Header (`EmployeeMeetingProtocol.tsx`):**
 
-**Datei:** `EmployeeMeetingProtocol.tsx`
+**Fuer Abgeordnete/Vorgesetzte (conducted_by):**
+- Button "Absagen" bei Status `scheduled`: Setzt Status auf `cancelled`, fragt nach Begruendung, sendet Benachrichtigung an Mitarbeiter
+- Button "Umterminieren": Oeffnet den `EmployeeMeetingScheduler` mit neuem Datum, setzt alten Termin auf `rescheduled`
 
----
+**Fuer Mitarbeiter (employee_id):**
+- Button "Absagen" bei Status `scheduled`: Setzt Status auf `cancelled_by_employee`, erfordert Begruendung, sendet Benachrichtigung an Vorgesetzten
+- Button "Umterminierung anfragen": Erstellt eine Benachrichtigung/Anfrage an den Vorgesetzten mit Begruendung
 
-### 6. Gespraechsdetail-Seite verbessern
+**DB-Aenderung:**
+- Neue erlaubte Status-Werte fuer `employee_meetings.status`: `cancelled`, `cancelled_by_employee`, `rescheduled` (per ALTER TABLE ... DROP CONSTRAINT + neues CHECK oder Entfernen des CHECK-Constraints, falls vorhanden)
+- Neue Spalte `cancellation_reason` (TEXT, nullable) auf `employee_meetings`
 
-Die Seite `EmployeeMeetingDetail.tsx` wird ueberarbeitet:
-
-- Padding an das Sticky-Layout anpassen (analog zu CaseFiles)
-- Zurueck-Button entfernen (Navigation ueber Sidebar)
-- Breadcrumb oder kontextuelle Info im Header anzeigen (Mitarbeitername + Datum)
-- Loading-State verbessern (Skeleton statt Fullscreen-Spinner)
-
-**Datei:** `EmployeeMeetingDetail.tsx`
+**Dateien:** SQL-Migration, `EmployeeMeetingProtocol.tsx`, `EmployeeMeetingHistory.tsx` (neue Status-Labels/-Badges)
 
 ---
 
-### 7. Gespraechshistorie zugaenglich machen
+### 3. Benachrichtigungen fuer alle Meeting-Ereignisse (Punkt 5)
 
-Die `EmployeeMeetingHistory`-Komponente ist im Admin-Bereich eingebettet (Zeile 1802), aber fuer Mitarbeiter nicht erreichbar. Aenderungen:
+Aktuell werden nur bei der Terminierung und Ablehnung von Anfragen Benachrichtigungen gesendet. Es fehlen:
 
-- In der Mitarbeiter-Selbstansicht (nicht-Admin) einen Tab oder Abschnitt "Meine Gespraeche" hinzufuegen, der die `EmployeeMeetingHistory` mit `employeeId={user.id}` rendert
-- Klick auf eine Zeile oeffnet das Gespraech via `navigate(/employee-meeting/...)`
-- Mitarbeiter sehen alle eigenen Gespraeche (scheduled + in_progress + completed), nicht nur abgeschlossene
+| Ereignis | Empfaenger | Nachricht |
+|----------|-----------|-----------|
+| Gespraech geplant | Mitarbeiter | Bereits vorhanden |
+| Gespraech gestartet | Mitarbeiter | "Ihr Mitarbeitergespraech wurde gestartet" |
+| Gespraech abgeschlossen | Mitarbeiter | "Ihr Mitarbeitergespraech wurde abgeschlossen" |
+| Gespraech abgesagt (Vorgesetzter) | Mitarbeiter | "Ihr Gespraech am XX wurde abgesagt. Grund: ..." |
+| Gespraech abgesagt (Mitarbeiter) | Vorgesetzter | "MA XY hat das Gespraech abgesagt. Grund: ..." |
+| Umterminierung angefragt | Vorgesetzter | "MA XY moechte das Gespraech umterminieren" |
+| Gespraechwunsch eingereicht | Vorgesetzter | Bereits vorhanden |
+| Gespraechwunsch abgelehnt | Mitarbeiter | Bereits vorhanden |
 
-**Datei:** `EmployeesView.tsx` (Mitarbeiter-Selbstansicht, ca. Zeile 1292-1340)
-
----
-
-### 8. Abschluss-Workflow verbessern
-
-Wenn ein Gespraech als "abgeschlossen" markiert wird:
-
-- `completed_at`-Timestamp setzen (passiert bereits)
-- `employee_settings.last_meeting_date` aktualisieren (fehlt beim Abschluss -- wird nur beim Planen gesetzt)
-- Naechstes Gespraech automatisch berechnen und in `employee_settings` aktualisieren
-- Benachrichtigung an den Mitarbeiter senden
-- Alle offenen Action Items markieren (Warnung, falls noch offene Items existieren)
-
-**Datei:** `EmployeeMeetingProtocol.tsx` (Funktion `markAsCompleted`)
-
----
-
-### 9. Status-Uebergaenge im Protokoll
-
-Aktuell gibt es keinen Button, um ein Gespraech von "scheduled" auf "in_progress" zu setzen. Ergaenzung:
-
-- Button "Gespraech starten" im Header, wenn Status = "scheduled" (setzt auf "in_progress")
-- Button "Gespraech abschliessen" im Header, wenn Status = "in_progress" (setzt auf "completed")
-- Visueller Status-Indikator mit Fortschrittsleiste (3 Schritte: Geplant -> In Durchfuehrung -> Abgeschlossen)
+**Loesung:** In `EmployeeMeetingProtocol.tsx` bei `updateStatus()` und den neuen Absage-/Umterminierungs-Funktionen jeweils `supabase.rpc("create_notification", ...)` aufrufen.
 
 **Datei:** `EmployeeMeetingProtocol.tsx`
 
@@ -147,16 +89,16 @@ Aktuell gibt es keinen Button, um ein Gespraech von "scheduled" auf "in_progress
 
 ### SQL-Migration
 
-1. RLS-Policy auf `employee_meetings` aendern: Mitarbeiter sehen ALLE eigenen Gespraeche + conducted_by-User hat vollen Zugriff
-2. Spalte `task_id` (UUID, nullable, FK auf tasks) auf `employee_meeting_action_items` hinzufuegen
+1. Spalte `cancellation_reason` (TEXT, nullable) auf `employee_meetings` hinzufuegen
+2. Status-CHECK-Constraint erweitern um `cancelled`, `cancelled_by_employee`, `rescheduled` (oder Constraint entfernen, falls er die Werte einschraenkt)
 
 ### Dateien
 
 | Datei | Aenderungen |
 |-------|-------------|
-| SQL-Migration | RLS-Fix + task_id-Spalte |
-| `EmployeeMeetingProtocol.tsx` | Rich-Text-Editor, Bewertungsskalen, Auto-Save-Indikator, Status-Uebergaenge, Abschluss-Workflow, Action-Item-Task-Link |
-| `EmployeeMeetingDetail.tsx` | Layout-Fix, Zurueck-Button entfernen, Padding |
-| `EmployeesView.tsx` | Gespraechshistorie fuer Mitarbeiter-Selbstansicht |
-| `EmployeeMeetingHistory.tsx` | Anzeige auch fuer nicht-abgeschlossene Gespraeche |
+| SQL-Migration | cancellation_reason + Status-Erweiterung |
+| `EmployeeMeetingProtocol.tsx` | FK-Join-Fix (separate Profile-Queries), Absagen-/Umterminierungs-Buttons, Benachrichtigungen bei Status-Wechsel |
+| `EmployeeMeetingDetail.tsx` | `.single()` durch `.maybeSingle()` ersetzen |
+| `EmployeeInfoTab.tsx` | Mitarbeitergespraeche-Bereich mit Request-Dialog + Historie einbetten |
+| `EmployeeMeetingHistory.tsx` | Neue Status-Labels (cancelled, rescheduled) in Badges |
 
