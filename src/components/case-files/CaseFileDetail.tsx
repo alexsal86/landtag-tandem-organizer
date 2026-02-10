@@ -121,6 +121,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
             assignedTopics={assignedTopics}
             onTopicsChange={setAssignedTopics}
             onAddContact={() => setShowAddContact(true)}
+            onAssignUser={(userId) => details.updateAssignedTo(userId)}
           />
         </div>
 
@@ -145,6 +146,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
             tasks={tasks}
             caseFileId={caseFileId}
             onUpdateCurrentStatus={details.updateCurrentStatus}
+            onUpdateProcessingStatus={details.updateProcessingStatus}
             onUpdateRisksOpportunities={details.updateRisksOpportunities}
             onCompleteTask={details.completeTask}
             onAddTask={details.addTask}

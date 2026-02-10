@@ -1403,6 +1403,77 @@ export type Database = {
           },
         ]
       }
+      case_file_processing_statuses: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          label: string
+          name: string
+          order_index: number | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          label: string
+          name: string
+          order_index?: number | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string
+          name?: string
+          order_index?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      case_file_status_history: {
+        Row: {
+          case_file_id: string
+          content: string | null
+          created_at: string
+          id: string
+          user_display_name: string | null
+          user_id: string
+        }
+        Insert: {
+          case_file_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          user_display_name?: string | null
+          user_id: string
+        }
+        Update: {
+          case_file_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          user_display_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_file_status_history_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_file_tasks: {
         Row: {
           case_file_id: string
@@ -1572,6 +1643,7 @@ export type Database = {
           id: string
           is_private: boolean | null
           priority: string | null
+          processing_status: string | null
           reference_number: string | null
           risks_and_opportunities: Json | null
           start_date: string | null
@@ -1594,6 +1666,7 @@ export type Database = {
           id?: string
           is_private?: boolean | null
           priority?: string | null
+          processing_status?: string | null
           reference_number?: string | null
           risks_and_opportunities?: Json | null
           start_date?: string | null
@@ -1616,6 +1689,7 @@ export type Database = {
           id?: string
           is_private?: boolean | null
           priority?: string | null
+          processing_status?: string | null
           reference_number?: string | null
           risks_and_opportunities?: Json | null
           start_date?: string | null
@@ -8333,6 +8407,7 @@ export type Database = {
           due_date: string | null
           id: string
           meeting_id: string | null
+          parent_task_id: string | null
           pending_for_jour_fixe: boolean | null
           priority: string
           progress: number | null
@@ -8351,6 +8426,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           meeting_id?: string | null
+          parent_task_id?: string | null
           pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
@@ -8369,6 +8445,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           meeting_id?: string | null
+          parent_task_id?: string | null
           pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
@@ -8391,6 +8468,13 @@ export type Database = {
             columns: ["meeting_id"]
             isOneToOne: false
             referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
           {

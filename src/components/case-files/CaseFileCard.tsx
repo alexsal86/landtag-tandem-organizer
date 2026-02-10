@@ -1,5 +1,6 @@
 import { CaseFile, CASE_STATUSES } from "@/hooks/useCaseFiles";
 import { CaseFileType } from "@/hooks/useCaseFileTypes";
+import { useCaseFileProcessingStatuses } from "@/hooks/useCaseFileProcessingStatuses";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, FileText, CheckSquare, Calendar, Mail, Clock, Tag } from "lucide-react";
@@ -18,6 +19,7 @@ interface CaseFileCardProps {
 export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }: CaseFileCardProps) {
   const statusConfig = CASE_STATUSES.find(s => s.value === caseFile.status);
   const typeConfig = caseFileTypes.find(t => t.name === caseFile.case_type);
+  const { statuses: processingStatuses } = useCaseFileProcessingStatuses();
 
   const getIconComponent = (iconName?: string | null): LucideIcon | null => {
     if (!iconName) return null;
@@ -27,19 +29,17 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
 
   const TypeIcon = getIconComponent(typeConfig?.icon);
 
+  const processingStatus = processingStatuses.find(
+    (s) => s.name === (caseFile as any).processing_status
+  );
+  const ProcessingIcon = getIconComponent(processingStatus?.icon);
+
   const priorityColors: Record<string, string> = {
     low: "text-gray-500",
     medium: "text-blue-500",
     high: "text-orange-500",
     urgent: "text-red-500",
   };
-
-  const totalLinked = 
-    (caseFile.contacts_count || 0) + 
-    (caseFile.documents_count || 0) + 
-    (caseFile.tasks_count || 0) + 
-    (caseFile.appointments_count || 0) + 
-    (caseFile.letters_count || 0);
 
   if (viewMode === "list") {
     return (
@@ -64,27 +64,15 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span>{caseFile.contacts_count || 0}</span>
-                <FileText className="h-4 w-4 ml-2" />
-                <span>{caseFile.documents_count || 0}</span>
-                <CheckSquare className="h-4 w-4 ml-2" />
-                <span>{caseFile.tasks_count || 0}</span>
-              </div>
-              <Badge 
-                variant="secondary"
-                style={{ 
-                  backgroundColor: typeConfig?.color ? `${typeConfig.color}20` : undefined,
-                  borderColor: typeConfig?.color,
-                  color: typeConfig?.color
-                }}
-                className="border"
-              >
-                {TypeIcon && <TypeIcon className="h-3 w-3 mr-1" />}
-                {typeConfig?.label || caseFile.case_type}
-              </Badge>
+            <div className="flex items-center gap-2">
+              {processingStatus && (
+                <Badge
+                  style={{ backgroundColor: processingStatus.color || undefined, color: '#fff' }}
+                >
+                  {ProcessingIcon && <ProcessingIcon className="h-3 w-3 mr-1" />}
+                  {processingStatus.label}
+                </Badge>
+              )}
               <Badge className={cn("text-white", statusConfig?.color || "bg-gray-500")}>
                 {statusConfig?.label || caseFile.status}
               </Badge>
@@ -121,6 +109,15 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
         )}
 
         <div className="flex items-center gap-2 flex-wrap">
+          {processingStatus && (
+            <Badge
+              style={{ backgroundColor: processingStatus.color || undefined, color: '#fff' }}
+              className="text-xs"
+            >
+              {ProcessingIcon && <ProcessingIcon className="h-3 w-3 mr-1" />}
+              {processingStatus.label}
+            </Badge>
+          )}
           <Badge 
             variant="outline"
             style={{ 

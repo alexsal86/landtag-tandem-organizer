@@ -19,6 +19,7 @@ export interface CaseFileContact {
     organization: string | null;
     position: string | null;
     avatar_url: string | null;
+    contact_type: string | null;
   };
 }
 
@@ -169,7 +170,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         .from('case_file_contacts')
         .select(`
           *,
-          contact:contacts(id, name, email, phone, organization, position, avatar_url)
+          contact:contacts(id, name, email, phone, organization, position, avatar_url, contact_type)
         `)
         .eq('case_file_id', caseFileId)
         .order('created_at', { ascending: false });
@@ -726,6 +727,44 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     }
   };
 
+  const updateAssignedTo = async (userId: string | null) => {
+    if (!caseFileId) return false;
+
+    try {
+      const { error } = await supabase
+        .from('case_files')
+        .update({ assigned_to: userId } as any)
+        .eq('id', caseFileId);
+
+      if (error) throw error;
+      await fetchCaseFile();
+      toast({ title: "Zuständiger Bearbeiter aktualisiert" });
+      return true;
+    } catch (error) {
+      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
+      return false;
+    }
+  };
+
+  const updateProcessingStatus = async (status: string | null) => {
+    if (!caseFileId) return false;
+
+    try {
+      const { error } = await supabase
+        .from('case_files')
+        .update({ processing_status: status } as any)
+        .eq('id', caseFileId);
+
+      if (error) throw error;
+      await fetchCaseFile();
+      toast({ title: "Bearbeitungsstatus aktualisiert" });
+      return true;
+    } catch (error) {
+      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (caseFileId) {
       fetchAll();
@@ -761,5 +800,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     updateCurrentStatus,
     updateRisksOpportunities,
     completeTask,
+    updateAssignedTo,
+    updateProcessingStatus,
   };
 };
