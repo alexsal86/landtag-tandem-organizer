@@ -1,140 +1,162 @@
 
 
-# Plan: FallAkten-Detailansicht -- 13 Verbesserungen
+# Plan: Mitarbeitergespraeche -- Vollstaendige Ueberarbeitung
 
-## 1. Zustaendige Person in der Uebersichts-Card anzeigen
+## Analyse: Warum funktioniert aktuell nichts?
 
-In `CaseFileCard.tsx` den `assigned_to`-Wert auslesen und den Namen des zugewiesenen Benutzers anzeigen. Da die Card keinen Join auf Profiles hat, wird ein kleiner Hook oder eine Inline-Abfrage benoetigt. Pragmatischer Ansatz: Im `useCaseFiles`-Hook das `assigned_to` als UUID belassen und in der Card-Komponente ueber einen kleinen Avatar+Name-Bereich anzeigen. Dafuer wird ein neuer lightweight Hook `useUserDisplay(userId)` erstellt, der gecached den Display-Namen und Avatar laedt.
+### Kritisches Problem: RLS-Policy blockiert Zugriff
 
-**Dateien:** `CaseFileCard.tsx`, neuer Hook `useUserDisplay.tsx`
+Die RLS-Policy auf `employee_meetings` erlaubt Mitarbeitern NUR den Zugriff auf **abgeschlossene** Gespraeche:
 
----
+```
+Employees can view their own completed meetings:
+  (employee_id = auth.uid()) AND (status = 'completed')
+```
 
-## 2. Abstand zur Navigation und zum rechten Seitenrand korrigieren
+Das bedeutet: Wenn ein Gespraech geplant wird (`status = 'scheduled'`), kann der Mitarbeiter es **nicht oeffnen**. Auch waehrend der Durchfuehrung (`status = 'in_progress'`) hat der Mitarbeiter keinen Zugriff. Der Vorgesetzte wiederum braucht eine Zuordnung ueber `employee_settings.admin_id` -- falls diese fehlt, kann auch er nichts sehen.
 
-In `CaseFilesView.tsx` hat der Container bereits `p-6`, aber wenn die Detailansicht angezeigt wird (Zeile 144-150), wird `CaseFileDetail` direkt returned -- innerhalb desselben `p-6`-Containers. Das Problem: Beim Return der Detailansicht (Zeile 144-150) fehlt das `p-6`, weil der fruehe Return VOR dem `div` mit `p-6` passiert.
-
-**Loesung:** Den fruehen Return fuer die Detailansicht ebenfalls in ein `div` mit passendem Padding wrappen: `<div className="space-y-6 p-6">`.
-
-**Datei:** `CaseFilesView.tsx`
-
----
-
-## 3. Card "Zustaendig" an erste Stelle in der linken Sidebar
-
-In `CaseFileLeftSidebar.tsx` die Reihenfolge der Cards aendern: "Zustaendig" (derzeit 3. Position, Zeile 169-184) nach ganz oben verschieben, vor "Personen".
-
-**Datei:** `CaseFileLeftSidebar.tsx`
+**Loesung:** Die RLS-Policy muss erweitert werden, damit Mitarbeiter ALLE ihre eigenen Gespraeche sehen koennen (scheduled, in_progress, completed). Zusaetzlich sollte der `conducted_by`-User immer Zugriff haben.
 
 ---
 
-## 4. Beteiligte korrekt nach Personen und Institutionen aufteilen
+## Umsetzungsplan
 
-Die Logik in `CaseFileLeftSidebar.tsx` (Zeile 63-68) filtert bereits nach `contact_type`, aber das `contact`-Objekt im Interface hat bereits `contact_type`. Die Filterlogik sieht korrekt aus. Problem: Im `useCaseFileDetails`-Hook wird `contact_type` moeglicherweise nicht mit-abgefragt. Pruefen und sicherstellen, dass der `contacts`-Select auch `contact_type` enthaelt. 
+### 1. RLS-Policies korrigieren (kritisch)
 
-Im Interface (Zeile 14-24 von `useCaseFileDetails.tsx`) ist `contact_type: string | null` bereits vorhanden. Der Select-Query muss gepreuft werden, ob `contact_type` im Join enthalten ist.
+Alte Policy `Employees can view their own completed meetings` ersetzen durch:
 
-**Datei:** `useCaseFileDetails.tsx` (Query pruefen), `CaseFileLeftSidebar.tsx` (Institutions-Card immer anzeigen, nicht nur wenn > 0)
+**Neue Policies auf `employee_meetings`:**
+- `Employees can view their own meetings` (SELECT): `employee_id = auth.uid()`
+- `Employees can update their meeting data` (UPDATE): `employee_id = auth.uid()` -- damit sie Vorbereitung und Protokoll bearbeiten koennen
+- `Conductors can manage their meetings` (ALL): `conducted_by = auth.uid()` -- als Backup neben der admin_id-Policy
 
----
+So kann jeder Beteiligte das Gespraech oeffnen, bearbeiten und einsehen -- unabhaengig vom Status.
 
-## 5. Metadaten: "Erstellt" unter "Aktualisiert"
-
-In `CaseFileLeftSidebar.tsx` die Reihenfolge umdrehen: Zuerst "Aktualisiert: xxx", dann darunter "Erstellt: xxx".
-
-**Datei:** `CaseFileLeftSidebar.tsx` (Zeilen 238-245 tauschen)
-
----
-
-## 6. Suchfeld neben die Buttonleiste in der Chronologie
-
-In `CaseFileUnifiedTimeline.tsx` das Suchfeld (Zeile 194-203) in dieselbe Zeile wie die Tabs (Zeile 184-192) verschieben. Layout: Tabs links, Suchfeld rechts -- in einer `flex`-Row mit `items-center gap-2`.
-
-**Datei:** `CaseFileUnifiedTimeline.tsx`
+**Datei:** SQL-Migration
 
 ---
 
-## 7. Chronologie-Punkte neu layouten: Icon + Titel, darunter Beschreibung, darunter Datum (Uhrzeit im Tooltip)
+### 2. Protokoll-Editor: Textarea durch SimpleRichTextEditor ersetzen
 
-Aktuell (Zeile 234-249): Icon + Datum in einer Zeile, Titel darunter, Beschreibung darunter.
+Aktuell nutzt `EmployeeMeetingProtocol.tsx` ueberall `Textarea`-Komponenten (ca. 15 Stueck). Diese werden durch `SimpleRichTextEditor` ersetzt fuer:
 
-Neues Layout:
-- Zeile 1: Icon + Titel (font-medium)
-- Zeile 2 (eingerueckt auf Titelhoehe): Beschreibung (text-xs, muted)
-- Zeile 3 (eingerueckt): Datum ohne Uhrzeit, Uhrzeit nur im Tooltip
+- Alle Protokoll-Felder (Stimmung, Arbeitsbelastung, Work-Life-Balance, etc.)
+- Vorbereitungs-Notizen (Mitarbeiter + Vorgesetzter)
+- Private Notizen
+- Action-Item-Beschreibungen
 
-Verwendung von `Tooltip` aus `@radix-ui/react-tooltip` fuer die Uhrzeit.
+Die gespeicherten Daten werden als HTML in `protocol_data` (JSONB) abgelegt. Die Anzeige im Readonly-Modus nutzt `RichTextDisplay`.
 
-**Datei:** `CaseFileUnifiedTimeline.tsx`
-
----
-
-## 8. Aktueller Stand: Rich-Text-Editor statt Textarea
-
-In `CaseFileCurrentStatus.tsx` das `Textarea` (Zeile 160-166) durch `SimpleRichTextEditor` ersetzen. Die Anzeige des gespeicherten Inhalts muss dann `dangerouslySetInnerHTML` oder `RichTextDisplay` verwenden.
-
-**Datei:** `CaseFileCurrentStatus.tsx`
+**Datei:** `EmployeeMeetingProtocol.tsx`
 
 ---
 
-## 9. Status- und Prioritaets-Badges aus dem Header entfernen
+### 3. Bewertungsskalen hinzufuegen
 
-In `CaseFileDetailHeader.tsx` die Badges fuer Status und Prioritaet (Zeile 119-141) entfernen. Nur das Processing-Status-Badge und die Quick-Action-Buttons bleiben.
+Im Protokoll-Tab werden fuer drei Felder visuelle 1-5-Skalen hinzugefuegt:
 
-**Datei:** `CaseFileDetailHeader.tsx`
+| Feld | Skala | Labels |
+|------|-------|--------|
+| Zufriedenheit | 1-5 Sterne | Sehr unzufrieden -- Sehr zufrieden |
+| Arbeitsbelastung | 1-5 | Zu wenig -- Ueberlastet |
+| Work-Life-Balance | 1-5 | Sehr schlecht -- Sehr gut |
 
----
+Umsetzung: Klickbare Icon-Reihe (z.B. gefuellte/leere Kreise). Die Werte werden als `wellbeing_mood_rating`, `wellbeing_workload_rating`, `wellbeing_balance_rating` im `protocol_data`-JSONB gespeichert.
 
-## 10. Dokument-Link zum Oeffnen hinzufuegen
-
-In der Chronologie (`CaseFileUnifiedTimeline.tsx`) und/oder im Dokument-Dialog: Beim Klick auf ein Dokument-Item soll das Dokument geoeffnet werden. Das `CaseFileDocument`-Interface hat bereits `document.id` und `document.file_name`. Ein Link oder Button zum Download/Oeffnen wird hinzugefuegt.
-
-Loesung: Dokument-Titel in der Timeline als klickbaren Link rendern, der die Datei aus dem Storage-Bucket oeffnet. Dafuer muss die `file_path` im Document-Interface ergaenzt werden (oder aus der `documents`-Tabelle geladen werden).
-
-**Dateien:** `CaseFileUnifiedTimeline.tsx`, `useCaseFileDetails.tsx` (file_path im document-Select ergaenzen)
+**Datei:** `EmployeeMeetingProtocol.tsx` (neue Sub-Komponente `RatingScale`)
 
 ---
 
-## 11. Beschreibungsfeld fuer Aufgaben in der FallAkte
+### 4. Action Items mit dem globalen Aufgaben-System verknuepfen
 
-In `CaseFileNextSteps.tsx` soll neben dem Aufgabentitel auch eine kurze Beschreibung angezeigt werden koennen. Das `task`-Interface im Hook hat derzeit kein `description`-Feld. Dieses wird im Select-Query ergaenzt und in der UI angezeigt.
+Beim Erstellen eines Action Items wird optional eine Aufgabe in der `tasks`-Tabelle erstellt:
 
-**Dateien:** `useCaseFileDetails.tsx` (description im task-Select), `CaseFileNextSteps.tsx` (Beschreibung anzeigen), Interface `CaseFileTask` erweitern
+- Checkbox "Als Aufgabe anlegen" im Action-Item-Formular
+- Wenn aktiviert: Aufgabe mit Titel = Action-Item-Beschreibung, Deadline = Faelligkeitsdatum, zugewiesen an den `assigned_to`-User
+- Die `employee_meeting_action_items`-Tabelle bekommt ein neues Feld `task_id` (UUID, nullable) fuer die Verknuepfung
+- Status-Sync: Wenn die Aufgabe erledigt wird, wird auch das Action Item als "completed" markiert (oder umgekehrt)
 
----
-
-## 12. Tooltip bei Hover ueber Chronologie-Icons: Wer hat wann hinzugefuegt
-
-Die Timeline-Items brauchen Informationen ueber den Ersteller. Fuer Notes, Documents, Tasks etc. gibt es `created_at`, aber keinen `user_id` / `created_by`. 
-
-Pragmatischer Ansatz: Fuer manuelle Timeline-Eintraege den `user_id` aus der Tabelle laden. Fuer die anderen Items (Notes, Documents etc.) den Ersteller aus den jeweiligen Tabellen laden (falls dort ein `user_id` vorhanden ist).
-
-Die Timeline-Items werden um ein `created_by_name`-Feld erweitert. Beim Hover ueber das Dot-Icon wird ein Tooltip mit "Hinzugefuegt von [Name] am [Datum]" angezeigt.
-
-**Dateien:** `CaseFileUnifiedTimeline.tsx` (Tooltip), `useCaseFileDetails.tsx` (user info mit-laden), Interface erweitern
+**Dateien:** SQL-Migration (`task_id`-Spalte), `EmployeeMeetingProtocol.tsx`
 
 ---
 
-## 13. Notiz hinzufuegen mit Rich-Text-Editor
+### 5. Auto-Save-Indikator sichtbar machen
 
-In `CaseFileNotesTab.tsx` das `Textarea` fuer neue Notizen und zum Bearbeiten durch `SimpleRichTextEditor` ersetzen. Die Anzeige der Notiz-Inhalte mit `RichTextDisplay` oder `dangerouslySetInnerHTML`.
+Aktuell speichert der Editor alle 30 Sekunden, aber es gibt keinen visuellen Hinweis. Ergaenzungen:
 
-**Datei:** `CaseFileNotesTab.tsx`
+- Kleine Badge/Text im Header: "Gespeichert um HH:MM" / "Speichere..." / "Ungespeicherte Aenderungen"
+- Farblicher Indikator (gruen = gespeichert, gelb = ungespeichert, grau = speichere)
+- Debounced Auto-Save (3 Sekunden nach letzter Aenderung statt fixer 30s)
+
+**Datei:** `EmployeeMeetingProtocol.tsx`
+
+---
+
+### 6. Gespraechsdetail-Seite verbessern
+
+Die Seite `EmployeeMeetingDetail.tsx` wird ueberarbeitet:
+
+- Padding an das Sticky-Layout anpassen (analog zu CaseFiles)
+- Zurueck-Button entfernen (Navigation ueber Sidebar)
+- Breadcrumb oder kontextuelle Info im Header anzeigen (Mitarbeitername + Datum)
+- Loading-State verbessern (Skeleton statt Fullscreen-Spinner)
+
+**Datei:** `EmployeeMeetingDetail.tsx`
+
+---
+
+### 7. Gespraechshistorie zugaenglich machen
+
+Die `EmployeeMeetingHistory`-Komponente ist im Admin-Bereich eingebettet (Zeile 1802), aber fuer Mitarbeiter nicht erreichbar. Aenderungen:
+
+- In der Mitarbeiter-Selbstansicht (nicht-Admin) einen Tab oder Abschnitt "Meine Gespraeche" hinzufuegen, der die `EmployeeMeetingHistory` mit `employeeId={user.id}` rendert
+- Klick auf eine Zeile oeffnet das Gespraech via `navigate(/employee-meeting/...)`
+- Mitarbeiter sehen alle eigenen Gespraeche (scheduled + in_progress + completed), nicht nur abgeschlossene
+
+**Datei:** `EmployeesView.tsx` (Mitarbeiter-Selbstansicht, ca. Zeile 1292-1340)
+
+---
+
+### 8. Abschluss-Workflow verbessern
+
+Wenn ein Gespraech als "abgeschlossen" markiert wird:
+
+- `completed_at`-Timestamp setzen (passiert bereits)
+- `employee_settings.last_meeting_date` aktualisieren (fehlt beim Abschluss -- wird nur beim Planen gesetzt)
+- Naechstes Gespraech automatisch berechnen und in `employee_settings` aktualisieren
+- Benachrichtigung an den Mitarbeiter senden
+- Alle offenen Action Items markieren (Warnung, falls noch offene Items existieren)
+
+**Datei:** `EmployeeMeetingProtocol.tsx` (Funktion `markAsCompleted`)
+
+---
+
+### 9. Status-Uebergaenge im Protokoll
+
+Aktuell gibt es keinen Button, um ein Gespraech von "scheduled" auf "in_progress" zu setzen. Ergaenzung:
+
+- Button "Gespraech starten" im Header, wenn Status = "scheduled" (setzt auf "in_progress")
+- Button "Gespraech abschliessen" im Header, wenn Status = "in_progress" (setzt auf "completed")
+- Visueller Status-Indikator mit Fortschrittsleiste (3 Schritte: Geplant -> In Durchfuehrung -> Abgeschlossen)
+
+**Datei:** `EmployeeMeetingProtocol.tsx`
 
 ---
 
 ## Technische Zusammenfassung
 
+### SQL-Migration
+
+1. RLS-Policy auf `employee_meetings` aendern: Mitarbeiter sehen ALLE eigenen Gespraeche + conducted_by-User hat vollen Zugriff
+2. Spalte `task_id` (UUID, nullable, FK auf tasks) auf `employee_meeting_action_items` hinzufuegen
+
+### Dateien
+
 | Datei | Aenderungen |
 |-------|-------------|
-| `CaseFileCard.tsx` | Zustaendige Person mit Name/Avatar anzeigen |
-| `useUserDisplay.tsx` (neu) | Kleiner Hook zum Laden von User-Display-Infos |
-| `CaseFilesView.tsx` | Padding fuer Detailansicht fixen |
-| `CaseFileLeftSidebar.tsx` | "Zustaendig" nach oben, Metadaten-Reihenfolge, Institutionen immer zeigen |
-| `CaseFileUnifiedTimeline.tsx` | Suchfeld neben Tabs, neues Item-Layout, Dokument-Links, Tooltip fuer Ersteller |
-| `CaseFileCurrentStatus.tsx` | SimpleRichTextEditor statt Textarea |
-| `CaseFileDetailHeader.tsx` | Status/Prioritaet-Badges entfernen |
-| `CaseFileNextSteps.tsx` | Beschreibung bei Aufgaben anzeigen |
-| `CaseFileNotesTab.tsx` | SimpleRichTextEditor fuer Notizen |
-| `useCaseFileDetails.tsx` | file_path + description im Select, user-info fuer Timeline |
+| SQL-Migration | RLS-Fix + task_id-Spalte |
+| `EmployeeMeetingProtocol.tsx` | Rich-Text-Editor, Bewertungsskalen, Auto-Save-Indikator, Status-Uebergaenge, Abschluss-Workflow, Action-Item-Task-Link |
+| `EmployeeMeetingDetail.tsx` | Layout-Fix, Zurueck-Button entfernen, Padding |
+| `EmployeesView.tsx` | Gespraechshistorie fuer Mitarbeiter-Selbstansicht |
+| `EmployeeMeetingHistory.tsx` | Anzeige auch fuer nicht-abgeschlossene Gespraeche |
 
