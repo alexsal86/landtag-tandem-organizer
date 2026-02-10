@@ -4,6 +4,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, Download, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { isEmlFile, parseEmlFile, type EmailMetadata } from '@/utils/emlParser';
+import { EmailPreviewCard } from './EmailPreviewCard';
+import { EmailPreviewDialog } from './EmailPreviewDialog';
 
 interface UploadedFile {
   id?: string;
@@ -14,6 +17,7 @@ interface UploadedFile {
   uploaded_by?: string;
   uploader_name?: string;
   created_at?: string;
+  email_metadata?: EmailMetadata | null;
 }
 
 interface DecisionFileUploadProps {
@@ -22,6 +26,11 @@ interface DecisionFileUploadProps {
   canUpload?: boolean;
   mode?: 'view' | 'creation';
   onFilesSelected?: (files: File[]) => void;
+}
+
+interface SelectedFileEntry {
+  file: File;
+  emailMetadata?: EmailMetadata | null;
 }
 
 export function DecisionFileUpload({ 
@@ -33,7 +42,11 @@ export function DecisionFileUpload({
 }: DecisionFileUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<SelectedFileEntry[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [previewDialog, setPreviewDialog] = useState<{ open: boolean; filePath: string; fileName: string }>({
+    open: false, filePath: '', fileName: ''
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -53,7 +66,6 @@ export function DecisionFileUpload({
 
       if (error) throw error;
 
-      // Get uploader profiles separately
       const uploaderIds = data?.map(f => f.uploaded_by).filter(Boolean) || [];
       const { data: profiles } = await supabase
         .from('profiles')
@@ -66,11 +78,12 @@ export function DecisionFileUpload({
         id: file.id,
         file_name: file.file_name,
         file_path: file.file_path,
-        file_size: file.file_size,
+        file_size: file.file_size ?? 0,
         file_type: file.file_type,
         uploaded_by: file.uploaded_by,
         uploader_name: profileMap.get(file.uploaded_by)?.display_name || 'Unbekannt',
-        created_at: file.created_at
+        created_at: file.created_at,
+        email_metadata: file.email_metadata as unknown as EmailMetadata | null,
       })) || [];
 
       setFiles(formattedFiles);
@@ -79,15 +92,33 @@ export function DecisionFileUpload({
     }
   };
 
+  const processFiles = async (fileList: File[]) => {
+    const entries: SelectedFileEntry[] = [];
+    for (const file of fileList) {
+      if (isEmlFile(file)) {
+        try {
+          const parsed = await parseEmlFile(file);
+          entries.push({ file, emailMetadata: parsed.metadata });
+        } catch (e) {
+          console.error('EML parse error:', e);
+          entries.push({ file, emailMetadata: null });
+        }
+      } else {
+        entries.push({ file, emailMetadata: null });
+      }
+    }
+    return entries;
+  };
+
   const handleFileSelect = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
     if (!canUpload) return;
 
     const filesArray = Array.from(fileList);
 
-    // If in creation mode, just store files and notify parent
     if (mode === 'creation') {
-      setSelectedFiles(prev => [...prev, ...filesArray]);
+      const entries = await processFiles(filesArray);
+      setSelectedFiles(prev => [...prev, ...entries]);
       onFilesSelected?.(filesArray);
       toast({
         title: "Dateien ausgewählt",
@@ -96,37 +127,52 @@ export function DecisionFileUpload({
       return;
     }
 
-    // If in view mode and we have a decisionId, upload immediately
     if (!decisionId) return;
+    await uploadFiles(filesArray);
+  };
 
+  const uploadFiles = async (filesArray: File[]) => {
+    if (!decisionId) return;
     setUploading(true);
 
     for (const file of filesArray) {
       try {
-        // Get user ID for file path structure
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('User not authenticated');
         
         const fileName = `${user.id}/decisions/${decisionId}/${Date.now()}-${file.name}`;
 
-        // Upload to storage
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('decision-attachments')
           .upload(fileName, file);
 
         if (uploadError) throw uploadError;
 
-        // Save to database
+        let emailMeta: EmailMetadata | null = null;
+        if (isEmlFile(file)) {
+          try {
+            const parsed = await parseEmlFile(file);
+            emailMeta = parsed.metadata;
+          } catch (e) {
+            console.error('EML parse error during upload:', e);
+          }
+        }
+
+        const insertData: Record<string, unknown> = {
+          decision_id: decisionId,
+          file_path: uploadData.path,
+          file_name: file.name,
+          file_size: file.size,
+          file_type: file.type,
+          uploaded_by: user.id,
+        };
+        if (emailMeta) {
+          insertData.email_metadata = emailMeta;
+        }
+
         const { error: dbError } = await supabase
           .from('task_decision_attachments')
-          .insert({
-            decision_id: decisionId,
-            file_path: uploadData.path,
-            file_name: file.name,
-            file_size: file.size,
-            file_type: file.type,
-            uploaded_by: user.id
-          });
+          .insert(insertData as any);
 
         if (dbError) throw dbError;
 
@@ -148,6 +194,40 @@ export function DecisionFileUpload({
     setUploading(false);
     loadExistingFiles();
     onFilesChange?.();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (!canUpload) return;
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length === 0) return;
+
+    if (mode === 'creation') {
+      const entries = await processFiles(droppedFiles);
+      setSelectedFiles(prev => [...prev, ...entries]);
+      onFilesSelected?.(droppedFiles);
+      toast({
+        title: "Dateien ausgewählt",
+        description: `${droppedFiles.length} Datei(en) per Drag & Drop hinzugefügt.`,
+      });
+    } else {
+      await uploadFiles(droppedFiles);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (canUpload) setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
   };
 
   const removeSelectedFile = (index: number) => {
@@ -187,14 +267,12 @@ export function DecisionFileUpload({
 
   const removeFile = async (fileId: string, filePath: string) => {
     try {
-      // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('decision-attachments')
         .remove([filePath]);
 
       if (storageError) throw storageError;
 
-      // Delete from database
       const { error: dbError } = await supabase
         .from('task_decision_attachments')
         .delete()
@@ -230,24 +308,89 @@ export function DecisionFileUpload({
   const canDelete = async (fileUploadedBy: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
-
-    // Check if user is the uploader
     if (fileUploadedBy === user.id) return true;
-
-    // Check if user is the decision creator
     const { data: decision } = await supabase
       .from('task_decisions')
       .select('created_by')
       .eq('id', decisionId)
       .single();
-
     return decision?.created_by === user.id;
+  };
+
+  const renderFileItem = (file: UploadedFile) => {
+    if (file.email_metadata) {
+      return (
+        <EmailPreviewCard
+          key={file.id}
+          metadata={file.email_metadata}
+          fileName={file.file_name}
+          fileSize={file.file_size}
+          onPreviewOpen={() => setPreviewDialog({ open: true, filePath: file.file_path, fileName: file.file_name })}
+          onDownload={() => downloadFile(file.file_path, file.file_name)}
+          onRemove={file.uploaded_by ? async () => {
+            if (await canDelete(file.uploaded_by!)) {
+              removeFile(file.id!, file.file_path);
+            } else {
+              toast({
+                title: "Keine Berechtigung",
+                description: "Sie können nur Ihre eigenen Dateien löschen.",
+                variant: "destructive",
+              });
+            }
+          } : undefined}
+        />
+      );
+    }
+
+    return (
+      <div key={file.id} className="flex items-center justify-between p-2 bg-muted rounded">
+        <div className="flex items-center space-x-2 flex-1">
+          <File className="h-4 w-4 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{file.file_name}</p>
+            <p className="text-xs text-muted-foreground">
+              {formatFileSize(file.file_size)} • {file.uploader_name}
+              {file.created_at && ` • ${new Date(file.created_at).toLocaleString('de-DE', {
+                day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'
+              })}`}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-1">
+          <Button type="button" variant="ghost" size="sm" onClick={() => downloadFile(file.file_path, file.file_name)}>
+            <Download className="h-4 w-4" />
+          </Button>
+          {file.uploaded_by && (
+            <Button type="button" variant="ghost" size="sm" onClick={async () => {
+              if (await canDelete(file.uploaded_by!)) {
+                removeFile(file.id!, file.file_path);
+              } else {
+                toast({ title: "Keine Berechtigung", description: "Sie können nur Ihre eigenen Dateien löschen.", variant: "destructive" });
+              }
+            }}>
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="space-y-4">
       {canUpload && (
-        <div>
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragOver}
+          onDragLeave={handleDragLeave}
+          className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+            isDragOver
+              ? 'border-primary bg-primary/5'
+              : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+          }`}
+          onClick={() => fileInputRef.current?.click()}
+        >
           <input
             ref={fileInputRef}
             type="file"
@@ -255,45 +398,48 @@ export function DecisionFileUpload({
             className="hidden"
             onChange={(e) => handleFileSelect(e.target.files)}
           />
-          
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="w-full"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            {uploading ? 'Wird hochgeladen...' : mode === 'creation' ? 'Dateien auswählen' : 'Dateien hochladen'}
-          </Button>
+          <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+          <p className="text-sm font-medium">
+            {uploading ? 'Wird hochgeladen...' : 'Dateien hierher ziehen oder klicken'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Dokumente, Bilder oder E-Mails (.eml) aus Outlook
+          </p>
         </div>
       )}
 
-      {/* Show selected files in creation mode */}
+      {/* Selected files in creation mode */}
       {mode === 'creation' && selectedFiles.length > 0 && (
         <Card>
           <CardContent className="p-4">
             <div className="space-y-2">
               <p className="text-sm font-medium">Ausgewählte Dateien ({selectedFiles.length})</p>
-            <div className="max-h-[300px] overflow-y-auto space-y-2">
-                {selectedFiles.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
-                    <div className="flex items-center space-x-2 flex-1">
-                      <File className="h-4 w-4 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{file.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+              <div className="max-h-[300px] overflow-y-auto space-y-2">
+                {selectedFiles.map((entry, index) => (
+                  entry.emailMetadata ? (
+                    <EmailPreviewCard
+                      key={index}
+                      metadata={entry.emailMetadata}
+                      fileName={entry.file.name}
+                      fileSize={entry.file.size}
+                      onPreviewOpen={() => {/* No preview for unsaved files yet */}}
+                      onDownload={() => {/* File not uploaded yet */}}
+                      onRemove={() => removeSelectedFile(index)}
+                    />
+                  ) : (
+                    <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                      <div className="flex items-center space-x-2 flex-1">
+                        <File className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{entry.file.name}</p>
+                          <p className="text-xs text-muted-foreground">{formatFileSize(entry.file.size)}</p>
+                        </div>
                       </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeSelectedFile(index)}>
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeSelectedFile(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  )
                 ))}
               </div>
             </div>
@@ -301,64 +447,12 @@ export function DecisionFileUpload({
         </Card>
       )}
 
-      {/* Show uploaded files in view mode */}
+      {/* Uploaded files in view mode */}
       {mode === 'view' && files.length > 0 ? (
         <Card>
           <CardContent className="p-4">
-            <div className="max-h-[300px] overflow-y-auto space-y-2">
-              {files.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                  <div className="flex items-center space-x-2 flex-1">
-                    <File className="h-4 w-4 text-muted-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {file.file_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(file.file_size)} • {file.uploader_name}
-                        {file.created_at && ` • ${new Date(file.created_at).toLocaleString('de-DE', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}`}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => downloadFile(file.file_path, file.file_name)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    {file.uploaded_by && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          if (await canDelete(file.uploaded_by!)) {
-                            removeFile(file.id!, file.file_path);
-                          } else {
-                            toast({
-                              title: "Keine Berechtigung",
-                              description: "Sie können nur Ihre eigenen Dateien löschen.",
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="max-h-[400px] overflow-y-auto space-y-2">
+              {files.map(renderFileItem)}
             </div>
           </CardContent>
         </Card>
@@ -367,6 +461,14 @@ export function DecisionFileUpload({
           Noch keine Dateien hochgeladen
         </p>
       ) : null}
+
+      {/* Email preview dialog */}
+      <EmailPreviewDialog
+        open={previewDialog.open}
+        onOpenChange={(open) => setPreviewDialog(prev => ({ ...prev, open }))}
+        filePath={previewDialog.filePath}
+        fileName={previewDialog.fileName}
+      />
     </div>
   );
 }

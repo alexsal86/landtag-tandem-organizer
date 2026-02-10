@@ -7856,6 +7856,7 @@ export type Database = {
         Row: {
           created_at: string
           decision_id: string
+          email_metadata: Json | null
           file_name: string
           file_path: string
           file_size: number | null
@@ -7867,6 +7868,7 @@ export type Database = {
         Insert: {
           created_at?: string
           decision_id: string
+          email_metadata?: Json | null
           file_name: string
           file_path: string
           file_size?: number | null
@@ -7878,6 +7880,7 @@ export type Database = {
         Update: {
           created_at?: string
           decision_id?: string
+          email_metadata?: Json | null
           file_name?: string
           file_path?: string
           file_size?: number | null
