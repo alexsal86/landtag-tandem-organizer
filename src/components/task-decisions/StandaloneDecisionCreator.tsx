@@ -10,6 +10,7 @@ import { Vote, Mail, Plus, MessageSquare, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
+import { isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { ResponseOptionsEditor } from "./ResponseOptionsEditor";
@@ -244,17 +245,30 @@ export const StandaloneDecisionCreator = ({
 
             if (uploadError) throw uploadError;
 
+            // Extract email metadata if applicable
+            let emailMeta: EmailMetadata | null = null;
+            if (isEmlFile(file)) {
+              try { emailMeta = (await parseEmlFile(file)).metadata; } catch (e) { console.error('EML parse error:', e); }
+            } else if (isMsgFile(file)) {
+              try { emailMeta = (await parseMsgFile(file)).metadata; } catch (e) { console.error('MSG parse error:', e); }
+            }
+
             // Save to database
+            const insertData: Record<string, unknown> = {
+              decision_id: decision.id,
+              file_path: uploadData.path,
+              file_name: file.name,
+              file_size: file.size,
+              file_type: file.type,
+              uploaded_by: userData.user.id,
+            };
+            if (emailMeta) {
+              insertData.email_metadata = emailMeta;
+            }
+
             const { error: dbError } = await supabase
               .from('task_decision_attachments')
-              .insert({
-                decision_id: decision.id,
-                file_path: uploadData.path,
-                file_name: file.name,
-                file_size: file.size,
-                file_type: file.type,
-                uploaded_by: userData.user.id
-              });
+              .insert(insertData as any);
 
             if (dbError) throw dbError;
           } catch (fileError) {
