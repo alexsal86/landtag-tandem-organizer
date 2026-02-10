@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { EmployeeMeetingProtocol } from "@/components/EmployeeMeetingProtocol";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function EmployeeMeetingDetail() {
   const { meetingId } = useParams<{ meetingId: string }>();
@@ -23,7 +23,6 @@ export default function EmployeeMeetingDetail() {
       }
 
       try {
-        // Check if user has access to this meeting (either as employee or conductor)
         const { data: meeting, error } = await supabase
           .from("employee_meetings")
           .select("employee_id, conducted_by")
@@ -61,8 +60,18 @@ export default function EmployeeMeetingDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-6 p-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-5 w-20 rounded-full" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -72,11 +81,7 @@ export default function EmployeeMeetingDetail() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-4">
-      <Button variant="ghost" onClick={() => navigate("/employee")} className="mb-4">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Zurück zur Übersicht
-      </Button>
+    <div className="space-y-6 p-6">
       <EmployeeMeetingProtocol meetingId={meetingId} onBack={() => navigate("/employee")} />
     </div>
   );
