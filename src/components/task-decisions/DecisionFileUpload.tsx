@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, Download, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { isEmlFile, parseEmlFile, type EmailMetadata } from '@/utils/emlParser';
+import { isEmlFile, isMsgFile, isEmailFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
 
@@ -103,6 +103,14 @@ export function DecisionFileUpload({
           console.error('EML parse error:', e);
           entries.push({ file, emailMetadata: null });
         }
+      } else if (isMsgFile(file)) {
+        try {
+          const parsed = await parseMsgFile(file);
+          entries.push({ file, emailMetadata: parsed.metadata });
+        } catch (e) {
+          console.error('MSG parse error:', e);
+          entries.push({ file, emailMetadata: null });
+        }
       } else {
         entries.push({ file, emailMetadata: null });
       }
@@ -155,6 +163,13 @@ export function DecisionFileUpload({
             emailMeta = parsed.metadata;
           } catch (e) {
             console.error('EML parse error during upload:', e);
+          }
+        } else if (isMsgFile(file)) {
+          try {
+            const parsed = await parseMsgFile(file);
+            emailMeta = parsed.metadata;
+          } catch (e) {
+            console.error('MSG parse error during upload:', e);
           }
         }
 
@@ -403,7 +418,7 @@ export function DecisionFileUpload({
             {uploading ? 'Wird hochgeladen...' : 'Dateien hierher ziehen oder klicken'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Dokumente, Bilder oder E-Mails (.eml) aus Outlook
+            Dokumente, Bilder oder E-Mails (.eml, .msg) aus Outlook
           </p>
         </div>
       )}

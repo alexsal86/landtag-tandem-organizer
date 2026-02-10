@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Download, Paperclip, Mail, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { parseEmlFromArrayBuffer, type ParsedEmail } from '@/utils/emlParser';
+import { parseEmlFromArrayBuffer, parseMsgFromArrayBuffer, type ParsedEmail } from '@/utils/emlParser';
 
 interface EmailPreviewDialogProps {
   open: boolean;
@@ -38,7 +38,10 @@ export function EmailPreviewDialog({ open, onOpenChange, filePath, fileName }: E
       if (dlError) throw dlError;
 
       const buffer = await data.arrayBuffer();
-      const parsed = await parseEmlFromArrayBuffer(buffer);
+      const isMsgExt = fileName.toLowerCase().endsWith('.msg');
+      const parsed = isMsgExt
+        ? await parseMsgFromArrayBuffer(buffer)
+        : await parseEmlFromArrayBuffer(buffer);
       setEmail(parsed);
     } catch (e: any) {
       console.error('Error parsing email:', e);
@@ -136,7 +139,11 @@ export function EmailPreviewDialog({ open, onOpenChange, filePath, fileName }: E
                 {email.textBody}
               </pre>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">Kein Inhalt verfügbar</p>
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {fileName.toLowerCase().endsWith('.msg')
+                  ? 'Kein darstellbarer Inhalt. Originalformatierung nur in Outlook verfügbar.'
+                  : 'Kein Inhalt verfügbar'}
+              </p>
             )}
 
             {/* Attachments */}
