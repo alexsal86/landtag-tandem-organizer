@@ -114,16 +114,29 @@ export function NoteDecisionCreator({
       if (hasInitializedRef.current) return;
       hasInitializedRef.current = true;
 
-      // Check for default participants from settings first
+      // Check for default settings first
       let defaultIds: string[] = [];
+      let defaultSettings: any = null;
       try {
-        const stored = localStorage.getItem('default_decision_participants');
+        const stored = localStorage.getItem('default_decision_settings');
         if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) defaultIds = parsed;
+          defaultSettings = JSON.parse(stored);
+          defaultIds = defaultSettings.participants || [];
+        } else {
+          const oldStored = localStorage.getItem('default_decision_participants');
+          if (oldStored) {
+            const parsed = JSON.parse(oldStored);
+            if (Array.isArray(parsed)) defaultIds = parsed;
+          }
         }
       } catch (e) {
         console.error('Error loading default participants:', e);
+      }
+
+      if (defaultSettings) {
+        if (typeof defaultSettings.visibleToAll === 'boolean') setVisibleToAll(defaultSettings.visibleToAll);
+        if (typeof defaultSettings.sendByEmail === 'boolean') setSendByEmail(defaultSettings.sendByEmail);
+        if (typeof defaultSettings.sendViaMatrix === 'boolean') setSendViaMatrix(defaultSettings.sendViaMatrix);
       }
 
       if (defaultIds.length > 0) {

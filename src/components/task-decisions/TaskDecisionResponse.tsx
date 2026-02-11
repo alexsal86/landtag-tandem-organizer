@@ -336,6 +336,9 @@ export const TaskDecisionResponse = ({
     );
   }
 
+  // Check if this is a single freetext-only option
+  const isSingleFreetext = responseOptions.length === 1 && responseOptions[0].requires_comment;
+
   const optionRequiringComment = responseOptions.find(o => o.requires_comment);
 
   const renderOptionButton = (option: ResponseOption) => {
@@ -428,6 +431,40 @@ export const TaskDecisionResponse = ({
 
     return button;
   };
+
+  // Single freetext mode: show text field directly
+  if (isSingleFreetext) {
+    const opt = responseOptions[0];
+    return (
+      <div className="space-y-3">
+        <SimpleRichTextEditor
+          initialContent={questionComment}
+          onChange={setQuestionComment}
+          placeholder="Ihre Rückmeldung..."
+          minHeight="80px"
+        />
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => handleQuestionSubmit(opt)}
+            disabled={isLoading}
+          >
+            {isLoading ? "Sende..." : "Rückmeldung senden"}
+          </Button>
+          {showEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setShowEdit(false); setQuestionComment(""); }}
+              className="text-xs"
+            >
+              Abbrechen
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

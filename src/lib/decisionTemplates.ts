@@ -56,6 +56,22 @@ export const DECISION_TEMPLATES: Record<string, DecisionTemplate> = {
       { key: "c", label: "Option C", color: "gray", description: "Dritte Alternative" }
     ]
   },
+  kenntnisnahme: {
+    id: "kenntnisnahme",
+    name: "Zur Kenntnisnahme",
+    description: "Information teilen – Teilnehmer bestätigen den Erhalt",
+    options: [
+      { key: "acknowledged", label: "Zur Kenntnis genommen", color: "green", icon: "check" }
+    ]
+  },
+  freetext: {
+    id: "freetext",
+    name: "Nur Freitext",
+    description: "Nur eine schriftliche Rückmeldung ohne Abstimmung",
+    options: [
+      { key: "comment", label: "Rückmeldung", color: "blue", icon: "message-circle", requires_comment: true }
+    ]
+  },
   custom: {
     id: "custom",
     name: "Benutzerdefiniert",

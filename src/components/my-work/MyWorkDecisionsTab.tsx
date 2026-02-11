@@ -72,7 +72,7 @@ export function MyWorkDecisionsTab() {
           id,
           decision_id,
           task_decisions!inner (
-            id, title, description, status, created_at, created_by, visible_to_all,
+            id, title, description, status, created_at, created_by, visible_to_all, response_options,
             task_decision_attachments (count)
           ),
           task_decision_responses (id, response_type)
@@ -86,7 +86,7 @@ export function MyWorkDecisionsTab() {
       const { data: creatorData, error: creatorError } = await supabase
         .from("task_decisions")
         .select(`
-          id, title, description, status, created_at, created_by, visible_to_all,
+          id, title, description, status, created_at, created_by, visible_to_all, response_options,
           task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
           task_decision_attachments (count)
         `)
@@ -99,7 +99,7 @@ export function MyWorkDecisionsTab() {
       const { data: publicData, error: publicError } = await supabase
         .from("task_decisions")
         .select(`
-          id, title, description, status, created_at, created_by, visible_to_all,
+          id, title, description, status, created_at, created_by, visible_to_all, response_options,
           task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
           task_decision_attachments (count)
         `)
@@ -125,6 +125,7 @@ export function MyWorkDecisionsTab() {
         responseType: item.task_decision_responses[0]?.response_type || null,
         visible_to_all: item.task_decisions.visible_to_all,
         attachmentCount: item.task_decisions.task_decision_attachments?.[0]?.count || 0,
+        response_options: Array.isArray(item.task_decisions.response_options) ? item.task_decisions.response_options : undefined,
       }));
 
       // Format creator decisions
@@ -148,6 +149,7 @@ export function MyWorkDecisionsTab() {
           pendingCount,
           visible_to_all: item.visible_to_all,
           attachmentCount: item.task_decision_attachments?.[0]?.count || 0,
+          response_options: Array.isArray(item.response_options) ? item.response_options : undefined,
         };
       });
 
@@ -177,6 +179,7 @@ export function MyWorkDecisionsTab() {
             isPublic: true,
             visible_to_all: true,
             attachmentCount: item.task_decision_attachments?.[0]?.count || 0,
+            response_options: Array.isArray(item.response_options) ? item.response_options : undefined,
           };
         });
 

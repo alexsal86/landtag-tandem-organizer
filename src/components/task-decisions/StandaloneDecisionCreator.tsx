@@ -110,12 +110,26 @@ export const StandaloneDecisionCreator = ({
       
       // Pre-select from localStorage defaults first, then fall back to Abgeordneter
       if (tenantData?.tenant_id && selectedUsers.length === 0) {
-        // Check localStorage for default participants
+        // Check localStorage for default settings
         let defaultIds: string[] = [];
+        let defaultSettings: any = null;
         try {
-          const stored = localStorage.getItem('default_decision_participants');
-          if (stored) defaultIds = JSON.parse(stored);
+          const stored = localStorage.getItem('default_decision_settings');
+          if (stored) {
+            defaultSettings = JSON.parse(stored);
+            defaultIds = defaultSettings.participants || [];
+          } else {
+            // Legacy key
+            const oldStored = localStorage.getItem('default_decision_participants');
+            if (oldStored) defaultIds = JSON.parse(oldStored);
+          }
         } catch (e) {}
+
+        if (defaultSettings) {
+          if (typeof defaultSettings.visibleToAll === 'boolean') setVisibleToAll(defaultSettings.visibleToAll);
+          if (typeof defaultSettings.sendByEmail === 'boolean') setSendByEmail(defaultSettings.sendByEmail);
+          if (typeof defaultSettings.sendViaMatrix === 'boolean') setSendViaMatrix(defaultSettings.sendViaMatrix);
+        }
 
         if (defaultIds.length > 0) {
           setSelectedUsers(defaultIds);
@@ -444,14 +458,12 @@ export const StandaloneDecisionCreator = ({
       setSelectedUsers([]);
       setSelectedFiles([]);
       setSelectedTopicIds([]);
-      setSelectedTemplateId(DEFAULT_TEMPLATE_ID);
-      setCustomOptions([
-        { key: "option_1", label: "Option 1", color: "blue" },
-        { key: "option_2", label: "Option 2", color: "green" }
-      ]);
+      const resetTpl = getTemplateById(DEFAULT_TEMPLATE_ID);
+      setCustomOptions(resetTpl ? resetTpl.options.map(o => ({ ...o })) : []);
       setSendByEmail(false);
       setSendViaMatrix(false);
       setVisibleToAll(true);
+      setProfilesLoaded(false);
       setIsOpen(false);
       onDecisionCreated();
     } catch (error) {

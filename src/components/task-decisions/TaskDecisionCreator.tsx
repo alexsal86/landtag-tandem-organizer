@@ -10,6 +10,9 @@ import { Vote, Mail, MessageSquare, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
+import { isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
+import { TopicSelector } from "@/components/topics/TopicSelector";
+import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { ResponseOptionsEditor } from "./ResponseOptionsEditor";
 import { ResponseOptionsPreview } from "./ResponseOptionsPreview";
 import { DECISION_TEMPLATES, DEFAULT_TEMPLATE_ID, ResponseOption, getTemplateById } from "@/lib/decisionTemplates";
@@ -68,6 +71,7 @@ export const TaskDecisionCreator = ({
   const [sendViaMatrix, setSendViaMatrix] = useState(true);
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState(DEFAULT_TEMPLATE_ID);
   const defaultTemplate = getTemplateById(DEFAULT_TEMPLATE_ID);
   const [customOptions, setCustomOptions] = useState<ResponseOption[]>(
@@ -133,16 +137,29 @@ export const TaskDecisionCreator = ({
         
         const tenantUserIds = new Set(tenantMembers?.map(m => m.user_id) || []);
 
-        // Check for default participants from settings FIRST
+        // Check for default settings FIRST
         let defaultIds: string[] = [];
+        let defaultSettings: any = null;
         try {
-          const stored = localStorage.getItem('default_decision_participants');
+          const stored = localStorage.getItem('default_decision_settings');
           if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed)) defaultIds = parsed;
+            defaultSettings = JSON.parse(stored);
+            defaultIds = defaultSettings.participants || [];
+          } else {
+            const oldStored = localStorage.getItem('default_decision_participants');
+            if (oldStored) {
+              const parsed = JSON.parse(oldStored);
+              if (Array.isArray(parsed)) defaultIds = parsed;
+            }
           }
         } catch (e) {
           console.error('Error loading default participants:', e);
+        }
+
+        if (defaultSettings) {
+          if (typeof defaultSettings.visibleToAll === 'boolean') setVisibleToAll(defaultSettings.visibleToAll);
+          if (typeof defaultSettings.sendByEmail === 'boolean') setSendByEmail(defaultSettings.sendByEmail);
+          if (typeof defaultSettings.sendViaMatrix === 'boolean') setSendViaMatrix(defaultSettings.sendViaMatrix);
         }
 
         if (defaultIds.length > 0) {
@@ -276,17 +293,30 @@ export const TaskDecisionCreator = ({
 
             if (uploadError) throw uploadError;
 
+            // Extract email metadata if applicable
+            let emailMeta: EmailMetadata | null = null;
+            if (isEmlFile(file)) {
+              try { emailMeta = (await parseEmlFile(file)).metadata; } catch (e) { console.error('EML parse error:', e); }
+            } else if (isMsgFile(file)) {
+              try { emailMeta = (await parseMsgFile(file)).metadata; } catch (e) { console.error('MSG parse error:', e); }
+            }
+
             // Save to database
+            const insertFileData: Record<string, unknown> = {
+              decision_id: decision.id,
+              file_path: uploadData.path,
+              file_name: file.name,
+              file_size: file.size,
+              file_type: file.type,
+              uploaded_by: userData.user.id,
+            };
+            if (emailMeta) {
+              insertFileData.email_metadata = emailMeta;
+            }
+
             const { error: dbError } = await supabase
               .from('task_decision_attachments')
-              .insert({
-                decision_id: decision.id,
-                file_path: uploadData.path,
-                file_name: file.name,
-                file_size: file.size,
-                file_type: file.type,
-                uploaded_by: userData.user.id
-              });
+              .insert(insertFileData as any);
 
             if (dbError) throw dbError;
           } catch (fileError) {
@@ -298,6 +328,11 @@ export const TaskDecisionCreator = ({
             });
           }
         }
+      }
+
+      // Save topics
+      if (selectedTopicIds.length > 0) {
+        await saveDecisionTopics(decision.id, selectedTopicIds);
       }
 
       // Add participants (only if users are selected)
@@ -457,14 +492,13 @@ export const TaskDecisionCreator = ({
       setDescription("");
       setSelectedUsers([]);
       setSelectedFiles([]);
+      setSelectedTopicIds([]);
       setSendByEmail(false);
       setSendViaMatrix(false);
       setVisibleToAll(true);
       setSelectedTemplateId(DEFAULT_TEMPLATE_ID);
-      setCustomOptions([
-        { key: "option_1", label: "Option 1", color: "blue" },
-        { key: "option_2", label: "Option 2", color: "green" }
-      ]);
+      const resetTpl = getTemplateById(DEFAULT_TEMPLATE_ID);
+      setCustomOptions(resetTpl ? resetTpl.options.map(o => ({ ...o })) : []);
       setProfilesLoaded(false); // Reset so defaults reload on next open
       handleOpenChange(false);
       onDecisionCreated();
@@ -591,6 +625,16 @@ export const TaskDecisionCreator = ({
                 Lade Benutzer...
               </div>
             )}
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Themen (optional)</label>
+            <TopicSelector
+              selectedTopicIds={selectedTopicIds}
+              onTopicsChange={setSelectedTopicIds}
+              compact
+              placeholder="Themen hinzufügen..."
+            />
           </div>
 
           <div>
