@@ -73,7 +73,7 @@ export function MyWorkDecisionsTab() {
           decision_id,
           task_decisions!inner (
             id, title, description, status, created_at, created_by, visible_to_all, response_options,
-            task_decision_attachments (count)
+            task_decision_attachments (id, file_name, file_path)
           ),
           task_decision_responses (id, response_type)
         `)
@@ -88,7 +88,7 @@ export function MyWorkDecisionsTab() {
         .select(`
           id, title, description, status, created_at, created_by, visible_to_all, response_options,
           task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
-          task_decision_attachments (count)
+          task_decision_attachments (id, file_name, file_path)
         `)
         .eq("created_by", user.id)
         .in("status", ["active", "open"]);
@@ -101,7 +101,7 @@ export function MyWorkDecisionsTab() {
         .select(`
           id, title, description, status, created_at, created_by, visible_to_all, response_options,
           task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
-          task_decision_attachments (count)
+          task_decision_attachments (id, file_name, file_path)
         `)
         .eq("visible_to_all", true)
         .in("status", ["active", "open"])
@@ -109,24 +109,39 @@ export function MyWorkDecisionsTab() {
 
       if (publicError) throw publicError;
 
+      const isEmailFile = (name: string) => /\.(eml|msg)$/i.test(name);
+
+      const computeAttachmentInfo = (attachments: any[]) => {
+        const all = attachments || [];
+        const emails = all.filter((a: any) => isEmailFile(a.file_name));
+        return {
+          attachmentCount: all.length,
+          emailAttachmentCount: emails.length,
+          emailAttachments: emails.map((a: any) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
+        };
+      };
+
       // Format participant decisions
-      const participantDecisions: MyWorkDecision[] = (participantData || []).map((item: any) => ({
-        id: item.task_decisions.id,
-        title: item.task_decisions.title,
-        description: item.task_decisions.description,
-        status: item.task_decisions.status,
-        created_at: item.task_decisions.created_at,
-        created_by: item.task_decisions.created_by,
-        participant_id: item.id,
-        hasResponded: item.task_decision_responses.length > 0,
-        isCreator: item.task_decisions.created_by === user.id,
-        isParticipant: true,
-        pendingCount: 0,
-        responseType: item.task_decision_responses[0]?.response_type || null,
-        visible_to_all: item.task_decisions.visible_to_all,
-        attachmentCount: item.task_decisions.task_decision_attachments?.[0]?.count || 0,
-        response_options: Array.isArray(item.task_decisions.response_options) ? item.task_decisions.response_options : undefined,
-      }));
+      const participantDecisions: MyWorkDecision[] = (participantData || []).map((item: any) => {
+        const attInfo = computeAttachmentInfo(item.task_decisions.task_decision_attachments);
+        return {
+          id: item.task_decisions.id,
+          title: item.task_decisions.title,
+          description: item.task_decisions.description,
+          status: item.task_decisions.status,
+          created_at: item.task_decisions.created_at,
+          created_by: item.task_decisions.created_by,
+          participant_id: item.id,
+          hasResponded: item.task_decision_responses.length > 0,
+          isCreator: item.task_decisions.created_by === user.id,
+          isParticipant: true,
+          pendingCount: 0,
+          responseType: item.task_decision_responses[0]?.response_type || null,
+          visible_to_all: item.task_decisions.visible_to_all,
+          ...attInfo,
+          response_options: Array.isArray(item.task_decisions.response_options) ? item.task_decisions.response_options : undefined,
+        };
+      });
 
       // Format creator decisions
       const creatorDecisions: MyWorkDecision[] = (creatorData || []).map((item: any) => {
@@ -134,6 +149,7 @@ export function MyWorkDecisionsTab() {
         const pendingCount = participants.filter(
           (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0
         ).length;
+        const attInfo = computeAttachmentInfo(item.task_decision_attachments);
 
         return {
           id: item.id,
@@ -148,7 +164,7 @@ export function MyWorkDecisionsTab() {
           isParticipant: false,
           pendingCount,
           visible_to_all: item.visible_to_all,
-          attachmentCount: item.task_decision_attachments?.[0]?.count || 0,
+          ...attInfo,
           response_options: Array.isArray(item.response_options) ? item.response_options : undefined,
         };
       });
@@ -163,6 +179,7 @@ export function MyWorkDecisionsTab() {
           const pendingCount = participants.filter(
             (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0
           ).length;
+          const attInfo = computeAttachmentInfo(item.task_decision_attachments);
 
           return {
             id: item.id,
@@ -178,7 +195,7 @@ export function MyWorkDecisionsTab() {
             pendingCount,
             isPublic: true,
             visible_to_all: true,
-            attachmentCount: item.task_decision_attachments?.[0]?.count || 0,
+            ...attInfo,
             response_options: Array.isArray(item.response_options) ? item.response_options : undefined,
           };
         });

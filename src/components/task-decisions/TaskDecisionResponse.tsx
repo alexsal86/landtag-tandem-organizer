@@ -338,6 +338,9 @@ export const TaskDecisionResponse = ({
 
   // Check if this is a single freetext-only option
   const isSingleFreetext = responseOptions.length === 1 && responseOptions[0].requires_comment;
+  
+  // Check if this is a single acknowledgement option (no comment required)
+  const isSingleAcknowledgement = responseOptions.length === 1 && !responseOptions[0].requires_comment;
 
   const optionRequiringComment = responseOptions.find(o => o.requires_comment);
 
@@ -431,6 +434,34 @@ export const TaskDecisionResponse = ({
 
     return button;
   };
+
+  // Single acknowledgement mode: show a single prominent button
+  if (isSingleAcknowledgement) {
+    const opt = responseOptions[0];
+    const colorClasses = getColorClasses(opt.color);
+    return (
+      <div className="space-y-2">
+        <Button
+          onClick={() => handleResponse(opt.key)}
+          disabled={isLoading}
+          className={`w-full ${colorClasses.bgClass} hover:opacity-90 text-white`}
+        >
+          {getIcon(opt.icon)}
+          <span className="ml-1">{isLoading ? "Sende..." : opt.label}</span>
+        </Button>
+        {showEdit && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowEdit(false)}
+            className="text-xs"
+          >
+            Abbrechen
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   // Single freetext mode: show text field directly
   if (isSingleFreetext) {

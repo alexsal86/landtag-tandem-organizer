@@ -601,7 +601,7 @@ export const TaskDecisionCreator = ({
               </Select>
             </div>
 
-            {selectedTemplateId !== "yesNo" && selectedTemplateId !== "yesNoQuestion" && (
+            {selectedTemplateId === "custom" && (
               <ResponseOptionsEditor
                 options={customOptions}
                 onChange={setCustomOptions}

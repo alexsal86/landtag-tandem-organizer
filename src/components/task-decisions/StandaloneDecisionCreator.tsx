@@ -458,6 +458,7 @@ export const StandaloneDecisionCreator = ({
       setSelectedUsers([]);
       setSelectedFiles([]);
       setSelectedTopicIds([]);
+      setSelectedTemplateId(DEFAULT_TEMPLATE_ID);
       const resetTpl = getTemplateById(DEFAULT_TEMPLATE_ID);
       setCustomOptions(resetTpl ? resetTpl.options.map(o => ({ ...o })) : []);
       setSendByEmail(false);
@@ -557,9 +558,12 @@ export const StandaloneDecisionCreator = ({
                 <SelectValue placeholder="Vorlage auswählen" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(DECISION_TEMPLATES).map(([id, template]) => (
+              {Object.entries(DECISION_TEMPLATES).map(([id, template]) => (
                   <SelectItem key={id} value={id}>
-                    {template.name}
+                    <div className="flex flex-col items-start">
+                      <span>{template.name}</span>
+                      <span className="text-xs text-muted-foreground">{template.description}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -569,7 +573,7 @@ export const StandaloneDecisionCreator = ({
             </p>
           </div>
 
-          {selectedTemplateId !== "yesNo" && selectedTemplateId !== "yesNoQuestion" && (
+          {selectedTemplateId === "custom" && (
             <ResponseOptionsEditor
               options={customOptions}
               onChange={setCustomOptions}

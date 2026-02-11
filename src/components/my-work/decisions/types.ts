@@ -16,6 +16,8 @@ export interface MyWorkDecision {
   isPublic?: boolean;
   visible_to_all?: boolean;
   attachmentCount?: number;
+  emailAttachmentCount?: number;
+  emailAttachments?: Array<{ id: string; file_name: string; file_path: string }>;
   topicIds?: string[];
   response_options?: ResponseOption[];
   creator?: {
@@ -144,8 +146,17 @@ export const getBorderColor = (
     // Find the winning option
     const sorted = [...custom.counts].sort((a, b) => b.count - a.count);
     if (sorted.length > 0 && sorted[0].count > 0) {
-      const colorClasses = getColorClasses(sorted[0].color);
-      return colorClasses.borderClass.replace('border-', 'border-l-');
+      const BORDER_LEFT_MAP: Record<string, string> = {
+        green: "border-l-green-600",
+        red: "border-l-red-600",
+        orange: "border-l-orange-500",
+        yellow: "border-l-yellow-500",
+        blue: "border-l-blue-600",
+        purple: "border-l-purple-600",
+        lime: "border-l-lime-600",
+        gray: "border-l-gray-400",
+      };
+      return BORDER_LEFT_MAP[sorted[0].color] || 'border-l-gray-400';
     }
     return 'border-l-green-500';
   }
