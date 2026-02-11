@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { MobileHeader } from "@/components/MobileHeader";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SubNavigation } from "@/components/layout/SubNavigation";
 import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
 
@@ -255,13 +256,15 @@ const Index = () => {
             })()}
           </div>
           <main id="main-content" className="flex-1 bg-gradient-to-b from-background to-muted/20" tabIndex={-1}>
-            <Suspense fallback={
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            }>
-              {renderActiveSection()}
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              }>
+                {renderActiveSection()}
+              </Suspense>
+            </ErrorBoundary>
           </main>
         </div>
         
