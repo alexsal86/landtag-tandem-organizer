@@ -1,153 +1,165 @@
 
-# Plan: Entscheidungen -- Standardeinstellungen, Bug-Fixes und neue Features
+# Plan: Entscheidungen -- 10 Punkte beheben und verbessern
 
-## 1. Standard-Einstellungen erweitern (Punkt 1)
+## 1. Template-Reset-Bug im StandaloneDecisionCreator (Punkt 1)
 
-Aktuell speichert `useDefaultDecisionParticipants` nur Teilnehmer-IDs in localStorage. Die Erweiterung umfasst drei zusaetzliche Standardwerte.
+**Problem:** Nach dem Erstellen einer Entscheidung wird `setSelectedTemplateId(DEFAULT_TEMPLATE_ID)` im StandaloneDecisionCreator NICHT aufgerufen (fehlt in Zeile 456-467). Im TaskDecisionCreator ist es bereits korrekt (Zeile 499).
 
-**Aenderungen:**
+**Fix:** In `StandaloneDecisionCreator.tsx` im Reset-Block (nach Zeile 460) die Zeile `setSelectedTemplateId(DEFAULT_TEMPLATE_ID)` vor dem `setCustomOptions`-Aufruf einfuegen.
 
-**`useDefaultDecisionParticipants.ts`** -> Umbenennung/Erweiterung zu `useDefaultDecisionSettings.ts`:
-- Neuer Storage-Key `default_decision_settings` mit JSON-Objekt:
-  ```text
-  {
-    participants: string[],
-    visibleToAll: boolean,
-    sendByEmail: boolean,
-    sendViaMatrix: boolean
-  }
-  ```
-- Rueckwaertskompatibilitaet: Beim ersten Laden wird der alte Key `default_decision_participants` migriert
-
-**`DefaultParticipantsDialog.tsx`** -> Erweitern um drei zusaetzliche Toggles:
-- Switch "Oeffentlich (fuer alle sichtbar)" -- setzt `visibleToAll`-Standard
-- Switch "Per E-Mail versenden" -- setzt `sendByEmail`-Standard
-- Switch "Via Matrix versenden" -- setzt `sendViaMatrix`-Standard
-- Dialog-Titel aendern zu "Standard-Einstellungen"
-
-**`StandaloneDecisionCreator.tsx` und `TaskDecisionCreator.tsx`**:
-- Beim Laden der Standardeinstellungen auch `visibleToAll`, `sendByEmail` und `sendViaMatrix` aus den gespeicherten Defaults uebernehmen
+**Datei:** `StandaloneDecisionCreator.tsx`
 
 ---
 
-## 2. Vorschau-Bug nach zweiter Erstellung beheben (Punkt 2)
+## 2 + 3. Kenntnisnahme und Freitext funktionieren nicht (Punkte 2 + 3)
 
-**Problem:** Nach dem Reset im `handleSubmit` werden `customOptions` auf generische Platzhalter `["Option 1", "Option 2"]` zurueckgesetzt (Zeile 448-451 in Standalone, Zeile 464-467 in Task), obwohl `selectedTemplateId` auf den Default (`yesNoQuestion`) zurueckgesetzt wird. Beim naechsten Oeffnen stimmt die Vorschau nicht mehr mit dem ausgewaehlten Template ueberein.
+**Problem:** Fuer "Kenntnisnahme" (1 Option ohne `requires_comment`) fehlt eine Sonderbehandlung in `TaskDecisionResponse.tsx`. Die Komponente zeigt den Button nur im Standard-Rendering, das funktioniert grundsaetzlich. Allerdings wird die `ResponseOptionsEditor` bei der Erstellung angezeigt (Zeilen 572/604: `selectedTemplateId !== "yesNo" && selectedTemplateId !== "yesNoQuestion"`) -- und der Editor erzwingt "Mindestens 2 Optionen", was verwirrend ist und ggf. dazu fuehrt, dass Optionen ueberschrieben werden.
 
-**Fix in beiden Creatorn (`StandaloneDecisionCreator.tsx` und `TaskDecisionCreator.tsx`):**
-- Im Reset-Block nach `setSelectedTemplateId(DEFAULT_TEMPLATE_ID)` die `customOptions` auf die tatsaechlichen Options des Default-Templates setzen:
-  ```text
-  const defaultTpl = getTemplateById(DEFAULT_TEMPLATE_ID);
-  setCustomOptions(defaultTpl ? defaultTpl.options.map(o => ({...o})) : []);
-  ```
-  statt der Platzhalter `Option 1 / Option 2`.
+**Fix:**
+- `ResponseOptionsEditor` NUR anzeigen wenn `selectedTemplateId === "custom"` (in allen drei Creatorn)
+- Die Preview weiterhin fuer alle Templates anzeigen
+- In `TaskDecisionResponse.tsx`: Fuer Kenntnisnahme (1 Option, kein `requires_comment`): Den Button direkt prominent darstellen, aehnlich wie der Freitext-Modus -- ein einzelner grosser Button "Zur Kenntnis genommen"
 
----
-
-## 3. File-Upload angleichen (Punkt 3)
-
-**Analyse:** Beide Creatorn nutzen `DecisionFileUpload` im `mode="creation"` identisch. Der Unterschied: `StandaloneDecisionCreator` extrahiert Email-Metadaten beim Upload und speichert sie in `email_metadata`, `TaskDecisionCreator` dagegen nicht.
-
-**Fix in `TaskDecisionCreator.tsx`:**
-- Die Upload-Logik im `handleSubmit` wird an `StandaloneDecisionCreator` angeglichen: Email-Metadaten (.eml/.msg) werden analog geparst und beim DB-Insert mitgegeben (imports fuer `isEmlFile`, `isMsgFile`, `parseEmlFile`, `parseMsgFile` hinzufuegen)
-
-**UI-Angleichung:**
-- `TaskDecisionCreator` bekommt denselben Themen-Selektor (`TopicSelector`) wie `StandaloneDecisionCreator`
-- Reihenfolge der Felder in beiden Dialogen vereinheitlichen: Titel, Beschreibung, Oeffentlich-Checkbox, Antworttyp, Teilnehmer, Themen, Dateien, E-Mail/Matrix-Checkboxen
+**Dateien:** `StandaloneDecisionCreator.tsx`, `TaskDecisionCreator.tsx`, `NoteDecisionCreator.tsx`, `TaskDecisionResponse.tsx`
 
 ---
 
-## 4. Kenntnisnahme-Feature (Punkt 4)
+## 4. Hinweistext bei Kenntnisnahme/Freitext anpassen (Punkt 4)
 
-Umgesetzt als neues Decision-Template "Kenntnisnahme" -- es nutzt die vorhandene Entscheidungs-Infrastruktur, ist aber konzeptionell simpler: Der Ersteller teilt eine Information, Teilnehmer bestaetigen mit "Zur Kenntnis genommen".
+**Problem:** `ResponseOptionsEditor.tsx` zeigt immer "Mindestens 2 Optionen erforderlich" (Zeile 118-120).
 
-**Aenderungen:**
+**Fix:** Eruebrigt sich durch Punkt 2/3 -- der Editor wird nur noch bei `custom` angezeigt, wo der Hinweis passt.
 
-**`decisionTemplates.ts`** -- Neues Template:
+---
+
+## 5. Template-Dropdown-Stil aus TaskDecisionCreator uebernehmen (Punkt 5)
+
+**Problem:** `StandaloneDecisionCreator` (Zeile 560-564) zeigt im Dropdown nur den Template-Namen. `TaskDecisionCreator` (Zeile 592-601) zeigt Name + Beschreibung in einer zweizeiligen Darstellung.
+
+**Fix:** In `StandaloneDecisionCreator.tsx` und `NoteDecisionCreator.tsx` das Select-Dropdown auf das gleiche Format aendern:
 ```text
-kenntnisnahme: {
-  id: "kenntnisnahme",
-  name: "Zur Kenntnisnahme",
-  description: "Information teilen -- Teilnehmer bestaetigen den Erhalt",
-  options: [
-    { key: "acknowledged", label: "Zur Kenntnis genommen", color: "green", icon: "check" }
-  ]
-}
+<SelectItem key={template.id} value={template.id}>
+  <div className="flex flex-col items-start">
+    <span>{template.name}</span>
+    <span className="text-xs text-muted-foreground">{template.description}</span>
+  </div>
+</SelectItem>
 ```
 
-Keine DB-Aenderung noetig -- das Template wird als `response_options` in der bestehenden `task_decisions`-Tabelle gespeichert. Die Anzeige in der Card passt sich automatisch an (nur ein gruener Zaehler, kein Rot/Orange).
+**Dateien:** `StandaloneDecisionCreator.tsx`, `NoteDecisionCreator.tsx`
 
 ---
 
-## 5. Ergebnisanzeige an benutzerdefinierte Antworttypen anpassen (Punkt 5)
+## 6. Randfarbe bei benutzerdefinierten Antworttypen (Punkt 6)
 
-**Problem:** Die Karten zeigen immer fest `Gruen/Orange/Rot` (Ja/Rueckfrage/Nein) als Zaehler. Bei benutzerdefinierten Templates (A/B/C, 1-5, Kenntnisnahme) passt das nicht.
+**Problem:** In `types.ts` Zeile 148 wird die Randfarbe dynamisch zusammengebaut: `colorClasses.borderClass.replace('border-', 'border-l-')`. Das erzeugt z.B. `border-l-green-600`, aber Tailwind generiert diese Klasse nicht, weil sie nie statisch im Code vorkommt (JIT-Problem).
 
-**Aenderungen:**
+**Fix:** In `types.ts` eine statische Mapping-Funktion hinzufuegen, die fuer jede Farbe die korrekte `border-l-*` Klasse zurueckgibt:
 
-**`MyWorkDecision`-Typ (types.ts):**
-- Feld `response_options?: ResponseOption[]` zum Interface hinzufuegen, damit die Card die konfigurierten Optionen kennt
-
-**`getResponseSummary` (types.ts):**
-- Neue Funktion `getCustomResponseSummary(participants, responseOptions)`:
-  - Zaehlt pro konfigurierter Option die Anzahl der Stimmen
-  - Gibt Array von `{ key, label, color, count }` zurueck + `pending`
-  - Fallback auf alte Logik wenn keine `response_options` vorhanden
-
-**`getBorderColor` (types.ts):**
-- Erweitern: Wenn `response_options` vorhanden und NICHT das Standard-Yes/No-Template:
-  - Orange-Rand bei offenen Rueckfragen (key="question")
-  - Grau-Rand bei ausstehenden Antworten
-  - Farbe der meistgewaehlten Option als Rand-Farbe bei Abschluss
-
-**`MyWorkDecisionCard.tsx` -- Ergebnis-Anzeige (Zeile 243-256):**
-- Statt fester `yesCount/questionCount/noCount`-Anzeige:
-  - Bei Standard-Templates (yesNo, yesNoQuestion): Bisherige Anzeige beibehalten
-  - Bei benutzerdefinierten Templates: Farbige Badges pro Option mit Zaehler anzeigen, z.B. `[A: 2] [B: 1] [C: 0]` mit den jeweiligen Template-Farben
-
-**Daten-Laden:** Die Query, die Entscheidungen laedt, muss `response_options` aus `task_decisions` mitlesen und ins `MyWorkDecision`-Objekt einfuegen.
-
----
-
-## 6. Reines Freitext-Antwortfeld als Template (Punkt 6)
-
-Neues Template, bei dem es keine Buttons gibt, sondern nur ein Textfeld fuer eine schriftliche Rueckmeldung.
-
-**`decisionTemplates.ts`** -- Neues Template:
 ```text
-freetext: {
-  id: "freetext",
-  name: "Nur Freitext",
-  description: "Nur eine schriftliche Rueckmeldung ohne Abstimmung",
-  options: [
-    { key: "comment", label: "Rueckmeldung", color: "blue", icon: "message-circle", requires_comment: true }
-  ]
-}
+const BORDER_LEFT_MAP: Record<string, string> = {
+  green: "border-l-green-600",
+  red: "border-l-red-600",
+  orange: "border-l-orange-500",
+  yellow: "border-l-yellow-500",
+  blue: "border-l-blue-600",
+  purple: "border-l-purple-600",
+  lime: "border-l-lime-600",
+  gray: "border-l-gray-400",
+};
 ```
 
-**`TaskDecisionResponse.tsx`:**
-- Wenn nur eine einzige Option existiert und diese `requires_comment: true` hat:
-  - Direkt das Textfeld anzeigen (ohne vorher einen Button klicken zu muessen)
-  - Senden-Button darunter
-- Dadurch wird die UX fuer reine Freitext-Anfragen deutlich vereinfacht
+In `getBorderColor` statt des dynamischen `replace` die Map verwenden: `BORDER_LEFT_MAP[sorted[0].color] || 'border-l-gray-400'`.
+
+**Datei:** `types.ts`
+
+---
+
+## 7. E-Mail-Anhaenge separat anzeigen (Punkt 7)
+
+**Problem:** Mails (.eml/.msg) werden zusammen mit normalen Dateien gezaehlt und unter dem Paperclip-Icon angezeigt.
+
+**Fix:**
+- In `MyWorkDecisionsTab.tsx` beim Laden der Entscheidungen auch die Attachment-Daten mit Dateinamen laden (statt nur `count`), um E-Mail-Dateien (.eml/.msg) separat zaehlen zu koennen
+- Alternative (einfacher): Eine separate Query fuer Attachments pro Decision, die nach Dateityp filtert
+- In `MyWorkDecisionCard.tsx`: Neues Mail-Icon (`Mail`) mit eigenem Zaehler neben dem Paperclip-Icon anzeigen. Klick oeffnet einen kleinen Dialog/Popover mit der Liste der angehaengten E-Mails
+
+**Dateien:** `MyWorkDecisionsTab.tsx` (Daten laden), `MyWorkDecisionCard.tsx` (Anzeige), neuer Interface-Feld `emailAttachmentCount` in `types.ts`
+
+---
+
+## 8. Letzte Aktivitaet: Bessere Hierarchie (Punkt 8)
+
+**Problem:** In `DecisionCardActivity.tsx` ist die Creator-Antwort (Zeile 161-176) visuell zu flach -- sie sieht aus wie ein separater Eintrag statt einer verschachtelten Antwort auf die Rueckfrage.
+
+**Fix:**
+- Creator-Antwort staerker einruecken (ml-6 statt implizit)
+- Einen vertikalen Strich (border-l-2) als visuelle Verbindungslinie hinzufuegen
+- Text "Antwort von [Name]:" als Prefix
+- Hintergrund beibehalten aber mit leichtem Rahmen links in der Farbe der Rueckfrage (orange)
+
+```text
+{item.creatorResponse && (
+  <div className="ml-4 mt-1 pl-2 border-l-2 border-orange-300 bg-muted/50 rounded-r px-2 py-1">
+    <div className="flex items-center gap-1 mb-0.5">
+      <Avatar ... />
+      <span className="font-medium text-[10px]">{creatorProfile?.display_name}</span>
+    </div>
+    <RichTextDisplay content={item.creatorResponse} className="text-[11px]" />
+  </div>
+)}
+```
+
+**Datei:** `DecisionCardActivity.tsx`
+
+---
+
+## 9. Oeffentlich-Icon neben Status-Badge, nur Icon (Punkt 9)
+
+**Problem:** In `MyWorkDecisionCard.tsx` Zeile 213-218 wird "Oeffentlich" als Text + Globe-Icon in der Metadata-Zeile angezeigt.
+
+**Fix:**
+- Aus der Metadata-Zeile (Zeile 213-218) entfernen
+- In den Header-Bereich (Zeile 106-128) neben den Status-Badges das Globe-Icon einfuegen -- nur das Icon, kein Text, mit Tooltip "Oeffentlich"
+
+**Datei:** `MyWorkDecisionCard.tsx`
+
+---
+
+## 10. Oeffentliche Entscheidungen nicht im Tab sichtbar (Punkt 10)
+
+**Problem:** Oeffentliche Entscheidungen, bei denen der User bereits Teilnehmer ist, erscheinen unter "Fuer mich" statt unter "Oeffentlich". Der Tab "Oeffentlich" filtert mit `!d.isCreator && !d.isParticipant`, was korrekt ist -- aber moeglicherweise blockiert eine RLS-Policy den Zugriff auf Decisions, die `visible_to_all = true` haben, aber bei denen der User nicht explizit Teilnehmer ist.
+
+**Fix:** Pruefen, ob eine SELECT-RLS-Policy auf `task_decisions` existiert, die den Zugriff auf `visible_to_all`-Decisions erlaubt. Falls nicht, wird eine neue Policy hinzugefuegt:
+
+```text
+CREATE POLICY "Users can view public decisions in their tenant"
+ON task_decisions FOR SELECT
+USING (visible_to_all = true AND tenant_id IN (
+  SELECT tenant_id FROM user_tenant_memberships 
+  WHERE user_id = auth.uid() AND is_active = true
+));
+```
+
+**Datei:** SQL-Migration
 
 ---
 
 ## Technische Zusammenfassung
 
-### Keine DB-Aenderungen noetig
-Alle Aenderungen sind rein im Frontend.
+### SQL-Migration
+- RLS-Policy fuer oeffentliche Entscheidungen (Punkt 10)
 
 ### Dateien
 
 | Datei | Aenderungen |
 |-------|-------------|
-| `useDefaultDecisionParticipants.ts` | Erweitern um visibleToAll, sendByEmail, sendViaMatrix |
-| `DefaultParticipantsDialog.tsx` | Drei neue Toggles (Oeffentlich, E-Mail, Matrix) |
-| `StandaloneDecisionCreator.tsx` | Standard-Settings laden, Reset-Bug fix (customOptions), Email-Upload angleichen |
-| `TaskDecisionCreator.tsx` | Standard-Settings laden, Reset-Bug fix, Email-Metadaten beim Upload, TopicSelector |
-| `decisionTemplates.ts` | Zwei neue Templates: "Kenntnisnahme" und "Nur Freitext" |
-| `types.ts` (my-work/decisions) | response_options ins Interface, dynamische Ergebnis-Zusammenfassung |
-| `MyWorkDecisionCard.tsx` | Dynamische Ergebnis-Anzeige und Randfarbe basierend auf response_options |
-| `TaskDecisionResponse.tsx` | Direktes Freitext-Feld wenn nur eine requires_comment-Option |
-| Daten-Laden (MyWorkDecisionsTab o.ae.) | response_options aus DB mitlesen |
+| `StandaloneDecisionCreator.tsx` | Template-Reset fix, Editor nur bei "custom", Dropdown-Stil angleichen |
+| `TaskDecisionCreator.tsx` | Editor nur bei "custom" |
+| `NoteDecisionCreator.tsx` | Editor nur bei "custom", Dropdown-Stil angleichen |
+| `TaskDecisionResponse.tsx` | Kenntnisnahme: prominenter Einzelbutton |
+| `types.ts` | Statische border-l-Map, emailAttachmentCount-Feld |
+| `MyWorkDecisionCard.tsx` | Mail-Icon separat, Globe nur als Icon neben Badge |
+| `MyWorkDecisionsTab.tsx` | Email-Attachment-Count laden |
+| `DecisionCardActivity.tsx` | Bessere Hierarchie fuer Creator-Antworten |
+| SQL-Migration | RLS-Policy fuer visible_to_all |
