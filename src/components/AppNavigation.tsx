@@ -204,32 +204,6 @@ export function AppNavigation({
     setPreviousBadges(navigationCounts);
   }, [navigationCounts]);
 
-  // Track badge changes for animations
-  useEffect(() => {
-    const newItems = new Set<string>();
-    
-    Object.entries(navigationCounts).forEach(([key, count]) => {
-      const prevCount = previousBadges[key] || 0;
-      if (count > prevCount) {
-        newItems.add(key);
-        // Remove from newItems after animation
-        setTimeout(() => {
-          setNewBadgeItems(prev => {
-            const updated = new Set(prev);
-            updated.delete(key);
-            return updated;
-          });
-        }, 3000);
-      }
-    });
-    
-    if (newItems.size > 0) {
-      setNewBadgeItems(prev => new Set([...prev, ...newItems]));
-    }
-    
-    setPreviousBadges(navigationCounts);
-  }, [navigationCounts]);
-
   const isAbgeordneter = userRole === 'abgeordneter';
   const isBueroleitung = userRole === 'bueroleitung';
   const showTimeTracking = !isAbgeordneter && userRole !== null;
@@ -428,7 +402,7 @@ export function AppNavigation({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <nav className="flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 w-[72px]">
+      <nav className={cn("flex flex-col bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 w-[72px]", isMobile ? "h-full" : "h-screen")}>
         {/* Logo Area */}
         <div className="h-14 flex items-center justify-center border-b border-[hsl(var(--nav-foreground)/0.1)]">
           <Tooltip>

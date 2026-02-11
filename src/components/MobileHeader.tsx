@@ -1,5 +1,6 @@
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Menu, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,16 @@ import { Input } from "@/components/ui/input";
 
 export function MobileHeader() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+
+  // Derive active section from URL path (same logic as Index.tsx)
+  const activeSection = (() => {
+    const path = location.pathname.split('/')[1] || 'dashboard';
+    return path || 'dashboard';
+  })();
   const [appSettings, setAppSettings] = useState({
     app_name: "LandtagsOS",
     app_logo_url: ""
@@ -81,8 +90,12 @@ export function MobileHeader() {
               </SheetTrigger>
               <SheetContent side="left" className="p-0 w-[280px] bg-[hsl(var(--nav))] border-[hsl(var(--nav-foreground)/0.1)]">
                 <AppNavigation 
-                  activeSection="" 
-                  onSectionChange={() => setMobileNavOpen(false)} 
+                  activeSection={activeSection} 
+                  onSectionChange={(section) => {
+                    navigate(section === 'dashboard' ? '/' : `/${section}`);
+                    setMobileNavOpen(false);
+                  }}
+                  isMobile={true}
                 />
               </SheetContent>
             </Sheet>
@@ -92,6 +105,7 @@ export function MobileHeader() {
                 <img 
                   src={appSettings.app_logo_url} 
                   alt="App Logo" 
+                  crossOrigin="anonymous"
                   className="h-8 w-8 object-contain"
                 />
               )}
