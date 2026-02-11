@@ -14,7 +14,8 @@ import {
   ClipboardList, Trash2, Paperclip, Globe, MessageSquare 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MyWorkDecision, getResponseSummary, getBorderColor } from "./types";
+import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
+import { getColorClasses } from "@/lib/decisionTemplates";
 
 interface MyWorkDecisionCardProps {
   decision: MyWorkDecision;
@@ -80,6 +81,9 @@ export function MyWorkDecisionCard({
   currentUserId,
 }: MyWorkDecisionCardProps) {
   const summary = getResponseSummary(decision.participants);
+  const isCustomTemplate = decision.response_options && decision.response_options.length > 0 &&
+    !(['yes','no','question'].every(k => decision.response_options!.some(o => o.key === k)) && decision.response_options!.length <= 3);
+  const customSummary = isCustomTemplate ? getCustomResponseSummary(decision.participants, decision.response_options!) : null;
 
   const avatarParticipants = (decision.participants || []).map(p => ({
     user_id: p.user_id,
@@ -93,7 +97,7 @@ export function MyWorkDecisionCard({
     <Card 
       className={cn(
         "group border-l-4 hover:bg-muted/50 transition-colors cursor-pointer",
-        getBorderColor(summary)
+        getBorderColor(summary, decision.response_options, decision.participants)
       )}
       onClick={() => onOpenDetails(decision.id)}
     >
@@ -242,15 +246,29 @@ export function MyWorkDecisionCard({
 
             <div className="flex items-center gap-3 ml-auto">
               <div className="flex items-center gap-1.5 text-sm font-bold">
-                <span className="text-green-600">{summary.yesCount}</span>
-                <span className="text-muted-foreground">/</span>
-                <span className="text-orange-600">{summary.questionCount}</span>
-                <span className="text-muted-foreground">/</span>
-                <span className="text-red-600">{summary.noCount}</span>
-                {summary.otherCount > 0 && (
+                {customSummary ? (
+                  customSummary.counts.map((c, i) => {
+                    const cc = getColorClasses(c.color);
+                    return (
+                      <span key={c.key} className="flex items-center gap-0.5">
+                        {i > 0 && <span className="text-muted-foreground">/</span>}
+                        <span className={cc.textClass} title={c.label}>{c.count}</span>
+                      </span>
+                    );
+                  })
+                ) : (
                   <>
+                    <span className="text-green-600">{summary.yesCount}</span>
                     <span className="text-muted-foreground">/</span>
-                    <span className="text-blue-600">{summary.otherCount}</span>
+                    <span className="text-orange-600">{summary.questionCount}</span>
+                    <span className="text-muted-foreground">/</span>
+                    <span className="text-red-600">{summary.noCount}</span>
+                    {summary.otherCount > 0 && (
+                      <>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="text-blue-600">{summary.otherCount}</span>
+                      </>
+                    )}
                   </>
                 )}
               </div>

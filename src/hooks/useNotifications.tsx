@@ -309,7 +309,7 @@ export const useNotifications = () => {
       console.log('✅ Service worker registered');
 
       // Get existing subscription or create new one
-      let subscription = await registration.pushManager.getSubscription();
+      let subscription = await (registration as any).pushManager.getSubscription();
       console.log('📋 Existing subscription:', !!subscription);
       
       // Always check if we need to create a new subscription
@@ -360,7 +360,7 @@ export const useNotifications = () => {
           const vapidPublicKey = vapidData.publicKey;
           console.log('🔑 Got VAPID public key from server');
         
-          subscription = await registration.pushManager.subscribe({
+          subscription = await (registration as any).pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
           });
