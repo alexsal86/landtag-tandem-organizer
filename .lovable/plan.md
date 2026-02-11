@@ -1,104 +1,153 @@
 
+# Plan: Entscheidungen -- Standardeinstellungen, Bug-Fixes und neue Features
 
-# Plan: Mitarbeitergespraeche -- Fehler beheben und Features ergaenzen
+## 1. Standard-Einstellungen erweitern (Punkt 1)
 
-## Kritische Fehler
+Aktuell speichert `useDefaultDecisionParticipants` nur Teilnehmer-IDs in localStorage. Die Erweiterung umfasst drei zusaetzliche Standardwerte.
 
-### A. PGRST200-Fehler beim Laden eines Gespraechs (Punkte 2 + 4)
+**Aenderungen:**
 
-Der Fehler `Could not find a relationship between 'employee_meetings' and 'profiles'` tritt auf, weil `employee_meetings.employee_id` eine FK auf `auth.users(id)` hat, NICHT auf `profiles(user_id)`. PostgREST kann den impliziten Join `profiles!employee_id` daher nicht aufloesen.
+**`useDefaultDecisionParticipants.ts`** -> Umbenennung/Erweiterung zu `useDefaultDecisionSettings.ts`:
+- Neuer Storage-Key `default_decision_settings` mit JSON-Objekt:
+  ```text
+  {
+    participants: string[],
+    visibleToAll: boolean,
+    sendByEmail: boolean,
+    sendViaMatrix: boolean
+  }
+  ```
+- Rueckwaertskompatibilitaet: Beim ersten Laden wird der alte Key `default_decision_participants` migriert
 
-**Betroffen:**
-- `EmployeeMeetingProtocol.tsx` Zeile 225: `select("*, employee:profiles!employee_id(...), supervisor:profiles!conducted_by(...)")`
-- `EmployeeMeetingDetail.tsx` Zeile 26-30: Access-Check nutzt `.single()` -- wenn der Query darueber fehlschlaegt, wird der User nach `/employee` weitergeleitet
+**`DefaultParticipantsDialog.tsx`** -> Erweitern um drei zusaetzliche Toggles:
+- Switch "Oeffentlich (fuer alle sichtbar)" -- setzt `visibleToAll`-Standard
+- Switch "Per E-Mail versenden" -- setzt `sendByEmail`-Standard
+- Switch "Via Matrix versenden" -- setzt `sendViaMatrix`-Standard
+- Dialog-Titel aendern zu "Standard-Einstellungen"
 
-**Loesung:**
-- Den Join-Query in `EmployeeMeetingProtocol.tsx` ersetzen: Statt `profiles!employee_id` separate Queries fuer die Profildaten ausfuehren (analog zu `EmployeeMeetingHistory.tsx`, das bereits korrekt separate Profile-Queries nutzt)
-- In `EmployeeMeetingDetail.tsx`: `.single()` durch `.maybeSingle()` ersetzen, um PGRST116-Fehler bei fehlenden Ergebnissen zu vermeiden
-
----
-
-### B. Scheduler-Navigation verursacht Fehler-Toast trotz Erfolg (Punkt 2)
-
-Der `EmployeeMeetingScheduler` navigiert nach erfolgreicher Erstellung zu `/employee-meeting/{id}`. Dort laedt `EmployeeMeetingProtocol` das Meeting mit dem fehlerhaften `profiles!`-Join, der schlaegt fehl, und ein Fehler-Toast erscheint -- obwohl das Meeting korrekt erstellt wurde.
-
-Dies wird durch Fix A automatisch behoben.
-
----
-
-## Feature-Erweiterungen
-
-### 1. Mitarbeitergespraeche in Team > Mitarbeiter-Info integrieren
-
-Aktuell sind Mitarbeitergespraeche (Beantragen, Historie) nur unter `/employee` (EmployeesView) sichtbar. Der Wunsch ist, sie auch im Tab "Mitarbeiter-Info" in `TimeTrackingView.tsx` verfuegbar zu machen.
-
-**Loesung:**
-- In `EmployeeInfoTab.tsx` einen neuen Abschnitt "Mitarbeitergespraeche" hinzufuegen mit:
-  - Button "Gespraech beantragen" (oeffnet `EmployeeMeetingRequestDialog`)
-  - `EmployeeMeetingHistory` mit `employeeId={user.id}` und `showFilters={false}`
-- Die Komponente benoetigt Zugriff auf `useAuth()` fuer die User-ID
-
-**Dateien:** `EmployeeInfoTab.tsx`
+**`StandaloneDecisionCreator.tsx` und `TaskDecisionCreator.tsx`**:
+- Beim Laden der Standardeinstellungen auch `visibleToAll`, `sendByEmail` und `sendViaMatrix` aus den gespeicherten Defaults uebernehmen
 
 ---
 
-### 2. Absagen und Umterminieren von Gespraechen (Punkt 3)
+## 2. Vorschau-Bug nach zweiter Erstellung beheben (Punkt 2)
 
-Aktuell gibt es keine Moeglichkeit, ein geplantes Gespraech abzusagen oder umzuterminieren.
+**Problem:** Nach dem Reset im `handleSubmit` werden `customOptions` auf generische Platzhalter `["Option 1", "Option 2"]` zurueckgesetzt (Zeile 448-451 in Standalone, Zeile 464-467 in Task), obwohl `selectedTemplateId` auf den Default (`yesNoQuestion`) zurueckgesetzt wird. Beim naechsten Oeffnen stimmt die Vorschau nicht mehr mit dem ausgewaehlten Template ueberein.
 
-**Loesung -- Neue Aktionen im Protokoll-Header (`EmployeeMeetingProtocol.tsx`):**
-
-**Fuer Abgeordnete/Vorgesetzte (conducted_by):**
-- Button "Absagen" bei Status `scheduled`: Setzt Status auf `cancelled`, fragt nach Begruendung, sendet Benachrichtigung an Mitarbeiter
-- Button "Umterminieren": Oeffnet den `EmployeeMeetingScheduler` mit neuem Datum, setzt alten Termin auf `rescheduled`
-
-**Fuer Mitarbeiter (employee_id):**
-- Button "Absagen" bei Status `scheduled`: Setzt Status auf `cancelled_by_employee`, erfordert Begruendung, sendet Benachrichtigung an Vorgesetzten
-- Button "Umterminierung anfragen": Erstellt eine Benachrichtigung/Anfrage an den Vorgesetzten mit Begruendung
-
-**DB-Aenderung:**
-- Neue erlaubte Status-Werte fuer `employee_meetings.status`: `cancelled`, `cancelled_by_employee`, `rescheduled` (per ALTER TABLE ... DROP CONSTRAINT + neues CHECK oder Entfernen des CHECK-Constraints, falls vorhanden)
-- Neue Spalte `cancellation_reason` (TEXT, nullable) auf `employee_meetings`
-
-**Dateien:** SQL-Migration, `EmployeeMeetingProtocol.tsx`, `EmployeeMeetingHistory.tsx` (neue Status-Labels/-Badges)
+**Fix in beiden Creatorn (`StandaloneDecisionCreator.tsx` und `TaskDecisionCreator.tsx`):**
+- Im Reset-Block nach `setSelectedTemplateId(DEFAULT_TEMPLATE_ID)` die `customOptions` auf die tatsaechlichen Options des Default-Templates setzen:
+  ```text
+  const defaultTpl = getTemplateById(DEFAULT_TEMPLATE_ID);
+  setCustomOptions(defaultTpl ? defaultTpl.options.map(o => ({...o})) : []);
+  ```
+  statt der Platzhalter `Option 1 / Option 2`.
 
 ---
 
-### 3. Benachrichtigungen fuer alle Meeting-Ereignisse (Punkt 5)
+## 3. File-Upload angleichen (Punkt 3)
 
-Aktuell werden nur bei der Terminierung und Ablehnung von Anfragen Benachrichtigungen gesendet. Es fehlen:
+**Analyse:** Beide Creatorn nutzen `DecisionFileUpload` im `mode="creation"` identisch. Der Unterschied: `StandaloneDecisionCreator` extrahiert Email-Metadaten beim Upload und speichert sie in `email_metadata`, `TaskDecisionCreator` dagegen nicht.
 
-| Ereignis | Empfaenger | Nachricht |
-|----------|-----------|-----------|
-| Gespraech geplant | Mitarbeiter | Bereits vorhanden |
-| Gespraech gestartet | Mitarbeiter | "Ihr Mitarbeitergespraech wurde gestartet" |
-| Gespraech abgeschlossen | Mitarbeiter | "Ihr Mitarbeitergespraech wurde abgeschlossen" |
-| Gespraech abgesagt (Vorgesetzter) | Mitarbeiter | "Ihr Gespraech am XX wurde abgesagt. Grund: ..." |
-| Gespraech abgesagt (Mitarbeiter) | Vorgesetzter | "MA XY hat das Gespraech abgesagt. Grund: ..." |
-| Umterminierung angefragt | Vorgesetzter | "MA XY moechte das Gespraech umterminieren" |
-| Gespraechwunsch eingereicht | Vorgesetzter | Bereits vorhanden |
-| Gespraechwunsch abgelehnt | Mitarbeiter | Bereits vorhanden |
+**Fix in `TaskDecisionCreator.tsx`:**
+- Die Upload-Logik im `handleSubmit` wird an `StandaloneDecisionCreator` angeglichen: Email-Metadaten (.eml/.msg) werden analog geparst und beim DB-Insert mitgegeben (imports fuer `isEmlFile`, `isMsgFile`, `parseEmlFile`, `parseMsgFile` hinzufuegen)
 
-**Loesung:** In `EmployeeMeetingProtocol.tsx` bei `updateStatus()` und den neuen Absage-/Umterminierungs-Funktionen jeweils `supabase.rpc("create_notification", ...)` aufrufen.
+**UI-Angleichung:**
+- `TaskDecisionCreator` bekommt denselben Themen-Selektor (`TopicSelector`) wie `StandaloneDecisionCreator`
+- Reihenfolge der Felder in beiden Dialogen vereinheitlichen: Titel, Beschreibung, Oeffentlich-Checkbox, Antworttyp, Teilnehmer, Themen, Dateien, E-Mail/Matrix-Checkboxen
 
-**Datei:** `EmployeeMeetingProtocol.tsx`
+---
+
+## 4. Kenntnisnahme-Feature (Punkt 4)
+
+Umgesetzt als neues Decision-Template "Kenntnisnahme" -- es nutzt die vorhandene Entscheidungs-Infrastruktur, ist aber konzeptionell simpler: Der Ersteller teilt eine Information, Teilnehmer bestaetigen mit "Zur Kenntnis genommen".
+
+**Aenderungen:**
+
+**`decisionTemplates.ts`** -- Neues Template:
+```text
+kenntnisnahme: {
+  id: "kenntnisnahme",
+  name: "Zur Kenntnisnahme",
+  description: "Information teilen -- Teilnehmer bestaetigen den Erhalt",
+  options: [
+    { key: "acknowledged", label: "Zur Kenntnis genommen", color: "green", icon: "check" }
+  ]
+}
+```
+
+Keine DB-Aenderung noetig -- das Template wird als `response_options` in der bestehenden `task_decisions`-Tabelle gespeichert. Die Anzeige in der Card passt sich automatisch an (nur ein gruener Zaehler, kein Rot/Orange).
+
+---
+
+## 5. Ergebnisanzeige an benutzerdefinierte Antworttypen anpassen (Punkt 5)
+
+**Problem:** Die Karten zeigen immer fest `Gruen/Orange/Rot` (Ja/Rueckfrage/Nein) als Zaehler. Bei benutzerdefinierten Templates (A/B/C, 1-5, Kenntnisnahme) passt das nicht.
+
+**Aenderungen:**
+
+**`MyWorkDecision`-Typ (types.ts):**
+- Feld `response_options?: ResponseOption[]` zum Interface hinzufuegen, damit die Card die konfigurierten Optionen kennt
+
+**`getResponseSummary` (types.ts):**
+- Neue Funktion `getCustomResponseSummary(participants, responseOptions)`:
+  - Zaehlt pro konfigurierter Option die Anzahl der Stimmen
+  - Gibt Array von `{ key, label, color, count }` zurueck + `pending`
+  - Fallback auf alte Logik wenn keine `response_options` vorhanden
+
+**`getBorderColor` (types.ts):**
+- Erweitern: Wenn `response_options` vorhanden und NICHT das Standard-Yes/No-Template:
+  - Orange-Rand bei offenen Rueckfragen (key="question")
+  - Grau-Rand bei ausstehenden Antworten
+  - Farbe der meistgewaehlten Option als Rand-Farbe bei Abschluss
+
+**`MyWorkDecisionCard.tsx` -- Ergebnis-Anzeige (Zeile 243-256):**
+- Statt fester `yesCount/questionCount/noCount`-Anzeige:
+  - Bei Standard-Templates (yesNo, yesNoQuestion): Bisherige Anzeige beibehalten
+  - Bei benutzerdefinierten Templates: Farbige Badges pro Option mit Zaehler anzeigen, z.B. `[A: 2] [B: 1] [C: 0]` mit den jeweiligen Template-Farben
+
+**Daten-Laden:** Die Query, die Entscheidungen laedt, muss `response_options` aus `task_decisions` mitlesen und ins `MyWorkDecision`-Objekt einfuegen.
+
+---
+
+## 6. Reines Freitext-Antwortfeld als Template (Punkt 6)
+
+Neues Template, bei dem es keine Buttons gibt, sondern nur ein Textfeld fuer eine schriftliche Rueckmeldung.
+
+**`decisionTemplates.ts`** -- Neues Template:
+```text
+freetext: {
+  id: "freetext",
+  name: "Nur Freitext",
+  description: "Nur eine schriftliche Rueckmeldung ohne Abstimmung",
+  options: [
+    { key: "comment", label: "Rueckmeldung", color: "blue", icon: "message-circle", requires_comment: true }
+  ]
+}
+```
+
+**`TaskDecisionResponse.tsx`:**
+- Wenn nur eine einzige Option existiert und diese `requires_comment: true` hat:
+  - Direkt das Textfeld anzeigen (ohne vorher einen Button klicken zu muessen)
+  - Senden-Button darunter
+- Dadurch wird die UX fuer reine Freitext-Anfragen deutlich vereinfacht
 
 ---
 
 ## Technische Zusammenfassung
 
-### SQL-Migration
-
-1. Spalte `cancellation_reason` (TEXT, nullable) auf `employee_meetings` hinzufuegen
-2. Status-CHECK-Constraint erweitern um `cancelled`, `cancelled_by_employee`, `rescheduled` (oder Constraint entfernen, falls er die Werte einschraenkt)
+### Keine DB-Aenderungen noetig
+Alle Aenderungen sind rein im Frontend.
 
 ### Dateien
 
 | Datei | Aenderungen |
 |-------|-------------|
-| SQL-Migration | cancellation_reason + Status-Erweiterung |
-| `EmployeeMeetingProtocol.tsx` | FK-Join-Fix (separate Profile-Queries), Absagen-/Umterminierungs-Buttons, Benachrichtigungen bei Status-Wechsel |
-| `EmployeeMeetingDetail.tsx` | `.single()` durch `.maybeSingle()` ersetzen |
-| `EmployeeInfoTab.tsx` | Mitarbeitergespraeche-Bereich mit Request-Dialog + Historie einbetten |
-| `EmployeeMeetingHistory.tsx` | Neue Status-Labels (cancelled, rescheduled) in Badges |
-
+| `useDefaultDecisionParticipants.ts` | Erweitern um visibleToAll, sendByEmail, sendViaMatrix |
+| `DefaultParticipantsDialog.tsx` | Drei neue Toggles (Oeffentlich, E-Mail, Matrix) |
+| `StandaloneDecisionCreator.tsx` | Standard-Settings laden, Reset-Bug fix (customOptions), Email-Upload angleichen |
+| `TaskDecisionCreator.tsx` | Standard-Settings laden, Reset-Bug fix, Email-Metadaten beim Upload, TopicSelector |
+| `decisionTemplates.ts` | Zwei neue Templates: "Kenntnisnahme" und "Nur Freitext" |
+| `types.ts` (my-work/decisions) | response_options ins Interface, dynamische Ergebnis-Zusammenfassung |
+| `MyWorkDecisionCard.tsx` | Dynamische Ergebnis-Anzeige und Randfarbe basierend auf response_options |
+| `TaskDecisionResponse.tsx` | Direktes Freitext-Feld wenn nur eine requires_comment-Option |
+| Daten-Laden (MyWorkDecisionsTab o.ae.) | response_options aus DB mitlesen |
