@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import React from "react";
+import { cn } from "@/lib/utils";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, ChevronRight, Star, Tag, Merge, CheckSquare, Square, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { ContactDetailSheet } from "./ContactDetailSheet";
+import { ContactDetailPanel } from "./ContactDetailPanel";
 import { useInfiniteContacts, Contact } from "@/hooks/useInfiniteContacts";
 import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
 import { ContactSkeleton } from "./ContactSkeleton";
@@ -410,7 +412,13 @@ export function ContactsView() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
+    <div className="flex h-[calc(100vh-3.5rem)]">
+      {/* Left: Contact List */}
+      <div className={cn(
+        "flex-1 overflow-y-auto transition-all",
+        selectedContactId && !isSheetOpen ? "hidden md:block md:w-2/5 lg:w-2/5" : "w-full"
+      )}>
+    <div className="min-h-0 bg-gradient-subtle p-6">
       {/* Header */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
@@ -420,7 +428,7 @@ export function ContactsView() {
               Verwalten Sie Ihre wichtigsten Kontakte, Organisationen und Beziehungen
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Link to="/contacts/new">
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
@@ -673,7 +681,6 @@ export function ContactsView() {
                   toggleContactSelection(contact.id);
                 } else {
                   setSelectedContactId(contact.id);
-                  setIsSheetOpen(true);
                 }
               }}
             >
@@ -832,7 +839,6 @@ export function ContactsView() {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => {
                       setSelectedContactId(contact.id);
-                      setIsSheetOpen(true);
                     }}
                   >
                   <TableCell>
@@ -1081,7 +1087,6 @@ export function ContactsView() {
               onContactClick={(contactId) => {
                 console.log('ContactsView: Stakeholder contact clicked:', contactId);
                 setSelectedContactId(contactId);
-                setIsSheetOpen(true);
               }}
               onRefresh={refreshContacts}
               hasMore={hasMore}
@@ -1257,7 +1262,7 @@ export function ContactsView() {
                             </TableHeader>
                             <TableBody>
                               {list.members.map((member) => (
-                                <TableRow key={member.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedContactId(member.id); setIsSheetOpen(true); }}>
+                                <TableRow key={member.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedContactId(member.id); }}>
                                   <TableCell className="py-1.5 text-sm font-medium">{member.name}</TableCell>
                                   <TableCell className="py-1.5 text-sm text-muted-foreground">{member.email || '–'}</TableCell>
                                   <TableCell className="py-1.5 text-sm text-muted-foreground hidden sm:table-cell">{member.organization || '–'}</TableCell>
@@ -1335,6 +1340,19 @@ export function ContactsView() {
         onClose={() => setIsDuplicateSheetOpen(false)}
         onDuplicatesResolved={refreshContacts}
       />
+    </div>
+    </div>
+
+      {/* Right: Contact Detail Panel (inline, not overlay) */}
+      {selectedContactId && !isSheetOpen && (
+        <div className="w-full md:w-3/5 lg:w-3/5 border-l border-border overflow-hidden bg-background">
+          <ContactDetailPanel
+            contactId={selectedContactId}
+            onClose={() => setSelectedContactId(null)}
+            onContactUpdate={refreshContacts}
+          />
+        </div>
+      )}
     </div>
   );
 }

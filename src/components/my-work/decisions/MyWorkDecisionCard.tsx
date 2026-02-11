@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TaskDecisionResponse } from "@/components/task-decisions/TaskDecisionResponse";
 import { DecisionCardActivity } from "@/components/task-decisions/DecisionCardActivity";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
+import { EmailPreviewDialog } from "@/components/task-decisions/EmailPreviewDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { 
   MessageCircle, CheckCircle, MoreVertical, Edit, Archive, 
@@ -68,7 +69,7 @@ const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; m
   );
 };
 
-export function MyWorkDecisionCard({
+const MyWorkDecisionCardInner = ({
   decision,
   onOpenDetails,
   onEdit,
@@ -81,7 +82,8 @@ export function MyWorkDecisionCard({
   commentCount,
   creatingTaskId,
   currentUserId,
-}: MyWorkDecisionCardProps) {
+}: MyWorkDecisionCardProps) => {
+  const [previewEmail, setPreviewEmail] = useState<{ file_path: string; file_name: string } | null>(null);
   const summary = getResponseSummary(decision.participants);
   const isCustomTemplate = decision.response_options && decision.response_options.length > 0 &&
     !(['yes','no','question'].every(k => decision.response_options!.some(o => o.key === k)) && decision.response_options!.length <= 3);
@@ -96,6 +98,7 @@ export function MyWorkDecisionCard({
   }));
 
   return (
+    <>
     <Card 
       className={cn(
         "group border-l-4 hover:bg-muted/50 transition-colors cursor-pointer",
@@ -189,7 +192,7 @@ export function MyWorkDecisionCard({
         )}
 
         {/* Metadata row */}
-        <div className="flex items-center flex-wrap gap-3 mt-4 text-xs text-muted-foreground">
+        <div className="flex items-center flex-wrap gap-3 mt-4 text-xs text-muted-foreground overflow-x-auto">
           <span className="flex items-center gap-1">
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
             {new Date(decision.created_at).toLocaleDateString('de-DE')}
@@ -247,10 +250,14 @@ export function MyWorkDecisionCard({
                 <p className="text-xs font-medium mb-1.5">Angehängte E-Mails</p>
                 <div className="space-y-1">
                   {(decision.emailAttachments || []).map(att => (
-                    <div key={att.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <button 
+                      key={att.id} 
+                      onClick={() => setPreviewEmail({ file_path: att.file_path, file_name: att.file_name })}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-0.5 transition-colors w-full text-left cursor-pointer"
+                    >
                       <Mail className="h-3 w-3 flex-shrink-0" />
                       <span className="truncate">{att.file_name}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </PopoverContent>
@@ -324,5 +331,15 @@ export function MyWorkDecisionCard({
         />
       </CardContent>
     </Card>
+
+    <EmailPreviewDialog
+      open={!!previewEmail}
+      onOpenChange={() => setPreviewEmail(null)}
+      filePath={previewEmail?.file_path || ''}
+      fileName={previewEmail?.file_name || ''}
+    />
+    </>
   );
-}
+};
+
+export const MyWorkDecisionCard = memo(MyWorkDecisionCardInner);
