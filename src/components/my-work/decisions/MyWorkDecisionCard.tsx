@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { AvatarStack } from "@/components/ui/AvatarStack";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TaskDecisionResponse } from "@/components/task-decisions/TaskDecisionResponse";
 import { DecisionCardActivity } from "@/components/task-decisions/DecisionCardActivity";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { 
   MessageCircle, CheckCircle, MoreVertical, Edit, Archive, 
-  ClipboardList, Trash2, Paperclip, Globe, MessageSquare 
+  ClipboardList, Trash2, Paperclip, Globe, MessageSquare, Mail 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
@@ -122,6 +124,17 @@ export function MyWorkDecisionCard({
               </Badge>
             ) : null}
 
+            {decision.visible_to_all && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent><p>Öffentlich</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
             {decision.hasResponded && decision.isParticipant && (
               <CheckCircle className="h-4 w-4 text-emerald-500" />
             )}
@@ -210,18 +223,38 @@ export function MyWorkDecisionCard({
             }
           </button>
 
-          {decision.visible_to_all && (
-            <span className="flex items-center gap-1">
-              <Globe className="h-3.5 w-3.5" />
-              Öffentlich
-            </span>
-          )}
-
           {(decision.attachmentCount ?? 0) > 0 && (
             <span className="flex items-center gap-1">
               <Paperclip className="h-3.5 w-3.5" />
-              {decision.attachmentCount}
+              {(decision.attachmentCount ?? 0) - (decision.emailAttachmentCount ?? 0) > 0 
+                ? (decision.attachmentCount ?? 0) - (decision.emailAttachmentCount ?? 0) 
+                : null}
             </span>
+          )}
+
+          {(decision.emailAttachmentCount ?? 0) > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  {decision.emailAttachmentCount}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" onClick={(e) => e.stopPropagation()}>
+                <p className="text-xs font-medium mb-1.5">Angehängte E-Mails</p>
+                <div className="space-y-1">
+                  {(decision.emailAttachments || []).map(att => (
+                    <div key={att.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Mail className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{att.file_name}</span>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           )}
 
           {decision.topicIds && decision.topicIds.length > 0 && (

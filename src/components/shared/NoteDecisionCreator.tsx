@@ -333,6 +333,7 @@ export function NoteDecisionCreator({
       setDescription("");
       setSelectedUsers([]);
       setSelectedTemplateId(DEFAULT_TEMPLATE_ID);
+      setCustomOptions(getDefaultOptions());
       setVisibleToAll(true);
       setSelectedFiles([]);
       setSelectedTopicIds([]);
@@ -386,7 +387,10 @@ export function NoteDecisionCreator({
               <SelectContent>
                 {Object.values(DECISION_TEMPLATES).map((template) => (
                   <SelectItem key={template.id} value={template.id}>
-                    {template.name}
+                    <div className="flex flex-col items-start">
+                      <span>{template.name}</span>
+                      <span className="text-xs text-muted-foreground">{template.description}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>

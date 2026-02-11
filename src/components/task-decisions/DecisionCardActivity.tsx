@@ -157,19 +157,24 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
                   <RichTextDisplay content={item.comment} className="text-[11px] [&_p]:m-0" />
                 </div>
               )}
-              {/* Creator response with avatar + name + checkmark */}
+              {/* Creator response - nested with visual hierarchy */}
               {item.creatorResponse && (
-                <div className="flex items-start gap-1 mt-0.5 text-muted-foreground bg-muted/50 rounded px-1 py-0.5">
-                  <CheckCheck className="h-2.5 w-2.5 mt-0.5 flex-shrink-0 text-primary" />
-                  {creatorProfile && (
-                    <Avatar className="h-3 w-3 flex-shrink-0 mt-0.5">
-                      {creatorProfile.avatar_url && <AvatarImage src={creatorProfile.avatar_url} />}
-                      <AvatarFallback className="text-[6px]" style={{ backgroundColor: creatorProfile.badge_color || undefined }}>
-                        {getInitials(creatorProfile.display_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div className="line-clamp-1 flex-1">
+                <div className="ml-4 mt-1 pl-2 border-l-2 border-orange-300 bg-muted/50 rounded-r px-2 py-1">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <CheckCheck className="h-2.5 w-2.5 flex-shrink-0 text-primary" />
+                    {creatorProfile && (
+                      <Avatar className="h-3 w-3 flex-shrink-0">
+                        {creatorProfile.avatar_url && <AvatarImage src={creatorProfile.avatar_url} />}
+                        <AvatarFallback className="text-[6px]" style={{ backgroundColor: creatorProfile.badge_color || undefined }}>
+                          {getInitials(creatorProfile.display_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <span className="font-medium text-[10px] text-muted-foreground">
+                      {creatorProfile?.display_name || 'Ersteller'}
+                    </span>
+                  </div>
+                  <div className="line-clamp-2">
                     <RichTextDisplay content={item.creatorResponse} className="text-[11px] [&_p]:m-0" />
                   </div>
                 </div>
