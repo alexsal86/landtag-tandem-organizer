@@ -1,165 +1,151 @@
+# Plan: Mobile-Fixes, E-Mail-Vorschau, Kontakt-Layout und Performance
 
-# Plan: Entscheidungen -- 10 Punkte beheben und verbessern
+## 1. Mobile Navigation reparieren und modernisieren (Punkte 1 + 2 + 3)
 
-## 1. Template-Reset-Bug im StandaloneDecisionCreator (Punkt 1)
+### Problem
 
-**Problem:** Nach dem Erstellen einer Entscheidung wird `setSelectedTemplateId(DEFAULT_TEMPLATE_ID)` im StandaloneDecisionCreator NICHT aufgerufen (fehlt in Zeile 456-467). Im TaskDecisionCreator ist es bereits korrekt (Zeile 499).
+In `MobileHeader.tsx` Zeile 85 wird `onSectionChange={() => setMobileNavOpen(false)}` uebergeben -- das schliesst nur das Sheet, navigiert aber nirgendwohin. Ausserdem wird `activeSection=""` uebergeben, sodass kein aktiver Menuepunkt hervorgehoben wird.
 
-**Fix:** In `StandaloneDecisionCreator.tsx` im Reset-Block (nach Zeile 460) die Zeile `setSelectedTemplateId(DEFAULT_TEMPLATE_ID)` vor dem `setCustomOptions`-Aufruf einfuegen.
+### Loesung
 
-**Datei:** `StandaloneDecisionCreator.tsx`
+`MobileHeader` muss `useNavigate` und die aktive Section aus der URL kennen. Der `onSectionChange`-Callback muss die Navigation ausfuehren UND das Sheet schliessen.
 
----
+**Aenderungen in `MobileHeader.tsx`:**
 
-## 2 + 3. Kenntnisnahme und Freitext funktionieren nicht (Punkte 2 + 3)
+- `useNavigate()` und `useLocation()` importieren
+- `activeSection` aus `location.pathname` ableiten (gleiche Logik wie `Index.tsx`)
+- `onSectionChange` ersetzen durch eine Funktion, die navigiert UND `setMobileNavOpen(false)` aufruft:
+  ```text
+  onSectionChange={(section) => {
+    navigate(section === 'dashboard' ? '/' : `/${section}`);
+    setMobileNavOpen(false);
+  }}
+  ```
+- `activeSection={activeSection}` statt `activeSection=""`
+- Logo: `crossOrigin="anonymous"` hinzufuegen (wie in `AppNavigation.tsx`), um CORS-Fehler bei externen Logo-URLs zu vermeiden
 
-**Problem:** Fuer "Kenntnisnahme" (1 Option ohne `requires_comment`) fehlt eine Sonderbehandlung in `TaskDecisionResponse.tsx`. Die Komponente zeigt den Button nur im Standard-Rendering, das funktioniert grundsaetzlich. Allerdings wird die `ResponseOptionsEditor` bei der Erstellung angezeigt (Zeilen 572/604: `selectedTemplateId !== "yesNo" && selectedTemplateId !== "yesNoQuestion"`) -- und der Editor erzwingt "Mindestens 2 Optionen", was verwirrend ist und ggf. dazu fuehrt, dass Optionen ueberschrieben werden.
+### Modernisierung
 
-**Fix:**
-- `ResponseOptionsEditor` NUR anzeigen wenn `selectedTemplateId === "custom"` (in allen drei Creatorn)
-- Die Preview weiterhin fuer alle Templates anzeigen
-- In `TaskDecisionResponse.tsx`: Fuer Kenntnisnahme (1 Option, kein `requires_comment`): Den Button direkt prominent darstellen, aehnlich wie der Freitext-Modus -- ein einzelner grosser Button "Zur Kenntnis genommen"
+- Das `AppNavigation` im Sheet hat `h-screen` (Zeile 431), was im mobilen Sheet zu Overflow-Problemen fuehren kann. Fuer den mobilen Kontext wird `h-full` verwendet.
+- In `AppNavigation.tsx` den `isMobile`-Prop nutzen, um `h-screen` durch `h-full` zu ersetzen wenn `isMobile=true`
+- `MobileHeader` soll `isMobile={true}` an `AppNavigation` uebergeben
 
-**Dateien:** `StandaloneDecisionCreator.tsx`, `TaskDecisionCreator.tsx`, `NoteDecisionCreator.tsx`, `TaskDecisionResponse.tsx`
+### Sonstige Mobile-Fehler
 
----
+- `ContactsView.tsx`: Die Header-Buttons (Zeile 423-448) sind nicht responsive -- sie werden auf Mobile nebeneinander angezeigt und laufen ueber. Fix: `flex-wrap` hinzufuegen und auf Mobile kleinere Buttons zeigen
+- `MyWorkDecisionCard.tsx`: Metadata-Row (Zeile 192) kann auf Mobile ueberlaufen -- `overflow-x-auto` hinzufuegen
 
-## 4. Hinweistext bei Kenntnisnahme/Freitext anpassen (Punkt 4)
-
-**Problem:** `ResponseOptionsEditor.tsx` zeigt immer "Mindestens 2 Optionen erforderlich" (Zeile 118-120).
-
-**Fix:** Eruebrigt sich durch Punkt 2/3 -- der Editor wird nur noch bei `custom` angezeigt, wo der Hinweis passt.
-
----
-
-## 5. Template-Dropdown-Stil aus TaskDecisionCreator uebernehmen (Punkt 5)
-
-**Problem:** `StandaloneDecisionCreator` (Zeile 560-564) zeigt im Dropdown nur den Template-Namen. `TaskDecisionCreator` (Zeile 592-601) zeigt Name + Beschreibung in einer zweizeiligen Darstellung.
-
-**Fix:** In `StandaloneDecisionCreator.tsx` und `NoteDecisionCreator.tsx` das Select-Dropdown auf das gleiche Format aendern:
-```text
-<SelectItem key={template.id} value={template.id}>
-  <div className="flex flex-col items-start">
-    <span>{template.name}</span>
-    <span className="text-xs text-muted-foreground">{template.description}</span>
-  </div>
-</SelectItem>
-```
-
-**Dateien:** `StandaloneDecisionCreator.tsx`, `NoteDecisionCreator.tsx`
+**Dateien:** `MobileHeader.tsx`, `AppNavigation.tsx`, `ContactsView.tsx`, `MyWorkDecisionCard.tsx`
 
 ---
 
-## 6. Randfarbe bei benutzerdefinierten Antworttypen (Punkt 6)
+## 2. E-Mail-Vorschau in Decision-Cards ermoeglichen (Punkt 4)
 
-**Problem:** In `types.ts` Zeile 148 wird die Randfarbe dynamisch zusammengebaut: `colorClasses.borderClass.replace('border-', 'border-l-')`. Das erzeugt z.B. `border-l-green-600`, aber Tailwind generiert diese Klasse nicht, weil sie nie statisch im Code vorkommt (JIT-Problem).
+### Problem
 
-**Fix:** In `types.ts` eine statische Mapping-Funktion hinzufuegen, die fuer jede Farbe die korrekte `border-l-*` Klasse zurueckgibt:
+Im Popover (Zeile 249-254 in `MyWorkDecisionCard.tsx`) werden die E-Mail-Dateien nur als Liste mit Dateinamen angezeigt. Ein Klick oeffnet nichts -- es gibt keinen Button und keinen Verweis auf den `EmailPreviewDialog`.
+
+### Loesung
+
+- `EmailPreviewDialog` in `MyWorkDecisionCard.tsx` importieren
+- State fuer `previewEmail` (file_path + file_name) hinzufuegen
+- Jede E-Mail in der Popover-Liste wird klickbar (cursor-pointer, hover-Stil)
+- Klick setzt `previewEmail` und oeffnet den `EmailPreviewDialog`
+- Die `emailAttachments`-Daten enthalten bereits `file_path` und `file_name` (im Interface `types.ts` Zeile 20)
 
 ```text
-const BORDER_LEFT_MAP: Record<string, string> = {
-  green: "border-l-green-600",
-  red: "border-l-red-600",
-  orange: "border-l-orange-500",
-  yellow: "border-l-yellow-500",
-  blue: "border-l-blue-600",
-  purple: "border-l-purple-600",
-  lime: "border-l-lime-600",
-  gray: "border-l-gray-400",
-};
+// Im Popover:
+<button onClick={() => setPreviewEmail(att)} className="...">
+  <Mail className="h-3 w-3" />
+  <span className="truncate">{att.file_name}</span>
+</button>
+
+// Ausserhalb der Card:
+<EmailPreviewDialog
+  open={!!previewEmail}
+  onOpenChange={() => setPreviewEmail(null)}
+  filePath={previewEmail?.file_path || ''}
+  fileName={previewEmail?.file_name || ''}
+/>
 ```
-
-In `getBorderColor` statt des dynamischen `replace` die Map verwenden: `BORDER_LEFT_MAP[sorted[0].color] || 'border-l-gray-400'`.
-
-**Datei:** `types.ts`
-
----
-
-## 7. E-Mail-Anhaenge separat anzeigen (Punkt 7)
-
-**Problem:** Mails (.eml/.msg) werden zusammen mit normalen Dateien gezaehlt und unter dem Paperclip-Icon angezeigt.
-
-**Fix:**
-- In `MyWorkDecisionsTab.tsx` beim Laden der Entscheidungen auch die Attachment-Daten mit Dateinamen laden (statt nur `count`), um E-Mail-Dateien (.eml/.msg) separat zaehlen zu koennen
-- Alternative (einfacher): Eine separate Query fuer Attachments pro Decision, die nach Dateityp filtert
-- In `MyWorkDecisionCard.tsx`: Neues Mail-Icon (`Mail`) mit eigenem Zaehler neben dem Paperclip-Icon anzeigen. Klick oeffnet einen kleinen Dialog/Popover mit der Liste der angehaengten E-Mails
-
-**Dateien:** `MyWorkDecisionsTab.tsx` (Daten laden), `MyWorkDecisionCard.tsx` (Anzeige), neuer Interface-Feld `emailAttachmentCount` in `types.ts`
-
----
-
-## 8. Letzte Aktivitaet: Bessere Hierarchie (Punkt 8)
-
-**Problem:** In `DecisionCardActivity.tsx` ist die Creator-Antwort (Zeile 161-176) visuell zu flach -- sie sieht aus wie ein separater Eintrag statt einer verschachtelten Antwort auf die Rueckfrage.
-
-**Fix:**
-- Creator-Antwort staerker einruecken (ml-6 statt implizit)
-- Einen vertikalen Strich (border-l-2) als visuelle Verbindungslinie hinzufuegen
-- Text "Antwort von [Name]:" als Prefix
-- Hintergrund beibehalten aber mit leichtem Rahmen links in der Farbe der Rueckfrage (orange)
-
-```text
-{item.creatorResponse && (
-  <div className="ml-4 mt-1 pl-2 border-l-2 border-orange-300 bg-muted/50 rounded-r px-2 py-1">
-    <div className="flex items-center gap-1 mb-0.5">
-      <Avatar ... />
-      <span className="font-medium text-[10px]">{creatorProfile?.display_name}</span>
-    </div>
-    <RichTextDisplay content={item.creatorResponse} className="text-[11px]" />
-  </div>
-)}
-```
-
-**Datei:** `DecisionCardActivity.tsx`
-
----
-
-## 9. Oeffentlich-Icon neben Status-Badge, nur Icon (Punkt 9)
-
-**Problem:** In `MyWorkDecisionCard.tsx` Zeile 213-218 wird "Oeffentlich" als Text + Globe-Icon in der Metadata-Zeile angezeigt.
-
-**Fix:**
-- Aus der Metadata-Zeile (Zeile 213-218) entfernen
-- In den Header-Bereich (Zeile 106-128) neben den Status-Badges das Globe-Icon einfuegen -- nur das Icon, kein Text, mit Tooltip "Oeffentlich"
 
 **Datei:** `MyWorkDecisionCard.tsx`
 
 ---
 
-## 10. Oeffentliche Entscheidungen nicht im Tab sichtbar (Punkt 10)
+## 3. Kontakte: Detail-Ansicht als Seitenbereich statt Sheet (Punkt 5)
 
-**Problem:** Oeffentliche Entscheidungen, bei denen der User bereits Teilnehmer ist, erscheinen unter "Fuer mich" statt unter "Oeffentlich". Der Tab "Oeffentlich" filtert mit `!d.isCreator && !d.isParticipant`, was korrekt ist -- aber moeglicherweise blockiert eine RLS-Policy den Zugriff auf Decisions, die `visible_to_all = true` haben, aber bei denen der User nicht explizit Teilnehmer ist.
+### Aktuell
 
-**Fix:** Pruefen, ob eine SELECT-RLS-Policy auf `task_decisions` existiert, die den Zugriff auf `visible_to_all`-Decisions erlaubt. Falls nicht, wird eine neue Policy hinzugefuegt:
+`ContactsView` oeffnet `ContactDetailSheet` -- ein Sheet von rechts, das ueber den Inhalt gleitet.
 
-```text
-CREATE POLICY "Users can view public decisions in their tenant"
-ON task_decisions FOR SELECT
-USING (visible_to_all = true AND tenant_id IN (
-  SELECT tenant_id FROM user_tenant_memberships 
-  WHERE user_id = auth.uid() AND is_active = true
-));
-```
+### Gewuenscht
 
-**Datei:** SQL-Migration
+Ein Layout wie bei Administration: links die Kontaktliste, rechts die Detail-Ansicht als fester Bereich innerhalb des Layouts (kein Overlay).
+
+### Loesung
+
+- `ContactsView.tsx` bekommt ein Split-Layout:
+  ```text
+  <div className="flex h-[calc(100vh-3.5rem)]">
+    <div className={cn("flex-1 overflow-y-auto", selectedContactId && "hidden md:block md:w-1/2 lg:w-2/5")}>
+      {/* Kontaktliste */}
+    </div>
+    {selectedContactId && (
+      <div className="w-full md:w-1/2 lg:w-3/5 border-l overflow-y-auto">
+        <ContactDetailPanel contactId={selectedContactId} onClose={() => setSelectedContactId(null)} />
+      </div>
+    )}
+  </div>
+  ```
+- `ContactDetailSheet` wird durch eine neue Komponente `ContactDetailPanel` ersetzt, die den gleichen Inhalt zeigt aber ohne Sheet-Wrapper
+- Auf Mobile: Die Detail-Ansicht nimmt den gesamten Bildschirm ein (mit Zurueck-Button)
+- `ContactDetailPanel` extrahiert die Inhalte aus `ContactDetailSheet` (der Sheet-Wrapper wird entfernt, der Inhalt bleibt)
+- `isSheetOpen` und `setIsSheetOpen` werden durch `selectedContactId` allein gesteuert
+
+**Dateien:** `ContactsView.tsx`, neues `ContactDetailPanel.tsx` (basierend auf `ContactDetailSheet.tsx`)
+
+---
+
+## 4. Seitenperformance erhoehen (Punkt 6)
+
+Bereits umgesetzte Massnahmen: Lazy Loading aller Views (Zeile 10-31 in `Index.tsx`), Infinite Scrolling fuer Kontakte, debounced Search.
+
+### Weitere Moeglichkeiten
+
+
+| Massnahme                                                                                             | Aufwand | Wirkung                                    |
+| ----------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------ |
+| **React.memo fuer Cards** (DecisionCard, ContactCard)                                                 | Gering  | Reduziert Re-Renders bei Listen            |
+| **Virtualisierung** (react-window / react-virtual) fuer lange Listen                                  | Mittel  | Drastische Verbesserung bei 100+ Elementen |
+| **Supabase-Queries optimieren**: Nur benoetigte Spalten selektieren statt `*`                         | Gering  | Weniger Daten ueber die Leitung            |
+| **Image-Optimierung**: Avatare mit `loading="lazy"` versehen                                          | Gering  | Schnellerer Initial-Load                   |
+| **Bundle-Splitting**: Schwere Dependencies (leaflet, matrix-sdk, pdfjs-dist) nur laden wenn benoetigt | Mittel  | Kleinerer Initial-Bundle                   |
+| **Service Worker / PWA-Caching**: Statische Assets cachen                                             | Mittel  | Schnellere Folgebesuche                    |
+
+
+### Sofort umsetzbar (in diesem Plan):
+
+- `React.memo` fuer `MyWorkDecisionCard` und Kontakt-Grid-Cards
+- `loading="lazy"` fuer alle Avatar-Images
+- Doppelten `useEffect` in `AppNavigation.tsx` (Zeilen 182-231 -- Badge-Tracking ist doppelt) entfernen
+
+**Dateien:** `MyWorkDecisionCard.tsx`, `AppNavigation.tsx`, `ContactsView.tsx`
 
 ---
 
 ## Technische Zusammenfassung
 
-### SQL-Migration
-- RLS-Policy fuer oeffentliche Entscheidungen (Punkt 10)
+### Keine DB-Aenderungen noetig
 
 ### Dateien
 
-| Datei | Aenderungen |
-|-------|-------------|
-| `StandaloneDecisionCreator.tsx` | Template-Reset fix, Editor nur bei "custom", Dropdown-Stil angleichen |
-| `TaskDecisionCreator.tsx` | Editor nur bei "custom" |
-| `NoteDecisionCreator.tsx` | Editor nur bei "custom", Dropdown-Stil angleichen |
-| `TaskDecisionResponse.tsx` | Kenntnisnahme: prominenter Einzelbutton |
-| `types.ts` | Statische border-l-Map, emailAttachmentCount-Feld |
-| `MyWorkDecisionCard.tsx` | Mail-Icon separat, Globe nur als Icon neben Badge |
-| `MyWorkDecisionsTab.tsx` | Email-Attachment-Count laden |
-| `DecisionCardActivity.tsx` | Bessere Hierarchie fuer Creator-Antworten |
-| SQL-Migration | RLS-Policy fuer visible_to_all |
+
+| Datei                          | Aenderungen                                                                      |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| `MobileHeader.tsx`             | Navigation reparieren (useNavigate + activeSection), Logo crossOrigin            |
+| `AppNavigation.tsx`            | `h-screen` -> `h-full` wenn isMobile, doppelten useEffect entfernen              |
+| `MyWorkDecisionCard.tsx`       | EmailPreviewDialog einbinden, React.memo, lazy Avatare                           |
+| `ContactsView.tsx`             | Split-Layout statt Sheet, responsive Header-Buttons                              |
+| `ContactDetailPanel.tsx` (NEU) | Inhalte aus ContactDetailSheet als eingebettete Komponente                       |
+| `ContactDetailSheet.tsx`       | Bleibt bestehen fuer Rueckwaertskompatibilitaet, nutzt intern ContactDetailPanel |
