@@ -80,9 +80,10 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
     }
   }, [senderInfo]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     onBlocksChange(blocks);
-  }, [blocks, onBlocksChange]);
+  }, [blocks]);
 
   const fetchSenderInfo = async () => {
     if (!currentTenant) return;

@@ -77,6 +77,7 @@ export default function Administration() {
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
+  const [checkingAdmin, setCheckingAdmin] = useState<boolean>(true);
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
@@ -118,19 +119,24 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
   }, [loading, user, currentTenant]);
 
   const checkAdminStatus = async () => {
-    if (!user) return;
+    if (!user) {
+      setCheckingAdmin(false);
+      return;
+    }
     
     try {
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       setIsAdmin(roleData?.role === 'abgeordneter' || roleData?.role === 'bueroleitung');
       setIsSuperAdmin(roleData?.role === 'abgeordneter');
     } catch (error) {
       console.error('Error checking admin status:', error);
+    } finally {
+      setCheckingAdmin(false);
     }
   };
 
@@ -678,7 +684,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
     savePlanningTemplateItems(newItems);
   };
 
-  if (loading) return null;
+  if (loading || checkingAdmin) return null;
 
   if (!isAdmin) {
     return (
