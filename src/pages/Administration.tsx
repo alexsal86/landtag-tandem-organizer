@@ -43,6 +43,7 @@ import { TopicSettings } from "@/components/administration/TopicSettings";
 import { ConfigurableTypeSettings } from "@/components/administration/ConfigurableTypeSettings";
 import { MeetingTemplateParticipantsEditor } from "@/components/meetings/MeetingTemplateParticipantsEditor";
 import { AnnualTasksView } from "@/components/AnnualTasksView";
+import LetterTemplateManager from "@/components/LetterTemplateManager";
 import { AdminSidebar } from "@/components/administration/AdminSidebar";
 import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -85,6 +86,7 @@ export default function Administration() {
   const [activeSection, setActiveSection] = useState("security");
   const [activeSubSection, setActiveSubSection] = useState("general");
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
+  const [showLetterTemplateManager, setShowLetterTemplateManager] = useState(false);
 
   // Template states
   const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
@@ -1036,23 +1038,47 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       switch (activeSubSection) {
         case "letters":
           return (
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Absenderinformationen</CardTitle>
+                  <CardTitle>Briefvorlagen</CardTitle>
+                  <CardDescription>
+                    Öffnen Sie den Canvas- und Template-Designer für Briefvorlagen.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <SenderInformationManager />
+                  <Button onClick={() => setShowLetterTemplateManager(true)}>
+                    Brief-Template-Manager öffnen
+                  </Button>
+                  <Dialog open={showLetterTemplateManager} onOpenChange={setShowLetterTemplateManager}>
+                    <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Vorlagen-Editor</DialogTitle>
+                      </DialogHeader>
+                      <LetterTemplateManager />
+                    </DialogContent>
+                  </Dialog>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informationsblöcke</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <InformationBlockManager />
-                </CardContent>
-              </Card>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Absenderinformationen</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <SenderInformationManager />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informationsblöcke</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <InformationBlockManager />
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           );
         case "meetings":

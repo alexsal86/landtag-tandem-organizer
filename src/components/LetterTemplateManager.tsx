@@ -3,7 +3,7 @@ import { Edit3, Trash2, Plus, Save, X, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
 import { StructuredFooterEditor } from '@/components/letters/StructuredFooterEditor';
 import { LayoutSettingsEditor } from '@/components/letters/LayoutSettingsEditor';
+import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCanvasDesigner';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 
 interface LetterTemplate {
@@ -63,6 +64,9 @@ const LetterTemplateManager: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<LetterTemplate | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createActiveTab, setCreateActiveTab] = useState('canvas-designer');
+  const [editActiveTab, setEditActiveTab] = useState('canvas-designer');
+  const [selectedBlockItem, setSelectedBlockItem] = useState<Record<string, string | null>>({});
   const [showPreview, setShowPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -178,6 +182,7 @@ const LetterTemplateManager: React.FC = () => {
       });
 
       setShowCreateDialog(false);
+      setCreateActiveTab('canvas-designer');
       resetForm();
       fetchTemplates();
     } catch (error) {
@@ -274,6 +279,7 @@ const LetterTemplateManager: React.FC = () => {
 
   const startEditing = (template: LetterTemplate) => {
     setEditingTemplate(template);
+    setEditActiveTab('canvas-designer');
     
     // Parse header elements if they exist
     let headerElements: any[] = [];
@@ -320,7 +326,96 @@ const LetterTemplateManager: React.FC = () => {
 
   const cancelEditing = () => {
     setEditingTemplate(null);
+    setEditActiveTab('canvas-designer');
     resetForm();
+  };
+
+
+
+  const updateLayoutSettings = (updater: (layout: LetterLayoutSettings) => LetterLayoutSettings) => {
+    setFormData((prev) => ({ ...prev, layout_settings: updater(prev.layout_settings) }));
+  };
+
+
+
+  const getBlockItems = (blockKey: 'addressField' | 'infoBlock' | 'subject') => {
+    const content = ((formData.layout_settings as any).blockContent || {}) as Record<string, any[]>;
+    return content[blockKey] || [];
+  };
+
+  const setBlockItems = (blockKey: 'addressField' | 'infoBlock' | 'subject', items: any[]) => {
+    updateLayoutSettings((layout) => {
+      const current = ((layout as any).blockContent || {}) as Record<string, any[]>;
+      return { ...layout, blockContent: { ...current, [blockKey]: items } } as LetterLayoutSettings;
+    });
+  };
+
+  const renderBlockCanvas = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject', title: string, rect: { top: number; left: number; width: number; height: number }) => {
+    const items = getBlockItems(blockKey);
+    const scale = 2.4;
+    const selectedId = selectedBlockItem[blockKey] || items[0]?.id || null;
+    const selected = items.find((item) => item.id === selectedId) || null;
+
+    const addText = () => {
+      const id = Date.now().toString();
+      setBlockItems(blockKey, [...items, { id, type: 'text', x: 5, y: 5, width: 60, content: 'Neuer Text', fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' }]);
+      setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
+    };
+
+    const updateItem = (id: string, updates: any) => setBlockItems(blockKey, items.map((item) => (item.id === id ? { ...item, ...updates } : item)));
+
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+          <div className="space-y-3 border rounded-lg p-3">
+            <Button type="button" variant="outline" size="sm" onClick={addText}>Text hinzufügen</Button>
+            <div className="space-y-2 max-h-52 overflow-auto">
+              {items.map((item) => (
+                <div key={item.id} className={`p-2 border rounded cursor-pointer ${selectedId === item.id ? 'border-primary bg-primary/10' : 'border-border'}`} onClick={() => setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id }))}>
+                  {(item.content || 'Textblock').toString().slice(0, 45)}
+                </div>
+              ))}
+            </div>
+            {selected && (
+              <>
+                <Label>Textinhalt</Label>
+                <Textarea value={selected.content || ''} onChange={(e) => updateItem(selected.id, { content: e.target.value })} rows={4} />
+                <Label>Schriftart</Label>
+                <Select value={selected.fontFamily || 'Arial'} onValueChange={(value) => updateItem(selected.id, { fontFamily: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Arial">Arial</SelectItem>
+                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                    <SelectItem value="Calibri">Calibri</SelectItem>
+                    <SelectItem value="Verdana">Verdana</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button type="button" size="sm" variant={selected.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontWeight: selected.fontWeight === 'bold' ? 'normal' : 'bold' })}>Fett</Button>
+                  <Button type="button" size="sm" variant={selected.fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontStyle: selected.fontStyle === 'italic' ? 'normal' : 'italic' })}>Kursiv</Button>
+                  <Button type="button" size="sm" variant={selected.textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { textDecoration: selected.textDecoration === 'underline' ? 'none' : 'underline' })}>Unterstr.</Button>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="border rounded-lg p-3 bg-muted/30 overflow-auto">
+            <div className="relative bg-white border" style={{ width: rect.width * scale, height: Math.max(rect.height, 25) * scale }}>
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  onMouseDown={() => setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id }))}
+                  className={`absolute border px-2 py-1 text-xs ${selectedId === item.id ? 'border-primary bg-primary/15' : 'border-primary/50 bg-primary/10'}`}
+                  style={{ left: (item.x || 0) * scale, top: (item.y || 0) * scale, width: (item.width || 50) * scale, fontFamily: item.fontFamily || 'Arial', fontWeight: item.fontWeight || 'normal', fontStyle: item.fontStyle || 'normal', textDecoration: item.textDecoration || 'none' }}
+                >
+                  {item.content || 'Text'}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const renderPreview = (template: LetterTemplate) => {
@@ -399,84 +494,75 @@ const LetterTemplateManager: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Brief-Templates verwalten</h2>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Neues Template
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Neues Brief-Template erstellen</DialogTitle>
-            </DialogHeader>
-            
-            <Tabs defaultValue="header-designer" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+        <div><h2 className="text-xl font-semibold">Templates</h2><p className="text-sm text-muted-foreground">Brieflayouts und Inhalte bearbeiten</p></div>
+        <Button onClick={() => setShowCreateDialog(prev => !prev)}>
+          <Plus className="h-4 w-4 mr-2" />
+          {showCreateDialog ? 'Erstellung schließen' : 'Neues Template'}
+        </Button>
+      </div>
+
+
+      {showCreateDialog && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Neues Brief-Template erstellen</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Tabs value={createActiveTab} onValueChange={setCreateActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-12">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
                 <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
+                <TabsTrigger value="canvas-designer">Canvas</TabsTrigger>
                 <TabsTrigger value="layout-settings">Layout-Einstellungen</TabsTrigger>
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
+                <TabsTrigger value="block-address">Adressfeld</TabsTrigger>
+                <TabsTrigger value="block-return-address">Rücksendeangaben</TabsTrigger>
+                <TabsTrigger value="block-info">Info-Block</TabsTrigger>
+                <TabsTrigger value="block-subject">Betreff</TabsTrigger>
+                <TabsTrigger value="block-content">Inhalt</TabsTrigger>
+                <TabsTrigger value="block-attachments">Anlagen</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="header-designer" className="space-y-4">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Header-Elemente erstellen</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Gestalten Sie Ihren Briefkopf mit Text- und Bildelementen. Der Header wird automatisch auf DIN A4 Briefgröße (210mm × 45mm) skaliert.
-                  </p>
-                  <StructuredHeaderEditor
-                    initialElements={formData.header_elements}
-                    onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
-                  />
-                </div>
+                <StructuredHeaderEditor
+                  initialElements={formData.header_elements}
+                  onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
+                />
               </TabsContent>
-              
+
               <TabsContent value="footer-designer" className="space-y-4">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Footer-Designer</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Gestalten Sie Ihren Brief-Footer mit verschiedenen Elementen wie Adresse, Kontaktdaten und sozialen Medien.
-                  </p>
-                   <StructuredFooterEditor
-                     initialBlocks={formData.footer_blocks}
-                     onBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
-                   />
-                </div>
+                <StructuredFooterEditor
+                  initialBlocks={formData.footer_blocks}
+                  onBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
+                />
               </TabsContent>
-              
+
+              <TabsContent value="canvas-designer" className="space-y-4">
+                <LetterLayoutCanvasDesigner
+                  layoutSettings={formData.layout_settings}
+                  onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
+                  onJumpToTab={setCreateActiveTab as any}
+                  headerElements={formData.header_elements}
+                />
+              </TabsContent>
+
               <TabsContent value="layout-settings" className="space-y-4">
                 <LayoutSettingsEditor
                   layoutSettings={formData.layout_settings}
                   onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
                 />
               </TabsContent>
-              
+
               <TabsContent value="general" className="space-y-4">
                 <div>
                   <Label htmlFor="template-name">Name</Label>
-                  <Input
-                    id="template-name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Template-Name eingeben..."
-                  />
+                  <Input id="template-name" value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Template-Name eingeben..." />
                 </div>
-                
                 <div>
                   <Label htmlFor="response-time">Antwortzeit (Tage)</Label>
-                  <Input
-                    id="response-time"
-                    type="number"
-                    value={formData.response_time_days}
-                    onChange={(e) => setFormData(prev => ({ ...prev, response_time_days: parseInt(e.target.value) || 21 }))}
-                    min="1"
-                    max="365"
-                  />
+                  <Input id="response-time" type="number" value={formData.response_time_days} onChange={(e) => setFormData(prev => ({ ...prev, response_time_days: parseInt(e.target.value) || 21 }))} min="1" max="365" />
                 </div>
-                
                 <div>
                   <Label htmlFor="default-sender">Standard-Absenderinformation</Label>
                   <Select value={formData.default_sender_id || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
@@ -494,7 +580,6 @@ const LetterTemplateManager: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                
                 <div>
                   <Label>Standard-Informationsblöcke</Label>
                   <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -505,73 +590,90 @@ const LetterTemplateManager: React.FC = () => {
                           checked={formData.default_info_blocks.includes(block.id)}
                           onCheckedChange={(checked) => {
                             if (checked) {
-                              setFormData(prev => ({
-                                ...prev,
-                                default_info_blocks: [...prev.default_info_blocks, block.id]
-                              }));
+                              setFormData(prev => ({ ...prev, default_info_blocks: [...prev.default_info_blocks, block.id] }));
                             } else {
-                              setFormData(prev => ({
-                                ...prev,
-                                default_info_blocks: prev.default_info_blocks.filter(id => id !== block.id)
-                              }));
+                              setFormData(prev => ({ ...prev, default_info_blocks: prev.default_info_blocks.filter(id => id !== block.id) }));
                             }
                           }}
                         />
-                        <Label htmlFor={`block-${block.id}`} className="text-sm">
-                          {block.label} {block.is_default && "(Standard)"}
-                        </Label>
+                        <Label htmlFor={`block-${block.id}`} className="text-sm">{block.label} {block.is_default && "(Standard)"}</Label>
                       </div>
                     ))}
-                    {infoBlocks.length === 0 && (
-                      <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>
-                    )}
                   </div>
                 </div>
               </TabsContent>
+
               
-              <TabsContent value="advanced" className="space-y-4">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Erweiterte HTML/CSS Bearbeitung</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Für erfahrene Benutzer: Erstellen Sie den Briefkopf direkt mit HTML und CSS.
-                  </p>
-                  
-                  <div>
-                    <Label htmlFor="letterhead-html">Briefkopf HTML</Label>
-                    <Textarea
-                      id="letterhead-html"
-                      value={formData.letterhead_html}
-                      onChange={(e) => setFormData(prev => ({ ...prev, letterhead_html: e.target.value }))}
-                      placeholder="HTML für den Briefkopf..."
-                      rows={8}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="letterhead-css">Briefkopf CSS</Label>
-                    <Textarea
-                      id="letterhead-css"
-                      value={formData.letterhead_css}
-                      onChange={(e) => setFormData(prev => ({ ...prev, letterhead_css: e.target.value }))}
-                      placeholder="CSS-Stile für den Briefkopf..."
-                      rows={8}
-                    />
-                  </div>
+
+              <TabsContent value="block-address" className="space-y-4">
+                {renderBlockCanvas('addressField', 'Adressfeld', {
+                  top: formData.layout_settings.addressField.top,
+                  left: formData.layout_settings.addressField.left,
+                  width: formData.layout_settings.addressField.width,
+                  height: formData.layout_settings.addressField.height,
+                })}
+              </TabsContent>
+
+              <TabsContent value="block-return-address" className="space-y-4">
+                {renderBlockCanvas('returnAddress', 'Rücksendeangaben', {
+                  top: formData.layout_settings.returnAddress.top,
+                  left: formData.layout_settings.returnAddress.left,
+                  width: formData.layout_settings.returnAddress.width,
+                  height: formData.layout_settings.returnAddress.height,
+                })}
+              </TabsContent>
+
+              <TabsContent value="block-info" className="space-y-4">
+                {renderBlockCanvas('infoBlock', 'Info-Block', {
+                  top: formData.layout_settings.infoBlock.top,
+                  left: formData.layout_settings.infoBlock.left,
+                  width: formData.layout_settings.infoBlock.width,
+                  height: formData.layout_settings.infoBlock.height,
+                })}
+              </TabsContent>
+
+              <TabsContent value="block-subject" className="space-y-4">
+                {renderBlockCanvas('subject', 'Betreffbereich', {
+                  top: formData.layout_settings.subject.top,
+                  left: formData.layout_settings.margins.left,
+                  width: formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
+                  height: Math.max(8, formData.layout_settings.subject.marginBottom + 4),
+                })}
+              </TabsContent>
+
+              <TabsContent value="block-content" className="space-y-4">
+                <h3 className="text-lg font-semibold">Inhaltsbereich</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.content.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, content: { ...l.content, top: parseFloat(e.target.value) || 0 } }))} /></div>
+                  <div><Label>Max. Höhe (mm)</Label><Input type="number" value={formData.layout_settings.content.maxHeight} onChange={(e) => updateLayoutSettings((l) => ({ ...l, content: { ...l.content, maxHeight: parseFloat(e.target.value) || 0 } }))} /></div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="block-attachments" className="space-y-4">
+                <h3 className="text-lg font-semibold">Anlagenbereich</h3>
+                <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.attachments.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, attachments: { ...l.attachments, top: parseFloat(e.target.value) || 0 } }))} /></div>
+              </TabsContent>
+<TabsContent value="advanced" className="space-y-4">
+                <div>
+                  <Label htmlFor="letterhead-html">Briefkopf HTML</Label>
+                  <Textarea id="letterhead-html" value={formData.letterhead_html} onChange={(e) => setFormData(prev => ({ ...prev, letterhead_html: e.target.value }))} rows={8} />
+                </div>
+                <div>
+                  <Label htmlFor="letterhead-css">Briefkopf CSS</Label>
+                  <Textarea id="letterhead-css" value={formData.letterhead_css} onChange={(e) => setFormData(prev => ({ ...prev, letterhead_css: e.target.value }))} rows={8} />
                 </div>
               </TabsContent>
             </Tabs>
-              
+
             <div className="flex justify-end space-x-2 pt-4 border-t">
-              <Button variant="outline" onClick={() => { setShowCreateDialog(false); resetForm(); }}>
+              <Button variant="outline" onClick={() => { setShowCreateDialog(false); setCreateActiveTab('canvas-designer'); resetForm(); }}>
                 Abbrechen
               </Button>
-              <Button onClick={handleCreateTemplate}>
-                Template erstellen
-              </Button>
+              <Button onClick={handleCreateTemplate}>Template erstellen</Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="text-center py-8">
@@ -640,13 +742,20 @@ const LetterTemplateManager: React.FC = () => {
               <DialogTitle>Template bearbeiten: {editingTemplate.name}</DialogTitle>
             </DialogHeader>
             
-            <Tabs defaultValue="header-designer" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+            <Tabs value={editActiveTab} onValueChange={setEditActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-12">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
                 <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
+                <TabsTrigger value="canvas-designer">Canvas</TabsTrigger>
                 <TabsTrigger value="layout-settings">Layout-Einstellungen</TabsTrigger>
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
+                <TabsTrigger value="block-address">Adressfeld</TabsTrigger>
+                <TabsTrigger value="block-return-address">Rücksendeangaben</TabsTrigger>
+                <TabsTrigger value="block-info">Info-Block</TabsTrigger>
+                <TabsTrigger value="block-subject">Betreff</TabsTrigger>
+                <TabsTrigger value="block-content">Inhalt</TabsTrigger>
+                <TabsTrigger value="block-attachments">Anlagen</TabsTrigger>
               </TabsList>
               
               <TabsContent value="header-designer" className="space-y-4">
@@ -675,6 +784,15 @@ const LetterTemplateManager: React.FC = () => {
                 </div>
               </TabsContent>
               
+              <TabsContent value="canvas-designer" className="space-y-4">
+                <LetterLayoutCanvasDesigner
+                  layoutSettings={formData.layout_settings}
+                  onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
+                  onJumpToTab={setEditActiveTab as any}
+                  headerElements={formData.header_elements}
+                />
+              </TabsContent>
+
               <TabsContent value="layout-settings" className="space-y-4">
                 <LayoutSettingsEditor
                   layoutSettings={formData.layout_settings}
@@ -757,7 +875,57 @@ const LetterTemplateManager: React.FC = () => {
                 </div>
               </TabsContent>
               
-              <TabsContent value="advanced" className="space-y-4">
+              
+
+              <TabsContent value="block-address" className="space-y-4">
+                {renderBlockCanvas('addressField', 'Adressfeld', {
+                  top: formData.layout_settings.addressField.top,
+                  left: formData.layout_settings.addressField.left,
+                  width: formData.layout_settings.addressField.width,
+                  height: formData.layout_settings.addressField.height,
+                })}
+              </TabsContent>
+
+              <TabsContent value="block-return-address" className="space-y-4">
+                {renderBlockCanvas('returnAddress', 'Rücksendeangaben', {
+                  top: formData.layout_settings.returnAddress.top,
+                  left: formData.layout_settings.returnAddress.left,
+                  width: formData.layout_settings.returnAddress.width,
+                  height: formData.layout_settings.returnAddress.height,
+                })}
+              </TabsContent>
+
+              <TabsContent value="block-info" className="space-y-4">
+                {renderBlockCanvas('infoBlock', 'Info-Block', {
+                  top: formData.layout_settings.infoBlock.top,
+                  left: formData.layout_settings.infoBlock.left,
+                  width: formData.layout_settings.infoBlock.width,
+                  height: formData.layout_settings.infoBlock.height,
+                })}
+              </TabsContent>
+
+              <TabsContent value="block-subject" className="space-y-4">
+                {renderBlockCanvas('subject', 'Betreffbereich', {
+                  top: formData.layout_settings.subject.top,
+                  left: formData.layout_settings.margins.left,
+                  width: formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
+                  height: Math.max(8, formData.layout_settings.subject.marginBottom + 4),
+                })}
+              </TabsContent>
+
+              <TabsContent value="block-content" className="space-y-4">
+                <h3 className="text-lg font-semibold">Inhaltsbereich</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.content.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, content: { ...l.content, top: parseFloat(e.target.value) || 0 } }))} /></div>
+                  <div><Label>Max. Höhe (mm)</Label><Input type="number" value={formData.layout_settings.content.maxHeight} onChange={(e) => updateLayoutSettings((l) => ({ ...l, content: { ...l.content, maxHeight: parseFloat(e.target.value) || 0 } }))} /></div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="block-attachments" className="space-y-4">
+                <h3 className="text-lg font-semibold">Anlagenbereich</h3>
+                <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.attachments.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, attachments: { ...l.attachments, top: parseFloat(e.target.value) || 0 } }))} /></div>
+              </TabsContent>
+<TabsContent value="advanced" className="space-y-4">
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Erweiterte HTML/CSS Bearbeitung</h3>
                   <p className="text-sm text-muted-foreground">
