@@ -87,6 +87,7 @@ export default function Administration() {
   const [activeSection, setActiveSection] = useState("security");
   const [activeSubSection, setActiveSubSection] = useState("general");
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
+  const [showLetterTemplateManager, setShowLetterTemplateManager] = useState(false);
   
 
   // Template states
@@ -1045,7 +1046,21 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
         case "letters":
           return (
             <div className="space-y-6">
-              <LetterTemplateManager />
+              <Card>
+                <CardHeader>
+                  <CardTitle>Briefvorlagen</CardTitle>
+                  <CardDescription>
+                    Öffnen Sie den Template-Designer für Briefvorlagen.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button onClick={() => setShowLetterTemplateManager(!showLetterTemplateManager)}>
+                    {showLetterTemplateManager ? "Manager schließen" : "Brief-Template-Manager öffnen"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {showLetterTemplateManager && <LetterTemplateManager />}
 
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
