@@ -306,7 +306,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[30%_70%] gap-6">
       {/* Block List & Controls */}
       <div className="space-y-4">
         <Card>
@@ -403,8 +403,8 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         </Card>
       </div>
 
-      {/* Properties Panel */}
-      <div>
+      {/* Properties Panel (legacy, replaced by inline editor) */}
+      <div className="hidden">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">
