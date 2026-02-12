@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
 import { StructuredFooterEditor } from '@/components/letters/StructuredFooterEditor';
 import { LayoutSettingsEditor } from '@/components/letters/LayoutSettingsEditor';
+import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCanvasDesigner';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 
 interface LetterTemplate {
@@ -413,9 +414,10 @@ const LetterTemplateManager: React.FC = () => {
             </DialogHeader>
             
             <Tabs defaultValue="header-designer" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
                 <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
+                <TabsTrigger value="canvas-designer">Canvas</TabsTrigger>
                 <TabsTrigger value="layout-settings">Layout-Einstellungen</TabsTrigger>
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
@@ -447,6 +449,13 @@ const LetterTemplateManager: React.FC = () => {
                 </div>
               </TabsContent>
               
+              <TabsContent value="canvas-designer" className="space-y-4">
+                <LetterLayoutCanvasDesigner
+                  layoutSettings={formData.layout_settings}
+                  onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
+                />
+              </TabsContent>
+
               <TabsContent value="layout-settings" className="space-y-4">
                 <LayoutSettingsEditor
                   layoutSettings={formData.layout_settings}
@@ -641,9 +650,10 @@ const LetterTemplateManager: React.FC = () => {
             </DialogHeader>
             
             <Tabs defaultValue="header-designer" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
                 <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
+                <TabsTrigger value="canvas-designer">Canvas</TabsTrigger>
                 <TabsTrigger value="layout-settings">Layout-Einstellungen</TabsTrigger>
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
@@ -675,6 +685,13 @@ const LetterTemplateManager: React.FC = () => {
                 </div>
               </TabsContent>
               
+              <TabsContent value="canvas-designer" className="space-y-4">
+                <LetterLayoutCanvasDesigner
+                  layoutSettings={formData.layout_settings}
+                  onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
+                />
+              </TabsContent>
+
               <TabsContent value="layout-settings" className="space-y-4">
                 <LayoutSettingsEditor
                   layoutSettings={formData.layout_settings}
