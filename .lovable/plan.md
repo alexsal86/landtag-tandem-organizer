@@ -1,49 +1,55 @@
 
 
-# Plan: Bilder im Header-Designer reparieren
+# Plan: Bilder im Header-Designer reparieren + Loeschfunktion
 
 ## Problem
 
-Die Bilder werden im Header-Designer nicht angezeigt, obwohl sie korrekt im Supabase Storage gespeichert sind. Die Ursache liegt im Code der Funktion `loadSystemImages`:
+Die Bilder in der Sidebar-Galerie des Header-Designers werden nicht angezeigt -- es erscheint nur der Dateiname (alt-Text). Die oeffentliche URL ist technisch korrekt (Bucket ist public, Dateien existieren), aber die Bilder laden trotzdem nicht im Browser.
 
-1. Der Code holt zunaechst die **oeffentliche URL** (`getPublicUrl`) -- diese funktioniert, da der Bucket `letter-assets` als **public** konfiguriert ist.
-2. Danach wird die URL jedoch **immer** mit einer **signierten URL** (`createSignedUrl`) ueberschrieben.
-3. Signierte URLs laufen nach 1 Stunde ab und koennen zu Problemen fuehren.
+## Ursache
 
-Da der Bucket bereits public ist (bestaetigt durch Datenbankabfrage), ist die signierte URL unnoetig.
+Die `getPublicUrl`-Methode erzeugt zwar eine gueltige URL, aber diese funktioniert moeglicherweise nicht im Kontext der Preview-Umgebung. **Signierte URLs** (mit Auth-Token) umgehen dieses Problem, da sie direkt ueber den authentifizierten Storage-Endpoint laufen.
 
 ## Loesung
 
-In `src/components/letters/StructuredHeaderEditor.tsx` wird die Funktion `loadSystemImages` (Zeilen 126-157) vereinfacht:
+### 1. Signierte URLs fuer Bildanzeige verwenden
 
-- Die `getPublicUrl`-URL wird direkt verwendet
-- Der gesamte `createSignedUrl`-Fallback-Block wird entfernt
-- Die `map`-Funktion wird synchron statt async, da `getPublicUrl` kein API-Call ist
+Die `loadSystemImages`-Funktion wird so umgebaut, dass sie `createSignedUrl` verwendet (mit 7 Tagen Gueltigkeit). Da der Nutzer authentifiziert ist, funktionieren signierte URLs zuverlaessig.
 
-### Vorher (vereinfacht)
+### 2. Fehlerbehandlung fuer Bilder
 
-```text
-getPublicUrl -> url
-createSignedUrl -> ueberschreibt url (unnoetig, kann Fehler verursachen)
-return { name, url }
-```
+Jedes `<img>`-Tag in der Galerie bekommt einen `onError`-Handler, der die URL in der Konsole loggt. Zusaetzlich wird ein Fallback-Icon angezeigt, wenn ein Bild nicht laedt.
 
-### Nachher
+### 3. Loeschfunktion fuer Bilder
 
-```text
-getPublicUrl -> url
-return { name, url }
-```
+Jedes Bild in der Galerie bekommt einen kleinen X-Button. Beim Klick wird:
+- Die Datei aus dem Supabase Storage geloescht
+- Die Galerie aktualisiert
+- Eine Bestaetigungsmeldung angezeigt
 
 ## Technische Details
 
 ### Datei: `src/components/letters/StructuredHeaderEditor.tsx`
 
-Die Funktion `loadSystemImages` (Zeilen 126-157) wird wie folgt geaendert:
+**loadSystemImages (Zeilen 126-146):**
+- Statt `getPublicUrl` wird `createSignedUrl` mit `expiresIn: 604800` (7 Tage) verwendet
+- Die Funktion wird wieder async mit `Promise.all`
+- Fallback auf `getPublicUrl` falls signierte URL fehlschlaegt
 
-- `Promise.all` mit async-Callback wird durch ein einfaches synchrones `.map` ersetzt
-- Der `try/catch`-Block fuer `createSignedUrl` (Zeilen 143-148) wird komplett entfernt
-- Die Funktion wird dadurch einfacher, schneller und zuverlaessiger
+**Neue Funktion `deleteSystemImage`:**
+- Nimmt den Dateinamen entgegen
+- Loescht die Datei via `supabase.storage.from('letter-assets').remove([path])`
+- Ruft `loadSystemImages()` erneut auf
 
-Es ist nur eine Datei betroffen, die Aenderung ist minimal und zielgerichtet.
+**Galerie-Rendering (Zeilen 405-417):**
+- Jedes Bild bekommt einen relativen Container mit einem absolut positionierten Loeschen-Button (X-Icon, oben rechts)
+- `<img>` bekommt `onError` Handler fuer Debugging
+- Beim Klick auf X wird `deleteSystemImage(img.name)` aufgerufen mit Bestaetigung
+
+### Aenderungsumfang
+
+Es wird nur eine Datei geaendert: `src/components/letters/StructuredHeaderEditor.tsx`
+- `loadSystemImages`: async mit `createSignedUrl` 
+- Neue Funktion `deleteSystemImage`
+- Galerie-UI: Loeschen-Button pro Bild, `onError`-Handler
 
