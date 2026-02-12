@@ -1,133 +1,211 @@
 
+# Plan: 10-Punkte-Umsetzung
 
-# Plan: Editor-Bereinigung, Brief-Assistent, Entscheidungs-Fix und Dashboard-Tab
+## 1. LetterWizard im DocumentsView einbinden
 
-## 1. Editor-Bereinigung
+In `DocumentsView.tsx` oeffnet `handleCreateLetter()` (Zeile 574) noch den alten `showTemplateSelector`. Das muss durch den LetterWizard ersetzt werden.
 
-Aktuell gibt es 5 Editor-Varianten. Davon werden nur 2 tatsaechlich gebraucht:
-- **SimpleRichTextEditor** (Lexical, in `src/components/ui/`) -- verwendet in ~18 Dateien fuer kurze Rich-Text-Felder (Entscheidungen, Notizen, Kommentare)
-- **EnhancedLexicalEditor** -- vollwertiger Editor fuer Briefe und Dokumente
-
-### Zu loeschen:
-| Datei | Grund |
-|-------|-------|
-| `src/components/SimpleLexicalEditor.tsx` | Nur in EditorTestPage verwendet |
-| `src/components/PlainTextEditor.tsx` | Nirgends importiert |
-| `src/components/RichTextEditor.tsx` (1007 Zeilen) | Nirgends importiert |
-| `src/components/EditorTestPage.tsx` | Test-Seite, nicht noetig |
-| `src/pages/EditorTest.tsx` | Route zur Test-Seite |
-| `src/pages/HeaderEditorTestPage.tsx` | Test-Seite |
-| `src/components/emails/EmailRichTextEditor.tsx` | Ersetzen durch SimpleRichTextEditor |
-
-### Migrationen:
-- `EmailComposer.tsx`: `EmailRichTextEditor` durch `SimpleRichTextEditor` ersetzen (gleiche API: `initialContent` + `onChange` mit HTML)
-- `EmailTemplateManager.tsx`: Ebenso migrieren
-- Route `/editor-test` aus `App.tsx` entfernen
+**Aenderungen in `DocumentsView.tsx`:**
+- `LetterWizard` importieren
+- State `showWizard` hinzufuegen
+- `handleCreateLetter` aendern: `setShowWizard(true)` statt `setShowTemplateSelector(true)`
+- `handleWizardComplete`-Funktion hinzufuegen (gleiche Logik wie in `LettersView.tsx` Zeile 104-136)
+- `LetterWizard`-Komponente rendern (analog zu Zeile 413-418 in `LettersView.tsx`)
+- Den alten Template-Selector-Block (Zeilen 2108-2123) kann optional entfernt werden, da der Wizard ihn ersetzt
 
 ---
 
-## 2. Brief-Assistent (Briefe neu konzipiert)
+## 2. Browser-Push-Benachrichtigungen fuer Plattform-Ereignisse
 
-### Aktuell
-"Neuer Brief" -> Template-Auswahl (technisch, nur Template-Name) -> Editor mit vielen Feldern
+Aktuell existiert bereits ein funktionierender Push-Trigger: Ein PostgreSQL-Trigger auf `notifications` ruft die Edge Function `send-push-notification` via `pg_net` auf. Jedes Mal, wenn `create_notification` RPC aufgerufen wird (was bereits in ~15 Stellen im Code passiert), wird ein Eintrag in die `notifications`-Tabelle geschrieben und der Trigger feuert automatisch.
 
-### Neu: Brief-Assistent als geführter Wizard
-Statt direkt in den Editor zu springen, fuehrt ein Assistent durch die Erstellung:
+**Status:** Die Push-Infrastruktur ist vollstaendig implementiert. `create_notification` schreibt in die DB, der Trigger sendet den Push. In-App-Benachrichtigungen und Push laufen parallel -- der Nutzer bekommt beides.
 
-**Schritt 1 -- Anlass waehlen:**
-Karten mit Icons zur Auswahl:
-- Buergeranliegen (Brief an Buerger als Antwort auf Anfragen)
-- Ministerium (formelle Korrespondenz mit Ministerien)
-- Einladung (Veranstaltungseinladungen)
-- Gruss (Glueckwuensche, Beileid, Dank)
-- Parlamentarische Anfrage (Anfragen an Regierung)
-- Stellungnahme (offizielle Positionierung)
-- Sonstiges (freie Briefform)
+**Massnahmen:**
+- Sicherstellen, dass der Trigger korrekt feuert (Logs pruefen)
+- Falls nicht bereits vorhanden: Den Trigger-Status in der DB verifizieren
+- Ggf. fehlende `create_notification`-Aufrufe in neuen Features ergaenzen (z.B. bei Kommentar-Antworten aus der Sidebar)
 
-**Schritt 2 -- Empfaenger waehlen:**
-- Kontakt aus dem System waehlen (ContactSelector)
-- Oder neue Adresse eingeben
-- Adresse wird automatisch uebernommen
-
-**Schritt 3 -- Absender + Vorlage (automatisch vorgeschlagen):**
-- Basierend auf dem Anlass wird das passende Template und der Absender vorgeschlagen
-- Nutzer kann beides noch aendern
-- Button "Brief erstellen" oeffnet den Editor
-
-### Dateien:
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/letters/LetterWizard.tsx` (NEU) | Dreischrittiger Assistent |
-| `src/components/LettersView.tsx` | "Neuer Brief" oeffnet Wizard statt Template-Selector, Briefliste wird schlanker (weniger Felder direkt sichtbar, kompaktere Cards) |
+Keine Code-Aenderungen noetig, sofern der Trigger aktiv ist.
 
 ---
 
-## 3. Entscheidungen -- Kenntnisnahme und Freitext funktionieren nicht
+## 3. Suche auf Archive erweitern
 
-### Ursache gefunden
-Die Test-Entscheidungen (ID `3452632d...` und `312e6221...`) haben den gleichen User als `created_by` UND als Teilnehmer. Der Code in `TaskDecisionResponse.tsx` Zeile 331 blockiert den Creator komplett:
-```text
-if (isCreator) {
-  return "Als Ersteller koennen Sie nur auf Rueckmeldungen antworten..."
-}
+Es gibt derzeit keine globale Suchfunktion in der App. Die Suche ist jeweils lokal in den einzelnen Views implementiert (z.B. `searchQuery` in DecisionOverview). Die Archiv-Suche funktioniert bereits in `DecisionOverview` -- der `searchQuery`-Filter wird VOR dem Tab-Filter angewandt (Zeile 769-775), und der Tab "Archiv" hat seinen eigenen Filter (Zeile 778-779).
+
+**Fazit:** Die Suche innerhalb der Entscheidungen durchsucht bereits archivierte Eintraege, wenn man im "Archiv"-Tab ist. Eine globale Suche ueber alle Bereiche waere ein groesseres Feature, das hier nicht im Scope ist.
+
+---
+
+## 4. Inline-Antwort in Decision-Cards und Sidebar verbreitern
+
+### 4a. Inline-Antwort in DecisionCardActivity
+Die `DecisionCardActivity` (Zeile 46) zeigt bereits Rueckfragen mit Reply-Button und Textarea an (Zeile 47-48). Der `onReply`-Callback ist vorhanden und funktioniert. Dieses Feature existiert bereits.
+
+### 4b. Sidebar verbreitern
+Die `MyWorkDecisionSidebar` wird in einem Grid `lg:grid-cols-[1fr_240px]` (Zeile 622 in MyWorkDecisionsTab.tsx) gerendert. Die `DecisionSidebar` in `DecisionOverview.tsx` nutzt `lg:grid-cols-[1fr_340px]` (Zeile 1148).
+
+**Aenderung in `MyWorkDecisionsTab.tsx`:**
+- Grid von `lg:grid-cols-[1fr_240px]` auf `lg:grid-cols-[1fr_340px]` aendern (Zeile 622), damit beide Sidebars gleich breit sind
+
+---
+
+## 5. Wissen von "Mehr" nach "Akten" verschieben
+
+"Wissen" ist aktuell unter "Mehr" in der Navigation (`AppNavigation.tsx` Zeile 120: `{ id: "knowledge", label: "Wissen", icon: Database }`). Es soll ein Unter-Tab von "Akten" (FallAkten/CaseFiles) werden.
+
+**Aenderungen:**
+- `AppNavigation.tsx`: "knowledge" aus den "Mehr"-subItems entfernen und stattdessen als subItem unter dem Akten-Bereich hinzufuegen (sofern Akten eine eigene Navigationsgruppe hat), oder alternativ ueber die Routing-Logik
+- `Navigation.tsx`: Ebenso anpassen (Zeile 70)
+- `Index.tsx` / Router: Route `/knowledge` ueberpruefen und ggf. Redirect einrichten
+- Die `KnowledgeBaseView` selbst bleibt unveraendert, nur die Navigation aendert sich
+
+Da "Akten" (casefiles) in "Meine Arbeit" als Tab existiert, kann "Wissen" als Unterseite innerhalb der Akten-Ansicht integriert werden:
+- In `MyWorkCaseFilesTab` einen zusaetzlichen Sub-Tab "Wissen" hinzufuegen, der die `KnowledgeBaseView` rendert
+- Oder in der Hauptnavigation "Akten" eine Sub-Navigation mit "FallAkten" und "Wissen" einbauen
+
+**Empfohlener Ansatz:** "Wissen" wird als Sub-Tab in der Hauptnavigation unter "Akten" eingeordnet (aehnlich wie "Mehr" Unterpunkte hat). Die bestehende Route `/knowledge` wird beibehalten, aber die Navigation zeigt es unter "Akten".
+
+**Dateien:** `AppNavigation.tsx`, `Navigation.tsx`
+
+---
+
+## 6. Entscheidungen priorisieren
+
+### DB-Aenderung noetig
+Ein neues Feld `priority` (integer, default 0) in der Tabelle `task_decisions` wird benoetigt.
+
+```sql
+ALTER TABLE task_decisions ADD COLUMN priority integer DEFAULT 0;
 ```
 
-Bei Kenntnisnahme und Freitext macht diese Blockade keinen Sinn -- der Ersteller soll ebenfalls bestaetigen oder antworten koennen, da es keine "Abstimmung" im klassischen Sinne ist.
+### Frontend-Aenderungen:
+- **StandaloneDecisionCreator.tsx** und **TaskDecisionCreator.tsx**: Checkbox oder Toggle "Als prioritaer markieren" hinzufuegen, das `priority = 1` setzt
+- **DecisionOverview.tsx** und **MyWorkDecisionsTab.tsx**: Entscheidungen nach `priority DESC, created_at DESC` sortieren
+- **MyWorkDecisionCard.tsx** und DecisionOverview-Cards: Wenn `priority > 0`, ein kleines Prioritaets-Badge anzeigen (z.B. ein Stern-Icon oder "Prioritaer"-Badge)
+- **Supabase-Queries**: `order('priority', { ascending: false })` vor `order('created_at', { ascending: false })` setzen
 
-### Fix
-In `TaskDecisionResponse.tsx`:
-- Pruefen ob es sich um Kenntnisnahme (`isSingleAcknowledgement`) oder Freitext (`isSingleFreetext`) handelt
-- Bei diesen Typen den Creator NICHT blockieren -- die Blockade nur fuer klassische Abstimmungen beibehalten
-- Reihenfolge anpassen: `isSingleAcknowledgement` und `isSingleFreetext` Checks VOR die Creator-Blockade verschieben
-
-Zusaetzlich in den Card-Renderings (`MyWorkDecisionCard.tsx`, `DecisionOverview.tsx`, `TaskDecisionList.tsx`):
-- Die Bedingung `!decision.isCreator` bei Kenntnisnahme/Freitext lockern, damit der Response-Button auch fuer Ersteller erscheint
-
-**Dateien:** `TaskDecisionResponse.tsx`, `MyWorkDecisionCard.tsx`, `DecisionOverview.tsx`, `TaskDecisionList.tsx`
+**Dateien:** DB-Migration, `StandaloneDecisionCreator.tsx`, `TaskDecisionCreator.tsx`, `DecisionOverview.tsx`, `MyWorkDecisionsTab.tsx`, `MyWorkDecisionCard.tsx`, `types.ts`
 
 ---
 
-## 4. Dashboard als erster Tab in "Meine Arbeit"
+## 7. Oeffentlich-Icon Position angleichen
 
-### Konzept
-Das App-Logo wird als erster Tab-Eintrag in der Tab-Leiste von "Meine Arbeit" platziert. Klick darauf zeigt eine schlanke Dashboard-Ansicht mit:
-- Begruessung (DashboardGreetingSection)
-- Nachrichten-Widget (CombinedMessagesWidget -- Schwarzes Brett + persoenliche Nachrichten)
-- Keine Schnellzugriffe, keine Statistik-Karten
+In `DecisionOverview.tsx` (Zeile 960-964) wird das Globe-Icon im Metadata-Bereich mit Text "Oeffentlich" angezeigt. In `MyWorkDecisionCard.tsx` (Zeile 130-139) ist es oben im Header-Bereich als Tooltip-Icon ohne Text.
 
-### Umsetzung
-In `MyWorkView.tsx`:
-- Neuer Tab `dashboard` als erster Eintrag in `BASE_TABS`, mit dem App-Logo als Icon (dynamisch aus `app_settings` geladen, Fallback: Home-Icon)
-- Default-Tab von `"capture"` auf `"dashboard"` aendern
-- Tab-Content: `DashboardGreetingSection` + `CombinedMessagesWidget` in einem sauberen Layout
+**Aenderung in `DecisionOverview.tsx`:**
+- Das Globe-Icon+Text aus der Metadata-Row (Zeile 960-964) entfernen
+- Stattdessen das Globe-Icon in den Header-Badge-Bereich verschieben (Zeile 848, nach den Status-Badges), exakt wie in `MyWorkDecisionCard.tsx` Zeile 130-139 -- als reines Icon mit Tooltip, ohne Text
 
-**Dateien:** `MyWorkView.tsx`
+---
+
+## 8. Ueberschrift und Beschreibung in der Card begrenzen
+
+Aktuell hat der Titel `line-clamp-1` mit `group-hover:line-clamp-none` und die Beschreibung expandiert ueber `TruncatedDescription` mit `maxLength=150`. Bei langen Texten kann die Card sehr gross werden.
+
+**Aenderungen in `MyWorkDecisionCard.tsx` und `DecisionOverview.tsx`:**
+- Titel: `line-clamp-1` beibehalten, aber `group-hover:line-clamp-none` durch `group-hover:line-clamp-2` ersetzen (maximal 2 Zeilen beim Hover)
+- Beschreibung: `maxLength` von 150 auf 100 reduzieren
+- Beide Cards: Einen `max-h` auf den Titel+Beschreibungs-Container setzen, um sicherzustellen, dass sie nicht ueber die Voting-Row hinauswachsen
+
+---
+
+## 9. Entscheidungs-Dialog kompakter gestalten
+
+Betrifft `StandaloneDecisionCreator.tsx` und `TaskDecisionCreator.tsx`.
+
+**Layout-Aenderungen:**
+
+1. **Dialog breiter und hoeher:**
+   - `sm:max-w-[500px]` auf `sm:max-w-[900px] max-h-[90vh] overflow-y-auto` aendern
+
+2. **Benutzerauswahl (50%) + E-Mail/Matrix-Checkboxen (50%) nebeneinander:**
+   ```text
+   <div className="grid grid-cols-2 gap-4">
+     <div>Benutzer auswahlen...</div>
+     <div>
+       <Checkbox>Auch per E-Mail</Checkbox>
+       <Checkbox>Auch via Matrix</Checkbox>
+     </div>
+   </div>
+   ```
+
+3. **Antworttyp: Doppelten Erklaertext entfernen:**
+   - In `StandaloneDecisionCreator.tsx` Zeile 571-572 wird unter der Select-Box nochmal `template.description` angezeigt. Das entfernen, da der Text schon im SelectItem steht.
+
+4. **Vorschau inline:**
+   - `ResponseOptionsPreview` direkt hinter dem Label "Vorschau:" in einer Zeile:
+   ```text
+   <div className="flex items-start gap-2">
+     <span className="text-sm font-medium shrink-0">Vorschau:</span>
+     <ResponseOptionsPreview options={currentOptions} />
+   </div>
+   ```
+
+5. **Dateien (70%) + Themen (30%) nebeneinander:**
+   ```text
+   <div className="grid grid-cols-[70%_30%] gap-4">
+     <div>Dateien anhaengen...</div>
+     <div>Themen...</div>
+   </div>
+   ```
+
+**Dateien:** `StandaloneDecisionCreator.tsx`, `TaskDecisionCreator.tsx`
+
+---
+
+## 10. Dashboard-Tab Anpassungen
+
+### 10a. Tab schmaler machen
+In `MyWorkView.tsx` Zeile 466 hat jeder Tab `px-4`. Der Dashboard-Tab soll weniger Padding haben.
+
+**Aenderung:** Wenn `tab.isLogo`, dann `px-2` statt `px-4`
+
+### 10b. Text sofort sichtbar statt Typewriter
+In `DashboardGreetingSection.tsx` Zeile 311 wird `TypewriterText` verwendet. Stattdessen den Text direkt rendern.
+
+**Aenderung in `DashboardGreetingSection.tsx`:**
+- `TypewriterText` durch ein einfaches `<span>` ersetzen, das `fullText` direkt anzeigt (mit Markdown-Formatierung fuer Fettschrift)
+
+### 10c. CombinedMessagesWidget durch NewsWidget ersetzen
+In `MyWorkView.tsx` Zeile 495 wird `CombinedMessagesWidget` gerendert. Stattdessen das `NewsWidget` (aus `src/components/widgets/NewsWidget.tsx`) einbinden, das RSS-Feeds anzeigt.
+
+**Aenderung in `MyWorkView.tsx`:**
+```text
+{activeTab === "dashboard" && (
+  <div className="space-y-6">
+    <DashboardGreetingSection />
+    <div className="w-1/2">
+      <NewsWidget />
+    </div>
+  </div>
+)}
+```
+
+**Dateien:** `MyWorkView.tsx`, `DashboardGreetingSection.tsx`
 
 ---
 
 ## Technische Zusammenfassung
 
-### Keine DB-Aenderungen noetig
+### DB-Aenderung
+```sql
+ALTER TABLE task_decisions ADD COLUMN priority integer DEFAULT 0;
+```
 
 ### Dateien
 
-| Datei | Aenderung |
-|-------|-----------|
-| `SimpleLexicalEditor.tsx` | Loeschen |
-| `PlainTextEditor.tsx` | Loeschen |
-| `RichTextEditor.tsx` | Loeschen |
-| `EditorTestPage.tsx` | Loeschen |
-| `pages/EditorTest.tsx` | Loeschen |
-| `pages/HeaderEditorTestPage.tsx` | Loeschen |
-| `emails/EmailRichTextEditor.tsx` | Loeschen |
-| `emails/EmailComposer.tsx` | EmailRichTextEditor -> SimpleRichTextEditor |
-| `emails/EmailTemplateManager.tsx` | EmailRichTextEditor -> SimpleRichTextEditor |
-| `App.tsx` | Route `/editor-test` entfernen |
-| `letters/LetterWizard.tsx` (NEU) | Brief-Assistent mit 3 Schritten |
-| `LettersView.tsx` | Wizard statt Template-Selector, schlankere Uebersicht |
-| `TaskDecisionResponse.tsx` | Creator-Blockade fuer Kenntnisnahme/Freitext aufheben |
-| `MyWorkDecisionCard.tsx` | Response-Button auch fuer Creator bei Kenntnisnahme/Freitext |
-| `DecisionOverview.tsx` | Ebenso |
-| `TaskDecisionList.tsx` | Ebenso |
-| `MyWorkView.tsx` | Dashboard-Tab mit Logo als erstem Tab |
-
+| Datei | Aenderungen |
+|-------|-------------|
+| `DocumentsView.tsx` | LetterWizard einbinden statt Template-Selector |
+| `MyWorkDecisionsTab.tsx` | Sidebar-Breite von 240px auf 340px |
+| `AppNavigation.tsx` | "Wissen" von "Mehr" nach "Akten" verschieben |
+| `Navigation.tsx` | Ebenso |
+| `StandaloneDecisionCreator.tsx` | Kompakteres Layout (2-Spalten, breiter Dialog), Priority-Toggle |
+| `TaskDecisionCreator.tsx` | Ebenso |
+| `DecisionOverview.tsx` | Globe-Icon in Header verschieben, Titel/Beschreibung begrenzen, Priority-Sortierung |
+| `MyWorkDecisionCard.tsx` | Titel/Beschreibung begrenzen, Priority-Badge |
+| `MyWorkView.tsx` | Dashboard-Tab schmaler, NewsWidget statt CombinedMessagesWidget |
+| `DashboardGreetingSection.tsx` | Text direkt anzeigen statt Typewriter |
+| DB-Migration | `priority` Spalte in `task_decisions` |
