@@ -578,8 +578,8 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
             
             const hasResponded = currentUserParticipant.responses && currentUserParticipant.responses.length > 0;
             
-            // Don't show voting section for creator
-            if (isCreator) return null;
+            // Let TaskDecisionResponse handle creator logic internally
+            // (it allows creator for acknowledgement/freetext types)
             
             return (
               <Card className="border-primary/30 bg-primary/5">

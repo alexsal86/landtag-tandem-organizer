@@ -273,7 +273,7 @@ const MyWorkDecisionCardInner = ({
         {decision.participants && decision.participants.length > 0 && (
           <div className="flex items-center justify-between mt-4">
             <div onClick={(e) => e.stopPropagation()}>
-              {decision.isParticipant && decision.participant_id && !decision.hasResponded && !decision.isCreator ? (
+              {decision.isParticipant && decision.participant_id && !decision.hasResponded && (
                 <TaskDecisionResponse 
                   decisionId={decision.id}
                   participantId={decision.participant_id}
@@ -281,7 +281,7 @@ const MyWorkDecisionCardInner = ({
                   hasResponded={decision.hasResponded}
                   creatorId={decision.created_by}
                 />
-              ) : null}
+              )}
             </div>
 
             <div className="flex items-center gap-3 ml-auto">

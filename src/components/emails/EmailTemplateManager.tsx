@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Eye, FileText } from "lucide-react";
-import EmailRichTextEditor from "./EmailRichTextEditor";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 
 interface EmailTemplate {
   id: string;
@@ -237,7 +237,7 @@ export function EmailTemplateManager() {
 
               <div>
                 <Label>E-Mail-Inhalt</Label>
-                <EmailRichTextEditor
+                <SimpleRichTextEditor
                   initialContent={formData.body_html}
                   onChange={(html) => setFormData({ ...formData, body_html: html })}
                   placeholder="Verfassen Sie Ihr E-Mail-Template..."

@@ -8,13 +8,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus } from "lucide-react";
+import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home } from "lucide-react";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { MyWorkQuickCapture } from "./my-work/MyWorkQuickCapture";
 import { MyWorkNotesList } from "./my-work/MyWorkNotesList";
 import { MyWorkTasksTab } from "./my-work/MyWorkTasksTab";
@@ -24,6 +25,8 @@ import { MyWorkPlanningsTab } from "./my-work/MyWorkPlanningsTab";
 import { MyWorkTeamTab } from "./my-work/MyWorkTeamTab";
 import { MyWorkJourFixeTab } from "./my-work/MyWorkJourFixeTab";
 import { MyWorkTimeTrackingTab } from "./my-work/MyWorkTimeTrackingTab";
+import { DashboardGreetingSection } from "./dashboard/DashboardGreetingSection";
+import { CombinedMessagesWidget } from "./CombinedMessagesWidget";
 
 interface TabCounts {
   tasks: number;
@@ -34,7 +37,7 @@ interface TabCounts {
   jourFixe: number;
 }
 
-type TabValue = "capture" | "tasks" | "decisions" | "jourFixe" | "casefiles" | "plannings" | "team" | "time";
+type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "casefiles" | "plannings" | "team" | "time";
 
 interface TabConfig {
   value: TabValue;
@@ -45,9 +48,11 @@ interface TabConfig {
   adminOnly?: boolean;
   employeeOnly?: boolean;
   abgeordneterOrBueroOnly?: boolean;
+  isLogo?: boolean;
 }
 
 const BASE_TABS: TabConfig[] = [
+  { value: "dashboard", label: "", icon: Home, isLogo: true },
   { value: "capture", label: "Quick Notes", icon: StickyNote },
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
   { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },
@@ -60,6 +65,7 @@ const BASE_TABS: TabConfig[] = [
 
 export function MyWorkView() {
   const { user } = useAuth();
+  const { app_logo_url } = useAppSettings();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -80,14 +86,15 @@ export function MyWorkView() {
   const { badgeDisplayMode } = useMyWorkSettings();
   const { newCounts, markTabAsVisited, refreshCounts } = useMyWorkNewCounts();
   
-  // Get active tab from URL or default to "capture"
-  const activeTab = (searchParams.get("tab") as TabValue) || "capture";
+  // Get active tab from URL or default to "dashboard"
+  const activeTab = (searchParams.get("tab") as TabValue) || "dashboard";
   
   const setActiveTab = (tab: TabValue) => {
     setSearchParams({ tab });
     
     // Mark tab as visited when switching
     const tabToContext: Record<TabValue, string> = {
+      dashboard: '',
       capture: '',
       tasks: 'mywork_tasks',
       decisions: 'mywork_decisions',
@@ -462,7 +469,11 @@ export function MyWorkView() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                {tab.isLogo && app_logo_url ? (
+                  <img src={app_logo_url} alt="Logo" className="h-5 w-5 object-contain rounded" crossOrigin="anonymous" />
+                ) : (
+                  <Icon className="h-4 w-4" />
+                )}
                 {tab.label}
                 {count > 0 && (
                   <Badge 
@@ -478,6 +489,13 @@ export function MyWorkView() {
       </div>
 
       {/* Tab Content */}
+      {activeTab === "dashboard" && (
+        <div className="space-y-6">
+          <DashboardGreetingSection />
+          <CombinedMessagesWidget />
+        </div>
+      )}
+
       {activeTab === "capture" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
