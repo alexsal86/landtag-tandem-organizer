@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, Layers } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, Layers, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -32,11 +33,20 @@ interface HeaderElement {
 
 interface HeaderBlock {
   id: string;
-  name: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  type: 'custom';
+  title: string;
+  content: string;
+  order: number;
+  widthPercent: number;
+  fontSize: number;
+  fontFamily: string;
+  fontWeight: string;
+  color: string;
+  lineHeight?: number;
+  titleHighlight?: boolean;
+  titleFontSize?: number;
+  titleFontWeight?: string;
+  titleColor?: string;
 }
 
 interface StructuredHeaderEditorProps {
@@ -57,11 +67,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [systemImages, setSystemImages] = useState<{ name: string; url: string }[]>([]);
   const [blocks, setBlocks] = useState<HeaderBlock[]>([]);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const lastReportedRef = useRef<string>('');
 
   const headerMaxWidth = 210;
   const headerMaxHeight = 45;
   const previewWidth = 580;
   const previewHeight = 220;
+  const headerAvailableWidth = 165; // 210mm - 25mm left - 20mm right
 
   const SNAP_MM = 1.5;
 
@@ -94,9 +106,14 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return { x: Math.round(sx), y: Math.round(sy) };
   };
 
+  // Report element changes to parent - guarded against duplicate calls
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    onElementsChange(elements);
+    const key = JSON.stringify(elements);
+    if (key !== lastReportedRef.current) {
+      lastReportedRef.current = key;
+      onElementsChange(elements);
+    }
   }, [elements]);
 
   // Load system images
@@ -114,14 +131,24 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         .list(`${currentTenant.id}/_system/briefvorlagen-bilder`);
       if (error) throw error;
       if (data) {
-        const images = data
-          .filter((f) => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name))
-          .map((f) => {
-            const { data: urlData } = supabase.storage
-              .from('letter-assets')
-              .getPublicUrl(`${currentTenant.id}/_system/briefvorlagen-bilder/${f.name}`);
-            return { name: f.name, url: urlData.publicUrl };
-          });
+        const images = await Promise.all(
+          data
+            .filter((f) => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name))
+            .map(async (f) => {
+              const path = `${currentTenant.id}/_system/briefvorlagen-bilder/${f.name}`;
+              // Try public URL first, fall back to signed URL
+              const { data: urlData } = supabase.storage.from('letter-assets').getPublicUrl(path);
+              let url = urlData.publicUrl;
+              // Verify the URL works by trying signed URL as fallback
+              try {
+                const { data: signedData } = await supabase.storage.from('letter-assets').createSignedUrl(path, 3600);
+                if (signedData?.signedUrl) url = signedData.signedUrl;
+              } catch {
+                // Public URL should work if bucket is public
+              }
+              return { name: f.name, url };
+            })
+        );
         setSystemImages(images);
       }
     } catch (error) {
@@ -179,47 +206,84 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   const addImageElementFromUrl = (imageUrl: string, x = 20, y = 10) => {
+    const id = `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const newElement: HeaderElement = {
-      id: Date.now().toString(),
-      type: 'image',
-      x, y,
-      width: 40,
-      height: 20,
-      imageUrl,
-      preserveAspectRatio: true,
+      id, type: 'image', x, y,
+      width: 40, height: 20, imageUrl, preserveAspectRatio: true,
     };
-    setElements((prev) => [...prev, newElement]);
-    setSelectedElementId(newElement.id);
+    setElements((prev) => {
+      if (prev.some((el) => el.id === id)) return prev;
+      return [...prev, newElement];
+    });
+    setSelectedElementId(id);
   };
 
   const addTextElement = (x = 20, y = 12, content = 'Lorem ipsum dolor sit amet') => {
+    const id = `txt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const newElement: HeaderElement = {
-      id: Date.now().toString(),
-      type: 'text',
-      x, y,
-      content,
-      fontSize: 12,
-      fontFamily: 'Arial',
-      fontWeight: 'normal',
-      fontStyle: 'normal',
-      textDecoration: 'none',
-      color: '#000000',
-      width: 70,
-      height: 8,
+      id, type: 'text', x, y, content,
+      fontSize: 12, fontFamily: 'Arial', fontWeight: 'normal',
+      fontStyle: 'normal', textDecoration: 'none', color: '#000000',
+      width: 70, height: 8,
     };
-    setElements((prev) => [...prev, newElement]);
-    setSelectedElementId(newElement.id);
+    setElements((prev) => {
+      if (prev.some((el) => el.id === id)) return prev;
+      return [...prev, newElement];
+    });
+    setSelectedElementId(id);
   };
 
   const addBlock = () => {
     const newBlock: HeaderBlock = {
       id: Date.now().toString(),
-      name: `Block ${blocks.length + 1}`,
-      x: 10, y: 5,
-      width: 60, height: 20,
+      type: 'custom',
+      title: `Block ${blocks.length + 1}`,
+      content: 'Neuer Inhalt',
+      order: blocks.length,
+      widthPercent: 25,
+      fontSize: 10,
+      fontFamily: 'Arial',
+      fontWeight: 'normal',
+      color: '#000000',
+      lineHeight: 0.8,
+      titleHighlight: false,
+      titleFontSize: 13,
+      titleFontWeight: 'bold',
+      titleColor: '#107030',
     };
     setBlocks((prev) => [...prev, newBlock]);
     setSelectedBlockId(newBlock.id);
+  };
+
+  const updateBlock = (id: string, updates: Partial<HeaderBlock>) => {
+    setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+  };
+
+  const removeBlock = (id: string) => {
+    setBlocks((prev) => prev.filter((b) => b.id !== id));
+    if (selectedBlockId === id) setSelectedBlockId(null);
+  };
+
+  const moveBlockUp = (id: string) => {
+    setBlocks((prev) => {
+      const idx = prev.findIndex((b) => b.id === id);
+      if (idx <= 0) return prev;
+      const next = [...prev];
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+      next.forEach((b, i) => (b.order = i));
+      return next;
+    });
+  };
+
+  const moveBlockDown = (id: string) => {
+    setBlocks((prev) => {
+      const idx = prev.findIndex((b) => b.id === id);
+      if (idx < 0 || idx >= prev.length - 1) return prev;
+      const next = [...prev];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+      next.forEach((b, i) => (b.order = i));
+      return next;
+    });
   };
 
   const updateElement = (id: string, updates: Partial<HeaderElement>) => {
@@ -231,7 +295,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     if (selectedElementId === id) setSelectedElementId(null);
   };
 
-  const onToolDragStart = (event: React.DragEvent, tool: 'text' | 'image', imageUrl?: string) => {
+  const onToolDragStart = (event: React.DragEvent, tool: 'text' | 'image' | 'block', imageUrl?: string) => {
     event.dataTransfer.setData('application/x-header-tool', tool);
     if (imageUrl) event.dataTransfer.setData('application/x-image-url', imageUrl);
     event.dataTransfer.effectAllowed = 'copy';
@@ -251,9 +315,11 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       const imageUrl = event.dataTransfer.getData('application/x-image-url');
       if (imageUrl) addImageElementFromUrl(imageUrl, Math.round(x), Math.round(y));
     }
+    if (tool === 'block') addBlock();
   };
 
   const selectedElement = elements.find((el) => el.id === selectedElementId);
+  const selectedBlock = blocks.find((b) => b.id === selectedBlockId);
 
   const onElementMouseDown = (event: React.MouseEvent, element: HeaderElement) => {
     event.stopPropagation();
@@ -297,10 +363,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const validatePosition = (value: number, max: number) => Math.max(0, Math.min(value, max));
 
+  const calculateActualWidth = (widthPercent: number) => (headerAvailableWidth * widthPercent) / 100;
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_580px] gap-4">
-      {/* Sidebar - scrollable */}
-      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+      {/* Sidebar */}
+      <div className="space-y-4">
         {/* Tools */}
         <Card>
           <CardHeader className="py-3 px-4">
@@ -314,10 +382,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 <div className="text-xs text-muted-foreground">Ziehen auf Canvas</div>
               </div>
             </div>
-            <Button onClick={addBlock} variant="outline" size="sm" className="w-full justify-start">
-              <Layers className="h-4 w-4 mr-2" />
-              Block hinzufügen
-            </Button>
+            <div draggable onDragStart={(e) => onToolDragStart(e, 'block')} className="rounded border bg-background px-3 py-2 text-sm cursor-grab active:cursor-grabbing flex items-start gap-2">
+              <GripVertical className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <div>
+                <div className="font-medium flex items-center gap-1"><Layers className="h-3 w-3" /> Block</div>
+                <div className="text-xs text-muted-foreground">Ziehen auf Canvas</div>
+              </div>
+            </div>
             <Separator />
             <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="w-full" onClick={() => setShowRuler((v) => !v)}>
               Lineal {showRuler ? 'aus' : 'ein'}
@@ -360,40 +431,121 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
 
         {/* Blocks */}
-        {blocks.length > 0 && (
-          <Card>
-            <CardHeader className="py-3 px-4">
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <div className="flex items-center justify-between">
               <CardTitle className="text-sm">Blöcke ({blocks.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 px-4 pb-3">
-              {blocks.map((block) => (
+              <Button variant="ghost" size="sm" onClick={addBlock} className="h-7 px-2">
+                <Plus className="h-3 w-3 mr-1" /> Neu
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2 px-4 pb-3">
+            {blocks.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Keine Blöcke. Ziehen Sie einen Block auf den Canvas.</p>
+            ) : (
+              blocks.sort((a, b) => a.order - b.order).map((block, index) => (
                 <div
                   key={block.id}
                   className={`p-2 border rounded cursor-pointer text-sm transition-colors ${selectedBlockId === block.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
-                  onClick={() => setSelectedBlockId(block.id)}
+                  onClick={() => { setSelectedBlockId(block.id); setSelectedElementId(null); }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       <Layers className="h-3 w-3" />
-                      <span className="font-medium">{block.name}</span>
+                      <span className="font-medium truncate">{block.title}</span>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-6 px-1" onClick={(e) => { e.stopPropagation(); setBlocks((prev) => prev.filter((b) => b.id !== block.id)); }}>
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
+                    <div className="flex gap-0.5">
+                      <Button variant="ghost" size="sm" className="h-5 px-0.5" onClick={(e) => { e.stopPropagation(); moveBlockUp(block.id); }} disabled={index === 0}>
+                        <ArrowUp className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-5 px-0.5" onClick={(e) => { e.stopPropagation(); moveBlockDown(block.id); }} disabled={index === blocks.length - 1}>
+                        <ArrowDown className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-5 px-0.5" onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}>
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
-                  {selectedBlockId === block.id && (
-                    <div className="mt-2 pt-2 border-t space-y-2">
-                      <Input value={block.name} onChange={(e) => setBlocks((prev) => prev.map((b) => b.id === block.id ? { ...b, name: e.target.value } : b))} placeholder="Blockname" />
-                      <div className="grid grid-cols-2 gap-1">
-                        <div><Label className="text-xs">X</Label><Input type="number" value={block.x} onChange={(e) => setBlocks((prev) => prev.map((b) => b.id === block.id ? { ...b, x: parseFloat(e.target.value) || 0 } : b))} /></div>
-                        <div><Label className="text-xs">Y</Label><Input type="number" value={block.y} onChange={(e) => setBlocks((prev) => prev.map((b) => b.id === block.id ? { ...b, y: parseFloat(e.target.value) || 0 } : b))} /></div>
-                        <div><Label className="text-xs">Breite</Label><Input type="number" value={block.width} onChange={(e) => setBlocks((prev) => prev.map((b) => b.id === block.id ? { ...b, width: parseFloat(e.target.value) || 0 } : b))} /></div>
-                        <div><Label className="text-xs">Höhe</Label><Input type="number" value={block.height} onChange={(e) => setBlocks((prev) => prev.map((b) => b.id === block.id ? { ...b, height: parseFloat(e.target.value) || 0 } : b))} /></div>
-                      </div>
-                    </div>
-                  )}
+                  <p className="text-xs text-muted-foreground mt-0.5">{block.widthPercent}% ({calculateActualWidth(block.widthPercent).toFixed(1)}mm)</p>
                 </div>
-              ))}
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Block Properties */}
+        {selectedBlock && (
+          <Card>
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm">Block-Eigenschaften</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 px-4 pb-3">
+              <div>
+                <Label className="text-xs">Titel</Label>
+                <Input value={selectedBlock.title} onChange={(e) => updateBlock(selectedBlock.id, { title: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">Inhalt</Label>
+                <Textarea value={selectedBlock.content} onChange={(e) => updateBlock(selectedBlock.id, { content: e.target.value })} rows={3} />
+              </div>
+              <div>
+                <Label className="text-xs">Breite (%)</Label>
+                <Input type="number" value={selectedBlock.widthPercent} onChange={(e) => updateBlock(selectedBlock.id, { widthPercent: Math.max(1, Math.min(100, parseInt(e.target.value) || 25)) })} min={1} max={100} />
+                <p className="text-xs text-muted-foreground">= {calculateActualWidth(selectedBlock.widthPercent).toFixed(1)}mm</p>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Schriftgröße</Label>
+                  <Input type="number" value={selectedBlock.fontSize} onChange={(e) => updateBlock(selectedBlock.id, { fontSize: parseInt(e.target.value) || 10 })} min={6} max={24} />
+                </div>
+                <div>
+                  <Label className="text-xs">Zeilenhöhe</Label>
+                  <Input type="number" value={selectedBlock.lineHeight || 1} onChange={(e) => updateBlock(selectedBlock.id, { lineHeight: parseFloat(e.target.value) || 1 })} step="0.1" min={0.5} max={3} />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Schriftart</Label>
+                <Select value={selectedBlock.fontFamily} onValueChange={(v) => updateBlock(selectedBlock.id, { fontFamily: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Arial">Arial</SelectItem>
+                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                    <SelectItem value="Calibri">Calibri</SelectItem>
+                    <SelectItem value="Verdana">Verdana</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Schriftstärke</Label>
+                  <Select value={selectedBlock.fontWeight} onValueChange={(v) => updateBlock(selectedBlock.id, { fontWeight: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="bold">Fett</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Farbe</Label>
+                  <Input type="color" value={selectedBlock.color} onChange={(e) => updateBlock(selectedBlock.id, { color: e.target.value })} className="h-9" />
+                </div>
+              </div>
+              <Separator />
+              <div className="flex items-center space-x-2">
+                <Checkbox id={`highlight-${selectedBlock.id}`} checked={selectedBlock.titleHighlight || false} onCheckedChange={(checked) => updateBlock(selectedBlock.id, { titleHighlight: checked as boolean, titleFontSize: checked ? (selectedBlock.titleFontSize || 13) : selectedBlock.titleFontSize, titleFontWeight: checked ? (selectedBlock.titleFontWeight || 'bold') : selectedBlock.titleFontWeight, titleColor: checked ? (selectedBlock.titleColor || '#107030') : selectedBlock.titleColor })} />
+                <Label htmlFor={`highlight-${selectedBlock.id}`} className="text-xs">Titel hervorheben</Label>
+              </div>
+              {selectedBlock.titleHighlight && (
+                <div className="space-y-2 border-l-2 border-primary/20 pl-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className="text-xs">Titel-Größe</Label><Input type="number" value={selectedBlock.titleFontSize || 13} onChange={(e) => updateBlock(selectedBlock.id, { titleFontSize: parseInt(e.target.value) || 13 })} min={8} max={24} /></div>
+                    <div><Label className="text-xs">Titel-Farbe</Label><Input type="color" value={selectedBlock.titleColor || '#107030'} onChange={(e) => updateBlock(selectedBlock.id, { titleColor: e.target.value })} className="h-9" /></div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -411,7 +563,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 <div
                   key={element.id}
                   className={`p-2 border rounded cursor-pointer transition-colors text-sm ${selectedElementId === element.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
-                  onClick={() => setSelectedElementId(element.id)}
+                  onClick={() => { setSelectedElementId(element.id); setSelectedBlockId(null); }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="min-w-0">
@@ -508,7 +660,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               onMouseMove={onPreviewMouseMove}
               onMouseUp={onPreviewMouseUp}
               onMouseLeave={onPreviewMouseUp}
-              onClick={() => setSelectedElementId(null)}
+              onClick={(e) => { if (e.target === e.currentTarget) { setSelectedElementId(null); setSelectedBlockId(null); } }}
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
               style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}
             >
@@ -518,20 +670,26 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none" />
                 </>
               )}
-              {/* Render blocks */}
-              {blocks.map((block) => {
-                const scaleX = previewWidth / headerMaxWidth;
-                const scaleY = previewHeight / headerMaxHeight;
-                return (
-                  <div
-                    key={`block-${block.id}`}
-                    className={`absolute border-2 border-dashed pointer-events-none ${selectedBlockId === block.id ? 'border-blue-500 bg-blue-500/5' : 'border-blue-300/50 bg-blue-100/10'}`}
-                    style={{ left: `${block.x * scaleX}px`, top: `${block.y * scaleY}px`, width: `${block.width * scaleX}px`, height: `${block.height * scaleY}px` }}
-                  >
-                    <span className="absolute -top-4 left-0 text-[9px] text-blue-500 bg-white px-1">{block.name}</span>
-                  </div>
-                );
-              })}
+              {/* Render blocks horizontally like footer */}
+              {blocks.length > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 flex" style={{ height: '40%' }}>
+                  {blocks.sort((a, b) => a.order - b.order).map((block) => (
+                    <div
+                      key={`block-${block.id}`}
+                      className={`border-t border-r border-dashed cursor-pointer ${selectedBlockId === block.id ? 'border-blue-500 bg-blue-500/10' : 'border-blue-300/50 bg-blue-50/30'}`}
+                      style={{ width: `${block.widthPercent}%`, fontFamily: block.fontFamily, fontSize: `${block.fontSize * 0.8}px`, color: block.color, lineHeight: block.lineHeight || 1, padding: '4px' }}
+                      onClick={(e) => { e.stopPropagation(); setSelectedBlockId(block.id); setSelectedElementId(null); }}
+                    >
+                      {block.titleHighlight ? (
+                        <div style={{ fontSize: `${(block.titleFontSize || 13) * 0.8}px`, fontWeight: block.titleFontWeight || 'bold', color: block.titleColor || '#107030' }}>{block.title}</div>
+                      ) : (
+                        <div className="font-medium text-[9px]">{block.title}</div>
+                      )}
+                      <div className="whitespace-pre-line text-[8px] mt-0.5 opacity-80">{block.content.split('\n').slice(0, 3).join('\n')}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {/* Render elements */}
               {elements.map((element) => {
                 const scaleX = previewWidth / headerMaxWidth;
