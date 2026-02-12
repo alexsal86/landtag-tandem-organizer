@@ -392,6 +392,7 @@ const LetterTemplateManager: React.FC = () => {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Vorschau: {template.name}</DialogTitle>
+            <DialogDescription>Vorschau des Brief-Templates.</DialogDescription>
           </DialogHeader>
           <div 
             className="border rounded-lg p-4 bg-white"
@@ -598,6 +599,7 @@ const LetterTemplateManager: React.FC = () => {
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Template bearbeiten: {editingTemplate.name}</DialogTitle>
+              <DialogDescription>Bearbeiten Sie die Einstellungen des Brief-Templates.</DialogDescription>
             </DialogHeader>
             
             <Tabs value={editActiveTab} onValueChange={setEditActiveTab} className="w-full">
