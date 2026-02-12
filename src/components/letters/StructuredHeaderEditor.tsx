@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, Layers, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, Layers, ArrowUp, ArrowDown, X, ImageOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -131,17 +131,40 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         .list(`${currentTenant.id}/_system/briefvorlagen-bilder`);
       if (error) throw error;
       if (data) {
-        const images = data
-          .filter((f) => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name))
-          .map((f) => {
+        const filtered = data.filter((f) => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name));
+        const images = await Promise.all(
+          filtered.map(async (f) => {
             const path = `${currentTenant.id}/_system/briefvorlagen-bilder/${f.name}`;
-            const { data: urlData } = supabase.storage.from('letter-assets').getPublicUrl(path);
-            return { name: f.name, url: urlData.publicUrl };
-          });
+            const { data: signedData, error: signedError } = await supabase.storage
+              .from('letter-assets')
+              .createSignedUrl(path, 604800); // 7 days
+            if (signedError || !signedData?.signedUrl) {
+              console.warn('Signed URL failed for', f.name, signedError);
+              const { data: urlData } = supabase.storage.from('letter-assets').getPublicUrl(path);
+              return { name: f.name, url: urlData.publicUrl };
+            }
+            return { name: f.name, url: signedData.signedUrl };
+          })
+        );
         setSystemImages(images);
       }
     } catch (error) {
       console.error('Error loading system images:', error);
+    }
+  };
+
+  const deleteSystemImage = async (fileName: string) => {
+    if (!currentTenant?.id) return;
+    if (!confirm(`Bild "${fileName}" wirklich löschen?`)) return;
+    try {
+      const path = `${currentTenant.id}/_system/briefvorlagen-bilder/${fileName}`;
+      const { error } = await supabase.storage.from('letter-assets').remove([path]);
+      if (error) throw error;
+      toast({ title: 'Bild gelöscht', description: `"${fileName}" wurde entfernt.` });
+      await loadSystemImages();
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      toast({ title: 'Fehler', description: 'Bild konnte nicht gelöscht werden.', variant: 'destructive' });
     }
   };
 
@@ -406,12 +429,33 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 {systemImages.map((img) => (
                   <div
                     key={img.name}
-                    draggable
-                    onDragStart={(e) => onToolDragStart(e, 'image', img.url)}
-                    className="border rounded overflow-hidden cursor-grab active:cursor-grabbing aspect-square bg-muted/30"
+                    className="relative group border rounded overflow-hidden aspect-square bg-muted/30"
                     title={img.name}
                   >
-                    <img src={img.url} alt={img.name} className="w-full h-full object-contain" />
+                    <div
+                      draggable
+                      onDragStart={(e) => onToolDragStart(e, 'image', img.url)}
+                      className="w-full h-full cursor-grab active:cursor-grabbing flex items-center justify-center"
+                    >
+                      <img
+                        src={img.url}
+                        alt={img.name}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          console.error('Image load failed:', img.url);
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          (e.target as HTMLImageElement).parentElement?.classList.add('img-error');
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); deleteSystemImage(img.name); }}
+                      className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      title="Bild löschen"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
                 ))}
               </div>
