@@ -327,8 +327,12 @@ export const TaskDecisionResponse = ({
     );
   }
 
-  // Block creator from voting
-  if (isCreator) {
+  // Check special types BEFORE creator block
+  const isSingleFreetext = responseOptions.length === 1 && responseOptions[0].requires_comment;
+  const isSingleAcknowledgement = responseOptions.length === 1 && !responseOptions[0].requires_comment;
+
+  // Block creator from voting — but NOT for acknowledgement/freetext types
+  if (isCreator && !isSingleAcknowledgement && !isSingleFreetext) {
     return (
       <div className="text-xs text-muted-foreground italic py-2">
         Als Ersteller können Sie nur auf Rückmeldungen antworten, nicht selbst abstimmen.
@@ -336,11 +340,7 @@ export const TaskDecisionResponse = ({
     );
   }
 
-  // Check if this is a single freetext-only option
-  const isSingleFreetext = responseOptions.length === 1 && responseOptions[0].requires_comment;
-  
-  // Check if this is a single acknowledgement option (no comment required)
-  const isSingleAcknowledgement = responseOptions.length === 1 && !responseOptions[0].requires_comment;
+  // (isSingleFreetext and isSingleAcknowledgement already declared above)
 
   const optionRequiringComment = responseOptions.find(o => o.requires_comment);
 

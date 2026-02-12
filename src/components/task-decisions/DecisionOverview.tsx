@@ -983,7 +983,7 @@ export const DecisionOverview = () => {
             <div className="flex items-center justify-between mt-4">
               {/* Left: Inline voting for unanswered participants */}
               <div onClick={(e) => e.stopPropagation()}>
-                {decision.isParticipant && decision.participant_id && !decision.hasResponded && !decision.isCreator ? (
+                {decision.isParticipant && decision.participant_id && !decision.hasResponded && (
                   <TaskDecisionResponse 
                     decisionId={decision.id}
                     participantId={decision.participant_id}
@@ -991,7 +991,7 @@ export const DecisionOverview = () => {
                     hasResponded={decision.hasResponded}
                     creatorId={decision.created_by}
                   />
-                ) : null}
+                )}
               </div>
 
               {/* Right: Voting results + AvatarStack */}

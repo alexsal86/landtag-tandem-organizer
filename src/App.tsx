@@ -23,7 +23,6 @@ import DecisionResponse from "./pages/DecisionResponse";
 import GuestResponse from "./pages/GuestResponse";
 import AppointmentPreparationDetail from "./pages/AppointmentPreparationDetail";
 
-import EditorTest from "./pages/EditorTest";
 import NotificationsPage from "./pages/NotificationsPage";
 import EmployeeMeetingDetail from "./pages/EmployeeMeetingDetail";
 import MapsView from "./pages/MapsView";
@@ -78,7 +77,7 @@ const AppContent = () => {
           <Route path="/appointment-preparation" element={<AppointmentPreparationDetail />} />
           <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
           {/* notifications is now handled by /:section in Index */}
-          <Route path="/editor-test" element={<EditorTest />} />
+          {/* editor-test route removed */}
           <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="/:section" element={<Index />} />

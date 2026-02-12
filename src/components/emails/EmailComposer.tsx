@@ -34,7 +34,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import EmailRichTextEditor from "./EmailRichTextEditor";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -724,7 +724,7 @@ export function EmailComposer() {
                   </DropdownMenu>
                 </div>
                 
-                <EmailRichTextEditor
+                <SimpleRichTextEditor
                   initialContent={bodyHtml}
                   onChange={setBodyHtml}
                 />

@@ -12,7 +12,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
 import { useViewPreference } from '@/hooks/useViewPreference';
 import LetterEditor from './LetterEditor';
-import LetterTemplateSelector from './LetterTemplateSelector';
+import { LetterWizard } from './letters/LetterWizard';
 import LetterPDFExport from './LetterPDFExport';
 
 interface Letter {
@@ -50,14 +50,9 @@ const LettersView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedLetter, setSelectedLetter] = useState<Letter | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
 
-  console.log('=== LETTERSVIEW RENDER ===');
-  console.log('selectedLetter:', selectedLetter);
-  console.log('isEditorOpen:', isEditorOpen);
-  console.log('selectedTemplate:', selectedTemplate);
-  console.log('=== END LETTERSVIEW RENDER ===');
 
   useEffect(() => {
     if (currentTenant) {
@@ -103,56 +98,41 @@ const LettersView: React.FC = () => {
 
   const handleNewLetter = () => {
     setSelectedLetter(null);
-    setShowTemplateSelector(true);
+    setShowWizard(true);
   };
 
-  const handleTemplateSelect = (template: any) => {
-    try {
-      console.log('=== TEMPLATE SELECTION START ===');
-      console.log('Template selected:', template);
-      console.log('Template ID:', template?.id);
-      console.log('Template default_sender_id:', template?.default_sender_id);
-      console.log('Template default_info_blocks:', template?.default_info_blocks);
-      
-      setSelectedTemplate(template);
-      setShowTemplateSelector(false);
-      
-      // Create a new letter object with template information
-      const newLetter: any = {
-        id: undefined, // New letter has no ID yet
-        title: '',
-        content: '',
-        content_html: '',
-        status: 'draft',
-        template_id: template?.id,
-        sender_info_id: template?.default_sender_id,
-        information_block_ids: template?.default_info_blocks || [],
-        tenant_id: currentTenant?.id || '',
-        user_id: user?.id || '',
-        created_by: user?.id || '',
-        created_at: '',
-        updated_at: '',
-        recipient_name: '',
-        recipient_address: '',
-        archived_at: null
-      };
-      
-      console.log('=== NEW LETTER CREATED ===');
-      console.log('New letter object:', newLetter);
-      console.log('New letter template_id:', newLetter.template_id);
-      console.log('New letter sender_info_id:', newLetter.sender_info_id);
-      console.log('New letter information_block_ids:', newLetter.information_block_ids);
-      console.log('=== SETTING SELECTED LETTER ===');
-      
-      setSelectedLetter(newLetter);
-      setIsEditorOpen(true);
-      
-      console.log('=== TEMPLATE SELECTION END ===');
-    } catch (error) {
-      console.error('=== ERROR IN HANDLETEMPLESELECT ===');
-      console.error('Error:', error);
-      console.error('=== END ERROR ===');
-    }
+  const handleWizardComplete = (config: {
+    occasion: string;
+    recipientName: string;
+    recipientAddress: string;
+    contactId?: string;
+    templateId?: string;
+    senderInfoId?: string;
+  }) => {
+    setShowWizard(false);
+    
+    const newLetter: any = {
+      id: undefined,
+      title: '',
+      content: '',
+      content_html: '',
+      status: 'draft',
+      template_id: config.templateId,
+      sender_info_id: config.senderInfoId,
+      information_block_ids: [],
+      tenant_id: currentTenant?.id || '',
+      user_id: user?.id || '',
+      created_by: user?.id || '',
+      created_at: '',
+      updated_at: '',
+      recipient_name: config.recipientName,
+      recipient_address: config.recipientAddress,
+      contact_id: config.contactId,
+      archived_at: null
+    };
+    
+    setSelectedLetter(newLetter);
+    setIsEditorOpen(true);
   };
 
   const handleEditLetter = (letter: Letter) => {
@@ -429,21 +409,12 @@ const LettersView: React.FC = () => {
         )
       )}
 
-      {/* Template Selector Dialog */}
-      {showTemplateSelector && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-          <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-4xl -translate-x-1/2 -translate-y-1/2 bg-background border rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold">Template für neuen Brief auswählen</h2>
-              <Button variant="ghost" onClick={() => setShowTemplateSelector(false)}>
-                ×
-              </Button>
-            </div>
-            <LetterTemplateSelector
-              onSelect={handleTemplateSelect}
-            />
-          </div>
-        </div>
+      {/* Letter Wizard */}
+      {showWizard && (
+        <LetterWizard
+          onComplete={handleWizardComplete}
+          onCancel={() => setShowWizard(false)}
+        />
       )}
 
       {/* Letter Editor */}
