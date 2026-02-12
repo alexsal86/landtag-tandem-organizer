@@ -1,83 +1,65 @@
 
-# Plan: Dashboard-Layout und Benachrichtigungs-Debugging
 
-## 1. Dashboard-Layout: Begruessung und News nebeneinander (50/50)
+# Plan: Echtzeit-Benachrichtigungen und Push-Fixes
 
-Aktuell in `MyWorkView.tsx` (Zeilen 492-498):
-```text
-<div className="space-y-6">
-  <DashboardGreetingSection />
-  <div className="w-1/2">
-    <NewsWidget />
-  </div>
-</div>
-```
+## Problem-Analyse
 
-Das wird geaendert zu einem horizontalen Grid mit 50/50-Aufteilung:
-```text
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-  <DashboardGreetingSection />
-  <NewsWidget />
-</div>
-```
+### 1. Echtzeit-Benachrichtigungen kommen nicht an
+Die Realtime-Subscription fuer Alexander wurde um **11:51:58** erstellt, aber die Notification fuer "fhgfhgfhfghgfhgh" wurde bereits um **11:51:25** eingefuegt -- also **33 Sekunden vorher**. Die Subscription war zu diesem Zeitpunkt noch nicht aktiv (vermutlich durch Seitenwechsel oder Reconnect).
 
-Die `DashboardGreetingSection` muss ggf. in der Hoehe angepasst werden, damit sie neben dem NewsWidget gut aussieht (z.B. `h-full` auf dem Container).
+**Kernproblem:** Es gibt keinen Polling-Fallback. Benachrichtigungen werden NUR ueber Realtime empfangen. Wenn die Subscription kurz weg ist, gehen Benachrichtigungen verloren -- bis zum naechsten Seiten-Reload.
 
-**Dateien:** `MyWorkView.tsx`
+### 2. Browser-Push funktioniert nicht
+Die Tabelle `push_subscriptions` ist LEER fuer Alexander. Ohne registrierte Subscription kann kein Push gesendet werden. Der User muss Push in den Einstellungen erst aktivieren.
+
+### 3. Drei doppelte Push-Triggers
+Auf der `notifications`-Tabelle existieren drei AFTER INSERT Trigger:
+
+| Trigger | Funktion | Status |
+|---------|----------|--------|
+| `notification_push_trigger` | `handle_notification_push()` | Tut NICHTS (Platzhalter mit `NULL`) |
+| `push_notification_trigger` | `trigger_push_notification()` | Hardcoded Anon-Key, prueft push_subscriptions |
+| `trigger_push_on_notification` | `notify_push_on_insert()` | Nutzt Vault-Secrets, korrekte Implementierung |
+
+Nur der dritte Trigger (`trigger_push_on_notification`) ist korrekt implementiert. Die anderen beiden sollten entfernt werden.
 
 ---
 
-## 2. Echtzeit-Benachrichtigungen und Browser-Push fuer Entscheidungen
+## Loesung
 
-### Analyse der Probleme
+### 1. Polling-Fallback in useNotifications.tsx
+Ein Intervall von 30 Sekunden wird eingebaut, das `loadNotifications()` aufruft, um verpasste Echtzeit-Events nachzuholen. Zusaetzlich wird `loadNotifications()` direkt nach erfolgreicher Subscription aufgerufen, um die Luecke zwischen Seiten-Load und Subscription-Aufbau zu schliessen.
 
-Ich habe die Datenbank untersucht und folgendes festgestellt:
+**Aenderung in `useNotifications.tsx`:**
+- Im Realtime-useEffect: Nach `SUBSCRIBED`-Status sofort `loadNotifications()` aufrufen
+- Neuen `setInterval` mit 30 Sekunden Polling hinzufuegen
+- Interval im Cleanup aufraemen
 
-**a) Die Benachrichtigung WIRD erstellt** -- die "sdfsdfsdfsdfsd"-Entscheidung hat eine Notification in der DB erzeugt (ID `a2431d15`, erstellt um 11:40:19). Das `create_notification` RPC funktioniert.
+### 2. Doppelte Triggers bereinigen (DB-Migration)
 
-**b) Echtzeit-Updates funktionieren nicht zuverlaessig** -- Die Realtime-Subscription fuer Alexanders Notifications ist in der aktiven Subscription-Liste nicht zu sehen (nur Carlas ist registriert). Das deutet darauf hin, dass die Subscription in der Lovable-Preview-Umgebung verloren geht (z.B. durch Hot-Reload). In der publizierten Version sollte es stabil laufen.
+```sql
+DROP TRIGGER IF EXISTS notification_push_trigger ON public.notifications;
+DROP TRIGGER IF EXISTS push_notification_trigger ON public.notifications;
+DROP FUNCTION IF EXISTS handle_notification_push();
+DROP FUNCTION IF EXISTS trigger_push_notification();
+```
 
-**c) Browser-Push funktioniert NICHT**, weil:
-- Die Tabelle `push_subscriptions` ist LEER fuer Alexander -- es gibt keine registrierte Push-Subscription
-- Der Trigger `push_notification_trigger` prueft korrekt auf aktive Subscriptions und ueberspringt den Push, wenn keine vorhanden sind
-- Der User muss zuerst in den Benachrichtigungseinstellungen Push-Benachrichtigungen AKTIVIEREN (Browser-Erlaubnis erteilen + Subscription registrieren)
+Nur `trigger_push_on_notification` mit `notify_push_on_insert()` bleibt bestehen -- dieser nutzt Vault-Secrets und ist die korrekte Implementierung.
 
-**d) `data_param` wird nicht stringifiziert** -- Laut der bestehenden Architektur-Dokumentation muss `data_param` als `JSON.stringify()` uebergeben werden, um Serialisierungsfehler zu vermeiden. Aktuell wird ein rohes Objekt uebergeben.
-
-### Massnahmen
-
-#### 2a. `data_param` ueberall stringifizieren
-In allen `create_notification`-Aufrufen wird `data_param: { ... }` durch `data_param: JSON.stringify({ ... })` ersetzt. Das betrifft ~8 Stellen in:
-- `StandaloneDecisionCreator.tsx` (Zeile 334-337)
-- `TaskDecisionCreator.tsx`
-- `TaskDecisionResponse.tsx` (2 Stellen)
-- `DecisionComments.tsx`
-- `DecisionOverview.tsx`
-- `DecisionEditDialog.tsx`
-
-#### 2b. Realtime-Subscription robuster machen
-In `useNotifications.tsx` wird die Subscription mit einem Retry-Mechanismus versehen und ein explizites `subscribe()` mit Status-Callback hinzugefuegt, um sicherzustellen, dass die Verbindung nach Unterbrechungen wiederhergestellt wird.
-
-#### 2c. Push-Hinweis fuer den Nutzer
-Der bestehende Push-Registrierungs-Flow (in den Benachrichtigungseinstellungen) muss vom Nutzer manuell aktiviert werden. Es wird ein deutlicherer Hinweis in der Notification-Bell oder den Einstellungen eingebaut, wenn noch keine Push-Subscription besteht.
-
-**Dateien:** `StandaloneDecisionCreator.tsx`, `TaskDecisionCreator.tsx`, `TaskDecisionResponse.tsx`, `DecisionComments.tsx`, `DecisionOverview.tsx`, `DecisionEditDialog.tsx`, `useNotifications.tsx`
+### 3. Keine Code-Aenderung fuer Push noetig
+Push funktioniert technisch korrekt. Alexander muss in den Benachrichtigungseinstellungen Push aktivieren (Browser-Berechtigung erteilen). Der Trigger + Edge Function sind einsatzbereit.
 
 ---
 
 ## Technische Zusammenfassung
 
-### Keine DB-Aenderungen noetig
+### DB-Aenderung
+Entfernung der zwei redundanten Trigger und ihrer Funktionen.
 
 ### Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `MyWorkView.tsx` | Dashboard-Layout auf `grid grid-cols-2` mit 50/50 umstellen |
-| `StandaloneDecisionCreator.tsx` | `data_param` stringifizieren |
-| `TaskDecisionCreator.tsx` | `data_param` stringifizieren |
-| `TaskDecisionResponse.tsx` | `data_param` stringifizieren (2 Stellen) |
-| `DecisionComments.tsx` | `data_param` stringifizieren |
-| `DecisionOverview.tsx` | `data_param` stringifizieren |
-| `DecisionEditDialog.tsx` | `data_param` stringifizieren |
-| `useNotifications.tsx` | Realtime-Subscription stabiler machen mit Reconnect-Logik |
+| `useNotifications.tsx` | 30-Sekunden-Polling-Fallback + loadNotifications nach SUBSCRIBED |
+| DB-Migration | Doppelte Push-Trigger + Funktionen entfernen |
+
