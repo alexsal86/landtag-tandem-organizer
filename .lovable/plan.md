@@ -1,143 +1,158 @@
 
-# Plan: Suchsystem-Konsolidierung und Briefvorlagen-Ueberarbeitung
 
-Dieses Projekt umfasst zwei grosse Bereiche: (1) Zusammenfuehrung der beiden Suchsysteme und (2) umfassende Ueberarbeitung der Briefvorlagen-Verwaltung in der Administration.
-
----
-
-## Teil 1: Suchsystem konsolidieren
-
-### Aktuelle Situation
-
-Es gibt zwei parallele Suchsysteme:
-- **HeaderSearch** (`src/components/layout/HeaderSearch.tsx`): Suchfeld im Header, durchsucht Kontakte, Dokumente, Aufgaben, Termine. Einfach, funktioniert gut, reagiert auf Cmd+K.
-- **GlobalSearchCommand** (`src/components/GlobalSearchCommand.tsx`): Command-Dialog (cmdk), reagiert ebenfalls auf Cmd+K. Durchsucht zusaetzlich Briefe, Protokolle, FallAkten. Hat Filter (Datum, Kategorie, Status), letzte Suchen, beliebte Suchen, Suchanalytics, Schnellnavigation zu Seiten.
-
-Beide hoeren auf Cmd+K, was zu Konflikten fuehrt.
-
-### Loesung: Ein einheitliches Suchsystem
-
-Das **HeaderSearch**-Feld im Header bleibt als visueller Einstiegspunkt (Suchfeld + Cmd+K-Hinweis). Ein Klick oder Cmd+K oeffnet den **GlobalSearchCommand**-Dialog. Die eigenstaendige Suchlogik in HeaderSearch wird entfernt.
-
-### Verbesserungen
-
-- **Archive einbinden**: Die GlobalSearchCommand wird um Suche in `archived_tasks` erweitert. Archivierte Ergebnisse werden mit einem "Archiv"-Badge gekennzeichnet.
-- **Dokumente erweitern**: Auch archivierte Dokumente (Feld `archived_attachments`) werden beruecksichtigt.
-- **HeaderSearch vereinfachen**: Wird zu einem reinen UI-Trigger (Klick oeffnet GlobalSearchCommand, eigene Suche entfaellt).
-
-### Aenderungen
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/layout/HeaderSearch.tsx` | Suchlogik entfernen, nur UI-Trigger: Klick/Fokus dispatcht `openGlobalSearch`-Event |
-| `src/components/GlobalSearchCommand.tsx` | Archiv-Suche fuer Aufgaben hinzufuegen, archivierte Ergebnisse mit Badge kennzeichnen |
+# Plan: Briefvorlagen-Editor -- 11 Verbesserungen
 
 ---
 
-## Teil 2: Briefvorlagen-Verwaltung ueberarbeiten
+## 1. Sidebar im Header-Designer schmaler machen
 
-### 2.1 Templates ausblenden bei Neuerstellung
+Das aktuelle Layout ist `lg:grid-cols-[1fr_580px]` -- die Sidebar nimmt den gesamten verbleibenden Platz ein. Das Grid wird auf `lg:grid-cols-[280px_1fr]` geaendert, sodass die Sidebar fest 280px breit ist und der Canvas den restlichen Platz bekommt.
 
-Wenn `showCreateDialog` aktiv ist, wird die Template-Liste (das Grid mit bestehenden Templates) ausgeblendet.
+**Datei:** `src/components/letters/StructuredHeaderEditor.tsx` (Zeile 301)
 
-### 2.2 Templates sofort sichtbar
+---
 
-Der Button "Brief-Template-Manager oeffnen" entfaellt. `showLetterTemplateManager` wird auf `true` initialisiert bzw. der `LetterTemplateManager` wird direkt ohne Toggle gerendert.
+## 2. Block im Header-Designer per Drag-and-Drop hinzufuegen
 
-### 2.3 Button "Erstellung schliessen" entfernen
+Ein neues draggable Tool "Block" wird in der Werkzeug-Sidebar hinzugefuegt (neben dem Text-Block-Draggable). Beim Drop auf den Canvas wird ein neuer Block an der Drop-Position erstellt. Der bestehende "Block hinzufuegen"-Button bleibt als Alternative.
 
-Der Toggle-Text im Button wird zu einem festen "+ Neues Template" geaendert. Der Button setzt nur `showCreateDialog(true)`. Zum Schliessen gibt es weiterhin den "Abbrechen"-Button im Formular.
+**Datei:** `src/components/letters/StructuredHeaderEditor.tsx`
+- Neues draggable Element in der Werkzeuge-Card
+- `onPreviewDrop` erweitern um `tool === 'block'`
 
-### 2.4 Flachere Struktur ohne inneren Container
+---
 
-Der innere Card-Container mit der Ueberschrift "Templates" wird entfernt. Die Templates erscheinen direkt unter dem Abschnitt "Briefvorlagen". Der "+ Neues Template"-Button kommt nach rechts oben.
+## 3. Block-System aus Footer-Designer uebernehmen
 
-### 2.5 Groesserer Canvas, schmalere Sidebar
+Das aktuelle Block-System im Header-Designer ist nur eine simple Gruppierung mit x/y/width/height. Es wird durch das Footer-Block-Konzept ersetzt:
+- Bloecke haben: `title`, `content` (mehrzeiliger Text), `widthPercent`, `fontSize`, `fontFamily`, `fontWeight`, `color`, `lineHeight`, `titleHighlight`-Optionen
+- Bloecke werden nebeneinander (horizontal) im Canvas dargestellt
+- Properties-Panel fuer ausgewaehlten Block mit allen Styling-Optionen
+- Die `HeaderBlock`-Schnittstelle wird an `FooterBlock` angelehnt
 
-Im `StructuredHeaderEditor` wird das Grid-Layout von `lg:grid-cols-[280px_1fr]` auf `lg:grid-cols-[200px_1fr]` geaendert. Die Sidebar wird schmaler, der Canvas bekommt mehr Platz.
+**Datei:** `src/components/letters/StructuredHeaderEditor.tsx`
 
-### 2.6 Bild-Upload mit Systemordner
+---
 
-- Ein Supabase-Storage-Bucket `letter-assets` wird verwendet (bereits im Code referenziert).
-- Bilder werden im Pfad `{tenant_id}/_system/briefvorlagen-bilder/` gespeichert.
-- In der Dokumenten-Tabelle werden diese Dateien als Systemordner-Eintraege markiert (mit `is_system: true` Flag oder einem speziellen Kategorie-Marker), sodass sie in der normalen Dokumentenansicht nicht erscheinen.
-- Im Header-Designer wird ein Bereich "Bilder" hinzugefuegt, der hochgeladene Bilder anzeigt und per Drag-and-Drop auf den Canvas ziehen laesst.
+## 4. Bilder im Header-Designer laden und Drag-and-Drop anzeigen
 
-### 2.7 Entfernen-Taste fuer Elemente
+Zwei Probleme werden behoben:
+- **Bilder laden nicht**: Der Storage-Bucket `letter-assets` ist moeglicherweise nicht public. Die `getPublicUrl`-Methode liefert immer eine URL, aber wenn der Bucket nicht public ist, gibt sie 404 zurueck. Stattdessen wird `createSignedUrl` verwendet oder sichergestellt, dass der Bucket public ist.
+- **Bilder beim Drag-and-Drop nicht sichtbar**: Im `onPreviewDrop` wird die `imageUrl` korrekt aus `dataTransfer` gelesen, aber das Element muss auch die URL als `imageUrl` speichern. Dies funktioniert bereits im Code -- das Problem liegt wahrscheinlich am fehlenden Bucket. Eine SQL-Migration wird hinzugefuegt, um den Bucket als public zu konfigurieren.
 
-Im `StructuredHeaderEditor` wird ein `keydown`-Event-Listener hinzugefuegt: Wenn ein Element ausgewaehlt ist und die "Delete"- oder "Entfernen"-Taste gedrueckt wird, wird das Element geloescht.
+**Dateien:**
+- SQL-Migration: Bucket `letter-assets` als public erstellen (falls nicht vorhanden)
+- `src/components/letters/StructuredHeaderEditor.tsx`: Fallback auf `createSignedUrl` wenn `getPublicUrl` fehlschlaegt
 
-### 2.8 Elemente aus der Auswahl entfernen
+---
 
-Die Elemente "Landtag", "Wahlkreis", "Kommunikation" und "Allgemein" werden aus der Elementeauswahl im Header-Designer entfernt.
+## 5. Element-Auswahl (Fokus) im Canvas reparieren
 
-### 2.9 Bloecke fuer Header-Designer
+Das Problem: `onClick={() => setSelectedElementId(null)}` auf dem Canvas-Container setzt die Auswahl zurueck bei jedem Klick -- auch wenn ein Element angeklickt wird (Bubbling). Die Loesung: Im `onClick` des Canvas wird geprueft, ob das Event direkt vom Canvas kommt (`e.target === e.currentTarget`), und nur dann die Auswahl zurueckgesetzt.
 
-Das Block-Konzept aus dem `StructuredFooterEditor` wird in den Header-Designer uebernommen. Nutzer koennen mehrere Elemente zu einem Block gruppieren und als Einheit positionieren.
+**Datei:** `src/components/letters/StructuredHeaderEditor.tsx` (Zeile 511)
+- Aendern von `onClick={() => setSelectedElementId(null)}` zu `onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}`
 
-### 2.10 Doppeltes Textfeld beheben
+---
 
-Der Bug, bei dem ein hinzugefuegtes Textfeld doppelt im Canvas erscheint, wird behoben. Ursache ist vermutlich ein doppelter State-Update durch den useEffect, der `onElementsChange` aufruft und dadurch ein erneutes Setzen der Elemente ausloest.
+## 6. Kein internes Scrollen -- Seite waechst mit Inhalt
 
-### 2.11 Card "Absenderinformationen" in Tab "Ruecksendeangaben"
+Alle `max-h-[...]` und `overflow-y-auto` Einschraenkungen werden entfernt:
+- Header-Designer Sidebar: `max-h-[70vh] overflow-y-auto` (Zeile 303) entfernen
+- Block-Canvas Sidebar: `max-h-52 overflow-auto` (Zeile 375) entfernen
+- Tab-Bereiche in LetterTemplateManager: Keine kuenstlichen Hoehenbeschraenkungen
 
-Die bestehende Card "Absenderinformationen" (aktuell als eigene Card in der Administration unter `SenderInformationManager`) wird in den Tab "Ruecksendeangaben" (`block-return-address`) des Template-Editors verschoben.
+**Dateien:**
+- `src/components/letters/StructuredHeaderEditor.tsx`
+- `src/components/LetterTemplateManager.tsx`
 
-### 2.12 Card "Informationsbloecke" in Tab "Info-Block"
+---
 
-Die bestehende Card "Informationsbloecke" (`InformationBlockManager`) wird in den Tab "Info-Block" (`block-info`) des Template-Editors integriert.
+## 7. Doppelte Elemente im Canvas beheben
 
-### 2.13 Betreff-Tab mit Variablen und Bild-Tool
+Die Ursache: Der `useEffect` auf Zeile 98-100 ruft `onElementsChange(elements)` bei jeder Aenderung auf. Wenn der Parent (`LetterTemplateManager`) daraufhin `setFormData` aufruft und die `initialElements` sich aendern, wird der State erneut gesetzt. Da `useState(initialElements)` nur den Initialwert nutzt, ist das normalerweise kein Problem -- aber es gibt keinen Guard gegen doppeltes Hinzufuegen.
 
-Im Tab "Betreff" (`block-subject`) werden folgende Funktionen hinzugefuegt:
-- Ein **Platzhalter-Element** "Betreff" als draggbares Element, das den spaeter im Brief eingegebenen Betreff repraesentiert.
-- Das **Bild-Tool** aus dem Header-Designer (Upload + Drag-and-Drop auf Canvas).
-- Weitere **Variablen-Platzhalter** (z.B. Datum, Absendername), die als draggable Elemente zur Verfuegung stehen.
+Loesung: In `addTextElement` und `addImageElementFromUrl` wird sichergestellt, dass die ID eindeutig ist und nicht bereits im State existiert. Zusaetzlich wird der `useEffect` mit einem Ref geschuetzt, um doppelte Aufrufe zu vermeiden.
 
-### Aenderungen
+**Datei:** `src/components/letters/StructuredHeaderEditor.tsx`
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/pages/Administration.tsx` | 2.2: LetterTemplateManager direkt rendern ohne Toggle-Button; 2.4: Flache Struktur |
-| `src/components/LetterTemplateManager.tsx` | 2.1: Template-Grid bei Neuerstellung ausblenden; 2.3: Toggle-Button durch festen Button ersetzen; 2.4: Inneren Container entfernen; 2.8: Elemente entfernen; 2.11: SenderInformationManager in Ruecksendeangaben-Tab; 2.12: InformationBlockManager in Info-Block-Tab; 2.13: Betreff-Tab mit Variablen und Bild-Tool |
-| `src/components/letters/StructuredHeaderEditor.tsx` | 2.5: Schmalere Sidebar; 2.6: Bild-Upload mit Systemordner und Bilder-Galerie; 2.7: Delete-Taste; 2.9: Block-System; 2.10: Doppeltes Textfeld beheben |
+---
+
+## 8. Canvas-Tab als ersten Tab anordnen
+
+In beiden TabsList (Create und Edit) wird `canvas-designer` an die erste Stelle verschoben. Die Reihenfolge wird:
+Canvas | Header-Designer | Footer-Designer | Layout-Einstellungen | Allgemein | Adressfeld | Ruecksendeangaben | Info-Block | Betreff | Anlagen
+
+**Datei:** `src/components/LetterTemplateManager.tsx` (Zeilen 516-528 und 780-792)
+
+---
+
+## 9. Tab "Erweitert" in "Layout-Einstellungen" integrieren
+
+Der Inhalt des "Erweitert"-Tabs (HTML/CSS-Textareas) wird in den `LayoutSettingsEditor` verschoben. Der separate Tab "Erweitert" wird aus der TabsList entfernt.
+
+**Dateien:**
+- `src/components/letters/LayoutSettingsEditor.tsx`: Neue Props fuer `letterheadHtml`, `letterheadCss` und deren Change-Handler. Am Ende des Formulars wird ein aufklappbarer Bereich "Erweitert (HTML/CSS)" hinzugefuegt.
+- `src/components/LetterTemplateManager.tsx`: Tab "advanced" entfernen, Props an LayoutSettingsEditor uebergeben
+
+---
+
+## 10. Betreff-Tab: Canvas fuer Platzhalter + Bild-Tool
+
+Der Betreff-Tab bekommt einen vollstaendigen Canvas (aehnlich dem Block-Canvas), auf den die Variablen-Platzhalter und Bilder per Drag-and-Drop gezogen werden koennen:
+- Der `renderBlockCanvas` wird erweitert, um `onDragOver` und `onDrop` fuer die Platzhalter-Chips zu unterstuetzen
+- Beim Drop eines Platzhalters (z.B. `{{betreff}}`) wird ein Text-Element mit dem Platzhalter-Inhalt erstellt
+- Das Bild-Upload-Tool aus dem Header-Designer wird auch im Betreff-Tab angeboten (gleiche `systemImages` Galerie)
+
+**Datei:** `src/components/LetterTemplateManager.tsx`
+
+---
+
+## 11. Tab "Inhalt" entfernen
+
+Der Tab "block-content" wird aus beiden TabsLists und seinen TabsContent-Bloecken entfernt. Die Inhaltsbereich-Einstellungen (Top, Max. Hoehe) sind bereits im LayoutSettingsEditor vorhanden.
+
+**Datei:** `src/components/LetterTemplateManager.tsx`
 
 ---
 
 ## Technische Details
 
-### Archiv-Suche (Teil 1)
+### Aenderungen pro Datei
+
+| Datei | Punkte |
+|-------|--------|
+| `src/components/letters/StructuredHeaderEditor.tsx` | 1, 2, 3, 4, 5, 6, 7 |
+| `src/components/LetterTemplateManager.tsx` | 6, 8, 9, 10, 11 |
+| `src/components/letters/LayoutSettingsEditor.tsx` | 9 |
+| SQL-Migration | 4 (Bucket public machen) |
+
+### Tab-Reihenfolge (neu, 10 Tabs statt 12)
 
 ```text
-GlobalSearchCommand bekommt neue useQuery:
-  - archived_tasks: Suche in archived_tasks Tabelle
-  - Ergebnisse mit Badge "Archiv" markiert
-  - Route: /tasks?archived=true&id={id}
+Canvas | Header-Designer | Footer-Designer | Layout-Einstellungen | Allgemein | Adressfeld | Ruecksendeangaben | Info-Block | Betreff | Anlagen
 ```
 
-### Systemordner fuer Bilder (2.6)
+### Header-Designer Grid (neu)
 
 ```text
-Storage-Pfad: letter-assets/{tenant_id}/_system/briefvorlagen-bilder/{filename}
-Bilder werden beim Upload gespeichert und in einer Galerie im Header-Designer angezeigt.
-Bestehende Bilder werden beim Laden des Editors aus dem Storage abgerufen.
+lg:grid-cols-[280px_1fr]
+Sidebar: 280px fest
+Canvas: flexibel (restlicher Platz)
 ```
 
-### Delete-Taste (2.7)
+### Canvas Element-Auswahl Fix
 
 ```text
-useEffect mit keydown-Listener:
-  - Prueft ob selectedElementId gesetzt ist
-  - Bei "Delete" oder "Backspace" (ausserhalb Input-Feldern): Element entfernen
+Vorher:  onClick={() => setSelectedElementId(null)}
+Nachher: onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
 ```
 
-### Betreff-Variablen (2.13)
+### Storage-Bucket Migration
 
-```text
-Verfuegbare Platzhalter:
-  - {{betreff}} - Betreffzeile aus dem Brief
-  - {{datum}} - Briefdatum
-  - {{empfaenger_name}} - Name des Empfaengers
-  - {{absender_name}} - Name des Absenders
-Diese werden als draggable Chips dargestellt.
+```sql
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('letter-assets', 'letter-assets', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
 ```
+
