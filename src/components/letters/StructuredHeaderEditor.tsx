@@ -79,9 +79,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return { x: Math.round(sx), y: Math.round(sy) };
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     onElementsChange(elements);
-  }, [elements, onElementsChange]);
+  }, [elements]);
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
