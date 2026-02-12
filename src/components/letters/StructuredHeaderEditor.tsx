@@ -84,6 +84,20 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     onElementsChange(elements);
   }, [elements]);
 
+  // Delete key listener (2.7)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedElementId) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+        e.preventDefault();
+        removeElement(selectedElementId);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedElementId]);
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
       if (!currentTenant?.id) {
@@ -124,9 +138,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     setSelectedElementId(newElement.id);
   };
 
-  const addFooterLikeBlock = (title: string, content: string) => {
-    addTextElement(20, 12, `${title}: ${content}`);
-  };
 
   const addImageElement = () => {
     const input = document.createElement('input');
@@ -224,7 +235,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const validatePosition = (value: number, max: number) => Math.max(0, Math.min(value, max));
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[30%_70%] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-6">
       <div className="space-y-4">
         <Card>
           <CardHeader>
@@ -241,12 +252,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 <div className="font-medium">Text-Block ziehen</div>
                 <div className="text-xs text-muted-foreground">Lorem ipsum dolor sit amet</div>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Landtagsadresse', 'Konrad-Adenauer-Straße 3, 70173 Stuttgart')}>Landtag</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Wahlkreisadresse', 'Musterstraße 12, 70100 Stuttgart')}>Wahlkreis</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Kommunikation', 'Tel. 0711 123456, info@example.de')}>Kommunikation</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Allgemein', 'Alexander Beispiel MdL')}>Allgemein</Button>
             </div>
             <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="w-full" onClick={() => setShowRuler((v) => !v)}>
               Außenlineal {showRuler ? 'ausblenden' : 'einblenden'}
