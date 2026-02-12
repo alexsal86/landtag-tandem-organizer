@@ -131,24 +131,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         .list(`${currentTenant.id}/_system/briefvorlagen-bilder`);
       if (error) throw error;
       if (data) {
-        const images = await Promise.all(
-          data
-            .filter((f) => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name))
-            .map(async (f) => {
-              const path = `${currentTenant.id}/_system/briefvorlagen-bilder/${f.name}`;
-              // Try public URL first, fall back to signed URL
-              const { data: urlData } = supabase.storage.from('letter-assets').getPublicUrl(path);
-              let url = urlData.publicUrl;
-              // Verify the URL works by trying signed URL as fallback
-              try {
-                const { data: signedData } = await supabase.storage.from('letter-assets').createSignedUrl(path, 3600);
-                if (signedData?.signedUrl) url = signedData.signedUrl;
-              } catch {
-                // Public URL should work if bucket is public
-              }
-              return { name: f.name, url };
-            })
-        );
+        const images = data
+          .filter((f) => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name))
+          .map((f) => {
+            const path = `${currentTenant.id}/_system/briefvorlagen-bilder/${f.name}`;
+            const { data: urlData } = supabase.storage.from('letter-assets').getPublicUrl(path);
+            return { name: f.name, url: urlData.publicUrl };
+          });
         setSystemImages(images);
       }
     } catch (error) {
