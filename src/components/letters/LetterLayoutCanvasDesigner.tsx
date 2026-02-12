@@ -8,6 +8,7 @@ import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayo
 
 type BlockKey = 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments';
 type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general';
+type CanvasTool = 'header-text' | 'header-image' | 'footer-block';
 
 interface Rect {
   x: number;
@@ -25,14 +26,43 @@ interface BlockConfig {
   jumpTo: EditorTab;
 }
 
+interface HeaderElement {
+  id: string;
+  type: 'text' | 'image';
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  content?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  color?: string;
+  imageUrl?: string;
+}
+
+interface FooterBlock {
+  id: string;
+  title?: string;
+  content?: string;
+  order?: number;
+  widthPercent?: number;
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  color?: string;
+  x?: number;
+  y?: number;
+}
+
 interface Props {
   layoutSettings: LetterLayoutSettings;
   onLayoutChange: (settings: LetterLayoutSettings) => void;
   onJumpToTab?: (tab: EditorTab) => void;
-  headerElements?: any[];
-  onHeaderElementsChange?: (elements: any[]) => void;
-  footerBlocks?: any[];
-  onFooterBlocksChange?: (blocks: any[]) => void;
+  headerElements?: HeaderElement[];
+  onHeaderElementsChange?: (elements: HeaderElement[]) => void;
+  footerBlocks?: FooterBlock[];
+  onFooterBlocksChange?: (blocks: FooterBlock[]) => void;
 }
 
 const BLOCKS: BlockConfig[] = [
@@ -74,6 +104,8 @@ export function LetterLayoutCanvasDesigner({
 }: Props) {
   const [selected, setSelected] = useState<BlockKey>('addressField');
   const [dragging, setDragging] = useState<{ key: BlockKey; startX: number; startY: number; orig: Rect; mode: 'move' | 'resize' } | null>(null);
+  const [dragHeader, setDragHeader] = useState<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const [dragFooter, setDragFooter] = useState<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const [localLayout, setLocalLayout] = useState<LetterLayoutSettings>(() => cloneLayout(layoutSettings));
 
   useEffect(() => {
@@ -86,12 +118,18 @@ export function LetterLayoutCanvasDesigner({
 
   const getRect = (key: BlockKey): Rect => {
     switch (key) {
-      case 'addressField': return { x: localLayout.addressField.left, y: localLayout.addressField.top, w: localLayout.addressField.width, h: localLayout.addressField.height };
-      case 'infoBlock': return { x: localLayout.infoBlock.left, y: localLayout.infoBlock.top, w: localLayout.infoBlock.width, h: localLayout.infoBlock.height };
-      case 'subject': return { x: localLayout.margins.left, y: localLayout.subject.top, w: contentWidth, h: Math.max(8, localLayout.subject.marginBottom + 4) };
-      case 'content': return { x: localLayout.margins.left, y: localLayout.content.top, w: contentWidth, h: localLayout.content.maxHeight };
-      case 'footer': return { x: localLayout.margins.left, y: localLayout.footer.top, w: contentWidth, h: 18 };
-      case 'attachments': return { x: localLayout.margins.left, y: localLayout.attachments.top, w: contentWidth, h: 8 };
+      case 'addressField':
+        return { x: localLayout.addressField.left, y: localLayout.addressField.top, w: localLayout.addressField.width, h: localLayout.addressField.height };
+      case 'infoBlock':
+        return { x: localLayout.infoBlock.left, y: localLayout.infoBlock.top, w: localLayout.infoBlock.width, h: localLayout.infoBlock.height };
+      case 'subject':
+        return { x: localLayout.margins.left, y: localLayout.subject.top, w: contentWidth, h: Math.max(8, localLayout.subject.marginBottom + 4) };
+      case 'content':
+        return { x: localLayout.margins.left, y: localLayout.content.top, w: contentWidth, h: localLayout.content.maxHeight };
+      case 'footer':
+        return { x: localLayout.margins.left, y: localLayout.footer.top, w: contentWidth, h: 18 };
+      case 'attachments':
+        return { x: localLayout.margins.left, y: localLayout.attachments.top, w: contentWidth, h: 8 };
     }
   };
 
@@ -99,13 +137,21 @@ export function LetterLayoutCanvasDesigner({
     setLocalLayout((prev) => {
       const next = cloneLayout(prev);
       if (key === 'addressField') {
-        next.addressField.left = snapMm(rect.x); next.addressField.top = snapMm(rect.y); next.addressField.width = snapMm(rect.w); next.addressField.height = snapMm(rect.h);
+        next.addressField.left = snapMm(rect.x);
+        next.addressField.top = snapMm(rect.y);
+        next.addressField.width = snapMm(rect.w);
+        next.addressField.height = snapMm(rect.h);
       } else if (key === 'infoBlock') {
-        next.infoBlock.left = snapMm(rect.x); next.infoBlock.top = snapMm(rect.y); next.infoBlock.width = snapMm(rect.w); next.infoBlock.height = snapMm(rect.h);
+        next.infoBlock.left = snapMm(rect.x);
+        next.infoBlock.top = snapMm(rect.y);
+        next.infoBlock.width = snapMm(rect.w);
+        next.infoBlock.height = snapMm(rect.h);
       } else if (key === 'subject') {
-        next.subject.top = snapMm(rect.y); next.subject.marginBottom = clamp(snapMm(rect.h - 4), 2, 40);
+        next.subject.top = snapMm(rect.y);
+        next.subject.marginBottom = clamp(snapMm(rect.h - 4), 2, 40);
       } else if (key === 'content') {
-        next.content.top = snapMm(rect.y); next.content.maxHeight = clamp(snapMm(rect.h), 20, 220);
+        next.content.top = snapMm(rect.y);
+        next.content.maxHeight = clamp(snapMm(rect.h), 20, 220);
       } else if (key === 'footer') {
         next.footer.top = snapMm(rect.y);
       } else if (key === 'attachments') {
@@ -115,7 +161,10 @@ export function LetterLayoutCanvasDesigner({
     });
   };
 
-  const commitToParent = (nextLayout?: LetterLayoutSettings) => onLayoutChange(cloneLayout(nextLayout || localLayout));
+  const commitLayoutToParent = (nextLayout?: LetterLayoutSettings) => {
+    onLayoutChange(cloneLayout(nextLayout || localLayout));
+  };
+
   const selectedRect = useMemo(() => getRect(selected), [selected, localLayout]);
 
   const startDrag = (event: React.MouseEvent, key: BlockKey, mode: 'move' | 'resize') => {
@@ -128,47 +177,119 @@ export function LetterLayoutCanvasDesigner({
   };
 
   const onMouseMove = (event: React.MouseEvent) => {
-    if (!dragging) return;
-    const dxMm = (event.clientX - dragging.startX) / SCALE;
-    const dyMm = (event.clientY - dragging.startY) / SCALE;
-    const cfg = BLOCKS.find((b) => b.key === dragging.key)!;
-    const next: Rect = { ...dragging.orig };
+    if (dragging) {
+      const dxMm = (event.clientX - dragging.startX) / SCALE;
+      const dyMm = (event.clientY - dragging.startY) / SCALE;
+      const cfg = BLOCKS.find((b) => b.key === dragging.key)!;
+      const next: Rect = { ...dragging.orig };
 
-    if (dragging.mode === 'move') {
-      next.y = clamp(dragging.orig.y + dyMm, 0, localLayout.pageHeight - dragging.orig.h);
-      if (cfg.canMoveX) next.x = clamp(dragging.orig.x + dxMm, 0, localLayout.pageWidth - dragging.orig.w);
-    } else {
-      next.h = clamp(dragging.orig.h + dyMm, 4, localLayout.pageHeight - dragging.orig.y);
-      if (cfg.canMoveX && cfg.canResize) next.w = clamp(dragging.orig.w + dxMm, 10, localLayout.pageWidth - dragging.orig.x);
+      if (dragging.mode === 'move') {
+        next.y = clamp(dragging.orig.y + dyMm, 0, localLayout.pageHeight - dragging.orig.h);
+        if (cfg.canMoveX) {
+          next.x = clamp(dragging.orig.x + dxMm, 0, localLayout.pageWidth - dragging.orig.w);
+        }
+      } else {
+        next.h = clamp(dragging.orig.h + dyMm, 4, localLayout.pageHeight - dragging.orig.y);
+        if (cfg.canMoveX && cfg.canResize) {
+          next.w = clamp(dragging.orig.w + dxMm, 10, localLayout.pageWidth - dragging.orig.x);
+        }
+      }
+
+      updateByRect(dragging.key, next);
+      return;
     }
-    updateByRect(dragging.key, next);
+
+    if (dragHeader) {
+      const dxMm = (event.clientX - dragHeader.startX) / SCALE;
+      const dyMm = (event.clientY - dragHeader.startY) / SCALE;
+      onHeaderElementsChange?.(
+        headerElements.map((el) =>
+          el.id === dragHeader.id
+            ? {
+                ...el,
+                x: snapMm(clamp(dragHeader.origX + dxMm, 0, localLayout.pageWidth - (el.width || 50))),
+                y: snapMm(clamp(dragHeader.origY + dyMm, 0, localLayout.header.height - (el.height || 10))),
+              }
+            : el,
+        ),
+      );
+      return;
+    }
+
+    if (dragFooter) {
+      const dxMm = (event.clientX - dragFooter.startX) / SCALE;
+      const dyMm = (event.clientY - dragFooter.startY) / SCALE;
+      const footerTop = localLayout.footer.top;
+      onFooterBlocksChange?.(
+        footerBlocks.map((block) =>
+          block.id === dragFooter.id
+            ? {
+                ...block,
+                x: snapMm(clamp(dragFooter.origX + dxMm, localLayout.margins.left, localLayout.pageWidth - localLayout.margins.right - 20)),
+                y: snapMm(clamp(dragFooter.origY + dyMm, footerTop - 6, footerTop + 14)),
+              }
+            : block,
+        ),
+      );
+    }
   };
 
   const onMouseUp = () => {
-    if (!dragging) return;
-    setDragging(null);
-    commitToParent();
+    if (dragging) {
+      setDragging(null);
+      commitLayoutToParent();
+    }
+    setDragHeader(null);
+    setDragFooter(null);
   };
 
   const toggleBlock = (key: BlockKey, enabled: boolean) => {
     setLocalLayout((prev) => {
       const current = new Set(getDisabled(prev));
-      if (enabled) current.delete(key); else current.add(key);
+      if (enabled) {
+        current.delete(key);
+      } else {
+        current.add(key);
+      }
       const next = setDisabled(prev, Array.from(current));
       onLayoutChange(next);
       return next;
     });
   };
 
-  const addCanvasHeaderText = () => {
-    const text = { id: Date.now().toString(), type: 'text', x: 25, y: 12, content: 'Neuer Header-Text', fontSize: 11, fontFamily: 'Arial', fontWeight: 'normal', color: '#000000', width: 70 };
+  const addHeaderText = (x = 25, y = 10) => {
+    const text: HeaderElement = {
+      id: Date.now().toString(),
+      type: 'text',
+      x,
+      y,
+      content: 'Neuer Header-Text',
+      fontSize: 11,
+      fontFamily: 'Arial',
+      fontWeight: 'normal',
+      color: '#000000',
+      width: 70,
+      height: 8,
+    };
     onHeaderElementsChange?.([...headerElements, text]);
   };
 
-  const addCanvasFooterText = () => {
-    const block = {
+  const addHeaderImage = (x = 130, y = 6) => {
+    const image: HeaderElement = {
       id: Date.now().toString(),
-      type: 'custom',
+      type: 'image',
+      x,
+      y,
+      width: 40,
+      height: 20,
+      imageUrl: 'https://placehold.co/240x120?text=Logo',
+    };
+    onHeaderElementsChange?.([...headerElements, image]);
+  };
+
+  const addFooterBlock = (x = localLayout.margins.left, y = localLayout.footer.top + 1) => {
+    const block: FooterBlock = {
+      id: Date.now().toString(),
       title: 'Canvas Block',
       content: 'Neuer Footer-Text',
       order: footerBlocks.length,
@@ -177,12 +298,33 @@ export function LetterLayoutCanvasDesigner({
       fontFamily: 'Arial',
       fontWeight: 'normal',
       color: '#000000',
-      lineHeight: 0.9,
-      titleHighlight: false,
-      x: 25,
-      y: localLayout.footer.top,
+      x,
+      y,
     };
     onFooterBlocksChange?.([...footerBlocks, block]);
+  };
+
+  const onToolDragStart = (event: React.DragEvent, tool: CanvasTool) => {
+    event.dataTransfer.setData('application/x-canvas-tool', tool);
+    event.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleCanvasDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const tool = event.dataTransfer.getData('application/x-canvas-tool') as CanvasTool;
+    if (!tool) return;
+
+    const canvasRect = event.currentTarget.getBoundingClientRect();
+    const xMm = snapMm((event.clientX - canvasRect.left) / SCALE);
+    const yMm = snapMm((event.clientY - canvasRect.top) / SCALE);
+
+    if (tool === 'header-text') {
+      addHeaderText(clamp(xMm, 0, 180), clamp(yMm, 0, localLayout.header.height - 8));
+    } else if (tool === 'header-image') {
+      addHeaderImage(clamp(xMm, 0, 170), clamp(yMm, 0, localLayout.header.height - 20));
+    } else if (tool === 'footer-block') {
+      addFooterBlock(clamp(xMm, localLayout.margins.left, localLayout.pageWidth - localLayout.margins.right - 20), clamp(yMm, localLayout.footer.top - 6, localLayout.footer.top + 14));
+    }
   };
 
   return (
@@ -190,13 +332,17 @@ export function LetterLayoutCanvasDesigner({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Canvas-Designer</h3>
-          <p className="text-sm text-muted-foreground">Doppelklick auf einen Block öffnet direkt den passenden Bereich.</p>
+          <p className="text-sm text-muted-foreground">Werkzeuge links per Drag & Drop auf die Seite ziehen. Doppelklick auf Layout-Blöcke öffnet den passenden Tab.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => {
-          const next = cloneLayout(DEFAULT_DIN5008_LAYOUT);
-          setLocalLayout(next);
-          onLayoutChange(next);
-        }}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const next = cloneLayout(DEFAULT_DIN5008_LAYOUT);
+            setLocalLayout(next);
+            onLayoutChange(next);
+          }}
+        >
           DIN 5008 zurücksetzen
         </Button>
       </div>
@@ -212,7 +358,9 @@ export function LetterLayoutCanvasDesigner({
                     {block.label}
                   </Button>
                   <div className="flex items-center gap-2">
-                    <Label htmlFor={`toggle-${block.key}`} className="text-xs">Aktiv</Label>
+                    <Label htmlFor={`toggle-${block.key}`} className="text-xs">
+                      Aktiv
+                    </Label>
                     <Checkbox id={`toggle-${block.key}`} checked={!disabledBlocks.has(block.key)} onCheckedChange={(checked) => toggleBlock(block.key, !!checked)} />
                   </div>
                 </div>
@@ -221,27 +369,98 @@ export function LetterLayoutCanvasDesigner({
           </div>
 
           <div className="border rounded-lg p-3 space-y-2">
-            <Label className="text-xs uppercase text-muted-foreground">Ausgewählt: {BLOCKS.find((b) => b.key === selected)?.label}</Label>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div><Label>X (mm)</Label><Input value={selectedRect.x.toFixed(1)} readOnly /></div>
-              <div><Label>Y (mm)</Label><Input value={selectedRect.y.toFixed(1)} readOnly /></div>
-              <div><Label>Breite</Label><Input value={selectedRect.w.toFixed(1)} readOnly /></div>
-              <div><Label>Höhe</Label><Input value={selectedRect.h.toFixed(1)} readOnly /></div>
+            <Label className="text-xs uppercase text-muted-foreground">Canvas-Werkzeugkasten</Label>
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              <div draggable onDragStart={(e) => onToolDragStart(e, 'header-text')} className="rounded border bg-background px-3 py-2 cursor-grab active:cursor-grabbing">
+                Header-Text ziehen
+              </div>
+              <div draggable onDragStart={(e) => onToolDragStart(e, 'header-image')} className="rounded border bg-background px-3 py-2 cursor-grab active:cursor-grabbing">
+                Header-Bild ziehen
+              </div>
+              <div draggable onDragStart={(e) => onToolDragStart(e, 'footer-block')} className="rounded border bg-background px-3 py-2 cursor-grab active:cursor-grabbing">
+                Footer-Block ziehen
+              </div>
             </div>
           </div>
 
           <div className="border rounded-lg p-3 space-y-2">
-            <Label className="text-xs uppercase text-muted-foreground">Header/Footer direkt im Canvas</Label>
-            <div className="grid grid-cols-1 gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={addCanvasHeaderText}>Text in Header platzieren</Button>
-              <Button type="button" variant="outline" size="sm" onClick={addCanvasFooterText}>Textblock im Footer platzieren</Button>
+            <Label className="text-xs uppercase text-muted-foreground">Ausgewählt: {BLOCKS.find((b) => b.key === selected)?.label}</Label>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <Label>X (mm)</Label>
+                <Input value={selectedRect.x.toFixed(1)} readOnly />
+              </div>
+              <div>
+                <Label>Y (mm)</Label>
+                <Input value={selectedRect.y.toFixed(1)} readOnly />
+              </div>
+              <div>
+                <Label>Breite</Label>
+                <Input value={selectedRect.w.toFixed(1)} readOnly />
+              </div>
+              <div>
+                <Label>Höhe</Label>
+                <Input value={selectedRect.h.toFixed(1)} readOnly />
+              </div>
             </div>
           </div>
         </div>
 
         <div className="border rounded-lg p-4 bg-muted/20 overflow-auto" onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
-          <div className="mx-auto bg-white shadow-xl relative select-none" style={{ width: pagePx.w, height: pagePx.h }}>
-            <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />
+          <div
+            className="mx-auto bg-white shadow-xl relative select-none"
+            style={{ width: pagePx.w, height: pagePx.h }}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleCanvasDrop}
+          >
+            <div
+              className="absolute border border-dashed border-gray-400 pointer-events-none"
+              style={{
+                left: localLayout.margins.left * SCALE,
+                top: localLayout.margins.top * SCALE,
+                width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE,
+                height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE,
+              }}
+            />
+
+            {headerElements.map((element) => (
+              <div
+                key={element.id}
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                  setDragHeader({ id: element.id, startX: event.clientX, startY: event.clientY, origX: element.x, origY: element.y });
+                }}
+                className="absolute border border-emerald-500 bg-emerald-100/70 text-[11px] px-2 py-1 cursor-move"
+                style={{ left: element.x * SCALE, top: element.y * SCALE, width: (element.width || 60) * SCALE, minHeight: (element.height || 8) * SCALE }}
+              >
+                {element.type === 'image' ? (
+                  <img src={element.imageUrl} alt="Header" className="h-full w-full object-contain" />
+                ) : (
+                  <span>{element.content || 'Text'}</span>
+                )}
+              </div>
+            ))}
+
+            {footerBlocks.map((block, index) => {
+              const widthMm = ((block.widthPercent || 25) / 100) * contentWidth;
+              const defaultX = localLayout.margins.left + index * (contentWidth / 4);
+              const x = block.x ?? defaultX;
+              const y = block.y ?? localLayout.footer.top + 1;
+              return (
+                <div
+                  key={block.id}
+                  onMouseDown={(event) => {
+                    event.stopPropagation();
+                    setDragFooter({ id: block.id, startX: event.clientX, startY: event.clientY, origX: x, origY: y });
+                  }}
+                  className="absolute border border-fuchsia-500 bg-fuchsia-100/70 text-[10px] px-2 py-1 cursor-move"
+                  style={{ left: x * SCALE, top: y * SCALE, width: widthMm * SCALE }}
+                >
+                  <div className="font-semibold">{block.title || 'Footer'}</div>
+                  <div className="line-clamp-2">{block.content || 'Inhalt'}</div>
+                </div>
+              );
+            })}
 
             {BLOCKS.map((block) => {
               const rect = getRect(block.key);
@@ -257,7 +476,9 @@ export function LetterLayoutCanvasDesigner({
                 >
                   <div className="flex items-center justify-between">
                     <span>{block.label}</span>
-                    <Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {Math.round(rect.y)}mm
+                    </Badge>
                   </div>
                   {block.canResize && !isDisabled && (
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />
