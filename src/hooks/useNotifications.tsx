@@ -450,96 +450,104 @@ export const useNotifications = () => {
     return outputArray;
   };
 
-  // Set up real-time subscription with cross-tab synchronization
+  // Set up real-time subscription with cross-tab synchronization and retry logic
   useEffect(() => {
     if (!user) return;
 
-    console.log('Setting up notifications realtime subscription for user:', user.id);
+    let retryCount = 0;
+    const maxRetries = 5;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let currentChannel: ReturnType<typeof supabase.channel> | null = null;
 
-    // Create unique channel per user to avoid conflicts
-    const channel = supabase
-      .channel(`user-notifications:${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        async (payload) => {
-          console.log('📥 New notification received via realtime:', payload);
-          
-          // Re-fetch the full notification with joined notification_types
-          const { data: fullNotification, error } = await supabase
-            .from('notifications')
-            .select('*, notification_types(name, label)')
-            .eq('id', (payload.new as any).id)
-            .maybeSingle();
-          
-          const newNotification = (fullNotification || payload.new) as Notification;
-          
-          // Check for duplicates and add with additional metadata check
-          setNotifications(prev => {
-            const exists = prev.some(n => n.id === newNotification.id);
-            if (exists) {
-              console.log('🔄 Duplicate notification prevented:', newNotification.id);
-              return prev;
+    const setupChannel = () => {
+      // Clean up previous channel if exists
+      if (currentChannel) {
+        supabase.removeChannel(currentChannel);
+      }
+
+      console.log(`Setting up notifications realtime subscription for user: ${user.id} (attempt ${retryCount + 1})`);
+
+      currentChannel = supabase
+        .channel(`user-notifications:${user.id}:${Date.now()}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            console.log('📥 New notification received via realtime:', payload);
+            
+            const { data: fullNotification } = await supabase
+              .from('notifications')
+              .select('*, notification_types(name, label)')
+              .eq('id', (payload.new as any).id)
+              .maybeSingle();
+            
+            const newNotification = (fullNotification || payload.new) as Notification;
+            
+            setNotifications(prev => {
+              const exists = prev.some(n => n.id === newNotification.id);
+              if (exists) return prev;
+              return [newNotification, ...prev];
+            });
+            
+            if (!newNotification.is_read) {
+              setUnreadCount(prev => prev + 1);
             }
             
-            console.log('✅ Adding new notification:', newNotification.id);
-            return [newNotification, ...prev];
-          });
-          
-          // Only increment if not read
-          if (!newNotification.is_read) {
-            setUnreadCount(prev => prev + 1);
+            toast({
+              title: newNotification.title || 'Neue Benachrichtigung',
+              description: newNotification.message || 'Sie haben eine neue Benachrichtigung erhalten.',
+              duration: 4000,
+            });
           }
-          
-          // Show toast for new notification with better fallback
-          toast({
-            title: newNotification.title || 'Neue Benachrichtigung',
-            description: newNotification.message || 'Sie haben eine neue Benachrichtigung erhalten.',
-            duration: 4000,
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('📝 Notification updated via realtime:', payload);
-          const updatedNotification = payload.new as Notification;
-          const oldNotification = payload.old as Notification;
-          
-          setNotifications(prev => 
-            prev.map(notif => 
-              notif.id === updatedNotification.id ? { ...updatedNotification } : notif
-            )
-          );
-          
-          // Update unread count based on read status change
-          if (oldNotification && updatedNotification.is_read !== oldNotification.is_read) {
-            if (updatedNotification.is_read && !oldNotification.is_read) {
-              // Marked as read
-              setUnreadCount(prev => Math.max(0, prev - 1));
-              console.log('📖 Notification marked as read, decreasing count');
-            } else if (!updatedNotification.is_read && oldNotification.is_read) {
-              // Marked as unread
-              setUnreadCount(prev => prev + 1);
-              console.log('📬 Notification marked as unread, increasing count');
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const updatedNotification = payload.new as Notification;
+            const oldNotification = payload.old as Notification;
+            
+            setNotifications(prev => 
+              prev.map(notif => 
+                notif.id === updatedNotification.id ? { ...updatedNotification } : notif
+              )
+            );
+            
+            if (oldNotification && updatedNotification.is_read !== oldNotification.is_read) {
+              if (updatedNotification.is_read && !oldNotification.is_read) {
+                setUnreadCount(prev => Math.max(0, prev - 1));
+              } else if (!updatedNotification.is_read && oldNotification.is_read) {
+                setUnreadCount(prev => prev + 1);
+              }
             }
           }
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 Notifications realtime subscription status:', status);
-      });
+        )
+        .subscribe((status) => {
+          console.log('📡 Notifications realtime subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            retryCount = 0; // Reset on successful connection
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            if (retryCount < maxRetries) {
+              retryCount++;
+              const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
+              console.log(`🔄 Retrying subscription in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
+              retryTimeout = setTimeout(setupChannel, delay);
+            }
+          }
+        });
+    };
+
+    setupChannel();
 
     // Listen for storage events for cross-tab synchronization
     const handleStorageChange = (e: StorageEvent) => {
@@ -553,7 +561,8 @@ export const useNotifications = () => {
 
     return () => {
       console.log('🧹 Cleaning up notifications realtime subscription');
-      supabase.removeChannel(channel);
+      if (retryTimeout) clearTimeout(retryTimeout);
+      if (currentChannel) supabase.removeChannel(currentChannel);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [user, toast, loadNotifications]);
