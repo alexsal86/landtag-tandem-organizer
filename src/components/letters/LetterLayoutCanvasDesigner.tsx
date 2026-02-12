@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+// Keep useEffect imported: we sync local canvas state from parent layout props.
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,58 +42,77 @@ const SCALE = 2.2; // px per mm
 const clamp = (val: number, min: number, max: number) => Math.min(max, Math.max(min, val));
 const snapMm = (val: number) => Math.round(val); // 1mm grid
 
+const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
+  ...layout,
+  margins: { ...layout.margins },
+  header: { ...layout.header },
+  addressField: { ...layout.addressField },
+  infoBlock: { ...layout.infoBlock },
+  subject: { ...layout.subject },
+  content: { ...layout.content },
+  footer: { ...layout.footer },
+  attachments: { ...layout.attachments },
+});
+
+const layoutHash = (layout: LetterLayoutSettings) => JSON.stringify(layout);
+
 export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange }: Props) {
   const [selected, setSelected] = useState<BlockKey>('addressField');
   const [dragging, setDragging] = useState<{ key: BlockKey; startX: number; startY: number; orig: Rect; mode: 'move' | 'resize' } | null>(null);
+  const [localLayout, setLocalLayout] = useState<LetterLayoutSettings>(() => cloneLayout(layoutSettings));
+
+  useEffect(() => {
+    setLocalLayout(cloneLayout(layoutSettings));
+  }, [layoutHash(layoutSettings)]);
 
   const pagePx = {
-    w: layoutSettings.pageWidth * SCALE,
-    h: layoutSettings.pageHeight * SCALE,
+    w: localLayout.pageWidth * SCALE,
+    h: localLayout.pageHeight * SCALE,
   };
 
-  const contentWidth = layoutSettings.pageWidth - layoutSettings.margins.left - layoutSettings.margins.right;
+  const contentWidth = localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right;
 
   const getRect = (key: BlockKey): Rect => {
     switch (key) {
       case 'addressField':
         return {
-          x: layoutSettings.addressField.left,
-          y: layoutSettings.addressField.top,
-          w: layoutSettings.addressField.width,
-          h: layoutSettings.addressField.height,
+          x: localLayout.addressField.left,
+          y: localLayout.addressField.top,
+          w: localLayout.addressField.width,
+          h: localLayout.addressField.height,
         };
       case 'infoBlock':
         return {
-          x: layoutSettings.infoBlock.left,
-          y: layoutSettings.infoBlock.top,
-          w: layoutSettings.infoBlock.width,
-          h: layoutSettings.infoBlock.height,
+          x: localLayout.infoBlock.left,
+          y: localLayout.infoBlock.top,
+          w: localLayout.infoBlock.width,
+          h: localLayout.infoBlock.height,
         };
       case 'subject':
         return {
-          x: layoutSettings.margins.left,
-          y: layoutSettings.subject.top,
+          x: localLayout.margins.left,
+          y: localLayout.subject.top,
           w: contentWidth,
-          h: Math.max(8, layoutSettings.subject.marginBottom + 4),
+          h: Math.max(8, localLayout.subject.marginBottom + 4),
         };
       case 'content':
         return {
-          x: layoutSettings.margins.left,
-          y: layoutSettings.content.top,
+          x: localLayout.margins.left,
+          y: localLayout.content.top,
           w: contentWidth,
-          h: layoutSettings.content.maxHeight,
+          h: localLayout.content.maxHeight,
         };
       case 'footer':
         return {
-          x: layoutSettings.margins.left,
-          y: layoutSettings.footer.top,
+          x: localLayout.margins.left,
+          y: localLayout.footer.top,
           w: contentWidth,
           h: 18,
         };
       case 'attachments':
         return {
-          x: layoutSettings.margins.left,
-          y: layoutSettings.attachments.top,
+          x: localLayout.margins.left,
+          y: localLayout.attachments.top,
           w: contentWidth,
           h: 8,
         };
@@ -100,45 +120,44 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange }: P
   };
 
   const updateByRect = (key: BlockKey, rect: Rect) => {
-    const next: LetterLayoutSettings = {
-      ...layoutSettings,
-      margins: { ...layoutSettings.margins },
-      header: { ...layoutSettings.header },
-      addressField: { ...layoutSettings.addressField },
-      infoBlock: { ...layoutSettings.infoBlock },
-      subject: { ...layoutSettings.subject },
-      content: { ...layoutSettings.content },
-      footer: { ...layoutSettings.footer },
-      attachments: { ...layoutSettings.attachments },
-    };
-    if (key === 'addressField') {
-      next.addressField.left = snapMm(rect.x);
-      next.addressField.top = snapMm(rect.y);
-      next.addressField.width = snapMm(rect.w);
-      next.addressField.height = snapMm(rect.h);
-    } else if (key === 'infoBlock') {
-      next.infoBlock.left = snapMm(rect.x);
-      next.infoBlock.top = snapMm(rect.y);
-      next.infoBlock.width = snapMm(rect.w);
-      next.infoBlock.height = snapMm(rect.h);
-    } else if (key === 'subject') {
-      next.subject.top = snapMm(rect.y);
-      next.subject.marginBottom = clamp(snapMm(rect.h - 4), 2, 40);
-    } else if (key === 'content') {
-      next.content.top = snapMm(rect.y);
-      next.content.maxHeight = clamp(snapMm(rect.h), 20, 220);
-    } else if (key === 'footer') {
-      next.footer.top = snapMm(rect.y);
-    } else if (key === 'attachments') {
-      next.attachments.top = snapMm(rect.y);
-    }
-    onLayoutChange(next);
+    setLocalLayout(prev => {
+      const next = cloneLayout(prev);
+      if (key === 'addressField') {
+        next.addressField.left = snapMm(rect.x);
+        next.addressField.top = snapMm(rect.y);
+        next.addressField.width = snapMm(rect.w);
+        next.addressField.height = snapMm(rect.h);
+      } else if (key === 'infoBlock') {
+        next.infoBlock.left = snapMm(rect.x);
+        next.infoBlock.top = snapMm(rect.y);
+        next.infoBlock.width = snapMm(rect.w);
+        next.infoBlock.height = snapMm(rect.h);
+      } else if (key === 'subject') {
+        next.subject.top = snapMm(rect.y);
+        next.subject.marginBottom = clamp(snapMm(rect.h - 4), 2, 40);
+      } else if (key === 'content') {
+        next.content.top = snapMm(rect.y);
+        next.content.maxHeight = clamp(snapMm(rect.h), 20, 220);
+      } else if (key === 'footer') {
+        next.footer.top = snapMm(rect.y);
+      } else if (key === 'attachments') {
+        next.attachments.top = snapMm(rect.y);
+      }
+      return next;
+    });
   };
 
-  const selectedRect = useMemo(() => getRect(selected), [selected, layoutSettings]);
+  const commitToParent = () => {
+    if (layoutHash(localLayout) !== layoutHash(layoutSettings)) {
+      onLayoutChange(cloneLayout(localLayout));
+    }
+  };
+
+  const selectedRect = useMemo(() => getRect(selected), [selected, localLayout]);
 
   const startDrag = (event: React.MouseEvent, key: BlockKey, mode: 'move' | 'resize') => {
     event.preventDefault();
+    event.stopPropagation();
     const rect = getRect(key);
     setSelected(key);
     setDragging({ key, mode, startX: event.clientX, startY: event.clientY, orig: rect });
@@ -153,36 +172,32 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange }: P
     let next: Rect = { ...dragging.orig };
 
     if (dragging.mode === 'move') {
-      next.y = clamp(dragging.orig.y + dyMm, 0, layoutSettings.pageHeight - dragging.orig.h);
+      next.y = clamp(dragging.orig.y + dyMm, 0, localLayout.pageHeight - dragging.orig.h);
       if (cfg.canMoveX) {
-        next.x = clamp(dragging.orig.x + dxMm, 0, layoutSettings.pageWidth - dragging.orig.w);
+        next.x = clamp(dragging.orig.x + dxMm, 0, localLayout.pageWidth - dragging.orig.w);
       }
     } else {
-      next.h = clamp(dragging.orig.h + dyMm, 4, layoutSettings.pageHeight - dragging.orig.y);
+      next.h = clamp(dragging.orig.h + dyMm, 4, localLayout.pageHeight - dragging.orig.y);
       if (cfg.canMoveX && cfg.canResize) {
-        next.w = clamp(dragging.orig.w + dxMm, 10, layoutSettings.pageWidth - dragging.orig.x);
+        next.w = clamp(dragging.orig.w + dxMm, 10, localLayout.pageWidth - dragging.orig.x);
       }
     }
 
     updateByRect(dragging.key, next);
   };
 
-  const onMouseUp = () => setDragging(null);
+  const onMouseUp = () => {
+    if (!dragging) return;
+    setDragging(null);
+    commitToParent();
+  };
 
   const updateMargin = (key: 'left' | 'right' | 'top' | 'bottom', value: number) => {
-    const next: LetterLayoutSettings = {
-      ...layoutSettings,
-      margins: { ...layoutSettings.margins },
-      header: { ...layoutSettings.header },
-      addressField: { ...layoutSettings.addressField },
-      infoBlock: { ...layoutSettings.infoBlock },
-      subject: { ...layoutSettings.subject },
-      content: { ...layoutSettings.content },
-      footer: { ...layoutSettings.footer },
-      attachments: { ...layoutSettings.attachments },
-    };
-    next.margins[key] = value;
-    onLayoutChange(next);
+    setLocalLayout(prev => {
+      const next = cloneLayout(prev);
+      next.margins[key] = value;
+      return next;
+    });
   };
 
   return (
@@ -192,7 +207,11 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange }: P
           <h3 className="text-lg font-semibold">Canvas-Designer</h3>
           <p className="text-sm text-muted-foreground">Elemente per Drag & Drop positionieren. Raster: 1mm.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => onLayoutChange(DEFAULT_DIN5008_LAYOUT)}>
+        <Button variant="outline" size="sm" onClick={() => {
+          const next = cloneLayout(DEFAULT_DIN5008_LAYOUT);
+          setLocalLayout(next);
+          onLayoutChange(next);
+        }}>
           DIN 5008 zurücksetzen
         </Button>
       </div>
@@ -235,10 +254,10 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange }: P
           <div className="border rounded-lg p-3 space-y-2">
             <Label className="text-xs uppercase text-muted-foreground">Seitenränder (mm)</Label>
             <div className="grid grid-cols-2 gap-2">
-              <Input type="number" value={layoutSettings.margins.left} onChange={(e) => updateMargin('left', parseFloat(e.target.value) || 0)} placeholder="Links" />
-              <Input type="number" value={layoutSettings.margins.right} onChange={(e) => updateMargin('right', parseFloat(e.target.value) || 0)} placeholder="Rechts" />
-              <Input type="number" value={layoutSettings.margins.top} onChange={(e) => updateMargin('top', parseFloat(e.target.value) || 0)} placeholder="Oben" />
-              <Input type="number" value={layoutSettings.margins.bottom} onChange={(e) => updateMargin('bottom', parseFloat(e.target.value) || 0)} placeholder="Unten" />
+              <Input type="number" value={localLayout.margins.left} onChange={(e) => updateMargin('left', parseFloat(e.target.value) || 0)} onBlur={commitToParent} placeholder="Links" />
+              <Input type="number" value={localLayout.margins.right} onChange={(e) => updateMargin('right', parseFloat(e.target.value) || 0)} onBlur={commitToParent} placeholder="Rechts" />
+              <Input type="number" value={localLayout.margins.top} onChange={(e) => updateMargin('top', parseFloat(e.target.value) || 0)} onBlur={commitToParent} placeholder="Oben" />
+              <Input type="number" value={localLayout.margins.bottom} onChange={(e) => updateMargin('bottom', parseFloat(e.target.value) || 0)} onBlur={commitToParent} placeholder="Unten" />
             </div>
           </div>
         </div>
@@ -246,10 +265,10 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange }: P
         <div className="border rounded-lg p-4 bg-muted/20 overflow-auto" onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
           <div className="mx-auto bg-white shadow-xl relative select-none" style={{ width: pagePx.w, height: pagePx.h }}>
             <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{
-              left: layoutSettings.margins.left * SCALE,
-              top: layoutSettings.margins.top * SCALE,
-              width: (layoutSettings.pageWidth - layoutSettings.margins.left - layoutSettings.margins.right) * SCALE,
-              height: (layoutSettings.pageHeight - layoutSettings.margins.top - layoutSettings.margins.bottom) * SCALE,
+              left: localLayout.margins.left * SCALE,
+              top: localLayout.margins.top * SCALE,
+              width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE,
+              height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE,
             }} />
 
             {BLOCKS.map((block) => {
