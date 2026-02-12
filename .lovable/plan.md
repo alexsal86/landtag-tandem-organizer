@@ -1,136 +1,107 @@
-# Plan: Mobile-Fixes, E-Mail-Vorschau, Kontakt-Layout und Performance
 
-## 1. Mobile Navigation reparieren und modernisieren (Punkte 1 + 2 + 3)
 
-### Problem
+# Plan: Editor-Bereinigung, Brief-Assistent, Entscheidungs-Fix und Dashboard-Tab
 
-In `MobileHeader.tsx` Zeile 85 wird `onSectionChange={() => setMobileNavOpen(false)}` uebergeben -- das schliesst nur das Sheet, navigiert aber nirgendwohin. Ausserdem wird `activeSection=""` uebergeben, sodass kein aktiver Menuepunkt hervorgehoben wird.
+## 1. Editor-Bereinigung
 
-### Loesung
+Aktuell gibt es 5 Editor-Varianten. Davon werden nur 2 tatsaechlich gebraucht:
+- **SimpleRichTextEditor** (Lexical, in `src/components/ui/`) -- verwendet in ~18 Dateien fuer kurze Rich-Text-Felder (Entscheidungen, Notizen, Kommentare)
+- **EnhancedLexicalEditor** -- vollwertiger Editor fuer Briefe und Dokumente
 
-`MobileHeader` muss `useNavigate` und die aktive Section aus der URL kennen. Der `onSectionChange`-Callback muss die Navigation ausfuehren UND das Sheet schliessen.
+### Zu loeschen:
+| Datei | Grund |
+|-------|-------|
+| `src/components/SimpleLexicalEditor.tsx` | Nur in EditorTestPage verwendet |
+| `src/components/PlainTextEditor.tsx` | Nirgends importiert |
+| `src/components/RichTextEditor.tsx` (1007 Zeilen) | Nirgends importiert |
+| `src/components/EditorTestPage.tsx` | Test-Seite, nicht noetig |
+| `src/pages/EditorTest.tsx` | Route zur Test-Seite |
+| `src/pages/HeaderEditorTestPage.tsx` | Test-Seite |
+| `src/components/emails/EmailRichTextEditor.tsx` | Ersetzen durch SimpleRichTextEditor |
 
-**Aenderungen in `MobileHeader.tsx`:**
-
-- `useNavigate()` und `useLocation()` importieren
-- `activeSection` aus `location.pathname` ableiten (gleiche Logik wie `Index.tsx`)
-- `onSectionChange` ersetzen durch eine Funktion, die navigiert UND `setMobileNavOpen(false)` aufruft:
-  ```text
-  onSectionChange={(section) => {
-    navigate(section === 'dashboard' ? '/' : `/${section}`);
-    setMobileNavOpen(false);
-  }}
-  ```
-- `activeSection={activeSection}` statt `activeSection=""`
-- Logo: `crossOrigin="anonymous"` hinzufuegen (wie in `AppNavigation.tsx`), um CORS-Fehler bei externen Logo-URLs zu vermeiden
-
-### Modernisierung
-
-- Das `AppNavigation` im Sheet hat `h-screen` (Zeile 431), was im mobilen Sheet zu Overflow-Problemen fuehren kann. Fuer den mobilen Kontext wird `h-full` verwendet.
-- In `AppNavigation.tsx` den `isMobile`-Prop nutzen, um `h-screen` durch `h-full` zu ersetzen wenn `isMobile=true`
-- `MobileHeader` soll `isMobile={true}` an `AppNavigation` uebergeben
-
-### Sonstige Mobile-Fehler
-
-- `ContactsView.tsx`: Die Header-Buttons (Zeile 423-448) sind nicht responsive -- sie werden auf Mobile nebeneinander angezeigt und laufen ueber. Fix: `flex-wrap` hinzufuegen und auf Mobile kleinere Buttons zeigen
-- `MyWorkDecisionCard.tsx`: Metadata-Row (Zeile 192) kann auf Mobile ueberlaufen -- `overflow-x-auto` hinzufuegen
-
-**Dateien:** `MobileHeader.tsx`, `AppNavigation.tsx`, `ContactsView.tsx`, `MyWorkDecisionCard.tsx`
+### Migrationen:
+- `EmailComposer.tsx`: `EmailRichTextEditor` durch `SimpleRichTextEditor` ersetzen (gleiche API: `initialContent` + `onChange` mit HTML)
+- `EmailTemplateManager.tsx`: Ebenso migrieren
+- Route `/editor-test` aus `App.tsx` entfernen
 
 ---
 
-## 2. E-Mail-Vorschau in Decision-Cards ermoeglichen (Punkt 4)
-
-### Problem
-
-Im Popover (Zeile 249-254 in `MyWorkDecisionCard.tsx`) werden die E-Mail-Dateien nur als Liste mit Dateinamen angezeigt. Ein Klick oeffnet nichts -- es gibt keinen Button und keinen Verweis auf den `EmailPreviewDialog`.
-
-### Loesung
-
-- `EmailPreviewDialog` in `MyWorkDecisionCard.tsx` importieren
-- State fuer `previewEmail` (file_path + file_name) hinzufuegen
-- Jede E-Mail in der Popover-Liste wird klickbar (cursor-pointer, hover-Stil)
-- Klick setzt `previewEmail` und oeffnet den `EmailPreviewDialog`
-- Die `emailAttachments`-Daten enthalten bereits `file_path` und `file_name` (im Interface `types.ts` Zeile 20)
-
-```text
-// Im Popover:
-<button onClick={() => setPreviewEmail(att)} className="...">
-  <Mail className="h-3 w-3" />
-  <span className="truncate">{att.file_name}</span>
-</button>
-
-// Ausserhalb der Card:
-<EmailPreviewDialog
-  open={!!previewEmail}
-  onOpenChange={() => setPreviewEmail(null)}
-  filePath={previewEmail?.file_path || ''}
-  fileName={previewEmail?.file_name || ''}
-/>
-```
-
-**Datei:** `MyWorkDecisionCard.tsx`
-
----
-
-## 3. Kontakte: Detail-Ansicht als Seitenbereich statt Sheet (Punkt 5)
+## 2. Brief-Assistent (Briefe neu konzipiert)
 
 ### Aktuell
+"Neuer Brief" -> Template-Auswahl (technisch, nur Template-Name) -> Editor mit vielen Feldern
 
-`ContactsView` oeffnet `ContactDetailSheet` -- ein Sheet von rechts, das ueber den Inhalt gleitet.
+### Neu: Brief-Assistent als geführter Wizard
+Statt direkt in den Editor zu springen, fuehrt ein Assistent durch die Erstellung:
 
-### Gewuenscht
+**Schritt 1 -- Anlass waehlen:**
+Karten mit Icons zur Auswahl:
+- Buergeranliegen (Brief an Buerger als Antwort auf Anfragen)
+- Ministerium (formelle Korrespondenz mit Ministerien)
+- Einladung (Veranstaltungseinladungen)
+- Gruss (Glueckwuensche, Beileid, Dank)
+- Parlamentarische Anfrage (Anfragen an Regierung)
+- Stellungnahme (offizielle Positionierung)
+- Sonstiges (freie Briefform)
 
-Ein Layout wie bei Administration: links die Kontaktliste, rechts die Detail-Ansicht als fester Bereich innerhalb des Layouts (kein Overlay).
+**Schritt 2 -- Empfaenger waehlen:**
+- Kontakt aus dem System waehlen (ContactSelector)
+- Oder neue Adresse eingeben
+- Adresse wird automatisch uebernommen
 
-### Loesung
+**Schritt 3 -- Absender + Vorlage (automatisch vorgeschlagen):**
+- Basierend auf dem Anlass wird das passende Template und der Absender vorgeschlagen
+- Nutzer kann beides noch aendern
+- Button "Brief erstellen" oeffnet den Editor
 
-- `ContactsView.tsx` bekommt ein Split-Layout:
-  ```text
-  <div className="flex h-[calc(100vh-3.5rem)]">
-    <div className={cn("flex-1 overflow-y-auto", selectedContactId && "hidden md:block md:w-1/2 lg:w-2/5")}>
-      {/* Kontaktliste */}
-    </div>
-    {selectedContactId && (
-      <div className="w-full md:w-1/2 lg:w-3/5 border-l overflow-y-auto">
-        <ContactDetailPanel contactId={selectedContactId} onClose={() => setSelectedContactId(null)} />
-      </div>
-    )}
-  </div>
-  ```
-- `ContactDetailSheet` wird durch eine neue Komponente `ContactDetailPanel` ersetzt, die den gleichen Inhalt zeigt aber ohne Sheet-Wrapper
-- Auf Mobile: Die Detail-Ansicht nimmt den gesamten Bildschirm ein (mit Zurueck-Button)
-- `ContactDetailPanel` extrahiert die Inhalte aus `ContactDetailSheet` (der Sheet-Wrapper wird entfernt, der Inhalt bleibt)
-- `isSheetOpen` und `setIsSheetOpen` werden durch `selectedContactId` allein gesteuert
-
-**Dateien:** `ContactsView.tsx`, neues `ContactDetailPanel.tsx` (basierend auf `ContactDetailSheet.tsx`)
+### Dateien:
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/letters/LetterWizard.tsx` (NEU) | Dreischrittiger Assistent |
+| `src/components/LettersView.tsx` | "Neuer Brief" oeffnet Wizard statt Template-Selector, Briefliste wird schlanker (weniger Felder direkt sichtbar, kompaktere Cards) |
 
 ---
 
-## 4. Seitenperformance erhoehen (Punkt 6)
+## 3. Entscheidungen -- Kenntnisnahme und Freitext funktionieren nicht
 
-Bereits umgesetzte Massnahmen: Lazy Loading aller Views (Zeile 10-31 in `Index.tsx`), Infinite Scrolling fuer Kontakte, debounced Search.
+### Ursache gefunden
+Die Test-Entscheidungen (ID `3452632d...` und `312e6221...`) haben den gleichen User als `created_by` UND als Teilnehmer. Der Code in `TaskDecisionResponse.tsx` Zeile 331 blockiert den Creator komplett:
+```text
+if (isCreator) {
+  return "Als Ersteller koennen Sie nur auf Rueckmeldungen antworten..."
+}
+```
 
-### Weitere Moeglichkeiten
+Bei Kenntnisnahme und Freitext macht diese Blockade keinen Sinn -- der Ersteller soll ebenfalls bestaetigen oder antworten koennen, da es keine "Abstimmung" im klassischen Sinne ist.
 
+### Fix
+In `TaskDecisionResponse.tsx`:
+- Pruefen ob es sich um Kenntnisnahme (`isSingleAcknowledgement`) oder Freitext (`isSingleFreetext`) handelt
+- Bei diesen Typen den Creator NICHT blockieren -- die Blockade nur fuer klassische Abstimmungen beibehalten
+- Reihenfolge anpassen: `isSingleAcknowledgement` und `isSingleFreetext` Checks VOR die Creator-Blockade verschieben
 
-| Massnahme                                                                                             | Aufwand | Wirkung                                    |
-| ----------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------ |
-| **React.memo fuer Cards** (DecisionCard, ContactCard)                                                 | Gering  | Reduziert Re-Renders bei Listen            |
-| **Virtualisierung** (react-window / react-virtual) fuer lange Listen                                  | Mittel  | Drastische Verbesserung bei 100+ Elementen |
-| **Supabase-Queries optimieren**: Nur benoetigte Spalten selektieren statt `*`                         | Gering  | Weniger Daten ueber die Leitung            |
-| **Image-Optimierung**: Avatare mit `loading="lazy"` versehen                                          | Gering  | Schnellerer Initial-Load                   |
-| **Bundle-Splitting**: Schwere Dependencies (leaflet, matrix-sdk, pdfjs-dist) nur laden wenn benoetigt | Mittel  | Kleinerer Initial-Bundle                   |
-| **Service Worker / PWA-Caching**: Statische Assets cachen                                             | Mittel  | Schnellere Folgebesuche                    |
+Zusaetzlich in den Card-Renderings (`MyWorkDecisionCard.tsx`, `DecisionOverview.tsx`, `TaskDecisionList.tsx`):
+- Die Bedingung `!decision.isCreator` bei Kenntnisnahme/Freitext lockern, damit der Response-Button auch fuer Ersteller erscheint
 
+**Dateien:** `TaskDecisionResponse.tsx`, `MyWorkDecisionCard.tsx`, `DecisionOverview.tsx`, `TaskDecisionList.tsx`
 
-### Sofort umsetzbar (in diesem Plan):
+---
 
-- `React.memo` fuer `MyWorkDecisionCard` und Kontakt-Grid-Cards
-- `loading="lazy"` fuer alle Avatar-Images
-- Doppelten `useEffect` in `AppNavigation.tsx` (Zeilen 182-231 -- Badge-Tracking ist doppelt) entfernen
+## 4. Dashboard als erster Tab in "Meine Arbeit"
 
-**Dateien:** `MyWorkDecisionCard.tsx`, `AppNavigation.tsx`, `ContactsView.tsx`
+### Konzept
+Das App-Logo wird als erster Tab-Eintrag in der Tab-Leiste von "Meine Arbeit" platziert. Klick darauf zeigt eine schlanke Dashboard-Ansicht mit:
+- Begruessung (DashboardGreetingSection)
+- Nachrichten-Widget (CombinedMessagesWidget -- Schwarzes Brett + persoenliche Nachrichten)
+- Keine Schnellzugriffe, keine Statistik-Karten
+
+### Umsetzung
+In `MyWorkView.tsx`:
+- Neuer Tab `dashboard` als erster Eintrag in `BASE_TABS`, mit dem App-Logo als Icon (dynamisch aus `app_settings` geladen, Fallback: Home-Icon)
+- Default-Tab von `"capture"` auf `"dashboard"` aendern
+- Tab-Content: `DashboardGreetingSection` + `CombinedMessagesWidget` in einem sauberen Layout
+
+**Dateien:** `MyWorkView.tsx`
 
 ---
 
@@ -140,12 +111,23 @@ Bereits umgesetzte Massnahmen: Lazy Loading aller Views (Zeile 10-31 in `Index.t
 
 ### Dateien
 
+| Datei | Aenderung |
+|-------|-----------|
+| `SimpleLexicalEditor.tsx` | Loeschen |
+| `PlainTextEditor.tsx` | Loeschen |
+| `RichTextEditor.tsx` | Loeschen |
+| `EditorTestPage.tsx` | Loeschen |
+| `pages/EditorTest.tsx` | Loeschen |
+| `pages/HeaderEditorTestPage.tsx` | Loeschen |
+| `emails/EmailRichTextEditor.tsx` | Loeschen |
+| `emails/EmailComposer.tsx` | EmailRichTextEditor -> SimpleRichTextEditor |
+| `emails/EmailTemplateManager.tsx` | EmailRichTextEditor -> SimpleRichTextEditor |
+| `App.tsx` | Route `/editor-test` entfernen |
+| `letters/LetterWizard.tsx` (NEU) | Brief-Assistent mit 3 Schritten |
+| `LettersView.tsx` | Wizard statt Template-Selector, schlankere Uebersicht |
+| `TaskDecisionResponse.tsx` | Creator-Blockade fuer Kenntnisnahme/Freitext aufheben |
+| `MyWorkDecisionCard.tsx` | Response-Button auch fuer Creator bei Kenntnisnahme/Freitext |
+| `DecisionOverview.tsx` | Ebenso |
+| `TaskDecisionList.tsx` | Ebenso |
+| `MyWorkView.tsx` | Dashboard-Tab mit Logo als erstem Tab |
 
-| Datei                          | Aenderungen                                                                      |
-| ------------------------------ | -------------------------------------------------------------------------------- |
-| `MobileHeader.tsx`             | Navigation reparieren (useNavigate + activeSection), Logo crossOrigin            |
-| `AppNavigation.tsx`            | `h-screen` -> `h-full` wenn isMobile, doppelten useEffect entfernen              |
-| `MyWorkDecisionCard.tsx`       | EmailPreviewDialog einbinden, React.memo, lazy Avatare                           |
-| `ContactsView.tsx`             | Split-Layout statt Sheet, responsive Header-Buttons                              |
-| `ContactDetailPanel.tsx` (NEU) | Inhalte aus ContactDetailSheet als eingebettete Komponente                       |
-| `ContactDetailSheet.tsx`       | Bleibt bestehen fuer Rueckwaertskompatibilitaet, nutzt intern ContactDetailPanel |
