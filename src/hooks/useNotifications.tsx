@@ -536,6 +536,8 @@ export const useNotifications = () => {
           console.log('📡 Notifications realtime subscription status:', status);
           if (status === 'SUBSCRIBED') {
             retryCount = 0; // Reset on successful connection
+            // Load notifications immediately after subscribing to catch any missed during setup
+            loadNotifications();
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             if (retryCount < maxRetries) {
               retryCount++;
@@ -548,6 +550,11 @@ export const useNotifications = () => {
     };
 
     setupChannel();
+
+    // Polling fallback: refetch every 30 seconds to catch missed realtime events
+    const pollingInterval = setInterval(() => {
+      loadNotifications();
+    }, 30000);
 
     // Listen for storage events for cross-tab synchronization
     const handleStorageChange = (e: StorageEvent) => {
@@ -562,6 +569,7 @@ export const useNotifications = () => {
     return () => {
       console.log('🧹 Cleaning up notifications realtime subscription');
       if (retryTimeout) clearTimeout(retryTimeout);
+      clearInterval(pollingInterval);
       if (currentChannel) supabase.removeChannel(currentChannel);
       window.removeEventListener('storage', handleStorageChange);
     };
