@@ -113,6 +113,55 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
           </div>
         </div>
 
+
+
+        {/* Rücksendeangaben */}
+        <div className="space-y-4 p-4 border rounded-lg">
+          <h4 className="font-medium">Rücksendeangaben</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="return-top">Von oben (mm)</Label>
+              <Input
+                id="return-top"
+                type="number"
+                value={layoutSettings.returnAddress.top}
+                onChange={(e) => updateSetting(['returnAddress', 'top'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="return-left">Von links (mm)</Label>
+              <Input
+                id="return-left"
+                type="number"
+                value={layoutSettings.returnAddress.left}
+                onChange={(e) => updateSetting(['returnAddress', 'left'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="return-width">Breite (mm)</Label>
+              <Input
+                id="return-width"
+                type="number"
+                value={layoutSettings.returnAddress.width}
+                onChange={(e) => updateSetting(['returnAddress', 'width'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="return-height">Höhe (mm)</Label>
+              <Input
+                id="return-height"
+                type="number"
+                value={layoutSettings.returnAddress.height}
+                onChange={(e) => updateSetting(['returnAddress', 'height'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Infoblock */}
         <div className="space-y-4 p-4 border rounded-lg">
           <h4 className="font-medium">Informationsblock</h4>

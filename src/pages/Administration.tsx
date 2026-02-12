@@ -85,7 +85,7 @@ export default function Administration() {
   const [activeSection, setActiveSection] = useState("security");
   const [activeSubSection, setActiveSubSection] = useState("general");
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
-  
+  const [showLetterTemplateManager, setShowLetterTemplateManager] = useState(false);
 
   // Template states
   const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
@@ -1042,7 +1042,45 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       switch (activeSubSection) {
         case "letters":
           return (
-            <LetterTemplateManager />
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Briefvorlagen</CardTitle>
+                  <CardDescription>
+                    Öffnen Sie den Canvas- und Template-Designer für Briefvorlagen.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button onClick={() => setShowLetterTemplateManager((prev) => !prev)}>
+                    {showLetterTemplateManager ? 'Brief-Template-Manager schließen' : 'Brief-Template-Manager öffnen'}
+                  </Button>
+                  {showLetterTemplateManager && (
+                    <div className="mt-4 border rounded-lg p-4 bg-card">
+                      <LetterTemplateManager />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Absenderinformationen</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <SenderInformationManager />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informationsblöcke</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <InformationBlockManager />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           );
         case "meetings":
           return (
