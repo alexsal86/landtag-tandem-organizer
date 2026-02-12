@@ -335,6 +335,59 @@ const LetterTemplateManager: React.FC = () => {
     setFormData((prev) => ({ ...prev, layout_settings: updater(prev.layout_settings) }));
   };
 
+
+
+  const getBlockItems = (blockKey: 'addressField' | 'infoBlock' | 'subject') => {
+    const content = ((formData.layout_settings as any).blockContent || {}) as Record<string, any[]>;
+    return content[blockKey] || [];
+  };
+
+  const setBlockItems = (blockKey: 'addressField' | 'infoBlock' | 'subject', items: any[]) => {
+    updateLayoutSettings((layout) => {
+      const current = ((layout as any).blockContent || {}) as Record<string, any[]>;
+      return { ...layout, blockContent: { ...current, [blockKey]: items } } as LetterLayoutSettings;
+    });
+  };
+
+  const renderBlockCanvas = (blockKey: 'addressField' | 'infoBlock' | 'subject', title: string, rect: { top: number; left: number; width: number; height: number }) => {
+    const items = getBlockItems(blockKey);
+    const scale = 2.4;
+
+    const addText = () => {
+      setBlockItems(blockKey, [...items, { id: Date.now().toString(), type: 'text', x: 5, y: 5, width: 60, content: 'Neuer Text' }]);
+    };
+
+    const updateItem = (id: string, updates: any) => setBlockItems(blockKey, items.map((item) => item.id === id ? { ...item, ...updates } : item));
+    const selected = items[0];
+
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+          <div className="space-y-3 border rounded-lg p-3">
+            <Button type="button" variant="outline" size="sm" onClick={addText}>Text hinzufügen</Button>
+            {selected && (
+              <>
+                <Label>Textinhalt</Label>
+                <Textarea value={selected.content || ''} onChange={(e) => updateItem(selected.id, { content: e.target.value })} rows={4} />
+              </>
+            )}
+          </div>
+          <div className="border rounded-lg p-3 bg-muted/30 overflow-auto">
+            <div className="relative bg-white border" style={{ width: rect.width * scale, height: Math.max(rect.height, 25) * scale }}>
+              {items.map((item) => (
+                <div key={item.id} className="absolute border border-primary bg-primary/10 px-2 py-1 text-xs"
+                  style={{ left: (item.x || 0) * scale, top: (item.y || 0) * scale, width: (item.width || 50) * scale }}>
+                  {item.content || 'Text'}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderPreview = (template: LetterTemplate) => {
     // Use structured elements if available and layout type is structured
     let previewHtml = '';
@@ -459,10 +512,6 @@ const LetterTemplateManager: React.FC = () => {
                   layoutSettings={formData.layout_settings}
                   onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
                   onJumpToTab={setCreateActiveTab as any}
-                  headerElements={formData.header_elements}
-                  onHeaderElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
-                  footerBlocks={formData.footer_blocks}
-                  onFooterBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
                 />
               </TabsContent>
 
@@ -525,24 +574,30 @@ const LetterTemplateManager: React.FC = () => {
               
 
               <TabsContent value="block-address" className="space-y-4">
-                <h3 className="text-lg font-semibold">Adressfeld</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Links (mm)</Label><Input type="number" value={formData.layout_settings.addressField.left} onChange={(e) => updateLayoutSettings((l) => ({ ...l, addressField: { ...l.addressField, left: parseFloat(e.target.value) || 0 } }))} /></div>
-                  <div><Label>Oben (mm)</Label><Input type="number" value={formData.layout_settings.addressField.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, addressField: { ...l.addressField, top: parseFloat(e.target.value) || 0 } }))} /></div>
-                </div>
+                {renderBlockCanvas('addressField', 'Adressfeld', {
+                  top: formData.layout_settings.addressField.top,
+                  left: formData.layout_settings.addressField.left,
+                  width: formData.layout_settings.addressField.width,
+                  height: formData.layout_settings.addressField.height,
+                })}
               </TabsContent>
 
               <TabsContent value="block-info" className="space-y-4">
-                <h3 className="text-lg font-semibold">Info-Block</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Links (mm)</Label><Input type="number" value={formData.layout_settings.infoBlock.left} onChange={(e) => updateLayoutSettings((l) => ({ ...l, infoBlock: { ...l.infoBlock, left: parseFloat(e.target.value) || 0 } }))} /></div>
-                  <div><Label>Oben (mm)</Label><Input type="number" value={formData.layout_settings.infoBlock.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, infoBlock: { ...l.infoBlock, top: parseFloat(e.target.value) || 0 } }))} /></div>
-                </div>
+                {renderBlockCanvas('infoBlock', 'Info-Block', {
+                  top: formData.layout_settings.infoBlock.top,
+                  left: formData.layout_settings.infoBlock.left,
+                  width: formData.layout_settings.infoBlock.width,
+                  height: formData.layout_settings.infoBlock.height,
+                })}
               </TabsContent>
 
               <TabsContent value="block-subject" className="space-y-4">
-                <h3 className="text-lg font-semibold">Betreffbereich</h3>
-                <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.subject.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, subject: { ...l.subject, top: parseFloat(e.target.value) || 0 } }))} /></div>
+                {renderBlockCanvas('subject', 'Betreffbereich', {
+                  top: formData.layout_settings.subject.top,
+                  left: formData.layout_settings.margins.left,
+                  width: formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
+                  height: Math.max(8, formData.layout_settings.subject.marginBottom + 4),
+                })}
               </TabsContent>
 
               <TabsContent value="block-content" className="space-y-4">
@@ -692,10 +747,6 @@ const LetterTemplateManager: React.FC = () => {
                   layoutSettings={formData.layout_settings}
                   onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
                   onJumpToTab={setEditActiveTab as any}
-                  headerElements={formData.header_elements}
-                  onHeaderElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
-                  footerBlocks={formData.footer_blocks}
-                  onFooterBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
                 />
               </TabsContent>
 
@@ -784,24 +835,30 @@ const LetterTemplateManager: React.FC = () => {
               
 
               <TabsContent value="block-address" className="space-y-4">
-                <h3 className="text-lg font-semibold">Adressfeld</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Links (mm)</Label><Input type="number" value={formData.layout_settings.addressField.left} onChange={(e) => updateLayoutSettings((l) => ({ ...l, addressField: { ...l.addressField, left: parseFloat(e.target.value) || 0 } }))} /></div>
-                  <div><Label>Oben (mm)</Label><Input type="number" value={formData.layout_settings.addressField.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, addressField: { ...l.addressField, top: parseFloat(e.target.value) || 0 } }))} /></div>
-                </div>
+                {renderBlockCanvas('addressField', 'Adressfeld', {
+                  top: formData.layout_settings.addressField.top,
+                  left: formData.layout_settings.addressField.left,
+                  width: formData.layout_settings.addressField.width,
+                  height: formData.layout_settings.addressField.height,
+                })}
               </TabsContent>
 
               <TabsContent value="block-info" className="space-y-4">
-                <h3 className="text-lg font-semibold">Info-Block</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Links (mm)</Label><Input type="number" value={formData.layout_settings.infoBlock.left} onChange={(e) => updateLayoutSettings((l) => ({ ...l, infoBlock: { ...l.infoBlock, left: parseFloat(e.target.value) || 0 } }))} /></div>
-                  <div><Label>Oben (mm)</Label><Input type="number" value={formData.layout_settings.infoBlock.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, infoBlock: { ...l.infoBlock, top: parseFloat(e.target.value) || 0 } }))} /></div>
-                </div>
+                {renderBlockCanvas('infoBlock', 'Info-Block', {
+                  top: formData.layout_settings.infoBlock.top,
+                  left: formData.layout_settings.infoBlock.left,
+                  width: formData.layout_settings.infoBlock.width,
+                  height: formData.layout_settings.infoBlock.height,
+                })}
               </TabsContent>
 
               <TabsContent value="block-subject" className="space-y-4">
-                <h3 className="text-lg font-semibold">Betreffbereich</h3>
-                <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.subject.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, subject: { ...l.subject, top: parseFloat(e.target.value) || 0 } }))} /></div>
+                {renderBlockCanvas('subject', 'Betreffbereich', {
+                  top: formData.layout_settings.subject.top,
+                  left: formData.layout_settings.margins.left,
+                  width: formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
+                  height: Math.max(8, formData.layout_settings.subject.marginBottom + 4),
+                })}
               </TabsContent>
 
               <TabsContent value="block-content" className="space-y-4">
