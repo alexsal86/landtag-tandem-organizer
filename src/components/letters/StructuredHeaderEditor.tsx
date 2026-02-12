@@ -126,26 +126,33 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const loadSystemImages = async () => {
     if (!currentTenant?.id) return;
     try {
+      // Revoke old blob URLs to prevent memory leaks
+      systemImages.forEach(img => {
+        if (img.url.startsWith('blob:')) {
+          URL.revokeObjectURL(img.url);
+        }
+      });
+
       const { data, error } = await supabase.storage
         .from('letter-assets')
         .list(`${currentTenant.id}/_system/briefvorlagen-bilder`);
       if (error) throw error;
       if (data) {
         const filtered = data.filter((f) => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name));
-        const images = await Promise.all(
+        const images = (await Promise.all(
           filtered.map(async (f) => {
             const path = `${currentTenant.id}/_system/briefvorlagen-bilder/${f.name}`;
-            const { data: signedData, error: signedError } = await supabase.storage
+            const { data: blob, error: dlError } = await supabase.storage
               .from('letter-assets')
-              .createSignedUrl(path, 604800); // 7 days
-            if (signedError || !signedData?.signedUrl) {
-              console.warn('Signed URL failed for', f.name, signedError);
-              const { data: urlData } = supabase.storage.from('letter-assets').getPublicUrl(path);
-              return { name: f.name, url: urlData.publicUrl };
+              .download(path);
+            if (dlError || !blob) {
+              console.warn('Download failed for', f.name, dlError);
+              return null;
             }
-            return { name: f.name, url: signedData.signedUrl };
+            const url = URL.createObjectURL(blob);
+            return { name: f.name, url };
           })
-        );
+        )).filter(Boolean) as { name: string; url: string }[];
         setSystemImages(images);
       }
     } catch (error) {
