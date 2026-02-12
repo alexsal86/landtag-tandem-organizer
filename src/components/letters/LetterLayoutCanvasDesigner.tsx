@@ -1,3 +1,4 @@
+// Keep useEffect imported: we sync local canvas state from parent layout props.
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
