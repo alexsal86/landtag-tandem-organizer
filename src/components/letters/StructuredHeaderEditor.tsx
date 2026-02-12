@@ -45,9 +45,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({
   const headerMaxWidth = 210; // A4 width in mm
   const headerMaxHeight = 45; // Header height in mm
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     onElementsChange(elements);
-  }, [elements, onElementsChange]);
+  }, [elements]);
 
   const addTextElement = () => {
     const newElement: HeaderElement = {

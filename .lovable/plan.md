@@ -1,83 +1,98 @@
 
-# Plan: Push-Subscription Auto-Renewal Fix
 
-## Problem-Ursache
+# Plan: Infinite-Loop-Fehler beim Oeffnen von "Neues Template" beheben
 
-Die Push-Benachrichtigungen fuer Alexander funktionieren nicht, weil:
+## Ursache
 
-1. Die Browser-Permission ist `granted` (wurde einmal erteilt und bleibt dauerhaft)
-2. Die UI zeigt "Aktiviert" und **versteckt den Aktivieren-Button**
-3. Alle Push-Subscriptions in der DB sind `is_active: false` (abgelaufen seit August 2025)
-4. Es gibt keinen Mechanismus, der bei App-Start automatisch prueft, ob eine gueltige Subscription existiert, und sie erneuert
+Der Crash wird durch eine **Endlosschleife** in zwei Kind-Komponenten verursacht:
 
-Die Edge Function Logs bestaetigen: `"No active subscriptions found for user: ff0e6d83..."` -- der Trigger feuert korrekt, aber es gibt schlicht keine aktive Subscription.
+**StructuredHeaderEditor.tsx** (Zeile 47-49):
+```
+useEffect(() => {
+    onElementsChange(elements);
+}, [elements, onElementsChange]);
+```
+
+**StructuredFooterEditor.tsx** (Zeile 83-85):
+```
+useEffect(() => {
+    onBlocksChange(blocks);
+}, [blocks, onBlocksChange]);
+```
+
+Der Ablauf der Endlosschleife:
+
+1. Dialog oeffnet sich, Komponenten mounten
+2. useEffect ruft `onElementsChange(elements)` auf
+3. Der Callback ist eine **Inline-Funktion** im Parent: `(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))`
+4. setFormData loest Re-Render im Parent aus
+5. Re-Render erzeugt eine **neue Funktionsreferenz** fuer den Callback
+6. useEffect sieht neue Referenz in Dependencies -> fuehrt erneut aus -> zurueck zu Schritt 3
 
 ## Loesung
 
-### 1. Auto-Renewal bei App-Start (`useNotifications.tsx`)
+In beiden Editor-Komponenten wird `onElementsChange` / `onBlocksChange` aus den useEffect-Dependencies entfernt. Die Callbacks werden stattdessen nur aufgerufen, wenn sich die Daten tatsaechlich aendern (nicht bei jedem Render).
 
-Ein neuer `useEffect` wird hinzugefuegt, der beim App-Start folgendes prueft:
-- Ist `pushPermission === 'granted'`?
-- Hat der User eine aktive Subscription in der DB?
-- Falls nein: Automatisch `subscribeToPush()` aufrufen
+Zusaetzlich wird `DialogDescription` zu den Dialogen in `LetterTemplateManager` hinzugefuegt, um die ARIA-Warnung zu beheben.
 
-```text
-useEffect -> wenn pushPermission === 'granted' und user vorhanden:
-  1. DB abfragen: Gibt es is_active=true fuer diesen User?
-  2. Falls nein: subscribeToPush() aufrufen (re-registriert Service Worker + neuen Endpoint)
+## Aenderungen
+
+### 1. `src/components/letters/StructuredHeaderEditor.tsx`
+
+Zeile 47-49 aendern:
+
 ```
-
-### 2. UI in NotificationSettings.tsx verbessern
-
-Auch wenn `pushPermission === 'granted'` ist, soll ein "Erneut verbinden"-Button angezeigt werden, falls keine aktive Subscription in der DB existiert. Dafuer:
-
-- Neuen State `hasActiveSubscription` einfuehren
-- Bei `pushPermission === 'granted'` pruefen ob aktive DB-Subscription existiert
-- Falls nicht: Button "Push erneuern" anzeigen statt nur "Aktiviert"
-
-### 3. Bestehende alte Subscriptions bereinigen
-
-Beim erneuten Subscriben werden alte inaktive Subscriptions fuer den User deaktiviert/geloescht, damit die Tabelle sauber bleibt.
-
----
-
-## Technische Details
-
-### Datei: `useNotifications.tsx`
-
-Neuer `useEffect` nach dem bestehenden Push-Permission-Check:
-
-```text
+// Vorher (fehlerhaft):
 useEffect(() => {
-  if (!user || !pushSupported || pushPermission !== 'granted') return;
-  
-  const checkAndRenewSubscription = async () => {
-    const { data } = await supabase
-      .from('push_subscriptions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .limit(1);
-    
-    if (!data || data.length === 0) {
-      console.log('No active push subscription found, auto-renewing...');
-      await subscribeToPush();
-    }
-  };
-  
-  checkAndRenewSubscription();
-}, [user, pushSupported, pushPermission]);
+    onElementsChange(elements);
+}, [elements, onElementsChange]);
+
+// Nachher (korrekt):
+useEffect(() => {
+    onElementsChange(elements);
+}, [elements]);
 ```
 
-### Datei: `NotificationSettings.tsx`
+### 2. `src/components/letters/StructuredFooterEditor.tsx`
 
-- State `hasActiveSubscription` hinzufuegen
-- DB-Check bei Mount und nach `enablePushNotifications`
-- Wenn `pushPermission === 'granted'` aber keine aktive Subscription: "Push erneuern"-Button anzeigen
+Zeile 83-85 aendern:
 
-### Dateien
+```
+// Vorher (fehlerhaft):
+useEffect(() => {
+    onBlocksChange(blocks);
+}, [blocks, onBlocksChange]);
+
+// Nachher (korrekt):
+useEffect(() => {
+    onBlocksChange(blocks);
+}, [blocks]);
+```
+
+### 3. `src/components/LetterTemplateManager.tsx`
+
+`DialogDescription` importieren und in allen `DialogContent`-Bloecken hinzufuegen, um die ARIA-Warnung "Missing Description or aria-describedby" zu beseitigen:
+
+```
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+```
+
+In den DialogHeader-Bereichen jeweils ergaenzen:
+
+```
+<DialogHeader>
+  <DialogTitle>Neues Brief-Template erstellen</DialogTitle>
+  <DialogDescription>Erstellen Sie ein neues Brief-Template mit Header, Footer und Layout-Einstellungen.</DialogDescription>
+</DialogHeader>
+```
+
+Gleiches fuer den Bearbeitungs-Dialog und den Vorschau-Dialog.
+
+## Zusammenfassung
 
 | Datei | Aenderung |
 |-------|-----------|
-| `useNotifications.tsx` | Auto-Renewal useEffect bei App-Start |
-| `NotificationSettings.tsx` | "Push erneuern"-Button wenn Subscription abgelaufen |
+| `src/components/letters/StructuredHeaderEditor.tsx` | `onElementsChange` aus useEffect-Dependencies entfernen |
+| `src/components/letters/StructuredFooterEditor.tsx` | `onBlocksChange` aus useEffect-Dependencies entfernen |
+| `src/components/LetterTemplateManager.tsx` | `DialogDescription` hinzufuegen fuer ARIA-Konformitaet |
+
