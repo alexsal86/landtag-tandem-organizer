@@ -1,83 +1,48 @@
 
-# Plan: Push-Subscription Auto-Renewal Fix
 
-## Problem-Ursache
+# Plan: Bilder im Header-Designer -- Blob-URL-Ansatz
 
-Die Push-Benachrichtigungen fuer Alexander funktionieren nicht, weil:
+## Problem
 
-1. Die Browser-Permission ist `granted` (wurde einmal erteilt und bleibt dauerhaft)
-2. Die UI zeigt "Aktiviert" und **versteckt den Aktivieren-Button**
-3. Alle Push-Subscriptions in der DB sind `is_active: false` (abgelaufen seit August 2025)
-4. Es gibt keinen Mechanismus, der bei App-Start automatisch prueft, ob eine gueltige Subscription existiert, und sie erneuert
+Sowohl oeffentliche als auch signierte URLs funktionieren beim direkten Aufrufen, aber nicht im Browser-Preview. Das liegt wahrscheinlich an Cross-Origin-Einschraenkungen der Preview-Umgebung.
 
-Die Edge Function Logs bestaetigen: `"No active subscriptions found for user: ff0e6d83..."` -- der Trigger feuert korrekt, aber es gibt schlicht keine aktive Subscription.
+## Loesung: Blob-URLs statt externe URLs
 
-## Loesung
-
-### 1. Auto-Renewal bei App-Start (`useNotifications.tsx`)
-
-Ein neuer `useEffect` wird hinzugefuegt, der beim App-Start folgendes prueft:
-- Ist `pushPermission === 'granted'`?
-- Hat der User eine aktive Subscription in der DB?
-- Falls nein: Automatisch `subscribeToPush()` aufrufen
+Statt eine URL zu erzeugen und dem Browser das Laden zu ueberlassen, werden die Bilder direkt ueber den Supabase JS Client heruntergeladen (`download()`) und als lokale Blob-URLs bereitgestellt. Das umgeht alle URL- und CORS-Probleme vollstaendig.
 
 ```text
-useEffect -> wenn pushPermission === 'granted' und user vorhanden:
-  1. DB abfragen: Gibt es is_active=true fuer diesen User?
-  2. Falls nein: subscribeToPush() aufrufen (re-registriert Service Worker + neuen Endpoint)
+Vorher:  getPublicUrl/createSignedUrl -> externe URL -> Browser laedt Bild (scheitert)
+Nachher: download() via Supabase Client -> Blob -> URL.createObjectURL() -> lokale URL (funktioniert immer)
 ```
-
-### 2. UI in NotificationSettings.tsx verbessern
-
-Auch wenn `pushPermission === 'granted'` ist, soll ein "Erneut verbinden"-Button angezeigt werden, falls keine aktive Subscription in der DB existiert. Dafuer:
-
-- Neuen State `hasActiveSubscription` einfuehren
-- Bei `pushPermission === 'granted'` pruefen ob aktive DB-Subscription existiert
-- Falls nicht: Button "Push erneuern" anzeigen statt nur "Aktiviert"
-
-### 3. Bestehende alte Subscriptions bereinigen
-
-Beim erneuten Subscriben werden alte inaktive Subscriptions fuer den User deaktiviert/geloescht, damit die Tabelle sauber bleibt.
-
----
 
 ## Technische Details
 
-### Datei: `useNotifications.tsx`
+### Datei: `src/components/letters/StructuredHeaderEditor.tsx`
 
-Neuer `useEffect` nach dem bestehenden Push-Permission-Check:
+**loadSystemImages (Zeilen 126-153):**
 
-```text
-useEffect(() => {
-  if (!user || !pushSupported || pushPermission !== 'granted') return;
-  
-  const checkAndRenewSubscription = async () => {
-    const { data } = await supabase
-      .from('push_subscriptions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .limit(1);
-    
-    if (!data || data.length === 0) {
-      console.log('No active push subscription found, auto-renewing...');
-      await subscribeToPush();
-    }
-  };
-  
-  checkAndRenewSubscription();
-}, [user, pushSupported, pushPermission]);
-```
+Die Funktion wird so umgebaut:
 
-### Datei: `NotificationSettings.tsx`
+1. Dateien auflisten (wie bisher via `.list()`)
+2. Fuer jede Datei: `supabase.storage.from('letter-assets').download(path)` aufrufen
+3. Den zurueckgegebenen Blob mit `URL.createObjectURL(blob)` in eine lokale URL umwandeln
+4. Diese Blob-URL als `img.url` verwenden
 
-- State `hasActiveSubscription` hinzufuegen
-- DB-Check bei Mount und nach `enablePushNotifications`
-- Wenn `pushPermission === 'granted'` aber keine aktive Subscription: "Push erneuern"-Button anzeigen
+Blob-URLs sehen so aus: `blob:https://...` und funktionieren immer im lokalen Browser-Kontext.
 
-### Dateien
+**Aufraeumen der Blob-URLs:**
 
-| Datei | Aenderung |
-|-------|-----------|
-| `useNotifications.tsx` | Auto-Renewal useEffect bei App-Start |
-| `NotificationSettings.tsx` | "Push erneuern"-Button wenn Subscription abgelaufen |
+Beim Neuladen der Bilder oder Unmount der Komponente werden die alten Blob-URLs via `URL.revokeObjectURL()` freigegeben, um Speicherlecks zu vermeiden.
+
+**deleteSystemImage:**
+
+Bleibt wie implementiert (`.remove([path])` + `loadSystemImages()`)
+
+**Galerie-Rendering:**
+
+Bleibt wie implementiert (mit `onError`-Handler und Loeschen-Button)
+
+### Aenderungsumfang
+
+Nur die Funktion `loadSystemImages` wird geaendert (ca. 15 Zeilen). Der Rest bleibt unveraendert.
+

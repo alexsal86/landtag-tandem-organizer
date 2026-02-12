@@ -22,9 +22,30 @@ interface HeaderElement {
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: string;
+  fontStyle?: string;
+  textDecoration?: string;
   color?: string;
   imageUrl?: string;
   preserveAspectRatio?: boolean;
+  blockId?: string;
+}
+
+interface HeaderBlock {
+  id: string;
+  type: 'custom';
+  title: string;
+  content: string;
+  order: number;
+  widthPercent: number;
+  fontSize: number;
+  fontFamily: string;
+  fontWeight: string;
+  color: string;
+  lineHeight?: number;
+  titleHighlight?: boolean;
+  titleFontSize?: number;
+  titleFontWeight?: string;
+  titleColor?: string;
 }
 
 interface StructuredHeaderEditorProps {
@@ -79,9 +100,46 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return { x: Math.round(sx), y: Math.round(sy) };
   };
 
+  const SNAP_MM = 1.5;
+
+  const snapToOtherElements = (id: string, x: number, y: number) => {
+    const current = elements.find((el) => el.id === id);
+    if (!current) return { x, y };
+    let sx = x;
+    let sy = y;
+    const w = current.width || 50;
+    const h = current.height || 10;
+    const edgeTargets = elements.filter((el) => el.id !== id).flatMap((el) => {
+      const tw = el.width || 50;
+      const th = el.height || 10;
+      return [
+        { x: el.x, y: el.y },
+        { x: el.x + tw, y: el.y + th },
+        { x: el.x + tw / 2, y: el.y + th / 2 },
+      ];
+    });
+
+    for (const t of edgeTargets) {
+      if (Math.abs(sx - t.x) <= SNAP_MM) sx = t.x;
+      if (Math.abs(sx + w - t.x) <= SNAP_MM) sx = t.x - w;
+      if (Math.abs(sx + w / 2 - t.x) <= SNAP_MM) sx = t.x - w / 2;
+      if (Math.abs(sy - t.y) <= SNAP_MM) sy = t.y;
+      if (Math.abs(sy + h - t.y) <= SNAP_MM) sy = t.y - h;
+      if (Math.abs(sy + h / 2 - t.y) <= SNAP_MM) sy = t.y - h / 2;
+    }
+
+    return { x: Math.round(sx), y: Math.round(sy) };
+  };
+
+  // Report element changes to parent - guarded against duplicate calls
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    onElementsChange(elements);
-  }, [elements, onElementsChange]);
+    const key = JSON.stringify(elements);
+    if (key !== lastReportedRef.current) {
+      lastReportedRef.current = key;
+      onElementsChange(elements);
+    }
+  }, [elements]);
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
@@ -225,6 +283,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[30%_70%] gap-6">
       <div className="space-y-4">
+        {/* Tools */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Header-Blöcke hinzufügen</CardTitle>
@@ -256,9 +315,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           </CardContent>
         </Card>
 
+        {/* Image Gallery */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Elemente ({elements.length})</CardTitle>
+          <CardHeader className="py-3 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">Bilder</CardTitle>
+              <Button variant="ghost" size="sm" onClick={handleImageUpload} className="h-7 px-2">
+                <Upload className="h-3 w-3 mr-1" /> Hochladen
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-2">
             {elements.length === 0 ? (

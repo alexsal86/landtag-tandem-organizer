@@ -314,13 +314,30 @@ export function GlobalSearchCommand() {
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
   });
 
+  // Search archived tasks
+  const { data: archivedTasks, isLoading: archivedTasksLoading } = useQuery({
+    queryKey: ['global-search-archived-tasks', searchQuery, currentTenant?.id],
+    queryFn: async () => {
+      if (!searchQuery || searchQuery.length < 2) return [];
+      const { data } = await supabase
+        .from('archived_tasks')
+        .select('id, title, description, completed_at')
+        .eq('user_id', user!.id)
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+        .order('archived_at', { ascending: false })
+        .limit(5);
+      return data || [];
+    },
+    enabled: !!searchQuery && !!currentTenant?.id && !!user && searchQuery.length >= 2,
+  });
+
   // Track search when results change
   useEffect(() => {
     if (searchQuery && searchQuery.length >= 2) {
       const resultCount = (contacts?.length || 0) + (appointments?.length || 0) + 
                           (tasks?.length || 0) + (documents?.length || 0) + 
                           (letters?.length || 0) + (protocols?.length || 0) +
-                          (caseFiles?.length || 0);
+                          (caseFiles?.length || 0) + (archivedTasks?.length || 0);
       const resultTypes: string[] = [];
       if (contacts?.length) resultTypes.push('contacts');
       if (appointments?.length) resultTypes.push('appointments');
@@ -329,10 +346,11 @@ export function GlobalSearchCommand() {
       if (letters?.length) resultTypes.push('letters');
       if (protocols?.length) resultTypes.push('protocols');
       if (caseFiles?.length) resultTypes.push('casefiles');
+      if (archivedTasks?.length) resultTypes.push('archived_tasks');
       
       trackSearchMutation.mutate({ query: searchQuery, resultCount, resultTypes });
     }
-  }, [contacts, appointments, tasks, documents, letters, protocols, caseFiles, searchQuery]);
+  }, [contacts, appointments, tasks, documents, letters, protocols, caseFiles, archivedTasks, searchQuery]);
 
   const runCommand = useCallback((command: () => void) => {
     if (searchQuery && searchQuery.length >= 2) {
@@ -374,10 +392,10 @@ export function GlobalSearchCommand() {
   const hasResults = (contacts?.length || 0) + (appointments?.length || 0) + 
                      (tasks?.length || 0) + (documents?.length || 0) + 
                      (letters?.length || 0) + (protocols?.length || 0) +
-                     (caseFiles?.length || 0) > 0;
+                     (caseFiles?.length || 0) + (archivedTasks?.length || 0) > 0;
 
   const isSearching = contactsLoading || appointmentsLoading || tasksLoading || 
-                      documentsLoading || lettersLoading || protocolsLoading || caseFilesLoading;
+                      documentsLoading || lettersLoading || protocolsLoading || caseFilesLoading || archivedTasksLoading;
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
@@ -670,6 +688,21 @@ export function GlobalSearchCommand() {
                     ({caseFile.reference_number})
                   </span>
                 )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {archivedTasks && archivedTasks.length > 0 && (
+          <CommandGroup heading="🗄️ Archivierte Aufgaben">
+            {archivedTasks.map((task) => (
+              <CommandItem
+                key={task.id}
+                onSelect={() => runCommand(() => navigate(`/?section=tasks&archived=true&task=${task.id}`))}
+              >
+                <CheckSquare className="mr-2 h-4 w-4" />
+                <span>{task.title}</span>
+                <Badge variant="outline" className="ml-2 text-xs">Archiv</Badge>
               </CommandItem>
             ))}
           </CommandGroup>
