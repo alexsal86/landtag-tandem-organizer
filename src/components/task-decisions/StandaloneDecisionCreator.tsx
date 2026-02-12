@@ -331,10 +331,10 @@ export const StandaloneDecisionCreator = ({
           type_name: 'task_decision_request',
           title_param: 'Neue Entscheidungsanfrage',
           message_param: `Sie wurden um eine Entscheidung gebeten: "${title.trim()}"`,
-          data_param: {
+          data_param: JSON.stringify({
             decision_id: decision.id,
             decision_title: title.trim()
-          },
+          }),
           priority_param: 'medium'
         });
 

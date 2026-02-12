@@ -163,10 +163,10 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
             type_name: 'task_decision_request',
             title_param: 'Neue Entscheidungsanfrage',
             message_param: `Sie wurden zu einer Entscheidung hinzugefügt: "${title.trim()}"`,
-            data_param: {
+            data_param: JSON.stringify({
               decision_id: decisionId,
               decision_title: title.trim()
-            },
+            }),
             priority_param: 'medium'
           });
         }

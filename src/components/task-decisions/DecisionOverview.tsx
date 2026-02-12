@@ -497,10 +497,10 @@ export const DecisionOverview = () => {
               type_name: 'task_decision_creator_response',
               title_param: 'Antwort auf Ihren Kommentar',
               message_param: `Der Ersteller hat auf Ihren Kommentar zu "${decisionTitle}" geantwortet.`,
-              data_param: {
+              data_param: JSON.stringify({
                 decision_id: responseData.decision_id,
                 decision_title: decisionTitle
-              },
+              }),
               priority_param: 'medium'
             });
           }

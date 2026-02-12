@@ -139,10 +139,10 @@ export function DecisionComments({
           type_name: 'task_decision_comment_received',
           title_param: 'Neuer Kommentar',
           message_param: `${profile?.display_name || 'Jemand'} hat einen Kommentar zu "${decision.title}" hinterlassen.`,
-          data_param: {
+          data_param: JSON.stringify({
             decision_id: decisionId,
             decision_title: decision.title
-          },
+          }),
           priority_param: 'low'
         });
       }

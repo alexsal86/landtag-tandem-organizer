@@ -490,11 +490,9 @@ export function MyWorkView() {
 
       {/* Tab Content */}
       {activeTab === "dashboard" && (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <DashboardGreetingSection />
-          <div className="w-1/2">
-            <NewsWidget />
-          </div>
+          <NewsWidget />
         </div>
       )}
 
