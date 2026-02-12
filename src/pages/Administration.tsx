@@ -77,6 +77,7 @@ export default function Administration() {
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
+  const [checkingAdmin, setCheckingAdmin] = useState<boolean>(true);
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
@@ -86,7 +87,7 @@ export default function Administration() {
   const [activeSection, setActiveSection] = useState("security");
   const [activeSubSection, setActiveSubSection] = useState("general");
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
-  const [showLetterTemplateManager, setShowLetterTemplateManager] = useState(false);
+  
 
   // Template states
   const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
@@ -118,19 +119,24 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
   }, [loading, user, currentTenant]);
 
   const checkAdminStatus = async () => {
-    if (!user) return;
+    if (!user) {
+      setCheckingAdmin(false);
+      return;
+    }
     
     try {
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       setIsAdmin(roleData?.role === 'abgeordneter' || roleData?.role === 'bueroleitung');
       setIsSuperAdmin(roleData?.role === 'abgeordneter');
     } catch (error) {
       console.error('Error checking admin status:', error);
+    } finally {
+      setCheckingAdmin(false);
     }
   };
 
@@ -678,7 +684,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
     savePlanningTemplateItems(newItems);
   };
 
-  if (loading) return null;
+  if (loading || checkingAdmin) return null;
 
   if (!isAdmin) {
     return (
@@ -1039,27 +1045,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
         case "letters":
           return (
             <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Briefvorlagen</CardTitle>
-                  <CardDescription>
-                    Öffnen Sie den Canvas- und Template-Designer für Briefvorlagen.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button onClick={() => setShowLetterTemplateManager(true)}>
-                    Brief-Template-Manager öffnen
-                  </Button>
-                  <Dialog open={showLetterTemplateManager} onOpenChange={setShowLetterTemplateManager}>
-                    <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>Brief-Templates verwalten</DialogTitle>
-                      </DialogHeader>
-                      <LetterTemplateManager />
-                    </DialogContent>
-                  </Dialog>
-                </CardContent>
-              </Card>
+              <LetterTemplateManager />
 
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
