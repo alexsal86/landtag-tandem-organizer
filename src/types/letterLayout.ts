@@ -38,6 +38,7 @@ export interface LetterLayoutSettings {
   attachments: {
     top: number;
   };
+  disabledBlocks?: Array<'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
 }
 
 export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
