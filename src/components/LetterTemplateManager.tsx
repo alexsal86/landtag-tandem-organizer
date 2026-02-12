@@ -3,7 +3,7 @@ import { Edit3, Trash2, Plus, Save, X, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -387,6 +387,7 @@ const LetterTemplateManager: React.FC = () => {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Vorschau: {template.name}</DialogTitle>
+            <DialogDescription>Vorschau des Brief-Templates.</DialogDescription>
           </DialogHeader>
           <div 
             className="border rounded-lg p-4 bg-white"
@@ -411,6 +412,7 @@ const LetterTemplateManager: React.FC = () => {
           <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Neues Brief-Template erstellen</DialogTitle>
+              <DialogDescription>Erstellen Sie ein neues Brief-Template mit Header, Footer und Layout-Einstellungen.</DialogDescription>
             </DialogHeader>
             
             <Tabs defaultValue="header-designer" className="w-full">
@@ -647,6 +649,7 @@ const LetterTemplateManager: React.FC = () => {
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Template bearbeiten: {editingTemplate.name}</DialogTitle>
+              <DialogDescription>Bearbeiten Sie die Einstellungen des Brief-Templates.</DialogDescription>
             </DialogHeader>
             
             <Tabs defaultValue="header-designer" className="w-full">
