@@ -19,6 +19,8 @@ import { StructuredFooterEditor } from '@/components/letters/StructuredFooterEdi
 import { LayoutSettingsEditor } from '@/components/letters/LayoutSettingsEditor';
 import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCanvasDesigner';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
+import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
+import { InformationBlockManager } from '@/components/administration/InformationBlockManager';
 
 interface LetterTemplate {
   id: string;
@@ -494,11 +496,13 @@ const LetterTemplateManager: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-semibold">Templates</h2><p className="text-sm text-muted-foreground">Brieflayouts und Inhalte bearbeiten</p></div>
-        <Button onClick={() => setShowCreateDialog(prev => !prev)}>
-          <Plus className="h-4 w-4 mr-2" />
-          {showCreateDialog ? 'Erstellung schließen' : 'Neues Template'}
-        </Button>
+        <div><h2 className="text-xl font-semibold">Briefvorlagen</h2></div>
+        {!showCreateDialog && !editingTemplate && (
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Neues Template
+          </Button>
+        )}
       </div>
 
 
@@ -621,6 +625,9 @@ const LetterTemplateManager: React.FC = () => {
                   width: formData.layout_settings.returnAddress.width,
                   height: formData.layout_settings.returnAddress.height,
                 })}
+                <div className="border-t pt-4">
+                  <SenderInformationManager />
+                </div>
               </TabsContent>
 
               <TabsContent value="block-info" className="space-y-4">
@@ -630,6 +637,9 @@ const LetterTemplateManager: React.FC = () => {
                   width: formData.layout_settings.infoBlock.width,
                   height: formData.layout_settings.infoBlock.height,
                 })}
+                <div className="border-t pt-4">
+                  <InformationBlockManager />
+                </div>
               </TabsContent>
 
               <TabsContent value="block-subject" className="space-y-4">
@@ -639,6 +649,30 @@ const LetterTemplateManager: React.FC = () => {
                   width: formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
                   height: Math.max(8, formData.layout_settings.subject.marginBottom + 4),
                 })}
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-3">Variablen-Platzhalter</h3>
+                  <p className="text-sm text-muted-foreground mb-3">Ziehen Sie Platzhalter per Drag-and-Drop auf den Canvas.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: 'Betreff', variable: '{{betreff}}' },
+                      { label: 'Datum', variable: '{{datum}}' },
+                      { label: 'Empfänger', variable: '{{empfaenger_name}}' },
+                      { label: 'Absender', variable: '{{absender_name}}' },
+                    ].map((v) => (
+                      <div
+                        key={v.variable}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', v.variable);
+                          e.dataTransfer.effectAllowed = 'copy';
+                        }}
+                        className="px-3 py-1.5 rounded-full border bg-muted text-sm cursor-grab active:cursor-grabbing select-none"
+                      >
+                        {v.label} <span className="text-muted-foreground text-xs ml-1">{v.variable}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="block-content" className="space-y-4">
@@ -675,7 +709,7 @@ const LetterTemplateManager: React.FC = () => {
         </Card>
       )}
 
-      {loading ? (
+      {!showCreateDialog && (loading ? (
         <div className="text-center py-8">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p className="mt-2 text-muted-foreground">Templates werden geladen...</p>
@@ -732,7 +766,7 @@ const LetterTemplateManager: React.FC = () => {
             </Card>
           ))}
         </div>
-      )}
+      ))}
 
       {/* Edit Dialog */}
       {editingTemplate && (
@@ -893,6 +927,9 @@ const LetterTemplateManager: React.FC = () => {
                   width: formData.layout_settings.returnAddress.width,
                   height: formData.layout_settings.returnAddress.height,
                 })}
+                <div className="border-t pt-4">
+                  <SenderInformationManager />
+                </div>
               </TabsContent>
 
               <TabsContent value="block-info" className="space-y-4">
@@ -902,6 +939,9 @@ const LetterTemplateManager: React.FC = () => {
                   width: formData.layout_settings.infoBlock.width,
                   height: formData.layout_settings.infoBlock.height,
                 })}
+                <div className="border-t pt-4">
+                  <InformationBlockManager />
+                </div>
               </TabsContent>
 
               <TabsContent value="block-subject" className="space-y-4">
@@ -911,6 +951,30 @@ const LetterTemplateManager: React.FC = () => {
                   width: formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
                   height: Math.max(8, formData.layout_settings.subject.marginBottom + 4),
                 })}
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-3">Variablen-Platzhalter</h3>
+                  <p className="text-sm text-muted-foreground mb-3">Ziehen Sie Platzhalter per Drag-and-Drop auf den Canvas.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: 'Betreff', variable: '{{betreff}}' },
+                      { label: 'Datum', variable: '{{datum}}' },
+                      { label: 'Empfänger', variable: '{{empfaenger_name}}' },
+                      { label: 'Absender', variable: '{{absender_name}}' },
+                    ].map((v) => (
+                      <div
+                        key={v.variable}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', v.variable);
+                          e.dataTransfer.effectAllowed = 'copy';
+                        }}
+                        className="px-3 py-1.5 rounded-full border bg-muted text-sm cursor-grab active:cursor-grabbing select-none"
+                      >
+                        {v.label} <span className="text-muted-foreground text-xs ml-1">{v.variable}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="block-content" className="space-y-4">
