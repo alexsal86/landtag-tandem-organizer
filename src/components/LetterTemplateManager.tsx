@@ -329,6 +329,12 @@ const LetterTemplateManager: React.FC = () => {
     resetForm();
   };
 
+
+
+  const updateLayoutSettings = (updater: (layout: LetterLayoutSettings) => LetterLayoutSettings) => {
+    setFormData((prev) => ({ ...prev, layout_settings: updater(prev.layout_settings) }));
+  };
+
   const renderPreview = (template: LetterTemplate) => {
     // Use structured elements if available and layout type is structured
     let previewHtml = '';
@@ -420,13 +426,18 @@ const LetterTemplateManager: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <Tabs value={createActiveTab} onValueChange={setCreateActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-11">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
                 <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
                 <TabsTrigger value="canvas-designer">Canvas</TabsTrigger>
                 <TabsTrigger value="layout-settings">Layout-Einstellungen</TabsTrigger>
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
+                <TabsTrigger value="block-address">Adressfeld</TabsTrigger>
+                <TabsTrigger value="block-info">Info-Block</TabsTrigger>
+                <TabsTrigger value="block-subject">Betreff</TabsTrigger>
+                <TabsTrigger value="block-content">Inhalt</TabsTrigger>
+                <TabsTrigger value="block-attachments">Anlagen</TabsTrigger>
               </TabsList>
 
               <TabsContent value="header-designer" className="space-y-4">
@@ -511,7 +522,42 @@ const LetterTemplateManager: React.FC = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="advanced" className="space-y-4">
+              
+
+              <TabsContent value="block-address" className="space-y-4">
+                <h3 className="text-lg font-semibold">Adressfeld</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Links (mm)</Label><Input type="number" value={formData.layout_settings.addressField.left} onChange={(e) => updateLayoutSettings((l) => ({ ...l, addressField: { ...l.addressField, left: parseFloat(e.target.value) || 0 } }))} /></div>
+                  <div><Label>Oben (mm)</Label><Input type="number" value={formData.layout_settings.addressField.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, addressField: { ...l.addressField, top: parseFloat(e.target.value) || 0 } }))} /></div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="block-info" className="space-y-4">
+                <h3 className="text-lg font-semibold">Info-Block</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Links (mm)</Label><Input type="number" value={formData.layout_settings.infoBlock.left} onChange={(e) => updateLayoutSettings((l) => ({ ...l, infoBlock: { ...l.infoBlock, left: parseFloat(e.target.value) || 0 } }))} /></div>
+                  <div><Label>Oben (mm)</Label><Input type="number" value={formData.layout_settings.infoBlock.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, infoBlock: { ...l.infoBlock, top: parseFloat(e.target.value) || 0 } }))} /></div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="block-subject" className="space-y-4">
+                <h3 className="text-lg font-semibold">Betreffbereich</h3>
+                <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.subject.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, subject: { ...l.subject, top: parseFloat(e.target.value) || 0 } }))} /></div>
+              </TabsContent>
+
+              <TabsContent value="block-content" className="space-y-4">
+                <h3 className="text-lg font-semibold">Inhaltsbereich</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.content.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, content: { ...l.content, top: parseFloat(e.target.value) || 0 } }))} /></div>
+                  <div><Label>Max. Höhe (mm)</Label><Input type="number" value={formData.layout_settings.content.maxHeight} onChange={(e) => updateLayoutSettings((l) => ({ ...l, content: { ...l.content, maxHeight: parseFloat(e.target.value) || 0 } }))} /></div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="block-attachments" className="space-y-4">
+                <h3 className="text-lg font-semibold">Anlagenbereich</h3>
+                <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.attachments.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, attachments: { ...l.attachments, top: parseFloat(e.target.value) || 0 } }))} /></div>
+              </TabsContent>
+<TabsContent value="advanced" className="space-y-4">
                 <div>
                   <Label htmlFor="letterhead-html">Briefkopf HTML</Label>
                   <Textarea id="letterhead-html" value={formData.letterhead_html} onChange={(e) => setFormData(prev => ({ ...prev, letterhead_html: e.target.value }))} rows={8} />
@@ -601,13 +647,18 @@ const LetterTemplateManager: React.FC = () => {
             </DialogHeader>
             
             <Tabs value={editActiveTab} onValueChange={setEditActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-11">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
                 <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
                 <TabsTrigger value="canvas-designer">Canvas</TabsTrigger>
                 <TabsTrigger value="layout-settings">Layout-Einstellungen</TabsTrigger>
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
+                <TabsTrigger value="block-address">Adressfeld</TabsTrigger>
+                <TabsTrigger value="block-info">Info-Block</TabsTrigger>
+                <TabsTrigger value="block-subject">Betreff</TabsTrigger>
+                <TabsTrigger value="block-content">Inhalt</TabsTrigger>
+                <TabsTrigger value="block-attachments">Anlagen</TabsTrigger>
               </TabsList>
               
               <TabsContent value="header-designer" className="space-y-4">
@@ -730,7 +781,42 @@ const LetterTemplateManager: React.FC = () => {
                 </div>
               </TabsContent>
               
-              <TabsContent value="advanced" className="space-y-4">
+              
+
+              <TabsContent value="block-address" className="space-y-4">
+                <h3 className="text-lg font-semibold">Adressfeld</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Links (mm)</Label><Input type="number" value={formData.layout_settings.addressField.left} onChange={(e) => updateLayoutSettings((l) => ({ ...l, addressField: { ...l.addressField, left: parseFloat(e.target.value) || 0 } }))} /></div>
+                  <div><Label>Oben (mm)</Label><Input type="number" value={formData.layout_settings.addressField.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, addressField: { ...l.addressField, top: parseFloat(e.target.value) || 0 } }))} /></div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="block-info" className="space-y-4">
+                <h3 className="text-lg font-semibold">Info-Block</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Links (mm)</Label><Input type="number" value={formData.layout_settings.infoBlock.left} onChange={(e) => updateLayoutSettings((l) => ({ ...l, infoBlock: { ...l.infoBlock, left: parseFloat(e.target.value) || 0 } }))} /></div>
+                  <div><Label>Oben (mm)</Label><Input type="number" value={formData.layout_settings.infoBlock.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, infoBlock: { ...l.infoBlock, top: parseFloat(e.target.value) || 0 } }))} /></div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="block-subject" className="space-y-4">
+                <h3 className="text-lg font-semibold">Betreffbereich</h3>
+                <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.subject.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, subject: { ...l.subject, top: parseFloat(e.target.value) || 0 } }))} /></div>
+              </TabsContent>
+
+              <TabsContent value="block-content" className="space-y-4">
+                <h3 className="text-lg font-semibold">Inhaltsbereich</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.content.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, content: { ...l.content, top: parseFloat(e.target.value) || 0 } }))} /></div>
+                  <div><Label>Max. Höhe (mm)</Label><Input type="number" value={formData.layout_settings.content.maxHeight} onChange={(e) => updateLayoutSettings((l) => ({ ...l, content: { ...l.content, maxHeight: parseFloat(e.target.value) || 0 } }))} /></div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="block-attachments" className="space-y-4">
+                <h3 className="text-lg font-semibold">Anlagenbereich</h3>
+                <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.attachments.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, attachments: { ...l.attachments, top: parseFloat(e.target.value) || 0 } }))} /></div>
+              </TabsContent>
+<TabsContent value="advanced" className="space-y-4">
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Erweiterte HTML/CSS Bearbeitung</h3>
                   <p className="text-sm text-muted-foreground">

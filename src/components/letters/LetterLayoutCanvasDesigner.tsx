@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +8,7 @@ import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayo
 
 type BlockKey = 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments';
 type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general';
-type CanvasTool = 'header-text' | 'header-image' | 'footer-block';
+type CanvasTool = 'header-text' | 'footer-block';
 
 interface Rect {
   x: number;
@@ -107,6 +107,8 @@ export function LetterLayoutCanvasDesigner({
   const [dragHeader, setDragHeader] = useState<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const [dragFooter, setDragFooter] = useState<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const [localLayout, setLocalLayout] = useState<LetterLayoutSettings>(() => cloneLayout(layoutSettings));
+  const [selectedHeaderElementId, setSelectedHeaderElementId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setLocalLayout(cloneLayout(layoutSettings));
@@ -274,15 +276,24 @@ export function LetterLayoutCanvasDesigner({
     onHeaderElementsChange?.([...headerElements, text]);
   };
 
-  const addHeaderImage = (x = 130, y = 6) => {
+  const selectedHeaderElement = headerElements.find((element) => element.id === selectedHeaderElementId) || null;
+
+  const updateHeaderElement = (id: string, updates: Partial<HeaderElement>) => {
+    onHeaderElementsChange?.(headerElements.map((element) => (element.id === id ? { ...element, ...updates } : element)));
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
     const image: HeaderElement = {
       id: Date.now().toString(),
       type: 'image',
-      x,
-      y,
+      x: 130,
+      y: 6,
       width: 40,
       height: 20,
-      imageUrl: 'https://placehold.co/240x120?text=Logo',
+      imageUrl: objectUrl,
     };
     onHeaderElementsChange?.([...headerElements, image]);
   };
@@ -320,8 +331,6 @@ export function LetterLayoutCanvasDesigner({
 
     if (tool === 'header-text') {
       addHeaderText(clamp(xMm, 0, 180), clamp(yMm, 0, localLayout.header.height - 8));
-    } else if (tool === 'header-image') {
-      addHeaderImage(clamp(xMm, 0, 170), clamp(yMm, 0, localLayout.header.height - 20));
     } else if (tool === 'footer-block') {
       addFooterBlock(clamp(xMm, localLayout.margins.left, localLayout.pageWidth - localLayout.margins.right - 20), clamp(yMm, localLayout.footer.top - 6, localLayout.footer.top + 14));
     }
@@ -374,15 +383,34 @@ export function LetterLayoutCanvasDesigner({
               <div draggable onDragStart={(e) => onToolDragStart(e, 'header-text')} className="rounded border bg-background px-3 py-2 cursor-grab active:cursor-grabbing">
                 Header-Text ziehen
               </div>
-              <div draggable onDragStart={(e) => onToolDragStart(e, 'header-image')} className="rounded border bg-background px-3 py-2 cursor-grab active:cursor-grabbing">
-                Header-Bild ziehen
-              </div>
               <div draggable onDragStart={(e) => onToolDragStart(e, 'footer-block')} className="rounded border bg-background px-3 py-2 cursor-grab active:cursor-grabbing">
                 Footer-Block ziehen
               </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                Bild hochladen (Header)
+              </Button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
             </div>
           </div>
 
+
+          {selectedHeaderElement && (
+            <div className="border rounded-lg p-3 space-y-2">
+              <Label className="text-xs uppercase text-muted-foreground">Header-Element bearbeiten</Label>
+              {selectedHeaderElement.type === 'text' && (
+                <>
+                  <Input value={selectedHeaderElement.content || ''} onChange={(e) => updateHeaderElement(selectedHeaderElement.id, { content: e.target.value })} placeholder="Text" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="number" value={selectedHeaderElement.fontSize || 11} onChange={(e) => updateHeaderElement(selectedHeaderElement.id, { fontSize: parseFloat(e.target.value) || 11 })} placeholder="Schriftgröße" />
+                    <Input type="color" value={selectedHeaderElement.color || '#000000'} onChange={(e) => updateHeaderElement(selectedHeaderElement.id, { color: e.target.value })} />
+                  </div>
+                </>
+              )}
+              {selectedHeaderElement.type === 'image' && (
+                <div className="text-xs text-muted-foreground">Bild kann per Drag verschoben werden. Neues Bild über "Bild hochladen".</div>
+              )}
+            </div>
+          )}
           <div className="border rounded-lg p-3 space-y-2">
             <Label className="text-xs uppercase text-muted-foreground">Ausgewählt: {BLOCKS.find((b) => b.key === selected)?.label}</Label>
             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -423,20 +451,30 @@ export function LetterLayoutCanvasDesigner({
               }}
             />
 
+            <div
+              className="absolute border border-cyan-600/60 bg-cyan-100/30 text-cyan-900 text-[11px] px-2 py-1 cursor-pointer"
+              style={{ left: 0, top: 0, width: localLayout.pageWidth * SCALE, height: localLayout.header.height * SCALE }}
+              onClick={() => onJumpToTab?.('header-designer')}
+              title="Header klicken: Header-Designer öffnen"
+            >
+              Headerbereich
+            </div>
+
             {headerElements.map((element) => (
               <div
                 key={element.id}
                 onMouseDown={(event) => {
                   event.stopPropagation();
+                  setSelectedHeaderElementId(element.id);
                   setDragHeader({ id: element.id, startX: event.clientX, startY: event.clientY, origX: element.x, origY: element.y });
                 }}
-                className="absolute border border-emerald-500 bg-emerald-100/70 text-[11px] px-2 py-1 cursor-move"
+                className={`absolute border bg-emerald-100/70 px-2 py-1 cursor-move ${selectedHeaderElementId === element.id ? 'border-primary ring-2 ring-primary/50' : 'border-emerald-500'}`}
                 style={{ left: element.x * SCALE, top: element.y * SCALE, width: (element.width || 60) * SCALE, minHeight: (element.height || 8) * SCALE }}
               >
                 {element.type === 'image' ? (
                   <img src={element.imageUrl} alt="Header" className="h-full w-full object-contain" />
                 ) : (
-                  <span>{element.content || 'Text'}</span>
+                  <span style={{ fontSize: `${element.fontSize || 11}px`, color: element.color || '#000000', fontFamily: element.fontFamily || 'Arial', fontWeight: element.fontWeight || 'normal' }}>{element.content || 'Text'}</span>
                 )}
               </div>
             ))}
