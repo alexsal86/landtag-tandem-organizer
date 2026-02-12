@@ -1,57 +1,80 @@
 
-# Plan: LetterTemplateManager Dialog-Button wiederherstellen (ohne Nested-Dialog-Fehler)
 
-## Problem
+# Plan: Fix "Maximum update depth exceeded" in Dialog
 
-Der LetterTemplateManager verwendet intern eigene `Dialog`-Komponenten fuer "Neues Template erstellen", "Template bearbeiten" und "Vorschau". Wenn der Manager selbst in einem aeusseren `Dialog` gerendert wird (wie vorher in der Administration), entstehen **verschachtelte Dialoge** -- das verursacht React Error #185 und die fehlende `aria-describedby`-Warnung.
+## Ursache
+
+Die benutzerdefinierte `dialog.tsx` rendert `DialogPrimitive.Content` als **Kind-Element** innerhalb von `DialogOverlay`. In Kombination mit React 19 und den Radix UI Primitives (FocusScope, Slot) entsteht eine Endlosschleife bei `setRef`-Callbacks.
+
+Das Standard-Radix-Pattern sieht vor, dass `Overlay` und `Content` **Geschwister-Elemente** innerhalb des Portals sind -- nicht verschachtelt.
 
 ## Loesung
 
-Den Button und die Anzeige des LetterTemplateManagers wiederherstellen, aber **ohne Dialog**. Stattdessen wird ein einfacher Show/Hide-Toggle verwendet: Klick auf den Button blendet den LetterTemplateManager inline ein, ein weiterer Klick blendet ihn wieder aus.
+Die `DialogContent`-Komponente in `src/components/ui/dialog.tsx` wird auf das Standard-Radix-Pattern zurueckgesetzt:
 
-## Aenderung in `src/pages/Administration.tsx`
+```text
+Aktuell (fehlerhaft):
+  Portal
+    -> Overlay (enthalt Content als Kind)
+        -> Content
 
-**1. State wieder einfuehren:**
-
-```
-const [showLetterTemplateManager, setShowLetterTemplateManager] = useState(false);
-```
-
-**2. "letters"-Sektion anpassen:**
-
-```
-case "letters":
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Briefvorlagen</CardTitle>
-          <CardDescription>
-            Oeffnen Sie den Template-Designer fuer Briefvorlagen.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={() => setShowLetterTemplateManager(!showLetterTemplateManager)}>
-            {showLetterTemplateManager ? "Manager schliessen" : "Brief-Template-Manager oeffnen"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {showLetterTemplateManager && <LetterTemplateManager />}
-
-      <div className="grid gap-6 md:grid-cols-2">
-        ...Absenderinformationen + Informationsbloecke...
-      </div>
-    </div>
-  );
+Standard (korrekt):
+  Portal
+    -> Overlay (eigenstaendig)
+    -> Content (Geschwister)
 ```
 
-Damit wird der LetterTemplateManager **inline** angezeigt (nicht in einem Dialog), und seine eigenen internen Dialoge funktionieren fehlerfrei.
+## Aenderung in `src/components/ui/dialog.tsx`
 
-## Zusammenfassung
+**DialogOverlay** wird auf die Standard-Implementierung zurueckgesetzt (ohne Kinder, ohne Flex-Centering):
+
+```
+const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    )}
+    {...props}
+  />
+))
+```
+
+**DialogContent** wird als Geschwister neben dem Overlay gerendert (Standard Radix/shadcn Pattern):
+
+```
+const DialogContent = React.forwardRef(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ...">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+))
+```
+
+Die wesentlichen Unterschiede:
+- Content wird nicht mehr in einen `overflow-y-auto`-Wrapper gepackt (die LetterTemplateManager-Dialoge haben bereits eigenes `overflow-y-auto` via className)
+- Content ist per `fixed + translate` zentriert (Standard) statt per Flex auf dem Overlay
+- Overlay und Content sind Geschwister im Portal
+
+## Betroffene Datei
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/Administration.tsx` | `showLetterTemplateManager`-State zurueck, Button mit Inline-Toggle statt Dialog |
+| `src/components/ui/dialog.tsx` | DialogOverlay und DialogContent auf Standard-Radix/shadcn-Pattern zuruecksetzen |
 
-Keine weiteren Dateien betroffen. Kein aeusserer Dialog mehr = kein Nested-Dialog-Fehler.
+Keine weiteren Dateien betroffen. Die `className`-Overrides in LetterTemplateManager (`max-w-6xl max-h-[80vh] overflow-y-auto`) funktionieren weiterhin, da sie direkt auf `DialogPrimitive.Content` angewendet werden.
+
