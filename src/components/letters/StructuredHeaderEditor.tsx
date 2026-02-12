@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({
   const { currentTenant } = useTenant();
   const [elements, setElements] = useState<HeaderElement[]>(initialElements);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const previewRef = useRef<HTMLDivElement | null>(null);
 
   const headerMaxWidth = 210; // A4 width in mm
   const headerMaxHeight = 45; // Header height in mm
@@ -131,6 +132,39 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({
     }
   };
 
+
+
+  const onToolDragStart = (event: React.DragEvent, tool: 'text') => {
+    event.dataTransfer.setData('application/x-header-tool', tool);
+    event.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const onPreviewDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const tool = event.dataTransfer.getData('application/x-header-tool');
+    if (!tool || !previewRef.current) return;
+    const rect = previewRef.current.getBoundingClientRect();
+    const scaleX = 300 / headerMaxWidth;
+    const scaleY = 220 / headerMaxHeight;
+    const x = Math.max(0, Math.min(headerMaxWidth, (event.clientX - rect.left) / scaleX));
+    const y = Math.max(0, Math.min(headerMaxHeight, (event.clientY - rect.top) / scaleY));
+    if (tool === 'text') {
+      const newElement: HeaderElement = {
+        id: Date.now().toString(),
+        type: 'text',
+        x: Math.round(x),
+        y: Math.round(y),
+        content: 'Neuer Text',
+        fontSize: 12,
+        fontFamily: 'Arial',
+        fontWeight: 'normal',
+        color: '#000000'
+      };
+      setElements((prev) => [...prev, newElement]);
+      setSelectedElementId(newElement.id);
+    }
+  };
+
   const selectedElement = elements.find(el => el.id === selectedElementId);
 
   const validatePosition = (value: number, max: number) => {
@@ -154,6 +188,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({
               <ImageIcon className="h-4 w-4 mr-2" />
               Bild hinzufügen
             </Button>
+            <div draggable onDragStart={(e) => onToolDragStart(e, 'text')} className="rounded border bg-background px-3 py-2 text-sm cursor-grab active:cursor-grabbing">
+              Text-Block in Header ziehen
+            </div>
           </CardContent>
         </Card>
 
@@ -400,17 +437,20 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({
           </CardHeader>
           <CardContent>
             <div 
+              ref={previewRef}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={onPreviewDrop}
               className="border border-gray-300 bg-white relative overflow-hidden"
               style={{
                 width: '100%',
-                height: '150px', // Scaled down for display
+                height: '220px', // Scaled down for display
                 backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)',
                 backgroundSize: '10px 10px'
               }}
             >
               {elements.map((element) => {
                 const scaleX = 300 / headerMaxWidth; // Scale factor for display
-                const scaleY = 150 / headerMaxHeight;
+                const scaleY = 220 / headerMaxHeight;
                 
                 if (element.type === 'text') {
                   return (
