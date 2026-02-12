@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from 'react';
-import { TypewriterText } from './TypewriterText';
 import { supabase } from '@/integrations/supabase/client';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -306,12 +305,23 @@ export const DashboardGreetingSection = () => {
     return text;
   }, [isLoading, userName, weatherKarlsruhe, weatherStuttgart, appointments, isShowingTomorrow]);
 
+  // Parse text for bold markers (**text**)
+  const parsedContent = useMemo(() => {
+    const parts = fullText.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const boldText = part.slice(2, -2);
+        return <strong key={index} className="font-bold">{boldText}</strong>;
+      }
+      return part;
+    });
+  }, [fullText]);
+
   return (
     <div>
-      <TypewriterText
-        text={fullText}
-        className="text-xl lg:text-2xl font-light tracking-tight text-foreground/90 block whitespace-pre-wrap"
-      />
+      <span className="text-xl lg:text-2xl font-light tracking-tight text-foreground/90 block whitespace-pre-wrap">
+        {parsedContent}
+      </span>
     </div>
   );
 };

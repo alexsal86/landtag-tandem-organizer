@@ -20,6 +20,7 @@ export interface MyWorkDecision {
   emailAttachments?: Array<{ id: string; file_name: string; file_path: string }>;
   topicIds?: string[];
   response_options?: ResponseOption[];
+  priority?: number;
   creator?: {
     user_id: string;
     display_name: string | null;

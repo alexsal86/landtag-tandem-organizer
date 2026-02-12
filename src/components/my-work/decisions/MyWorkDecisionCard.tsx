@@ -14,7 +14,7 @@ import { EmailPreviewDialog } from "@/components/task-decisions/EmailPreviewDial
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { 
   MessageCircle, CheckCircle, MoreVertical, Edit, Archive, 
-  ClipboardList, Trash2, Paperclip, Globe, MessageSquare, Mail 
+  ClipboardList, Trash2, Paperclip, Globe, MessageSquare, Mail, Star 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
@@ -127,6 +127,17 @@ const MyWorkDecisionCardInner = ({
               </Badge>
             ) : null}
 
+              {(decision.priority ?? 0) > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                    </TooltipTrigger>
+                    <TooltipContent><p>Prioritär</p></TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
             {decision.visible_to_all && (
               <TooltipProvider>
                 <Tooltip>
@@ -182,14 +193,16 @@ const MyWorkDecisionCardInner = ({
         </div>
 
         {/* Title */}
-        <h3 className="font-bold text-lg mb-1 line-clamp-1 group-hover:line-clamp-none">{decision.title}</h3>
+        <div className="max-h-[4.5rem] overflow-hidden">
+          <h3 className="font-bold text-lg mb-1 line-clamp-1 group-hover:line-clamp-2">{decision.title}</h3>
 
-        {/* Description */}
-        {decision.description && (
-          <div onClick={(e) => e.stopPropagation()}>
-            <TruncatedDescription content={decision.description} maxLength={150} />
-          </div>
-        )}
+          {/* Description */}
+          {decision.description && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <TruncatedDescription content={decision.description} maxLength={100} />
+            </div>
+          )}
+        </div>
 
         {/* Metadata row */}
         <div className="flex items-center flex-wrap gap-3 mt-4 text-xs text-muted-foreground overflow-x-auto">

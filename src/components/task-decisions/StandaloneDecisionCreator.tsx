@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Vote, Mail, Plus, MessageSquare, Globe } from "lucide-react";
+import { Vote, Mail, Plus, MessageSquare, Globe, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
@@ -56,6 +56,7 @@ export const StandaloneDecisionCreator = ({
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
+  const [priority, setPriority] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState(DEFAULT_TEMPLATE_ID);
   const defaultTemplate = getTemplateById(DEFAULT_TEMPLATE_ID);
   const [customOptions, setCustomOptions] = useState<ResponseOption[]>(
@@ -221,13 +222,14 @@ export const StandaloneDecisionCreator = ({
       }
 
       const insertData = {
-        task_id: null, // This is the key difference - no task_id for standalone decisions
+        task_id: null,
         title: title.trim(),
         description: description.trim() || null,
         created_by: userData.user.id,
         tenant_id: tenantData.tenant_id,
         visible_to_all: visibleToAll,
         response_options: JSON.parse(JSON.stringify(currentOptions)),
+        priority: priority ? 1 : 0,
       };
       
       console.log('Creating standalone decision with data:', insertData);
@@ -511,7 +513,7 @@ export const StandaloneDecisionCreator = ({
       <DialogTrigger asChild>
         {TriggerButton}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Entscheidung anfordern</DialogTitle>
         </DialogHeader>
@@ -568,9 +570,6 @@ export const StandaloneDecisionCreator = ({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              {DECISION_TEMPLATES[selectedTemplateId as keyof typeof DECISION_TEMPLATES]?.description}
-            </p>
           </div>
 
           {selectedTemplateId === "custom" && (
@@ -581,68 +580,84 @@ export const StandaloneDecisionCreator = ({
           )}
 
           {currentOptions.length > 0 && (
-            <ResponseOptionsPreview options={currentOptions} />
+            <div className="flex items-start gap-2">
+              <span className="text-sm font-medium shrink-0">Vorschau:</span>
+              <ResponseOptionsPreview options={currentOptions} />
+            </div>
           )}
 
-          <div>
-            <label className="text-sm font-medium">Benutzer auswählen{!visibleToAll && ' (mindestens einer erforderlich)'}</label>
-            {profilesLoaded ? (
-              <MultiSelect
-                options={userOptions}
-                selected={selectedUsers}
-                onChange={setSelectedUsers}
-                placeholder="Benutzer auswählen"
-              />
-            ) : (
-              <div className="w-full h-10 bg-muted rounded-md flex items-center px-3 text-muted-foreground">
-                Lade Benutzer...
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Benutzer auswählen{!visibleToAll && ' (mindestens einer erforderlich)'}</label>
+              {profilesLoaded ? (
+                <MultiSelect
+                  options={userOptions}
+                  selected={selectedUsers}
+                  onChange={setSelectedUsers}
+                  placeholder="Benutzer auswählen"
+                />
+              ) : (
+                <div className="w-full h-10 bg-muted rounded-md flex items-center px-3 text-muted-foreground">
+                  Lade Benutzer...
+                </div>
+              )}
+            </div>
+            <div className="space-y-3 pt-6">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="send-by-email"
+                  checked={sendByEmail}
+                  onCheckedChange={(checked) => setSendByEmail(checked === true)}
+                />
+                <label htmlFor="send-by-email" className="text-sm font-medium flex items-center">
+                  <Mail className="h-4 w-4 mr-1" />
+                  Auch per E-Mail versenden
+                </label>
               </div>
-            )}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="send-via-matrix"
+                  checked={sendViaMatrix}
+                  onCheckedChange={(checked) => setSendViaMatrix(checked === true)}
+                />
+                <label htmlFor="send-via-matrix" className="text-sm font-medium flex items-center">
+                  <MessageSquare className="h-4 w-4 mr-1" />
+                  Auch via Matrix versenden
+                </label>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Themen (optional)</label>
-            <TopicSelector
-              selectedTopicIds={selectedTopicIds}
-              onTopicsChange={setSelectedTopicIds}
-              compact
-              placeholder="Themen hinzufügen..."
-            />
+          <div className="grid grid-cols-[70%_30%] gap-4">
+            <div>
+              <label className="text-sm font-medium">Dateien anhängen (optional)</label>
+              <DecisionFileUpload
+                mode="creation"
+                onFilesSelected={(files) => setSelectedFiles(prev => [...prev, ...files])}
+                canUpload={true}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Themen (optional)</label>
+              <TopicSelector
+                selectedTopicIds={selectedTopicIds}
+                onTopicsChange={setSelectedTopicIds}
+                compact
+                placeholder="Themen hinzufügen..."
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Dateien anhängen (optional)</label>
-            <DecisionFileUpload
-              mode="creation"
-              onFilesSelected={(files) => setSelectedFiles(prev => [...prev, ...files])}
-              canUpload={true}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="priority"
+              checked={priority}
+              onCheckedChange={(checked) => setPriority(checked === true)}
             />
-          </div>
-          
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="send-by-email"
-                checked={sendByEmail}
-                onCheckedChange={(checked) => setSendByEmail(checked === true)}
-              />
-              <label htmlFor="send-by-email" className="text-sm font-medium flex items-center">
-                <Mail className="h-4 w-4 mr-1" />
-                Auch per E-Mail versenden
-              </label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="send-via-matrix"
-                checked={sendViaMatrix}
-                onCheckedChange={(checked) => setSendViaMatrix(checked === true)}
-              />
-              <label htmlFor="send-via-matrix" className="text-sm font-medium flex items-center">
-                <MessageSquare className="h-4 w-4 mr-1" />
-                Auch via Matrix versenden
-              </label>
-            </div>
+            <label htmlFor="priority" className="text-sm font-medium flex items-center">
+              <Star className="h-4 w-4 mr-1 text-amber-500" />
+              Als prioritär markieren
+            </label>
           </div>
         </div>
         

@@ -103,6 +103,7 @@ const navigationGroups: NavGroup[] = [
       { id: "casefiles", label: "FallAkten", icon: Briefcase },
       { id: "documents", label: "Dokumente", icon: FileText },
       { id: "drucksachen", label: "Drucksachen", icon: Archive },
+      { id: "knowledge", label: "Wissen", icon: Database },
     ]
   },
   {
@@ -117,7 +118,6 @@ const navigationGroups: NavGroup[] = [
     icon: MoreHorizontal,
     subItems: [
       { id: "karten", label: "Karten", icon: MapPin },
-      { id: "knowledge", label: "Wissen", icon: Database },
       { id: "calls", label: "Anrufe", icon: Phone },
     ]
   }
