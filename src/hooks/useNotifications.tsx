@@ -580,6 +580,31 @@ export const useNotifications = () => {
     loadNotifications();
   }, [loadNotifications]);
 
+  // Auto-renew push subscription if permission is granted but no active DB subscription
+  useEffect(() => {
+    if (!user || !pushSupported || pushPermission !== 'granted') return;
+
+    const checkAndRenewSubscription = async () => {
+      try {
+        const { data } = await supabase
+          .from('push_subscriptions')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .limit(1);
+
+        if (!data || data.length === 0) {
+          console.log('🔄 No active push subscription found, auto-renewing...');
+          await subscribeToPush();
+        }
+      } catch (error) {
+        console.error('Error checking/renewing push subscription:', error);
+      }
+    };
+
+    checkAndRenewSubscription();
+  }, [user, pushSupported, pushPermission, subscribeToPush]);
+
   return {
     notifications,
     unreadCount,

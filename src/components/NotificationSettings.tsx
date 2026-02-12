@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Bell, Clock, Mail, Smartphone, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -180,6 +180,30 @@ export const NotificationSettings: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [quietHoursStart, setQuietHoursStart] = useState('22:00');
   const [quietHoursEnd, setQuietHoursEnd] = useState('08:00');
+  const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean | null>(null);
+
+  // Check if user has an active push subscription in the DB
+  const checkActiveSubscription = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase
+        .from('push_subscriptions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .limit(1);
+      setHasActiveSubscription(!!data && data.length > 0);
+    } catch (error) {
+      console.error('Error checking active subscription:', error);
+      setHasActiveSubscription(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (pushPermission === 'granted') {
+      checkActiveSubscription();
+    }
+  }, [pushPermission, checkActiveSubscription]);
 
   // Load notification settings
   useEffect(() => {
@@ -403,6 +427,16 @@ export const NotificationSettings: React.FC = () => {
     const success = await requestPushPermission();
     if (success) {
       await subscribeToPush();
+      await checkActiveSubscription();
+    }
+  };
+
+  const renewPushSubscription = async () => {
+    try {
+      await subscribeToPush();
+      await checkActiveSubscription();
+    } catch (error) {
+      console.error('Error renewing push subscription:', error);
     }
   };
 
@@ -432,8 +466,9 @@ export const NotificationSettings: React.FC = () => {
                 <Label className="text-base">Browser-Benachrichtigungen</Label>
                 <p className="text-sm text-muted-foreground">
                   Status: {
-                    pushPermission === 'granted' ? 'Aktiviert' :
-                    pushPermission === 'denied' ? 'Blockiert' : 'Nicht aktiviert'
+                    pushPermission === 'granted'
+                      ? (hasActiveSubscription === false ? 'Berechtigung erteilt, aber Verbindung abgelaufen' : 'Aktiviert')
+                      : pushPermission === 'denied' ? 'Blockiert' : 'Nicht aktiviert'
                   }
                 </p>
               </div>
@@ -444,6 +479,12 @@ export const NotificationSettings: React.FC = () => {
                   disabled={pushPermission === 'denied'}
                 >
                   Aktivieren
+                </Button>
+              )}
+
+              {pushPermission === 'granted' && hasActiveSubscription === false && (
+                <Button onClick={renewPushSubscription} variant="outline">
+                  Push erneuern
                 </Button>
               )}
             </div>
