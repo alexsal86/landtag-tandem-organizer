@@ -1,55 +1,48 @@
 
 
-# Plan: Bilder im Header-Designer reparieren + Loeschfunktion
+# Plan: Bilder im Header-Designer -- Blob-URL-Ansatz
 
 ## Problem
 
-Die Bilder in der Sidebar-Galerie des Header-Designers werden nicht angezeigt -- es erscheint nur der Dateiname (alt-Text). Die oeffentliche URL ist technisch korrekt (Bucket ist public, Dateien existieren), aber die Bilder laden trotzdem nicht im Browser.
+Sowohl oeffentliche als auch signierte URLs funktionieren beim direkten Aufrufen, aber nicht im Browser-Preview. Das liegt wahrscheinlich an Cross-Origin-Einschraenkungen der Preview-Umgebung.
 
-## Ursache
+## Loesung: Blob-URLs statt externe URLs
 
-Die `getPublicUrl`-Methode erzeugt zwar eine gueltige URL, aber diese funktioniert moeglicherweise nicht im Kontext der Preview-Umgebung. **Signierte URLs** (mit Auth-Token) umgehen dieses Problem, da sie direkt ueber den authentifizierten Storage-Endpoint laufen.
+Statt eine URL zu erzeugen und dem Browser das Laden zu ueberlassen, werden die Bilder direkt ueber den Supabase JS Client heruntergeladen (`download()`) und als lokale Blob-URLs bereitgestellt. Das umgeht alle URL- und CORS-Probleme vollstaendig.
 
-## Loesung
-
-### 1. Signierte URLs fuer Bildanzeige verwenden
-
-Die `loadSystemImages`-Funktion wird so umgebaut, dass sie `createSignedUrl` verwendet (mit 7 Tagen Gueltigkeit). Da der Nutzer authentifiziert ist, funktionieren signierte URLs zuverlaessig.
-
-### 2. Fehlerbehandlung fuer Bilder
-
-Jedes `<img>`-Tag in der Galerie bekommt einen `onError`-Handler, der die URL in der Konsole loggt. Zusaetzlich wird ein Fallback-Icon angezeigt, wenn ein Bild nicht laedt.
-
-### 3. Loeschfunktion fuer Bilder
-
-Jedes Bild in der Galerie bekommt einen kleinen X-Button. Beim Klick wird:
-- Die Datei aus dem Supabase Storage geloescht
-- Die Galerie aktualisiert
-- Eine Bestaetigungsmeldung angezeigt
+```text
+Vorher:  getPublicUrl/createSignedUrl -> externe URL -> Browser laedt Bild (scheitert)
+Nachher: download() via Supabase Client -> Blob -> URL.createObjectURL() -> lokale URL (funktioniert immer)
+```
 
 ## Technische Details
 
 ### Datei: `src/components/letters/StructuredHeaderEditor.tsx`
 
-**loadSystemImages (Zeilen 126-146):**
-- Statt `getPublicUrl` wird `createSignedUrl` mit `expiresIn: 604800` (7 Tage) verwendet
-- Die Funktion wird wieder async mit `Promise.all`
-- Fallback auf `getPublicUrl` falls signierte URL fehlschlaegt
+**loadSystemImages (Zeilen 126-153):**
 
-**Neue Funktion `deleteSystemImage`:**
-- Nimmt den Dateinamen entgegen
-- Loescht die Datei via `supabase.storage.from('letter-assets').remove([path])`
-- Ruft `loadSystemImages()` erneut auf
+Die Funktion wird so umgebaut:
 
-**Galerie-Rendering (Zeilen 405-417):**
-- Jedes Bild bekommt einen relativen Container mit einem absolut positionierten Loeschen-Button (X-Icon, oben rechts)
-- `<img>` bekommt `onError` Handler fuer Debugging
-- Beim Klick auf X wird `deleteSystemImage(img.name)` aufgerufen mit Bestaetigung
+1. Dateien auflisten (wie bisher via `.list()`)
+2. Fuer jede Datei: `supabase.storage.from('letter-assets').download(path)` aufrufen
+3. Den zurueckgegebenen Blob mit `URL.createObjectURL(blob)` in eine lokale URL umwandeln
+4. Diese Blob-URL als `img.url` verwenden
+
+Blob-URLs sehen so aus: `blob:https://...` und funktionieren immer im lokalen Browser-Kontext.
+
+**Aufraeumen der Blob-URLs:**
+
+Beim Neuladen der Bilder oder Unmount der Komponente werden die alten Blob-URLs via `URL.revokeObjectURL()` freigegeben, um Speicherlecks zu vermeiden.
+
+**deleteSystemImage:**
+
+Bleibt wie implementiert (`.remove([path])` + `loadSystemImages()`)
+
+**Galerie-Rendering:**
+
+Bleibt wie implementiert (mit `onError`-Handler und Loeschen-Button)
 
 ### Aenderungsumfang
 
-Es wird nur eine Datei geaendert: `src/components/letters/StructuredHeaderEditor.tsx`
-- `loadSystemImages`: async mit `createSignedUrl` 
-- Neue Funktion `deleteSystemImage`
-- Galerie-UI: Loeschen-Button pro Bild, `onError`-Handler
+Nur die Funktion `loadSystemImages` wird geaendert (ca. 15 Zeilen). Der Rest bleibt unveraendert.
 
