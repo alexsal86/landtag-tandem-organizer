@@ -88,7 +88,6 @@ export default function Administration() {
   const [activeSubSection, setActiveSubSection] = useState("general");
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
   const [showLetterTemplateManager, setShowLetterTemplateManager] = useState(false);
-  
 
   // Template states
   const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
@@ -1050,17 +1049,23 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                 <CardHeader>
                   <CardTitle>Briefvorlagen</CardTitle>
                   <CardDescription>
-                    Öffnen Sie den Template-Designer für Briefvorlagen.
+                    Öffnen Sie den Canvas- und Template-Designer für Briefvorlagen.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button onClick={() => setShowLetterTemplateManager(!showLetterTemplateManager)}>
-                    {showLetterTemplateManager ? "Manager schließen" : "Brief-Template-Manager öffnen"}
+                  <Button onClick={() => setShowLetterTemplateManager(true)}>
+                    Brief-Template-Manager öffnen
                   </Button>
+                  <Dialog open={showLetterTemplateManager} onOpenChange={setShowLetterTemplateManager}>
+                    <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Brief-Templates verwalten</DialogTitle>
+                      </DialogHeader>
+                      <LetterTemplateManager />
+                    </DialogContent>
+                  </Dialog>
                 </CardContent>
               </Card>
-
-              {showLetterTemplateManager && <LetterTemplateManager />}
 
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
