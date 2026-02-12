@@ -23,6 +23,12 @@ export interface LetterLayoutSettings {
     width: number;
     height: number;
   };
+  returnAddress: {
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  };
   subject: {
     top: number;
     marginBottom: number;
@@ -38,7 +44,8 @@ export interface LetterLayoutSettings {
   attachments: {
     top: number;
   };
-  disabledBlocks?: Array<'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
+  blockContent?: Record<string, Array<{ id: string; type?: string; content?: string; x?: number; y?: number; width?: number; height?: number }>>;
+  disabledBlocks?: Array<'header' | 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
 }
 
 export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
@@ -65,6 +72,12 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
     left: 125,
     width: 75,
     height: 40
+  },
+  returnAddress: {
+    top: 50,
+    left: 25,
+    width: 85,
+    height: 17.7
   },
   subject: {
     top: 101.46,

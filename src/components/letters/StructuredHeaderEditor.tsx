@@ -38,6 +38,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [elements, setElements] = useState<HeaderElement[]>(initialElements);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [showRuler, setShowRuler] = useState(false);
+  const [showCenterGuides, setShowCenterGuides] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; ox: number; oy: number } | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
@@ -46,6 +47,37 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const headerMaxHeight = 45;
   const previewWidth = 780;
   const previewHeight = 300;
+
+  const SNAP_MM = 1.5;
+
+  const snapToOtherElements = (id: string, x: number, y: number) => {
+    const current = elements.find((el) => el.id === id);
+    if (!current) return { x, y };
+    let sx = x;
+    let sy = y;
+    const w = current.width || 50;
+    const h = current.height || 10;
+    const edgeTargets = elements.filter((el) => el.id !== id).flatMap((el) => {
+      const tw = el.width || 50;
+      const th = el.height || 10;
+      return [
+        { x: el.x, y: el.y },
+        { x: el.x + tw, y: el.y + th },
+        { x: el.x + tw / 2, y: el.y + th / 2 },
+      ];
+    });
+
+    for (const t of edgeTargets) {
+      if (Math.abs(sx - t.x) <= SNAP_MM) sx = t.x;
+      if (Math.abs(sx + w - t.x) <= SNAP_MM) sx = t.x - w;
+      if (Math.abs(sx + w / 2 - t.x) <= SNAP_MM) sx = t.x - w / 2;
+      if (Math.abs(sy - t.y) <= SNAP_MM) sy = t.y;
+      if (Math.abs(sy + h - t.y) <= SNAP_MM) sy = t.y - h;
+      if (Math.abs(sy + h / 2 - t.y) <= SNAP_MM) sy = t.y - h / 2;
+    }
+
+    return { x: Math.round(sx), y: Math.round(sy) };
+  };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -158,10 +190,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const scaleY = previewHeight / headerMaxHeight;
     const dx = (event.clientX - dragStart.x) / scaleX;
     const dy = (event.clientY - dragStart.y) / scaleY;
-    updateElement(dragId, {
-      x: Math.max(0, Math.min(headerMaxWidth, Math.round(dragStart.ox + dx))),
-      y: Math.max(0, Math.min(headerMaxHeight, Math.round(dragStart.oy + dy))),
-    });
+    const nx = Math.max(0, Math.min(headerMaxWidth, dragStart.ox + dx));
+    const ny = Math.max(0, Math.min(headerMaxHeight, dragStart.oy + dy));
+    const snapped = snapToOtherElements(dragId, nx, ny);
+    updateElement(dragId, { x: snapped.x, y: snapped.y });
   };
 
   const onPreviewMouseUp = () => {
@@ -192,7 +224,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Elemente hinzufügen</CardTitle>
+            <CardTitle className="text-lg">Header-Blöcke hinzufügen</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <Button onClick={() => addTextElement()} className="w-full justify-start">
@@ -212,6 +244,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             </div>
             <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="w-full" onClick={() => setShowRuler((v) => !v)}>
               Außenlineal {showRuler ? 'ausblenden' : 'einblenden'}
+            </Button>
+            <Button variant={showCenterGuides ? 'default' : 'outline'} size="sm" className="w-full" onClick={() => setShowCenterGuides((v) => !v)}>
+              Mittelachsen {showCenterGuides ? 'ausblenden' : 'einblenden'}
             </Button>
           </CardContent>
         </Card>
@@ -271,6 +306,20 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                             <Input type="number" value={element.fontSize || 12} onChange={(e) => updateElement(element.id, { fontSize: parseFloat(e.target.value) || 12 })} />
                             <Input type="color" value={element.color || '#000000'} onChange={(e) => updateElement(element.id, { color: e.target.value })} />
                           </div>
+                          <Select value={element.fontFamily || 'Arial'} onValueChange={(value) => updateElement(element.id, { fontFamily: value })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Arial">Arial</SelectItem>
+                              <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                              <SelectItem value="Calibri">Calibri</SelectItem>
+                              <SelectItem value="Verdana">Verdana</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <div className="grid grid-cols-3 gap-2">
+                            <Button type="button" size="sm" variant={element.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })}>Fett</Button>
+                            <Button type="button" size="sm" variant={(element as any).fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { fontStyle: (element as any).fontStyle === 'italic' ? 'normal' : 'italic' } as any)}>Kursiv</Button>
+                            <Button type="button" size="sm" variant={(element as any).textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textDecoration: (element as any).textDecoration === 'underline' ? 'none' : 'underline' } as any)}>Unterstr.</Button>
+                          </div>
                         </>
                       )}
                       {element.type === 'image' && (
@@ -323,6 +372,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </>
             )}
 
+            {showCenterGuides && (
+              <>
+                <div className="absolute left-8 right-0 top-[calc(8px+150px)] border-t border-dashed border-red-500/70 pointer-events-none" />
+                <div className="absolute top-8 bottom-0 left-[calc(8px+390px)] border-l border-dashed border-red-500/70 pointer-events-none" />
+              </>
+            )}
+
             <div
               ref={previewRef}
               tabIndex={0}
@@ -343,7 +399,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                     <div
                       key={element.id}
                       className={`absolute cursor-move border ${selectedElementId === element.id ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'}`}
-                      style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, fontSize: `${(element.fontSize || 12) * Math.min(scaleX, scaleY) * 0.7}px`, fontFamily: element.fontFamily || 'Arial', fontWeight: element.fontWeight || 'normal', color: element.color || '#000000', lineHeight: '1.2' }}
+                      style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, fontSize: `${(element.fontSize || 12) * Math.min(scaleX, scaleY) * 0.7}px`, fontFamily: element.fontFamily || 'Arial', fontWeight: element.fontWeight || 'normal', fontStyle: (element as any).fontStyle || 'normal', textDecoration: (element as any).textDecoration || 'none', color: element.color || '#000000', lineHeight: '1.2' }}
                       onMouseDown={(e) => onElementMouseDown(e, element)}
                     >
                       {element.content || 'Text'}

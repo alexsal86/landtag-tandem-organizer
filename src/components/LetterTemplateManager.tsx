@@ -66,6 +66,7 @@ const LetterTemplateManager: React.FC = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createActiveTab, setCreateActiveTab] = useState('canvas-designer');
   const [editActiveTab, setEditActiveTab] = useState('canvas-designer');
+  const [selectedBlockItem, setSelectedBlockItem] = useState<Record<string, string | null>>({});
   const [showPreview, setShowPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -349,35 +350,64 @@ const LetterTemplateManager: React.FC = () => {
     });
   };
 
-  const renderBlockCanvas = (blockKey: 'addressField' | 'infoBlock' | 'subject', title: string, rect: { top: number; left: number; width: number; height: number }) => {
+  const renderBlockCanvas = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject', title: string, rect: { top: number; left: number; width: number; height: number }) => {
     const items = getBlockItems(blockKey);
     const scale = 2.4;
+    const selectedId = selectedBlockItem[blockKey] || items[0]?.id || null;
+    const selected = items.find((item) => item.id === selectedId) || null;
 
     const addText = () => {
-      setBlockItems(blockKey, [...items, { id: Date.now().toString(), type: 'text', x: 5, y: 5, width: 60, content: 'Neuer Text' }]);
+      const id = Date.now().toString();
+      setBlockItems(blockKey, [...items, { id, type: 'text', x: 5, y: 5, width: 60, content: 'Neuer Text', fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' }]);
+      setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
     };
 
-    const updateItem = (id: string, updates: any) => setBlockItems(blockKey, items.map((item) => item.id === id ? { ...item, ...updates } : item));
-    const selected = items[0];
+    const updateItem = (id: string, updates: any) => setBlockItems(blockKey, items.map((item) => (item.id === id ? { ...item, ...updates } : item)));
 
     return (
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">{title}</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
           <div className="space-y-3 border rounded-lg p-3">
             <Button type="button" variant="outline" size="sm" onClick={addText}>Text hinzufügen</Button>
+            <div className="space-y-2 max-h-52 overflow-auto">
+              {items.map((item) => (
+                <div key={item.id} className={`p-2 border rounded cursor-pointer ${selectedId === item.id ? 'border-primary bg-primary/10' : 'border-border'}`} onClick={() => setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id }))}>
+                  {(item.content || 'Textblock').toString().slice(0, 45)}
+                </div>
+              ))}
+            </div>
             {selected && (
               <>
                 <Label>Textinhalt</Label>
                 <Textarea value={selected.content || ''} onChange={(e) => updateItem(selected.id, { content: e.target.value })} rows={4} />
+                <Label>Schriftart</Label>
+                <Select value={selected.fontFamily || 'Arial'} onValueChange={(value) => updateItem(selected.id, { fontFamily: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Arial">Arial</SelectItem>
+                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                    <SelectItem value="Calibri">Calibri</SelectItem>
+                    <SelectItem value="Verdana">Verdana</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button type="button" size="sm" variant={selected.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontWeight: selected.fontWeight === 'bold' ? 'normal' : 'bold' })}>Fett</Button>
+                  <Button type="button" size="sm" variant={selected.fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontStyle: selected.fontStyle === 'italic' ? 'normal' : 'italic' })}>Kursiv</Button>
+                  <Button type="button" size="sm" variant={selected.textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { textDecoration: selected.textDecoration === 'underline' ? 'none' : 'underline' })}>Unterstr.</Button>
+                </div>
               </>
             )}
           </div>
           <div className="border rounded-lg p-3 bg-muted/30 overflow-auto">
             <div className="relative bg-white border" style={{ width: rect.width * scale, height: Math.max(rect.height, 25) * scale }}>
               {items.map((item) => (
-                <div key={item.id} className="absolute border border-primary bg-primary/10 px-2 py-1 text-xs"
-                  style={{ left: (item.x || 0) * scale, top: (item.y || 0) * scale, width: (item.width || 50) * scale }}>
+                <div
+                  key={item.id}
+                  onMouseDown={() => setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id }))}
+                  className={`absolute border px-2 py-1 text-xs ${selectedId === item.id ? 'border-primary bg-primary/15' : 'border-primary/50 bg-primary/10'}`}
+                  style={{ left: (item.x || 0) * scale, top: (item.y || 0) * scale, width: (item.width || 50) * scale, fontFamily: item.fontFamily || 'Arial', fontWeight: item.fontWeight || 'normal', fontStyle: item.fontStyle || 'normal', textDecoration: item.textDecoration || 'none' }}
+                >
                   {item.content || 'Text'}
                 </div>
               ))}
@@ -479,7 +509,7 @@ const LetterTemplateManager: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <Tabs value={createActiveTab} onValueChange={setCreateActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-11">
+              <TabsList className="grid w-full grid-cols-12">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
                 <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
                 <TabsTrigger value="canvas-designer">Canvas</TabsTrigger>
@@ -487,6 +517,7 @@ const LetterTemplateManager: React.FC = () => {
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
                 <TabsTrigger value="block-address">Adressfeld</TabsTrigger>
+                <TabsTrigger value="block-return-address">Rücksendeangaben</TabsTrigger>
                 <TabsTrigger value="block-info">Info-Block</TabsTrigger>
                 <TabsTrigger value="block-subject">Betreff</TabsTrigger>
                 <TabsTrigger value="block-content">Inhalt</TabsTrigger>
@@ -580,6 +611,15 @@ const LetterTemplateManager: React.FC = () => {
                   left: formData.layout_settings.addressField.left,
                   width: formData.layout_settings.addressField.width,
                   height: formData.layout_settings.addressField.height,
+                })}
+              </TabsContent>
+
+              <TabsContent value="block-return-address" className="space-y-4">
+                {renderBlockCanvas('returnAddress', 'Rücksendeangaben', {
+                  top: formData.layout_settings.returnAddress.top,
+                  left: formData.layout_settings.returnAddress.left,
+                  width: formData.layout_settings.returnAddress.width,
+                  height: formData.layout_settings.returnAddress.height,
                 })}
               </TabsContent>
 
@@ -703,7 +743,7 @@ const LetterTemplateManager: React.FC = () => {
             </DialogHeader>
             
             <Tabs value={editActiveTab} onValueChange={setEditActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-11">
+              <TabsList className="grid w-full grid-cols-12">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
                 <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
                 <TabsTrigger value="canvas-designer">Canvas</TabsTrigger>
@@ -711,6 +751,7 @@ const LetterTemplateManager: React.FC = () => {
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
                 <TabsTrigger value="block-address">Adressfeld</TabsTrigger>
+                <TabsTrigger value="block-return-address">Rücksendeangaben</TabsTrigger>
                 <TabsTrigger value="block-info">Info-Block</TabsTrigger>
                 <TabsTrigger value="block-subject">Betreff</TabsTrigger>
                 <TabsTrigger value="block-content">Inhalt</TabsTrigger>
@@ -842,6 +883,15 @@ const LetterTemplateManager: React.FC = () => {
                   left: formData.layout_settings.addressField.left,
                   width: formData.layout_settings.addressField.width,
                   height: formData.layout_settings.addressField.height,
+                })}
+              </TabsContent>
+
+              <TabsContent value="block-return-address" className="space-y-4">
+                {renderBlockCanvas('returnAddress', 'Rücksendeangaben', {
+                  top: formData.layout_settings.returnAddress.top,
+                  left: formData.layout_settings.returnAddress.left,
+                  width: formData.layout_settings.returnAddress.width,
+                  height: formData.layout_settings.returnAddress.height,
                 })}
               </TabsContent>
 
