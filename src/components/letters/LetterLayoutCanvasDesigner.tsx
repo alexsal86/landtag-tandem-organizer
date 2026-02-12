@@ -23,6 +23,7 @@ interface Props {
   layoutSettings: LetterLayoutSettings;
   onLayoutChange: (settings: LetterLayoutSettings) => void;
   onJumpToTab?: (tab: EditorTab) => void;
+  headerElements?: Array<{ id: string; type: 'text' | 'image'; x: number; y: number; width?: number; height?: number; content?: string }>;
 }
 
 const BLOCKS: BlockConfig[] = [
@@ -54,7 +55,7 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
 const getDisabled = (layout: LetterLayoutSettings): BlockKey[] => ((layout as any).disabledBlocks || []) as BlockKey[];
 const setDisabled = (layout: LetterLayoutSettings, disabledBlocks: BlockKey[]) => ({ ...cloneLayout(layout), disabledBlocks } as LetterLayoutSettings);
 
-export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJumpToTab }: Props) {
+export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJumpToTab, headerElements = [] }: Props) {
   const [selected, setSelected] = useState<BlockKey>('addressField');
   const [dragging, setDragging] = useState<{ key: BlockKey; startX: number; startY: number; orig: Rect; mode: 'move' | 'resize' } | null>(null);
   const [localLayout, setLocalLayout] = useState<LetterLayoutSettings>(() => cloneLayout(layoutSettings));
@@ -65,6 +66,9 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   const disabledBlocks = useMemo(() => new Set(getDisabled(localLayout)), [localLayout]);
   const contentWidth = localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right;
   const pagePx = { w: localLayout.pageWidth * SCALE, h: localLayout.pageHeight * SCALE };
+
+  const blockContent = ((localLayout as any).blockContent || {}) as Record<string, Array<{ id: string; content?: string; x?: number; y?: number }>>;
+
 
   const getRect = (key: BlockKey): Rect => {
     switch (key) {
@@ -240,6 +244,10 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   className={`absolute border text-[11px] font-medium px-2 py-1 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isSelected ? 'ring-2 ring-primary' : ''}`}
                   style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE }}>
                   <div className="flex items-center justify-between"><span>{block.label}</span><Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div>
+                  {block.key === 'header' && headerElements.length > 0 && <div className="mt-1 text-[10px] line-clamp-2">{headerElements.filter(e => e.type === 'text').map(e => e.content).filter(Boolean).join(' · ')}</div>}
+                  {block.key === 'addressField' && (blockContent.addressField || []).length > 0 && <div className="mt-1 text-[10px] line-clamp-2">{(blockContent.addressField || [])[0]?.content}</div>}
+                  {block.key === 'infoBlock' && (blockContent.infoBlock || []).length > 0 && <div className="mt-1 text-[10px] line-clamp-2">{(blockContent.infoBlock || [])[0]?.content}</div>}
+                  {block.key === 'subject' && (blockContent.subject || []).length > 0 && <div className="mt-1 text-[10px] line-clamp-2">{(blockContent.subject || [])[0]?.content}</div>}
                   {block.canResize && !isDisabled && (<div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />)}
                 </div>
               );

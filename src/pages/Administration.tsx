@@ -1053,21 +1053,17 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {!showLetterTemplateManager ? (
-                    <Button onClick={() => setShowLetterTemplateManager(true)}>
-                      Brief-Template-Manager öffnen
-                    </Button>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Brief-Templates verwalten</h3>
-                        <Button variant="outline" size="sm" onClick={() => setShowLetterTemplateManager(false)}>
-                          Schließen
-                        </Button>
-                      </div>
+                  <Button onClick={() => setShowLetterTemplateManager(true)}>
+                    Brief-Template-Manager öffnen
+                  </Button>
+                  <Dialog open={showLetterTemplateManager} onOpenChange={setShowLetterTemplateManager}>
+                    <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Vorlagen-Editor</DialogTitle>
+                      </DialogHeader>
                       <LetterTemplateManager />
-                    </div>
-                  )}
+                    </DialogContent>
+                  </Dialog>
                 </CardContent>
               </Card>
 

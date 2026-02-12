@@ -464,7 +464,7 @@ const LetterTemplateManager: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Brief-Templates verwalten</h2>
+        <div><h2 className="text-xl font-semibold">Templates</h2><p className="text-sm text-muted-foreground">Brieflayouts und Inhalte bearbeiten</p></div>
         <Button onClick={() => setShowCreateDialog(prev => !prev)}>
           <Plus className="h-4 w-4 mr-2" />
           {showCreateDialog ? 'Erstellung schließen' : 'Neues Template'}
@@ -512,6 +512,7 @@ const LetterTemplateManager: React.FC = () => {
                   layoutSettings={formData.layout_settings}
                   onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
                   onJumpToTab={setCreateActiveTab as any}
+                  headerElements={formData.header_elements}
                 />
               </TabsContent>
 
@@ -747,6 +748,7 @@ const LetterTemplateManager: React.FC = () => {
                   layoutSettings={formData.layout_settings}
                   onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
                   onJumpToTab={setEditActiveTab as any}
+                  headerElements={formData.header_elements}
                 />
               </TabsContent>
 
