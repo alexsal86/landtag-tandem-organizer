@@ -47,9 +47,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const previewWidth = 780;
   const previewHeight = 300;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     onElementsChange(elements);
-  }, [elements, onElementsChange]);
+  }, [elements]);
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
