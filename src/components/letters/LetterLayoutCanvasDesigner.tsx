@@ -232,17 +232,36 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
         </div>
 
         <div ref={canvasWrapRef} tabIndex={0} onKeyDown={moveSelectedByKey} className="border rounded-lg p-4 bg-muted/20 overflow-auto outline-none" onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
-          <div className="mx-auto bg-white shadow-xl relative select-none" style={{ width: pagePx.w, height: pagePx.h }}>
+          <div className="relative mx-auto" style={{ width: pagePx.w + 24, height: pagePx.h + 24 }}>
             {showRuler && (
               <>
-                <div className="absolute top-0 left-0 right-0 h-5 border-b bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(localLayout.pageWidth / 10) + 1 }).map((_, i) => <span key={`rx-${i}`} className="absolute" style={{ left: i * 10 * SCALE }}>{i * 10}</span>)}</div>
-                <div className="absolute top-0 bottom-0 left-0 w-5 border-r bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(localLayout.pageHeight / 10) + 1 }).map((_, i) => <span key={`ry-${i}`} className="absolute" style={{ top: i * 10 * SCALE }}>{i * 10}</span>)}</div>
+                <div className="absolute top-0 left-6 right-0 h-6 border rounded bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(localLayout.pageWidth / 10) + 1 }).map((_, i) => <span key={`rx-${i}`} className="absolute" style={{ left: i * 10 * SCALE }}>{i * 10}</span>)}</div>
+                <div className="absolute top-6 left-0 bottom-0 w-6 border rounded bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(localLayout.pageHeight / 10) + 1 }).map((_, i) => <span key={`ry-${i}`} className="absolute" style={{ top: i * 10 * SCALE }}>{i * 10}</span>)}</div>
               </>
             )}
 
-            <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />
+            <div className="absolute left-6 top-6 bg-white shadow-xl relative select-none" style={{ width: pagePx.w, height: pagePx.h }}>
+              <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />
 
-            {BLOCKS.map((block) => {
+
+
+              {headerElements.map((element) => (
+                <div
+                  key={`h-prev-${element.id}`}
+                  className="absolute text-[10px] text-foreground/80 pointer-events-none"
+                  style={{
+                    left: element.x * SCALE,
+                    top: element.y * SCALE,
+                    width: (element.width || 50) * SCALE,
+                    height: (element.height || 8) * SCALE,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {element.type === 'text' ? element.content : '🖼️'}
+                </div>
+              ))}
+
+              {BLOCKS.map((block) => {
               const rect = getRect(block.key);
               const isSelected = selected === block.key;
               const isDisabled = disabledBlocks.has(block.key);
@@ -257,7 +276,8 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   {block.canResize && !isDisabled && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />}
                 </div>
               );
-            })}
+              })}
+            </div>
           </div>
         </div>
       </div>

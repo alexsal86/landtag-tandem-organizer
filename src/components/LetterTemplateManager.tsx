@@ -338,12 +338,12 @@ const LetterTemplateManager: React.FC = () => {
 
 
 
-  const getBlockItems = (blockKey: 'addressField' | 'infoBlock' | 'subject') => {
+  const getBlockItems = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject') => {
     const content = ((formData.layout_settings as any).blockContent || {}) as Record<string, any[]>;
     return content[blockKey] || [];
   };
 
-  const setBlockItems = (blockKey: 'addressField' | 'infoBlock' | 'subject', items: any[]) => {
+  const setBlockItems = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject', items: any[]) => {
     updateLayoutSettings((layout) => {
       const current = ((layout as any).blockContent || {}) as Record<string, any[]>;
       return { ...layout, blockContent: { ...current, [blockKey]: items } } as LetterLayoutSettings;

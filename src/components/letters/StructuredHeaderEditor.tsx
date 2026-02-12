@@ -79,10 +79,63 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return { x: Math.round(sx), y: Math.round(sy) };
   };
 
+  const SNAP_MM = 1.5;
+
+  const snapToOtherElements = (id: string, x: number, y: number) => {
+    const current = elements.find((el) => el.id === id);
+    if (!current) return { x, y };
+    let sx = x;
+    let sy = y;
+    const w = current.width || 50;
+    const h = current.height || 10;
+    const edgeTargets = elements.filter((el) => el.id !== id).flatMap((el) => {
+      const tw = el.width || 50;
+      const th = el.height || 10;
+      return [
+        { x: el.x, y: el.y },
+        { x: el.x + tw, y: el.y + th },
+        { x: el.x + tw / 2, y: el.y + th / 2 },
+      ];
+    });
+
+    for (const t of edgeTargets) {
+      if (Math.abs(sx - t.x) <= SNAP_MM) sx = t.x;
+      if (Math.abs(sx + w - t.x) <= SNAP_MM) sx = t.x - w;
+      if (Math.abs(sx + w / 2 - t.x) <= SNAP_MM) sx = t.x - w / 2;
+      if (Math.abs(sy - t.y) <= SNAP_MM) sy = t.y;
+      if (Math.abs(sy + h - t.y) <= SNAP_MM) sy = t.y - h;
+      if (Math.abs(sy + h / 2 - t.y) <= SNAP_MM) sy = t.y - h / 2;
+    }
+
+    return { x: Math.round(sx), y: Math.round(sy) };
+  };
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     onElementsChange(elements);
   }, [elements]);
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    try {
+      if (!currentTenant?.id) {
+        toast({ title: 'Fehler', description: 'Kein Mandant gefunden', variant: 'destructive' });
+        return null;
+      }
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${currentTenant.id}/header-images/${fileName}`;
+      const { data, error } = await supabase.storage.from('letter-assets').upload(filePath, file);
+      if (error) throw error;
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('letter-assets').getPublicUrl(data.path);
+      return publicUrl;
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({ title: 'Fehler', description: 'Bild konnte nicht hochgeladen werden', variant: 'destructive' });
+      return null;
+    }
+  };
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
@@ -122,6 +175,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     };
     setElements((prev) => [...prev, newElement]);
     setSelectedElementId(newElement.id);
+  };
+
+  const addFooterLikeBlock = (title: string, content: string) => {
+    addTextElement(20, 12, `${title}: ${content}`);
   };
 
   const addImageElement = () => {
@@ -227,10 +284,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             <CardTitle className="text-lg">Header-Blöcke hinzufügen</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button onClick={() => addTextElement()} className="w-full justify-start">
-              <Type className="h-4 w-4 mr-2" />
-              Text hinzufügen
-            </Button>
             <Button onClick={addImageElement} className="w-full justify-start">
               <ImageIcon className="h-4 w-4 mr-2" />
               Bild hinzufügen
@@ -241,6 +294,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 <div className="font-medium">Text-Block ziehen</div>
                 <div className="text-xs text-muted-foreground">Lorem ipsum dolor sit amet</div>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Landtagsadresse', 'Konrad-Adenauer-Straße 3, 70173 Stuttgart')}>Landtag</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Wahlkreisadresse', 'Musterstraße 12, 70100 Stuttgart')}>Wahlkreis</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Kommunikation', 'Tel. 0711 123456, info@example.de')}>Kommunikation</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Allgemein', 'Alexander Beispiel MdL')}>Allgemein</Button>
             </div>
             <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="w-full" onClick={() => setShowRuler((v) => !v)}>
               Außenlineal {showRuler ? 'ausblenden' : 'einblenden'}
@@ -346,9 +405,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 </div>
               ))
             )}
-          </CardContent>
-        </Card>
-      </div>
 
       <Card>
         <CardHeader>
@@ -372,13 +428,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </>
             )}
 
-            {showCenterGuides && (
-              <>
-                <div className="absolute left-8 right-0 top-[calc(8px+150px)] border-t border-dashed border-red-500/70 pointer-events-none" />
-                <div className="absolute top-8 bottom-0 left-[calc(8px+390px)] border-l border-dashed border-red-500/70 pointer-events-none" />
-              </>
-            )}
-
             <div
               ref={previewRef}
               tabIndex={0}
@@ -391,6 +440,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
               style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}
             >
+              {showCenterGuides && (
+                <>
+                  <div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-red-500/80 pointer-events-none" />
+                  <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none" />
+                </>
+              )}
               {elements.map((element) => {
                 const scaleX = previewWidth / headerMaxWidth;
                 const scaleY = previewHeight / headerMaxHeight;
