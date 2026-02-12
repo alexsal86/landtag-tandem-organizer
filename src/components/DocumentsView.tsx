@@ -56,6 +56,7 @@ import LetterEditor from "./LetterEditor";
 import { PressReleasesList } from "./press/PressReleasesList";
 import { PressReleaseEditor } from "./press/PressReleaseEditor";
 import LetterTemplateSelector from "./LetterTemplateSelector";
+import { LetterWizard } from "./letters/LetterWizard";
 import LetterPDFExport from "./LetterPDFExport";
 import LetterDOCXExport from "./LetterDOCXExport";
 import { ArchivedLetterDetails } from "./letters/ArchivedLetterDetails";
@@ -149,6 +150,7 @@ export function DocumentsView() {
   const [showLetterEditor, setShowLetterEditor] = useState(false);
   const [selectedLetter, setSelectedLetter] = useState<Letter | undefined>(undefined);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [activeTab, setActiveTab] = useState<'documents' | 'letters' | 'emails' | 'press'>('documents');
   const [showPressEditor, setShowPressEditor] = useState(false);
   const [selectedPressReleaseId, setSelectedPressReleaseId] = useState<string | null>(null);
@@ -573,7 +575,41 @@ export function DocumentsView() {
 
   const handleCreateLetter = () => {
     setSelectedLetter(undefined);
-    setShowTemplateSelector(true);
+    setShowWizard(true);
+  };
+
+  const handleWizardComplete = (config: {
+    occasion: string;
+    recipientName: string;
+    recipientAddress: string;
+    contactId?: string;
+    templateId?: string;
+    senderInfoId?: string;
+  }) => {
+    setShowWizard(false);
+    
+    const newLetter: any = {
+      id: undefined,
+      title: '',
+      content: '',
+      content_html: '',
+      status: 'draft',
+      template_id: config.templateId,
+      sender_info_id: config.senderInfoId,
+      information_block_ids: [],
+      tenant_id: currentTenant?.id || '',
+      user_id: user?.id || '',
+      created_by: user?.id || '',
+      created_at: '',
+      updated_at: '',
+      recipient_name: config.recipientName,
+      recipient_address: config.recipientAddress,
+      contact_id: config.contactId,
+      archived_at: null
+    };
+    
+    setSelectedLetter(newLetter);
+    setShowLetterEditor(true);
   };
 
   const handleTemplateSelect = (template: any) => {
@@ -2105,21 +2141,12 @@ export function DocumentsView() {
            )
          )}
 
-        {/* Template Selector Dialog */}
-        {showTemplateSelector && (
-          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-            <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-4xl -translate-x-1/2 -translate-y-1/2 bg-background border rounded-lg shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Template für neuen Brief auswählen</h2>
-                <Button variant="ghost" onClick={() => setShowTemplateSelector(false)}>
-                  ×
-                </Button>
-              </div>
-              <LetterTemplateSelector
-                onSelect={handleTemplateSelect}
-              />
-            </div>
-          </div>
+        {/* Letter Wizard */}
+        {showWizard && (
+          <LetterWizard
+            onComplete={handleWizardComplete}
+            onCancel={() => setShowWizard(false)}
+          />
         )}
 
         {/* Letter Editor */}

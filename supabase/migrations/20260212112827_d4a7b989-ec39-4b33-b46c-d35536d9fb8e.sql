@@ -1,0 +1,1 @@
+ALTER TABLE task_decisions ADD COLUMN priority integer DEFAULT 0;

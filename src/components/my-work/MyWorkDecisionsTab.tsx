@@ -72,7 +72,7 @@ export function MyWorkDecisionsTab() {
           id,
           decision_id,
           task_decisions!inner (
-            id, title, description, status, created_at, created_by, visible_to_all, response_options,
+            id, title, description, status, created_at, created_by, visible_to_all, response_options, priority,
             task_decision_attachments (id, file_name, file_path)
           ),
           task_decision_responses (id, response_type)
@@ -86,7 +86,7 @@ export function MyWorkDecisionsTab() {
       const { data: creatorData, error: creatorError } = await supabase
         .from("task_decisions")
         .select(`
-          id, title, description, status, created_at, created_by, visible_to_all, response_options,
+          id, title, description, status, created_at, created_by, visible_to_all, response_options, priority,
           task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
           task_decision_attachments (id, file_name, file_path)
         `)
@@ -99,7 +99,7 @@ export function MyWorkDecisionsTab() {
       const { data: publicData, error: publicError } = await supabase
         .from("task_decisions")
         .select(`
-          id, title, description, status, created_at, created_by, visible_to_all, response_options,
+          id, title, description, status, created_at, created_by, visible_to_all, response_options, priority,
           task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
           task_decision_attachments (id, file_name, file_path)
         `)
@@ -138,6 +138,7 @@ export function MyWorkDecisionsTab() {
           pendingCount: 0,
           responseType: item.task_decision_responses[0]?.response_type || null,
           visible_to_all: item.task_decisions.visible_to_all,
+          priority: item.task_decisions.priority ?? 0,
           ...attInfo,
           response_options: Array.isArray(item.task_decisions.response_options) ? item.task_decisions.response_options : undefined,
         };
@@ -164,6 +165,7 @@ export function MyWorkDecisionsTab() {
           isParticipant: false,
           pendingCount,
           visible_to_all: item.visible_to_all,
+          priority: item.priority ?? 0,
           ...attInfo,
           response_options: Array.isArray(item.response_options) ? item.response_options : undefined,
         };
@@ -195,6 +197,7 @@ export function MyWorkDecisionsTab() {
             pendingCount,
             isPublic: true,
             visible_to_all: true,
+            priority: item.priority ?? 0,
             ...attInfo,
             response_options: Array.isArray(item.response_options) ? item.response_options : undefined,
           };
@@ -289,6 +292,11 @@ export function MyWorkDecisionsTab() {
 
       // Sort: unanswered first, then questions, then by date
       allDecisionsList.sort((a, b) => {
+        // Priority first
+        const priorityA = a.priority ?? 0;
+        const priorityB = b.priority ?? 0;
+        if (priorityA !== priorityB) return priorityB - priorityA;
+
         const aUnanswered = a.isParticipant && !a.hasResponded;
         const bUnanswered = b.isParticipant && !b.hasResponded;
         if (aUnanswered && !bUnanswered) return -1;
@@ -619,7 +627,7 @@ export function MyWorkDecisionsTab() {
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-3">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
               {/* Main cards */}
               <div>
                 {filteredDecisions.length === 0 ? (

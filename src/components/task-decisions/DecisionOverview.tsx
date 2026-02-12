@@ -23,9 +23,10 @@ import { useDecisionComments } from "@/hooks/useDecisionComments";
 import { 
   Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, 
   MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle, ClipboardList, 
-  Search, FolderArchive, MessageSquare
+  Search, FolderArchive, MessageSquare, Star
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -97,6 +98,7 @@ interface DecisionRequest {
   isCreator: boolean;
   attachmentCount?: number;
   topicIds?: string[];
+  priority?: number;
   creator?: {
     user_id: string;
     display_name: string | null;
@@ -175,6 +177,7 @@ export const DecisionOverview = () => {
             archived_at,
             archived_by,
             visible_to_all,
+            priority,
             tasks (
               title
             ),
@@ -203,6 +206,7 @@ export const DecisionOverview = () => {
           archived_at,
           archived_by,
           visible_to_all,
+          priority,
           tasks (
             title,
             assigned_to
@@ -234,6 +238,7 @@ export const DecisionOverview = () => {
           archived_at,
           archived_by,
           visible_to_all,
+          priority,
           tasks (
             title,
             assigned_to
@@ -266,6 +271,7 @@ export const DecisionOverview = () => {
         archived_at: item.task_decisions.archived_at,
         archived_by: item.task_decisions.archived_by,
         visible_to_all: item.task_decisions.visible_to_all,
+        priority: item.task_decisions.priority ?? 0,
         participant_id: item.id,
         task: item.task_decisions.tasks ? {
           title: item.task_decisions.tasks.title,
@@ -300,6 +306,7 @@ export const DecisionOverview = () => {
             archived_at: item.archived_at,
             archived_by: item.archived_by,
             visible_to_all: item.visible_to_all,
+            priority: item.priority ?? 0,
             participant_id: userParticipant?.id || null,
             task: item.tasks ? {
               title: item.tasks.title,
@@ -415,6 +422,11 @@ export const DecisionOverview = () => {
 
       // Sort decisions
       allDecisionsList.sort((a, b) => {
+        // Priority first
+        const priorityA = a.priority ?? 0;
+        const priorityB = b.priority ?? 0;
+        if (priorityA !== priorityB) return priorityB - priorityA;
+
         const summaryA = getResponseSummary(a.participants);
         const summaryB = getResponseSummary(b.participants);
         
@@ -863,6 +875,28 @@ export const DecisionOverview = () => {
                 </Badge>
               ) : null}
 
+              {(decision.priority ?? 0) > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                    </TooltipTrigger>
+                    <TooltipContent><p>Prioritär</p></TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
+            {decision.visible_to_all && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent><p>Öffentlich</p></TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
               {decision.hasResponded && decision.isParticipant && (
                 <CheckCircle className="h-4 w-4 text-emerald-500" />
               )}
@@ -909,14 +943,16 @@ export const DecisionOverview = () => {
           </div>
 
           {/* Title */}
-          <h3 className="font-bold text-lg mb-1 line-clamp-1 group-hover:line-clamp-none">{decision.title}</h3>
+          <div className="max-h-[4.5rem] overflow-hidden">
+            <h3 className="font-bold text-lg mb-1 line-clamp-1 group-hover:line-clamp-2">{decision.title}</h3>
 
-          {/* Description */}
-          {decision.description && (
-            <div onClick={(e) => e.stopPropagation()}>
-              <TruncatedDescription content={decision.description} maxLength={120} />
-            </div>
-          )}
+            {/* Description */}
+            {decision.description && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <TruncatedDescription content={decision.description} maxLength={100} />
+              </div>
+            )}
+          </div>
 
           {/* Metadata row - no borders, more spacing */}
           <div className="flex items-center flex-wrap gap-3 mt-4 text-xs text-muted-foreground">
@@ -955,14 +991,6 @@ export const DecisionOverview = () => {
                 : 'Kommentar schreiben'
               }
             </button>
-
-            {/* Public */}
-            {decision.visible_to_all && (
-              <span className="flex items-center gap-1">
-                <Globe className="h-3.5 w-3.5" />
-                Öffentlich
-              </span>
-            )}
 
             {/* Attachments */}
             {(decision.attachmentCount ?? 0) > 0 && (

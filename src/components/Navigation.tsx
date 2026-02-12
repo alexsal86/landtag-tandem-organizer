@@ -67,7 +67,6 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "karten", label: "Karten", icon: MapPin },
     { id: "documents", label: "Dokumente", icon: FileText },
     ...(isAdmin ? [{ id: "drucksachen", label: "Drucksachen", icon: Archive }] : []),
-    { id: "knowledge", label: "Wissen", icon: Database },
     { id: "time", label: "Zeiterfassung", icon: Clock, adminOnly: false },
     { id: "employee", label: "Mitarbeiter", icon: Users },
     { id: "chat", label: "Chat", icon: MessageSquareText },

@@ -26,7 +26,7 @@ import { MyWorkTeamTab } from "./my-work/MyWorkTeamTab";
 import { MyWorkJourFixeTab } from "./my-work/MyWorkJourFixeTab";
 import { MyWorkTimeTrackingTab } from "./my-work/MyWorkTimeTrackingTab";
 import { DashboardGreetingSection } from "./dashboard/DashboardGreetingSection";
-import { CombinedMessagesWidget } from "./CombinedMessagesWidget";
+import { NewsWidget } from "./widgets/NewsWidget";
 
 interface TabCounts {
   tasks: number;
@@ -463,7 +463,7 @@ export function MyWorkView() {
               <button
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-1.5 ${tab.isLogo ? 'px-2' : 'px-4'} py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isActiveTab
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -492,7 +492,9 @@ export function MyWorkView() {
       {activeTab === "dashboard" && (
         <div className="space-y-6">
           <DashboardGreetingSection />
-          <CombinedMessagesWidget />
+          <div className="w-1/2">
+            <NewsWidget />
+          </div>
         </div>
       )}
 
