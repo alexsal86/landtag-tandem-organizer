@@ -120,73 +120,83 @@ export const TaskDecisionCreator = ({
         .eq('is_active', true)
         .single();
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-        .order('display_name');
-      
-      if (error) throw error;
-      setProfiles(data || []);
-      
-      if (tenantData?.tenant_id) {
-        // Get tenant members for validation
-        const { data: tenantMembers } = await supabase
-          .from('user_tenant_memberships')
-          .select('user_id')
-          .eq('tenant_id', tenantData.tenant_id)
-          .eq('is_active', true);
-        
-        const tenantUserIds = new Set(tenantMembers?.map(m => m.user_id) || []);
+      if (!tenantData?.tenant_id) {
+        setProfiles([]);
+        setProfilesLoaded(true);
+        return;
+      }
 
-        // Check for default settings FIRST
-        let defaultIds: string[] = [];
-        let defaultSettings: any = null;
-        try {
-          const stored = localStorage.getItem('default_decision_settings');
-          if (stored) {
-            defaultSettings = JSON.parse(stored);
-            defaultIds = defaultSettings.participants || [];
-          } else {
-            const oldStored = localStorage.getItem('default_decision_participants');
-            if (oldStored) {
-              const parsed = JSON.parse(oldStored);
-              if (Array.isArray(parsed)) defaultIds = parsed;
-            }
-          }
-        } catch (e) {
-          console.error('Error loading default participants:', e);
-        }
+      // Get tenant members for validation and to scope selectable profiles
+      const { data: tenantMembers } = await supabase
+        .from('user_tenant_memberships')
+        .select('user_id')
+        .eq('tenant_id', tenantData.tenant_id)
+        .eq('is_active', true);
 
-        if (defaultSettings) {
-          if (typeof defaultSettings.visibleToAll === 'boolean') setVisibleToAll(defaultSettings.visibleToAll);
-          if (typeof defaultSettings.sendByEmail === 'boolean') setSendByEmail(defaultSettings.sendByEmail);
-          if (typeof defaultSettings.sendViaMatrix === 'boolean') setSendViaMatrix(defaultSettings.sendViaMatrix);
-        }
+      const tenantUserIdsArray = tenantMembers?.map(m => m.user_id) || [];
+      const tenantUserIds = new Set(tenantUserIdsArray);
 
-        if (defaultIds.length > 0) {
-          const validDefaults = defaultIds.filter(id => 
-            tenantUserIds.has(id) && id !== userData.user.id
-          );
-          if (validDefaults.length > 0) {
-            setSelectedUsers(validDefaults);
-            setProfilesLoaded(true);
-            return; // Early return - don't fall through to Abgeordneter
+      if (tenantUserIdsArray.length > 0) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', tenantUserIdsArray)
+          .order('display_name');
+
+        if (error) throw error;
+        setProfiles(data || []);
+      } else {
+        setProfiles([]);
+      }
+
+      // Check for default settings FIRST
+      let defaultIds: string[] = [];
+      let defaultSettings: any = null;
+      try {
+        const stored = localStorage.getItem('default_decision_settings');
+        if (stored) {
+          defaultSettings = JSON.parse(stored);
+          defaultIds = defaultSettings.participants || [];
+        } else {
+          const oldStored = localStorage.getItem('default_decision_participants');
+          if (oldStored) {
+            const parsed = JSON.parse(oldStored);
+            if (Array.isArray(parsed)) defaultIds = parsed;
           }
         }
+      } catch (e) {
+        console.error('Error loading default participants:', e);
+      }
 
-        // Fallback: Pre-select Abgeordneter from the same tenant
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('role', 'abgeordneter');
-        
-        if (roleData && roleData.length > 0) {
-          const abgeordneteInTenant = roleData
-            .filter(r => tenantUserIds.has(r.user_id))
-            .map(r => r.user_id);
-          
-          setSelectedUsers(abgeordneteInTenant);
+      if (defaultSettings) {
+        if (typeof defaultSettings.visibleToAll === 'boolean') setVisibleToAll(defaultSettings.visibleToAll);
+        if (typeof defaultSettings.sendByEmail === 'boolean') setSendByEmail(defaultSettings.sendByEmail);
+        if (typeof defaultSettings.sendViaMatrix === 'boolean') setSendViaMatrix(defaultSettings.sendViaMatrix);
+      }
+
+      if (defaultIds.length > 0) {
+        const validDefaults = defaultIds.filter(id => 
+          tenantUserIds.has(id) && id !== userData.user.id
+        );
+        if (validDefaults.length > 0) {
+          setSelectedUsers(validDefaults);
+          setProfilesLoaded(true);
+          return; // Early return - don't fall through to Abgeordneter
         }
+      }
+
+      // Fallback: Pre-select Abgeordneter from the same tenant
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'abgeordneter');
+      
+      if (roleData && roleData.length > 0) {
+        const abgeordneteInTenant = roleData
+          .filter(r => tenantUserIds.has(r.user_id))
+          .map(r => r.user_id);
+        
+        setSelectedUsers(abgeordneteInTenant);
       }
       
       setProfilesLoaded(true);
@@ -245,6 +255,24 @@ export const TaskDecisionCreator = ({
       if (tenantError || !tenantData) {
         console.error('Tenant lookup error:', tenantError);
         throw new Error('Unable to determine user tenant');
+      }
+
+      // Ensure selected participants belong to the same tenant
+      const { data: tenantMembers } = await supabase
+        .from('user_tenant_memberships')
+        .select('user_id')
+        .eq('tenant_id', tenantData.tenant_id)
+        .eq('is_active', true);
+      const tenantUserIds = new Set(tenantMembers?.map(m => m.user_id) || []);
+      const validSelectedUsers = selectedUsers.filter(userId => tenantUserIds.has(userId));
+
+      if (!visibleToAll && validSelectedUsers.length === 0) {
+        toast({
+          title: "Fehler",
+          description: "Bitte wählen Sie mindestens einen Benutzer aus Ihrem Tenant aus oder machen Sie die Entscheidung öffentlich.",
+          variant: "destructive",
+        });
+        return;
       }
 
       const insertData = {
@@ -338,8 +366,8 @@ export const TaskDecisionCreator = ({
       }
 
       // Add participants (only if users are selected)
-      if (selectedUsers.length > 0) {
-        const participants = selectedUsers.map(userId => ({
+      if (validSelectedUsers.length > 0) {
+        const participants = validSelectedUsers.map(userId => ({
           decision_id: decision.id,
           user_id: userId,
         }));
@@ -359,7 +387,7 @@ export const TaskDecisionCreator = ({
       }
 
       // Send notifications to participants
-      for (const userId of selectedUsers) {
+      for (const userId of validSelectedUsers) {
         const { error: notificationError } = await supabase.rpc('create_notification', {
           user_id_param: userId,
           type_name: 'task_decision_request',
@@ -390,7 +418,7 @@ export const TaskDecisionCreator = ({
             body: {
               type: 'decision',
               decisionId: decision.id,
-              participantIds: selectedUsers,
+              participantIds: validSelectedUsers,
               decisionTitle: title.trim(),
               decisionDescription: description.trim() || null,
             },
@@ -405,7 +433,7 @@ export const TaskDecisionCreator = ({
             });
           } else if (matrixResult) {
             const successCount = matrixResult.sent || 0;
-            const totalCount = matrixResult.total_participants || selectedUsers.length;
+            const totalCount = matrixResult.total_participants || validSelectedUsers.length;
             
             if (successCount > 0) {
               toast({
@@ -442,7 +470,7 @@ export const TaskDecisionCreator = ({
             body: {
               decisionId: decision.id,
               taskId: taskId,
-              participantIds: selectedUsers,
+              participantIds: validSelectedUsers,
               decisionTitle: title.trim(),
               decisionDescription: description.trim() || null,
             },
@@ -457,7 +485,7 @@ export const TaskDecisionCreator = ({
             });
           } else if (emailResult) {
             const successCount = emailResult.results?.filter((r: any) => r.success).length || 0;
-            const totalCount = emailResult.results?.length || selectedUsers.length;
+            const totalCount = emailResult.results?.length || validSelectedUsers.length;
             
             if (successCount > 0) {
               toast({
