@@ -311,7 +311,7 @@ const MyWorkDecisionCardInner = ({
                   const cc = getColorClasses(winningCount.color);
 
                   return (
-                    <span className={cn("font-medium", cc.textClass)}>
+                    <span className={cn("font-bold", cc.textClass)}>
                       {winningCount.label}
                       {winningOption?.description ? ` - ${winningOption.description}` : ""}
                     </span>
