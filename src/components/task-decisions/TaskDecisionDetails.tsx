@@ -376,6 +376,17 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
   const isCreator = currentUserId === decision.created_by;
   const summary = getResponseSummary();
   const currentUserParticipant = participants.find(p => p.user_id === currentUserId);
+  const responseOptionKeys = summary.responseOptions.map(option => option.key).sort();
+  const isYesNoTypeDecision =
+    responseOptionKeys.length === 2 &&
+    responseOptionKeys[0] === 'no' &&
+    responseOptionKeys[1] === 'yes';
+  const isYesNoQuestionTypeDecision =
+    responseOptionKeys.length === 3 &&
+    responseOptionKeys[0] === 'no' &&
+    responseOptionKeys[1] === 'question' &&
+    responseOptionKeys[2] === 'yes';
+  const shouldShowDecisionResultBadge = isYesNoTypeDecision || isYesNoQuestionTypeDecision;
 
   const getInitials = (name: string | null) => {
     if (!name) return '?';
@@ -570,7 +581,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
               </div>
               
               {/* Result badge when all have responded */}
-              {summary.pending === 0 && summary.total > 0 && (
+              {shouldShowDecisionResultBadge && summary.pending === 0 && summary.total > 0 && (
                 <div className="mt-3 pt-3 border-t">
                   {summary.responseOptions.some(option => option.key === 'question') && summary.questionCount > 0 ? (
                     <Badge 
