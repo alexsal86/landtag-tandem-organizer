@@ -18,6 +18,7 @@ import { TaskDecisionResponse } from "./TaskDecisionResponse";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
 
 interface ResponseThread {
   id: string;
@@ -45,7 +46,7 @@ interface Participant {
   };
   responses: Array<{
     id: string;
-    response_type: 'yes' | 'no' | 'question';
+    response_type: string;
     comment: string | null;
     created_at: string;
     creator_response?: string;
@@ -98,6 +99,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
           id,
           title,
           description,
+          response_options,
           created_by,
           created_at,
           status,
@@ -223,7 +225,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .map(response => ({
             ...response,
-            response_type: response.response_type as 'yes' | 'no' | 'question'
+            response_type: response.response_type
           })),
       })) || [];
 
@@ -349,19 +351,42 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
   };
 
   const getResponseSummary = () => {
-    const yesCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'yes').length;
-    const noCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'no').length;
-    const questionCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'question').length;
-    const totalResponses = yesCount + noCount + questionCount;
-    const pending = participants.length - totalResponses;
+    const responseOptions: ResponseOption[] = (decision?.response_options && Array.isArray(decision.response_options))
+      ? decision.response_options
+      : getDefaultOptions();
 
-    return { yesCount, noCount, questionCount, pending, total: participants.length };
+    const optionCounts = responseOptions.reduce<Record<string, number>>((acc, option) => {
+      acc[option.key] = participants.filter(
+        p => p.responses.length > 0 && p.responses[0].response_type === option.key
+      ).length;
+      return acc;
+    }, {});
+
+    const yesCount = optionCounts.yes || 0;
+    const noCount = optionCounts.no || 0;
+    const questionCount = optionCounts.question || 0;
+    const responded = participants.filter(p => p.responses.length > 0).length;
+    const pending = participants.length - responded;
+
+    return { yesCount, noCount, questionCount, pending, total: participants.length, optionCounts, responseOptions };
   };
 
   if (!decision) return null;
 
   const isCreator = currentUserId === decision.created_by;
   const summary = getResponseSummary();
+  const currentUserParticipant = participants.find(p => p.user_id === currentUserId);
+  const responseOptionKeys = summary.responseOptions.map(option => option.key).sort();
+  const isYesNoTypeDecision =
+    responseOptionKeys.length === 2 &&
+    responseOptionKeys[0] === 'no' &&
+    responseOptionKeys[1] === 'yes';
+  const isYesNoQuestionTypeDecision =
+    responseOptionKeys.length === 3 &&
+    responseOptionKeys[0] === 'no' &&
+    responseOptionKeys[1] === 'question' &&
+    responseOptionKeys[2] === 'yes';
+  const shouldShowDecisionResultBadge = isYesNoTypeDecision || isYesNoQuestionTypeDecision;
 
   const getInitials = (name: string | null) => {
     if (!name) return '?';
@@ -528,34 +553,37 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className={cn("grid gap-4", currentUserParticipant ? "md:grid-cols-2" : "grid-cols-1")}>
           {/* Response Summary */}
-          <Card>
+          <Card className="h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Abstimmungsübersicht</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center space-x-4 text-sm">
-                <span className="flex items-center text-green-600">
-                  <Check className="h-4 w-4 mr-1" />
-                  {summary.yesCount} Ja
-                </span>
-                <span className="flex items-center text-red-600">
-                  <X className="h-4 w-4 mr-1" />
-                  {summary.noCount} Nein
-                </span>
-                <span className="flex items-center text-orange-600">
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  {summary.questionCount} Rückfragen
-                </span>
-                <span className="text-muted-foreground">
+              <div className="space-y-2 text-sm">
+                {summary.responseOptions.map((option) => {
+                  const colorClasses = getColorClasses(option.color);
+                  return (
+                    <div key={option.key} className="flex items-start justify-between gap-2">
+                      <span className={cn("font-medium", colorClasses.textClass)}>
+                        {option.label}
+                        {option.description ? ` – ${option.description}` : ""}
+                      </span>
+                      <span className={cn("font-semibold", colorClasses.textClass)}>
+                        {summary.optionCounts[option.key] || 0}
+                      </span>
+                    </div>
+                  );
+                })}
+                <div className="pt-2 text-muted-foreground border-t">
                   ({summary.pending} ausstehend)
-                </span>
+                </div>
               </div>
               
               {/* Result badge when all have responded */}
-              {summary.pending === 0 && summary.total > 0 && (
+              {shouldShowDecisionResultBadge && summary.pending === 0 && summary.total > 0 && (
                 <div className="mt-3 pt-3 border-t">
-                  {summary.questionCount > 0 ? (
+                  {summary.responseOptions.some(option => option.key === 'question') && summary.questionCount > 0 ? (
                     <Badge 
                       variant="outline" 
                       className="text-sm text-orange-600 border-orange-600 bg-orange-50 dark:bg-orange-950"
@@ -584,37 +612,29 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
               )}
             </CardContent>
           </Card>
+          
 
           {/* Current User's Response Section */}
-          {(() => {
-            const currentUserParticipant = participants.find(p => p.user_id === currentUserId);
-            if (!currentUserParticipant) return null;
-            
-            const hasResponded = currentUserParticipant.responses && currentUserParticipant.responses.length > 0;
-            
-            // Let TaskDecisionResponse handle creator logic internally
-            // (it allows creator for acknowledgement/freetext types)
-            
-            return (
-              <Card className="border-primary/30 bg-primary/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Vote className="h-4 w-4" />
-                    Ihre Antwort
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <TaskDecisionResponse
-                    decisionId={decisionId!}
-                    participantId={currentUserParticipant.id}
-                    onResponseSubmitted={loadDecisionDetails}
-                    hasResponded={hasResponded}
-                    creatorId={decision.created_by}
-                  />
-                </CardContent>
-              </Card>
-            );
-          })()}
+          {currentUserParticipant && (
+            <Card className="border-primary/30 bg-primary/5 h-full">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Vote className="h-4 w-4" />
+                  Ihre Antwort
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TaskDecisionResponse
+                  decisionId={decisionId!}
+                  participantId={currentUserParticipant.id}
+                  onResponseSubmitted={loadDecisionDetails}
+                  hasResponded={currentUserParticipant.responses && currentUserParticipant.responses.length > 0}
+                  creatorId={decision.created_by}
+                />
+              </CardContent>
+            </Card>
+          )}
+          </div>
 
           {/* Participants with threaded conversations */}
           <div className="space-y-3">
@@ -640,21 +660,28 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                       </CardTitle>
                       {latestResponse ? (
                         <div className="flex items-center space-x-2">
-                          {latestResponse.response_type === 'yes' && (
-                            <Badge variant="outline" className="text-green-600 border-green-600">
-                              <Check className="h-3 w-3 mr-1" />Ja
-                            </Badge>
-                          )}
-                          {latestResponse.response_type === 'no' && (
-                            <Badge variant="outline" className="text-red-600 border-red-600">
-                              <X className="h-3 w-3 mr-1" />Nein
-                            </Badge>
-                          )}
-                          {latestResponse.response_type === 'question' && (
-                            <Badge variant="outline" className="text-orange-600 border-orange-600">
-                              <MessageCircle className="h-3 w-3 mr-1" />Rückfrage
-                            </Badge>
-                          )}
+                          {(() => {
+                            const responseOptions: ResponseOption[] = (decision.response_options && Array.isArray(decision.response_options))
+                              ? decision.response_options
+                              : getDefaultOptions();
+                            const selectedOption = responseOptions.find(option => option.key === latestResponse.response_type);
+
+                            if (!selectedOption) {
+                              return (
+                                <Badge variant="outline" className="text-muted-foreground border-muted-foreground/40">
+                                  {latestResponse.response_type}
+                                </Badge>
+                              );
+                            }
+
+                            const colorClasses = getColorClasses(selectedOption.color);
+                            return (
+                              <Badge variant="outline" className={cn(colorClasses.textClass, colorClasses.borderClass)}>
+                                {selectedOption.label}
+                                {selectedOption.description ? ` – ${selectedOption.description}` : ""}
+                              </Badge>
+                            );
+                          })()}
                         </div>
                       ) : (
                         <Badge variant="outline" className="text-muted-foreground">Ausstehend</Badge>
