@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -177,18 +176,17 @@ export function EmployeeMeetingScheduler({
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Gesprächstyp</Label>
-            <Select value={meetingType} onValueChange={setMeetingType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="regular">Reguläres Mitarbeitergespräch</SelectItem>
-                <SelectItem value="probation">Probezeit-Gespräch</SelectItem>
-                <SelectItem value="development">Entwicklungsgespräch</SelectItem>
-                <SelectItem value="performance">Leistungsbeurteilung</SelectItem>
-                <SelectItem value="conflict">Konflikt-/Klärungsgespräch</SelectItem>
-              </SelectContent>
-            </Select>
+            <select
+              value={meetingType}
+              onChange={(e) => setMeetingType(e.target.value as typeof meetingType)}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="regular">Reguläres Mitarbeitergespräch</option>
+              <option value="probation">Probezeit-Gespräch</option>
+              <option value="development">Entwicklungsgespräch</option>
+              <option value="performance">Leistungsbeurteilung</option>
+              <option value="conflict">Konflikt-/Klärungsgespräch</option>
+            </select>
           </div>
 
           <div className="space-y-2">

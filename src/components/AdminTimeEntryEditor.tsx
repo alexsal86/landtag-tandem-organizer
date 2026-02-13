@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, parseISO } from "date-fns";
 import { AlertCircle, UserCircle } from "lucide-react";
 
@@ -186,20 +185,17 @@ export function AdminTimeEntryEditor({
           {allowTypeChange && (
             <div className="grid gap-2">
               <Label>Eintragstyp</Label>
-              <Select value={selectedType} onValueChange={(v) => setSelectedType(v as EntryType)}>
-                <SelectTrigger>
-                  <SelectValue>
-                    {entryTypeLabels[selectedType].icon} {entryTypeLabels[selectedType].label}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(entryTypeLabels).map(([type, { icon, label }]) => (
-                    <SelectItem key={type} value={type}>
-                      {icon} {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value as EntryType)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                {Object.entries(entryTypeLabels).map(([type, { icon, label }]) => (
+                  <option key={type} value={type}>
+                    {icon} {label}
+                  </option>
+                ))}
+              </select>
               {isTypeChanged && (
                 <Alert variant="default" className="bg-amber-50 border-amber-200">
                   <AlertCircle className="h-4 w-4 text-amber-600" />

@@ -1375,17 +1375,16 @@ export function AdminTimeTrackingView() {
           <div className="space-y-4 py-4">
             <div className="grid gap-2">
               <Label>Eintragstyp</Label>
-              <Select value={newEntryType} onValueChange={(v) => setNewEntryType(v as EntryType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="work">📋 Arbeit</SelectItem>
-                  <SelectItem value="vacation">🏖️ Urlaub</SelectItem>
-                  <SelectItem value="sick">🤒 Krankheit</SelectItem>
-                  <SelectItem value="overtime_reduction">⏰ Überstundenabbau</SelectItem>
-                </SelectContent>
-              </Select>
+              <select
+                value={newEntryType}
+                onChange={(e) => setNewEntryType(e.target.value as EntryType)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="work">📋 Arbeit</option>
+                <option value="vacation">🏖️ Urlaub</option>
+                <option value="sick">🤒 Krankheit</option>
+                <option value="overtime_reduction">⏰ Überstundenabbau</option>
+              </select>
             </div>
             
             <div className="grid gap-2">
