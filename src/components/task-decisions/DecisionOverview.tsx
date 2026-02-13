@@ -943,8 +943,8 @@ export const DecisionOverview = () => {
           </div>
 
           {/* Title */}
-          <div className="max-h-[4.5rem] overflow-hidden">
-            <h3 className="font-bold text-lg mb-1 line-clamp-1 group-hover:line-clamp-2">{decision.title}</h3>
+          <div>
+            <h3 className="font-bold text-lg mb-1 line-clamp-2">{decision.title}</h3>
 
             {/* Description */}
             {decision.description && (
@@ -1002,7 +1002,7 @@ export const DecisionOverview = () => {
 
             {/* Topics */}
             {decision.topicIds && decision.topicIds.length > 0 && (
-              <TopicDisplay topicIds={decision.topicIds} maxDisplay={2} />
+              <TopicDisplay topicIds={decision.topicIds} maxDisplay={2} expandable />
             )}
           </div>
 

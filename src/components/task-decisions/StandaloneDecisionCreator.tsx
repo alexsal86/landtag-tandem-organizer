@@ -536,7 +536,8 @@ export const StandaloneDecisionCreator = ({
               minHeight="100px"
             />
           </div>
-          <div className="space-y-2">
+          {/* Öffentlich + Priorität nebeneinander */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="visible-to-all"
@@ -545,44 +546,66 @@ export const StandaloneDecisionCreator = ({
               />
               <label htmlFor="visible-to-all" className="text-sm font-medium flex items-center">
                 <Globe className="h-4 w-4 mr-1" />
-                Öffentlich (für alle Büromitarbeiter sichtbar)
+                Öffentlich (für alle sichtbar)
               </label>
             </div>
-            <p className="text-xs text-muted-foreground ml-6">
-              Öffentliche Entscheidungen sind für alle Büromitarbeiter sichtbar. Die ausgewählten Benutzer können abstimmen.
-            </p>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="priority"
+                checked={priority}
+                onCheckedChange={(checked) => setPriority(checked === true)}
+              />
+              <label htmlFor="priority" className="text-sm font-medium flex items-center">
+                <Star className="h-4 w-4 mr-1 text-amber-500" />
+                Als prioritär markieren
+              </label>
+            </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Antworttyp</label>
-            <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Vorlage auswählen" />
-              </SelectTrigger>
-              <SelectContent>
-              {Object.entries(DECISION_TEMPLATES).map(([id, template]) => (
-                  <SelectItem key={id} value={id}>
-                    <div className="flex flex-col items-start">
-                      <span>{template.name}</span>
-                      <span className="text-xs text-muted-foreground">{template.description}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Antworttyp + Vorschau nebeneinander */}
+          <div className="grid grid-cols-2 gap-4 border-t pt-4">
+            <div>
+              <label className="text-sm font-medium">Antworttyp</label>
+              <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Antworttyp wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(DECISION_TEMPLATES).map(([id, template]) => (
+                    <SelectItem key={id} value={id}>
+                      <div className="flex flex-col items-start">
+                        <span>{template.name}</span>
+                        <span className="text-xs text-muted-foreground">{template.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Vorschau</label>
+              <div className="mt-1 p-3 border rounded-md bg-muted/30 min-h-[40px]">
+                {currentOptions.length > 0 ? (
+                  <ResponseOptionsPreview options={currentOptions} />
+                ) : (
+                  <p className="text-xs text-muted-foreground">Wählen Sie einen Antworttyp</p>
+                )}
+              </div>
+            </div>
           </div>
 
-          {selectedTemplateId === "custom" && (
-            <ResponseOptionsEditor
-              options={customOptions}
-              onChange={setCustomOptions}
-            />
-          )}
-
-          {currentOptions.length > 0 && (
-            <div className="flex items-start gap-2">
-              <span className="text-sm font-medium shrink-0">Vorschau:</span>
-              <ResponseOptionsPreview options={currentOptions} />
+          {/* Auto-expand options for Rating5 and OptionABC */}
+          {(selectedTemplateId === "custom" || selectedTemplateId === "rating5" || selectedTemplateId === "optionABC") && (
+            <div className="space-y-2">
+              {(selectedTemplateId === "rating5" || selectedTemplateId === "optionABC") && (
+                <p className="text-xs text-muted-foreground">
+                  Sie können die Beschreibungen der Optionen hier anpassen. Für komplett eigene Optionen wählen Sie "Benutzerdefiniert".
+                </p>
+              )}
+              <ResponseOptionsEditor
+                options={customOptions}
+                onChange={setCustomOptions}
+              />
             </div>
           )}
 
@@ -646,18 +669,6 @@ export const StandaloneDecisionCreator = ({
                 placeholder="Themen hinzufügen..."
               />
             </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="priority"
-              checked={priority}
-              onCheckedChange={(checked) => setPriority(checked === true)}
-            />
-            <label htmlFor="priority" className="text-sm font-medium flex items-center">
-              <Star className="h-4 w-4 mr-1 text-amber-500" />
-              Als prioritär markieren
-            </label>
           </div>
         </div>
         

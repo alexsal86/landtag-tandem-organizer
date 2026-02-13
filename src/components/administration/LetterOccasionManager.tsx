@@ -74,6 +74,7 @@ export function LetterOccasionManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const seedingRef = React.useRef(false);
   const [form, setForm] = useState({
     key: '', label: '', description: '', icon: 'FileText', color: 'bg-blue-500',
     default_template_id: '', template_match_patterns: '', is_active: true, sort_order: 0,
@@ -100,9 +101,13 @@ export function LetterOccasionManager() {
       return;
     }
     if (!data || data.length === 0) {
-      // Auto-seed defaults when table is empty for this tenant
-      await seedDefaults();
-      return; // seedDefaults calls loadOccasions again
+      if (!seedingRef.current) {
+        seedingRef.current = true;
+        await seedDefaults();
+      } else {
+        setLoading(false);
+      }
+      return;
     }
     setOccasions(data);
     setLoading(false);

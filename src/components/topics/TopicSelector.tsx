@@ -131,21 +131,24 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
 interface TopicDisplayProps {
   topicIds: string[];
   maxDisplay?: number;
+  expandable?: boolean;
 }
 
 export const TopicDisplay: React.FC<TopicDisplayProps> = ({
   topicIds,
   maxDisplay = 5,
+  expandable = true,
 }) => {
   const { topics, loading } = useTopics();
+  const [expanded, setExpanded] = React.useState(false);
 
   if (loading || topicIds.length === 0) {
     return null;
   }
 
   const displayTopics = topics.filter(t => topicIds.includes(t.id));
-  const visibleTopics = displayTopics.slice(0, maxDisplay);
   const remainingCount = displayTopics.length - maxDisplay;
+  const visibleTopics = expanded ? displayTopics : displayTopics.slice(0, maxDisplay);
 
   return (
     <div className="flex flex-wrap gap-1">
@@ -164,9 +167,25 @@ export const TopicDisplay: React.FC<TopicDisplayProps> = ({
           {topic.label}
         </Badge>
       ))}
-      {remainingCount > 0 && (
-        <Badge variant="outline" className="text-xs">
+      {remainingCount > 0 && !expanded && (
+        <Badge 
+          variant="outline" 
+          className="text-xs cursor-pointer hover:bg-muted"
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            if (expandable) setExpanded(true); 
+          }}
+        >
           +{remainingCount}
+        </Badge>
+      )}
+      {expanded && remainingCount > 0 && (
+        <Badge 
+          variant="outline" 
+          className="text-xs cursor-pointer hover:bg-muted"
+          onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+        >
+          weniger
         </Badge>
       )}
     </div>

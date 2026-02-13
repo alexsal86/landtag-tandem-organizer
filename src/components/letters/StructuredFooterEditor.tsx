@@ -64,6 +64,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
   const [blocks, setBlocks] = useState<FooterBlock[]>(initialBlocks);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [senderInfo, setSenderInfo] = useState<SenderInfo | null>(null);
+  const [showRuler, setShowRuler] = useState(false);
 
   const footerAvailableWidth = 165; // 210mm - 25mm left - 20mm right
   const footerHeight = 40; // Footer height in mm
@@ -318,6 +319,9 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
             <Button onClick={addCustomBlock} className="w-full justify-start">
               <Type className="h-4 w-4 mr-2" />
               Neuen Block hinzufügen
+            </Button>
+            <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="w-full" onClick={() => setShowRuler(v => !v)}>
+              Lineal {showRuler ? 'ausblenden' : 'einblenden'}
             </Button>
           </CardContent>
         </Card>
@@ -615,6 +619,21 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
             </p>
           </CardHeader>
           <CardContent>
+            <div className="relative pl-8 pt-8">
+              {showRuler && (
+                <>
+                  <div className="absolute top-0 left-8 right-0 h-7 border rounded bg-muted/40 text-[10px] text-muted-foreground pointer-events-none">
+                    {Array.from({ length: Math.floor(footerAvailableWidth / 10) + 1 }).map((_, i) => (
+                      <span key={`fx-${i}`} className="absolute" style={{ left: `${(i * 330) / (footerAvailableWidth / 10)}px` }}>{i * 10}</span>
+                    ))}
+                  </div>
+                  <div className="absolute top-8 left-0 bottom-0 w-7 border rounded bg-muted/40 text-[10px] text-muted-foreground pointer-events-none">
+                    {Array.from({ length: Math.floor(footerHeight / 10) + 1 }).map((_, i) => (
+                      <span key={`fy-${i}`} className="absolute" style={{ top: `${(i * 120) / (footerHeight / 10)}px` }}>{i * 10}</span>
+                    ))}
+                  </div>
+                </>
+              )}
             <div 
               className="border border-gray-300 bg-white relative overflow-hidden"
               style={{
@@ -666,6 +685,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
                   </div>
                 );
               })}
+            </div>
             </div>
           </CardContent>
         </Card>

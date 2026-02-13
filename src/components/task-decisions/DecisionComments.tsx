@@ -120,31 +120,50 @@ export function DecisionComments({
 
       if (error) throw error;
 
-      // Notify decision creator if not the current user
+      // Notify all participants and the decision creator (except the commenter)
       const { data: decision } = await supabase
         .from('task_decisions')
         .select('created_by, title')
         .eq('id', decisionId)
         .single();
 
-      if (decision && decision.created_by !== user.id) {
+      if (decision) {
+        // Get all participants
+        const { data: participants } = await supabase
+          .from('task_decision_participants')
+          .select('user_id')
+          .eq('decision_id', decisionId);
+
+        // Collect unique user IDs to notify (creator + all participants, except commenter)
+        const notifyUserIds = new Set<string>();
+        if (decision.created_by !== user.id) {
+          notifyUserIds.add(decision.created_by);
+        }
+        participants?.forEach(p => {
+          if (p.user_id !== user.id) {
+            notifyUserIds.add(p.user_id);
+          }
+        });
+
         const { data: profile } = await supabase
           .from('profiles')
           .select('display_name')
           .eq('user_id', user.id)
           .single();
 
-        await supabase.rpc('create_notification', {
-          user_id_param: decision.created_by,
-          type_name: 'task_decision_comment_received',
-          title_param: 'Neuer Kommentar',
-          message_param: `${profile?.display_name || 'Jemand'} hat einen Kommentar zu "${decision.title}" hinterlassen.`,
-          data_param: JSON.stringify({
-            decision_id: decisionId,
-            decision_title: decision.title
-          }),
-          priority_param: 'low'
-        });
+        for (const recipientId of notifyUserIds) {
+          await supabase.rpc('create_notification', {
+            user_id_param: recipientId,
+            type_name: 'task_decision_comment_received',
+            title_param: 'Neuer Kommentar',
+            message_param: `${profile?.display_name || 'Jemand'} hat einen Kommentar zu "${decision.title}" hinterlassen.`,
+            data_param: JSON.stringify({
+              decision_id: decisionId,
+              decision_title: decision.title
+            }),
+            priority_param: 'low'
+          });
+        }
       }
 
       toast({

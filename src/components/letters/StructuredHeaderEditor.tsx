@@ -259,6 +259,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (!selectedElement) return;
+    // Delete/Backspace removes selected element
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault();
+      removeElement(selectedElement.id);
+      return;
+    }
     let dx = 0;
     let dy = 0;
     if (event.key === 'ArrowLeft') dx = -1;
@@ -295,12 +301,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 <div className="text-xs text-muted-foreground">Lorem ipsum dolor sit amet</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Landtagsadresse', 'Konrad-Adenauer-Straße 3, 70173 Stuttgart')}>Landtag</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Wahlkreisadresse', 'Musterstraße 12, 70100 Stuttgart')}>Wahlkreis</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Kommunikation', 'Tel. 0711 123456, info@example.de')}>Kommunikation</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => addFooterLikeBlock('Allgemein', 'Alexander Beispiel MdL')}>Allgemein</Button>
-            </div>
+            {/* Shortcut buttons removed - use drag-and-drop text blocks or image gallery instead */}
             <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="w-full" onClick={() => setShowRuler((v) => !v)}>
               Außenlineal {showRuler ? 'ausblenden' : 'einblenden'}
             </Button>

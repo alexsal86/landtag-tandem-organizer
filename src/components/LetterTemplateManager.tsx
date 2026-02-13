@@ -406,20 +406,20 @@ const LetterTemplateManager: React.FC = () => {
   };
 
   // Consolidated tab list - used by both create and edit
+  // Order: Canvas, Header, Footer, Adressfeld, Rücksende, Info-Block, Betreff, Anlagen, Inhalt, Layout, Allgemein
   const renderTabsList = () => (
-    <TabsList className="grid w-full grid-cols-12">
+    <TabsList className="grid w-full grid-cols-11">
       <TabsTrigger value="canvas-designer">Canvas</TabsTrigger>
       <TabsTrigger value="header-designer">Header</TabsTrigger>
       <TabsTrigger value="footer-designer">Footer</TabsTrigger>
-      <TabsTrigger value="layout-settings">Layout</TabsTrigger>
-      <TabsTrigger value="general">Allgemein</TabsTrigger>
       <TabsTrigger value="block-address">Adressfeld</TabsTrigger>
       <TabsTrigger value="block-return-address">Rücksende</TabsTrigger>
       <TabsTrigger value="block-info">Info-Block</TabsTrigger>
       <TabsTrigger value="block-subject">Betreff</TabsTrigger>
-      <TabsTrigger value="block-content">Inhalt</TabsTrigger>
       <TabsTrigger value="block-attachments">Anlagen</TabsTrigger>
-      <TabsTrigger value="advanced">Erweitert</TabsTrigger>
+      <TabsTrigger value="block-content">Inhalt</TabsTrigger>
+      <TabsTrigger value="layout-settings">Layout</TabsTrigger>
+      <TabsTrigger value="general">Allgemein</TabsTrigger>
     </TabsList>
   );
 
@@ -458,6 +458,19 @@ const LetterTemplateManager: React.FC = () => {
           onLetterheadHtmlChange={(v) => setFormData(prev => ({ ...prev, letterhead_html: v }))}
           onLetterheadCssChange={(v) => setFormData(prev => ({ ...prev, letterhead_css: v }))}
         />
+        {/* Erweiterte HTML/CSS Bearbeitung - integriert */}
+        <div className="border-t pt-4 space-y-4">
+          <h3 className="text-lg font-semibold">Erweiterte HTML/CSS Bearbeitung</h3>
+          <p className="text-sm text-muted-foreground">Für erfahrene Benutzer: Bearbeiten Sie den Briefkopf direkt mit HTML und CSS.</p>
+          <div>
+            <Label>Briefkopf HTML</Label>
+            <Textarea value={formData.letterhead_html} onChange={(e) => setFormData(prev => ({ ...prev, letterhead_html: e.target.value }))} placeholder="HTML für den Briefkopf..." rows={8} />
+          </div>
+          <div>
+            <Label>Briefkopf CSS</Label>
+            <Textarea value={formData.letterhead_css} onChange={(e) => setFormData(prev => ({ ...prev, letterhead_css: e.target.value }))} placeholder="CSS-Stile für den Briefkopf..." rows={8} />
+          </div>
+        </div>
       </TabsContent>
 
       <TabsContent value="general" className="space-y-4">
@@ -589,20 +602,6 @@ const LetterTemplateManager: React.FC = () => {
         })}
       </TabsContent>
 
-      <TabsContent value="advanced" className="space-y-4">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Erweiterte HTML/CSS Bearbeitung</h3>
-          <p className="text-sm text-muted-foreground">Für erfahrene Benutzer: Bearbeiten Sie den Briefkopf direkt mit HTML und CSS.</p>
-          <div>
-            <Label>Briefkopf HTML</Label>
-            <Textarea value={formData.letterhead_html} onChange={(e) => setFormData(prev => ({ ...prev, letterhead_html: e.target.value }))} placeholder="HTML für den Briefkopf..." rows={8} />
-          </div>
-          <div>
-            <Label>Briefkopf CSS</Label>
-            <Textarea value={formData.letterhead_css} onChange={(e) => setFormData(prev => ({ ...prev, letterhead_css: e.target.value }))} placeholder="CSS-Stile für den Briefkopf..." rows={8} />
-          </div>
-        </div>
-      </TabsContent>
     </>
   );
 
