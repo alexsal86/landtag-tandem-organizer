@@ -299,17 +299,24 @@ const MyWorkDecisionCardInner = ({
 
             <div className="flex items-center gap-3 ml-auto">
               <div className="flex items-center gap-1.5 text-sm font-bold">
-                {customSummary ? (
-                  customSummary.counts.map((c, i) => {
-                    const cc = getColorClasses(c.color);
-                    return (
-                      <span key={c.key} className="flex items-center gap-0.5">
-                        {i > 0 && <span className="text-muted-foreground">/</span>}
-                        <span className={cc.textClass} title={c.label}>{c.count}</span>
-                      </span>
-                    );
-                  })
-                ) : (
+                {customSummary ? (() => {
+                  const sortedCounts = [...customSummary.counts].sort((a, b) => b.count - a.count);
+                  const winningCount = sortedCounts[0];
+
+                  if (!winningCount || winningCount.count === 0) {
+                    return <span className="text-muted-foreground font-medium">Noch offen</span>;
+                  }
+
+                  const winningOption = decision.response_options?.find((opt) => opt.key === winningCount.key);
+                  const cc = getColorClasses(winningCount.color);
+
+                  return (
+                    <span className={cn("font-medium", cc.textClass)}>
+                      {winningCount.label}
+                      {winningOption?.description ? ` - ${winningOption.description}` : ""}
+                    </span>
+                  );
+                })() : (
                   <>
                     <span className="text-green-600">{summary.yesCount}</span>
                     <span className="text-muted-foreground">/</span>
