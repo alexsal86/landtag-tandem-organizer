@@ -133,11 +133,11 @@ export function DecisionSidebar({
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold truncate">
+                                <p className="text-sm font-semibold line-clamp-3">
                                   {question.decisionTitle}
                                 </p>
                                 <div className="flex items-center gap-1.5 mt-1">
-                                  <span className="text-[10px] text-muted-foreground">von</span>
+                                  <span className="text-xs text-muted-foreground">von</span>
                                   <Avatar className="h-4 w-4">
                                     {question.participantAvatarUrl && (
                                       <AvatarImage src={question.participantAvatarUrl} />
@@ -149,13 +149,13 @@ export function DecisionSidebar({
                                       {getInitials(question.participantName)}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <span className="text-[10px] text-muted-foreground">
+                                  <span className="text-xs text-muted-foreground">
                                     {question.participantName || 'Unbekannt'}
                                   </span>
                                 </div>
                                 {question.comment && (
-                                  <div className="text-[10px] text-muted-foreground mt-1.5 line-clamp-2">
-                                    <RichTextDisplay content={question.comment} className="text-[10px]" />
+                                  <div className="text-xs text-muted-foreground mt-1.5 line-clamp-3">
+                                    <RichTextDisplay content={question.comment} className="text-xs" />
                                   </div>
                                 )}
                               </div>
@@ -220,52 +220,93 @@ export function DecisionSidebar({
                     </div>
                     <div className="space-y-1.5">
                       {newComments.map((comment) => (
-                        <button
+                        <div
                           key={comment.id}
-                          onClick={() => onCommentClick(comment.decisionId)}
                           className={cn(
-                            "w-full text-left p-2 rounded-md border-l-2",
-                            comment.responseType === 'yes' && "border-l-green-500 bg-green-50 dark:bg-green-950/20 hover:bg-green-100 dark:hover:bg-green-950/40",
-                            comment.responseType === 'no' && "border-l-red-500 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/40",
-                            comment.responseType === 'question' && "border-l-orange-500 bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100 dark:hover:bg-orange-950/40",
-                            "transition-colors group"
+                            "w-full text-left p-2.5 rounded-md border-l-2",
+                            comment.responseType === 'yes' && "border-l-green-500 bg-green-50 dark:bg-green-950/20",
+                            comment.responseType === 'no' && "border-l-red-500 bg-red-50 dark:bg-red-950/20",
+                            comment.responseType === 'question' && "border-l-orange-500 bg-orange-50 dark:bg-orange-950/20",
                           )}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold truncate">
-                                {comment.decisionTitle}
-                              </p>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <Avatar className="h-4 w-4">
-                                  {comment.participantAvatarUrl && (
-                                    <AvatarImage src={comment.participantAvatarUrl} />
-                                  )}
-                                  <AvatarFallback
-                                    className="text-[8px]"
-                                    style={{ backgroundColor: comment.participantBadgeColor || undefined }}
-                                  >
-                                    {getInitials(comment.participantName)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {comment.participantName || 'Unbekannt'}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {comment.responseType === 'yes' && '→ Ja'}
-                                  {comment.responseType === 'no' && '→ Nein'}
-                                  {comment.responseType === 'question' && '→ Rückfrage'}
-                                </span>
-                              </div>
-                              {comment.comment && (
-                                <div className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
-                                  <RichTextDisplay content={comment.comment} className="text-[10px]" />
+                          <button
+                            onClick={() => onCommentClick(comment.decisionId)}
+                            className="w-full text-left hover:opacity-80 transition-opacity"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold line-clamp-3">
+                                  {comment.decisionTitle}
+                                </p>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <Avatar className="h-4 w-4">
+                                    {comment.participantAvatarUrl && (
+                                      <AvatarImage src={comment.participantAvatarUrl} />
+                                    )}
+                                    <AvatarFallback
+                                      className="text-[8px]"
+                                      style={{ backgroundColor: comment.participantBadgeColor || undefined }}
+                                    >
+                                      {getInitials(comment.participantName)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-xs text-muted-foreground">
+                                    {comment.participantName || 'Unbekannt'}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {comment.responseType === 'yes' && '→ Ja'}
+                                    {comment.responseType === 'no' && '→ Nein'}
+                                    {comment.responseType === 'question' && '→ Rückfrage'}
+                                  </span>
                                 </div>
-                              )}
+                                {comment.comment && (
+                                  <div className="text-xs text-muted-foreground mt-1.5 line-clamp-3">
+                                    <RichTextDisplay content={comment.comment} className="text-xs" />
+                                  </div>
+                                )}
+                              </div>
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
                             </div>
-                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
-                          </div>
-                        </button>
+                          </button>
+                          {/* Reply button for new justifications */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2 text-xs w-full"
+                            onClick={(e) => { e.stopPropagation(); setRespondingTo(comment.id); }}
+                          >
+                            Antworten
+                          </Button>
+                          {respondingTo === comment.id && (
+                            <div className="mt-2 pt-2 border-t space-y-2">
+                              <SimpleRichTextEditor
+                                initialContent=""
+                                onChange={setResponseText}
+                                placeholder="Ihre Antwort..."
+                                minHeight="60px"
+                              />
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleSendResponse(comment.id)}
+                                  disabled={isLoading || !responseText.trim()}
+                                  className="text-xs"
+                                >
+                                  <Send className="h-3 w-3 mr-1" />
+                                  Senden
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => { setRespondingTo(null); setResponseText(""); }}
+                                  className="text-xs"
+                                >
+                                  Abbrechen
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>

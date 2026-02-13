@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -119,6 +120,14 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
         return;
       }
 
+      // Load topic IDs
+      const { data: topicsData } = await supabase
+        .from('task_decision_topics')
+        .select('topic_id')
+        .eq('decision_id', decisionId);
+      
+      const topicIds = topicsData?.map(t => t.topic_id) || [];
+
       // Load participants with responses including parent_response_id
       const { data: participantsData, error: participantsError } = await supabase
         .from('task_decision_participants')
@@ -218,7 +227,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
           })),
       })) || [];
 
-      setDecision(decisionData);
+      setDecision({ ...decisionData, topicIds });
       setParticipants(formattedParticipants);
     } catch (error) {
       console.error('Error loading decision details:', error);
@@ -501,6 +510,11 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
           </p>
           {decision.description && (
             <RichTextDisplay content={decision.description} className="mt-2" />
+          )}
+          {decision.topicIds && decision.topicIds.length > 0 && (
+            <div className="mt-2">
+              <TopicDisplay topicIds={decision.topicIds} maxDisplay={10} expandable />
+            </div>
           )}
           <p className="text-xs text-muted-foreground">
             Erstellt am: {new Date(decision.created_at).toLocaleString('de-DE', {
