@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,6 +31,7 @@ import { AdminTimeEntryEditor, AdminEditData, EntryType } from "@/components/Adm
 interface Employee {
   user_id: string;
   display_name: string | null;
+  avatar_url: string | null;
   hours_per_week: number;
   days_per_week: number;
 }
@@ -127,6 +128,16 @@ export function AdminTimeTrackingView() {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
 
+  const getInitials = (name: string | null) => {
+    if (!name) return "?";
+    return name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("");
+  };
+
   // Load employees on mount
   useEffect(() => {
     loadEmployees();
@@ -174,7 +185,7 @@ export function AdminTimeTrackingView() {
       }
 
       const [profilesRes, settingsRes] = await Promise.all([
-        supabase.from("profiles").select("user_id, display_name").in("user_id", employeeIds),
+        supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", employeeIds),
         supabase.from("employee_settings").select("user_id, hours_per_week, days_per_week").in("user_id", employeeIds),
       ]);
 
@@ -184,6 +195,7 @@ export function AdminTimeTrackingView() {
       const emps: Employee[] = employeeIds.map(uid => ({
         user_id: uid,
         display_name: profileMap.get(uid)?.display_name || "Unbekannt",
+        avatar_url: profileMap.get(uid)?.avatar_url || null,
         hours_per_week: settingsMap.get(uid)?.hours_per_week || 39.5,
         days_per_week: settingsMap.get(uid)?.days_per_week || 5,
       }));
@@ -787,21 +799,31 @@ export function AdminTimeTrackingView() {
 
   return (
     <div className="space-y-6">
-      {/* Header with employee selector and month navigation */}
+      {/* Header with employee picker and month navigation */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Mitarbeiter wählen" />
-            </SelectTrigger>
-            <SelectContent>
-              {employees.map(e => (
-                <SelectItem key={e.user_id} value={e.user_id}>
-                  {e.display_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="w-full">
+          <div className="flex flex-wrap gap-2">
+            {employees.map((employee) => {
+              const isSelected = selectedUserId === employee.user_id;
+
+              return (
+                <Button
+                  key={employee.user_id}
+                  variant={isSelected ? "default" : "outline"}
+                  className="h-auto px-3 py-2"
+                  onClick={() => setSelectedUserId(employee.user_id)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-7 w-7">
+                      <AvatarImage src={employee.avatar_url || undefined} alt={employee.display_name || "Mitarbeiter"} />
+                      <AvatarFallback className="text-[10px]">{getInitials(employee.display_name)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm">{employee.display_name}</span>
+                  </div>
+                </Button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -1057,8 +1079,7 @@ export function AdminTimeTrackingView() {
               <CardDescription>Alle Einträge inkl. Abwesenheiten für diesen Monat</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[400px]">
-                {combinedEntries.length === 0 ? (
+              {combinedEntries.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p>Keine Einträge in diesem Monat</p>
@@ -1153,7 +1174,6 @@ export function AdminTimeTrackingView() {
                     </TableBody>
                   </Table>
                 )}
-              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1355,17 +1375,16 @@ export function AdminTimeTrackingView() {
           <div className="space-y-4 py-4">
             <div className="grid gap-2">
               <Label>Eintragstyp</Label>
-              <Select value={newEntryType} onValueChange={(v) => setNewEntryType(v as EntryType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="work">📋 Arbeit</SelectItem>
-                  <SelectItem value="vacation">🏖️ Urlaub</SelectItem>
-                  <SelectItem value="sick">🤒 Krankheit</SelectItem>
-                  <SelectItem value="overtime_reduction">⏰ Überstundenabbau</SelectItem>
-                </SelectContent>
-              </Select>
+              <select
+                value={newEntryType}
+                onChange={(e) => setNewEntryType(e.target.value as EntryType)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="work">📋 Arbeit</option>
+                <option value="vacation">🏖️ Urlaub</option>
+                <option value="sick">🤒 Krankheit</option>
+                <option value="overtime_reduction">⏰ Überstundenabbau</option>
+              </select>
             </div>
             
             <div className="grid gap-2">
