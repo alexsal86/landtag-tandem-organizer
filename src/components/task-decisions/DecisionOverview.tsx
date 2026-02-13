@@ -77,6 +77,14 @@ const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; m
   );
 };
 
+
+interface ResponseOption {
+  key: string;
+  label: string;
+  description?: string | null;
+  color?: string;
+}
+
 interface DecisionRequest {
   id: string;
   task_id: string | null;
@@ -99,6 +107,7 @@ interface DecisionRequest {
   attachmentCount?: number;
   topicIds?: string[];
   priority?: number;
+  response_options?: ResponseOption[];
   creator?: {
     user_id: string;
     display_name: string | null;
@@ -178,6 +187,7 @@ export const DecisionOverview = () => {
             archived_by,
             visible_to_all,
             priority,
+            response_options,
             tasks (
               title
             ),
@@ -207,6 +217,7 @@ export const DecisionOverview = () => {
           archived_by,
           visible_to_all,
           priority,
+          response_options,
           tasks (
             title,
             assigned_to
@@ -239,6 +250,7 @@ export const DecisionOverview = () => {
           archived_by,
           visible_to_all,
           priority,
+          response_options,
           tasks (
             title,
             assigned_to
@@ -272,6 +284,7 @@ export const DecisionOverview = () => {
         archived_by: item.task_decisions.archived_by,
         visible_to_all: item.task_decisions.visible_to_all,
         priority: item.task_decisions.priority ?? 0,
+        response_options: item.task_decisions.response_options,
         participant_id: item.id,
         task: item.task_decisions.tasks ? {
           title: item.task_decisions.tasks.title,
@@ -307,6 +320,7 @@ export const DecisionOverview = () => {
             archived_by: item.archived_by,
             visible_to_all: item.visible_to_all,
             priority: item.priority ?? 0,
+            response_options: item.response_options,
             participant_id: userParticipant?.id || null,
             task: item.tasks ? {
               title: item.tasks.title,
@@ -1027,9 +1041,9 @@ export const DecisionOverview = () => {
                 <div className="flex items-center gap-1.5 text-sm font-bold">
                   {(() => {
                     // Check if custom template (not standard yes/no/question)
-                    const responseOptions = (decision as any).response_options;
+                    const responseOptions = decision.response_options;
                     const isCustom = responseOptions && responseOptions.length > 0 &&
-                      !(['yes','no','question'].every((k: string) => responseOptions.some((o: any) => o.key === k)) && responseOptions.length <= 3);
+                      !(['yes','no','question'].every((k: string) => responseOptions.some((o) => o.key === k)) && responseOptions.length <= 3);
                     
                     if (isCustom) {
                       const optionCounts: Record<string, number> = {};
@@ -1037,10 +1051,10 @@ export const DecisionOverview = () => {
                         const rt = p.responses[0]?.response_type;
                         if (rt) optionCounts[rt] = (optionCounts[rt] || 0) + 1;
                       });
-                      const sortedOptions = [...responseOptions].sort((a: any, b: any) => {
+                      const sortedOptions = [...responseOptions].sort((a, b) => {
                         const countDiff = (optionCounts[b.key] || 0) - (optionCounts[a.key] || 0);
                         if (countDiff !== 0) return countDiff;
-                        return responseOptions.findIndex((opt: any) => opt.key === a.key) - responseOptions.findIndex((opt: any) => opt.key === b.key);
+                        return responseOptions.findIndex((opt) => opt.key === a.key) - responseOptions.findIndex((opt) => opt.key === b.key);
                       });
 
                       const winningOption = sortedOptions[0];
