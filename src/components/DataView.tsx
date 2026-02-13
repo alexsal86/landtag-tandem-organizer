@@ -12,6 +12,7 @@ interface PartyInput {
   color: string;
   poll: number;
   directMandates: number;
+  aggregated?: boolean;
 }
 
 interface SeatResult extends PartyInput {
@@ -23,16 +24,16 @@ interface SeatResult extends PartyInput {
 const MIN_SEATS = 120;
 const THRESHOLD = 5;
 
+// Startwerte laut beigefügter letzter Umfrage + 2021er Direktmandate als Basisszenario
 const initialParties: PartyInput[] = [
-  { id: "cdu", name: "CDU", color: "#111827", poll: 31, directMandates: 38 },
-  { id: "gruene", name: "Grüne", color: "#16a34a", poll: 20, directMandates: 19 },
-  { id: "afd", name: "AfD", color: "#2563eb", poll: 18, directMandates: 8 },
-  { id: "spd", name: "SPD", color: "#dc2626", poll: 12, directMandates: 4 },
-  { id: "fdp", name: "FDP", color: "#f59e0b", poll: 6, directMandates: 1 },
-  { id: "linke", name: "Linke", color: "#9333ea", poll: 4, directMandates: 0 },
-  { id: "fw", name: "Freie Wähler", color: "#f97316", poll: 3, directMandates: 0 },
+  { id: "cdu", name: "CDU", color: "#111827", poll: 29, directMandates: 12 },
+  { id: "spd", name: "SPD", color: "#dc2626", poll: 10, directMandates: 0 },
+  { id: "gruene", name: "Grüne", color: "#16a34a", poll: 21, directMandates: 58 },
+  { id: "fdp", name: "FDP", color: "#f59e0b", poll: 5, directMandates: 0 },
+  { id: "linke", name: "Linke", color: "#9333ea", poll: 7, directMandates: 0 },
+  { id: "afd", name: "AfD", color: "#2563eb", poll: 20, directMandates: 0 },
   { id: "bsw", name: "BSW", color: "#7c3aed", poll: 3, directMandates: 0 },
-  { id: "sonstige", name: "Sonstige", color: "#6b7280", poll: 3, directMandates: 0 },
+  { id: "sonstige", name: "Sonstige (aggregiert)", color: "#6b7280", poll: 5, directMandates: 0, aggregated: true },
 ];
 
 const allocateSainteLague = (parties: PartyInput[], seats: number): Record<string, number> => {
@@ -65,7 +66,7 @@ export function DataView() {
   const [parties, setParties] = useState<PartyInput[]>(initialParties);
 
   const result = useMemo(() => {
-    const eligibleParties = parties.filter((party) => party.poll >= THRESHOLD);
+    const eligibleParties = parties.filter((party) => !party.aggregated && party.poll >= THRESHOLD);
 
     if (eligibleParties.length === 0) {
       return {
@@ -88,7 +89,7 @@ export function DataView() {
     }
 
     const rows = parties.map<SeatResult>((party) => {
-      const eligible = party.poll >= THRESHOLD;
+      const eligible = !party.aggregated && party.poll >= THRESHOLD;
       const proportionalSeats = eligible ? seatsByParty[party.id] ?? 0 : 0;
       return {
         ...party,
@@ -113,21 +114,20 @@ export function DataView() {
         <CardHeader>
           <CardTitle>Daten: Mandaterechner Landtagswahl Baden-Württemberg 2026</CardTitle>
           <CardDescription>
-            Modell für die Sitzverteilung mit regulär 120 Sitzen, 5%-Hürde und Ausgleich über Sainte-Laguë/Schepers.
+            Modell mit 120 Mindestsitzen, 5%-Hürde und Ausgleich über Sainte-Laguë/Schepers.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
           <p>
-            Regel-Grundlage: Wahlrecht ab 2026 mit personalisierter Verhältniswahl (Wahlkreis- und Listenmandate),
-            regulärer Landtag mit 120 Sitzen sowie mögliche Vergrößerung bei Überhang-/Ausgleichseffekten.
+            Startwerte Umfrage: CDU 29, SPD 10, Grüne 21, FDP 5, Linke 7, AfD 20, BSW 3, Sonstige 5.
+            Die 5% "Sonstige" sind aggregiert und werden daher nicht als einzelne listefähige Partei verteilt.
           </p>
           <p>
-            Umfrage-Grundlage (Startwerte im Rechner): angenäherte letzte veröffentlichte BW-Landesumfrage
-            Anfang 2026 (CDU 31, Grüne 20, AfD 18, SPD 12, FDP 6, übrige darunter).
+            Startwerte Direktmandate basieren auf der letzten Landtagswahl (2021): Grüne 58, CDU 12, übrige 0.
+            Dadurch entsteht in der Standardsimulation ein vergrößerter Landtag über 120 Sitze.
           </p>
           <p>
-            Hinweis: Das Tool ist ein transparenter Simulationsrechner für politische Arbeit und ersetzt keine amtliche
-            Sitzberechnung des Landeswahlleiters.
+            Das ist ein transparenter Simulationsrechner und keine amtliche Sitzberechnung des Landeswahlleiters.
           </p>
           <Badge variant="secondary">Aktuelle simulierte Parlamentsgröße: {result.parliamentSize} Sitze</Badge>
         </CardContent>
@@ -201,8 +201,9 @@ export function DataView() {
           </Table>
           <Separator className="my-4" />
           <p className="text-sm text-muted-foreground">
-            Rechenlogik: Parteien unter 5% erhalten keine proportionalen Sitze. Die Gesamtgröße wird von 120 aus
-            schrittweise erhöht, bis keine Partei mehr mehr Direktmandate hat als proportionale Sitze.
+            Rechenlogik: Parteien unter 5% (und aggregierte "Sonstige") erhalten keine proportionalen Sitze. Die
+            Gesamtgröße wird ab 120 so lange erhöht, bis keine Partei mehr Direktmandate über ihrem proportionalen
+            Sitzanspruch hat.
           </p>
         </CardContent>
       </Card>
