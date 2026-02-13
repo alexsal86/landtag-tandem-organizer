@@ -1,0 +1,422 @@
+[
+  {
+    "districtNumber": 1,
+    "districtName": "Stuttgart I",
+    "winner2021": "Muhterem Aras",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 2,
+    "districtName": "Stuttgart II",
+    "winner2021": "Daniel Lede Abal",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 3,
+    "districtName": "Stuttgart III",
+    "winner2021": "Ayla Cataltepe",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 4,
+    "districtName": "Stuttgart IV",
+    "winner2021": "Anja Reinalter",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 5,
+    "districtName": "Böblingen",
+    "winner2021": "Thaddäus Kunzmann",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 6,
+    "districtName": "Leonberg",
+    "winner2021": "Thomas Blenke",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 7,
+    "districtName": "Esslingen",
+    "winner2021": "Nicolas Fink",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 8,
+    "districtName": "Kirchheim",
+    "winner2021": "Tobias Bacherle",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 9,
+    "districtName": "Nürtingen",
+    "winner2021": "Karl Zimmermann",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 10,
+    "districtName": "Göppingen",
+    "winner2021": "Tim Bückner",
+    "winnerParty2021": "SPD"
+  },
+  {
+    "districtNumber": 11,
+    "districtName": "Geislingen",
+    "winner2021": "Bernd Gögel",
+    "winnerParty2021": "AfD"
+  },
+  {
+    "districtNumber": 12,
+    "districtName": "Ludwigsburg",
+    "winner2021": "Daniel Born",
+    "winnerParty2021": "SPD"
+  },
+  {
+    "districtNumber": 13,
+    "districtName": "Vaihingen",
+    "winner2021": "Fabian Gramling",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 14,
+    "districtName": "Bietigheim-Bissingen",
+    "winner2021": "Sabine Kurtz",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 15,
+    "districtName": "Waiblingen",
+    "winner2021": "Christina Baum",
+    "winnerParty2021": "AfD"
+  },
+  {
+    "districtNumber": 16,
+    "districtName": "Schorndorf",
+    "winner2021": "Ramazan Selcuk",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 17,
+    "districtName": "Backnang",
+    "winner2021": "Sascha Binder",
+    "winnerParty2021": "SPD"
+  },
+  {
+    "districtNumber": 18,
+    "districtName": "Heilbronn",
+    "winner2021": "Josip Juratovic",
+    "winnerParty2021": "SPD"
+  },
+  {
+    "districtNumber": 19,
+    "districtName": "Eppingen",
+    "winner2021": "Konrad Epple",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 20,
+    "districtName": "Neckarsulm",
+    "winner2021": "Christine Neumann-Martin",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 21,
+    "districtName": "Hohenlohe",
+    "winner2021": "Arnulf von Eyb",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 22,
+    "districtName": "Schwäbisch Hall",
+    "winner2021": "Linde Lindner",
+    "winnerParty2021": "AfD"
+  },
+  {
+    "districtNumber": 23,
+    "districtName": "Main-Tauber",
+    "winner2021": "Christian von Stetten",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 24,
+    "districtName": "Heidenheim",
+    "winner2021": "Raimund Haser",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 25,
+    "districtName": "Schwäbisch Gmünd",
+    "winner2021": "Tim Diebler",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 26,
+    "districtName": "Aalen",
+    "winner2021": "Winfried Mack",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 27,
+    "districtName": "Karlsruhe I",
+    "winner2021": "Ute Leidig",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 28,
+    "districtName": "Karlsruhe II",
+    "winner2021": "Alexander Salomon",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 29,
+    "districtName": "Bruchsal",
+    "winner2021": "Ulli Hockenberger",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 30,
+    "districtName": "Bretten",
+    "winner2021": "Karl Klein",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 31,
+    "districtName": "Ettlingen",
+    "winner2021": "Moritz Oppelt",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 32,
+    "districtName": "Rastatt",
+    "winner2021": "Jonas Weber",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 33,
+    "districtName": "Baden-Baden",
+    "winner2021": "Tobias Wald",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 34,
+    "districtName": "Calw",
+    "winner2021": "Thomas Blenke",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 35,
+    "districtName": "Freudenstadt",
+    "winner2021": "Klaus Hoher",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 36,
+    "districtName": "Pforzheim",
+    "winner2021": "Stefanie Seemann",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 37,
+    "districtName": "Enzkreis",
+    "winner2021": "Christine Neumann-Martin",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 38,
+    "districtName": "Mühlacker",
+    "winner2021": "Erik Schweickert",
+    "winnerParty2021": "FDP"
+  },
+  {
+    "districtNumber": 39,
+    "districtName": "Heidelberg",
+    "winner2021": "Theresia Bauer",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 40,
+    "districtName": "Weinheim",
+    "winner2021": "Georg Nelius",
+    "winnerParty2021": "SPD"
+  },
+  {
+    "districtNumber": 41,
+    "districtName": "Sinsheim",
+    "winner2021": "Albrecht Schütte",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 42,
+    "districtName": "Wiesloch",
+    "winner2021": "Christine Neumann-Martin",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 43,
+    "districtName": "Schwetzingen",
+    "winner2021": "Daniel Born",
+    "winnerParty2021": "SPD"
+  },
+  {
+    "districtNumber": 44,
+    "districtName": "Mannheim I",
+    "winner2021": "Stefan Fulst-Blei",
+    "winnerParty2021": "SPD"
+  },
+  {
+    "districtNumber": 45,
+    "districtName": "Mannheim II",
+    "winner2021": "Elke Zimmer",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 46,
+    "districtName": "Ladenburg",
+    "winner2021": "Julia Philippi",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 47,
+    "districtName": "Mosbach",
+    "winner2021": "Georg Nelius",
+    "winnerParty2021": "SPD"
+  },
+  {
+    "districtNumber": 48,
+    "districtName": "Tauberbischofsheim",
+    "winner2021": "Reinhold Gall",
+    "winnerParty2021": "SPD"
+  },
+  {
+    "districtNumber": 49,
+    "districtName": "Freiburg I",
+    "winner2021": "Nadyne Saint-Cast",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 50,
+    "districtName": "Freiburg II",
+    "winner2021": "Daniela Evers",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 51,
+    "districtName": "Breisgau",
+    "winner2021": "Reinhold Pix",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 52,
+    "districtName": "Emmendingen",
+    "winner2021": "Alexander Schoch",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 53,
+    "districtName": "Lahr",
+    "winner2021": "Sandra Boser",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 54,
+    "districtName": "Offenburg",
+    "winner2021": "Thomas Marwein",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 55,
+    "districtName": "Kehl",
+    "winner2021": "Alexander Schoch",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 56,
+    "districtName": "Achern",
+    "winner2021": "Thomas Marwein",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 57,
+    "districtName": "Bühl",
+    "winner2021": "Tobias Wald",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 58,
+    "districtName": "Lörrach",
+    "winner2021": "Marion Gentges",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 59,
+    "districtName": "Weil am Rhein",
+    "winner2021": "Jonas Weber",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 60,
+    "districtName": "Müllheim",
+    "winner2021": "Reinhold Pix",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 61,
+    "districtName": "Waldshut",
+    "winner2021": "Sabine Hartmann-Müller",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 62,
+    "districtName": "Konstanz",
+    "winner2021": "Nese Erikli",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 63,
+    "districtName": "Stockach",
+    "winner2021": "Martina Braun",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 64,
+    "districtName": "Singen",
+    "winner2021": "Hans-Peter Storz",
+    "winnerParty2021": "SPD"
+  },
+  {
+    "districtNumber": 65,
+    "districtName": "Radolfzell",
+    "winner2021": "Jürgen Keck",
+    "winnerParty2021": "FDP"
+  },
+  {
+    "districtNumber": 66,
+    "districtName": "Villingen-Schwenningen",
+    "winner2021": "Karl Rombach",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 67,
+    "districtName": "Rottweil",
+    "winner2021": "Stefan Teufel",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 68,
+    "districtName": "Tuttlingen",
+    "winner2021": "Dorothea Wehinger",
+    "winnerParty2021": "GRÜNE"
+  },
+  {
+    "districtNumber": 69,
+    "districtName": "Balingen",
+    "winner2021": "Guido Wolf",
+    "winnerParty2021": "CDU"
+  },
+  {
+    "districtNumber": 70,
+    "districtName": "Tübingen",
+    "winner2021": "Daniel Lede Abal",
+    "winnerParty2021": "GRÜNE"
+  }
+]
