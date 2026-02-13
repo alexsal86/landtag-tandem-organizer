@@ -88,7 +88,6 @@ export default function Administration() {
   const [activeSection, setActiveSection] = useState("security");
   const [activeSubSection, setActiveSubSection] = useState("general");
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
-  const [showLetterTemplateManager, setShowLetterTemplateManager] = useState(false);
 
   // Template states
   const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
@@ -1054,14 +1053,9 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button onClick={() => setShowLetterTemplateManager((prev) => !prev)}>
-                    {showLetterTemplateManager ? 'Brief-Template-Manager schließen' : 'Brief-Template-Manager öffnen'}
-                  </Button>
-                  {showLetterTemplateManager && (
-                    <div className="mt-4 border rounded-lg p-4 bg-card">
-                      <LetterTemplateManager />
-                    </div>
-                  )}
+                  <div className="border rounded-lg p-4 bg-card">
+                    <LetterTemplateManager />
+                  </div>
                 </CardContent>
               </Card>
 
