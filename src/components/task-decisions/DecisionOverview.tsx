@@ -957,7 +957,7 @@ export const DecisionOverview = () => {
           </div>
 
           {/* Title */}
-          <div>
+          <div className="max-w-[85%]">
             <h3 className="font-bold text-lg mb-1 line-clamp-2">{decision.title}</h3>
 
             {/* Description */}
