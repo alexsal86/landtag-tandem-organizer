@@ -32,7 +32,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
-import { debounce } from "@/utils/debounce";
+// debounce no longer needed - using direct state updates
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -159,10 +159,8 @@ export function GlobalSearchCommand() {
     enabled: !!currentTenant?.id && open
   });
 
-  // Debounced search
-  const debouncedSearch = debounce((value: string) => {
-    setSearchQuery(value);
-  }, 150);
+  // No more debounce wrapper - use direct state updates
+  // react-query handles the "debounce" via enabled condition (length >= 2)
 
   // Search queries with fuzzy search
   const { data: contacts, isLoading: contactsLoading } = useQuery({
@@ -370,7 +368,6 @@ export function GlobalSearchCommand() {
 
   const handleRecentSearchClick = (query: string) => {
     setSearchQuery(query);
-    debouncedSearch(query);
   };
 
   const clearFilters = () => {
@@ -408,7 +405,7 @@ export function GlobalSearchCommand() {
       <div className="flex items-center border-b px-3">
         <CommandInput 
           placeholder="Durchsuche Kontakte, Termine, Aufgaben, Dokumente... (mind. 2 Zeichen)" 
-          onValueChange={debouncedSearch}
+          onValueChange={setSearchQuery}
           value={searchQuery}
           className="border-0 focus-visible:ring-0"
         />

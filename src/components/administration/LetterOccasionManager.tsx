@@ -96,9 +96,15 @@ export function LetterOccasionManager() {
       .order('sort_order');
     if (error) {
       console.error('Error loading occasions:', error);
-    } else {
-      setOccasions(data || []);
+      setLoading(false);
+      return;
     }
+    if (!data || data.length === 0) {
+      // Auto-seed defaults when table is empty for this tenant
+      await seedDefaults();
+      return; // seedDefaults calls loadOccasions again
+    }
+    setOccasions(data);
     setLoading(false);
   };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
@@ -20,9 +20,13 @@ export const useNavigationNotifications = (): NavigationNotifications => {
   const [navigationCounts, setNavigationCounts] = useState<NavigationCounts>({});
   const [lastVisited, setLastVisited] = useState<Record<string, Date>>({});
   const [isLoading, setIsLoading] = useState(true);
+  // Suppress realtime reload briefly after manual mark-as-read
+  const suppressReloadUntil = useRef<number>(0);
 
   const loadNavigationCounts = async () => {
     if (!user || !currentTenant) return;
+    // Skip if we just manually updated
+    if (Date.now() < suppressReloadUntil.current) return;
 
     try {
       // Only count unread notifications per navigation context
@@ -102,6 +106,8 @@ export const useNavigationNotifications = (): NavigationNotifications => {
 
     try {
       const now = new Date();
+      // Suppress realtime reloads for 2 seconds after manual update
+      suppressReloadUntil.current = Date.now() + 2000;
 
       // Update or insert visit record
       const { error } = await supabase
@@ -123,30 +129,26 @@ export const useNavigationNotifications = (): NavigationNotifications => {
       }
 
       // Mark all notifications in this context as read
-      const { error: notificationError } = await supabase
+      await supabase
         .from('notifications')
         .update({ is_read: true, read_at: now.toISOString() })
         .eq('user_id', user.id)
         .eq('navigation_context', context)
         .eq('is_read', false);
 
-      if (notificationError) {
-        console.error('Error marking context notifications as read:', notificationError);
-      }
-
-      // Update local state
+      // Update local state immediately
       setLastVisited(prev => ({
         ...prev,
         [context]: now,
       }));
 
       // Reset navigation count for this context
-      setNavigationCounts(prev => ({
-        ...prev,
-        [context]: 0,
-      }));
+      setNavigationCounts(prev => {
+        const updated = { ...prev, [context]: 0 };
+        return updated;
+      });
 
-      // Trigger storage events for cross-tab sync
+      // Cross-tab sync
       localStorage.setItem('navigation_visit_sync', JSON.stringify({
         context,
         timestamp: now.toISOString(),
@@ -154,7 +156,6 @@ export const useNavigationNotifications = (): NavigationNotifications => {
       }));
       localStorage.removeItem('navigation_visit_sync');
 
-      // Also trigger notification sync
       localStorage.setItem('notifications_marked_read', JSON.stringify({
         context,
         timestamp: now.toISOString(),
@@ -168,13 +169,6 @@ export const useNavigationNotifications = (): NavigationNotifications => {
 
   const hasNewSinceLastVisit = (context: string): boolean => {
     const count = navigationCounts[context] || 0;
-    const lastVisitDate = lastVisited[context];
-    
-    if (count === 0) return false;
-    if (!lastVisitDate) return count > 0;
-
-    // This is a simplified check - in a real implementation, 
-    // you'd want to check if there are notifications newer than the last visit
     return count > 0;
   };
 
@@ -237,7 +231,6 @@ export const useNavigationNotifications = (): NavigationNotifications => {
               ...prev,
               [data.context]: new Date(data.timestamp),
             }));
-            // Reset count for this context
             setNavigationCounts(prev => ({
               ...prev,
               [data.context]: 0,
@@ -249,7 +242,6 @@ export const useNavigationNotifications = (): NavigationNotifications => {
       }
 
       if (e.key === 'notifications_marked_read' && e.newValue && user) {
-        // Reload counts when notifications are marked as read
         loadNavigationCounts();
       }
     };
