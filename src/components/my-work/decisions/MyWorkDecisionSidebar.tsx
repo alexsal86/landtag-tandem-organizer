@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { SidebarDiscussionComment } from "./types";
+import { useAuth } from "@/hooks/useAuth";
 
 interface OpenQuestion {
   id: string;
@@ -59,6 +60,7 @@ export function MyWorkDecisionSidebar({
   onDiscussionClick,
   onResponseSent,
 }: MyWorkDecisionSidebarProps) {
+  const { user } = useAuth();
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [responseText, setResponseText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -83,6 +85,34 @@ export function MyWorkDecisionSidebar({
       onResponseSent?.();
     } catch (error) {
       console.error('Error sending response:', error);
+      toast.error("Fehler beim Senden");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendDiscussionReply = async (discussionComment: SidebarDiscussionComment) => {
+    if (!responseText.trim() || !user) return;
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from("task_decision_comments")
+        .insert({
+          decision_id: discussionComment.decisionId,
+          user_id: user.id,
+          parent_id: discussionComment.id,
+          content: responseText.trim(),
+        });
+
+      if (error) throw error;
+
+      toast.success("Antwort gesendet");
+      setResponseText("");
+      setRespondingTo(null);
+      onResponseSent?.();
+    } catch (error) {
+      console.error("Error sending discussion reply:", error);
       toast.error("Fehler beim Senden");
     } finally {
       setIsLoading(false);
@@ -243,33 +273,81 @@ export function MyWorkDecisionSidebar({
                       </Badge>
                     </div>
                     {discussionComments.slice(0, 5).map((dc) => (
-                      <button
+                      <div
                         key={dc.id}
-                        onClick={() => onDiscussionClick?.(dc.decisionId)}
-                        className="w-full text-left p-2 rounded-md border-l-2 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors"
+                        className="p-2 rounded-md border-l-2 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20"
                       >
-                        <p className="text-xs font-semibold line-clamp-2">{dc.decisionTitle}</p>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <Avatar className="h-4 w-4">
-                            {dc.authorAvatarUrl && <AvatarImage src={dc.authorAvatarUrl} />}
-                            <AvatarFallback className="text-[8px]" style={{ backgroundColor: dc.authorBadgeColor || undefined }}>
-                              {getInitials(dc.authorName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs text-muted-foreground">{dc.authorName || 'Unbekannt'}</span>
-                          {dc.isMention && (
-                            <Badge variant="outline" className="text-xs px-1 py-0 text-blue-600 border-blue-400">
-                              @Erwähnt
-                            </Badge>
-                          )}
-                          <span className="text-xs text-muted-foreground ml-auto">
-                            {formatDistanceToNow(new Date(dc.createdAt), { addSuffix: true, locale: de })}
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          <RichTextDisplay content={dc.content} className="text-xs" />
-                        </div>
-                      </button>
+                        <button
+                          onClick={() => onDiscussionClick?.(dc.decisionId)}
+                          className="w-full text-left hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors rounded -m-0.5 p-0.5"
+                        >
+                          <p className="text-xs font-semibold line-clamp-2">{dc.decisionTitle}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Avatar className="h-4 w-4">
+                              {dc.authorAvatarUrl && <AvatarImage src={dc.authorAvatarUrl} />}
+                              <AvatarFallback className="text-[8px]" style={{ backgroundColor: dc.authorBadgeColor || undefined }}>
+                                {getInitials(dc.authorName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-muted-foreground">{dc.authorName || 'Unbekannt'}</span>
+                            {dc.isMention && (
+                              <Badge variant="outline" className="text-xs px-1 py-0 text-blue-600 border-blue-400">
+                                @Erwähnt
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground ml-auto">
+                              {formatDistanceToNow(new Date(dc.createdAt), { addSuffix: true, locale: de })}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            <RichTextDisplay content={dc.content} className="text-xs" />
+                          </div>
+                        </button>
+
+                        {respondingTo === dc.id ? (
+                          <div className="mt-1.5 pt-1.5 border-t border-blue-200 dark:border-blue-800 space-y-1.5">
+                            <SimpleRichTextEditor
+                              initialContent=""
+                              onChange={setResponseText}
+                              placeholder="Antwort..."
+                              minHeight="50px"
+                            />
+                            <div className="flex gap-1.5">
+                              <Button
+                                size="sm"
+                                onClick={() => handleSendDiscussionReply(dc)}
+                                disabled={isLoading || !responseText.trim()}
+                                className="text-[10px] h-6"
+                              >
+                                <Send className="h-2.5 w-2.5 mr-1" />Senden
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setRespondingTo(null);
+                                  setResponseText("");
+                                }}
+                                className="text-[10px] h-6"
+                              >
+                                Abbrechen
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-1.5 text-[10px] w-full h-6"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRespondingTo(dc.id);
+                            }}
+                          >
+                            Antworten
+                          </Button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
