@@ -4950,6 +4950,69 @@ export type Database = {
           },
         ]
       }
+      letter_occasions: {
+        Row: {
+          color: string | null
+          created_at: string
+          default_template_id: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          key: string
+          label: string
+          sort_order: number
+          template_match_patterns: string[] | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          default_template_id?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          key: string
+          label: string
+          sort_order?: number
+          template_match_patterns?: string[] | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          default_template_id?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+          sort_order?: number
+          template_match_patterns?: string[] | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "letter_occasions_default_template_id_fkey"
+            columns: ["default_template_id"]
+            isOneToOne: false
+            referencedRelation: "letter_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "letter_occasions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       letter_template_assets: {
         Row: {
           asset_type: string

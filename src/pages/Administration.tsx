@@ -43,6 +43,9 @@ import { MeetingTemplateParticipantsEditor } from "@/components/meetings/Meeting
 import { AnnualTasksView } from "@/components/AnnualTasksView";
 import LetterTemplateManager from "@/components/LetterTemplateManager";
 import { AdminSidebar } from "@/components/administration/AdminSidebar";
+import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
+import { InformationBlockManager } from "@/components/administration/InformationBlockManager";
+import { LetterOccasionManager } from "@/components/administration/LetterOccasionManager";
 import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1081,6 +1084,14 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                 </Card>
               </div>
             </div>
+          );
+        case "occasions":
+          return (
+            <Card>
+              <CardContent className="pt-6">
+                <LetterOccasionManager />
+              </CardContent>
+            </Card>
           );
         case "meetings":
           return (

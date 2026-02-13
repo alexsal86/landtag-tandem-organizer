@@ -48,7 +48,7 @@ interface SenderInfo {
   is_default?: boolean;
 }
 
-const OCCASIONS = [
+const FALLBACK_OCCASIONS = [
   { key: 'buergeranliegen', label: 'Bürgeranliegen', description: 'Antwort auf Anfragen von Bürgern', icon: Users, color: 'bg-blue-500' },
   { key: 'ministerium', label: 'Ministerium', description: 'Formelle Korrespondenz mit Ministerien', icon: Building2, color: 'bg-purple-500' },
   { key: 'einladung', label: 'Einladung', description: 'Veranstaltungseinladungen', icon: PartyPopper, color: 'bg-amber-500' },
@@ -58,15 +58,8 @@ const OCCASIONS = [
   { key: 'sonstiges', label: 'Sonstiges', description: 'Freie Briefform', icon: FileText, color: 'bg-muted-foreground' },
 ];
 
-// Map occasions to template name patterns for auto-suggestion
-const OCCASION_TEMPLATE_MAP: Record<string, string[]> = {
-  buergeranliegen: ['bürger', 'anliegen', 'antwort', 'citizen'],
-  ministerium: ['minister', 'formal', 'amt'],
-  einladung: ['einladung', 'invitation', 'event'],
-  gruss: ['gruß', 'gruss', 'dank', 'beileid', 'glückwunsch'],
-  parlamentarische_anfrage: ['anfrage', 'parlament', 'regierung'],
-  stellungnahme: ['stellungnahme', 'position', 'statement'],
-  sonstiges: [],
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Users, Building2, PartyPopper, Heart, FileQuestion, MessageSquare, FileText,
 };
 
 export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel }) => {
@@ -74,6 +67,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
   const { currentTenant } = useTenant();
   const [step, setStep] = useState(1);
   const [selectedOccasion, setSelectedOccasion] = useState<string | null>(null);
+  const [occasions, setOccasions] = useState<Array<{ key: string; label: string; description: string; icon: React.ComponentType<{ className?: string }>; color: string; default_template_id?: string | null; template_match_patterns?: string[] }>>([]);
   
   // Step 2: Recipient
   const [recipientMode, setRecipientMode] = useState<'contact' | 'manual'>('contact');
@@ -94,22 +88,55 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
       loadContacts();
       loadTemplates();
       loadSenders();
+      loadOccasions();
     }
   }, [currentTenant]);
 
+  const loadOccasions = async () => {
+    if (!currentTenant) return;
+    const { data } = await supabase
+      .from('letter_occasions')
+      .select('*')
+      .eq('tenant_id', currentTenant.id)
+      .eq('is_active', true)
+      .order('sort_order');
+    if (data && data.length > 0) {
+      setOccasions(data.map((o: any) => ({
+        key: o.key,
+        label: o.label,
+        description: o.description || '',
+        icon: ICON_MAP[o.icon] || FileText,
+        color: o.color || 'bg-muted-foreground',
+        default_template_id: o.default_template_id,
+        template_match_patterns: o.template_match_patterns || [],
+      })));
+    } else {
+      setOccasions(FALLBACK_OCCASIONS);
+    }
+  };
+
   // Auto-suggest template when occasion changes
   useEffect(() => {
-    if (selectedOccasion && templates.length > 0) {
-      const patterns = OCCASION_TEMPLATE_MAP[selectedOccasion] || [];
+    if (selectedOccasion && templates.length > 0 && occasions.length > 0) {
+      const occ = occasions.find(o => o.key === selectedOccasion);
+      // If occasion has a direct template link, use it
+      if (occ?.default_template_id) {
+        const match = templates.find(t => t.id === occ.default_template_id);
+        if (match) {
+          setSelectedTemplateId(match.id);
+          if (match.default_sender_id) setSelectedSenderId(match.default_sender_id);
+          return;
+        }
+      }
+      // Fallback to pattern matching
+      const patterns = occ?.template_match_patterns || [];
       if (patterns.length > 0) {
         const match = templates.find(t => 
           patterns.some(p => t.name.toLowerCase().includes(p))
         );
         if (match) {
           setSelectedTemplateId(match.id);
-          if (match.default_sender_id) {
-            setSelectedSenderId(match.default_sender_id);
-          }
+          if (match.default_sender_id) setSelectedSenderId(match.default_sender_id);
           return;
         }
       }
@@ -118,7 +145,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
         setSelectedTemplateId(templates[0]?.id || '');
       }
     }
-  }, [selectedOccasion, templates]);
+  }, [selectedOccasion, templates, occasions]);
 
   // Auto-select default sender
   useEffect(() => {
@@ -224,7 +251,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
             <div className="space-y-4">
               <h3 className="font-semibold text-lg">Welchen Anlass hat Ihr Brief?</h3>
               <div className="grid grid-cols-2 gap-3">
-                {OCCASIONS.map(occ => {
+                {occasions.map(occ => {
                   const Icon = occ.icon;
                   const isSelected = selectedOccasion === occ.key;
                   return (
@@ -355,7 +382,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
               
               <div className="p-3 bg-muted/50 rounded-lg text-sm">
                 <p className="text-muted-foreground">
-                  Basierend auf dem Anlass <Badge variant="outline" className="mx-1">{OCCASIONS.find(o => o.key === selectedOccasion)?.label}</Badge> 
+                  Basierend auf dem Anlass <Badge variant="outline" className="mx-1">{occasions.find(o => o.key === selectedOccasion)?.label}</Badge> 
                   wurde automatisch eine passende Vorlage vorgeschlagen.
                 </p>
               </div>
@@ -402,7 +429,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
                   <h4 className="font-medium">Zusammenfassung</h4>
                   <div className="grid grid-cols-2 gap-y-1">
                     <span className="text-muted-foreground">Anlass:</span>
-                    <span>{OCCASIONS.find(o => o.key === selectedOccasion)?.label}</span>
+                    <span>{occasions.find(o => o.key === selectedOccasion)?.label}</span>
                     <span className="text-muted-foreground">Empfänger:</span>
                     <span>{recipientMode === 'contact' ? selectedContact?.name : manualName}</span>
                   </div>

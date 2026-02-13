@@ -99,9 +99,15 @@ export function GlobalSearchCommand() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
-  // Custom event listener for programmatic opening
+  // Custom event listener for programmatic opening (with optional initial query)
   useEffect(() => {
-    const handleOpenSearch = () => setOpen(true);
+    const handleOpenSearch = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.query) {
+        setSearchQuery(detail.query);
+      }
+      setOpen(true);
+    };
     window.addEventListener('openGlobalSearch', handleOpenSearch);
     return () => window.removeEventListener('openGlobalSearch', handleOpenSearch);
   }, []);
@@ -156,7 +162,7 @@ export function GlobalSearchCommand() {
   // Debounced search
   const debouncedSearch = debounce((value: string) => {
     setSearchQuery(value);
-  }, 300);
+  }, 150);
 
   // Search queries with fuzzy search
   const { data: contacts, isLoading: contactsLoading } = useQuery({

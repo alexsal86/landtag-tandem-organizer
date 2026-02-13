@@ -25,10 +25,10 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     if (!user || !currentTenant) return;
 
     try {
-      // Get unread notification counts per navigation context
+      // Only count unread notifications per navigation context
       const { data: notifications, error } = await supabase
         .from('notifications')
-        .select('navigation_context, created_at')
+        .select('navigation_context')
         .eq('user_id', user.id)
         .eq('is_read', false);
 
@@ -45,37 +45,6 @@ export const useNavigationNotifications = (): NavigationNotifications => {
           counts[context] = (counts[context] || 0) + 1;
         }
       });
-
-      // Override decisions count with actual open decisions for this user
-      const { data: unrespondedDecisions } = await supabase
-        .from('task_decision_participants')
-        .select(`
-          id,
-          task_decisions!inner(status),
-          task_decision_responses(id)
-        `)
-        .eq('user_id', user.id)
-        .in('task_decisions.status', ['active', 'open']);
-
-      const unrespondedCount = (unrespondedDecisions || []).filter(
-        (d: any) => !d.task_decision_responses || d.task_decision_responses.length === 0
-      ).length;
-
-      counts['decisions'] = unrespondedCount;
-
-      // Count open tasks assigned to or created by the user
-      const { data: openTasks } = await supabase
-        .from('tasks')
-        .select('id, assigned_to, user_id')
-        .neq('status', 'completed');
-
-      if (openTasks) {
-        const userTasksCount = openTasks.filter((task: any) => {
-          const assignedTo = task.assigned_to || [];
-          return assignedTo.includes(user.id) || task.user_id === user.id;
-        }).length;
-        counts['tasks'] = userTasksCount;
-      }
 
       // Count overdue or due annual tasks for administration badge
       const currentMonth = new Date().getMonth() + 1;
@@ -94,12 +63,11 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         const overdueOrDueCount = annualTasks.filter((task: any) => {
           const completions = task.annual_task_completions || [];
           const currentYearCompletion = completions.find((c: any) => c.year === currentYear && c.completed_at);
-          if (currentYearCompletion) return false; // Already completed
-          return task.due_month <= currentMonth; // Overdue or due this month
+          if (currentYearCompletion) return false;
+          return task.due_month <= currentMonth;
         }).length;
         
         counts['annual_tasks'] = overdueOrDueCount;
-        // Also add to administration count
         counts['administration'] = (counts['administration'] || 0) + overdueOrDueCount;
       }
 
