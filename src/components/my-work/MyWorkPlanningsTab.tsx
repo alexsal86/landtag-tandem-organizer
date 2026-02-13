@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CalendarPlus, ExternalLink, MapPin, CheckSquare, Calendar, CheckCircle, Archive } from "lucide-react";
+import { CalendarPlus, ExternalLink, MapPin, CheckSquare, Calendar, CheckCircle, Archive, ChevronDown, ChevronUp, Clock, Plus, Square } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,12 @@ interface Planning {
     completed: number;
     total: number;
   };
+  checklistItems: {
+    id: string;
+    title: string;
+    is_completed: boolean;
+    order_index: number;
+  }[];
 }
 
 export function MyWorkPlanningsTab() {
@@ -38,7 +44,8 @@ export function MyWorkPlanningsTab() {
   
   const [plannings, setPlannings] = useState<Planning[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPlanning, setSelectedPlanning] = useState<Planning | null>(null);
+  const [expandedPlanningIds, setExpandedPlanningIds] = useState<Set<string>>(new Set());
+  const [newChecklistTitles, setNewChecklistTitles] = useState<Record<string, string>>({});
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -74,7 +81,9 @@ export function MyWorkPlanningsTab() {
           is_completed,
           event_planning_checklist_items (
             id,
-            is_completed
+            title,
+            is_completed,
+            order_index
           )
         `)
         .eq("user_id", user.id)
@@ -101,7 +110,9 @@ export function MyWorkPlanningsTab() {
             is_archived,
             event_planning_checklist_items (
               id,
-              is_completed
+              title,
+              is_completed,
+              order_index
             )
           )
         `)
@@ -124,6 +135,14 @@ export function MyWorkPlanningsTab() {
           completed: (p.event_planning_checklist_items || []).filter((i: any) => i.is_completed).length,
           total: (p.event_planning_checklist_items || []).length,
         },
+        checklistItems: (p.event_planning_checklist_items || [])
+          .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
+          .map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            is_completed: item.is_completed,
+            order_index: item.order_index ?? 0,
+          })),
       }));
 
       // Format collaboration plannings (filter out archived)
@@ -143,6 +162,14 @@ export function MyWorkPlanningsTab() {
             completed: (c.event_plannings.event_planning_checklist_items || []).filter((i: any) => i.is_completed).length,
             total: (c.event_plannings.event_planning_checklist_items || []).length,
           },
+          checklistItems: (c.event_plannings.event_planning_checklist_items || [])
+            .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
+            .map((item: any) => ({
+              id: item.id,
+              title: item.title,
+              is_completed: item.is_completed,
+              order_index: item.order_index ?? 0,
+            })),
         }));
 
       // Merge and deduplicate
@@ -165,6 +192,61 @@ export function MyWorkPlanningsTab() {
       console.error("Error loading plannings:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleDetails = (planningId: string) => {
+    setExpandedPlanningIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(planningId)) {
+        next.delete(planningId);
+      } else {
+        next.add(planningId);
+      }
+      return next;
+    });
+  };
+
+  const addChecklistItem = async (planning: Planning) => {
+    const title = (newChecklistTitles[planning.id] || "").trim();
+    if (!title) return;
+
+    try {
+      const maxOrderIndex = planning.checklistItems.reduce((max, item) => Math.max(max, item.order_index ?? 0), 0);
+
+      const { error } = await supabase
+        .from("event_planning_checklist_items")
+        .insert({
+          event_planning_id: planning.id,
+          title,
+          order_index: maxOrderIndex + 1,
+          is_completed: false,
+        });
+
+      if (error) throw error;
+
+      setNewChecklistTitles((prev) => ({ ...prev, [planning.id]: "" }));
+      toast({ title: "Checklisten-Eintrag hinzugefügt" });
+      await loadPlannings();
+    } catch (error) {
+      console.error("Error adding checklist item:", error);
+      toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+    }
+  };
+
+  const toggleChecklistItem = async (itemId: string, isCompleted: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("event_planning_checklist_items")
+        .update({ is_completed: isCompleted })
+        .eq("id", itemId);
+
+      if (error) throw error;
+
+      await loadPlannings();
+    } catch (error) {
+      console.error("Error toggling checklist item:", error);
+      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
     }
   };
 
@@ -230,53 +312,141 @@ export function MyWorkPlanningsTab() {
           </div>
         ) : (
           plannings.map((planning) => (
-            <div
-              key={planning.id}
-              className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-              onClick={() => setSelectedPlanning(planning)}
-            >
-              <CalendarPlus className="h-4 w-4 mt-0.5 text-muted-foreground" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={cn(
-                    "font-medium text-sm",
-                    planning.is_completed && "line-through text-muted-foreground"
-                  )}>
-                    {planning.title}
-                  </span>
-                  {planning.isCollaborator && (
-                    <Badge variant="secondary" className="text-xs">Mitwirkend</Badge>
+            <Collapsible key={planning.id} open={expandedPlanningIds.has(planning.id)} onOpenChange={() => toggleDetails(planning.id)}>
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                <CalendarPlus className="h-4 w-4 mt-1 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn(
+                      "font-bold text-base",
+                      planning.is_completed && "line-through text-muted-foreground"
+                    )}>
+                      {planning.title}
+                    </span>
+                    {planning.isCollaborator && (
+                      <Badge variant="secondary" className="text-xs">Mitwirkend</Badge>
+                    )}
+                    {planning.is_completed && (
+                      <Badge variant="outline" className="text-xs text-green-600 border-green-200">Erledigt</Badge>
+                    )}
+                  </div>
+
+                  {planning.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                      {planning.description}
+                    </p>
                   )}
-                  {planning.is_completed && (
-                    <Badge variant="outline" className="text-xs text-green-600 border-green-200">Erledigt</Badge>
-                  )}
+
+                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                    {planning.location && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {planning.location}
+                      </span>
+                    )}
+                    {planning.confirmed_date && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })}
+                      </span>
+                    )}
+                    {planning.confirmed_date && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(planning.confirmed_date), "HH:mm", { locale: de })} Uhr
+                      </span>
+                    )}
+                    {planning.checklistProgress.total > 0 && (
+                      <span className="flex items-center gap-2">
+                        <span className="flex items-center gap-1">
+                        <CheckSquare className="h-3 w-3" />
+                        {planning.checklistProgress.completed}/{planning.checklistProgress.total}
+                        </span>
+                        <CollapsibleTrigger asChild>
+                          <button
+                            type="button"
+                            className="text-primary hover:underline inline-flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Details
+                            {expandedPlanningIds.has(planning.id) ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          </button>
+                        </CollapsibleTrigger>
+                      </span>
+                    )}
+                    {planning.checklistProgress.total === 0 && (
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="text-primary hover:underline inline-flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Details
+                          {expandedPlanningIds.has(planning.id) ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        </button>
+                      </CollapsibleTrigger>
+                    )}
+                  </div>
+
+                  <CollapsibleContent className="mt-3 border-t pt-3 space-y-3">
+                    {planning.description && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Beschreibung</Label>
+                        <p className="text-sm mt-1">{planning.description}</p>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Checkliste</Label>
+                      <div className="mt-2 space-y-2">
+                        {planning.checklistItems.length > 0 ? (
+                          planning.checklistItems.map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              className="text-sm flex items-center gap-2 text-left hover:text-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleChecklistItem(item.id, !item.is_completed);
+                              }}
+                            >
+                              {item.is_completed ? (
+                                <CheckSquare className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <Square className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              <span className={cn(item.is_completed && "line-through text-muted-foreground")}>{item.title}</span>
+                            </button>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Noch keine Einträge</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-3">
+                        <Input
+                          value={newChecklistTitles[planning.id] || ""}
+                          onChange={(e) => setNewChecklistTitles((prev) => ({ ...prev, [planning.id]: e.target.value }))}
+                          onClick={(e) => e.stopPropagation()}
+                          placeholder="Neuer Checklisten-Eintrag"
+                          className="h-8"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addChecklistItem(planning);
+                          }}
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Hinzufügen
+                        </Button>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
                 </div>
-                {planning.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                    {planning.description}
-                  </p>
-                )}
-                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                  {planning.location && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {planning.location}
-                    </span>
-                  )}
-                  {planning.confirmed_date && (
-                    <span>
-                      {format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })}
-                    </span>
-                  )}
-                  {planning.checklistProgress.total > 0 && (
-                    <span className="flex items-center gap-1">
-                      <CheckSquare className="h-3 w-3" />
-                      {planning.checklistProgress.completed}/{planning.checklistProgress.total}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 flex-shrink-0">
                 {/* Erledigt-Button - nur für Eigentümer */}
                 {planning.user_id === user?.id && (
                   <TooltipProvider>
@@ -326,106 +496,18 @@ export function MyWorkPlanningsTab() {
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onClick={() => {
                     navigate(`/eventplanning?planningId=${planning.id}`);
                   }}
                 >
                   <ExternalLink className="h-3 w-3" />
                 </Button>
+                </div>
               </div>
-            </div>
+            </Collapsible>
           ))
         )}
       </div>
-
-      {/* Planning Quick View Dialog */}
-      <Dialog open={!!selectedPlanning} onOpenChange={() => setSelectedPlanning(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CalendarPlus className="h-5 w-5" />
-              {selectedPlanning?.title}
-            </DialogTitle>
-          </DialogHeader>
-          
-          {selectedPlanning && (
-            <div className="space-y-4">
-              {selectedPlanning.description && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Beschreibung</Label>
-                  <p className="text-sm mt-1">{selectedPlanning.description}</p>
-                </div>
-              )}
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Ort</Label>
-                  <p className="text-sm mt-1 flex items-center gap-1">
-                    {selectedPlanning.location ? (
-                      <>
-                        <MapPin className="h-3 w-3" />
-                        {selectedPlanning.location}
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Termin</Label>
-                  <p className="text-sm mt-1 flex items-center gap-1">
-                    {selectedPlanning.confirmed_date ? (
-                      <>
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(selectedPlanning.confirmed_date), "dd.MM.yyyy", { locale: de })}
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">Noch offen</span>
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              {selectedPlanning.checklistProgress.total > 0 && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Checkliste</Label>
-                  <div className="mt-2">
-                    <Progress 
-                      value={(selectedPlanning.checklistProgress.completed / selectedPlanning.checklistProgress.total) * 100} 
-                      className="h-2"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {selectedPlanning.checklistProgress.completed} von {selectedPlanning.checklistProgress.total} erledigt
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {selectedPlanning.isCollaborator && (
-                <Badge variant="secondary">Mitwirkend</Badge>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setSelectedPlanning(null)}
-            >
-              Schließen
-            </Button>
-            <Button 
-              onClick={() => {
-                navigate(`/eventplanning?planningId=${selectedPlanning?.id}`);
-                setSelectedPlanning(null);
-              }}
-            >
-              Zur Planung
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
