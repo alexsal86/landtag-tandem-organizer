@@ -27,6 +27,7 @@ const CaseFilesView = lazy(() => import("@/components/CaseFilesView").then(m => 
 const MatrixChatView = lazy(() => import("@/components/chat/MatrixChatView").then(m => ({ default: m.MatrixChatView })));
 const MyWorkView = lazy(() => import("@/components/MyWorkView").then(m => ({ default: m.MyWorkView })));
 const CallsView = lazy(() => import("@/components/CallsView").then(m => ({ default: m.CallsView })));
+const DataView = lazy(() => import("@/components/DataView").then(m => ({ default: m.DataView })));
 const EditProfile = lazy(() => import("@/pages/EditProfile"));
 const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
 import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
@@ -178,6 +179,8 @@ const Index = () => {
         return <MatrixChatView />;
       case "calls":
         return <CallsView />;
+      case "daten":
+        return <DataView />;
       case "notifications":
         return <NotificationsPage />;
       case "profile-edit":
