@@ -1,128 +1,111 @@
 
-# Plan: 7 Verbesserungen und neue Funktionen
 
-Hier ist eine Uebersicht aller Punkte mit Einschaetzung und Vorgehensweise:
+# Plan: 6 Verbesserungen
 
----
+## 1. Brief-Anlaesse in die Datenbank laden (Seed-Daten)
 
-## 1. Brief-Anlass-Vorlagen-Verwaltung in der Administration
-
-**Aktueller Stand:** Die Zuordnung von Anlaessen zu Vorlagen ist im Code hartcodiert (`OCCASION_TEMPLATE_MAP` in `LetterWizard.tsx`). Es gibt 7 Anlaesse (Buergeranliegen, Ministerium, Einladung, etc.), die ueber Textmuster mit Vorlagen verknuepft werden.
-
-**Loesung:**
-
-- Neue Datenbanktabelle `letter_occasions` mit Feldern: `id`, `tenant_id`, `key`, `label`, `description`, `icon`, `color`, `sort_order`, `default_template_id` (FK auf `letter_templates`), `is_active`, `created_at`, `updated_at`
-- Neuer Administrations-Bereich unter **Vorlagen > Brief-Anlaesse** (neuer Unterpunkt in der Admin-Sidebar)
-- CRUD-Oberflaeche zum Erstellen, Bearbeiten und Loeschen von Anlaessen mit Verknuepfung zur Briefvorlage
-- `LetterWizard.tsx` wird angepasst, um die Anlaesse aus der Datenbank statt aus dem hartcodierten Array zu laden
-- RLS-Policies fuer Mandantentrennung
+Die `LetterOccasionManager`-Komponente hat bereits einen "Standard-Anlaesse erstellen"-Button mit `seedDefaults()`, der die 7 Standard-Anlaesse in die DB schreibt. Allerdings muss der Nutzer diesen manuell klicken. Stattdessen wird eine automatische Befuellung implementiert: Beim Laden der `LetterOccasionManager`-Seite wird geprueft, ob die Tabelle `letter_occasions` fuer den aktuellen Mandanten leer ist. Falls ja, werden die 7 Standardwerte automatisch eingefuegt.
 
 ### Dateien:
-- `AdminSidebar.tsx`: Neuer Unterpunkt "Brief-Anlaesse" unter "Vorlagen"
-- Neue Komponente: `src/components/administration/LetterOccasionManager.tsx`
-- `LetterWizard.tsx`: Anlaesse aus DB laden statt hardcoded
-- DB-Migration: Neue Tabelle `letter_occasions` + Seed-Daten der 7 Standard-Anlaesse
+- `src/components/administration/LetterOccasionManager.tsx`: In `loadOccasions` automatisch `seedDefaults()` ausfuehren, wenn keine Eintraege vorhanden
 
 ---
 
-## 2. "Preview has not been built yet" Fehler
+## 2. Suche reparieren -- Performance und Bedienbarkeit
 
-**Analyse:** Dies ist ein Build-/Preview-Fehler der Lovable-Umgebung, kein Code-Fehler. Der Fehler tritt auf, wenn die Anwendung gerade gebaut wird oder ein Kompilierfehler vorliegt. Nach dem Implementieren der geplanten Aenderungen und erfolgreichem Build sollte die Vorschau wieder funktionieren. Es sind keine speziellen Code-Aenderungen noetig.
-
----
-
-## 3. Suche: Direkte Eingabe im Header und Performance
-
-**Aktueller Stand:** Die `HeaderSearch`-Komponente ist nur ein visueller Button, der den `GlobalSearchCommand`-Dialog oeffnet. Es gibt einen 300ms Debounce und eine Mindestlaenge von 2 Zeichen.
+**Probleme:**
+- Text wird beim Tippen "verschluckt", weil der Such-Dialog sofort bei 1 Zeichen oeffnet und den Fokus stiehlt
+- Ergebnisse erscheinen nicht zuverlaessig; erst beim erneuten Oeffnen
+- Der debounce auf `CommandInput.onValueChange` konkurriert mit dem State-Update aus `HeaderSearch`
 
 **Loesung:**
-
-- `HeaderSearch` wird zu einem echten Eingabefeld umgebaut: Tippen startet sofort die Suche
-- Bei Eingabe oeffnet sich automatisch der `GlobalSearchCommand`-Dialog mit dem bereits eingegebenen Text
-- Performance-Verbesserung: Debounce von 300ms auf 150ms reduzieren
-- Der `GlobalSearchCommand` erhaelt eine optionale `initialQuery`-Prop, um mit vorgefillertem Text zu starten
+- `HeaderSearch`: Erst bei Enter oder ab 2 Zeichen + kurzer Pause (400ms) den Dialog oeffnen -- nicht sofort bei jedem Tastendruck
+- `GlobalSearchCommand`: Den internen `debouncedSearch`-Wrapper entfernen und stattdessen den `searchQuery`-State direkt setzen. Der Debounce wird ueber die `enabled`-Bedingung der react-query Hooks natuerlich gehandhabt (Queries starten erst bei `searchQuery.length >= 2`)
+- `CommandInput` erhaelt `value={searchQuery}` und `onValueChange` setzt direkt `setSearchQuery`
+- Kein Event-basiertes Oeffnen mehr -- stattdessen oeffnet sich der Dialog ueber einen State der in beiden Komponenten geteilt wird (oder der bisherige Event-Mechanismus wird beibehalten, aber mit Verzoegerung)
 
 ### Dateien:
-- `src/components/layout/HeaderSearch.tsx`: Echtes Input-Feld mit Weiterleitung an GlobalSearch
-- `src/components/GlobalSearchCommand.tsx`: `initialQuery` Event-Daten akzeptieren
+- `src/components/layout/HeaderSearch.tsx`: Debounce vor Dialog-Oeffnung (400ms), kein sofortiges Oeffnen bei jedem Zeichen
+- `src/components/GlobalSearchCommand.tsx`: `debouncedSearch`-Wrapper entfernen, `setSearchQuery` direkt nutzen, react-query Debounce ueber `staleTime` und Query-Key
 
 ---
 
-## 4. Canvas-Designer: Element-Farben in der Sidebar
+## 3. Suche ohne Filterbereich -- schlankere Darstellung
 
-**Aktueller Stand:** Die Elemente in der Sidebar-Liste des Canvas-Designers verwenden einheitliche Buttons (`variant="outline"` oder `variant="default"`), waehrend die Bloecke auf dem Canvas individuelle Farben haben (z.B. cyan fuer Header, blau fuer Adressfeld, lila fuer Info-Block).
-
-**Loesung:**
-
-- Die Element-Buttons in der Sidebar erhalten dieselben Farben wie auf dem Canvas
-- Jeder Button zeigt einen farbigen Streifen oder Hintergrund entsprechend der `block.color`-Klasse
+Die Filter (Datum, Kategorie, Status) werden standardmaessig ausgeblendet und stattdessen ein einfacher "Mehr..."-Link angezeigt, der sie bei Bedarf einblendet. Die Suche soll so wirken: Eingabefeld oben, Treffer direkt darunter.
 
 ### Dateien:
-- `src/components/letters/LetterLayoutCanvasDesigner.tsx`: Sidebar-Buttons mit Block-Farben versehen (Zeilen 209-219)
+- `src/components/GlobalSearchCommand.tsx`: Filter-Button bleibt, aber der Filter-Bereich ist standardmaessig eingeklappt. Das grundsaetzliche Verhalten bleibt gleich.
+
+(Dies ist bereits so implementiert -- `showFilters` ist standardmaessig `false`. Hier muss nur sichergestellt werden, dass die Suche ohne Filter-Klick funktioniert. Das wird durch Punkt 2 behoben.)
 
 ---
 
-## 5. Zoom-Funktion fuer den Canvas-Designer
+## 4. LetterTemplateManager: Tabs konsistent machen (Betreff-Variablen, Ruecksende, Info-Block, Erweitert wiederherstellen)
 
-**Aktueller Stand:** Der Canvas verwendet einen festen Skalierungsfaktor (`SCALE = 2.2`).
+**Problem:** Der Bearbeitungs-Dialog und der Erstellungs-Dialog in `LetterTemplateManager.tsx` haben inkonsistente Tabs. Die im Plan beschriebene konsolidierte Tab-Leiste (`renderTabsList` mit 10 Tabs: Canvas, Header, Footer, Layout, Allgemein, Adressfeld, Ruecksende, Info-Block, Betreff, Anlagen) wird nur im Bearbeitungsmodus teilweise genutzt. Der Create-Dialog hat eigene 12 Tabs mit anderem Layout.
 
-**Loesung:**
+**Loesung:** Beide Dialoge (Create und Edit) verwenden dieselbe konsistente Tab-Leiste (`renderTabsList`) und `renderCommonTabsContent`. Die bestehenden Features (Betreff-Variablen-Platzhalter, Ruecksende mit `SenderInformationManager`, Info-Block mit `InformationBlockManager`, Erweitert-Tab) werden in `renderCommonTabsContent` konsolidiert, sodass sie in beiden Kontexten identisch funktionieren.
 
-- Zoom-Steuerung (Plus/Minus-Buttons und Prozentwert-Anzeige) in der Toolbar des Canvas-Designers
-- SCALE wird von einer Konstante zu einem State-Wert
-- Zoom-Stufen: 50%, 75%, 100%, 125%, 150%, 200% (wobei 100% = 2.2 SCALE entspricht)
-- Mausrad-Zoom mit Ctrl/Cmd gehalten
+Dazu werden die Tab-Listen in Create- und Edit-Dialog durch die gemeinsame `renderTabsList()`-Funktion ersetzt und der Inhalt durch `renderCommonTabsContent()` bereitgestellt. Die Tabs `block-content` und `advanced` werden ebenfalls integriert.
 
 ### Dateien:
-- `src/components/letters/LetterLayoutCanvasDesigner.tsx`: State fuer Zoom-Level, Zoom-Buttons in der Toolbar, SCALE dynamisch berechnen
+- `src/components/LetterTemplateManager.tsx`: Create- und Edit-Dialog konsolidieren
+
+---
+
+## 5. Navigations-Badges bei Seitenbesuch zuruecksetzen
+
+**Problem:** Wenn man eine Seite besucht und dort Benachrichtigungen als gelesen markiert werden (Tab-Badge verschwindet), bleibt der Badge in der Sidebar-Navigation bestehen.
+
+**Loesung:** `markNavigationAsVisited` setzt bereits den lokalen `navigationCounts`-State auf 0 fuer den besuchten Kontext. Das Problem koennte sein, dass die uebergeordneten Gruppen-Badges (z.B. "Aufgaben"-Gruppe = Summe aus tasks + decisions + meetings) nicht aktualisiert werden. Die Funktion `getGroupBadge` summiert die Counts der SubItems -- wenn ein SubItem auf 0 gesetzt wird, sollte die Summe sich entsprechend reduzieren. Ein moegliches Problem: Die Realtime-Subscription laedt die Counts komplett neu und ueberschreibt den lokalen State. Hier wird eine zusaetzliche Synchronisation eingebaut: Nach `markNavigationAsVisited` wird der Count fuer alle uebergeordneten Kontexte ebenfalls aktualisiert.
+
+Ausserdem wird sichergestellt, dass das "Alle als gelesen markieren"-Feature die Counts sofort zuruecksetzt.
+
+### Dateien:
+- `src/hooks/useNavigationNotifications.tsx`: `markNavigationAsVisited` setzt auch Parent-Kontext-Counts zurueck; Realtime-Subscription wartet kurz nach manueller Aktualisierung
 
 ---
 
 ## 6. Grosse Dateien aufteilen
 
-**Empfehlung:** Ja, es lohnt sich. Grosse Dateien verlangsamen den Editor und erschweren die Wartung.
+### LetterTemplateManager.tsx (1031 Zeilen)
+Aufteilung in:
+- `src/components/letters/templates/LetterTemplateManager.tsx` -- Hauptkomponente (Templates-Liste, Create/Edit-Steuerung)
+- `src/components/letters/templates/TemplateForm.tsx` -- Formular mit Tabs (renderCommonTabsContent, renderTabsList)
+- `src/components/letters/templates/TemplateCard.tsx` -- Template-Karte fuer die Liste
+- `src/components/letters/templates/TemplatePreview.tsx` -- Vorschau-Dialog
+- `src/components/letters/templates/BlockCanvasEditor.tsx` -- renderBlockCanvas als eigene Komponente
+- `src/components/letters/templates/SubjectTabContent.tsx` -- Betreff-Tab mit Variablen und Bildern
 
-**Kandidaten fuer Aufteilung (nach Groesse/Komplexitaet):**
-- `GlobalSearchCommand.tsx` (713 Zeilen) - Suchlogik in eigenen Hook auslagern
-- `AppNavigation.tsx` (564 Zeilen) - Navigation-Items und Render-Funktionen auslagern
-- `LetterTemplateManager.tsx` - Tab-Inhalte in eigene Komponenten
-- `DocumentsView.tsx` - Sehr grosse Datei, einzelne Tabs/Dialoge auslagern
+### AppNavigation.tsx (564 Zeilen)
+Aufteilung in:
+- `src/components/navigation/AppNavigation.tsx` -- Hauptkomponente (schlanker)
+- `src/components/navigation/navigationConfig.ts` -- `navigationGroups`, `NavGroup`-Interface, `getNavigationGroups()`
+- `src/components/navigation/NavGroupButton.tsx` -- `renderNavGroup` als eigene Komponente
+- `src/components/navigation/HelpDialog.tsx` -- Hilfe-Dialog
 
-Dies kann als separater Refactoring-Schritt durchgefuehrt werden und hat keinen Einfluss auf die Funktionalitaet.
+### GlobalSearchCommand.tsx (719 Zeilen)
+Aufteilung in:
+- `src/components/search/GlobalSearchCommand.tsx` -- Hauptkomponente (Dialog, Rendering)
+- `src/hooks/useGlobalSearch.ts` -- Alle Search-Queries und Logik (contacts, tasks, documents, etc.)
+- `src/components/search/SearchResultGroups.tsx` -- Rendering der Ergebnisgruppen
+- `src/components/search/RecentAndPopularSearches.tsx` -- Zuletzt/Beliebt-Bereiche
+- `src/components/search/SearchFilters.tsx` -- Filter-UI
+- `src/components/search/searchConfig.ts` -- navigationItems, recentSearches-Hilfsfunktionen
 
----
-
-## 7. Badges nur fuer neue Benachrichtigungen
-
-**Aktueller Stand:** Die Navigation zeigt Badges mit der **Gesamtanzahl** offener Elemente (z.B. alle offenen Aufgaben, alle unbeantworteten Entscheidungen). Der Hook `useNavigationNotifications` zaehlt offene Tasks, unbeantwortete Entscheidungen usw. unabhaengig davon, ob sie "neu" sind.
-
-**Loesung:**
-
-Der Hook `useNavigationNotifications.tsx` wird grundlegend umgebaut:
-
-- **Nur ungelesene Benachrichtigungen zaehlen**: Statt offene Aufgaben/Entscheidungen zu zaehlen, werden nur `notifications` mit `is_read = false` pro `navigation_context` gezaehlt
-- Die speziellen Zaehler fuer Aufgaben (Zeilen 66-78) und Entscheidungen (Zeilen 49-63) werden entfernt
-- Administration-Badge bleibt fuer faellige Jahresaufgaben bestehen (da dies eine echte Handlungsaufforderung ist)
-- SubNavigation und MobileSubNavigation verwenden dann ebenfalls nur die Benachrichtigungs-Zaehler
-
-### Dateien:
-- `src/hooks/useNavigationNotifications.tsx`: Nur `notifications` mit `is_read = false` zaehlen, keine separaten Task/Decision-Counts
-- `src/components/AppNavigation.tsx`: Keine Aenderungen noetig (nutzt bereits `navigationCounts`)
-- `src/components/layout/SubNavigation.tsx`: Keine Aenderungen noetig
-- `src/components/layout/MobileSubNavigation.tsx`: Keine Aenderungen noetig
+### Dateien insgesamt: ~15 neue Dateien, 3 Dateien werden aufgeteilt
 
 ---
 
-## Zusammenfassung der Prioritaeten
+## Zusammenfassung
 
-| Nr. | Thema | Aufwand | Dateien |
-|-----|-------|---------|---------|
-| 1 | Brief-Anlass-Verwaltung | Hoch | 4+ Dateien, DB-Migration |
-| 2 | Preview-Fehler | Keiner | Kein Code-Fix noetig |
-| 3 | Header-Suche direkt | Mittel | 2 Dateien |
-| 4 | Canvas-Farben Sidebar | Gering | 1 Datei |
-| 5 | Canvas-Zoom | Mittel | 1 Datei |
-| 6 | Dateien aufteilen | Mittel | Refactoring |
-| 7 | Badges nur Neuigkeiten | Mittel | 1 Datei |
+| Nr. | Thema | Aufwand |
+|-----|-------|---------|
+| 1 | Brief-Anlaesse Seed-Daten | Gering |
+| 2 | Suche reparieren | Mittel |
+| 3 | Suche ohne Filter | Gering (bereits so) |
+| 4 | LetterTemplateManager Tabs konsolidieren | Mittel |
+| 5 | Navigation-Badges Sync | Gering |
+| 6 | Dateien aufteilen | Hoch (aber rein mechanisch) |
 
-Alle Punkte ausser Nr. 2 und Nr. 6 werden direkt umgesetzt. Nr. 6 (Dateien aufteilen) kann als separater Schritt erfolgen.
