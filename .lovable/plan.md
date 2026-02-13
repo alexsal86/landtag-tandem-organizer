@@ -1,132 +1,158 @@
 
+# Plan: 12 Verbesserungen -- Entscheidungen, Briefvorlagen, Push und Navigation
 
-# Plan: 9 Verbesserungen fuer Entscheidungen, Briefvorlagen und Benachrichtigungen
+## 1. Browser-Push reparieren
 
-## 1. Entscheidungs-Creator Layout umbauen
+**Analyse:** Der Trigger funktioniert korrekt. Die `pg_net`-Logs zeigen, dass die Edge Function bei der Entscheidung "sdfsdfsdsdfsdf" (Notification um 20:39:52) aufgerufen wurde. Die Antwort war: `"No active push subscriptions found for user ff0e6d83-..."`. Zu diesem Zeitpunkt war die Subscription des Users inaktiv (alle alten Subscriptions haben `is_active: false`). Erst um 20:54:10 wurde eine neue Subscription erstellt.
 
-Betrifft: `TaskDecisionCreator.tsx` und `StandaloneDecisionCreator.tsx`
+**Problem:** Der Auto-Sync-Mechanismus (`pushSubscriptionAutoSync`) erneuert die Subscription nicht zuverlaessig. Der Endpoint laeuft ab, aber der Check erkennt das nicht.
 
-Aenderungen am Dialog-Layout:
-- **Oeffentlich + Prioritaet in einer Zeile (je 50%)**: Die Checkbox "Oeffentlich" und "Als prioritaer markieren" werden nebeneinander in einem `grid grid-cols-2` platziert. Aktuell sind sie getrennt (Oeffentlich oben, Prioritaet ganz unten).
-- **Antworttyp + Vorschau nebeneinander (je 50%)**: Das Select fuer den Antworttyp nimmt 50% ein, die Vorschau daneben die restlichen 50%. Beim Hovern ueber einen Eintrag im Select-Dropdown wird die Vorschau bereits aktualisiert.
-- **Rating5 und OptionABC**: Wenn einer dieser beiden Templates gewaehlt wird, oeffnet sich automatisch der ResponseOptionsEditor darunter (wie bei "Benutzerdefiniert"), damit die Beschreibungen/Tooltips direkt editierbar sind. Ein Hinweistext erklaert, dass man alternativ auch "Benutzerdefiniert" waehlen kann, um komplett eigene Optionen zu erstellen.
+**Loesung:**
+- Im Auto-Sync beim App-Start die bestehende Subscription gegen den aktuellen Service-Worker-Endpoint vergleichen. Wenn der Endpoint in der DB nicht mit dem aktuellen Browser-Endpoint uebereinstimmt, neu registrieren.
+- Beim Senden: Wenn Status 410/404 zurueckkommt, sofort die alte Subscription deaktivieren (bereits implementiert). Zusaetzlich: beim naechsten App-Start automatisch neu subscriben.
+- Edge Function: Logging verbessern fuer bessere Fehlersuche.
 
-Dateien:
-- `src/components/task-decisions/TaskDecisionCreator.tsx` (Zeilen 565-693): Layout umbauen
-- `src/components/task-decisions/StandaloneDecisionCreator.tsx` (Zeilen 539-661): Gleiches Layout uebernehmen
-- `src/components/task-decisions/ResponseOptionsPreview.tsx`: Hover-Vorschau unterstuetzen (Prop fuer "hovered template")
+**Dateien:** `src/hooks/usePushNotifications.ts` oder aehnlicher Hook fuer Auto-Sync
 
-## 2. Badges in Decision-Cards und Details anzeigen
+## 2. Doppelte "Vorschau" im Entscheidungs-Creator entfernen
 
-Betrifft: `DecisionOverview.tsx`
+**Problem:** Im Creator steht "Vorschau" als Label UND die `ResponseOptionsPreview`-Komponente zeigt intern nochmal "Vorschau:" an (Zeile 32 in `ResponseOptionsPreview.tsx`).
 
-Probleme:
-- Badges (Themen/Topics) werden in der Card angezeigt, aber nicht in den Details
-- Wenn Badges zu `+3` zusammengefasst sind, kann man sie nicht aufklappen
+**Loesung:** Das interne "Vorschau:"-Label in `ResponseOptionsPreview.tsx` entfernen (Zeile 32).
 
-Aenderungen:
-- `DecisionOverview.tsx` Zeile 1004: `TopicDisplay` hat bereits `maxDisplay={2}` -- beim Klick auf "+X" sollen alle angezeigt werden. Dafuer wird ein `expandable`-Prop fuer `TopicDisplay` eingefuehrt oder ein Popover ergaenzt.
-- `TaskDecisionDetails.tsx`: Sicherstellen, dass `topicIds` an die Detail-Ansicht uebergeben und dort ebenfalls via `TopicDisplay` angezeigt werden.
+**Dateien:** `src/components/task-decisions/ResponseOptionsPreview.tsx` (Zeile 32 entfernen)
 
-Dateien:
-- `src/components/task-decisions/DecisionOverview.tsx`: Klickbare Badge-Erweiterung
-- `src/components/task-decisions/TaskDecisionDetails.tsx`: Topics/Badges anzeigen
-- `src/components/topics/TopicSelector.tsx`: `TopicDisplay` mit Expand-Funktionalitaet
+## 3. Eigene-Optionen-Eingabefeld ueberlaeuft Container
 
-## 3. Hover-Verhalten bei Cards: Beschreibung bleibt sichtbar
+**Problem:** Der `ResponseOptionsEditor` hat Eingabefelder die zu breit sind und den Container sprengen.
 
-Betrifft: `DecisionOverview.tsx`
+**Loesung:** Im `ResponseOptionsEditor` `overflow-hidden` und `max-w-full` auf den Container setzen. Die Eingabefelder bekommen `w-full` statt fester Breiten.
 
-Problem: Beim Hover wird `line-clamp-1` zu `line-clamp-2` erweitert, aber die Description verschwindet, weil der uebergeordnete Container `max-h-[4.5rem] overflow-hidden` hat (Zeile 946).
+**Dateien:** `src/components/task-decisions/ResponseOptionsEditor.tsx`
 
-Loesung: Den Container `max-h-[4.5rem] overflow-hidden` entfernen und stattdessen den Titel immer mit `line-clamp-2` darstellen (oder die `max-h` vergroessern). Die Beschreibung soll immer sichtbar bleiben.
+## 4. Titel in "Meine Arbeit" Cards ueber zwei Zeilen + Beschreibung sichtbar
 
-Dateien:
-- `src/components/task-decisions/DecisionOverview.tsx` (Zeilen 946-955)
+**Problem:** In `MyWorkDecisionCard.tsx` (Zeile 196-205) hat der Titel-Container `max-h-[4.5rem] overflow-hidden` und der Titel wechselt on hover von `line-clamp-1` zu `line-clamp-2`. Dadurch verschwindet die Beschreibung.
 
-## 4. Sidebar Aktionen: Schrift groesser, nicht abgeschnitten, Antwort-Button
+**Loesung:** `max-h-[4.5rem] overflow-hidden` entfernen. Titel immer `line-clamp-2` zeigen (nicht erst on hover). Gleiche Aenderung fuer `DecisionOverview.tsx` (Zeile 946-955), falls dort aehnliches Problem existiert.
 
-Betrifft: `DecisionSidebar.tsx`
+**Dateien:**
+- `src/components/my-work/decisions/MyWorkDecisionCard.tsx` (Zeilen 196-205)
+- `src/components/task-decisions/DecisionOverview.tsx` (Zeile 946-955, falls betroffen)
 
-Probleme (laut Screenshot):
-- Schrift ist `text-[10px]` und kaum lesbar
-- Texte werden mit `truncate` und `line-clamp-2` abgeschnitten
-- Kein direkter "Antworten"-Button fuer neue Begruendungen
+## 5. Sidebar-Text groesser + Antwort-Button in MyWorkDecisionSidebar
 
-Aenderungen:
-- Schriftgroessen von `text-[10px]` auf `text-xs` (12px) und `text-sm` (14px) erhoehen
-- `truncate` bei Titeln entfernen oder `line-clamp-3` verwenden
-- Fuer "Neue Begruendungen" ebenfalls einen "Antworten"-Button hinzufuegen (analog zu den offenen Rueckfragen)
+**Problem:** In `MyWorkDecisionSidebar.tsx` sind Schriftgroessen `text-[9px]`, `text-[10px]`, `text-[7px]` -- kaum lesbar. Titel mit `truncate` werden abgeschnitten.
 
-Dateien:
-- `src/components/task-decisions/DecisionSidebar.tsx`: Schriftgroessen erhoehen, Truncation lockern, Antwort-Button ergaenzen
+**Loesung:**
+- Alle `text-[9px]` auf `text-xs` (12px) aendern
+- Alle `text-[10px]` auf `text-xs` aendern
+- Alle `text-[7px]` auf `text-[8px]` oder `text-xs` aendern
+- `truncate` bei Titeln auf `line-clamp-2` aendern
+- Antwort-Buttons bei "Begruendungen" hinzufuegen (wie bei Rueckfragen -- bereits in `DecisionSidebar.tsx` implementiert, fehlt aber in `MyWorkDecisionSidebar.tsx`)
 
-## 5. Benachrichtigungen fuer Kommentare in Entscheidungen
+**Dateien:** `src/components/my-work/decisions/MyWorkDecisionSidebar.tsx`
 
-Aktueller Stand: `DecisionComments.tsx` benachrichtigt bereits den Ersteller (`task_decision_comment_received`), aber nur den Ersteller. Andere Teilnehmer oder erwaehnte Personen werden nicht benachrichtigt.
+## 6. Entscheidungszaehler: Optionen statt Zahlen anzeigen
 
-Aenderungen:
-- Alle Teilnehmer einer Entscheidung benachrichtigen (ausser den Kommentierenden selbst)
-- Benachrichtigungstyp `task_decision_comment_received` wird bereits verwendet -- nur die Empfaenger-Logik erweitern
-- Im Benachrichtigungscenter (`NotificationCenter.tsx` / `NotificationsPage.tsx`) pruefen, ob der Typ bereits in den Kategorien/Filtern aufgefuehrt ist. Laut Suche ist er bereits vorhanden -- es fehlt lediglich die Filterauswahl in den Einstellungen.
-- In den Benachrichtigungseinstellungen den Typ als konfigurierbare Option hinzufuegen (z.B. "Kommentare in Entscheidungen")
+**Problem:** Der Zaehler unten rechts zeigt immer `yesCount / questionCount / noCount` als Zahlen. Bei benutzerdefinierten Templates (Option A/B/C, Bewertung 1-5) waere es besser, die Option-Labels mit Farben und Tooltips anzuzeigen.
 
-Dateien:
-- `src/components/task-decisions/DecisionComments.tsx`: Alle Teilnehmer benachrichtigen
-- `src/pages/NotificationsPage.tsx` oder Benachrichtigungseinstellungen: Kategorie ergaenzen
+**Aktueller Stand:** In `MyWorkDecisionCard.tsx` (Zeilen 300-326) wird bereits `customSummary` mit Labels und Farben gerendert! In `DecisionOverview.tsx` (Zeilen 1027-1038) fehlt das aber -- dort werden immer nur die Standard-Zaehler angezeigt.
 
-## 6. Brief-Anlaesse: Endlosschleife beheben
+**Loesung:** Die `customSummary`-Logik aus `MyWorkDecisionCard` auch in `DecisionOverview.tsx` einbauen. Bei Kenntnisnahme: Ein Badge "Kenntnisnahme" in Gruen/Rot anzeigen (statt Zahlen).
 
-Problem: `loadOccasions()` ruft `seedDefaults()` auf, wenn keine Daten vorhanden sind. `seedDefaults()` ruft am Ende wieder `loadOccasions()` auf. Wenn die Inserts fehlschlagen (z.B. wegen fehlender RLS-Policy), entsteht eine Endlosschleife.
+**Dateien:** `src/components/task-decisions/DecisionOverview.tsx` (Zeilen 1025-1040)
 
-Loesung: Ein Guard einfuehren (`seedingRef` oder `hasSeed` State), der verhindert, dass `seedDefaults` mehrfach aufgerufen wird. Ausserdem die Seed-Logik nur einmal ausfuehren und Fehler abfangen.
+## 7. Brief-Anlaesse: Endlosschleife endgueltig beheben
 
-Dateien:
-- `src/components/administration/LetterOccasionManager.tsx` (Zeilen 89-109): Guard einbauen
+**Problem:** Die `seedDefaults()`-Funktion ruft am Ende `loadOccasions()` auf (Zeile 144). `loadOccasions()` prueft ob die Tabelle leer ist und ruft `seedDefaults()` erneut auf. Der Guard `seedingRef` verhindert nur den zweiten Aufruf, aber wenn die Inserts durch RLS-Policies fehlschlagen, bleibt die Tabelle leer und die Seite haengt im Ladezustand.
 
-## 7. Briefvorlagen: Tabs umstrukturieren
+**Loesung:**
+- `seedDefaults()` darf NICHT `loadOccasions()` aufrufen -- stattdessen die Daten direkt nach dem Insert setzen
+- RLS-Pruefen: Sicherstellen, dass INSERT-Policy fuer die aktuelle Rolle existiert
+- Guard verbessern: Nach `seedDefaults()` setze `loading = false` direkt und setze die eingefuegten Daten als State
+- Fehlerbehandlung: Bei Insert-Fehlern Toast anzeigen und trotzdem `loading = false` setzen
 
-Aenderungen in `LetterTemplateManager.tsx`:
-- **Tab Ruecksende**: `SenderInformationManager` bereits integriert (Zeile 512) -- bestaetigt
-- **Tab Info-Block**: `InformationBlockManager` bereits integriert (Zeile 520) -- bestaetigt
-- **Tab Erweitert**: HTML/CSS-Editor in den Tab Layout verschieben (aus `advanced` in `layout-settings` integrieren)
-- **Tab-Reihenfolge**: Layout und Allgemein ans Ende der Tab-Liste verschieben
-- **Tabs entfernen**: `advanced` als separater Tab wird entfernt; Inhalt, Block-Content bleibt
+**Dateien:** `src/components/administration/LetterOccasionManager.tsx`
 
-Neue Tab-Reihenfolge: Canvas, Header, Footer, Adressfeld, Ruecksende, Info-Block, Betreff, Anlagen, Layout, Allgemein
+## 8. "Absenderinformationen" und "Informationsbloeecke" Cards auf Hauptseite entfernen
 
-Dateien:
-- `src/components/LetterTemplateManager.tsx` (Zeilen 408-424 und 452-461, 592-605)
+**Problem:** In `LetterTemplateManager.tsx` gibt es auf der Hauptansicht (nicht in den Tabs) separate Cards fuer "Absenderinformationen" und "Informationsbloeecke". Diese sind bereits in den Tabs integriert (Tab "Ruecksende" hat SenderInformationManager, Tab "Info-Block" hat InformationBlockManager).
 
-## 8. Header-Tab: Elemente entfernen, Bild-Workflow und Bloecke wiederherstellen
+**Loesung:** Die standalone-Cards auf der Hauptseite identifizieren und entfernen. Aktuell sehe ich in der Datei keine separaten Cards ausserhalb der Tabs -- das Problem koennte in einer uebergeordneten Administrations-Seite liegen.
 
-Aenderungen in `StructuredHeaderEditor.tsx`:
+**Dateien:** `src/pages/Administration.tsx` -- pruefen, ob dort die Cards direkt gerendert werden
 
-Entfernen:
-- Die 4 Shortcut-Buttons "Landtag", "Wahlkreis", "Kommunikation", "Allgemein" (Zeilen 298-303)
+## 9. Header-Tab: Bild-Upload und -Galerie mit Blob-URLs
 
-Wiederherstellen (gemaess Screenshot und Blob-URL-Implementierung):
-- **Bild-Galerie in der Sidebar**: Bilder aus dem Storage laden (mit Blob-URL-Ansatz), als Thumbnails in einem Grid in der Sidebar anzeigen. Bilder per Drag-and-Drop auf den Canvas ziehen. Loeschen-Button pro Bild.
-- **Bloecke-Bereich**: Ein Abschnitt "Bloecke (N)" mit einem "+ Neu"-Button in der Sidebar. Bloecke sind gruppierte Elemente mit eigenem Styling (Titel, Inhalt, Breite, Schrift). Bereits als `HeaderBlock` Interface definiert (Zeilen 33-49), aber nicht in der UI verwendet.
-- **Delete per Tastatur**: Bereits implementiert fuer die Block-Canvas-Bereiche, aber im Header-Canvas fehlt es. `onPreviewKeyDown` behandelt nur Pfeiltasten (Zeile 260). Ergaenzen: `Delete`/`Backspace` loescht das ausgewaehlte Element.
+**Aktueller Stand:** Der Header-Editor hat bereits einen "Bild hinzufuegen"-Button und eine Elemente-Liste in der Sidebar. Allerdings fehlt eine richtige Bild-Galerie (hochgeladene Bilder als Thumbnails, Drag-and-Drop auf Canvas). Die aktuelle Bild-Sektion zeigt nur die vorhandenen Elemente, nicht eine Galerie der verfuegbaren Bilder.
 
-Dateien:
-- `src/components/letters/StructuredHeaderEditor.tsx`: Shortcut-Buttons entfernen, Bild-Galerie mit Blob-URLs hinzufuegen, Bloecke-UI ergaenzen, Delete-Taste implementieren
+**Loesung:**
+- Separate Bild-Galerie hinzufuegen: Lade alle Bilder aus dem Storage-Bucket (`letter-assets/{tenant_id}/header-images/`) mit Blob-URLs
+- Bilder als Thumbnail-Grid anzeigen
+- Drag-and-Drop von der Galerie auf den Canvas
+- Loeschen-Button pro Galerie-Bild
 
-## 9. Canvas-Vorschau fuer alle Block-Tabs (Footer, Adressfeld, Ruecksende, Info-Block, Betreff, Anlagen)
+**Dateien:** `src/components/letters/StructuredHeaderEditor.tsx`
 
-Aktueller Stand: `renderBlockCanvas` in `LetterTemplateManager.tsx` rendert bereits eine Canvas-Vorschau fuer Adressfeld, Ruecksende, Info-Block, Betreff und Anlagen. Allerdings fehlen:
-- Ein Lineal-Toggle (wie im Header) -- teilweise implementiert (Zeile 306), aber nur innerhalb der Block-Canvas
-- Canvas-Vorschau fuer Footer (aktuell `StructuredFooterEditor` ohne Canvas)
+## 10. Header-Tab: Bloecke-Management wiederherstellen
 
-Aenderungen:
-- **Footer**: Den `StructuredFooterEditor` um eine Canvas-aehnliche Vorschau ergaenzen (Lineal zuschaltbar)
-- **Bestehende Bloecke**: Die Lineal-Funktion ist bereits in `renderBlockCanvas` vorhanden. Sicherstellen, dass alle Tabs den Lineal-Button korrekt anzeigen.
-- Ein Hauptlineal (aussen) wie im Header-Designer als zusaetzliche Option ergaenzen
+**Aktueller Stand:** Das `HeaderBlock`-Interface existiert (Zeilen 33-49), wird aber in der UI nicht genutzt. Die Sidebar hat nur "Text-Block ziehen" und "Bild hinzufuegen".
 
-Dateien:
-- `src/components/letters/StructuredFooterEditor.tsx`: Canvas-Vorschau mit Lineal ergaenzen
-- `src/components/LetterTemplateManager.tsx`: Pruefen, ob `renderBlockCanvas` fuer alle Tabs korrekt aufgerufen wird
+**Loesung:**
+- Neuen Abschnitt "Bloecke" in der Sidebar ergaenzen
+- Block erstellen: Titel, Inhalt, Breite, Schrift, Farbe
+- Bloecke als gruppierte Elemente auf dem Canvas rendern
+- Orientierung am Footer-Editor (`StructuredFooterEditor.tsx`), der Bloecke bereits implementiert
+
+**Dateien:** `src/components/letters/StructuredHeaderEditor.tsx`
+
+## 11. Canvas-Designer: Elemente benennen, umbenennen, Farbe zuordnen, neue hinzufuegen, loeschen
+
+**Aktueller Stand:** In `LetterLayoutCanvasDesigner.tsx` sind die 8 Bloecke fest definiert (`BLOCKS`-Array, Zeile 36-45). Man kann sie ein-/ausschalten, aber nicht umbenennen oder neue hinzufuegen.
+
+**Loesung:**
+- Die BLOCKS von einer Konstante zu einem State machen, der in den `layoutSettings` persistiert wird
+- Umbenennen: Klick auf den Block-Namen in der Sidebar oeffnet ein Eingabefeld
+- Farbe aendern: Farb-Picker oder Farbauswahl-Dropdown pro Block
+- Neue Elemente hinzufuegen: "+ Element"-Button, der einen neuen Block mit Standard-Position erstellt
+- Loeschen: Bestehende Bloecke koennen entfernt werden (mit Bestaetigung)
+- Die Default-Bloecke bleiben als Startpunkt erhalten
+
+**Dateien:** `src/components/letters/LetterLayoutCanvasDesigner.tsx`
+
+## 12. Navigations-Badges verschwinden nicht nach Seitenbesuch
+
+**Problem:** `markNavigationAsVisited` setzt den Count fuer einen spezifischen Kontext auf 0, aber die uebergeordneten Gruppen-Badges summieren die SubItem-Counts. Wenn ein Realtime-Event kommt, ueberschreibt `loadNavigationCounts()` den State wieder, trotz `suppressReloadUntil`.
+
+**Moegliche Ursachen:**
+1. `markNavigationAsVisited` wird mit dem falschen `context`-String aufgerufen
+2. Die 2-Sekunden-Suppression ist zu kurz
+3. "Alle als gelesen markieren" loest kein `setNavigationCounts` Update aus
+
+**Loesung:**
+- `suppressReloadUntil` auf 5 Sekunden erhoehen
+- Nach "Alle als gelesen markieren": `setNavigationCounts({})` direkt aufrufen (alle Counts auf 0)
+- Pruefen, ob der NotificationContext die Badge-Counts korrekt synchronisiert
+
+**Dateien:** `src/hooks/useNavigationNotifications.tsx`, `src/contexts/NotificationContext.tsx`
+
+---
+
+## Build-Fehler beheben
+
+Der aktuelle Build-Fehler betrifft die Edge-Function (Deno/Supabase):
+```
+Could not find a matching package for 'npm:@supabase/realtime-js@2.95.3'
+```
+Dies ist ein Deno-Kompatibilitaetsproblem mit der `@supabase/supabase-js`-Version in der Edge Function. Die Edge Function importiert von `esm.sh` und loeist eine Version auf, die `realtime-js` als npm-Dependency braucht.
+
+**Loesung:** Die Supabase-Client-Import-URL in der Edge Function pinnen:
+```typescript
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
+```
+
+**Dateien:** `supabase/functions/send-push-notification/index.ts`
 
 ---
 
@@ -134,13 +160,16 @@ Dateien:
 
 | Nr. | Thema | Aufwand | Hauptdateien |
 |-----|-------|---------|--------------|
-| 1 | Creator-Layout umbauen | Mittel | TaskDecisionCreator, StandaloneDecisionCreator |
-| 2 | Badges in Cards/Details | Gering | DecisionOverview, TaskDecisionDetails |
-| 3 | Hover: Beschreibung sichtbar | Gering | DecisionOverview |
-| 4 | Sidebar: Schrift + Antwort-Button | Gering | DecisionSidebar |
-| 5 | Kommentar-Benachrichtigungen | Mittel | DecisionComments, NotificationsPage |
-| 6 | Brief-Anlaesse Endlosschleife | Gering | LetterOccasionManager |
-| 7 | Tabs umstrukturieren | Gering | LetterTemplateManager |
-| 8 | Header: Bilder + Bloecke wiederherstellen | Hoch | StructuredHeaderEditor |
-| 9 | Canvas-Vorschau fuer alle Tabs | Mittel | StructuredFooterEditor, LetterTemplateManager |
-
+| Build | Edge Function Build-Fehler | Gering | send-push-notification/index.ts |
+| 1 | Push-Subscription Auto-Sync | Mittel | usePushNotifications |
+| 2 | Doppelte "Vorschau" | Gering | ResponseOptionsPreview |
+| 3 | Optionen-Feld Overflow | Gering | ResponseOptionsEditor |
+| 4 | Titel 2 Zeilen + Description | Gering | MyWorkDecisionCard, DecisionOverview |
+| 5 | Sidebar Text groesser | Gering | MyWorkDecisionSidebar |
+| 6 | Optionen statt Zahlen | Mittel | DecisionOverview |
+| 7 | Brief-Anlaesse Loop | Gering | LetterOccasionManager |
+| 8 | Cards auf Hauptseite entfernen | Gering | Administration / LetterTemplateManager |
+| 9 | Header Bild-Galerie | Mittel | StructuredHeaderEditor |
+| 10 | Header Bloecke | Mittel | StructuredHeaderEditor |
+| 11 | Canvas-Designer Elemente | Hoch | LetterLayoutCanvasDesigner |
+| 12 | Navigation Badges Sync | Gering | useNavigationNotifications |
