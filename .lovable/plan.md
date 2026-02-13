@@ -1,48 +1,128 @@
 
+# Plan: 7 Verbesserungen und neue Funktionen
 
-# Plan: Bilder im Header-Designer -- Blob-URL-Ansatz
+Hier ist eine Uebersicht aller Punkte mit Einschaetzung und Vorgehensweise:
 
-## Problem
+---
 
-Sowohl oeffentliche als auch signierte URLs funktionieren beim direkten Aufrufen, aber nicht im Browser-Preview. Das liegt wahrscheinlich an Cross-Origin-Einschraenkungen der Preview-Umgebung.
+## 1. Brief-Anlass-Vorlagen-Verwaltung in der Administration
 
-## Loesung: Blob-URLs statt externe URLs
+**Aktueller Stand:** Die Zuordnung von Anlaessen zu Vorlagen ist im Code hartcodiert (`OCCASION_TEMPLATE_MAP` in `LetterWizard.tsx`). Es gibt 7 Anlaesse (Buergeranliegen, Ministerium, Einladung, etc.), die ueber Textmuster mit Vorlagen verknuepft werden.
 
-Statt eine URL zu erzeugen und dem Browser das Laden zu ueberlassen, werden die Bilder direkt ueber den Supabase JS Client heruntergeladen (`download()`) und als lokale Blob-URLs bereitgestellt. Das umgeht alle URL- und CORS-Probleme vollstaendig.
+**Loesung:**
 
-```text
-Vorher:  getPublicUrl/createSignedUrl -> externe URL -> Browser laedt Bild (scheitert)
-Nachher: download() via Supabase Client -> Blob -> URL.createObjectURL() -> lokale URL (funktioniert immer)
-```
+- Neue Datenbanktabelle `letter_occasions` mit Feldern: `id`, `tenant_id`, `key`, `label`, `description`, `icon`, `color`, `sort_order`, `default_template_id` (FK auf `letter_templates`), `is_active`, `created_at`, `updated_at`
+- Neuer Administrations-Bereich unter **Vorlagen > Brief-Anlaesse** (neuer Unterpunkt in der Admin-Sidebar)
+- CRUD-Oberflaeche zum Erstellen, Bearbeiten und Loeschen von Anlaessen mit Verknuepfung zur Briefvorlage
+- `LetterWizard.tsx` wird angepasst, um die Anlaesse aus der Datenbank statt aus dem hartcodierten Array zu laden
+- RLS-Policies fuer Mandantentrennung
 
-## Technische Details
+### Dateien:
+- `AdminSidebar.tsx`: Neuer Unterpunkt "Brief-Anlaesse" unter "Vorlagen"
+- Neue Komponente: `src/components/administration/LetterOccasionManager.tsx`
+- `LetterWizard.tsx`: Anlaesse aus DB laden statt hardcoded
+- DB-Migration: Neue Tabelle `letter_occasions` + Seed-Daten der 7 Standard-Anlaesse
 
-### Datei: `src/components/letters/StructuredHeaderEditor.tsx`
+---
 
-**loadSystemImages (Zeilen 126-153):**
+## 2. "Preview has not been built yet" Fehler
 
-Die Funktion wird so umgebaut:
+**Analyse:** Dies ist ein Build-/Preview-Fehler der Lovable-Umgebung, kein Code-Fehler. Der Fehler tritt auf, wenn die Anwendung gerade gebaut wird oder ein Kompilierfehler vorliegt. Nach dem Implementieren der geplanten Aenderungen und erfolgreichem Build sollte die Vorschau wieder funktionieren. Es sind keine speziellen Code-Aenderungen noetig.
 
-1. Dateien auflisten (wie bisher via `.list()`)
-2. Fuer jede Datei: `supabase.storage.from('letter-assets').download(path)` aufrufen
-3. Den zurueckgegebenen Blob mit `URL.createObjectURL(blob)` in eine lokale URL umwandeln
-4. Diese Blob-URL als `img.url` verwenden
+---
 
-Blob-URLs sehen so aus: `blob:https://...` und funktionieren immer im lokalen Browser-Kontext.
+## 3. Suche: Direkte Eingabe im Header und Performance
 
-**Aufraeumen der Blob-URLs:**
+**Aktueller Stand:** Die `HeaderSearch`-Komponente ist nur ein visueller Button, der den `GlobalSearchCommand`-Dialog oeffnet. Es gibt einen 300ms Debounce und eine Mindestlaenge von 2 Zeichen.
 
-Beim Neuladen der Bilder oder Unmount der Komponente werden die alten Blob-URLs via `URL.revokeObjectURL()` freigegeben, um Speicherlecks zu vermeiden.
+**Loesung:**
 
-**deleteSystemImage:**
+- `HeaderSearch` wird zu einem echten Eingabefeld umgebaut: Tippen startet sofort die Suche
+- Bei Eingabe oeffnet sich automatisch der `GlobalSearchCommand`-Dialog mit dem bereits eingegebenen Text
+- Performance-Verbesserung: Debounce von 300ms auf 150ms reduzieren
+- Der `GlobalSearchCommand` erhaelt eine optionale `initialQuery`-Prop, um mit vorgefillertem Text zu starten
 
-Bleibt wie implementiert (`.remove([path])` + `loadSystemImages()`)
+### Dateien:
+- `src/components/layout/HeaderSearch.tsx`: Echtes Input-Feld mit Weiterleitung an GlobalSearch
+- `src/components/GlobalSearchCommand.tsx`: `initialQuery` Event-Daten akzeptieren
 
-**Galerie-Rendering:**
+---
 
-Bleibt wie implementiert (mit `onError`-Handler und Loeschen-Button)
+## 4. Canvas-Designer: Element-Farben in der Sidebar
 
-### Aenderungsumfang
+**Aktueller Stand:** Die Elemente in der Sidebar-Liste des Canvas-Designers verwenden einheitliche Buttons (`variant="outline"` oder `variant="default"`), waehrend die Bloecke auf dem Canvas individuelle Farben haben (z.B. cyan fuer Header, blau fuer Adressfeld, lila fuer Info-Block).
 
-Nur die Funktion `loadSystemImages` wird geaendert (ca. 15 Zeilen). Der Rest bleibt unveraendert.
+**Loesung:**
 
+- Die Element-Buttons in der Sidebar erhalten dieselben Farben wie auf dem Canvas
+- Jeder Button zeigt einen farbigen Streifen oder Hintergrund entsprechend der `block.color`-Klasse
+
+### Dateien:
+- `src/components/letters/LetterLayoutCanvasDesigner.tsx`: Sidebar-Buttons mit Block-Farben versehen (Zeilen 209-219)
+
+---
+
+## 5. Zoom-Funktion fuer den Canvas-Designer
+
+**Aktueller Stand:** Der Canvas verwendet einen festen Skalierungsfaktor (`SCALE = 2.2`).
+
+**Loesung:**
+
+- Zoom-Steuerung (Plus/Minus-Buttons und Prozentwert-Anzeige) in der Toolbar des Canvas-Designers
+- SCALE wird von einer Konstante zu einem State-Wert
+- Zoom-Stufen: 50%, 75%, 100%, 125%, 150%, 200% (wobei 100% = 2.2 SCALE entspricht)
+- Mausrad-Zoom mit Ctrl/Cmd gehalten
+
+### Dateien:
+- `src/components/letters/LetterLayoutCanvasDesigner.tsx`: State fuer Zoom-Level, Zoom-Buttons in der Toolbar, SCALE dynamisch berechnen
+
+---
+
+## 6. Grosse Dateien aufteilen
+
+**Empfehlung:** Ja, es lohnt sich. Grosse Dateien verlangsamen den Editor und erschweren die Wartung.
+
+**Kandidaten fuer Aufteilung (nach Groesse/Komplexitaet):**
+- `GlobalSearchCommand.tsx` (713 Zeilen) - Suchlogik in eigenen Hook auslagern
+- `AppNavigation.tsx` (564 Zeilen) - Navigation-Items und Render-Funktionen auslagern
+- `LetterTemplateManager.tsx` - Tab-Inhalte in eigene Komponenten
+- `DocumentsView.tsx` - Sehr grosse Datei, einzelne Tabs/Dialoge auslagern
+
+Dies kann als separater Refactoring-Schritt durchgefuehrt werden und hat keinen Einfluss auf die Funktionalitaet.
+
+---
+
+## 7. Badges nur fuer neue Benachrichtigungen
+
+**Aktueller Stand:** Die Navigation zeigt Badges mit der **Gesamtanzahl** offener Elemente (z.B. alle offenen Aufgaben, alle unbeantworteten Entscheidungen). Der Hook `useNavigationNotifications` zaehlt offene Tasks, unbeantwortete Entscheidungen usw. unabhaengig davon, ob sie "neu" sind.
+
+**Loesung:**
+
+Der Hook `useNavigationNotifications.tsx` wird grundlegend umgebaut:
+
+- **Nur ungelesene Benachrichtigungen zaehlen**: Statt offene Aufgaben/Entscheidungen zu zaehlen, werden nur `notifications` mit `is_read = false` pro `navigation_context` gezaehlt
+- Die speziellen Zaehler fuer Aufgaben (Zeilen 66-78) und Entscheidungen (Zeilen 49-63) werden entfernt
+- Administration-Badge bleibt fuer faellige Jahresaufgaben bestehen (da dies eine echte Handlungsaufforderung ist)
+- SubNavigation und MobileSubNavigation verwenden dann ebenfalls nur die Benachrichtigungs-Zaehler
+
+### Dateien:
+- `src/hooks/useNavigationNotifications.tsx`: Nur `notifications` mit `is_read = false` zaehlen, keine separaten Task/Decision-Counts
+- `src/components/AppNavigation.tsx`: Keine Aenderungen noetig (nutzt bereits `navigationCounts`)
+- `src/components/layout/SubNavigation.tsx`: Keine Aenderungen noetig
+- `src/components/layout/MobileSubNavigation.tsx`: Keine Aenderungen noetig
+
+---
+
+## Zusammenfassung der Prioritaeten
+
+| Nr. | Thema | Aufwand | Dateien |
+|-----|-------|---------|---------|
+| 1 | Brief-Anlass-Verwaltung | Hoch | 4+ Dateien, DB-Migration |
+| 2 | Preview-Fehler | Keiner | Kein Code-Fix noetig |
+| 3 | Header-Suche direkt | Mittel | 2 Dateien |
+| 4 | Canvas-Farben Sidebar | Gering | 1 Datei |
+| 5 | Canvas-Zoom | Mittel | 1 Datei |
+| 6 | Dateien aufteilen | Mittel | Refactoring |
+| 7 | Badges nur Neuigkeiten | Mittel | 1 Datei |
+
+Alle Punkte ausser Nr. 2 und Nr. 6 werden direkt umgesetzt. Nr. 6 (Dateien aufteilen) kann als separater Schritt erfolgen.
