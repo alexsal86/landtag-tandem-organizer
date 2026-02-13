@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 export function HeaderSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState('');
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cmd+K shortcut -> focus input
   useEffect(() => {
@@ -27,16 +28,31 @@ export function HeaderSearch() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     setValue(v);
-    if (v.length >= 1) {
-      openSearch(v);
+    // Clear any pending timer
+    if (timerRef.current) clearTimeout(timerRef.current);
+    // Only open search dialog after a pause (400ms) and at least 2 chars
+    if (v.length >= 2) {
+      timerRef.current = setTimeout(() => {
+        openSearch(v);
+      }, 400);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && value) {
+      if (timerRef.current) clearTimeout(timerRef.current);
       openSearch(value);
     }
+    if (e.key === 'Escape') {
+      setValue('');
+      inputRef.current?.blur();
+    }
   };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
 
   return (
     <div className="relative">

@@ -1,22 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { 
   Home, 
-  MessageSquare, 
-  Calendar, 
-  CheckSquare, 
-  Briefcase, 
-  Users, 
-  MoreHorizontal,
-  MapPin,
-  Database,
-  Clock,
   Shield,
-  CalendarPlus,
-  Vote,
-  FileText,
-  Archive,
+  Clock,
+  Users,
   UserCog,
-  Phone,
   HelpCircle
 } from "lucide-react";
 import { useMatrixClient } from "@/contexts/MatrixClientContext";
@@ -31,101 +19,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
+import { navigationGroups, getNavigationGroups, NavGroup, NavSubItem } from "@/components/navigation/navigationConfig";
+import { HelpDialog } from "@/components/navigation/HelpDialog";
+
+// Re-export for backward compatibility
+export { getNavigationGroups };
 
 interface NavigationProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
   isMobile?: boolean;
-}
-
-interface NavSubItem {
-  id: string;
-  label: string;
-  icon: typeof Home;
-}
-
-interface NavGroup {
-  id: string;
-  label: string;
-  icon: typeof Home;
-  subItems?: NavSubItem[];
-  route?: string;
-  adminOnly?: boolean;
-}
-
-// Main navigation groups - Jour fixe unter Aufgaben
-const navigationGroups: NavGroup[] = [
-  {
-    id: "mywork",
-    label: "Meine Arbeit",
-    icon: Home,
-    route: "/mywork"
-  },
-  {
-    id: "communication",
-    label: "Chat",
-    icon: MessageSquare,
-    subItems: [
-      { id: "chat", label: "Chat", icon: MessageSquare },
-    ]
-  },
-  {
-    id: "calendar",
-    label: "Kalender",
-    icon: Calendar,
-    subItems: [
-      { id: "calendar", label: "Terminkalender", icon: Calendar },
-      { id: "eventplanning", label: "Planungen", icon: CalendarPlus },
-    ]
-  },
-  {
-    id: "tasks",
-    label: "Aufgaben",
-    icon: CheckSquare,
-    subItems: [
-      { id: "tasks", label: "Aufgaben", icon: CheckSquare },
-      { id: "decisions", label: "Entscheidungen", icon: Vote },
-      { id: "meetings", label: "Jour fixe", icon: Calendar },
-    ]
-  },
-  {
-    id: "files",
-    label: "Akten",
-    icon: Briefcase,
-    subItems: [
-      { id: "casefiles", label: "FallAkten", icon: Briefcase },
-      { id: "documents", label: "Dokumente", icon: FileText },
-      { id: "drucksachen", label: "Drucksachen", icon: Archive },
-      { id: "knowledge", label: "Wissen", icon: Database },
-    ]
-  },
-  {
-    id: "people",
-    label: "Kontakte",
-    icon: Users,
-    route: "/contacts"
-  },
-  {
-    id: "more",
-    label: "Mehr",
-    icon: MoreHorizontal,
-    subItems: [
-      { id: "karten", label: "Karten", icon: MapPin },
-      { id: "calls", label: "Anrufe", icon: Phone },
-    ]
-  }
-];
-
-// Export für SubNavigation in Index.tsx
-export function getNavigationGroups(): NavGroup[] {
-  return navigationGroups;
 }
 
 export function AppNavigation({ 
@@ -149,7 +52,7 @@ export function AppNavigation({
   const [newBadgeItems, setNewBadgeItems] = useState<Set<string>>(new Set());
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
 
-  // Check admin role and user role - no more separate app settings load needed
+  // Check admin role and user role
   useEffect(() => {
     if (!user) {
       setIsLoading(false);
@@ -186,7 +89,6 @@ export function AppNavigation({
       const prevCount = previousBadges[key] || 0;
       if (count > prevCount) {
         newItems.add(key);
-        // Remove from newItems after animation
         setTimeout(() => {
           setNewBadgeItems(prev => {
             const updated = new Set(prev);
@@ -211,11 +113,9 @@ export function AppNavigation({
 
   const getTeamSubItems = (): NavSubItem[] => {
     const items: NavSubItem[] = [];
-    // Zeiterfassung ZUERST (wenn verfügbar) - damit alle Mitarbeiter dieselbe Ansicht sehen
     if (showTimeTracking) {
       items.push({ id: "time", label: "Zeiterfassung", icon: Clock });
     }
-    // Dann Mitarbeiter (für Admin-Rollen)
     if (showEmployeePage) {
       items.push({ id: "employee", label: "Mitarbeiter", icon: Users });
     }
@@ -226,17 +126,10 @@ export function AppNavigation({
   const showTeamGroup = teamSubItems.length > 0;
 
   const handleNavigationClick = async (sectionId: string) => {
-    // Bounce animation
     setClickedItem(sectionId);
     setTimeout(() => setClickedItem(null), 150);
-    
-    // Optimistic UI - immediate visual feedback
     setPendingSection(sectionId);
-    
-    // Background operations
     await markNavigationAsVisited(sectionId);
-    
-    // Navigate
     onSectionChange(sectionId);
     setPendingSection(null);
   };
@@ -286,12 +179,9 @@ export function AppNavigation({
     return (
       <TooltipProvider delayDuration={300}>
         <nav className="flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 w-[72px]">
-          {/* Logo Skeleton */}
           <div className="h-14 flex items-center justify-center border-b border-[hsl(var(--nav-foreground)/0.1)]">
             <div className="h-8 w-8 rounded-lg animate-skeleton" />
           </div>
-          
-          {/* Navigation Items Skeleton */}
           <div className="flex-1 flex flex-col py-2 gap-1">
             {[1, 2, 3, 4, 5, 6, 7].map(i => (
               <div key={i} className="flex flex-col items-center gap-1 py-2 px-2">
@@ -300,8 +190,6 @@ export function AppNavigation({
               </div>
             ))}
           </div>
-          
-          {/* Bottom Skeleton */}
           <div className="mt-auto border-t border-[hsl(var(--nav-foreground)/0.1)] py-2">
             <div className="flex flex-col items-center gap-1 py-2 px-2">
               <div className="h-5 w-5 rounded animate-skeleton" />
@@ -509,56 +397,7 @@ export function AppNavigation({
         </div>
       </nav>
       
-      {/* Help Dialog */}
-      <Dialog open={helpDialogOpen} onOpenChange={setHelpDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <HelpCircle className="h-5 w-5" />
-              Hilfe & Tastenkürzel
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-medium text-sm mb-2">Globale Tastenkürzel</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between items-center">
-                  <span>Suche öffnen</span>
-                  <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + K</kbd>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Neuer Termin</span>
-                  <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + Shift + T</kbd>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Neue Aufgabe</span>
-                  <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + Shift + A</kbd>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Neue Notiz</span>
-                  <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + .</kbd>
-                </div>
-              </div>
-            </div>
-            <Separator />
-            <div>
-              <h4 className="font-medium text-sm mb-2">Navigation</h4>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>• Klicken Sie auf ein Menüsymbol, um zur entsprechenden Seite zu wechseln.</p>
-                <p>• Rote Badges zeigen neue oder ungelesene Elemente an.</p>
-                <p>• In der Kartenansicht können Sie mit Hover weitere Aktionen sehen.</p>
-              </div>
-            </div>
-            <Separator />
-            <div>
-              <h4 className="font-medium text-sm mb-2">Weitere Hilfe</h4>
-              <p className="text-sm text-muted-foreground">
-                Bei Fragen oder Problemen wenden Sie sich an Ihren Administrator.
-              </p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <HelpDialog open={helpDialogOpen} onOpenChange={setHelpDialogOpen} />
     </TooltipProvider>
   );
 }
