@@ -98,7 +98,7 @@ export const ResponseOptionsEditor = ({ options, onChange }: ResponseOptionsEdit
               value={option.description || ""}
               onChange={(e) => updateOption(index, { description: e.target.value })}
               placeholder="Beschreibung (Tooltip beim Hovern)"
-              className="h-7 text-xs ml-6"
+              className="h-7 text-xs ml-6 w-[calc(100%-1.5rem)]"
             />
           </div>
         ))}
