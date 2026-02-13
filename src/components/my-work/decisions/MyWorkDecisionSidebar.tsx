@@ -113,10 +113,10 @@ export function MyWorkDecisionSidebar({
                 {/* Open Questions */}
                 {openQuestions.length > 0 && (
                   <div className="space-y-1.5">
-                    <div className="flex items-center gap-1 text-[10px] font-medium text-orange-600">
+                    <div className="flex items-center gap-1 text-xs font-medium text-orange-600">
                       <MessageCircle className="h-3 w-3" />
                       <span>Rückfragen</span>
-                      <Badge variant="outline" className="text-orange-600 border-orange-600 text-[9px] px-1 py-0">
+                      <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs px-1.5 py-0">
                         {openQuestions.length}
                       </Badge>
                     </div>
@@ -129,19 +129,19 @@ export function MyWorkDecisionSidebar({
                           onClick={() => onQuestionClick(q.decisionId)}
                           className="w-full text-left hover:bg-orange-100 dark:hover:bg-orange-950/40 transition-colors rounded -m-0.5 p-0.5"
                         >
-                          <p className="text-xs font-semibold truncate">{q.decisionTitle}</p>
+                          <p className="text-xs font-semibold line-clamp-2">{q.decisionTitle}</p>
                           <div className="flex items-center gap-1 mt-0.5">
-                            <Avatar className="h-3.5 w-3.5">
+                            <Avatar className="h-4 w-4">
                               {q.participantAvatarUrl && <AvatarImage src={q.participantAvatarUrl} />}
-                              <AvatarFallback className="text-[7px]" style={{ backgroundColor: q.participantBadgeColor || undefined }}>
+                              <AvatarFallback className="text-[8px]" style={{ backgroundColor: q.participantBadgeColor || undefined }}>
                                 {getInitials(q.participantName)}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-[9px] text-muted-foreground">{q.participantName || 'Unbekannt'}</span>
+                            <span className="text-xs text-muted-foreground">{q.participantName || 'Unbekannt'}</span>
                           </div>
                           {q.comment && (
-                            <div className="text-[9px] text-muted-foreground mt-1 line-clamp-2">
-                              <RichTextDisplay content={q.comment} className="text-[9px]" />
+                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              <RichTextDisplay content={q.comment} className="text-xs" />
                             </div>
                           )}
                         </button>
@@ -189,10 +189,10 @@ export function MyWorkDecisionSidebar({
                 {/* New Begründungen */}
                 {newComments.length > 0 && (
                   <div className="space-y-1.5">
-                    <div className="flex items-center gap-1 text-[10px] font-medium text-primary">
+                    <div className="flex items-center gap-1 text-xs font-medium text-primary">
                       <Bell className="h-3 w-3" />
                       <span>Begründungen</span>
-                      <Badge variant="outline" className="text-primary border-primary text-[9px] px-1 py-0">
+                      <Badge variant="outline" className="text-primary border-primary text-xs px-1.5 py-0">
                         {newComments.length}
                       </Badge>
                     </div>
@@ -207,24 +207,24 @@ export function MyWorkDecisionSidebar({
                           c.responseType === 'question' && "border-l-orange-500 bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100",
                         )}
                       >
-                        <p className="text-xs font-semibold truncate">{c.decisionTitle}</p>
+                        <p className="text-xs font-semibold line-clamp-2">{c.decisionTitle}</p>
                         <div className="flex items-center gap-1 mt-0.5">
-                          <Avatar className="h-3.5 w-3.5">
+                          <Avatar className="h-4 w-4">
                             {c.participantAvatarUrl && <AvatarImage src={c.participantAvatarUrl} />}
-                            <AvatarFallback className="text-[7px]" style={{ backgroundColor: c.participantBadgeColor || undefined }}>
+                            <AvatarFallback className="text-[8px]" style={{ backgroundColor: c.participantBadgeColor || undefined }}>
                               {getInitials(c.participantName)}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-[9px] text-muted-foreground">{c.participantName}</span>
-                          <span className="text-[9px] text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">{c.participantName}</span>
+                          <span className="text-xs text-muted-foreground">
                             {c.responseType === 'yes' && '→ Ja'}
                             {c.responseType === 'no' && '→ Nein'}
                             {c.responseType === 'question' && '→ Rückfrage'}
                           </span>
                         </div>
                         {c.comment && (
-                          <div className="text-[9px] text-muted-foreground mt-1 line-clamp-2">
-                            <RichTextDisplay content={c.comment} className="text-[9px]" />
+                          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            <RichTextDisplay content={c.comment} className="text-xs" />
                           </div>
                         )}
                       </button>
@@ -235,10 +235,10 @@ export function MyWorkDecisionSidebar({
                 {/* Discussion Comments */}
                 {discussionComments.length > 0 && (
                   <div className="space-y-1.5">
-                    <div className="flex items-center gap-1 text-[10px] font-medium text-blue-600">
+                    <div className="flex items-center gap-1 text-xs font-medium text-blue-600">
                       <AtSign className="h-3 w-3" />
                       <span>Diskussion</span>
-                      <Badge variant="outline" className="text-blue-600 border-blue-600 text-[9px] px-1 py-0">
+                      <Badge variant="outline" className="text-blue-600 border-blue-600 text-xs px-1.5 py-0">
                         {discussionComments.length}
                       </Badge>
                     </div>
@@ -248,26 +248,26 @@ export function MyWorkDecisionSidebar({
                         onClick={() => onDiscussionClick?.(dc.decisionId)}
                         className="w-full text-left p-2 rounded-md border-l-2 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors"
                       >
-                        <p className="text-xs font-semibold truncate">{dc.decisionTitle}</p>
+                        <p className="text-xs font-semibold line-clamp-2">{dc.decisionTitle}</p>
                         <div className="flex items-center gap-1 mt-0.5">
-                          <Avatar className="h-3.5 w-3.5">
+                          <Avatar className="h-4 w-4">
                             {dc.authorAvatarUrl && <AvatarImage src={dc.authorAvatarUrl} />}
-                            <AvatarFallback className="text-[7px]" style={{ backgroundColor: dc.authorBadgeColor || undefined }}>
+                            <AvatarFallback className="text-[8px]" style={{ backgroundColor: dc.authorBadgeColor || undefined }}>
                               {getInitials(dc.authorName)}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-[9px] text-muted-foreground">{dc.authorName || 'Unbekannt'}</span>
+                          <span className="text-xs text-muted-foreground">{dc.authorName || 'Unbekannt'}</span>
                           {dc.isMention && (
-                            <Badge variant="outline" className="text-[7px] px-1 py-0 text-blue-600 border-blue-400">
+                            <Badge variant="outline" className="text-xs px-1 py-0 text-blue-600 border-blue-400">
                               @Erwähnt
                             </Badge>
                           )}
-                          <span className="text-[9px] text-muted-foreground ml-auto">
+                          <span className="text-xs text-muted-foreground ml-auto">
                             {formatDistanceToNow(new Date(dc.createdAt), { addSuffix: true, locale: de })}
                           </span>
                         </div>
-                        <div className="text-[9px] text-muted-foreground mt-1 line-clamp-1">
-                          <RichTextDisplay content={dc.content} className="text-[9px]" />
+                        <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          <RichTextDisplay content={dc.content} className="text-xs" />
                         </div>
                       </button>
                     ))}

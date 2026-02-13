@@ -1025,17 +1025,53 @@ export const DecisionOverview = () => {
               {/* Right: Voting results + AvatarStack */}
               <div className="flex items-center gap-3 ml-auto">
                 <div className="flex items-center gap-1.5 text-sm font-bold">
-                  <span className="text-green-600">{summary.yesCount}</span>
-                  <span className="text-muted-foreground">/</span>
-                  <span className="text-orange-600">{summary.questionCount}</span>
-                  <span className="text-muted-foreground">/</span>
-                  <span className="text-red-600">{summary.noCount}</span>
-                  {summary.otherCount > 0 && (
-                    <>
-                      <span className="text-muted-foreground">/</span>
-                      <span className="text-blue-600">{summary.otherCount}</span>
-                    </>
-                  )}
+                  {(() => {
+                    // Check if custom template (not standard yes/no/question)
+                    const responseOptions = (decision as any).response_options;
+                    const isCustom = responseOptions && responseOptions.length > 0 &&
+                      !(['yes','no','question'].every((k: string) => responseOptions.some((o: any) => o.key === k)) && responseOptions.length <= 3);
+                    
+                    if (isCustom) {
+                      const optionCounts: Record<string, number> = {};
+                      decision.participants?.forEach(p => {
+                        const rt = p.responses[0]?.response_type;
+                        if (rt) optionCounts[rt] = (optionCounts[rt] || 0) + 1;
+                      });
+                      return responseOptions.map((opt: any, i: number) => {
+                        const colorClasses = (() => {
+                          const colorMap: Record<string, string> = {
+                            green: 'text-green-600', red: 'text-red-600', orange: 'text-orange-600',
+                            blue: 'text-blue-600', purple: 'text-purple-600', yellow: 'text-yellow-600',
+                            teal: 'text-teal-600', pink: 'text-pink-600', gray: 'text-gray-600',
+                          };
+                          return colorMap[opt.color] || 'text-foreground';
+                        })();
+                        return (
+                          <span key={opt.key} className="flex items-center gap-0.5">
+                            {i > 0 && <span className="text-muted-foreground">/</span>}
+                            <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                              <span className={colorClasses}>{optionCounts[opt.key] || 0}</span>
+                            </TooltipTrigger><TooltipContent><p>{opt.label}{opt.description ? `: ${opt.description}` : ''}</p></TooltipContent></Tooltip></TooltipProvider>
+                          </span>
+                        );
+                      });
+                    }
+                    return (
+                      <>
+                        <span className="text-green-600">{summary.yesCount}</span>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="text-orange-600">{summary.questionCount}</span>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="text-red-600">{summary.noCount}</span>
+                        {summary.otherCount > 0 && (
+                          <>
+                            <span className="text-muted-foreground">/</span>
+                            <span className="text-blue-600">{summary.otherCount}</span>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
               </div>

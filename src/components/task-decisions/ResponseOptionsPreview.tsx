@@ -29,7 +29,6 @@ export const ResponseOptionsPreview = ({ options }: ResponseOptionsPreviewProps)
 
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium">Vorschau:</div>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {
           const colorClasses = getColorClasses(option.color);

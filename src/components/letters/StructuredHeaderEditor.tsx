@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Type, Image as ImageIcon, GripVertical, Upload } from 'lucide-react';
+import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -48,6 +48,12 @@ interface HeaderBlock {
   titleColor?: string;
 }
 
+interface GalleryImage {
+  name: string;
+  path: string;
+  blobUrl: string;
+}
+
 interface StructuredHeaderEditorProps {
   initialElements?: HeaderElement[];
   onElementsChange: (elements: HeaderElement[]) => void;
@@ -65,12 +71,71 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const previewRef = useRef<HTMLDivElement | null>(null);
   const lastReportedRef = useRef<string>(JSON.stringify(initialElements));
 
+  // Image gallery state
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+
+  // Blocks state
+  const [blocks, setBlocks] = useState<HeaderBlock[]>([]);
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+
   const headerMaxWidth = 210;
   const headerMaxHeight = 45;
   const previewWidth = 780;
   const previewHeight = 300;
 
   const SNAP_MM = 1.5;
+
+  // Load gallery images with blob URLs
+  const loadGalleryImages = useCallback(async () => {
+    if (!currentTenant?.id) return;
+    setGalleryLoading(true);
+    try {
+      const folderPath = `${currentTenant.id}/header-images`;
+      const { data: files, error } = await supabase.storage
+        .from('letter-assets')
+        .list(folderPath);
+
+      if (error) {
+        console.error('Error listing gallery images:', error);
+        setGalleryLoading(false);
+        return;
+      }
+
+      const imageFiles = (files || []).filter(f => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name));
+      
+      // Revoke old blob URLs
+      galleryImages.forEach(img => URL.revokeObjectURL(img.blobUrl));
+      
+      const loaded: GalleryImage[] = [];
+      for (const file of imageFiles) {
+        const filePath = `${folderPath}/${file.name}`;
+        try {
+          const { data: blob, error: dlError } = await supabase.storage
+            .from('letter-assets')
+            .download(filePath);
+          if (dlError || !blob) continue;
+          const blobUrl = URL.createObjectURL(blob);
+          loaded.push({ name: file.name, path: filePath, blobUrl });
+        } catch (e) {
+          console.error('Error downloading', file.name, e);
+        }
+      }
+      setGalleryImages(loaded);
+    } catch (error) {
+      console.error('Error loading gallery:', error);
+    } finally {
+      setGalleryLoading(false);
+    }
+  }, [currentTenant?.id]);
+
+  useEffect(() => {
+    loadGalleryImages();
+    return () => {
+      // Cleanup blob URLs on unmount
+      galleryImages.forEach(img => URL.revokeObjectURL(img.blobUrl));
+    };
+  }, [currentTenant?.id]);
 
   const snapToOtherElements = (id: string, x: number, y: number) => {
     const current = elements.find((el) => el.id === id);
@@ -101,8 +166,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return { x: Math.round(sx), y: Math.round(sy) };
   };
 
-  // Report element changes to parent - guarded against duplicate calls
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const key = JSON.stringify(elements);
     if (key !== lastReportedRef.current) {
@@ -110,31 +173,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       onElementsChange(elements);
     }
   }, [elements]);
-
-  const handleImageUpload = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      const imageUrl = await uploadImage(file);
-      if (!imageUrl) return;
-      const newElement: HeaderElement = {
-        id: Date.now().toString(),
-        type: 'image',
-        x: 20,
-        y: 10,
-        width: 40,
-        height: 20,
-        imageUrl,
-        preserveAspectRatio: true,
-      };
-      setElements((prev) => [...prev, newElement]);
-      setSelectedElementId(newElement.id);
-    };
-    input.click();
-  };
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
@@ -147,14 +185,56 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       const filePath = `${currentTenant.id}/header-images/${fileName}`;
       const { data, error } = await supabase.storage.from('letter-assets').upload(filePath, file);
       if (error) throw error;
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('letter-assets').getPublicUrl(data.path);
+      const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(data.path);
+      // Reload gallery after upload
+      await loadGalleryImages();
       return publicUrl;
     } catch (error) {
       console.error('Upload error:', error);
       toast({ title: 'Fehler', description: 'Bild konnte nicht hochgeladen werden', variant: 'destructive' });
       return null;
+    }
+  };
+
+  const handleGalleryUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      await uploadImage(file);
+      toast({ title: 'Bild hochgeladen' });
+    };
+    input.click();
+  };
+
+  const addImageFromGallery = (galleryImg: GalleryImage) => {
+    const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(galleryImg.path);
+    const newElement: HeaderElement = {
+      id: Date.now().toString(),
+      type: 'image',
+      x: 20,
+      y: 10,
+      width: 40,
+      height: 20,
+      imageUrl: publicUrl,
+      preserveAspectRatio: true,
+    };
+    setElements((prev) => [...prev, newElement]);
+    setSelectedElementId(newElement.id);
+  };
+
+  const deleteGalleryImage = async (galleryImg: GalleryImage) => {
+    try {
+      const { error } = await supabase.storage.from('letter-assets').remove([galleryImg.path]);
+      if (error) throw error;
+      URL.revokeObjectURL(galleryImg.blobUrl);
+      setGalleryImages(prev => prev.filter(i => i.path !== galleryImg.path));
+      toast({ title: 'Bild gelöscht' });
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({ title: 'Fehler', description: 'Bild konnte nicht gelöscht werden', variant: 'destructive' });
     }
   };
 
@@ -174,10 +254,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     };
     setElements((prev) => [...prev, newElement]);
     setSelectedElementId(newElement.id);
-  };
-
-  const addFooterLikeBlock = (title: string, content: string) => {
-    addTextElement(20, 12, `${title}: ${content}`);
   };
 
   const addImageElement = () => {
@@ -203,6 +279,33 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       setSelectedElementId(newElement.id);
     };
     input.click();
+  };
+
+  // Block management
+  const addBlock = () => {
+    const newBlock: HeaderBlock = {
+      id: Date.now().toString(),
+      type: 'custom',
+      title: `Block ${blocks.length + 1}`,
+      content: '',
+      order: blocks.length,
+      widthPercent: 25,
+      fontSize: 9,
+      fontFamily: 'Arial',
+      fontWeight: 'normal',
+      color: '#000000',
+    };
+    setBlocks(prev => [...prev, newBlock]);
+    setSelectedBlockId(newBlock.id);
+  };
+
+  const updateBlock = (id: string, updates: Partial<HeaderBlock>) => {
+    setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+  };
+
+  const removeBlock = (id: string) => {
+    setBlocks(prev => prev.filter(b => b.id !== id));
+    if (selectedBlockId === id) setSelectedBlockId(null);
   };
 
   const updateElement = (id: string, updates: Partial<HeaderElement>) => {
@@ -259,7 +362,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (!selectedElement) return;
-    // Delete/Backspace removes selected element
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
       removeElement(selectedElement.id);
@@ -281,33 +383,36 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const validatePosition = (value: number, max: number) => Math.max(0, Math.min(value, max));
 
+  const selectedBlock = blocks.find(b => b.id === selectedBlockId);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[30%_70%] gap-6">
-      <div className="space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+      <div className="space-y-4 overflow-y-auto max-h-[75vh]">
         {/* Tools */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Header-Blöcke hinzufügen</CardTitle>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm">Elemente hinzufügen</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <Button onClick={addImageElement} className="w-full justify-start">
+          <CardContent className="space-y-2 px-4 pb-4">
+            <Button onClick={addImageElement} className="w-full justify-start" size="sm">
               <ImageIcon className="h-4 w-4 mr-2" />
-              Bild hinzufügen
+              Bild hochladen & einfügen
             </Button>
             <div draggable onDragStart={(e) => onToolDragStart(e, 'text')} className="rounded border bg-background px-3 py-2 text-sm cursor-grab active:cursor-grabbing flex items-start gap-2">
               <GripVertical className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
-                <div className="font-medium">Text-Block ziehen</div>
-                <div className="text-xs text-muted-foreground">Lorem ipsum dolor sit amet</div>
+                <div className="font-medium text-xs">Text-Block ziehen</div>
+                <div className="text-xs text-muted-foreground">Auf Canvas ziehen</div>
               </div>
             </div>
-            {/* Shortcut buttons removed - use drag-and-drop text blocks or image gallery instead */}
-            <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="w-full" onClick={() => setShowRuler((v) => !v)}>
-              Außenlineal {showRuler ? 'ausblenden' : 'einblenden'}
-            </Button>
-            <Button variant={showCenterGuides ? 'default' : 'outline'} size="sm" className="w-full" onClick={() => setShowCenterGuides((v) => !v)}>
-              Mittelachsen {showCenterGuides ? 'ausblenden' : 'einblenden'}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setShowRuler((v) => !v)}>
+                Lineal
+              </Button>
+              <Button variant={showCenterGuides ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setShowCenterGuides((v) => !v)}>
+                Achsen
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -315,65 +420,150 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         <Card>
           <CardHeader className="py-3 px-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Bilder</CardTitle>
-              <Button variant="ghost" size="sm" onClick={handleImageUpload} className="h-7 px-2">
+              <CardTitle className="text-sm flex items-center gap-1">
+                <FolderOpen className="h-3.5 w-3.5" />
+                Bilder-Galerie
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={handleGalleryUpload} className="h-7 px-2">
                 <Upload className="h-3 w-3 mr-1" /> Hochladen
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="px-4 pb-4">
+            {galleryLoading ? (
+              <p className="text-xs text-muted-foreground">Lade Bilder...</p>
+            ) : galleryImages.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Noch keine Bilder hochgeladen.</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {galleryImages.map((img) => (
+                  <div key={img.path} className="relative group border rounded overflow-hidden aspect-square bg-muted/30">
+                    <img
+                      src={img.blobUrl}
+                      alt={img.name}
+                      className="w-full h-full object-contain cursor-pointer"
+                      onClick={() => addImageFromGallery(img)}
+                      title={`${img.name} — Klicken zum Einfügen`}
+                    />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteGalleryImage(img); }}
+                      className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Blocks */}
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">Blöcke ({blocks.length})</CardTitle>
+              <Button variant="ghost" size="sm" onClick={addBlock} className="h-7 px-2">
+                <Plus className="h-3 w-3 mr-1" /> Neu
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-2">
+            {blocks.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Keine Blöcke. Erstellen Sie einen neuen Block.</p>
+            ) : (
+              blocks.map((block) => (
+                <div
+                  key={block.id}
+                  className={`p-2 border rounded cursor-pointer text-xs ${selectedBlockId === block.id ? 'border-primary bg-primary/10' : 'hover:border-primary/50'}`}
+                  onClick={() => setSelectedBlockId(block.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{block.title}</span>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}>
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                  <p className="text-muted-foreground line-clamp-1">{block.content || 'Kein Inhalt'}</p>
+                </div>
+              ))
+            )}
+            {selectedBlock && (
+              <div className="border-t pt-2 mt-2 space-y-2">
+                <div>
+                  <Label className="text-xs">Titel</Label>
+                  <Input value={selectedBlock.title} onChange={(e) => updateBlock(selectedBlock.id, { title: e.target.value })} className="h-7 text-xs" />
+                </div>
+                <div>
+                  <Label className="text-xs">Inhalt</Label>
+                  <Input value={selectedBlock.content} onChange={(e) => updateBlock(selectedBlock.id, { content: e.target.value })} className="h-7 text-xs" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Breite (%)</Label>
+                    <Input type="number" value={selectedBlock.widthPercent} onChange={(e) => updateBlock(selectedBlock.id, { widthPercent: parseInt(e.target.value) || 25 })} className="h-7 text-xs" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Schriftgröße</Label>
+                    <Input type="number" value={selectedBlock.fontSize} onChange={(e) => updateBlock(selectedBlock.id, { fontSize: parseInt(e.target.value) || 9 })} className="h-7 text-xs" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Farbe</Label>
+                  <Input type="color" value={selectedBlock.color} onChange={(e) => updateBlock(selectedBlock.id, { color: e.target.value })} className="h-7" />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Elements list */}
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm">Elemente ({elements.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-2">
             {elements.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Keine Elemente vorhanden</p>
+              <p className="text-xs text-muted-foreground">Keine Elemente vorhanden</p>
             ) : (
               elements.map((element) => (
                 <div
                   key={element.id}
-                  className={`p-3 border rounded cursor-pointer transition-colors ${selectedElementId === element.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                  className={`p-2 border rounded cursor-pointer transition-colors text-xs ${selectedElementId === element.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
                   onClick={() => setSelectedElementId(element.id)}
                 >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        {element.type === 'text' ? <Type className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
-                        <span className="font-medium text-sm">{element.type === 'text' ? element.content : 'Bild'}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">x: {element.x}mm, y: {element.y}mm</p>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {element.type === 'text' ? <Type className="h-3.5 w-3.5 shrink-0" /> : <ImageIcon className="h-3.5 w-3.5 shrink-0" />}
+                      <span className="font-medium truncate">{element.type === 'text' ? (element.content || 'Text').slice(0, 25) : 'Bild'}</span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeElement(element.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0" onClick={(e) => { e.stopPropagation(); removeElement(element.id); }}>
+                      <Trash2 className="h-3 w-3 text-destructive" />
                     </Button>
                   </div>
+                  <p className="text-muted-foreground">x: {element.x}mm, y: {element.y}mm</p>
 
                   {selectedElementId === element.id && (
-                    <div className="mt-3 pt-3 border-t space-y-3">
-                      <Label className="text-xs uppercase text-muted-foreground">Element-Eigenschaften</Label>
+                    <div className="mt-2 pt-2 border-t space-y-2">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <Label>X (mm)</Label>
-                          <Input type="number" value={element.x} onChange={(e) => updateElement(element.id, { x: validatePosition(parseFloat(e.target.value) || 0, headerMaxWidth) })} />
+                          <Label className="text-xs">X (mm)</Label>
+                          <Input type="number" value={element.x} onChange={(e) => updateElement(element.id, { x: validatePosition(parseFloat(e.target.value) || 0, headerMaxWidth) })} className="h-7 text-xs" />
                         </div>
                         <div>
-                          <Label>Y (mm)</Label>
-                          <Input type="number" value={element.y} onChange={(e) => updateElement(element.id, { y: validatePosition(parseFloat(e.target.value) || 0, headerMaxHeight) })} />
+                          <Label className="text-xs">Y (mm)</Label>
+                          <Input type="number" value={element.y} onChange={(e) => updateElement(element.id, { y: validatePosition(parseFloat(e.target.value) || 0, headerMaxHeight) })} className="h-7 text-xs" />
                         </div>
                       </div>
                       {element.type === 'text' && (
                         <>
-                          <Label>Text</Label>
-                          <Input value={element.content || ''} onChange={(e) => updateElement(element.id, { content: e.target.value })} />
+                          <Input value={element.content || ''} onChange={(e) => updateElement(element.id, { content: e.target.value })} placeholder="Text" className="h-7 text-xs" />
                           <div className="grid grid-cols-2 gap-2">
-                            <Input type="number" value={element.fontSize || 12} onChange={(e) => updateElement(element.id, { fontSize: parseFloat(e.target.value) || 12 })} />
-                            <Input type="color" value={element.color || '#000000'} onChange={(e) => updateElement(element.id, { color: e.target.value })} />
+                            <Input type="number" value={element.fontSize || 12} onChange={(e) => updateElement(element.id, { fontSize: parseFloat(e.target.value) || 12 })} className="h-7 text-xs" />
+                            <Input type="color" value={element.color || '#000000'} onChange={(e) => updateElement(element.id, { color: e.target.value })} className="h-7" />
                           </div>
                           <Select value={element.fontFamily || 'Arial'} onValueChange={(value) => updateElement(element.id, { fontFamily: value })}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Arial">Arial</SelectItem>
                               <SelectItem value="Times New Roman">Times New Roman</SelectItem>
@@ -381,29 +571,28 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                               <SelectItem value="Verdana">Verdana</SelectItem>
                             </SelectContent>
                           </Select>
-                          <div className="grid grid-cols-3 gap-2">
-                            <Button type="button" size="sm" variant={element.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })}>Fett</Button>
-                            <Button type="button" size="sm" variant={(element as any).fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { fontStyle: (element as any).fontStyle === 'italic' ? 'normal' : 'italic' } as any)}>Kursiv</Button>
-                            <Button type="button" size="sm" variant={(element as any).textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textDecoration: (element as any).textDecoration === 'underline' ? 'none' : 'underline' } as any)}>Unterstr.</Button>
+                          <div className="grid grid-cols-3 gap-1">
+                            <Button type="button" size="sm" className="h-6 text-xs" variant={element.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })}>B</Button>
+                            <Button type="button" size="sm" className="h-6 text-xs" variant={(element as any).fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { fontStyle: (element as any).fontStyle === 'italic' ? 'normal' : 'italic' } as any)}>I</Button>
+                            <Button type="button" size="sm" className="h-6 text-xs" variant={(element as any).textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textDecoration: (element as any).textDecoration === 'underline' ? 'none' : 'underline' } as any)}>U</Button>
                           </div>
                         </>
                       )}
                       {element.type === 'image' && (
                         <>
-                          <Separator />
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label>Breite (mm)</Label>
-                              <Input type="number" value={element.width || 50} onChange={(e) => updateElement(element.id, { width: parseFloat(e.target.value) || 50 })} />
+                              <Label className="text-xs">Breite (mm)</Label>
+                              <Input type="number" value={element.width || 50} onChange={(e) => updateElement(element.id, { width: parseFloat(e.target.value) || 50 })} className="h-7 text-xs" />
                             </div>
                             <div>
-                              <Label>Höhe (mm)</Label>
-                              <Input type="number" value={element.height || 30} onChange={(e) => updateElement(element.id, { height: parseFloat(e.target.value) || 30 })} />
+                              <Label className="text-xs">Höhe (mm)</Label>
+                              <Input type="number" value={element.height || 30} onChange={(e) => updateElement(element.id, { height: parseFloat(e.target.value) || 30 })} className="h-7 text-xs" />
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Checkbox id={`preserve-${element.id}`} checked={element.preserveAspectRatio || false} onCheckedChange={(checked) => updateElement(element.id, { preserveAspectRatio: checked as boolean })} />
-                            <Label htmlFor={`preserve-${element.id}`}>Seitenverhältnis beibehalten</Label>
+                            <Label htmlFor={`preserve-${element.id}`} className="text-xs">Seitenverhältnis</Label>
                           </div>
                         </>
                       )}
@@ -417,9 +606,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Vorschau</CardTitle>
-          <p className="text-sm text-muted-foreground">DIN A4 Header (210mm × 45mm), Blöcke per Maus/Pfeiltasten bewegbar</p>
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm">Vorschau</CardTitle>
+          <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht Element.</p>
         </CardHeader>
         <CardContent>
           <div className="relative pl-8 pt-8">
@@ -447,6 +636,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               onMouseMove={onPreviewMouseMove}
               onMouseUp={onPreviewMouseUp}
               onMouseLeave={onPreviewMouseUp}
+              onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
               style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}
             >
@@ -456,6 +646,24 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none" />
                 </>
               )}
+
+              {/* Render blocks at bottom of header */}
+              {blocks.length > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 flex" style={{ height: '40%' }}>
+                  {blocks.map((block) => (
+                    <div
+                      key={block.id}
+                      className={`border-t border-r last:border-r-0 p-1 overflow-hidden ${selectedBlockId === block.id ? 'bg-primary/5 border-primary' : 'border-gray-200'}`}
+                      style={{ width: `${block.widthPercent}%`, fontSize: `${block.fontSize * (previewWidth / headerMaxWidth) * 0.3}px`, fontFamily: block.fontFamily, fontWeight: block.fontWeight, color: block.color }}
+                      onClick={(e) => { e.stopPropagation(); setSelectedBlockId(block.id); }}
+                    >
+                      <div className="font-bold text-[10px]">{block.title}</div>
+                      <div className="line-clamp-3">{block.content}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {elements.map((element) => {
                 const scaleX = previewWidth / headerMaxWidth;
                 const scaleY = previewHeight / headerMaxHeight;

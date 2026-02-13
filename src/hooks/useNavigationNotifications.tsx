@@ -106,8 +106,8 @@ export const useNavigationNotifications = (): NavigationNotifications => {
 
     try {
       const now = new Date();
-      // Suppress realtime reloads for 2 seconds after manual update
-      suppressReloadUntil.current = Date.now() + 2000;
+      // Suppress realtime reloads for 5 seconds after manual update
+      suppressReloadUntil.current = Date.now() + 5000;
 
       // Update or insert visit record
       const { error } = await supabase

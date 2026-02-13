@@ -126,9 +126,10 @@ export function LetterOccasionManager() {
 
   const seedDefaults = async () => {
     if (!currentTenant) return;
+    const insertedOccasions: LetterOccasion[] = [];
     for (let i = 0; i < DEFAULT_OCCASIONS.length; i++) {
       const o = DEFAULT_OCCASIONS[i];
-      await supabase.from('letter_occasions').insert({
+      const { data, error } = await supabase.from('letter_occasions').insert({
         tenant_id: currentTenant.id,
         key: o.key,
         label: o.label,
@@ -138,10 +139,17 @@ export function LetterOccasionManager() {
         sort_order: i,
         template_match_patterns: o.patterns,
         is_active: true,
-      });
+      }).select().maybeSingle();
+      if (data) insertedOccasions.push(data);
+      if (error) console.error('Seed error for', o.key, error);
     }
-    toast({ title: 'Standard-Anlässe erstellt' });
-    loadOccasions();
+    if (insertedOccasions.length > 0) {
+      setOccasions(insertedOccasions);
+      toast({ title: 'Standard-Anlässe erstellt' });
+    } else {
+      toast({ title: 'Hinweis', description: 'Anlässe konnten nicht erstellt werden. Prüfen Sie die Berechtigungen.', variant: 'destructive' });
+    }
+    setLoading(false);
   };
 
   const resetForm = (occasion?: LetterOccasion) => {
