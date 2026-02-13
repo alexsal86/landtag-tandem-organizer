@@ -1104,8 +1104,21 @@ export const DecisionOverview = () => {
                         return <span className="text-muted-foreground font-medium">Noch offen</span>;
                       }
 
+                      const winnerTextColorMap: Record<string, string> = {
+                        green: 'text-green-600',
+                        red: 'text-red-600',
+                        orange: 'text-orange-600',
+                        yellow: 'text-yellow-600',
+                        blue: 'text-blue-600',
+                        purple: 'text-purple-600',
+                        teal: 'text-teal-600',
+                        pink: 'text-pink-600',
+                        lime: 'text-lime-600',
+                        gray: 'text-gray-600',
+                      };
+
                       return (
-                        <span className="text-foreground font-bold">
+                        <span className={cn("font-bold", winnerTextColorMap[winningOption.color || 'gray'] || 'text-foreground')}>
                           {winningOption.label}
                           {winningOption.description ? ` - ${winningOption.description}` : ""}
                         </span>
