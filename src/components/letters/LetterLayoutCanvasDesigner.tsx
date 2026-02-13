@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ZoomIn, ZoomOut } from 'lucide-react';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 
 type BlockKey = 'header' | 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments';
@@ -43,7 +44,8 @@ const BLOCKS: BlockConfig[] = [
   { key: 'footer', label: 'Footer', color: 'bg-pink-500/20 border-pink-600 text-pink-900', jumpTo: 'footer-designer' },
 ];
 
-const SCALE = 2.2;
+const BASE_SCALE = 2.2;
+const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const snapMm = (val: number) => Math.round(val);
 const clamp = (val: number, min: number, max: number) => Math.min(max, Math.max(min, val));
 
@@ -69,9 +71,41 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   const [dragging, setDragging] = useState<{ key: BlockKey; startX: number; startY: number; orig: Rect; mode: 'move' | 'resize' } | null>(null);
   const [localLayout, setLocalLayout] = useState<LetterLayoutSettings>(() => cloneLayout(layoutSettings));
   const [showRuler, setShowRuler] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
   const canvasWrapRef = useRef<HTMLDivElement | null>(null);
 
+  const SCALE = BASE_SCALE * zoomLevel;
+
   useEffect(() => setLocalLayout(cloneLayout(layoutSettings)), [layoutSettings]);
+
+  const zoomIn = useCallback(() => {
+    setZoomLevel((z) => {
+      const idx = ZOOM_STEPS.indexOf(z);
+      return idx < ZOOM_STEPS.length - 1 ? ZOOM_STEPS[idx + 1] : z;
+    });
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoomLevel((z) => {
+      const idx = ZOOM_STEPS.indexOf(z);
+      return idx > 0 ? ZOOM_STEPS[idx - 1] : z;
+    });
+  }, []);
+
+  // Ctrl+Scroll zoom
+  useEffect(() => {
+    const el = canvasWrapRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) zoomIn();
+        else zoomOut();
+      }
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [zoomIn, zoomOut]);
 
   const disabledBlocks = useMemo(() => new Set(getDisabled(localLayout)), [localLayout]);
   const contentWidth = localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right;
@@ -185,7 +219,16 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
           <h3 className="text-lg font-semibold">Canvas-Designer</h3>
           <p className="text-sm text-muted-foreground">Doppelklick auf Block → passender Tab. Pfeiltasten bewegen ausgewählten Block um 1mm.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <div className="flex items-center gap-1 border rounded-md px-1">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={zoomOut} disabled={zoomLevel <= ZOOM_STEPS[0]}>
+              <ZoomOut className="h-3.5 w-3.5" />
+            </Button>
+            <span className="text-xs font-medium w-10 text-center">{Math.round(zoomLevel * 100)}%</span>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={zoomIn} disabled={zoomLevel >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}>
+              <ZoomIn className="h-3.5 w-3.5" />
+            </Button>
+          </div>
           <Button variant={showRuler ? 'default' : 'outline'} size="sm" onClick={() => setShowRuler((v) => !v)}>Lineal {showRuler ? 'aus' : 'ein'}</Button>
           <Button
             variant="outline"
@@ -208,7 +251,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
             <div className="grid grid-cols-1 gap-2">
               {BLOCKS.map((block) => (
                 <div key={block.key} className="flex items-center justify-between gap-2">
-                  <Button type="button" variant={selected === block.key ? 'default' : 'outline'} size="sm" className="flex-1" onClick={() => { setSelected(block.key); canvasWrapRef.current?.focus(); }}>
+                  <Button type="button" variant="outline" size="sm" className={`flex-1 ${selected === block.key ? 'ring-2 ring-primary' : ''} ${block.color}`} onClick={() => { setSelected(block.key); canvasWrapRef.current?.focus(); }}>
                     {block.label}
                   </Button>
                   <div className="flex items-center gap-2">

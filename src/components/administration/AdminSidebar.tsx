@@ -122,6 +122,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     icon: FileStack,
     children: [
       { id: "letters", label: "Briefvorlagen", icon: Mail },
+      { id: "occasions", label: "Brief-Anlässe", icon: File },
       { id: "meetings", label: "Meeting-Templates", icon: Users },
       { id: "plannings", label: "Planungs-Templates", icon: Layout },
       { id: "emails", label: "E-Mail-Vorlagen", icon: Newspaper },

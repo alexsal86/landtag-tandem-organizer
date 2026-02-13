@@ -266,32 +266,6 @@ const LetterTemplateManager: React.FC = () => {
     setFormData((prev) => ({ ...prev, layout_settings: updater(prev.layout_settings) }));
   };
 
-  const getBlockItems = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject') => {
-    const content = ((formData.layout_settings as any).blockContent || {}) as Record<string, any[]>;
-    return content[blockKey] || [];
-  };
-
-  const setBlockItems = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject', items: any[]) => {
-    updateLayoutSettings((layout) => {
-      const current = ((layout as any).blockContent || {}) as Record<string, any[]>;
-      return { ...layout, blockContent: { ...current, [blockKey]: items } } as LetterLayoutSettings;
-    });
-  };
-
-  const cancelEditing = () => {
-    setEditingTemplate(null);
-    setEditActiveTab('canvas-designer');
-    resetForm();
-  };
-
-
-
-  const updateLayoutSettings = (updater: (layout: LetterLayoutSettings) => LetterLayoutSettings) => {
-    setFormData((prev) => ({ ...prev, layout_settings: updater(prev.layout_settings) }));
-  };
-
-
-
   const getBlockItems = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments') => {
     const content = ((formData.layout_settings as any).blockContent || {}) as Record<string, any[]>;
     return content[blockKey] || [];

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Type, Image as ImageIcon, GripVertical } from 'lucide-react';
+import { Trash2, Type, Image as ImageIcon, GripVertical, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -63,42 +63,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; ox: number; oy: number } | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const lastReportedRef = useRef<string>(JSON.stringify(initialElements));
 
   const headerMaxWidth = 210;
   const headerMaxHeight = 45;
   const previewWidth = 780;
   const previewHeight = 300;
-
-  const SNAP_MM = 1.5;
-
-  const snapToOtherElements = (id: string, x: number, y: number) => {
-    const current = elements.find((el) => el.id === id);
-    if (!current) return { x, y };
-    let sx = x;
-    let sy = y;
-    const w = current.width || 50;
-    const h = current.height || 10;
-    const edgeTargets = elements.filter((el) => el.id !== id).flatMap((el) => {
-      const tw = el.width || 50;
-      const th = el.height || 10;
-      return [
-        { x: el.x, y: el.y },
-        { x: el.x + tw, y: el.y + th },
-        { x: el.x + tw / 2, y: el.y + th / 2 },
-      ];
-    });
-
-    for (const t of edgeTargets) {
-      if (Math.abs(sx - t.x) <= SNAP_MM) sx = t.x;
-      if (Math.abs(sx + w - t.x) <= SNAP_MM) sx = t.x - w;
-      if (Math.abs(sx + w / 2 - t.x) <= SNAP_MM) sx = t.x - w / 2;
-      if (Math.abs(sy - t.y) <= SNAP_MM) sy = t.y;
-      if (Math.abs(sy + h - t.y) <= SNAP_MM) sy = t.y - h;
-      if (Math.abs(sy + h / 2 - t.y) <= SNAP_MM) sy = t.y - h / 2;
-    }
-
-    return { x: Math.round(sx), y: Math.round(sy) };
-  };
 
   const SNAP_MM = 1.5;
 
@@ -140,6 +110,31 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       onElementsChange(elements);
     }
   }, [elements]);
+
+  const handleImageUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const imageUrl = await uploadImage(file);
+      if (!imageUrl) return;
+      const newElement: HeaderElement = {
+        id: Date.now().toString(),
+        type: 'image',
+        x: 20,
+        y: 10,
+        width: 40,
+        height: 20,
+        imageUrl,
+        preserveAspectRatio: true,
+      };
+      setElements((prev) => [...prev, newElement]);
+      setSelectedElementId(newElement.id);
+    };
+    input.click();
+  };
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
