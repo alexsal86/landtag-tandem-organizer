@@ -10,9 +10,6 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { PushNotificationTest } from './PushNotificationTest';
-import { VapidKeyTest } from './VapidKeyTest';
-import { DirectPushTest } from './DirectPushTest';
 import { cn } from '@/lib/utils';
 
 interface NotificationType {
@@ -554,15 +551,6 @@ export const NotificationSettings: React.FC = () => {
                 onToggleSingle={updateSetting}
               />
             ))}
-          </div>
-
-          <div className="mt-6 space-y-4">
-            <h4 className="text-sm font-medium mb-4">Push-System Tests</h4>
-            <div className="grid gap-4 md:grid-cols-3">
-              <VapidKeyTest />
-              <PushNotificationTest />
-              <DirectPushTest />
-            </div>
           </div>
         </CardContent>
       </Card>

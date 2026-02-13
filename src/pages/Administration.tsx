@@ -47,6 +47,9 @@ import { SenderInformationManager } from "@/components/administration/SenderInfo
 import { InformationBlockManager } from "@/components/administration/InformationBlockManager";
 import { LetterOccasionManager } from "@/components/administration/LetterOccasionManager";
 import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
+import { PushNotificationTest } from "@/components/PushNotificationTest";
+import { VapidKeyTest } from "@/components/VapidKeyTest";
+import { DirectPushTest } from "@/components/DirectPushTest";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -242,6 +245,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
         templates: "letters",
         politics: "associations",
         automation: "rss-sources",
+        superadmin: "tenants",
       };
       setActiveSubSection(defaults[section] || "");
     }
@@ -1906,6 +1910,212 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
           );
         default:
           return <PartyAssociationsAdmin />;
+      }
+    }
+
+    // SECTION 7: Super-Admin
+    if (activeSection === "superadmin") {
+      switch (activeSubSection) {
+        case "tenants":
+          if (user?.email !== "mail@alexander-salomon.de") {
+            return (
+              <Card>
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  Nur für System-Administratoren zugänglich.
+                </CardContent>
+              </Card>
+            );
+          }
+          return <SuperadminTenantManagement />;
+        case "push-tests":
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle>Push-System Tests</CardTitle>
+                <CardDescription>
+                  Technische Push-Tests sind ausschließlich im Superadmin-Bereich verfügbar.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <VapidKeyTest />
+                  <PushNotificationTest />
+                  <DirectPushTest />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        case "roles":
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Benutzerrollen
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Neuer Benutzer
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Neuen Benutzer erstellen</DialogTitle>
+                      </DialogHeader>
+                      <NewUserForm onSuccess={loadData} />
+                    </DialogContent>
+                  </Dialog>
+                  <CreateDemoUsers />
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingData ? (
+                  <div className="space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <Skeleton className="h-6 flex-1" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Benutzer</TableHead>
+                        <TableHead className="text-right">Rolle</TableHead>
+                        <TableHead />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {profiles.map((p) => (
+                        <TableRow key={p.user_id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={p.avatar_url ?? undefined} alt={p.display_name ?? "Avatar"} />
+                                <AvatarFallback>
+                                  {(p.display_name ?? "U").charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{p.display_name || "Unbekannter Benutzer"}</span>
+                                <span className="text-xs text-muted-foreground">{p.user_id}</span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Select
+                              value={roles.find(r => r.user_id === p.user_id)?.role ?? "none"}
+                              onValueChange={(val) => updateUserRole(p.user_id, val as RoleValue | "none")}
+                              disabled={busyUserId === p.user_id}
+                            >
+                              <SelectTrigger className="w-56">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Keine Rolle</SelectItem>
+                                {ROLE_OPTIONS.map(role => (
+                                  <SelectItem key={role.value} value={role.value}>
+                                    {role.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            {p.user_id !== user?.id && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Benutzer löschen?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {p.display_name} wird unwiderruflich aus dem System entfernt.
+                                      Alle zugehörigen Daten (Zeiteinträge, Nachrichten, etc.) werden gelöscht.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      className="bg-destructive text-destructive-foreground"
+                                      onClick={async () => {
+                                        try {
+                                          const { data, error } = await supabase.functions.invoke('manage-tenant-user', {
+                                            body: {
+                                              action: 'deleteUser',
+                                              userId: p.user_id,
+                                              tenantId: currentTenant?.id
+                                            }
+                                          });
+                                          if (error || !data?.success) {
+                                            throw new Error(data?.error || 'Löschen fehlgeschlagen');
+                                          }
+                                          toast({ title: "Benutzer gelöscht" });
+                                          loadData();
+                                        } catch (err: any) {
+                                          toast({ title: "Fehler", description: err.message, variant: "destructive" });
+                                        }
+                                      }}
+                                    >
+                                      Unwiderruflich löschen
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          );
+        case "associations":
+          return <PartyAssociationsAdmin />;
+        case "districts":
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Betreuungswahlkreise
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DistrictSupportManager />
+              </CardContent>
+            </Card>
+          );
+        case "mapping":
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Wahlkreis-Zuordnung
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PartyDistrictMappingManager />
+              </CardContent>
+            </Card>
+          );
+        default:
+          return null;
       }
     }
 
