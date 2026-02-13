@@ -145,6 +145,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     superAdminOnly: true,
     children: [
       { id: "tenants", label: "Tenants", icon: Building2 },
+      { id: "push-tests", label: "Push-System Tests", icon: Bell },
       { id: "roles", label: "Rechte & Rollen", icon: UserCheck },
       { id: "associations", label: "Kreisverbände", icon: Landmark },
       { id: "districts", label: "Betreuungswahlkreise", icon: MapPin },
