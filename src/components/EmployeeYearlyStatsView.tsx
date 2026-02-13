@@ -9,13 +9,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -131,21 +124,17 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Jahr:</span>
-            <Select
+            <select
               value={selectedYear.toString()}
-              onValueChange={(v) => setSelectedYear(parseInt(v))}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
+              className="h-9 w-32 rounded-md border border-input bg-background px-3 py-1 text-sm"
             >
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {availableYears.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {availableYears.map((year) => (
+                <option key={year} value={year.toString()}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </div>
 
           {loading ? (
