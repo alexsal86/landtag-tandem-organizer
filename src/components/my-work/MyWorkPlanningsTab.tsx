@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CalendarPlus, ExternalLink, MapPin, CheckSquare, Calendar, CheckCircle, Archive, ChevronDown, ChevronUp, Clock, Plus } from "lucide-react";
+import { CalendarPlus, ExternalLink, MapPin, CheckSquare, Calendar, CheckCircle, Archive, ChevronDown, ChevronUp, Clock, Plus, Square } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -234,6 +234,22 @@ export function MyWorkPlanningsTab() {
     }
   };
 
+  const toggleChecklistItem = async (itemId: string, isCompleted: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("event_planning_checklist_items")
+        .update({ is_completed: isCompleted })
+        .eq("id", itemId);
+
+      if (error) throw error;
+
+      await loadPlannings();
+    } catch (error) {
+      console.error("Error toggling checklist item:", error);
+      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
+    }
+  };
+
   const toggleCompleted = async (planningId: string, isCompleted: boolean) => {
     try {
       const { error } = await supabase
@@ -341,23 +357,36 @@ export function MyWorkPlanningsTab() {
                       </span>
                     )}
                     {planning.checklistProgress.total > 0 && (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-2">
+                        <span className="flex items-center gap-1">
                         <CheckSquare className="h-3 w-3" />
                         {planning.checklistProgress.completed}/{planning.checklistProgress.total}
+                        </span>
+                        <CollapsibleTrigger asChild>
+                          <button
+                            type="button"
+                            className="text-primary hover:underline inline-flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Details
+                            {expandedPlanningIds.has(planning.id) ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          </button>
+                        </CollapsibleTrigger>
                       </span>
                     )}
+                    {planning.checklistProgress.total === 0 && (
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="text-primary hover:underline inline-flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Details
+                          {expandedPlanningIds.has(planning.id) ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        </button>
+                      </CollapsibleTrigger>
+                    )}
                   </div>
-
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      className="mt-2 text-xs text-primary hover:underline inline-flex items-center gap-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Details
-                      {expandedPlanningIds.has(planning.id) ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                    </button>
-                  </CollapsibleTrigger>
 
                   <CollapsibleContent className="mt-3 border-t pt-3 space-y-3">
                     {planning.description && (
@@ -372,10 +401,22 @@ export function MyWorkPlanningsTab() {
                       <div className="mt-2 space-y-2">
                         {planning.checklistItems.length > 0 ? (
                           planning.checklistItems.map((item) => (
-                            <div key={item.id} className="text-sm flex items-center gap-2">
-                              <CheckSquare className={cn("h-4 w-4", item.is_completed ? "text-green-600" : "text-muted-foreground")} />
+                            <button
+                              key={item.id}
+                              type="button"
+                              className="text-sm flex items-center gap-2 text-left hover:text-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleChecklistItem(item.id, !item.is_completed);
+                              }}
+                            >
+                              {item.is_completed ? (
+                                <CheckSquare className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <Square className="h-4 w-4 text-muted-foreground" />
+                              )}
                               <span className={cn(item.is_completed && "line-through text-muted-foreground")}>{item.title}</span>
-                            </div>
+                            </button>
                           ))
                         ) : (
                           <p className="text-sm text-muted-foreground">Noch keine Einträge</p>
