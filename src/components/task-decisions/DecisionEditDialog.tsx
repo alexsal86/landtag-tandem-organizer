@@ -42,11 +42,42 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
 
   const loadProfiles = async () => {
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        setProfiles([]);
+        return;
+      }
+
+      const { data: tenantData } = await supabase
+        .from('user_tenant_memberships')
+        .select('tenant_id')
+        .eq('user_id', userData.user.id)
+        .eq('is_active', true)
+        .single();
+
+      if (!tenantData?.tenant_id) {
+        setProfiles([]);
+        return;
+      }
+
+      const { data: tenantMembers } = await supabase
+        .from('user_tenant_memberships')
+        .select('user_id')
+        .eq('tenant_id', tenantData.tenant_id)
+        .eq('is_active', true);
+
+      const tenantUserIds = tenantMembers?.map(m => m.user_id) || [];
+      if (tenantUserIds.length === 0) {
+        setProfiles([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, display_name')
+        .in('user_id', tenantUserIds)
         .order('display_name');
-      
+
       if (error) throw error;
       setProfiles(data || []);
     } catch (error) {
@@ -108,6 +139,40 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
 
     setIsLoading(true);
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: tenantData, error: tenantError } = await supabase
+        .from('user_tenant_memberships')
+        .select('tenant_id')
+        .eq('user_id', userData.user.id)
+        .eq('is_active', true)
+        .single();
+
+      if (tenantError || !tenantData?.tenant_id) {
+        throw new Error('Unable to determine user tenant');
+      }
+
+      const { data: tenantMembers } = await supabase
+        .from('user_tenant_memberships')
+        .select('user_id')
+        .eq('tenant_id', tenantData.tenant_id)
+        .eq('is_active', true);
+
+      const tenantUserIds = new Set((tenantMembers || []).map(m => m.user_id));
+      const validSelectedUsers = selectedUsers.filter(id => tenantUserIds.has(id));
+
+      if (!visibleToAll && validSelectedUsers.length === 0) {
+        toast({
+          title: "Fehler",
+          description: "Bitte wählen Sie mindestens einen Benutzer aus Ihrem Tenant aus oder machen Sie die Entscheidung öffentlich.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Update decision
       const { error: updateError } = await supabase
         .from('task_decisions')
@@ -131,7 +196,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       const currentUserIds = currentParticipants.map(p => p.user_id);
 
       // Delete removed participants
-      const toDelete = currentUserIds.filter(id => !selectedUsers.includes(id));
+      const toDelete = currentUserIds.filter(id => !validSelectedUsers.includes(id));
       if (toDelete.length > 0) {
         const { error: deleteError } = await supabase
           .from('task_decision_participants')
@@ -143,7 +208,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       }
 
       // Add new participants
-      const toAdd = selectedUsers.filter(id => !currentUserIds.includes(id));
+      const toAdd = validSelectedUsers.filter(id => !currentUserIds.includes(id));
       if (toAdd.length > 0) {
         const newParticipants = toAdd.map(userId => ({
           decision_id: decisionId,
