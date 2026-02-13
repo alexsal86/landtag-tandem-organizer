@@ -586,15 +586,26 @@ export const useNotifications = () => {
 
     const checkAndRenewSubscription = async () => {
       try {
+        // Get current browser subscription endpoint
+        const registration = await navigator.serviceWorker?.getRegistration('/sw.js');
+        const currentSub = registration ? await (registration as any).pushManager?.getSubscription() : null;
+        const currentEndpoint = currentSub?.endpoint;
+
         const { data } = await supabase
           .from('push_subscriptions')
-          .select('id')
+          .select('id, endpoint')
           .eq('user_id', user.id)
           .eq('is_active', true)
           .limit(1);
 
-        if (!data || data.length === 0) {
-          console.log('🔄 No active push subscription found, auto-renewing...');
+        const dbEndpoint = data?.[0]?.endpoint;
+        
+        // Re-subscribe if no active DB record OR endpoint mismatch
+        if (!data || data.length === 0 || (currentEndpoint && dbEndpoint && currentEndpoint !== dbEndpoint)) {
+          console.log('🔄 Push subscription mismatch or missing, auto-renewing...', {
+            hasDbRecord: !!data?.length,
+            endpointMatch: currentEndpoint === dbEndpoint
+          });
           await subscribeToPush();
         }
       } catch (error) {

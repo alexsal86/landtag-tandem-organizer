@@ -1065,24 +1065,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                 </CardContent>
               </Card>
 
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Absenderinformationen</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <SenderInformationManager />
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Informationsblöcke</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <InformationBlockManager />
-                  </CardContent>
-                </Card>
-              </div>
+              {/* Absenderinformationen und Informationsblöcke sind in den Template-Tabs integriert */}
             </div>
           );
         case "occasions":

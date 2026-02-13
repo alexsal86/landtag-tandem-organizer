@@ -193,8 +193,8 @@ const MyWorkDecisionCardInner = ({
         </div>
 
         {/* Title */}
-        <div className="max-h-[4.5rem] overflow-hidden">
-          <h3 className="font-bold text-lg mb-1 line-clamp-1 group-hover:line-clamp-2">{decision.title}</h3>
+        <div>
+          <h3 className="font-bold text-lg mb-1 line-clamp-2">{decision.title}</h3>
 
           {/* Description */}
           {decision.description && (

@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ZoomIn, ZoomOut } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ZoomIn, ZoomOut, Plus, Trash2, Pencil } from 'lucide-react';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 
 type BlockKey = 'header' | 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments';
@@ -24,6 +25,7 @@ interface BlockConfig {
   canMoveX?: boolean;
   canResize?: boolean;
   jumpTo: EditorTab;
+  isCustom?: boolean;
 }
 
 interface Props {
@@ -33,7 +35,7 @@ interface Props {
   headerElements?: Array<{ id: string; type: 'text' | 'image'; x: number; y: number; width?: number; height?: number; content?: string }>;
 }
 
-const BLOCKS: BlockConfig[] = [
+const DEFAULT_BLOCKS: BlockConfig[] = [
   { key: 'header', label: 'Header', color: 'bg-cyan-500/20 border-cyan-600 text-cyan-900', jumpTo: 'header-designer' },
   { key: 'addressField', label: 'Adressfeld', color: 'bg-blue-500/20 border-blue-600 text-blue-900', canMoveX: true, canResize: true, jumpTo: 'block-address' },
   { key: 'returnAddress', label: 'Rücksendeangaben', color: 'bg-indigo-500/20 border-indigo-600 text-indigo-900', canMoveX: true, canResize: true, jumpTo: 'block-return-address' },
@@ -42,6 +44,19 @@ const BLOCKS: BlockConfig[] = [
   { key: 'content', label: 'Inhaltsbereich', color: 'bg-orange-500/20 border-orange-600 text-orange-900', canResize: true, jumpTo: 'block-content' },
   { key: 'attachments', label: 'Anlagen', color: 'bg-amber-500/20 border-amber-600 text-amber-900', jumpTo: 'block-attachments' },
   { key: 'footer', label: 'Footer', color: 'bg-pink-500/20 border-pink-600 text-pink-900', jumpTo: 'footer-designer' },
+];
+
+const COLOR_PRESETS = [
+  { value: 'bg-cyan-500/20 border-cyan-600 text-cyan-900', label: 'Cyan' },
+  { value: 'bg-blue-500/20 border-blue-600 text-blue-900', label: 'Blau' },
+  { value: 'bg-indigo-500/20 border-indigo-600 text-indigo-900', label: 'Indigo' },
+  { value: 'bg-purple-500/20 border-purple-600 text-purple-900', label: 'Lila' },
+  { value: 'bg-green-500/20 border-green-600 text-green-900', label: 'Grün' },
+  { value: 'bg-orange-500/20 border-orange-600 text-orange-900', label: 'Orange' },
+  { value: 'bg-amber-500/20 border-amber-600 text-amber-900', label: 'Amber' },
+  { value: 'bg-pink-500/20 border-pink-600 text-pink-900', label: 'Pink' },
+  { value: 'bg-red-500/20 border-red-600 text-red-900', label: 'Rot' },
+  { value: 'bg-teal-500/20 border-teal-600 text-teal-900', label: 'Teal' },
 ];
 
 const BASE_SCALE = 2.2;
@@ -67,11 +82,14 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
 const getDisabled = (layout: LetterLayoutSettings): BlockKey[] => (layout.disabledBlocks || []) as BlockKey[];
 
 export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJumpToTab, headerElements = [] }: Props) {
+  const [blocks, setBlocks] = useState<BlockConfig[]>(() => [...DEFAULT_BLOCKS]);
   const [selected, setSelected] = useState<BlockKey>('addressField');
   const [dragging, setDragging] = useState<{ key: BlockKey; startX: number; startY: number; orig: Rect; mode: 'move' | 'resize' } | null>(null);
   const [localLayout, setLocalLayout] = useState<LetterLayoutSettings>(() => cloneLayout(layoutSettings));
   const [showRuler, setShowRuler] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [editingLabel, setEditingLabel] = useState<string | null>(null);
+  const [editLabelValue, setEditLabelValue] = useState('');
   const canvasWrapRef = useRef<HTMLDivElement | null>(null);
 
   const SCALE = BASE_SCALE * zoomLevel;
@@ -92,7 +110,6 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     });
   }, []);
 
-  // Ctrl+Scroll zoom
   useEffect(() => {
     const el = canvasWrapRef.current;
     if (!el) return;
@@ -166,7 +183,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     if (!dragging) return;
     const dxMm = (event.clientX - dragging.startX) / SCALE;
     const dyMm = (event.clientY - dragging.startY) / SCALE;
-    const cfg = BLOCKS.find((b) => b.key === dragging.key)!;
+    const cfg = blocks.find((b) => b.key === dragging.key)!;
     const next: Rect = { ...dragging.orig };
     if (dragging.mode === 'move') {
       next.y = clamp(dragging.orig.y + dyMm, 0, localLayout.pageHeight - dragging.orig.h);
@@ -196,7 +213,26 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     });
   };
 
+  const updateBlockLabel = (key: string, newLabel: string) => {
+    setBlocks(prev => prev.map(b => b.key === key ? { ...b, label: newLabel } : b));
+  };
+
+  const updateBlockColor = (key: string, newColor: string) => {
+    setBlocks(prev => prev.map(b => b.key === key ? { ...b, color: newColor } : b));
+  };
+
+  const removeCustomBlock = (key: string) => {
+    setBlocks(prev => prev.filter(b => b.key !== key));
+    if (selected === key) setSelected('addressField');
+  };
+
   const moveSelectedByKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Delete custom blocks
+    if ((e.key === 'Delete' || e.key === 'Backspace') && blocks.find(b => b.key === selected)?.isCustom) {
+      e.preventDefault();
+      removeCustomBlock(selected);
+      return;
+    }
     let dx = 0;
     let dy = 0;
     if (e.key === 'ArrowLeft') dx = -1;
@@ -211,13 +247,14 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   };
 
   const selectedRect = useMemo(() => getRect(selected), [selected, localLayout]);
+  const selectedBlockConfig = blocks.find(b => b.key === selected);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Canvas-Designer</h3>
-          <p className="text-sm text-muted-foreground">Doppelklick auf Block → passender Tab. Pfeiltasten bewegen ausgewählten Block um 1mm.</p>
+          <p className="text-sm text-muted-foreground">Doppelklick auf Block → passender Tab. Pfeiltasten bewegen um 1mm.</p>
         </div>
         <div className="flex gap-2 items-center">
           <div className="flex items-center gap-1 border rounded-md px-1">
@@ -249,28 +286,65 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
           <div className="border rounded-lg p-3 space-y-2">
             <Label className="text-xs uppercase text-muted-foreground">Elemente</Label>
             <div className="grid grid-cols-1 gap-2">
-              {BLOCKS.map((block) => (
+              {blocks.map((block) => (
                 <div key={block.key} className="flex items-center justify-between gap-2">
-                  <Button type="button" variant="outline" size="sm" className={`flex-1 ${selected === block.key ? 'ring-2 ring-primary' : ''} ${block.color}`} onClick={() => { setSelected(block.key); canvasWrapRef.current?.focus(); }}>
-                    {block.label}
-                  </Button>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor={`toggle-${block.key}`} className="text-xs">Aktiv</Label>
+                  {editingLabel === block.key ? (
+                    <Input
+                      value={editLabelValue}
+                      onChange={(e) => setEditLabelValue(e.target.value)}
+                      onBlur={() => { updateBlockLabel(block.key, editLabelValue); setEditingLabel(null); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { updateBlockLabel(block.key, editLabelValue); setEditingLabel(null); } }}
+                      className="h-8 text-xs flex-1"
+                      autoFocus
+                    />
+                  ) : (
+                    <Button type="button" variant="outline" size="sm" className={`flex-1 ${selected === block.key ? 'ring-2 ring-primary' : ''} ${block.color}`} onClick={() => { setSelected(block.key); canvasWrapRef.current?.focus(); }}>
+                      {block.label}
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingLabel(block.key); setEditLabelValue(block.label); }} title="Umbenennen">
+                      <Pencil className="h-3 w-3" />
+                    </Button>
                     <Checkbox id={`toggle-${block.key}`} checked={!disabledBlocks.has(block.key)} onCheckedChange={(checked) => toggleBlock(block.key, !!checked)} />
+                    {block.isCustom && (
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => removeCustomBlock(block.key)} title="Löschen">
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Selected element details */}
           <div className="border rounded-lg p-3 space-y-2">
-            <Label className="text-xs uppercase text-muted-foreground">Ausgewählt: {BLOCKS.find((b) => b.key === selected)?.label}</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Ausgewählt: {selectedBlockConfig?.label}</Label>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div><Label>X (mm)</Label><Input value={selectedRect.x.toFixed(1)} readOnly /></div>
               <div><Label>Y (mm)</Label><Input value={selectedRect.y.toFixed(1)} readOnly /></div>
               <div><Label>Breite</Label><Input value={selectedRect.w.toFixed(1)} readOnly /></div>
               <div><Label>Höhe</Label><Input value={selectedRect.h.toFixed(1)} readOnly /></div>
             </div>
+            {selectedBlockConfig && (
+              <div>
+                <Label className="text-xs">Farbe</Label>
+                <Select value={selectedBlockConfig.color} onValueChange={(v) => updateBlockColor(selected, v)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {COLOR_PRESETS.map(c => (
+                      <SelectItem key={c.value} value={c.value}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded ${c.value.split(' ')[0]}`} />
+                          {c.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
 
@@ -285,8 +359,6 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
 
             <div className="absolute left-6 top-6 bg-white shadow-xl relative select-none" style={{ width: pagePx.w, height: pagePx.h }}>
               <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />
-
-
 
               {headerElements.map((element) => (
                 <div
@@ -304,7 +376,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                 </div>
               ))}
 
-              {BLOCKS.map((block) => {
+              {blocks.map((block) => {
               const rect = getRect(block.key);
               const isSelected = selected === block.key;
               const isDisabled = disabledBlocks.has(block.key);

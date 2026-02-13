@@ -36,20 +36,20 @@ export const ResponseOptionsEditor = ({ options, onChange }: ResponseOptionsEdit
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 max-w-full overflow-hidden">
       <div className="text-sm font-medium">Eigene Optionen:</div>
       
       <div className="space-y-2">
         {options.map((option, index) => (
           <div key={`option-${index}`} className="space-y-1.5 p-2 border rounded-md bg-muted/30">
-            <div className="flex items-center gap-2">
-              <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
+            <div className="flex items-center gap-2 min-w-0">
+              <GripVertical className="h-4 w-4 text-muted-foreground cursor-move shrink-0" />
               
               <Input
                 value={option.label}
                 onChange={(e) => updateOption(index, { label: e.target.value })}
                 placeholder="Bezeichnung"
-                className="flex-1 h-8"
+                className="flex-1 min-w-0 h-8"
               />
               
               <Select
