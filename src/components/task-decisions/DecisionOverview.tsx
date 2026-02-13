@@ -77,6 +77,14 @@ const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; m
   );
 };
 
+
+interface ResponseOption {
+  key: string;
+  label: string;
+  description?: string | null;
+  color?: string;
+}
+
 interface DecisionRequest {
   id: string;
   task_id: string | null;
@@ -99,6 +107,7 @@ interface DecisionRequest {
   attachmentCount?: number;
   topicIds?: string[];
   priority?: number;
+  response_options?: ResponseOption[];
   creator?: {
     user_id: string;
     display_name: string | null;
@@ -178,6 +187,7 @@ export const DecisionOverview = () => {
             archived_by,
             visible_to_all,
             priority,
+            response_options,
             tasks (
               title
             ),
@@ -207,6 +217,7 @@ export const DecisionOverview = () => {
           archived_by,
           visible_to_all,
           priority,
+          response_options,
           tasks (
             title,
             assigned_to
@@ -239,6 +250,7 @@ export const DecisionOverview = () => {
           archived_by,
           visible_to_all,
           priority,
+          response_options,
           tasks (
             title,
             assigned_to
@@ -272,6 +284,7 @@ export const DecisionOverview = () => {
         archived_by: item.task_decisions.archived_by,
         visible_to_all: item.task_decisions.visible_to_all,
         priority: item.task_decisions.priority ?? 0,
+        response_options: item.task_decisions.response_options,
         participant_id: item.id,
         task: item.task_decisions.tasks ? {
           title: item.task_decisions.tasks.title,
@@ -307,6 +320,7 @@ export const DecisionOverview = () => {
             archived_by: item.archived_by,
             visible_to_all: item.visible_to_all,
             priority: item.priority ?? 0,
+            response_options: item.response_options,
             participant_id: userParticipant?.id || null,
             task: item.tasks ? {
               title: item.tasks.title,
@@ -662,10 +676,50 @@ export const DecisionOverview = () => {
     return { yesCount, noCount, questionCount, otherCount, pending, total: participants.length };
   };
 
-  const getBorderColor = (summary: ReturnType<typeof getResponseSummary>) => {
+  const isStandardTemplate = (options?: ResponseOption[]) => {
+    if (!options || options.length === 0) return true;
+    const keys = options.map(o => o.key).sort();
+    if (keys.length === 2 && keys[0] === 'no' && keys[1] === 'yes') return true;
+    if (keys.length === 3 && keys[0] === 'no' && keys[1] === 'question' && keys[2] === 'yes') return true;
+    return false;
+  };
+
+  const getBorderColor = (decision: DecisionRequest, summary: ReturnType<typeof getResponseSummary>) => {
+    const responseOptions = decision.response_options;
+
+    if (!isStandardTemplate(responseOptions) && responseOptions && decision.participants) {
+      const optionCounts: Record<string, number> = {};
+      decision.participants.forEach((participant) => {
+        const responseType = participant.responses[0]?.response_type;
+        if (responseType) optionCounts[responseType] = (optionCounts[responseType] || 0) + 1;
+      });
+
+      const sortedOptions = [...responseOptions].sort((a, b) => {
+        const countDiff = (optionCounts[b.key] || 0) - (optionCounts[a.key] || 0);
+        if (countDiff !== 0) return countDiff;
+        return responseOptions.findIndex((opt) => opt.key === a.key) - responseOptions.findIndex((opt) => opt.key === b.key);
+      });
+
+      const winningOption = sortedOptions[0];
+      const winningCount = winningOption ? (optionCounts[winningOption.key] || 0) : 0;
+      if (summary.pending > 0 || summary.total === 0 || !winningOption || winningCount === 0) return 'border-l-gray-400';
+
+      const borderColorMap: Record<string, string> = {
+        green: 'border-l-green-600',
+        red: 'border-l-red-600',
+        orange: 'border-l-orange-500',
+        yellow: 'border-l-yellow-500',
+        blue: 'border-l-blue-600',
+        purple: 'border-l-purple-600',
+        lime: 'border-l-lime-600',
+        gray: 'border-l-gray-400',
+      };
+      return borderColorMap[winningOption.color || 'gray'] || 'border-l-gray-400';
+    }
+
     const hasResponses = summary.yesCount + summary.noCount + summary.questionCount > 0;
     const allResponsesReceived = summary.pending === 0;
-    
+
     if (summary.questionCount > 0) return 'border-l-orange-500';
     if (!allResponsesReceived || !hasResponses) return 'border-l-gray-400';
     if (summary.yesCount > summary.noCount) return 'border-l-green-500';
@@ -849,7 +903,7 @@ export const DecisionOverview = () => {
         ref={highlightRef(decision.id)}
         className={cn(
           "group border-l-4 hover:bg-muted/50 transition-colors cursor-pointer",
-          getBorderColor(summary),
+          getBorderColor(decision, summary),
           isHighlighted(decision.id) && "notification-highlight"
         )}
         onClick={() => handleOpenDetails(decision.id)}
@@ -1027,9 +1081,9 @@ export const DecisionOverview = () => {
                 <div className="flex items-center gap-1.5 text-sm font-bold">
                   {(() => {
                     // Check if custom template (not standard yes/no/question)
-                    const responseOptions = (decision as any).response_options;
+                    const responseOptions = decision.response_options;
                     const isCustom = responseOptions && responseOptions.length > 0 &&
-                      !(['yes','no','question'].every((k: string) => responseOptions.some((o: any) => o.key === k)) && responseOptions.length <= 3);
+                      !(['yes','no','question'].every((k: string) => responseOptions.some((o) => o.key === k)) && responseOptions.length <= 3);
                     
                     if (isCustom) {
                       const optionCounts: Record<string, number> = {};
@@ -1037,24 +1091,38 @@ export const DecisionOverview = () => {
                         const rt = p.responses[0]?.response_type;
                         if (rt) optionCounts[rt] = (optionCounts[rt] || 0) + 1;
                       });
-                      return responseOptions.map((opt: any, i: number) => {
-                        const colorClasses = (() => {
-                          const colorMap: Record<string, string> = {
-                            green: 'text-green-600', red: 'text-red-600', orange: 'text-orange-600',
-                            blue: 'text-blue-600', purple: 'text-purple-600', yellow: 'text-yellow-600',
-                            teal: 'text-teal-600', pink: 'text-pink-600', gray: 'text-gray-600',
-                          };
-                          return colorMap[opt.color] || 'text-foreground';
-                        })();
-                        return (
-                          <span key={opt.key} className="flex items-center gap-0.5">
-                            {i > 0 && <span className="text-muted-foreground">/</span>}
-                            <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                              <span className={colorClasses}>{optionCounts[opt.key] || 0}</span>
-                            </TooltipTrigger><TooltipContent><p>{opt.label}{opt.description ? `: ${opt.description}` : ''}</p></TooltipContent></Tooltip></TooltipProvider>
-                          </span>
-                        );
+                      const sortedOptions = [...responseOptions].sort((a, b) => {
+                        const countDiff = (optionCounts[b.key] || 0) - (optionCounts[a.key] || 0);
+                        if (countDiff !== 0) return countDiff;
+                        return responseOptions.findIndex((opt) => opt.key === a.key) - responseOptions.findIndex((opt) => opt.key === b.key);
                       });
+
+                      const winningOption = sortedOptions[0];
+                      const winningCount = winningOption ? (optionCounts[winningOption.key] || 0) : 0;
+
+                      if (!winningOption || winningCount === 0) {
+                        return <span className="text-muted-foreground font-medium">Noch offen</span>;
+                      }
+
+                      const winnerTextColorMap: Record<string, string> = {
+                        green: 'text-green-600',
+                        red: 'text-red-600',
+                        orange: 'text-orange-600',
+                        yellow: 'text-yellow-600',
+                        blue: 'text-blue-600',
+                        purple: 'text-purple-600',
+                        teal: 'text-teal-600',
+                        pink: 'text-pink-600',
+                        lime: 'text-lime-600',
+                        gray: 'text-gray-600',
+                      };
+
+                      return (
+                        <span className={cn("font-bold", winnerTextColorMap[winningOption.color || 'gray'] || 'text-foreground')}>
+                          {winningOption.label}
+                          {winningOption.description ? ` - ${winningOption.description}` : ""}
+                        </span>
+                      );
                     }
                     return (
                       <>
@@ -1105,7 +1173,7 @@ export const DecisionOverview = () => {
         ref={highlightRef(decision.id)}
         className={cn(
           "border-l-4 bg-muted/30",
-          getBorderColor(summary),
+          getBorderColor(decision, summary),
           isHighlighted(decision.id) && "notification-highlight"
         )}
         onClick={() => handleOpenDetails(decision.id)}
