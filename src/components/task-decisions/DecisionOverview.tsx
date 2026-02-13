@@ -77,6 +77,14 @@ const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; m
   );
 };
 
+
+interface ResponseOption {
+  key: string;
+  label: string;
+  description?: string | null;
+  color?: string;
+}
+
 interface DecisionRequest {
   id: string;
   task_id: string | null;
@@ -99,6 +107,7 @@ interface DecisionRequest {
   attachmentCount?: number;
   topicIds?: string[];
   priority?: number;
+  response_options?: ResponseOption[];
   creator?: {
     user_id: string;
     display_name: string | null;
@@ -178,6 +187,7 @@ export const DecisionOverview = () => {
             archived_by,
             visible_to_all,
             priority,
+            response_options,
             tasks (
               title
             ),
@@ -207,6 +217,7 @@ export const DecisionOverview = () => {
           archived_by,
           visible_to_all,
           priority,
+          response_options,
           tasks (
             title,
             assigned_to
@@ -239,6 +250,7 @@ export const DecisionOverview = () => {
           archived_by,
           visible_to_all,
           priority,
+          response_options,
           tasks (
             title,
             assigned_to
@@ -272,6 +284,7 @@ export const DecisionOverview = () => {
         archived_by: item.task_decisions.archived_by,
         visible_to_all: item.task_decisions.visible_to_all,
         priority: item.task_decisions.priority ?? 0,
+        response_options: item.task_decisions.response_options,
         participant_id: item.id,
         task: item.task_decisions.tasks ? {
           title: item.task_decisions.tasks.title,
@@ -307,6 +320,7 @@ export const DecisionOverview = () => {
             archived_by: item.archived_by,
             visible_to_all: item.visible_to_all,
             priority: item.priority ?? 0,
+            response_options: item.response_options,
             participant_id: userParticipant?.id || null,
             task: item.tasks ? {
               title: item.tasks.title,
@@ -1027,9 +1041,9 @@ export const DecisionOverview = () => {
                 <div className="flex items-center gap-1.5 text-sm font-bold">
                   {(() => {
                     // Check if custom template (not standard yes/no/question)
-                    const responseOptions = (decision as any).response_options;
+                    const responseOptions = decision.response_options;
                     const isCustom = responseOptions && responseOptions.length > 0 &&
-                      !(['yes','no','question'].every((k: string) => responseOptions.some((o: any) => o.key === k)) && responseOptions.length <= 3);
+                      !(['yes','no','question'].every((k: string) => responseOptions.some((o) => o.key === k)) && responseOptions.length <= 3);
                     
                     if (isCustom) {
                       const optionCounts: Record<string, number> = {};
@@ -1037,24 +1051,25 @@ export const DecisionOverview = () => {
                         const rt = p.responses[0]?.response_type;
                         if (rt) optionCounts[rt] = (optionCounts[rt] || 0) + 1;
                       });
-                      return responseOptions.map((opt: any, i: number) => {
-                        const colorClasses = (() => {
-                          const colorMap: Record<string, string> = {
-                            green: 'text-green-600', red: 'text-red-600', orange: 'text-orange-600',
-                            blue: 'text-blue-600', purple: 'text-purple-600', yellow: 'text-yellow-600',
-                            teal: 'text-teal-600', pink: 'text-pink-600', gray: 'text-gray-600',
-                          };
-                          return colorMap[opt.color] || 'text-foreground';
-                        })();
-                        return (
-                          <span key={opt.key} className="flex items-center gap-0.5">
-                            {i > 0 && <span className="text-muted-foreground">/</span>}
-                            <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                              <span className={colorClasses}>{optionCounts[opt.key] || 0}</span>
-                            </TooltipTrigger><TooltipContent><p>{opt.label}{opt.description ? `: ${opt.description}` : ''}</p></TooltipContent></Tooltip></TooltipProvider>
-                          </span>
-                        );
+                      const sortedOptions = [...responseOptions].sort((a, b) => {
+                        const countDiff = (optionCounts[b.key] || 0) - (optionCounts[a.key] || 0);
+                        if (countDiff !== 0) return countDiff;
+                        return responseOptions.findIndex((opt) => opt.key === a.key) - responseOptions.findIndex((opt) => opt.key === b.key);
                       });
+
+                      const winningOption = sortedOptions[0];
+                      const winningCount = winningOption ? (optionCounts[winningOption.key] || 0) : 0;
+
+                      if (!winningOption || winningCount === 0) {
+                        return <span className="text-muted-foreground font-medium">Noch offen</span>;
+                      }
+
+                      return (
+                        <span className="text-foreground font-medium">
+                          {winningOption.label}
+                          {winningOption.description ? ` - ${winningOption.description}` : ""}
+                        </span>
+                      );
                     }
                     return (
                       <>
