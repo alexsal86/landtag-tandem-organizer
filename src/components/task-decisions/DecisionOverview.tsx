@@ -1037,24 +1037,25 @@ export const DecisionOverview = () => {
                         const rt = p.responses[0]?.response_type;
                         if (rt) optionCounts[rt] = (optionCounts[rt] || 0) + 1;
                       });
-                      return responseOptions.map((opt: any, i: number) => {
-                        const colorClasses = (() => {
-                          const colorMap: Record<string, string> = {
-                            green: 'text-green-600', red: 'text-red-600', orange: 'text-orange-600',
-                            blue: 'text-blue-600', purple: 'text-purple-600', yellow: 'text-yellow-600',
-                            teal: 'text-teal-600', pink: 'text-pink-600', gray: 'text-gray-600',
-                          };
-                          return colorMap[opt.color] || 'text-foreground';
-                        })();
-                        return (
-                          <span key={opt.key} className="flex items-center gap-0.5">
-                            {i > 0 && <span className="text-muted-foreground">/</span>}
-                            <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                              <span className={colorClasses}>{optionCounts[opt.key] || 0}</span>
-                            </TooltipTrigger><TooltipContent><p>{opt.label}{opt.description ? `: ${opt.description}` : ''}</p></TooltipContent></Tooltip></TooltipProvider>
-                          </span>
-                        );
+                      const sortedOptions = [...responseOptions].sort((a: any, b: any) => {
+                        const countDiff = (optionCounts[b.key] || 0) - (optionCounts[a.key] || 0);
+                        if (countDiff !== 0) return countDiff;
+                        return responseOptions.findIndex((opt: any) => opt.key === a.key) - responseOptions.findIndex((opt: any) => opt.key === b.key);
                       });
+
+                      const winningOption = sortedOptions[0];
+                      const winningCount = winningOption ? (optionCounts[winningOption.key] || 0) : 0;
+
+                      if (!winningOption || winningCount === 0) {
+                        return <span className="text-muted-foreground font-medium">Noch offen</span>;
+                      }
+
+                      return (
+                        <span className="text-foreground font-medium">
+                          {winningOption.label}
+                          {winningOption.description ? ` - ${winningOption.description}` : ""}
+                        </span>
+                      );
                     }
                     return (
                       <>
