@@ -13,6 +13,7 @@ import {
   FileText,
   Archive,
   Phone,
+  Calculator,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -89,6 +90,7 @@ export const navigationGroups: NavGroup[] = [
     subItems: [
       { id: "karten", label: "Karten", icon: MapPin },
       { id: "calls", label: "Anrufe", icon: Phone },
+      { id: "daten", label: "Daten", icon: Calculator },
     ]
   }
 ];
