@@ -1,111 +1,146 @@
 
 
-# Plan: 6 Verbesserungen
+# Plan: 9 Verbesserungen fuer Entscheidungen, Briefvorlagen und Benachrichtigungen
 
-## 1. Brief-Anlaesse in die Datenbank laden (Seed-Daten)
+## 1. Entscheidungs-Creator Layout umbauen
 
-Die `LetterOccasionManager`-Komponente hat bereits einen "Standard-Anlaesse erstellen"-Button mit `seedDefaults()`, der die 7 Standard-Anlaesse in die DB schreibt. Allerdings muss der Nutzer diesen manuell klicken. Stattdessen wird eine automatische Befuellung implementiert: Beim Laden der `LetterOccasionManager`-Seite wird geprueft, ob die Tabelle `letter_occasions` fuer den aktuellen Mandanten leer ist. Falls ja, werden die 7 Standardwerte automatisch eingefuegt.
+Betrifft: `TaskDecisionCreator.tsx` und `StandaloneDecisionCreator.tsx`
 
-### Dateien:
-- `src/components/administration/LetterOccasionManager.tsx`: In `loadOccasions` automatisch `seedDefaults()` ausfuehren, wenn keine Eintraege vorhanden
+Aenderungen am Dialog-Layout:
+- **Oeffentlich + Prioritaet in einer Zeile (je 50%)**: Die Checkbox "Oeffentlich" und "Als prioritaer markieren" werden nebeneinander in einem `grid grid-cols-2` platziert. Aktuell sind sie getrennt (Oeffentlich oben, Prioritaet ganz unten).
+- **Antworttyp + Vorschau nebeneinander (je 50%)**: Das Select fuer den Antworttyp nimmt 50% ein, die Vorschau daneben die restlichen 50%. Beim Hovern ueber einen Eintrag im Select-Dropdown wird die Vorschau bereits aktualisiert.
+- **Rating5 und OptionABC**: Wenn einer dieser beiden Templates gewaehlt wird, oeffnet sich automatisch der ResponseOptionsEditor darunter (wie bei "Benutzerdefiniert"), damit die Beschreibungen/Tooltips direkt editierbar sind. Ein Hinweistext erklaert, dass man alternativ auch "Benutzerdefiniert" waehlen kann, um komplett eigene Optionen zu erstellen.
 
----
+Dateien:
+- `src/components/task-decisions/TaskDecisionCreator.tsx` (Zeilen 565-693): Layout umbauen
+- `src/components/task-decisions/StandaloneDecisionCreator.tsx` (Zeilen 539-661): Gleiches Layout uebernehmen
+- `src/components/task-decisions/ResponseOptionsPreview.tsx`: Hover-Vorschau unterstuetzen (Prop fuer "hovered template")
 
-## 2. Suche reparieren -- Performance und Bedienbarkeit
+## 2. Badges in Decision-Cards und Details anzeigen
 
-**Probleme:**
-- Text wird beim Tippen "verschluckt", weil der Such-Dialog sofort bei 1 Zeichen oeffnet und den Fokus stiehlt
-- Ergebnisse erscheinen nicht zuverlaessig; erst beim erneuten Oeffnen
-- Der debounce auf `CommandInput.onValueChange` konkurriert mit dem State-Update aus `HeaderSearch`
+Betrifft: `DecisionOverview.tsx`
 
-**Loesung:**
-- `HeaderSearch`: Erst bei Enter oder ab 2 Zeichen + kurzer Pause (400ms) den Dialog oeffnen -- nicht sofort bei jedem Tastendruck
-- `GlobalSearchCommand`: Den internen `debouncedSearch`-Wrapper entfernen und stattdessen den `searchQuery`-State direkt setzen. Der Debounce wird ueber die `enabled`-Bedingung der react-query Hooks natuerlich gehandhabt (Queries starten erst bei `searchQuery.length >= 2`)
-- `CommandInput` erhaelt `value={searchQuery}` und `onValueChange` setzt direkt `setSearchQuery`
-- Kein Event-basiertes Oeffnen mehr -- stattdessen oeffnet sich der Dialog ueber einen State der in beiden Komponenten geteilt wird (oder der bisherige Event-Mechanismus wird beibehalten, aber mit Verzoegerung)
+Probleme:
+- Badges (Themen/Topics) werden in der Card angezeigt, aber nicht in den Details
+- Wenn Badges zu `+3` zusammengefasst sind, kann man sie nicht aufklappen
 
-### Dateien:
-- `src/components/layout/HeaderSearch.tsx`: Debounce vor Dialog-Oeffnung (400ms), kein sofortiges Oeffnen bei jedem Zeichen
-- `src/components/GlobalSearchCommand.tsx`: `debouncedSearch`-Wrapper entfernen, `setSearchQuery` direkt nutzen, react-query Debounce ueber `staleTime` und Query-Key
+Aenderungen:
+- `DecisionOverview.tsx` Zeile 1004: `TopicDisplay` hat bereits `maxDisplay={2}` -- beim Klick auf "+X" sollen alle angezeigt werden. Dafuer wird ein `expandable`-Prop fuer `TopicDisplay` eingefuehrt oder ein Popover ergaenzt.
+- `TaskDecisionDetails.tsx`: Sicherstellen, dass `topicIds` an die Detail-Ansicht uebergeben und dort ebenfalls via `TopicDisplay` angezeigt werden.
 
----
+Dateien:
+- `src/components/task-decisions/DecisionOverview.tsx`: Klickbare Badge-Erweiterung
+- `src/components/task-decisions/TaskDecisionDetails.tsx`: Topics/Badges anzeigen
+- `src/components/topics/TopicSelector.tsx`: `TopicDisplay` mit Expand-Funktionalitaet
 
-## 3. Suche ohne Filterbereich -- schlankere Darstellung
+## 3. Hover-Verhalten bei Cards: Beschreibung bleibt sichtbar
 
-Die Filter (Datum, Kategorie, Status) werden standardmaessig ausgeblendet und stattdessen ein einfacher "Mehr..."-Link angezeigt, der sie bei Bedarf einblendet. Die Suche soll so wirken: Eingabefeld oben, Treffer direkt darunter.
+Betrifft: `DecisionOverview.tsx`
 
-### Dateien:
-- `src/components/GlobalSearchCommand.tsx`: Filter-Button bleibt, aber der Filter-Bereich ist standardmaessig eingeklappt. Das grundsaetzliche Verhalten bleibt gleich.
+Problem: Beim Hover wird `line-clamp-1` zu `line-clamp-2` erweitert, aber die Description verschwindet, weil der uebergeordnete Container `max-h-[4.5rem] overflow-hidden` hat (Zeile 946).
 
-(Dies ist bereits so implementiert -- `showFilters` ist standardmaessig `false`. Hier muss nur sichergestellt werden, dass die Suche ohne Filter-Klick funktioniert. Das wird durch Punkt 2 behoben.)
+Loesung: Den Container `max-h-[4.5rem] overflow-hidden` entfernen und stattdessen den Titel immer mit `line-clamp-2` darstellen (oder die `max-h` vergroessern). Die Beschreibung soll immer sichtbar bleiben.
 
----
+Dateien:
+- `src/components/task-decisions/DecisionOverview.tsx` (Zeilen 946-955)
 
-## 4. LetterTemplateManager: Tabs konsistent machen (Betreff-Variablen, Ruecksende, Info-Block, Erweitert wiederherstellen)
+## 4. Sidebar Aktionen: Schrift groesser, nicht abgeschnitten, Antwort-Button
 
-**Problem:** Der Bearbeitungs-Dialog und der Erstellungs-Dialog in `LetterTemplateManager.tsx` haben inkonsistente Tabs. Die im Plan beschriebene konsolidierte Tab-Leiste (`renderTabsList` mit 10 Tabs: Canvas, Header, Footer, Layout, Allgemein, Adressfeld, Ruecksende, Info-Block, Betreff, Anlagen) wird nur im Bearbeitungsmodus teilweise genutzt. Der Create-Dialog hat eigene 12 Tabs mit anderem Layout.
+Betrifft: `DecisionSidebar.tsx`
 
-**Loesung:** Beide Dialoge (Create und Edit) verwenden dieselbe konsistente Tab-Leiste (`renderTabsList`) und `renderCommonTabsContent`. Die bestehenden Features (Betreff-Variablen-Platzhalter, Ruecksende mit `SenderInformationManager`, Info-Block mit `InformationBlockManager`, Erweitert-Tab) werden in `renderCommonTabsContent` konsolidiert, sodass sie in beiden Kontexten identisch funktionieren.
+Probleme (laut Screenshot):
+- Schrift ist `text-[10px]` und kaum lesbar
+- Texte werden mit `truncate` und `line-clamp-2` abgeschnitten
+- Kein direkter "Antworten"-Button fuer neue Begruendungen
 
-Dazu werden die Tab-Listen in Create- und Edit-Dialog durch die gemeinsame `renderTabsList()`-Funktion ersetzt und der Inhalt durch `renderCommonTabsContent()` bereitgestellt. Die Tabs `block-content` und `advanced` werden ebenfalls integriert.
+Aenderungen:
+- Schriftgroessen von `text-[10px]` auf `text-xs` (12px) und `text-sm` (14px) erhoehen
+- `truncate` bei Titeln entfernen oder `line-clamp-3` verwenden
+- Fuer "Neue Begruendungen" ebenfalls einen "Antworten"-Button hinzufuegen (analog zu den offenen Rueckfragen)
 
-### Dateien:
-- `src/components/LetterTemplateManager.tsx`: Create- und Edit-Dialog konsolidieren
+Dateien:
+- `src/components/task-decisions/DecisionSidebar.tsx`: Schriftgroessen erhoehen, Truncation lockern, Antwort-Button ergaenzen
 
----
+## 5. Benachrichtigungen fuer Kommentare in Entscheidungen
 
-## 5. Navigations-Badges bei Seitenbesuch zuruecksetzen
+Aktueller Stand: `DecisionComments.tsx` benachrichtigt bereits den Ersteller (`task_decision_comment_received`), aber nur den Ersteller. Andere Teilnehmer oder erwaehnte Personen werden nicht benachrichtigt.
 
-**Problem:** Wenn man eine Seite besucht und dort Benachrichtigungen als gelesen markiert werden (Tab-Badge verschwindet), bleibt der Badge in der Sidebar-Navigation bestehen.
+Aenderungen:
+- Alle Teilnehmer einer Entscheidung benachrichtigen (ausser den Kommentierenden selbst)
+- Benachrichtigungstyp `task_decision_comment_received` wird bereits verwendet -- nur die Empfaenger-Logik erweitern
+- Im Benachrichtigungscenter (`NotificationCenter.tsx` / `NotificationsPage.tsx`) pruefen, ob der Typ bereits in den Kategorien/Filtern aufgefuehrt ist. Laut Suche ist er bereits vorhanden -- es fehlt lediglich die Filterauswahl in den Einstellungen.
+- In den Benachrichtigungseinstellungen den Typ als konfigurierbare Option hinzufuegen (z.B. "Kommentare in Entscheidungen")
 
-**Loesung:** `markNavigationAsVisited` setzt bereits den lokalen `navigationCounts`-State auf 0 fuer den besuchten Kontext. Das Problem koennte sein, dass die uebergeordneten Gruppen-Badges (z.B. "Aufgaben"-Gruppe = Summe aus tasks + decisions + meetings) nicht aktualisiert werden. Die Funktion `getGroupBadge` summiert die Counts der SubItems -- wenn ein SubItem auf 0 gesetzt wird, sollte die Summe sich entsprechend reduzieren. Ein moegliches Problem: Die Realtime-Subscription laedt die Counts komplett neu und ueberschreibt den lokalen State. Hier wird eine zusaetzliche Synchronisation eingebaut: Nach `markNavigationAsVisited` wird der Count fuer alle uebergeordneten Kontexte ebenfalls aktualisiert.
+Dateien:
+- `src/components/task-decisions/DecisionComments.tsx`: Alle Teilnehmer benachrichtigen
+- `src/pages/NotificationsPage.tsx` oder Benachrichtigungseinstellungen: Kategorie ergaenzen
 
-Ausserdem wird sichergestellt, dass das "Alle als gelesen markieren"-Feature die Counts sofort zuruecksetzt.
+## 6. Brief-Anlaesse: Endlosschleife beheben
 
-### Dateien:
-- `src/hooks/useNavigationNotifications.tsx`: `markNavigationAsVisited` setzt auch Parent-Kontext-Counts zurueck; Realtime-Subscription wartet kurz nach manueller Aktualisierung
+Problem: `loadOccasions()` ruft `seedDefaults()` auf, wenn keine Daten vorhanden sind. `seedDefaults()` ruft am Ende wieder `loadOccasions()` auf. Wenn die Inserts fehlschlagen (z.B. wegen fehlender RLS-Policy), entsteht eine Endlosschleife.
 
----
+Loesung: Ein Guard einfuehren (`seedingRef` oder `hasSeed` State), der verhindert, dass `seedDefaults` mehrfach aufgerufen wird. Ausserdem die Seed-Logik nur einmal ausfuehren und Fehler abfangen.
 
-## 6. Grosse Dateien aufteilen
+Dateien:
+- `src/components/administration/LetterOccasionManager.tsx` (Zeilen 89-109): Guard einbauen
 
-### LetterTemplateManager.tsx (1031 Zeilen)
-Aufteilung in:
-- `src/components/letters/templates/LetterTemplateManager.tsx` -- Hauptkomponente (Templates-Liste, Create/Edit-Steuerung)
-- `src/components/letters/templates/TemplateForm.tsx` -- Formular mit Tabs (renderCommonTabsContent, renderTabsList)
-- `src/components/letters/templates/TemplateCard.tsx` -- Template-Karte fuer die Liste
-- `src/components/letters/templates/TemplatePreview.tsx` -- Vorschau-Dialog
-- `src/components/letters/templates/BlockCanvasEditor.tsx` -- renderBlockCanvas als eigene Komponente
-- `src/components/letters/templates/SubjectTabContent.tsx` -- Betreff-Tab mit Variablen und Bildern
+## 7. Briefvorlagen: Tabs umstrukturieren
 
-### AppNavigation.tsx (564 Zeilen)
-Aufteilung in:
-- `src/components/navigation/AppNavigation.tsx` -- Hauptkomponente (schlanker)
-- `src/components/navigation/navigationConfig.ts` -- `navigationGroups`, `NavGroup`-Interface, `getNavigationGroups()`
-- `src/components/navigation/NavGroupButton.tsx` -- `renderNavGroup` als eigene Komponente
-- `src/components/navigation/HelpDialog.tsx` -- Hilfe-Dialog
+Aenderungen in `LetterTemplateManager.tsx`:
+- **Tab Ruecksende**: `SenderInformationManager` bereits integriert (Zeile 512) -- bestaetigt
+- **Tab Info-Block**: `InformationBlockManager` bereits integriert (Zeile 520) -- bestaetigt
+- **Tab Erweitert**: HTML/CSS-Editor in den Tab Layout verschieben (aus `advanced` in `layout-settings` integrieren)
+- **Tab-Reihenfolge**: Layout und Allgemein ans Ende der Tab-Liste verschieben
+- **Tabs entfernen**: `advanced` als separater Tab wird entfernt; Inhalt, Block-Content bleibt
 
-### GlobalSearchCommand.tsx (719 Zeilen)
-Aufteilung in:
-- `src/components/search/GlobalSearchCommand.tsx` -- Hauptkomponente (Dialog, Rendering)
-- `src/hooks/useGlobalSearch.ts` -- Alle Search-Queries und Logik (contacts, tasks, documents, etc.)
-- `src/components/search/SearchResultGroups.tsx` -- Rendering der Ergebnisgruppen
-- `src/components/search/RecentAndPopularSearches.tsx` -- Zuletzt/Beliebt-Bereiche
-- `src/components/search/SearchFilters.tsx` -- Filter-UI
-- `src/components/search/searchConfig.ts` -- navigationItems, recentSearches-Hilfsfunktionen
+Neue Tab-Reihenfolge: Canvas, Header, Footer, Adressfeld, Ruecksende, Info-Block, Betreff, Anlagen, Layout, Allgemein
 
-### Dateien insgesamt: ~15 neue Dateien, 3 Dateien werden aufgeteilt
+Dateien:
+- `src/components/LetterTemplateManager.tsx` (Zeilen 408-424 und 452-461, 592-605)
+
+## 8. Header-Tab: Elemente entfernen, Bild-Workflow und Bloecke wiederherstellen
+
+Aenderungen in `StructuredHeaderEditor.tsx`:
+
+Entfernen:
+- Die 4 Shortcut-Buttons "Landtag", "Wahlkreis", "Kommunikation", "Allgemein" (Zeilen 298-303)
+
+Wiederherstellen (gemaess Screenshot und Blob-URL-Implementierung):
+- **Bild-Galerie in der Sidebar**: Bilder aus dem Storage laden (mit Blob-URL-Ansatz), als Thumbnails in einem Grid in der Sidebar anzeigen. Bilder per Drag-and-Drop auf den Canvas ziehen. Loeschen-Button pro Bild.
+- **Bloecke-Bereich**: Ein Abschnitt "Bloecke (N)" mit einem "+ Neu"-Button in der Sidebar. Bloecke sind gruppierte Elemente mit eigenem Styling (Titel, Inhalt, Breite, Schrift). Bereits als `HeaderBlock` Interface definiert (Zeilen 33-49), aber nicht in der UI verwendet.
+- **Delete per Tastatur**: Bereits implementiert fuer die Block-Canvas-Bereiche, aber im Header-Canvas fehlt es. `onPreviewKeyDown` behandelt nur Pfeiltasten (Zeile 260). Ergaenzen: `Delete`/`Backspace` loescht das ausgewaehlte Element.
+
+Dateien:
+- `src/components/letters/StructuredHeaderEditor.tsx`: Shortcut-Buttons entfernen, Bild-Galerie mit Blob-URLs hinzufuegen, Bloecke-UI ergaenzen, Delete-Taste implementieren
+
+## 9. Canvas-Vorschau fuer alle Block-Tabs (Footer, Adressfeld, Ruecksende, Info-Block, Betreff, Anlagen)
+
+Aktueller Stand: `renderBlockCanvas` in `LetterTemplateManager.tsx` rendert bereits eine Canvas-Vorschau fuer Adressfeld, Ruecksende, Info-Block, Betreff und Anlagen. Allerdings fehlen:
+- Ein Lineal-Toggle (wie im Header) -- teilweise implementiert (Zeile 306), aber nur innerhalb der Block-Canvas
+- Canvas-Vorschau fuer Footer (aktuell `StructuredFooterEditor` ohne Canvas)
+
+Aenderungen:
+- **Footer**: Den `StructuredFooterEditor` um eine Canvas-aehnliche Vorschau ergaenzen (Lineal zuschaltbar)
+- **Bestehende Bloecke**: Die Lineal-Funktion ist bereits in `renderBlockCanvas` vorhanden. Sicherstellen, dass alle Tabs den Lineal-Button korrekt anzeigen.
+- Ein Hauptlineal (aussen) wie im Header-Designer als zusaetzliche Option ergaenzen
+
+Dateien:
+- `src/components/letters/StructuredFooterEditor.tsx`: Canvas-Vorschau mit Lineal ergaenzen
+- `src/components/LetterTemplateManager.tsx`: Pruefen, ob `renderBlockCanvas` fuer alle Tabs korrekt aufgerufen wird
 
 ---
 
 ## Zusammenfassung
 
-| Nr. | Thema | Aufwand |
-|-----|-------|---------|
-| 1 | Brief-Anlaesse Seed-Daten | Gering |
-| 2 | Suche reparieren | Mittel |
-| 3 | Suche ohne Filter | Gering (bereits so) |
-| 4 | LetterTemplateManager Tabs konsolidieren | Mittel |
-| 5 | Navigation-Badges Sync | Gering |
-| 6 | Dateien aufteilen | Hoch (aber rein mechanisch) |
+| Nr. | Thema | Aufwand | Hauptdateien |
+|-----|-------|---------|--------------|
+| 1 | Creator-Layout umbauen | Mittel | TaskDecisionCreator, StandaloneDecisionCreator |
+| 2 | Badges in Cards/Details | Gering | DecisionOverview, TaskDecisionDetails |
+| 3 | Hover: Beschreibung sichtbar | Gering | DecisionOverview |
+| 4 | Sidebar: Schrift + Antwort-Button | Gering | DecisionSidebar |
+| 5 | Kommentar-Benachrichtigungen | Mittel | DecisionComments, NotificationsPage |
+| 6 | Brief-Anlaesse Endlosschleife | Gering | LetterOccasionManager |
+| 7 | Tabs umstrukturieren | Gering | LetterTemplateManager |
+| 8 | Header: Bilder + Bloecke wiederherstellen | Hoch | StructuredHeaderEditor |
+| 9 | Canvas-Vorschau fuer alle Tabs | Mittel | StructuredFooterEditor, LetterTemplateManager |
 
