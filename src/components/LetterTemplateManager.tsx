@@ -634,15 +634,14 @@ const LetterTemplateManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-semibold">Templates</h2><p className="text-sm text-muted-foreground">Brieflayouts und Inhalte bearbeiten</p></div>
-        {!editingTemplate && (
+      {!editingTemplate && (
+        <div className="flex justify-end">
           <Button onClick={() => { if (showCreateDialog) { setShowCreateDialog(false); resetForm(); } else { setShowCreateDialog(true); resetForm(); setActiveTab('canvas-designer'); } }}>
             <Plus className="h-4 w-4 mr-2" />
             {showCreateDialog ? 'Erstellung schließen' : 'Neues Template'}
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Create Template - inline card */}
       {showCreateDialog && !editingTemplate && (
