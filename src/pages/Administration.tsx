@@ -47,6 +47,7 @@ import { SenderInformationManager } from "@/components/administration/SenderInfo
 import { InformationBlockManager } from "@/components/administration/InformationBlockManager";
 import { LetterOccasionManager } from "@/components/administration/LetterOccasionManager";
 import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
+import { GeoDataImport } from "@/components/administration/GeoDataImport";
 import { PushNotificationTest } from "@/components/PushNotificationTest";
 import { VapidKeyTest } from "@/components/VapidKeyTest";
 import { DirectPushTest } from "@/components/DirectPushTest";
@@ -2114,6 +2115,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
               </CardContent>
             </Card>
           );
+        case "geo-import":
+          return <GeoDataImport />;
         default:
           return null;
       }
