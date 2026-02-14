@@ -80,6 +80,7 @@ const AppContent = () => {
           {/* editor-test route removed */}
           <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/:section/:subId" element={<Index />} />
           <Route path="/:section" element={<Index />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
