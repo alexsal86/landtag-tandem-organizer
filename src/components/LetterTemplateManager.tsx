@@ -282,6 +282,7 @@ const LetterTemplateManager: React.FC = () => {
     const selectedId = selectedBlockItem[blockKey] || items[0]?.id || null;
     const selected = items.find((item) => item.id === selectedId) || null;
     const ruler = !!showBlockRuler[blockKey];
+    const showAxes = !!showBlockRuler[`${blockKey}_axes`];
 
     const addText = () => {
       const id = Date.now().toString();
@@ -296,14 +297,22 @@ const LetterTemplateManager: React.FC = () => {
       if (selectedId === id) setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: null }));
     };
 
+    const canvasW = rect.width * scale;
+    const canvasH = Math.max(rect.height, 25) * scale;
+
     return (
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">{title}</h3>
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
           <div className="space-y-3 border rounded-lg p-3">
+            {/* Draggable text tool */}
+            <div draggable onDragStart={(e) => { e.dataTransfer.setData('application/x-block-tool', 'text'); e.dataTransfer.effectAllowed = 'copy'; }} className="rounded border bg-background px-3 py-2 text-sm cursor-grab active:cursor-grabbing flex items-start gap-2">
+              <span className="text-muted-foreground mt-0.5">⠿</span>
+              <div><div className="font-medium text-xs">Text-Block</div><div className="text-xs text-muted-foreground">Auf Canvas ziehen</div></div>
+            </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={addText}>Text hinzufügen</Button>
-              <Button type="button" variant={ruler ? 'default' : 'outline'} size="sm" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [blockKey]: !prev[blockKey] }))}>Lineal</Button>
+              <Button type="button" variant={ruler ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [blockKey]: !prev[blockKey] }))}>Lineal</Button>
+              <Button type="button" variant={showAxes ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_axes`]: !prev[`${blockKey}_axes`] }))}>Achsen</Button>
             </div>
             <div className="space-y-2 max-h-52 overflow-auto">
               {items.map((item) => (
@@ -338,22 +347,38 @@ const LetterTemplateManager: React.FC = () => {
             )}
           </div>
           <div className="border rounded-lg p-3 bg-muted/30 overflow-auto">
-            <div className="relative" style={{ width: rect.width * scale + 24, height: Math.max(rect.height, 25) * scale + 24 }}>
+            <div className="relative" style={{ width: canvasW + 24, height: canvasH + 24 }}>
               {ruler && (
                 <>
                   <div className="absolute top-0 left-6 right-0 h-6 border rounded bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(rect.width / 10) + 1 }).map((_, i) => <span key={`bx-${i}`} className="absolute" style={{ left: i * 10 * scale }}>{i * 10}</span>)}</div>
                   <div className="absolute top-6 left-0 bottom-0 w-6 border rounded bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(Math.max(rect.height, 25) / 10) + 1 }).map((_, i) => <span key={`by-${i}`} className="absolute" style={{ top: i * 10 * scale }}>{i * 10}</span>)}</div>
                 </>
               )}
-              <div className="absolute left-6 top-6 relative bg-white border" style={{ width: rect.width * scale, height: Math.max(rect.height, 25) * scale }}
-                onKeyDown={(e) => {
-                  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
-                    e.preventDefault();
-                    deleteItem(selectedId);
+              <div className="absolute left-6 top-6 relative bg-white border"
+                style={{ width: canvasW, height: canvasH, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '8px 8px' }}
+                onKeyDown={(e) => { if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) { e.preventDefault(); deleteItem(selectedId); } }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const tool = e.dataTransfer.getData('application/x-block-tool');
+                  if (tool === 'text') {
+                    const domRect = e.currentTarget.getBoundingClientRect();
+                    const x = Math.round((e.clientX - domRect.left) / scale);
+                    const y = Math.round((e.clientY - domRect.top) / scale);
+                    const id = Date.now().toString();
+                    setBlockItems(blockKey, [...items, { id, type: 'text', x, y, width: 60, content: 'Neuer Text', fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' }]);
+                    setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
                   }
                 }}
                 tabIndex={0}
               >
+                {/* Center guides */}
+                {showAxes && (
+                  <>
+                    <div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-red-500/80 pointer-events-none z-10" />
+                    <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none z-10" />
+                  </>
+                )}
                 {items.map((item) => (
                   <div
                     key={item.id}
