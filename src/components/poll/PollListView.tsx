@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Calendar, Users, Clock, ExternalLink, BarChart3, Trash2, Plus, Archive, CheckCircle, XCircle, RotateCcw, AlertCircle } from 'lucide-react';
+import { Calendar, Users, Clock, ExternalLink, BarChart3, Trash2, Plus, Archive, CheckCircle, XCircle, RotateCcw, AlertCircle, Copy } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +25,7 @@ interface Poll {
   participant_count: number;
   response_count: number;
   time_slots_count: number;
+  creator_name?: string;
 }
 
 export const PollListView = () => {
@@ -92,6 +93,13 @@ export const PollListView = () => {
             .select('*', { count: 'exact', head: true })
             .eq('poll_id', poll.id);
 
+          // Get creator name
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', (poll as any).user_id || user!.id)
+            .maybeSingle();
+
           return {
             id: poll.id,
             title: poll.title,
@@ -101,7 +109,8 @@ export const PollListView = () => {
             created_at: poll.created_at,
             participant_count: participantCount || 0,
             response_count: responseCount,
-            time_slots_count: timeSlotsCount || 0
+            time_slots_count: timeSlotsCount || 0,
+            creator_name: profile?.display_name || 'Unbekannt'
           };
         })
       );
@@ -230,16 +239,19 @@ export const PollListView = () => {
     }
   };
 
-  const openPollLink = async (pollId: string) => {
+  const copyPollLink = async (pollId: string) => {
     try {
-      // Create a preview URL for the poll creator
       const pollUrl = `${window.location.origin}/poll-guest/${pollId}?preview=true`;
-      window.open(pollUrl, '_blank');
+      await navigator.clipboard.writeText(pollUrl);
+      toast({
+        title: "Link kopiert",
+        description: "Der Abstimmungslink wurde in die Zwischenablage kopiert.",
+      });
     } catch (error) {
-      console.error('Error opening poll link:', error);
+      console.error('Error copying poll link:', error);
       toast({
         title: "Fehler",
-        description: "Der Link konnte nicht geöffnet werden.",
+        description: "Der Link konnte nicht kopiert werden.",
         variant: "destructive",
       });
     }
@@ -352,6 +364,7 @@ export const PollListView = () => {
           <TableRow>
             <TableHead>Titel</TableHead>
             <TableHead className="text-center">Status</TableHead>
+            <TableHead className="text-center">Erstellt von</TableHead>
             <TableHead className="text-center">Teilnehmer</TableHead>
             <TableHead className="text-center">Antworten</TableHead>
             <TableHead className="text-center">Zeitslots</TableHead>
@@ -380,6 +393,9 @@ export const PollListView = () => {
               </TableCell>
               <TableCell className="text-center">
                 {getStatusBadge(poll.status)}
+              </TableCell>
+              <TableCell className="text-center">
+                <span className="text-sm">{poll.creator_name || '-'}</span>
               </TableCell>
               <TableCell className="text-center">
                 <div className="flex items-center justify-center gap-1">
@@ -426,10 +442,10 @@ export const PollListView = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => openPollLink(poll.id)}
-                    title="Link öffnen"
+                    onClick={() => copyPollLink(poll.id)}
+                    title="Link kopieren"
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    <Copy className="h-4 w-4" />
                   </Button>
                   {isArchive ? (
                     <>

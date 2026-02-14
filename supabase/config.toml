@@ -140,3 +140,6 @@ verify_jwt = false
 
 [functions.publish-to-ghost]
 verify_jwt = false
+
+[functions.send-event-invitation]
+verify_jwt = true

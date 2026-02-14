@@ -21,6 +21,7 @@ import ImportContacts from "./pages/ImportContacts";
 import PollGuest from "./pages/PollGuest";
 import DecisionResponse from "./pages/DecisionResponse";
 import GuestResponse from "./pages/GuestResponse";
+import EventRSVP from "./pages/EventRSVP";
 import AppointmentPreparationDetail from "./pages/AppointmentPreparationDetail";
 
 import NotificationsPage from "./pages/NotificationsPage";
@@ -74,6 +75,7 @@ const AppContent = () => {
           <Route path="/poll-guest/:pollId" element={<PollGuest />} />
           <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
           <Route path="/guest-response/:token" element={<GuestResponse />} />
+          <Route path="/event-rsvp/:eventId" element={<EventRSVP />} />
           <Route path="/appointment-preparation" element={<AppointmentPreparationDetail />} />
           <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
           {/* notifications is now handled by /:section in Index */}

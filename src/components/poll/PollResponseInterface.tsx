@@ -63,10 +63,13 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           .from('appointment_polls')
           .select('*')
           .eq('id', pollId)
-          .single();
+          .maybeSingle();
 
         if (pollError) {
           console.error('Poll loading error:', pollError);
+          throw new Error('Abstimmung nicht gefunden oder ungültiger Link.');
+        }
+        if (!pollData) {
           throw new Error('Abstimmung nicht gefunden oder ungültiger Link.');
         }
         setPoll(pollData);

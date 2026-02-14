@@ -59,6 +59,22 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
       return;
     }
 
+    // Check for duplicate time slots
+    const isDuplicate = timeSlots.some(slot => 
+      format(slot.date, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd') &&
+      slot.startTime === startTime &&
+      slot.endTime === endTime
+    );
+
+    if (isDuplicate) {
+      toast({
+        title: "Duplikat",
+        description: "Dieser Zeitslot wurde bereits hinzugefügt.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newSlot: TimeSlot = {
       id: Date.now().toString(),
       date: selectedDate,
