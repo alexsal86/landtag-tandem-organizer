@@ -1,175 +1,195 @@
 
-# Plan: 12 Verbesserungen -- Entscheidungen, Briefvorlagen, Push und Navigation
+# Plan: Terminabstimmung-Fixes und RSVP-Feature
 
-## 1. Browser-Push reparieren
+## 1. Brief-Anlaesse RLS-Policy reparieren (Punkt 1)
 
-**Analyse:** Der Trigger funktioniert korrekt. Die `pg_net`-Logs zeigen, dass die Edge Function bei der Entscheidung "sdfsdfsdsdfsdf" (Notification um 20:39:52) aufgerufen wurde. Die Antwort war: `"No active push subscriptions found for user ff0e6d83-..."`. Zu diesem Zeitpunkt war die Subscription des Users inaktiv (alle alten Subscriptions haben `is_active: false`). Erst um 20:54:10 wurde eine neue Subscription erstellt.
+**Ursache:** Die INSERT-Policy fuer `letter_occasions` prueft `profiles.id = auth.uid()`, aber `profiles.id` ist die Tabellen-PK (`d1beada0...`), waehrend `auth.uid()` die User-ID (`ff0e6d83...`) zurueckgibt. Dadurch schlaegt die Mandanten-Pruefung fehl und das Seeding wird blockiert.
 
-**Problem:** Der Auto-Sync-Mechanismus (`pushSubscriptionAutoSync`) erneuert die Subscription nicht zuverlaessig. Der Endpoint laeuft ab, aber der Check erkennt das nicht.
+**Loesung:** Alle vier RLS-Policies (SELECT, INSERT, UPDATE, DELETE) auf `letter_occasions` korrigieren: `profiles.id` durch `profiles.user_id` ersetzen.
 
-**Loesung:**
-- Im Auto-Sync beim App-Start die bestehende Subscription gegen den aktuellen Service-Worker-Endpoint vergleichen. Wenn der Endpoint in der DB nicht mit dem aktuellen Browser-Endpoint uebereinstimmt, neu registrieren.
-- Beim Senden: Wenn Status 410/404 zurueckkommt, sofort die alte Subscription deaktivieren (bereits implementiert). Zusaetzlich: beim naechsten App-Start automatisch neu subscriben.
-- Edge Function: Logging verbessern fuer bessere Fehlersuche.
+### Technische Details
 
-**Dateien:** `src/hooks/usePushNotifications.ts` oder aehnlicher Hook fuer Auto-Sync
+SQL-Migration:
+```sql
+DROP POLICY "Users can insert letter occasions for their tenant" ON letter_occasions;
+DROP POLICY "Users can view letter occasions for their tenant" ON letter_occasions;
+DROP POLICY "Users can update letter occasions for their tenant" ON letter_occasions;
+DROP POLICY "Users can delete letter occasions for their tenant" ON letter_occasions;
 
-## 2. Doppelte "Vorschau" im Entscheidungs-Creator entfernen
-
-**Problem:** Im Creator steht "Vorschau" als Label UND die `ResponseOptionsPreview`-Komponente zeigt intern nochmal "Vorschau:" an (Zeile 32 in `ResponseOptionsPreview.tsx`).
-
-**Loesung:** Das interne "Vorschau:"-Label in `ResponseOptionsPreview.tsx` entfernen (Zeile 32).
-
-**Dateien:** `src/components/task-decisions/ResponseOptionsPreview.tsx` (Zeile 32 entfernen)
-
-## 3. Eigene-Optionen-Eingabefeld ueberlaeuft Container
-
-**Problem:** Der `ResponseOptionsEditor` hat Eingabefelder die zu breit sind und den Container sprengen.
-
-**Loesung:** Im `ResponseOptionsEditor` `overflow-hidden` und `max-w-full` auf den Container setzen. Die Eingabefelder bekommen `w-full` statt fester Breiten.
-
-**Dateien:** `src/components/task-decisions/ResponseOptionsEditor.tsx`
-
-## 4. Titel in "Meine Arbeit" Cards ueber zwei Zeilen + Beschreibung sichtbar
-
-**Problem:** In `MyWorkDecisionCard.tsx` (Zeile 196-205) hat der Titel-Container `max-h-[4.5rem] overflow-hidden` und der Titel wechselt on hover von `line-clamp-1` zu `line-clamp-2`. Dadurch verschwindet die Beschreibung.
-
-**Loesung:** `max-h-[4.5rem] overflow-hidden` entfernen. Titel immer `line-clamp-2` zeigen (nicht erst on hover). Gleiche Aenderung fuer `DecisionOverview.tsx` (Zeile 946-955), falls dort aehnliches Problem existiert.
-
-**Dateien:**
-- `src/components/my-work/decisions/MyWorkDecisionCard.tsx` (Zeilen 196-205)
-- `src/components/task-decisions/DecisionOverview.tsx` (Zeile 946-955, falls betroffen)
-
-## 5. Sidebar-Text groesser + Antwort-Button in MyWorkDecisionSidebar
-
-**Problem:** In `MyWorkDecisionSidebar.tsx` sind Schriftgroessen `text-[9px]`, `text-[10px]`, `text-[7px]` -- kaum lesbar. Titel mit `truncate` werden abgeschnitten.
-
-**Loesung:**
-- Alle `text-[9px]` auf `text-xs` (12px) aendern
-- Alle `text-[10px]` auf `text-xs` aendern
-- Alle `text-[7px]` auf `text-[8px]` oder `text-xs` aendern
-- `truncate` bei Titeln auf `line-clamp-2` aendern
-- Antwort-Buttons bei "Begruendungen" hinzufuegen (wie bei Rueckfragen -- bereits in `DecisionSidebar.tsx` implementiert, fehlt aber in `MyWorkDecisionSidebar.tsx`)
-
-**Dateien:** `src/components/my-work/decisions/MyWorkDecisionSidebar.tsx`
-
-## 6. Entscheidungszaehler: Optionen statt Zahlen anzeigen
-
-**Problem:** Der Zaehler unten rechts zeigt immer `yesCount / questionCount / noCount` als Zahlen. Bei benutzerdefinierten Templates (Option A/B/C, Bewertung 1-5) waere es besser, die Option-Labels mit Farben und Tooltips anzuzeigen.
-
-**Aktueller Stand:** In `MyWorkDecisionCard.tsx` (Zeilen 300-326) wird bereits `customSummary` mit Labels und Farben gerendert! In `DecisionOverview.tsx` (Zeilen 1027-1038) fehlt das aber -- dort werden immer nur die Standard-Zaehler angezeigt.
-
-**Loesung:** Die `customSummary`-Logik aus `MyWorkDecisionCard` auch in `DecisionOverview.tsx` einbauen. Bei Kenntnisnahme: Ein Badge "Kenntnisnahme" in Gruen/Rot anzeigen (statt Zahlen).
-
-**Dateien:** `src/components/task-decisions/DecisionOverview.tsx` (Zeilen 1025-1040)
-
-## 7. Brief-Anlaesse: Endlosschleife endgueltig beheben
-
-**Problem:** Die `seedDefaults()`-Funktion ruft am Ende `loadOccasions()` auf (Zeile 144). `loadOccasions()` prueft ob die Tabelle leer ist und ruft `seedDefaults()` erneut auf. Der Guard `seedingRef` verhindert nur den zweiten Aufruf, aber wenn die Inserts durch RLS-Policies fehlschlagen, bleibt die Tabelle leer und die Seite haengt im Ladezustand.
-
-**Loesung:**
-- `seedDefaults()` darf NICHT `loadOccasions()` aufrufen -- stattdessen die Daten direkt nach dem Insert setzen
-- RLS-Pruefen: Sicherstellen, dass INSERT-Policy fuer die aktuelle Rolle existiert
-- Guard verbessern: Nach `seedDefaults()` setze `loading = false` direkt und setze die eingefuegten Daten als State
-- Fehlerbehandlung: Bei Insert-Fehlern Toast anzeigen und trotzdem `loading = false` setzen
-
-**Dateien:** `src/components/administration/LetterOccasionManager.tsx`
-
-## 8. "Absenderinformationen" und "Informationsbloeecke" Cards auf Hauptseite entfernen
-
-**Problem:** In `LetterTemplateManager.tsx` gibt es auf der Hauptansicht (nicht in den Tabs) separate Cards fuer "Absenderinformationen" und "Informationsbloeecke". Diese sind bereits in den Tabs integriert (Tab "Ruecksende" hat SenderInformationManager, Tab "Info-Block" hat InformationBlockManager).
-
-**Loesung:** Die standalone-Cards auf der Hauptseite identifizieren und entfernen. Aktuell sehe ich in der Datei keine separaten Cards ausserhalb der Tabs -- das Problem koennte in einer uebergeordneten Administrations-Seite liegen.
-
-**Dateien:** `src/pages/Administration.tsx` -- pruefen, ob dort die Cards direkt gerendert werden
-
-## 9. Header-Tab: Bild-Upload und -Galerie mit Blob-URLs
-
-**Aktueller Stand:** Der Header-Editor hat bereits einen "Bild hinzufuegen"-Button und eine Elemente-Liste in der Sidebar. Allerdings fehlt eine richtige Bild-Galerie (hochgeladene Bilder als Thumbnails, Drag-and-Drop auf Canvas). Die aktuelle Bild-Sektion zeigt nur die vorhandenen Elemente, nicht eine Galerie der verfuegbaren Bilder.
-
-**Loesung:**
-- Separate Bild-Galerie hinzufuegen: Lade alle Bilder aus dem Storage-Bucket (`letter-assets/{tenant_id}/header-images/`) mit Blob-URLs
-- Bilder als Thumbnail-Grid anzeigen
-- Drag-and-Drop von der Galerie auf den Canvas
-- Loeschen-Button pro Galerie-Bild
-
-**Dateien:** `src/components/letters/StructuredHeaderEditor.tsx`
-
-## 10. Header-Tab: Bloecke-Management wiederherstellen
-
-**Aktueller Stand:** Das `HeaderBlock`-Interface existiert (Zeilen 33-49), wird aber in der UI nicht genutzt. Die Sidebar hat nur "Text-Block ziehen" und "Bild hinzufuegen".
-
-**Loesung:**
-- Neuen Abschnitt "Bloecke" in der Sidebar ergaenzen
-- Block erstellen: Titel, Inhalt, Breite, Schrift, Farbe
-- Bloecke als gruppierte Elemente auf dem Canvas rendern
-- Orientierung am Footer-Editor (`StructuredFooterEditor.tsx`), der Bloecke bereits implementiert
-
-**Dateien:** `src/components/letters/StructuredHeaderEditor.tsx`
-
-## 11. Canvas-Designer: Elemente benennen, umbenennen, Farbe zuordnen, neue hinzufuegen, loeschen
-
-**Aktueller Stand:** In `LetterLayoutCanvasDesigner.tsx` sind die 8 Bloecke fest definiert (`BLOCKS`-Array, Zeile 36-45). Man kann sie ein-/ausschalten, aber nicht umbenennen oder neue hinzufuegen.
-
-**Loesung:**
-- Die BLOCKS von einer Konstante zu einem State machen, der in den `layoutSettings` persistiert wird
-- Umbenennen: Klick auf den Block-Namen in der Sidebar oeffnet ein Eingabefeld
-- Farbe aendern: Farb-Picker oder Farbauswahl-Dropdown pro Block
-- Neue Elemente hinzufuegen: "+ Element"-Button, der einen neuen Block mit Standard-Position erstellt
-- Loeschen: Bestehende Bloecke koennen entfernt werden (mit Bestaetigung)
-- Die Default-Bloecke bleiben als Startpunkt erhalten
-
-**Dateien:** `src/components/letters/LetterLayoutCanvasDesigner.tsx`
-
-## 12. Navigations-Badges verschwinden nicht nach Seitenbesuch
-
-**Problem:** `markNavigationAsVisited` setzt den Count fuer einen spezifischen Kontext auf 0, aber die uebergeordneten Gruppen-Badges summieren die SubItem-Counts. Wenn ein Realtime-Event kommt, ueberschreibt `loadNavigationCounts()` den State wieder, trotz `suppressReloadUntil`.
-
-**Moegliche Ursachen:**
-1. `markNavigationAsVisited` wird mit dem falschen `context`-String aufgerufen
-2. Die 2-Sekunden-Suppression ist zu kurz
-3. "Alle als gelesen markieren" loest kein `setNavigationCounts` Update aus
-
-**Loesung:**
-- `suppressReloadUntil` auf 5 Sekunden erhoehen
-- Nach "Alle als gelesen markieren": `setNavigationCounts({})` direkt aufrufen (alle Counts auf 0)
-- Pruefen, ob der NotificationContext die Badge-Counts korrekt synchronisiert
-
-**Dateien:** `src/hooks/useNavigationNotifications.tsx`, `src/contexts/NotificationContext.tsx`
+CREATE POLICY "Users can insert letter occasions for their tenant" ON letter_occasions
+  FOR INSERT WITH CHECK (tenant_id IN (SELECT tenant_id FROM profiles WHERE user_id = auth.uid()));
+CREATE POLICY "Users can view letter occasions for their tenant" ON letter_occasions
+  FOR SELECT USING (tenant_id IN (SELECT tenant_id FROM profiles WHERE user_id = auth.uid()));
+CREATE POLICY "Users can update letter occasions for their tenant" ON letter_occasions
+  FOR UPDATE USING (tenant_id IN (SELECT tenant_id FROM profiles WHERE user_id = auth.uid()));
+CREATE POLICY "Users can delete letter occasions for their tenant" ON letter_occasions
+  FOR DELETE USING (tenant_id IN (SELECT tenant_id FROM profiles WHERE user_id = auth.uid()));
+```
 
 ---
 
-## Build-Fehler beheben
+## 2.1 Duplikat-Zeitslots verhindern
 
-Der aktuelle Build-Fehler betrifft die Edge-Function (Deno/Supabase):
-```
-Could not find a matching package for 'npm:@supabase/realtime-js@2.95.3'
-```
-Dies ist ein Deno-Kompatibilitaetsproblem mit der `@supabase/supabase-js`-Version in der Edge Function. Die Edge Function importiert von `esm.sh` und loeist eine Version auf, die `realtime-js` als npm-Dependency braucht.
+**Ursache:** `addTimeSlot()` in `AppointmentPollCreator.tsx` prueft nicht, ob bereits ein identischer Zeitslot (gleicher Tag, gleiche Start- und Endzeit) existiert.
 
-**Loesung:** Die Supabase-Client-Import-URL in der Edge Function pinnen:
-```typescript
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
+**Loesung:** Vor dem Hinzufuegen pruefen, ob ein Slot mit identischem Datum, Start- und Endzeit bereits vorhanden ist. Falls ja, Toast-Warnung anzeigen und nicht hinzufuegen.
+
+**Datei:** `src/components/poll/AppointmentPollCreator.tsx` -- in `addTimeSlot()`.
+
+---
+
+## 2.2 Abstimmungslink fuehrt ins Leere (406 / PGRST116)
+
+**Ursache:** In `PollResponseInterface.tsx` wird `.single()` verwendet fuer den Poll-Abruf (Zeile 66). Da die SELECT-Policy auf `appointment_polls` nur `auth.role() = 'authenticated'` prueft, haben unauthentifizierte Gaeste (anon-Rolle) keinen Zugriff. Der Abruf gibt 0 Zeilen zurueck, `.single()` wirft PGRST116.
+
+**Loesung:** 
+- Eine zusaetzliche RLS-Policy auf `appointment_polls` fuer die `anon`-Rolle anlegen, die aktive Polls per SELECT liest
+- Ebenso auf `poll_time_slots` und `poll_participants` fuer anon SELECT erlauben (nur aktive Polls)
+- `.single()` durch `.maybeSingle()` ersetzen in `PollResponseInterface.tsx`
+- Fuer `poll_responses` braucht anon auch INSERT-Rechte (ueber Token-Pruefung) und DELETE (fuer re-submit)
+
+### Technische Details
+
+SQL-Migration:
+```sql
+-- Allow anon users to read active polls (for guest voting links)
+CREATE POLICY "Anon can view active polls" ON appointment_polls
+  FOR SELECT TO anon USING (status = 'active');
+
+-- Allow anon to view time slots for active polls
+CREATE POLICY "Anon can view time slots for active polls" ON poll_time_slots
+  FOR SELECT TO anon USING (EXISTS (
+    SELECT 1 FROM appointment_polls ap 
+    WHERE ap.id = poll_time_slots.poll_id AND ap.status = 'active'
+  ));
+
+-- Allow anon to view/find their participant record by token
+CREATE POLICY "Anon can view participants by token" ON poll_participants
+  FOR SELECT TO anon USING (token IS NOT NULL);
+
+-- Allow anon to manage responses via token-based participants
+CREATE POLICY "Anon can insert responses" ON poll_responses
+  FOR INSERT TO anon WITH CHECK (EXISTS (
+    SELECT 1 FROM poll_participants pp 
+    WHERE pp.id = poll_responses.participant_id AND pp.token IS NOT NULL
+  ));
+CREATE POLICY "Anon can view own responses" ON poll_responses
+  FOR SELECT TO anon USING (EXISTS (
+    SELECT 1 FROM poll_participants pp 
+    WHERE pp.id = poll_responses.participant_id AND pp.token IS NOT NULL
+  ));
+CREATE POLICY "Anon can delete own responses" ON poll_responses
+  FOR DELETE TO anon USING (EXISTS (
+    SELECT 1 FROM poll_participants pp 
+    WHERE pp.id = poll_responses.participant_id AND pp.token IS NOT NULL
+  ));
 ```
 
-**Dateien:** `supabase/functions/send-push-notification/index.ts`
+Code-Aenderung: `.single()` durch `.maybeSingle()` in `PollResponseInterface.tsx` Zeile 66 ersetzen.
+
+---
+
+## 2.3 Poll-Link oeffnen tut nichts
+
+**Ursache:** `openPollLink()` in `PollListView.tsx` (Zeile 236) verwendet `window.open()` mit `_blank`, was in der Preview-Umgebung blockiert werden kann. Ausserdem oeffnet es die Guest-View im Preview-Modus -- fuer den Ersteller waere ein Klick auf die Ergebnisansicht sinnvoller.
+
+**Loesung:** Statt `window.open` die Navigation direkt in der App durchfuehren. Da der "Link oeffnen"-Button fuer den Ersteller gedacht ist, soll er die Ergebnisansicht oeffnen (gleich wie der Ergebnisse-Button), oder alternativ den Link in die Zwischenablage kopieren. Besserer Ansatz: Button kopiert den Gastlink in die Zwischenablage und zeigt einen Toast.
+
+**Datei:** `src/components/poll/PollListView.tsx` -- `openPollLink()` aendern zu einer Clipboard-Copy-Aktion.
+
+---
+
+## 2.4 Teilnehmer im Bearbeitungsdialog hinzufuegen/entfernen
+
+**Aktueller Stand:** `PollEditDialog.tsx` erlaubt nur die Bearbeitung von Titel, Beschreibung und Frist.
+
+**Loesung:** Den `PollEditDialog` um einen Teilnehmer-Bereich erweitern:
+- Bestehende Teilnehmer anzeigen (mit Loeschmoeglichkeit)
+- Neue externe E-Mail-Adressen hinzufuegen
+- Neue Kontakte aus der Kontaktliste hinzufuegen
+- Beim Speichern: entfernte Teilnehmer aus `poll_participants` loeschen, neue einfuegen und optional Einladungen versenden
+
+**Dateien:** `src/components/poll/PollEditDialog.tsx`
+
+---
+
+## 2.5 Ersteller speichern und anzeigen
+
+**Aktueller Stand:** `appointment_polls.user_id` speichert bereits den Ersteller, aber die Uebersicht und Details zeigen den Namen nicht an.
+
+**Loesung:**
+- In `PollListView.tsx`: Beim Laden der Polls den Ersteller-Namen ueber `profiles` laden und als Spalte "Erstellt von" in der Tabelle anzeigen
+- In `PollResultsDashboard.tsx`: Den Ersteller-Namen im Header anzeigen
+
+**Dateien:** `src/components/poll/PollListView.tsx`, `src/components/poll/PollResultsDashboard.tsx`
+
+---
+
+## 2.6 Termin bestaetigen -- kein Feedback / kein Zuruecknavigieren
+
+**Ursache:** `handleConfirmSlot()` in `PollResultsDashboard.tsx` zeigt zwar einen Toast, aber die Ansicht bleibt gleich. Der Poll-Status wird auf "completed" gesetzt, aber die UI wird nicht aktualisiert (die Buttons bleiben sichtbar, kein visuelles Feedback).
+
+**Loesung:**
+- Nach erfolgreicher Bestaetigung den lokalen Poll-Status auf "completed" setzen, damit die "Termin bestaetigen"-Buttons verschwinden
+- Eine Erfolgsmeldung (Alert/Banner) oben in der Ergebnisansicht einblenden mit den Details des bestaetigten Termins
+- Optional: Nach 2 Sekunden zurueck zur Uebersicht navigieren (oder einen "Zurueck"-Link anbieten)
+
+**Datei:** `src/components/poll/PollResultsDashboard.tsx`
+
+---
+
+## 2.7 RSVP aus der Veranstaltungsplanung
+
+Da eine einfache Zu-/Absage-Funktion gewuenscht ist (kein Terminvorschlag), wird ein eigenes, schlankes RSVP-System gebaut:
+
+**Neues Feature:**
+- Neue DB-Tabelle `event_rsvps` mit Feldern: `id`, `event_planning_id`, `email`, `name`, `status` (invited/accepted/declined/tentative), `token`, `responded_at`, `created_at`
+- Button "Einladungen versenden" in der Veranstaltungsplanungs-Detailansicht
+- Dialog zur Auswahl der einzuladenden Kontakte (aus Kontaktliste oder manuell per E-Mail)
+- Gastseite `/event-rsvp/:eventId?token=...` fuer die Zu-/Absage
+- Edge-Function `send-event-invitation` zum E-Mail-Versand
+- RSVP-Uebersicht in der Veranstaltungsplanungs-Detailansicht (wer hat zu-/abgesagt)
+
+### Technische Details
+
+SQL-Migration:
+```sql
+CREATE TABLE event_rsvps (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_planning_id UUID NOT NULL REFERENCES event_plannings(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'invited',
+  token TEXT UNIQUE DEFAULT encode(gen_random_bytes(32), 'hex'),
+  comment TEXT,
+  responded_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  tenant_id UUID REFERENCES tenants(id)
+);
+ALTER TABLE event_rsvps ENABLE ROW LEVEL SECURITY;
+-- Policies fuer authenticated + anon (token-basiert)
+```
+
+**Neue Dateien:**
+- `src/components/events/EventRSVPManager.tsx` -- Dialog zum Einladen + RSVP-Uebersicht
+- `src/pages/EventRSVP.tsx` -- Gastseite fuer Zu-/Absage
+- `supabase/functions/send-event-invitation/index.ts` -- E-Mail-Versand
+
+**Geaenderte Dateien:**
+- `src/components/EventPlanningView.tsx` -- RSVP-Manager einbinden
+- `src/App.tsx` -- Route `/event-rsvp/:eventId` hinzufuegen
 
 ---
 
 ## Zusammenfassung
 
-| Nr. | Thema | Aufwand | Hauptdateien |
-|-----|-------|---------|--------------|
-| Build | Edge Function Build-Fehler | Gering | send-push-notification/index.ts |
-| 1 | Push-Subscription Auto-Sync | Mittel | usePushNotifications |
-| 2 | Doppelte "Vorschau" | Gering | ResponseOptionsPreview |
-| 3 | Optionen-Feld Overflow | Gering | ResponseOptionsEditor |
-| 4 | Titel 2 Zeilen + Description | Gering | MyWorkDecisionCard, DecisionOverview |
-| 5 | Sidebar Text groesser | Gering | MyWorkDecisionSidebar |
-| 6 | Optionen statt Zahlen | Mittel | DecisionOverview |
-| 7 | Brief-Anlaesse Loop | Gering | LetterOccasionManager |
-| 8 | Cards auf Hauptseite entfernen | Gering | Administration / LetterTemplateManager |
-| 9 | Header Bild-Galerie | Mittel | StructuredHeaderEditor |
-| 10 | Header Bloecke | Mittel | StructuredHeaderEditor |
-| 11 | Canvas-Designer Elemente | Hoch | LetterLayoutCanvasDesigner |
-| 12 | Navigation Badges Sync | Gering | useNavigationNotifications |
+| Nr. | Problem | Loesung | Aufwand |
+|-----|---------|---------|---------|
+| 1 | Brief-Anlaesse 403 | RLS-Policies korrigieren (`profiles.user_id` statt `profiles.id`) | Minimal |
+| 2.1 | Duplikat-Zeitslots | Duplikat-Pruefung in `addTimeSlot()` | Minimal |
+| 2.2 | Abstimmungslink 406 | Anon-RLS-Policies + `.maybeSingle()` | Gering |
+| 2.3 | Link oeffnen funktioniert nicht | Clipboard-Copy statt `window.open` | Minimal |
+| 2.4 | Teilnehmer bearbeiten | `PollEditDialog` um Teilnehmerverwaltung erweitern | Mittel |
+| 2.5 | Ersteller anzeigen | Profildaten laden und in Tabelle/Header anzeigen | Gering |
+| 2.6 | Kein Feedback bei Bestaetigung | UI-Update nach Bestaetigung + Erfolgsbanner | Gering |
+| 2.7 | RSVP aus Veranstaltungsplanung | Neue Tabelle + Gastseite + Edge-Function + UI | Mittel |
