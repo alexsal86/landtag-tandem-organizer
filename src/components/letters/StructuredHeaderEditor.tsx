@@ -26,6 +26,8 @@ interface HeaderElement {
   textDecoration?: string;
   color?: string;
   imageUrl?: string;
+  blobUrl?: string;
+  storagePath?: string;
   preserveAspectRatio?: boolean;
   blockId?: string;
 }
@@ -71,9 +73,16 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const previewRef = useRef<HTMLDivElement | null>(null);
   const lastReportedRef = useRef<string>(JSON.stringify(initialElements));
 
+  // Resize state
+  const [resizingId, setResizingId] = useState<string | null>(null);
+  const [resizeStart, setResizeStart] = useState<{ x: number; y: number; ow: number; oh: number } | null>(null);
+
   // Image gallery state
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
+
+  // Blob URL mapping for canvas images: storagePath -> blobUrl
+  const blobUrlMapRef = useRef<Map<string, string>>(new Map());
 
   // Blocks state
   const [blocks, setBlocks] = useState<HeaderBlock[]>([]);
@@ -85,6 +94,40 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const previewHeight = 300;
 
   const SNAP_MM = 1.5;
+
+  // Resolve blob URL for a storage path (download if not cached)
+  const resolveBlobUrl = useCallback(async (storagePath: string): Promise<string | null> => {
+    const cached = blobUrlMapRef.current.get(storagePath);
+    if (cached) return cached;
+    try {
+      const { data: blob, error } = await supabase.storage.from('letter-assets').download(storagePath);
+      if (error || !blob) return null;
+      const blobUrl = URL.createObjectURL(blob);
+      blobUrlMapRef.current.set(storagePath, blobUrl);
+      return blobUrl;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // On mount, resolve blob URLs for any image elements with storagePath
+  useEffect(() => {
+    const resolveAll = async () => {
+      const updated = [...elements];
+      let changed = false;
+      for (const el of updated) {
+        if (el.type === 'image' && el.storagePath && !el.blobUrl) {
+          const blobUrl = await resolveBlobUrl(el.storagePath);
+          if (blobUrl) {
+            el.blobUrl = blobUrl;
+            changed = true;
+          }
+        }
+      }
+      if (changed) setElements([...updated]);
+    };
+    resolveAll();
+  }, []);
 
   // Load gallery images with blob URLs
   const loadGalleryImages = useCallback(async () => {
@@ -116,6 +159,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             .download(filePath);
           if (dlError || !blob) continue;
           const blobUrl = URL.createObjectURL(blob);
+          // Also cache in the map for canvas use
+          blobUrlMapRef.current.set(filePath, blobUrl);
           loaded.push({ name: file.name, path: filePath, blobUrl });
         } catch (e) {
           console.error('Error downloading', file.name, e);
@@ -134,6 +179,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return () => {
       // Cleanup blob URLs on unmount
       galleryImages.forEach(img => URL.revokeObjectURL(img.blobUrl));
+      blobUrlMapRef.current.forEach(url => URL.revokeObjectURL(url));
+      blobUrlMapRef.current.clear();
     };
   }, [currentTenant?.id]);
 
@@ -174,7 +221,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }
   }, [elements]);
 
-  const uploadImage = async (file: File): Promise<string | null> => {
+  const uploadImage = async (file: File): Promise<{ publicUrl: string; storagePath: string; blobUrl: string } | null> => {
     try {
       if (!currentTenant?.id) {
         toast({ title: 'Fehler', description: 'Kein Mandant gefunden', variant: 'destructive' });
@@ -186,9 +233,14 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       const { data, error } = await supabase.storage.from('letter-assets').upload(filePath, file);
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(data.path);
+      
+      // Create blob URL from the file directly
+      const blobUrl = URL.createObjectURL(file);
+      blobUrlMapRef.current.set(filePath, blobUrl);
+      
       // Reload gallery after upload
       await loadGalleryImages();
-      return publicUrl;
+      return { publicUrl, storagePath: filePath, blobUrl };
     } catch (error) {
       console.error('Upload error:', error);
       toast({ title: 'Fehler', description: 'Bild konnte nicht hochgeladen werden', variant: 'destructive' });
@@ -219,6 +271,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       width: 40,
       height: 20,
       imageUrl: publicUrl,
+      blobUrl: galleryImg.blobUrl,
+      storagePath: galleryImg.path,
       preserveAspectRatio: true,
     };
     setElements((prev) => [...prev, newElement]);
@@ -227,14 +281,21 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const deleteGalleryImage = async (galleryImg: GalleryImage) => {
     try {
-      const { error } = await supabase.storage.from('letter-assets').remove([galleryImg.path]);
-      if (error) throw error;
+      const { error, data } = await supabase.storage.from('letter-assets').remove([galleryImg.path]);
+      if (error) {
+        console.error('Storage delete error:', error);
+        toast({ title: 'Fehler', description: `Löschen fehlgeschlagen: ${error.message}`, variant: 'destructive' });
+        return;
+      }
+      console.log('Storage delete result:', data);
       URL.revokeObjectURL(galleryImg.blobUrl);
-      setGalleryImages(prev => prev.filter(i => i.path !== galleryImg.path));
+      blobUrlMapRef.current.delete(galleryImg.path);
+      // Reload from storage to confirm deletion
+      await loadGalleryImages();
       toast({ title: 'Bild gelöscht' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Delete error:', error);
-      toast({ title: 'Fehler', description: 'Bild konnte nicht gelöscht werden', variant: 'destructive' });
+      toast({ title: 'Fehler', description: `Bild konnte nicht gelöscht werden: ${error?.message || 'Unbekannter Fehler'}`, variant: 'destructive' });
     }
   };
 
@@ -263,8 +324,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      const imageUrl = await uploadImage(file);
-      if (!imageUrl) return;
+      const result = await uploadImage(file);
+      if (!result) return;
       const newElement: HeaderElement = {
         id: Date.now().toString(),
         type: 'image',
@@ -272,7 +333,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         y: 10,
         width: 40,
         height: 20,
-        imageUrl,
+        imageUrl: result.publicUrl,
+        blobUrl: result.blobUrl,
+        storagePath: result.storagePath,
         preserveAspectRatio: true,
       };
       setElements((prev) => [...prev, newElement]);
@@ -322,16 +385,57 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     event.dataTransfer.effectAllowed = 'copy';
   };
 
+  // Gallery image drag start
+  const onGalleryDragStart = (event: React.DragEvent, galleryImg: GalleryImage) => {
+    event.dataTransfer.setData('application/x-gallery-image', JSON.stringify({ path: galleryImg.path, blobUrl: galleryImg.blobUrl }));
+    event.dataTransfer.effectAllowed = 'copy';
+    // Set drag image to the actual image element
+    const imgEl = event.target as HTMLImageElement;
+    if (imgEl) {
+      event.dataTransfer.setDragImage(imgEl, imgEl.width / 2, imgEl.height / 2);
+    }
+  };
+
   const onPreviewDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    const tool = event.dataTransfer.getData('application/x-header-tool');
-    if (!tool || !previewRef.current) return;
+    if (!previewRef.current) return;
     const rect = previewRef.current.getBoundingClientRect();
     const scaleX = previewWidth / headerMaxWidth;
     const scaleY = previewHeight / headerMaxHeight;
     const x = Math.max(0, Math.min(headerMaxWidth, (event.clientX - rect.left) / scaleX));
     const y = Math.max(0, Math.min(headerMaxHeight, (event.clientY - rect.top) / scaleY));
-    if (tool === 'text') addTextElement(Math.round(x), Math.round(y));
+
+    // Check for text tool drop
+    const tool = event.dataTransfer.getData('application/x-header-tool');
+    if (tool === 'text') {
+      addTextElement(Math.round(x), Math.round(y));
+      return;
+    }
+
+    // Check for gallery image drop
+    const galleryData = event.dataTransfer.getData('application/x-gallery-image');
+    if (galleryData) {
+      try {
+        const { path, blobUrl } = JSON.parse(galleryData);
+        const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(path);
+        const newElement: HeaderElement = {
+          id: Date.now().toString(),
+          type: 'image',
+          x: Math.round(x),
+          y: Math.round(y),
+          width: 40,
+          height: 20,
+          imageUrl: publicUrl,
+          blobUrl,
+          storagePath: path,
+          preserveAspectRatio: true,
+        };
+        setElements(prev => [...prev, newElement]);
+        setSelectedElementId(newElement.id);
+      } catch (e) {
+        console.error('Error parsing gallery drop data:', e);
+      }
+    }
   };
 
   const selectedElement = elements.find((el) => el.id === selectedElementId);
@@ -343,10 +447,37 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     setDragStart({ x: event.clientX, y: event.clientY, ox: element.x, oy: element.y });
   };
 
+  // Resize handle mouse down
+  const onResizeMouseDown = (event: React.MouseEvent, element: HeaderElement) => {
+    event.stopPropagation();
+    event.preventDefault();
+    setResizingId(element.id);
+    setResizeStart({ x: event.clientX, y: event.clientY, ow: element.width || 50, oh: element.height || 30 });
+  };
+
   const onPreviewMouseMove = (event: React.MouseEvent) => {
-    if (!dragId || !dragStart) return;
     const scaleX = previewWidth / headerMaxWidth;
     const scaleY = previewHeight / headerMaxHeight;
+
+    // Handle resize
+    if (resizingId && resizeStart) {
+      const dx = (event.clientX - resizeStart.x) / scaleX;
+      const dy = (event.clientY - resizeStart.y) / scaleY;
+      let newW = Math.max(5, resizeStart.ow + dx);
+      let newH = Math.max(5, resizeStart.oh + dy);
+
+      // Ctrl key: preserve aspect ratio
+      if (event.ctrlKey && resizeStart.ow > 0 && resizeStart.oh > 0) {
+        const aspectRatio = resizeStart.ow / resizeStart.oh;
+        newH = newW / aspectRatio;
+      }
+
+      updateElement(resizingId, { width: Math.round(newW), height: Math.round(newH) });
+      return;
+    }
+
+    // Handle drag
+    if (!dragId || !dragStart) return;
     const dx = (event.clientX - dragStart.x) / scaleX;
     const dy = (event.clientY - dragStart.y) / scaleY;
     const nx = Math.max(0, Math.min(headerMaxWidth, dragStart.ox + dx));
@@ -358,6 +489,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const onPreviewMouseUp = () => {
     setDragId(null);
     setDragStart(null);
+    setResizingId(null);
+    setResizeStart(null);
   };
 
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -441,9 +574,11 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                     <img
                       src={img.blobUrl}
                       alt={img.name}
-                      className="w-full h-full object-contain cursor-pointer"
+                      className="w-full h-full object-contain cursor-grab active:cursor-grabbing"
+                      draggable
+                      onDragStart={(e) => onGalleryDragStart(e, img)}
                       onClick={() => addImageFromGallery(img)}
-                      title={`${img.name} — Klicken zum Einfügen`}
+                      title={`${img.name} — Klicken oder ziehen zum Einfügen`}
                     />
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteGalleryImage(img); }}
@@ -573,8 +708,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                           </Select>
                           <div className="grid grid-cols-3 gap-1">
                             <Button type="button" size="sm" className="h-6 text-xs" variant={element.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })}>B</Button>
-                            <Button type="button" size="sm" className="h-6 text-xs" variant={(element as any).fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { fontStyle: (element as any).fontStyle === 'italic' ? 'normal' : 'italic' } as any)}>I</Button>
-                            <Button type="button" size="sm" className="h-6 text-xs" variant={(element as any).textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textDecoration: (element as any).textDecoration === 'underline' ? 'none' : 'underline' } as any)}>U</Button>
+                            <Button type="button" size="sm" className="h-6 text-xs" variant={element.fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })}>I</Button>
+                            <Button type="button" size="sm" className="h-6 text-xs" variant={element.textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textDecoration: element.textDecoration === 'underline' ? 'none' : 'underline' })}>U</Button>
                           </div>
                         </>
                       )}
@@ -608,7 +743,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       <Card>
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm">Vorschau</CardTitle>
-          <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht Element.</p>
+          <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht Element. Resize mit Ctrl = Seitenverhältnis.</p>
         </CardHeader>
         <CardContent>
           <div className="relative pl-8 pt-8">
@@ -672,23 +807,37 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                     <div
                       key={element.id}
                       className={`absolute cursor-move border ${selectedElementId === element.id ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'}`}
-                      style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, fontSize: `${(element.fontSize || 12) * Math.min(scaleX, scaleY) * 0.7}px`, fontFamily: element.fontFamily || 'Arial', fontWeight: element.fontWeight || 'normal', fontStyle: (element as any).fontStyle || 'normal', textDecoration: (element as any).textDecoration || 'none', color: element.color || '#000000', lineHeight: '1.2' }}
+                      style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, fontSize: `${(element.fontSize || 12) * Math.min(scaleX, scaleY) * 0.7}px`, fontFamily: element.fontFamily || 'Arial', fontWeight: element.fontWeight || 'normal', fontStyle: element.fontStyle || 'normal', textDecoration: element.textDecoration || 'none', color: element.color || '#000000', lineHeight: '1.2' }}
                       onMouseDown={(e) => onElementMouseDown(e, element)}
                     >
                       {element.content || 'Text'}
                     </div>
                   );
                 }
-                if (element.type === 'image' && element.imageUrl) {
+                if (element.type === 'image') {
+                  const imgSrc = element.blobUrl || element.imageUrl;
+                  if (!imgSrc) return null;
+                  const elW = (element.width || 50) * scaleX;
+                  const elH = (element.height || 30) * scaleY;
                   return (
-                    <img
-                      key={element.id}
-                      src={element.imageUrl}
-                      alt="Header Image"
-                      className={`absolute cursor-move object-contain border ${selectedElementId === element.id ? 'border-primary border-dashed border-2' : 'border-transparent'}`}
-                      style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${(element.width || 50) * scaleX}px`, height: `${(element.height || 30) * scaleY}px` }}
-                      onMouseDown={(e) => onElementMouseDown(e, element)}
-                    />
+                    <div key={element.id} className="absolute" style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${elW}px`, height: `${elH}px` }}>
+                      <img
+                        src={imgSrc}
+                        alt="Header Image"
+                        className={`w-full h-full object-contain cursor-move border ${selectedElementId === element.id ? 'border-primary border-dashed border-2' : 'border-transparent'}`}
+                        onMouseDown={(e) => onElementMouseDown(e, element)}
+                        draggable={false}
+                      />
+                      {/* Resize handle */}
+                      {selectedElementId === element.id && (
+                        <div
+                          className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10"
+                          style={{ transform: 'translate(50%, 50%)' }}
+                          onMouseDown={(e) => onResizeMouseDown(e, element)}
+                          title="Ziehen zum Skalieren (Ctrl = Seitenverhältnis)"
+                        />
+                      )}
+                    </div>
                   );
                 }
                 return null;

@@ -628,64 +628,69 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
                     ))}
                   </div>
                   <div className="absolute top-8 left-0 bottom-0 w-7 border rounded bg-muted/40 text-[10px] text-muted-foreground pointer-events-none">
-                    {Array.from({ length: Math.floor(footerHeight / 10) + 1 }).map((_, i) => (
-                      <span key={`fy-${i}`} className="absolute" style={{ top: `${(i * 120) / (footerHeight / 10)}px` }}>{i * 10}</span>
-                    ))}
+                    {Array.from({ length: Math.floor(footerHeight / 10) + 1 }).map((_, i) => {
+                      const canvasH = 330 / footerAvailableWidth * footerHeight;
+                      return <span key={`fy-${i}`} className="absolute" style={{ top: `${(i * canvasH) / (footerHeight / 10)}px` }}>{i * 10}</span>;
+                    })}
                   </div>
                 </>
               )}
-            <div 
-              className="border border-gray-300 bg-white relative overflow-hidden"
-              style={{
-                width: '100%',
-                height: '120px', // Scaled down for display
-                backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)',
-                backgroundSize: '8px 8px'
-              }}
-            >
-              {blocks.sort((a, b) => a.order - b.order).map((block, index) => {
-                const scaleX = 330 / footerAvailableWidth; // Scale factor for display
-                const scaleY = 120 / footerHeight;
-                
-                // Calculate position based on previous blocks
-                let leftPosition = 0;
-                for (let i = 0; i < index; i++) {
-                  leftPosition += (blocks.sort((a, b) => a.order - b.order)[i].widthPercent / 100) * 330;
-                }
-                
-                const blockWidth = (block.widthPercent / 100) * 330;
-                
-                return (
-                  <div
-                    key={block.id}
-                    className={`absolute cursor-pointer border border-transparent p-1 ${
-                      selectedBlockId === block.id ? 'border-primary border-dashed bg-primary/5' : ''
-                    }`}
-                    style={{
-                      left: `${leftPosition}px`,
-                      top: '10px',
-                      width: `${blockWidth}px`,
-                      height: '100px',
-                      fontSize: `${block.fontSize * Math.min(scaleX, scaleY) * 0.8}px`,
-                      fontFamily: block.fontFamily,
-                      fontWeight: block.fontWeight,
-                      color: block.color,
-                      lineHeight: '1.2',
-                      whiteSpace: 'pre-line',
-                      overflow: 'hidden'
-                    }}
-                    onClick={() => setSelectedBlockId(block.id)}
-                  >
-                    <div className="text-xs font-semibold mb-1 opacity-60">
-                      {block.title}
-                    </div>
-                    <div className="text-overflow-ellipsis">
-                      {block.content}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {(() => {
+              const canvasWidth = 330;
+              const canvasScaleY = canvasWidth / footerAvailableWidth * footerHeight;
+              const scaleX = canvasWidth / footerAvailableWidth;
+              const scaleY = canvasScaleY / footerHeight;
+              return (
+                <div 
+                  className="border border-gray-300 bg-white relative overflow-hidden"
+                  style={{
+                    width: `${canvasWidth}px`,
+                    height: `${canvasScaleY}px`,
+                    backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)',
+                    backgroundSize: '8px 8px'
+                  }}
+                >
+                  {blocks.sort((a, b) => a.order - b.order).map((block, index) => {
+                    let leftPosition = 0;
+                    const sorted = [...blocks].sort((a, b) => a.order - b.order);
+                    for (let i = 0; i < index; i++) {
+                      leftPosition += (sorted[i].widthPercent / 100) * canvasWidth;
+                    }
+                    const blockWidth = (block.widthPercent / 100) * canvasWidth;
+                    
+                    return (
+                      <div
+                        key={block.id}
+                        className={`absolute cursor-pointer border border-transparent p-1 ${
+                          selectedBlockId === block.id ? 'border-primary border-dashed bg-primary/5' : ''
+                        }`}
+                        style={{
+                          left: `${leftPosition}px`,
+                          top: '0px',
+                          width: `${blockWidth}px`,
+                          height: `${canvasScaleY}px`,
+                          fontSize: `${block.fontSize * Math.min(scaleX, scaleY) * 0.8}px`,
+                          fontFamily: block.fontFamily,
+                          fontWeight: block.fontWeight,
+                          color: block.color,
+                          lineHeight: '1.2',
+                          whiteSpace: 'pre-line',
+                          overflow: 'hidden'
+                        }}
+                        onClick={() => setSelectedBlockId(block.id)}
+                      >
+                        <div className="text-xs font-semibold mb-1 opacity-60">
+                          {block.title}
+                        </div>
+                        <div className="text-overflow-ellipsis">
+                          {block.content}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
             </div>
           </CardContent>
         </Card>
