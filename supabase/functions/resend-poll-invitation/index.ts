@@ -69,15 +69,14 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Participant not found');
     }
 
-    if (!participant.token) {
-      console.error('No token found for participant:', participantEmail);
-      throw new Error('No token found for participant');
-    }
-
     // Get current domain dynamically
     const origin = req.headers.get('origin') || req.headers.get('referer');
     const domain = origin ? new URL(origin).origin : 'https://wawofclbehbkebjivdte.supabase.co';
-    const pollUrl = `${domain}/poll-guest/${pollId}?token=${participant.token || 'guest'}`;
+    
+    // Internal users (no token) get a link to the poll page; external users get a token-based link
+    const pollUrl = participant.token
+      ? `${domain}/poll-guest/${pollId}?token=${participant.token}`
+      : `${domain}/calendar`;
     
     console.log("Sending email to:", participantEmail, "with URL:", pollUrl);
 
