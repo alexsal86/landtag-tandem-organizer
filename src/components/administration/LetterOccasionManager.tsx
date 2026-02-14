@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit, Trash2, Save, X, GripVertical } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, GripVertical, Users, Building2, PartyPopper, Heart, FileQuestion, MessageSquare, FileText, Mail, Gavel } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
@@ -64,6 +64,18 @@ const DEFAULT_OCCASIONS = [
   { key: 'stellungnahme', label: 'Stellungnahme', description: 'Offizielle Positionierung', icon: 'MessageSquare', color: 'bg-indigo-500', patterns: ['stellungnahme', 'position', 'statement'] },
   { key: 'sonstiges', label: 'Sonstiges', description: 'Freie Briefform', icon: 'FileText', color: 'bg-muted-foreground', patterns: [] },
 ];
+
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Users,
+  Building2,
+  PartyPopper,
+  Heart,
+  FileQuestion,
+  MessageSquare,
+  FileText,
+  Mail,
+  Gavel,
+};
 
 export function LetterOccasionManager() {
   const { currentTenant } = useTenant();
@@ -227,6 +239,14 @@ export function LetterOccasionManager() {
 
   const isEditing = editingId || showCreate;
 
+  const getIconComponent = (iconName?: string | null) => {
+    if (!iconName) return FileText;
+    return ICON_MAP[iconName] || FileText;
+  };
+
+  const selectedIconOption = ICON_OPTIONS.find((option) => option.value === form.icon);
+  const SelectedFormIcon = getIconComponent(form.icon);
+
   if (loading) return <div className="text-sm text-muted-foreground p-4">Laden...</div>;
 
   return (
@@ -272,9 +292,24 @@ export function LetterOccasionManager() {
               <div>
                 <Label>Icon</Label>
                 <Select value={form.icon} onValueChange={(v) => setForm((f) => ({ ...f, icon: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <div className="flex items-center gap-2">
+                      <SelectedFormIcon className="h-4 w-4" />
+                      <span>{selectedIconOption?.label || 'Icon wählen'}</span>
+                    </div>
+                  </SelectTrigger>
                   <SelectContent>
-                    {ICON_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    {ICON_OPTIONS.map((o) => {
+                      const OptionIcon = getIconComponent(o.value);
+                      return (
+                        <SelectItem key={o.value} value={o.value}>
+                          <div className="flex items-center gap-2">
+                            <OptionIcon className="h-4 w-4" />
+                            <span>{o.label}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -333,11 +368,12 @@ export function LetterOccasionManager() {
       <div className="space-y-2">
         {occasions.map((occasion) => {
           const template = templates.find((t) => t.id === occasion.default_template_id);
+          const OccasionIcon = getIconComponent(occasion.icon);
           return (
             <div key={occasion.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-md flex items-center justify-center text-white ${occasion.color || 'bg-muted-foreground'}`}>
-                  <GripVertical className="h-4 w-4" />
+                  <OccasionIcon className="h-4 w-4" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">

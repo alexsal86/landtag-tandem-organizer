@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Users, Building2, PartyPopper, Heart, FileQuestion, 
-  MessageSquare, FileText, ArrowLeft, ArrowRight, Check,
+  MessageSquare, FileText, Mail, Gavel, ArrowLeft, ArrowRight, Check,
   Search, User, X
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,7 +59,7 @@ const FALLBACK_OCCASIONS = [
 ];
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  Users, Building2, PartyPopper, Heart, FileQuestion, MessageSquare, FileText,
+  Users, Building2, PartyPopper, Heart, FileQuestion, MessageSquare, FileText, Mail, Gavel,
 };
 
 export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel }) => {
