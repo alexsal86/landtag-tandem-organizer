@@ -1,195 +1,129 @@
 
-# Plan: Terminabstimmung-Fixes und RSVP-Feature
+# EventPlanningView Refactoring und RSVP-Integration
 
-## 1. Brief-Anlaesse RLS-Policy reparieren (Punkt 1)
+## Ziel
 
-**Ursache:** Die INSERT-Policy fuer `letter_occasions` prueft `profiles.id = auth.uid()`, aber `profiles.id` ist die Tabellen-PK (`d1beada0...`), waehrend `auth.uid()` die User-ID (`ff0e6d83...`) zurueckgibt. Dadurch schlaegt die Mandanten-Pruefung fehl und das Seeding wird blockiert.
+Die 4991-Zeilen-Datei `EventPlanningView.tsx` wird in sinnvolle Module aufgeteilt. Dabei geht kein Inhalt und keine UI verloren. Gleichzeitig wird die `EventRSVPManager`-Komponente in die Detailansicht eingebunden.
 
-**Loesung:** Alle vier RLS-Policies (SELECT, INSERT, UPDATE, DELETE) auf `letter_occasions` korrigieren: `profiles.id` durch `profiles.user_id` ersetzen.
+---
 
-### Technische Details
+## Neue Dateistruktur
 
-SQL-Migration:
-```sql
-DROP POLICY "Users can insert letter occasions for their tenant" ON letter_occasions;
-DROP POLICY "Users can view letter occasions for their tenant" ON letter_occasions;
-DROP POLICY "Users can update letter occasions for their tenant" ON letter_occasions;
-DROP POLICY "Users can delete letter occasions for their tenant" ON letter_occasions;
-
-CREATE POLICY "Users can insert letter occasions for their tenant" ON letter_occasions
-  FOR INSERT WITH CHECK (tenant_id IN (SELECT tenant_id FROM profiles WHERE user_id = auth.uid()));
-CREATE POLICY "Users can view letter occasions for their tenant" ON letter_occasions
-  FOR SELECT USING (tenant_id IN (SELECT tenant_id FROM profiles WHERE user_id = auth.uid()));
-CREATE POLICY "Users can update letter occasions for their tenant" ON letter_occasions
-  FOR UPDATE USING (tenant_id IN (SELECT tenant_id FROM profiles WHERE user_id = auth.uid()));
-CREATE POLICY "Users can delete letter occasions for their tenant" ON letter_occasions
-  FOR DELETE USING (tenant_id IN (SELECT tenant_id FROM profiles WHERE user_id = auth.uid()));
+```text
+src/components/event-planning/
+  types.ts                          -- Alle Interfaces (EventPlanning, ChecklistItem, etc.)
+  useEventPlanningData.ts           -- Custom Hook: State, Data-Fetching, Mutations
+  EventPlanningListView.tsx         -- Uebersichtsseite (Cards + Tabelle, Archiv-Dialog, Create-Dialog)
+  EventPlanningDetailView.tsx       -- Detailansicht (Grunddaten, Termine, Kontakte, Referenten, Dokumente)
+  EventPlanningTable.tsx            -- Tabellenansicht fuer Planungen
+  AppointmentPreparationTable.tsx   -- Tabellenansicht fuer Terminvorbereitungen
+  ChecklistSection.tsx              -- Checkliste mit Drag&Drop, Subtasks, Kommentare, Dokumente
+  ChecklistItemEmailDialog.tsx      -- (bereits vorhanden)
+  PlanningDefaultCollaboratorsDialog.tsx -- (bereits vorhanden)
+src/components/EventPlanningView.tsx -- Wird zum duennen Orchestrator (~50 Zeilen)
 ```
 
 ---
 
-## 2.1 Duplikat-Zeitslots verhindern
+## Modulaufteilung im Detail
 
-**Ursache:** `addTimeSlot()` in `AppointmentPollCreator.tsx` prueft nicht, ob bereits ein identischer Zeitslot (gleicher Tag, gleiche Start- und Endzeit) existiert.
+### 1. `types.ts` (Zeilen 40-184)
+Alle Interfaces werden hierhin verschoben:
+- EventPlanning, EventPlanningContact, EventPlanningSpeaker, EventPlanningDate
+- ChecklistItem, PlanningSubtask, PlanningComment, PlanningDocument
+- GeneralPlanningDocument, Collaborator, Profile, AppointmentPreparation
 
-**Loesung:** Vor dem Hinzufuegen pruefen, ob ein Slot mit identischem Datum, Start- und Endzeit bereits vorhanden ist. Falls ja, Toast-Warnung anzeigen und nicht hinzufuegen.
+### 2. `useEventPlanningData.ts` (Zeilen 185-2815)
+Alle State-Variablen und Funktionen werden in einen Custom Hook extrahiert:
+- ~80 useState-Variablen
+- fetchPlannings, fetchPlanningDetails, fetchAllProfiles, fetchAvailableContacts, etc.
+- CRUD-Operationen: createPlanning, deletePlanning, archivePlanning, etc.
+- Checklist-Operationen: toggleChecklistItem, addChecklistItem, onDragEnd, etc.
+- Kontakt/Referenten-Operationen: addContact, removeContact, addSpeaker, etc.
+- Dokument-Operationen: handleItemFileUpload, deleteItemDocument, etc.
+- Subtask/Kommentar-Operationen
+- Der Hook gibt alle States und Handler als Objekt zurueck
 
-**Datei:** `src/components/poll/AppointmentPollCreator.tsx` -- in `addTimeSlot()`.
+### 3. `EventPlanningListView.tsx` (Zeilen 2817-3250)
+Die Ansicht wenn `!selectedPlanning`:
+- Header mit Buttons (Standard-Mitarbeiter, Archiv, View-Toggle, Neue Planung)
+- Card-Ansicht und Tabellenansicht der Planungen
+- Terminvorbereitungen-Bereich
+- Archiv-Dialog
+- Create-Dialog
+- Props: alle benoetigten States und Handler aus dem Hook
 
----
+### 4. `EventPlanningDetailView.tsx` (Zeilen 3250-4991)
+Die Detailansicht einer ausgewaehlten Planung:
+- Header mit Zurueck-Button, Mitarbeiter-Dialog, Erledigt/Archiv/Loeschen-Buttons
+- Grunddaten-Card (Titel, Beschreibung, Ort, Digital, Hintergruende, Termine)
+- Ansprechpersonen-Card
+- Referenten-Card
+- Dokumente-Card
+- Checkliste (wird als eigene Komponente `ChecklistSection` eingebettet)
+- **NEU: EventRSVPManager-Komponente** wird hier eingebunden
+- Alle Dialoge (Digital, Subtask-Result, Email)
 
-## 2.2 Abstimmungslink fuehrt ins Leere (406 / PGRST116)
+### 5. `EventPlanningTable.tsx` (Zeilen 735-873)
+Tabellenkomponente fuer Veranstaltungsplanungen.
 
-**Ursache:** In `PollResponseInterface.tsx` wird `.single()` verwendet fuer den Poll-Abruf (Zeile 66). Da die SELECT-Policy auf `appointment_polls` nur `auth.role() = 'authenticated'` prueft, haben unauthentifizierte Gaeste (anon-Rolle) keinen Zugriff. Der Abruf gibt 0 Zeilen zurueck, `.single()` wirft PGRST116.
+### 6. `AppointmentPreparationTable.tsx` (Zeilen 875-949)
+Tabellenkomponente fuer Terminvorbereitungen.
 
-**Loesung:** 
-- Eine zusaetzliche RLS-Policy auf `appointment_polls` fuer die `anon`-Rolle anlegen, die aktive Polls per SELECT liest
-- Ebenso auf `poll_time_slots` und `poll_participants` fuer anon SELECT erlauben (nur aktive Polls)
-- `.single()` durch `.maybeSingle()` ersetzen in `PollResponseInterface.tsx`
-- Fuer `poll_responses` braucht anon auch INSERT-Rechte (ueber Token-Pruefung) und DELETE (fuer re-submit)
+### 7. `ChecklistSection.tsx` (Zeilen ~4130-4870)
+Die gesamte Checklisten-UI mit:
+- DragDropContext / Droppable / Draggable
+- Checklist-Items mit Toggle, Rename, Delete
+- Inline Subtasks, Kommentare, Dokumente
+- Neuen Punkt hinzufuegen
 
-### Technische Details
-
-SQL-Migration:
-```sql
--- Allow anon users to read active polls (for guest voting links)
-CREATE POLICY "Anon can view active polls" ON appointment_polls
-  FOR SELECT TO anon USING (status = 'active');
-
--- Allow anon to view time slots for active polls
-CREATE POLICY "Anon can view time slots for active polls" ON poll_time_slots
-  FOR SELECT TO anon USING (EXISTS (
-    SELECT 1 FROM appointment_polls ap 
-    WHERE ap.id = poll_time_slots.poll_id AND ap.status = 'active'
-  ));
-
--- Allow anon to view/find their participant record by token
-CREATE POLICY "Anon can view participants by token" ON poll_participants
-  FOR SELECT TO anon USING (token IS NOT NULL);
-
--- Allow anon to manage responses via token-based participants
-CREATE POLICY "Anon can insert responses" ON poll_responses
-  FOR INSERT TO anon WITH CHECK (EXISTS (
-    SELECT 1 FROM poll_participants pp 
-    WHERE pp.id = poll_responses.participant_id AND pp.token IS NOT NULL
-  ));
-CREATE POLICY "Anon can view own responses" ON poll_responses
-  FOR SELECT TO anon USING (EXISTS (
-    SELECT 1 FROM poll_participants pp 
-    WHERE pp.id = poll_responses.participant_id AND pp.token IS NOT NULL
-  ));
-CREATE POLICY "Anon can delete own responses" ON poll_responses
-  FOR DELETE TO anon USING (EXISTS (
-    SELECT 1 FROM poll_participants pp 
-    WHERE pp.id = poll_responses.participant_id AND pp.token IS NOT NULL
-  ));
+### 8. `EventPlanningView.tsx` (Orchestrator)
+Wird auf ca. 50 Zeilen reduziert:
+```
+export function EventPlanningView() {
+  const data = useEventPlanningData();
+  
+  if (!data.selectedPlanning) {
+    return <EventPlanningListView {...data} />;
+  }
+  
+  return <EventPlanningDetailView {...data} />;
+}
 ```
 
-Code-Aenderung: `.single()` durch `.maybeSingle()` in `PollResponseInterface.tsx` Zeile 66 ersetzen.
-
 ---
 
-## 2.3 Poll-Link oeffnen tut nichts
+## RSVP-Integration
 
-**Ursache:** `openPollLink()` in `PollListView.tsx` (Zeile 236) verwendet `window.open()` mit `_blank`, was in der Preview-Umgebung blockiert werden kann. Ausserdem oeffnet es die Guest-View im Preview-Modus -- fuer den Ersteller waere ein Klick auf die Ergebnisansicht sinnvoller.
+Die `EventRSVPManager`-Komponente wird in `EventPlanningDetailView.tsx` eingebunden, direkt nach den Dokumenten und vor der Checkliste:
 
-**Loesung:** Statt `window.open` die Navigation direkt in der App durchfuehren. Da der "Link oeffnen"-Button fuer den Ersteller gedacht ist, soll er die Ergebnisansicht oeffnen (gleich wie der Ergebnisse-Button), oder alternativ den Link in die Zwischenablage kopieren. Besserer Ansatz: Button kopiert den Gastlink in die Zwischenablage und zeigt einen Toast.
-
-**Datei:** `src/components/poll/PollListView.tsx` -- `openPollLink()` aendern zu einer Clipboard-Copy-Aktion.
-
----
-
-## 2.4 Teilnehmer im Bearbeitungsdialog hinzufuegen/entfernen
-
-**Aktueller Stand:** `PollEditDialog.tsx` erlaubt nur die Bearbeitung von Titel, Beschreibung und Frist.
-
-**Loesung:** Den `PollEditDialog` um einen Teilnehmer-Bereich erweitern:
-- Bestehende Teilnehmer anzeigen (mit Loeschmoeglichkeit)
-- Neue externe E-Mail-Adressen hinzufuegen
-- Neue Kontakte aus der Kontaktliste hinzufuegen
-- Beim Speichern: entfernte Teilnehmer aus `poll_participants` loeschen, neue einfuegen und optional Einladungen versenden
-
-**Dateien:** `src/components/poll/PollEditDialog.tsx`
-
----
-
-## 2.5 Ersteller speichern und anzeigen
-
-**Aktueller Stand:** `appointment_polls.user_id` speichert bereits den Ersteller, aber die Uebersicht und Details zeigen den Namen nicht an.
-
-**Loesung:**
-- In `PollListView.tsx`: Beim Laden der Polls den Ersteller-Namen ueber `profiles` laden und als Spalte "Erstellt von" in der Tabelle anzeigen
-- In `PollResultsDashboard.tsx`: Den Ersteller-Namen im Header anzeigen
-
-**Dateien:** `src/components/poll/PollListView.tsx`, `src/components/poll/PollResultsDashboard.tsx`
-
----
-
-## 2.6 Termin bestaetigen -- kein Feedback / kein Zuruecknavigieren
-
-**Ursache:** `handleConfirmSlot()` in `PollResultsDashboard.tsx` zeigt zwar einen Toast, aber die Ansicht bleibt gleich. Der Poll-Status wird auf "completed" gesetzt, aber die UI wird nicht aktualisiert (die Buttons bleiben sichtbar, kein visuelles Feedback).
-
-**Loesung:**
-- Nach erfolgreicher Bestaetigung den lokalen Poll-Status auf "completed" setzen, damit die "Termin bestaetigen"-Buttons verschwinden
-- Eine Erfolgsmeldung (Alert/Banner) oben in der Ergebnisansicht einblenden mit den Details des bestaetigten Termins
-- Optional: Nach 2 Sekunden zurueck zur Uebersicht navigieren (oder einen "Zurueck"-Link anbieten)
-
-**Datei:** `src/components/poll/PollResultsDashboard.tsx`
-
----
-
-## 2.7 RSVP aus der Veranstaltungsplanung
-
-Da eine einfache Zu-/Absage-Funktion gewuenscht ist (kein Terminvorschlag), wird ein eigenes, schlankes RSVP-System gebaut:
-
-**Neues Feature:**
-- Neue DB-Tabelle `event_rsvps` mit Feldern: `id`, `event_planning_id`, `email`, `name`, `status` (invited/accepted/declined/tentative), `token`, `responded_at`, `created_at`
-- Button "Einladungen versenden" in der Veranstaltungsplanungs-Detailansicht
-- Dialog zur Auswahl der einzuladenden Kontakte (aus Kontaktliste oder manuell per E-Mail)
-- Gastseite `/event-rsvp/:eventId?token=...` fuer die Zu-/Absage
-- Edge-Function `send-event-invitation` zum E-Mail-Versand
-- RSVP-Uebersicht in der Veranstaltungsplanungs-Detailansicht (wer hat zu-/abgesagt)
-
-### Technische Details
-
-SQL-Migration:
-```sql
-CREATE TABLE event_rsvps (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_planning_id UUID NOT NULL REFERENCES event_plannings(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
-  name TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'invited',
-  token TEXT UNIQUE DEFAULT encode(gen_random_bytes(32), 'hex'),
-  comment TEXT,
-  responded_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  tenant_id UUID REFERENCES tenants(id)
-);
-ALTER TABLE event_rsvps ENABLE ROW LEVEL SECURITY;
--- Policies fuer authenticated + anon (token-basiert)
+```tsx
+<EventRSVPManager 
+  eventPlanningId={selectedPlanning.id} 
+  eventTitle={selectedPlanning.title} 
+/>
 ```
 
-**Neue Dateien:**
-- `src/components/events/EventRSVPManager.tsx` -- Dialog zum Einladen + RSVP-Uebersicht
-- `src/pages/EventRSVP.tsx` -- Gastseite fuer Zu-/Absage
-- `supabase/functions/send-event-invitation/index.ts` -- E-Mail-Versand
+---
 
-**Geaenderte Dateien:**
-- `src/components/EventPlanningView.tsx` -- RSVP-Manager einbinden
-- `src/App.tsx` -- Route `/event-rsvp/:eventId` hinzufuegen
+## Technische Hinweise
+
+- Alle Imports werden auf die neuen Pfade umgestellt
+- Der Custom Hook `useEventPlanningData` gibt ein typisiertes Objekt zurueck, das als Props an die Sub-Komponenten weitergegeben wird
+- Bestehende Funktionslogik wird 1:1 uebernommen -- keine Logik-Aenderungen
+- Die Komponenten `ChecklistItemEmailDialog` und `PlanningDefaultCollaboratorsDialog` bleiben unveraendert an ihrem bestehenden Platz
 
 ---
 
 ## Zusammenfassung
 
-| Nr. | Problem | Loesung | Aufwand |
-|-----|---------|---------|---------|
-| 1 | Brief-Anlaesse 403 | RLS-Policies korrigieren (`profiles.user_id` statt `profiles.id`) | Minimal |
-| 2.1 | Duplikat-Zeitslots | Duplikat-Pruefung in `addTimeSlot()` | Minimal |
-| 2.2 | Abstimmungslink 406 | Anon-RLS-Policies + `.maybeSingle()` | Gering |
-| 2.3 | Link oeffnen funktioniert nicht | Clipboard-Copy statt `window.open` | Minimal |
-| 2.4 | Teilnehmer bearbeiten | `PollEditDialog` um Teilnehmerverwaltung erweitern | Mittel |
-| 2.5 | Ersteller anzeigen | Profildaten laden und in Tabelle/Header anzeigen | Gering |
-| 2.6 | Kein Feedback bei Bestaetigung | UI-Update nach Bestaetigung + Erfolgsbanner | Gering |
-| 2.7 | RSVP aus Veranstaltungsplanung | Neue Tabelle + Gastseite + Edge-Function + UI | Mittel |
+| Datei | Inhalt | Geschaetzte Groesse |
+|-------|--------|---------------------|
+| types.ts | Interfaces | ~150 Zeilen |
+| useEventPlanningData.ts | State + Logic | ~2600 Zeilen |
+| EventPlanningListView.tsx | Uebersicht | ~500 Zeilen |
+| EventPlanningDetailView.tsx | Details + RSVP | ~1200 Zeilen |
+| EventPlanningTable.tsx | Tabelle Planungen | ~140 Zeilen |
+| AppointmentPreparationTable.tsx | Tabelle Vorbereitungen | ~80 Zeilen |
+| ChecklistSection.tsx | Checkliste komplett | ~750 Zeilen |
+| EventPlanningView.tsx | Orchestrator | ~50 Zeilen |
