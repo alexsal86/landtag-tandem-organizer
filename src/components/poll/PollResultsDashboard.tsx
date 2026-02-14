@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CalendarIcon, Clock, Users, Check, AlertCircle, X, Trophy, Mail } from 'lucide-react';
+import { CalendarIcon, Clock, Users, Check, AlertCircle, X, Trophy, Mail, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,6 +65,8 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
   const [poll, setPoll] = useState<Poll | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [slotResults, setSlotResults] = useState<SlotResults[]>([]);
+  const [creatorName, setCreatorName] = useState<string>('');
+  const [confirmedSlot, setConfirmedSlot] = useState<TimeSlot | null>(null);
 
   useEffect(() => {
     const loadPollResults = async () => {
@@ -77,6 +80,14 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
         if (pollError) throw pollError;
         setPoll(pollData);
+
+        // Load creator name
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', pollData.user_id)
+          .maybeSingle();
+        setCreatorName(profile?.display_name || 'Unbekannt');
 
         // Load time slots
         const { data: slotsData, error: slotsError } = await supabase
@@ -208,6 +219,10 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
       if (pollUpdateError) throw pollUpdateError;
 
+      // Update local state
+      setPoll(prev => prev ? { ...prev, status: 'completed' } : null);
+      setConfirmedSlot(slot);
+
       toast({
         title: "Termin bestätigt",
         description: "Der Termin wurde erfolgreich bestätigt und in den Kalender eingetragen.",
@@ -287,6 +302,19 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
   return (
     <div className="space-y-6">
+      {/* Confirmation Success Banner */}
+      {confirmedSlot && (
+        <Alert className="border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-800">
+          <CheckCircle2 className="h-5 w-5 text-green-600" />
+          <AlertDescription className="text-green-800 dark:text-green-200">
+            <strong>Termin bestätigt!</strong> Der Termin am{' '}
+            {format(new Date(confirmedSlot.start_time), 'dd. MMMM yyyy', { locale: de })} von{' '}
+            {format(new Date(confirmedSlot.start_time), 'HH:mm')} bis{' '}
+            {format(new Date(confirmedSlot.end_time), 'HH:mm')} Uhr wurde in den Kalender eingetragen.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <Card>
         <CardHeader>
@@ -298,12 +326,15 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
             {poll.description && (
               <div className="mb-2">{poll.description}</div>
             )}
-            <div className="flex gap-4 text-sm">
+            <div className="flex gap-4 text-sm flex-wrap">
               <span>
                 <Users className="inline h-4 w-4 mr-1" />
                 {participants.length} Teilnehmer eingeladen
               </span>
               <span>Antwortrate: {responseRate}%</span>
+              {creatorName && (
+                <span>Erstellt von: <strong>{creatorName}</strong></span>
+              )}
               {poll.deadline && (
                 <span>
                   Frist: {format(new Date(poll.deadline), 'dd. MMMM yyyy', { locale: de })}

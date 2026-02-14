@@ -3971,6 +3971,63 @@ export type Database = {
           },
         ]
       }
+      event_rsvps: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          email: string
+          event_planning_id: string
+          id: string
+          invited_at: string | null
+          name: string
+          responded_at: string | null
+          status: string
+          tenant_id: string | null
+          token: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          email: string
+          event_planning_id: string
+          id?: string
+          invited_at?: string | null
+          name: string
+          responded_at?: string | null
+          status?: string
+          tenant_id?: string | null
+          token?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          email?: string
+          event_planning_id?: string
+          id?: string
+          invited_at?: string | null
+          name?: string
+          responded_at?: string | null
+          status?: string
+          tenant_id?: string | null
+          token?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvps_event_planning_id_fkey"
+            columns: ["event_planning_id"]
+            isOneToOne: false
+            referencedRelation: "event_plannings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_rsvps_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_budgets: {
         Row: {
           budget_amount: number

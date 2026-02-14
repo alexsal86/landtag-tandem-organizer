@@ -4,13 +4,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Edit, Save } from 'lucide-react';
+import { CalendarIcon, Edit, Save, Plus, X, Users, Mail, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { ContactSelector } from '@/components/ContactSelector';
+
+interface PollParticipant {
+  id: string;
+  name: string;
+  email: string;
+  is_external: boolean;
+  isNew?: boolean;
+}
 
 interface PollEditDialogProps {
   pollId: string;
@@ -35,6 +45,12 @@ export const PollEditDialog = ({
   const [deadline, setDeadline] = useState<Date | undefined>(
     currentDeadline ? new Date(currentDeadline) : undefined
   );
+  
+  // Participant management
+  const [participants, setParticipants] = useState<PollParticipant[]>([]);
+  const [removedParticipantIds, setRemovedParticipantIds] = useState<string[]>([]);
+  const [newParticipantEmail, setNewParticipantEmail] = useState('');
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
 
   useEffect(() => {
     setTitle(currentTitle);
@@ -42,11 +58,78 @@ export const PollEditDialog = ({
     setDeadline(currentDeadline ? new Date(currentDeadline) : undefined);
   }, [currentTitle, currentDescription, currentDeadline]);
 
+  useEffect(() => {
+    if (open) {
+      loadParticipants();
+    }
+  }, [open, pollId]);
+
+  const loadParticipants = async () => {
+    setLoadingParticipants(true);
+    try {
+      const { data, error } = await supabase
+        .from('poll_participants')
+        .select('id, name, email, is_external')
+        .eq('poll_id', pollId);
+      
+      if (error) throw error;
+      setParticipants((data || []).map(p => ({ ...p, isNew: false })));
+      setRemovedParticipantIds([]);
+    } catch (error) {
+      console.error('Error loading participants:', error);
+    } finally {
+      setLoadingParticipants(false);
+    }
+  };
+
+  const addParticipantFromContact = (contact: any) => {
+    if (!contact.email) {
+      toast({ title: "Keine E-Mail", description: "Kontakt hat keine E-Mail-Adresse.", variant: "destructive" });
+      return;
+    }
+    if (participants.find(p => p.email === contact.email && !removedParticipantIds.includes(p.id))) {
+      toast({ title: "Bereits vorhanden", description: "Dieser Teilnehmer ist bereits hinzugefügt.", variant: "destructive" });
+      return;
+    }
+    setParticipants(prev => [...prev, {
+      id: `new-${Date.now()}`,
+      name: contact.name,
+      email: contact.email,
+      is_external: false,
+      isNew: true
+    }]);
+  };
+
+  const addExternalParticipant = () => {
+    if (!newParticipantEmail) return;
+    if (participants.find(p => p.email === newParticipantEmail && !removedParticipantIds.includes(p.id))) {
+      toast({ title: "Bereits vorhanden", description: "Dieser Teilnehmer ist bereits hinzugefügt.", variant: "destructive" });
+      return;
+    }
+    setParticipants(prev => [...prev, {
+      id: `new-${Date.now()}`,
+      name: newParticipantEmail.split('@')[0],
+      email: newParticipantEmail,
+      is_external: true,
+      isNew: true
+    }]);
+    setNewParticipantEmail('');
+  };
+
+  const removeParticipant = (participantId: string) => {
+    if (participantId.startsWith('new-')) {
+      setParticipants(prev => prev.filter(p => p.id !== participantId));
+    } else {
+      setRemovedParticipantIds(prev => [...prev, participantId]);
+    }
+  };
+
+  const activeParticipants = participants.filter(p => !removedParticipantIds.includes(p.id));
+
   const handleSave = async () => {
     setSaving(true);
     
     try {
-      // Track changes
       const changes = [];
       if (title !== currentTitle) changes.push(`Titel geändert von "${currentTitle}" zu "${title}"`);
       if (description !== currentDescription) changes.push(`Beschreibung ${currentDescription ? 'geändert' : 'hinzugefügt'}`);
@@ -54,11 +137,13 @@ export const PollEditDialog = ({
         changes.push(`Frist ${deadline ? `geändert zu ${format(deadline, 'dd.MM.yyyy', { locale: de })}` : 'entfernt'}`);
       }
 
+      // Handle participant changes
+      const newParticipants = participants.filter(p => p.isNew);
+      if (removedParticipantIds.length > 0) changes.push(`${removedParticipantIds.length} Teilnehmer entfernt`);
+      if (newParticipants.length > 0) changes.push(`${newParticipants.length} Teilnehmer hinzugefügt`);
+
       if (changes.length === 0) {
-        toast({
-          title: "Keine Änderungen",
-          description: "Es wurden keine Änderungen vorgenommen.",
-        });
+        toast({ title: "Keine Änderungen", description: "Es wurden keine Änderungen vorgenommen." });
         setOpen(false);
         return;
       }
@@ -98,6 +183,52 @@ export const PollEditDialog = ({
 
       if (error) throw error;
 
+      // Remove participants
+      if (removedParticipantIds.length > 0) {
+        // Delete responses first
+        await supabase
+          .from('poll_responses')
+          .delete()
+          .eq('poll_id', pollId)
+          .in('participant_id', removedParticipantIds);
+        
+        await supabase
+          .from('poll_participants')
+          .delete()
+          .in('id', removedParticipantIds);
+      }
+
+      // Add new participants
+      if (newParticipants.length > 0) {
+        const participantData = [];
+        for (const p of newParticipants) {
+          if (p.is_external) {
+            const { data: tokenData } = await supabase.rpc('generate_participant_token');
+            participantData.push({
+              poll_id: pollId,
+              email: p.email,
+              name: p.name,
+              is_external: true,
+              token: tokenData
+            });
+          } else {
+            participantData.push({
+              poll_id: pollId,
+              email: p.email,
+              name: p.name,
+              is_external: false,
+              token: null
+            });
+          }
+        }
+        
+        const { error: insertError } = await supabase
+          .from('poll_participants')
+          .insert(participantData);
+        
+        if (insertError) throw insertError;
+      }
+
       // Send update notifications
       await supabase.functions.invoke('send-poll-notifications', {
         body: {
@@ -134,7 +265,7 @@ export const PollEditDialog = ({
           <Edit className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Terminabstimmung bearbeiten</DialogTitle>
           <DialogDescription>
@@ -182,6 +313,68 @@ export const PollEditDialog = ({
                 />
               </PopoverContent>
             </Popover>
+          </div>
+
+          {/* Participants Section */}
+          <div className="space-y-3 border-t pt-4">
+            <Label className="text-base font-medium">Teilnehmer verwalten</Label>
+            
+            {loadingParticipants ? (
+              <div className="text-sm text-muted-foreground animate-pulse">Lädt Teilnehmer...</div>
+            ) : (
+              <>
+                {/* Current participants */}
+                {activeParticipants.length > 0 && (
+                  <div className="space-y-2">
+                    {activeParticipants.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between p-2 rounded-lg border bg-muted/30">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {p.is_external ? <Mail className="h-3 w-3 flex-shrink-0" /> : <Users className="h-3 w-3 flex-shrink-0" />}
+                          <span className="text-sm font-medium truncate">{p.name}</span>
+                          <span className="text-xs text-muted-foreground truncate">{p.email}</span>
+                          {p.isNew && <Badge variant="outline" className="text-xs">Neu</Badge>}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeParticipant(p.id)}
+                          className="h-7 w-7 p-0 flex-shrink-0"
+                        >
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add from contacts */}
+                <div>
+                  <Label className="text-sm">Kontakt hinzufügen</Label>
+                  <ContactSelector
+                    onSelect={addParticipantFromContact}
+                    placeholder="Kontakt auswählen..."
+                    clearAfterSelect={true}
+                  />
+                </div>
+
+                {/* Add external */}
+                <div>
+                  <Label className="text-sm">Externe E-Mail hinzufügen</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="email"
+                      value={newParticipantEmail}
+                      onChange={(e) => setNewParticipantEmail(e.target.value)}
+                      placeholder="externe@email.de"
+                      onKeyPress={(e) => e.key === 'Enter' && addExternalParticipant()}
+                    />
+                    <Button onClick={addExternalParticipant} size="sm" variant="outline">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
