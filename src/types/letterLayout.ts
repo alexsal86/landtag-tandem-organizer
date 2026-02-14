@@ -46,6 +46,7 @@ export interface LetterLayoutSettings {
   };
   blockContent?: Record<string, Array<{ id: string; type?: string; content?: string; x?: number; y?: number; width?: number; height?: number }>>;
   disabledBlocks?: Array<'header' | 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
+  lockedBlocks?: Array<'header' | 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
 }
 
 export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {

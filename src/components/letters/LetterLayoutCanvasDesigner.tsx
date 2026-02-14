@@ -3,9 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ZoomIn, ZoomOut, Plus, Trash2, Pencil } from 'lucide-react';
+import { ZoomIn, ZoomOut, Trash2, Pencil, Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 
 type BlockKey = 'header' | 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments';
@@ -77,9 +76,11 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
   attachments: { ...layout.attachments },
   blockContent: { ...(layout.blockContent || {}) },
   disabledBlocks: [...(layout.disabledBlocks || [])],
+  lockedBlocks: [...(layout.lockedBlocks || [])],
 });
 
 const getDisabled = (layout: LetterLayoutSettings): BlockKey[] => (layout.disabledBlocks || []) as BlockKey[];
+const getLocked = (layout: LetterLayoutSettings): BlockKey[] => (layout.lockedBlocks || []) as BlockKey[];
 
 export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJumpToTab, headerElements = [] }: Props) {
   const [blocks, setBlocks] = useState<BlockConfig[]>(() => [...DEFAULT_BLOCKS]);
@@ -125,6 +126,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   }, [zoomIn, zoomOut]);
 
   const disabledBlocks = useMemo(() => new Set(getDisabled(localLayout)), [localLayout]);
+  const lockedBlocks = useMemo(() => new Set(getLocked(localLayout)), [localLayout]);
   const contentWidth = localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right;
   const pagePx = { w: localLayout.pageWidth * SCALE, h: localLayout.pageHeight * SCALE };
   const blockContent = localLayout.blockContent || {};
@@ -170,7 +172,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   };
 
   const startDrag = (event: React.MouseEvent, key: BlockKey, mode: 'move' | 'resize') => {
-    if (disabledBlocks.has(key)) return;
+    if (disabledBlocks.has(key) || lockedBlocks.has(key)) return;
     event.preventDefault();
     event.stopPropagation();
     canvasWrapRef.current?.focus();
@@ -213,6 +215,17 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     });
   };
 
+  const toggleLock = (key: BlockKey) => {
+    setLocalLayout((prev) => {
+      const locked = new Set(getLocked(prev));
+      if (locked.has(key)) locked.delete(key);
+      else locked.add(key);
+      const next = { ...cloneLayout(prev), lockedBlocks: Array.from(locked) } as LetterLayoutSettings;
+      onLayoutChange(next);
+      return next;
+    });
+  };
+
   const updateBlockLabel = (key: string, newLabel: string) => {
     setBlocks(prev => prev.map(b => b.key === key ? { ...b, label: newLabel } : b));
   };
@@ -241,6 +254,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     if (e.key === 'ArrowDown') dy = 1;
     if (!dx && !dy) return;
     e.preventDefault();
+    if (lockedBlocks.has(selected) || disabledBlocks.has(selected)) return;
     const rect = getRect(selected);
     updateByRect(selected, { ...rect, x: rect.x + dx, y: rect.y + dy });
     requestAnimationFrame(() => commitToParent());
@@ -287,7 +301,27 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
             <Label className="text-xs uppercase text-muted-foreground">Elemente</Label>
             <div className="grid grid-cols-1 gap-2">
               {blocks.map((block) => (
-                <div key={block.key} className="flex items-center justify-between gap-2">
+                <div key={block.key} className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => toggleBlock(block.key, disabledBlocks.has(block.key))}
+                    title={disabledBlocks.has(block.key) ? 'Einblenden' : 'Ausblenden'}
+                  >
+                    {disabledBlocks.has(block.key) ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-foreground" />}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => toggleLock(block.key)}
+                    title={lockedBlocks.has(block.key) ? 'Sperre lösen' : 'Element sperren'}
+                  >
+                    {lockedBlocks.has(block.key) ? <Lock className="h-4 w-4 text-amber-600" /> : <Unlock className="h-4 w-4 text-muted-foreground" />}
+                  </Button>
                   {editingLabel === block.key ? (
                     <Input
                       value={editLabelValue}
@@ -303,10 +337,15 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                     </Button>
                   )}
                   <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className={`h-5 w-5 rounded border ${block.color.split(' ')[0]} ${selected === block.key ? 'ring-1 ring-primary' : ''}`}
+                      onClick={() => setSelected(block.key)}
+                      title="Elementfarbe"
+                    />
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingLabel(block.key); setEditLabelValue(block.label); }} title="Umbenennen">
                       <Pencil className="h-3 w-3" />
                     </Button>
-                    <Checkbox id={`toggle-${block.key}`} checked={!disabledBlocks.has(block.key)} onCheckedChange={(checked) => toggleBlock(block.key, !!checked)} />
                     {block.isCustom && (
                       <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => removeCustomBlock(block.key)} title="Löschen">
                         <Trash2 className="h-3 w-3 text-destructive" />
@@ -380,15 +419,16 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const rect = getRect(block.key);
               const isSelected = selected === block.key;
               const isDisabled = disabledBlocks.has(block.key);
+              const isLocked = lockedBlocks.has(block.key);
               const previewText =
                 block.key === 'header'
                   ? headerElements.filter((e) => e.type === 'text').map((e) => e.content).filter(Boolean).join(' · ')
                   : (blockContent[block.key] || [])[0]?.content;
               return (
-                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute border text-[11px] font-medium px-2 py-1 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE }}>
-                  <div className="flex items-center justify-between"><span>{block.label}</span><Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div>
+                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute border text-[11px] font-medium px-2 py-1 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isLocked ? 'cursor-not-allowed border-amber-500' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE }}>
+                  <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>
                   {previewText && <div className="mt-1 text-[10px] line-clamp-2">{previewText}</div>}
-                  {block.canResize && !isDisabled && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />}
+                  {block.canResize && !isDisabled && !isLocked && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />}
                 </div>
               );
               })}

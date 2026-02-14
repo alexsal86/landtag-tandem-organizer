@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -302,6 +302,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
   };
 
   const selectedBlock = blocks.find(block => block.id === selectedBlockId);
+  const sortedBlocks = useMemo(() => [...blocks].sort((a, b) => a.order - b.order), [blocks]);
 
   const calculateActualWidth = (widthPercent: number) => {
     return (footerAvailableWidth * widthPercent) / 100;
@@ -338,7 +339,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
               <p className="text-sm text-muted-foreground">Keine Blöcke vorhanden</p>
             ) : (
               <div className="space-y-2">
-                {blocks.sort((a, b) => a.order - b.order).map((block, index) => (
+                {sortedBlocks.map((block, index) => (
                   <div
                     key={block.id}
                     className={`p-3 border rounded cursor-pointer transition-colors ${
@@ -351,6 +352,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
+                          <span className="h-3.5 w-3.5 rounded-full border" style={{ backgroundColor: block.color }} />
                           <Type className="h-4 w-4" />
                           <span className="font-medium text-sm">
                             {block.title}
@@ -620,24 +622,27 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
           </CardHeader>
           <CardContent>
             <div className="relative pl-8 pt-8">
+              {(() => {
+                const canvasWidth = 330;
+                const canvasHeight = canvasWidth / footerAvailableWidth * footerHeight;
+                return (
+                  <>
               {showRuler && (
                 <>
-                  <div className="absolute top-0 left-8 right-0 h-7 border rounded bg-muted/40 text-[10px] text-muted-foreground pointer-events-none">
+                  <div className="absolute top-0 left-8 h-7 border rounded bg-muted/40 text-[10px] text-muted-foreground pointer-events-none" style={{ width: `${canvasWidth}px` }}>
                     {Array.from({ length: Math.floor(footerAvailableWidth / 10) + 1 }).map((_, i) => (
-                      <span key={`fx-${i}`} className="absolute" style={{ left: `${(i * 330) / (footerAvailableWidth / 10)}px` }}>{i * 10}</span>
+                      <span key={`fx-${i}`} className="absolute" style={{ left: `${(i * canvasWidth) / (footerAvailableWidth / 10)}px` }}>{i * 10}</span>
                     ))}
                   </div>
-                  <div className="absolute top-8 left-0 bottom-0 w-7 border rounded bg-muted/40 text-[10px] text-muted-foreground pointer-events-none">
+                  <div className="absolute top-8 left-0 w-7 border rounded bg-muted/40 text-[10px] text-muted-foreground pointer-events-none" style={{ height: `${canvasHeight}px` }}>
                     {Array.from({ length: Math.floor(footerHeight / 10) + 1 }).map((_, i) => {
-                      const canvasH = 330 / footerAvailableWidth * footerHeight;
-                      return <span key={`fy-${i}`} className="absolute" style={{ top: `${(i * canvasH) / (footerHeight / 10)}px` }}>{i * 10}</span>;
+                      return <span key={`fy-${i}`} className="absolute" style={{ top: `${(i * canvasHeight) / (footerHeight / 10)}px` }}>{i * 10}</span>;
                     })}
                   </div>
                 </>
               )}
             {(() => {
-              const canvasWidth = 330;
-              const canvasScaleY = canvasWidth / footerAvailableWidth * footerHeight;
+              const canvasScaleY = canvasHeight;
               const scaleX = canvasWidth / footerAvailableWidth;
               const scaleY = canvasScaleY / footerHeight;
               return (
@@ -650,11 +655,10 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
                     backgroundSize: '8px 8px'
                   }}
                 >
-                  {blocks.sort((a, b) => a.order - b.order).map((block, index) => {
+                  {sortedBlocks.map((block, index) => {
                     let leftPosition = 0;
-                    const sorted = [...blocks].sort((a, b) => a.order - b.order);
                     for (let i = 0; i < index; i++) {
-                      leftPosition += (sorted[i].widthPercent / 100) * canvasWidth;
+                      leftPosition += (sortedBlocks[i].widthPercent / 100) * canvasWidth;
                     }
                     const blockWidth = (block.widthPercent / 100) * canvasWidth;
                     
@@ -691,6 +695,9 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
                 </div>
               );
             })()}
+                  </>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
