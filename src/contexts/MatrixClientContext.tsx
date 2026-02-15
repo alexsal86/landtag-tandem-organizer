@@ -69,7 +69,7 @@ interface MatrixClientContextType {
   sendTypingNotification: (roomId: string, isTyping: boolean) => void;
   addReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
   removeReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
-  createRoom: (options: { name: string; topic?: string; isPrivate: boolean; inviteUserIds?: string[] }) => Promise<string>;
+  createRoom: (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => Promise<string>;
 }
 
 const MatrixClientContext = createContext<MatrixClientContextType | null>(null);
@@ -464,7 +464,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     console.log('Remove reaction not fully implemented:', roomId, eventId, emoji);
   }, [client, isConnected]);
 
-  const createRoom = useCallback(async (options: { name: string; topic?: string; isPrivate: boolean; inviteUserIds?: string[] }) => {
+  const createRoom = useCallback(async (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => {
     if (!client || !isConnected) {
       throw new Error('Nicht mit Matrix verbunden');
     }
@@ -476,6 +476,16 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       preset: options.isPrivate ? sdk.Preset.PrivateChat : sdk.Preset.PublicChat,
       invite: options.inviteUserIds,
     };
+
+    if (options.enableEncryption) {
+      createRoomOptions.initial_state = [
+        {
+          type: 'm.room.encryption',
+          state_key: '',
+          content: { algorithm: 'm.megolm.v1.aes-sha2' },
+        },
+      ];
+    }
 
     const result = await client.createRoom(createRoomOptions);
     
