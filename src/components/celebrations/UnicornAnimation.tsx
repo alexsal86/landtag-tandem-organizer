@@ -107,6 +107,21 @@ export function UnicornAnimation({ speed = 'normal', size = 'medium', onComplete
           transform-origin: 167px 95px;
           animation: tailSway 260ms ease-in-out infinite;
         }
+
+        .unicorn-eye {
+          transform-origin: 60px 65px;
+          animation: blink 3.5s ease-in-out infinite;
+        }
+
+        .leg-front {
+          transform-origin: center 122px;
+          animation: legStepFront 260ms ease-in-out infinite;
+        }
+
+        .leg-back {
+          transform-origin: center 122px;
+          animation: legStepBack 260ms ease-in-out infinite;
+        }
       `}</style>
       <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
         <div className="unicorn-container">
