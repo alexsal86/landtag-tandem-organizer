@@ -108,24 +108,14 @@ export function UnicornAnimation({ speed = 'normal', size = 'medium', onComplete
           animation: tailSway 260ms ease-in-out infinite;
         }
 
-        .unicorn-eye {
-          transform-origin: 60px 65px;
-          animation: blink 3.5s ease-in-out infinite;
-        }
-
-        .leg-front {
-          transform-origin: center 122px;
-          animation: legStepFront 260ms ease-in-out infinite;
-        }
-
-        .leg-back {
-          transform-origin: center 122px;
-          animation: legStepBack 260ms ease-in-out infinite;
+        .unicorn-character {
+          transform: translateX(220px) scaleX(-1);
+          transform-origin: center;
         }
       `}</style>
       <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
         <div className="unicorn-container">
-          <svg width={dimensions.width} height={dimensions.height} viewBox="0 0 220 160" className="unicorn-svg" role="img" aria-label="Laufendes Einhorn">
+          <svg width={dimensions.width} height={dimensions.height} viewBox="0 0 220 160" className="unicorn-svg" role="img" aria-label="Nach rechts laufendes Einhorn">
             <defs>
               <linearGradient id={bodyGradientId} x1="20%" y1="0%" x2="80%" y2="100%">
                 <stop offset="0%" stopColor="#ffffff" />
@@ -154,7 +144,7 @@ export function UnicornAnimation({ speed = 'normal', size = 'medium', onComplete
 
             <ellipse cx="110" cy="150" rx="62" ry="9" fill={`url(#${shadowGradientId})`} />
 
-            <g>
+            <g className="unicorn-character">
               <ellipse cx="114" cy="100" rx="54" ry="30" fill={`url(#${bodyGradientId})`} stroke="#d9e3f2" strokeWidth="2.5" />
 
               <path d="M 78 85 C 62 78, 54 60, 72 50 C 78 46, 87 46, 95 52" fill="none" stroke={`url(#${maneGradientId})`} strokeWidth="13" strokeLinecap="round" />
