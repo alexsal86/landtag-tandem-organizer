@@ -69,7 +69,7 @@ interface MatrixClientContextType {
   sendTypingNotification: (roomId: string, isTyping: boolean) => void;
   addReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
   removeReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
-  createRoom: (options: { name: string; topic?: string; isPrivate: boolean; inviteUserIds?: string[] }) => Promise<string>;
+  createRoom: (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => Promise<string>;
 }
 
 const MatrixClientContext = createContext<MatrixClientContextType | null>(null);
@@ -137,11 +137,16 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         userId: creds.userId,
       });
 
+      const syncCryptoEnabledState = () => {
+        setCryptoEnabled(Boolean(matrixClient.getCrypto()));
+      };
+
       // Listen for sync events
       matrixClient.on(sdk.ClientEvent.Sync, (state: string) => {
         if (state === 'PREPARED') {
           setIsConnected(true);
           setIsConnecting(false);
+          syncCryptoEnabledState();
           updateRoomList(matrixClient);
         } else if (state === 'ERROR') {
           setConnectionError('Sync-Fehler aufgetreten');
@@ -331,10 +336,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         if (crypto) {
           console.log('Matrix E2EE initialized successfully');
           console.log('Device ID:', matrixClient.getDeviceId());
-          setCryptoEnabled(true);
         } else {
-          console.warn('Crypto API not available after initialization');
-          setCryptoEnabled(false);
+          console.warn('Crypto API not available directly after initialization, retry after client start');
         }
       } catch (cryptoError) {
         console.error('Failed to initialize E2EE:', cryptoError);
@@ -345,6 +348,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       // Start the client with E2EE support
       await matrixClient.startClient({ initialSyncLimit: 50 });
+      setCryptoEnabled(Boolean(matrixClient.getCrypto()));
       
       setClient(matrixClient);
       setCredentials(creds);
@@ -464,7 +468,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     console.log('Remove reaction not fully implemented:', roomId, eventId, emoji);
   }, [client, isConnected]);
 
-  const createRoom = useCallback(async (options: { name: string; topic?: string; isPrivate: boolean; inviteUserIds?: string[] }) => {
+  const createRoom = useCallback(async (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => {
     if (!client || !isConnected) {
       throw new Error('Nicht mit Matrix verbunden');
     }
@@ -476,6 +480,16 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       preset: options.isPrivate ? sdk.Preset.PrivateChat : sdk.Preset.PublicChat,
       invite: options.inviteUserIds,
     };
+
+    if (options.enableEncryption) {
+      createRoomOptions.initial_state = [
+        {
+          type: 'm.room.encryption',
+          state_key: '',
+          content: { algorithm: 'm.megolm.v1.aes-sha2' },
+        },
+      ];
+    }
 
     const result = await client.createRoom(createRoomOptions);
     
