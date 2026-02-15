@@ -19,7 +19,7 @@ import { DefaultParticipantsDialog } from "@/components/task-decisions/DefaultPa
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { MyWorkDecisionCard } from "./decisions/MyWorkDecisionCard";
 import { MyWorkDecisionSidebar } from "./decisions/MyWorkDecisionSidebar";
-import { MyWorkDecision, SidebarOpenQuestion, SidebarNewComment, SidebarDiscussionComment, getResponseSummary } from "./decisions/types";
+import { MyWorkDecision, SidebarOpenQuestion, SidebarNewComment, getResponseSummary } from "./decisions/types";
 
 export function MyWorkDecisionsTab() {
   const { user } = useAuth();
@@ -450,7 +450,7 @@ export function MyWorkDecisionsTab() {
           });
         }
 
-        if (decision.isCreator && latest.comment && latest.response_type !== 'question') {
+        if (decision.isCreator && latest.comment && latest.response_type !== 'question' && !latest.creator_response) {
           const sevenDaysAgo = new Date();
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
           if (new Date(latest.created_at) > sevenDaysAgo) {
@@ -505,13 +505,25 @@ export function MyWorkDecisionsTab() {
     return { openQuestions, newComments, discussionComments: sidebarComments, recentActivities };
   }, [decisions, sidebarComments]);
 
-  // Inline reply to questions from card
-  const sendCreatorResponse = async (responseId: string, responseText: string) => {
-    if (!responseText?.trim()) return;
+  // Inline reply to activity from card
+  const sendActivityReply = async ({
+    responseId,
+    text,
+    mode,
+  }: {
+    responseId: string;
+    text: string;
+    mode: 'creator_response' | 'participant_followup';
+  }) => {
+    if (!text?.trim()) return;
+
+    const payload = mode === 'creator_response'
+      ? { creator_response: text.trim() }
+      : { comment: text.trim(), response_type: 'question', creator_response: null };
 
     const { error } = await supabase
       .from('task_decision_responses')
-      .update({ creator_response: responseText.trim() })
+      .update(payload)
       .eq('id', responseId);
 
     if (error) {
@@ -519,7 +531,12 @@ export function MyWorkDecisionsTab() {
       throw error;
     }
 
-    toast({ title: "Erfolgreich", description: "Antwort wurde gesendet." });
+    toast({
+      title: "Erfolgreich",
+      description: mode === 'creator_response'
+        ? "Antwort wurde gesendet."
+        : "Deine Rückfrage wurde gesendet.",
+    });
     loadDecisions();
   };
 
@@ -680,7 +697,7 @@ export function MyWorkDecisionsTab() {
                         onCreateTask={createTaskFromDecision}
                         onResponseSubmitted={loadDecisions}
                         onOpenComments={(id, title) => { setCommentsDecisionId(id); setCommentsDecisionTitle(title); }}
-                        onReply={sendCreatorResponse}
+                        onReply={sendActivityReply}
                         commentCount={getCommentCount(decision.id)}
                         creatingTaskId={creatingTaskId}
                         currentUserId={user?.id || ""}
@@ -698,7 +715,6 @@ export function MyWorkDecisionsTab() {
                 recentActivities={sidebarData.recentActivities}
                 onQuestionClick={handleOpenDetails}
                 onCommentClick={handleOpenDetails}
-                onDiscussionClick={handleOpenDetails}
                 onResponseSent={loadDecisions}
               />
             </div>

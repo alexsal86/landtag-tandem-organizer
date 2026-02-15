@@ -790,7 +790,7 @@ export const DecisionOverview = () => {
         }
 
         // New comments: responses with comments in the last 7 days (for non-creators)
-        if (decision.isCreator && latestResponse.comment) {
+        if (decision.isCreator && latestResponse.comment && !latestResponse.creator_response) {
           const sevenDaysAgo = new Date();
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
           if (new Date(latestResponse.created_at) > sevenDaysAgo && latestResponse.response_type !== 'question') {
@@ -1231,12 +1231,13 @@ export const DecisionOverview = () => {
             participants={decision.participants} 
             maxItems={2} 
             isCreator={decision.isCreator}
+            currentUserId={user?.id}
             creatorProfile={decision.creator ? {
               display_name: decision.creator.display_name,
               badge_color: decision.creator.badge_color,
               avatar_url: decision.creator.avatar_url,
             } : undefined}
-            onReply={(responseId, text) => sendCreatorResponse(responseId, text)}
+            onReply={({ responseId, text }) => sendCreatorResponse(responseId, text)}
           />
 
         </CardContent>
