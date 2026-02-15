@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useLoginCustomization } from "@/hooks/useLoginCustomization";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
+import { useFavicon } from "@/hooks/useFavicon";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -24,6 +25,8 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { customization, isLoading: customLoading } = useLoginCustomization();
+
+  useFavicon(customization.logo_url);
 
   useEffect(() => {
     // Check if user is already logged in
