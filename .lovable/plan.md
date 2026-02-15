@@ -1,158 +1,131 @@
+# Plan: 5 Bugfixes und RSVP-Erweiterungen
 
-# Brief-Template Designer: Umfassende Verbesserungen
+## 1. Sonnenblume/Logo in der Tab-Leiste
 
-Dieses Vorhaben umfasst 9 Punkte und ist sehr umfangreich. Ich empfehle eine Aufteilung in zwei Phasen, um die Qualitaet sicherzustellen. Hier der vollstaendige Plan:
+**Problem:** Das Logo im Dashboard-Tab hat die Klasse `h-5 w-5` (20x20px) -- zu klein. Auf mobilen Geraeten wird der gleiche Tab gerendert, aber moeglicherweise nicht sichtbar wegen Overflow.
+
+**Loesung:**
+
+- In `src/components/MyWorkView.tsx` (Zeile 482): Logo-Groesse von `h-5 w-5` auf `h-8 w-8` erhoehen
+- Sicherstellen, dass der Dashboard-Tab (mit `isLogo: true`) auch auf Mobilgeraeten angezeigt wird -- der Tab hat `label: ""`, daher nur das Icon. Pruefen ob `overflow-x-auto` ihn abschneidet und ggf. `flex-shrink-0` setzen
+
+**Datei:** `src/components/MyWorkView.tsx` (Zeile 478-488)
 
 ---
 
-## Phase 1: Bugfixes und Grundlagen (Punkte 1-5)
+## 2. Favicon = Seitenlogo
 
-### 1. Bilder-Galerie: Dauerhaftes Loeschen
-
-**Problem:** Nach dem Loeschen kehren Bilder zurueck. Die Galerie im `StructuredHeaderEditor` laedt Bilder aus `letter-assets/{tenantId}/header-images/`. Das Loeschen (`deleteGalleryImage`) entfernt die Datei aus Storage und den lokalen State, aber beim naechsten `loadGalleryImages()` (z.B. nach einem Upload oder Tab-Wechsel) werden die Bilder erneut geladen.
-
-**Ursache:** Das Storage-Loeschen schlaegt moeglicherweise fehl (RLS-Policy oder Timing-Problem), und `loadGalleryImages` wird bei Tenant-Wechsel im `useEffect` erneut aufgerufen und ueberschreibt den lokalen State.
+**Problem:** Der `useFavicon`-Hook existiert bereits und wird in `AppNavigation.tsx` und `Navigation.tsx` mit `app_logo_url` aufgerufen. Das Favicon sollte also bereits funktionieren. Moegliches Problem: Die `index.html` hat kein Standard-Favicon-Tag definiert, daher koennte der Browser ein leeres Favicon cachen.
 
 **Loesung:**
-- Nach `supabase.storage.remove()` den Erfolg pruefen und bei Fehler eine detaillierte Fehlermeldung anzeigen
-- Nach erfolgreichem Loeschen `loadGalleryImages()` erneut aufrufen (statt nur lokalen State zu filtern), um sicherzustellen, dass der Storage-Zustand korrekt reflektiert wird
-- Storage-RLS-Policies fuer `letter-assets` pruefen und ggf. DELETE-Policy hinzufuegen
 
-**Datei:** `src/components/letters/StructuredHeaderEditor.tsx`
+- In `index.html` ein Standard-`<link rel="icon">` Tag hinzufuegen (wird dynamisch ueberschrieben)
+- Der bestehende Hook sollte funktionieren. Falls `app_logo_url` leer ist, wird kein Favicon gesetzt -- ein Fallback auf die Sonnenblume (`/src/assets/sunflower.svg`) einbauen
 
-### 2. Bilder werden im Canvas nicht angezeigt (nur Rahmen)
-
-**Problem:** Bilder aus der Galerie und per Upload werden als `imageUrl` mit der Public URL gespeichert. Im Canvas wird `<img src={element.imageUrl}>` gerendert. CORS-Restriktionen in der Preview-Umgebung blockieren das Laden der Public URL.
-
-**Ursache:** Die Memory-Notiz besagt, dass ein Blob-URL-Ansatz verwendet wird -- aber nur fuer die Galerie-Thumbnails, nicht fuer die Canvas-Elemente.
-
-**Loesung:**
-- Beim Einfuegen eines Bildes aus der Galerie die bereits vorhandene `blobUrl` verwenden
-- Fuer neu hochgeladene Bilder ebenfalls die Blob-URL erstellen und im Element speichern
-- Ein Mapping `storagePath -> blobUrl` pflegen, damit beim Laden gespeicherter Templates die Bilder erneut als Blob-URLs aufgeloest werden
-- Die `imageUrl` (Public URL) bleibt als persistierter Wert im Template gespeichert (fuer den PDF-Export), aber die Canvas-Vorschau nutzt die Blob-URL
-
-**Dateien:** `src/components/letters/StructuredHeaderEditor.tsx`
-
-### 3. Bilder groesser ziehen (Resize mit Seitenverhaeltnis)
-
-**Problem:** Bilder auf dem Canvas koennen derzeit nur ueber die Seitenleiste (numerische Eingabe) in der Groesse geaendert werden. Es gibt keine Resize-Handles.
-
-**Loesung:**
-- Wenn ein Bild-Element ausgewaehlt ist, einen Resize-Handle (kleines Quadrat unten rechts) anzeigen
-- Bei MouseDown auf dem Handle: `isResizing` State setzen, bei MouseMove die neue Breite/Hoehe berechnen
-- **Ctrl-Taste (Steuerung)**: Ja, Ctrl ist der richtige Befehl. Wenn `event.ctrlKey` beim Resize aktiv ist, wird das Seitenverhaeltnis beibehalten (Hoehe wird proportional zur Breite angepasst)
-- Ohne Ctrl: Breite und Hoehe koennen unabhaengig geaendert werden
-
-**Datei:** `src/components/letters/StructuredHeaderEditor.tsx`
-
-### 4. Drag-and-Drop aus Bilder-Galerie mit Vorschau
-
-**Problem:** Bilder aus der Galerie werden per Klick eingefuegt. Gewuenscht ist Drag-and-Drop mit visueller Vorschau waehrend des Ziehens.
-
-**Loesung:**
-- Galerie-Bilder erhalten `draggable`-Attribut
-- `onDragStart`: `setDragImage()` mit dem Bild-Element aufrufen, sodass das Bild waehrend des Ziehens sichtbar bleibt. Den Storage-Pfad als DataTransfer-Daten setzen
-- `onDrop` im Canvas: Position berechnen und neues Image-Element einfuegen
-- Das Bild bleibt waehrend des gesamten Drag-Vorgangs sichtbar (native Browser-Funktionalitaet mit `setDragImage`)
-
-**Datei:** `src/components/letters/StructuredHeaderEditor.tsx`
-
-### 5. Footer-Canvas ist laenger als erlaubt
-
-**Problem:** Der Footer-Canvas in `StructuredFooterEditor` hat eine feste Hoehe von `120px` (Zeile 641), aber die Bloecke haben `top: 10px` und `height: 100px` -- das ergibt visuell 110px Inhalt in 120px Container. Das Lineal zeigt aber nur bis 40mm, waehrend der Canvas optisch laenger wirkt.
-
-**Ursache:** Die Darstellungs-Skalierung ist inkonsistent. Das Lineal berechnet `(i * 120) / (footerHeight / 10)` was korrekt ist, aber die Bloecke ignorieren die Skalierung fuer ihre Hoehe.
-
-**Loesung:**
-- Die Canvas-Hoehe an die Footer-Hoehe (40mm) koppeln: `height = footerHeight * scaleY`
-- Bloecke muessen innerhalb dieser Hoehe gerendert werden, nicht mit festen Pixel-Werten
-- Skalierung konsistent anwenden wie beim Header (mm-basiert)
-
-**Datei:** `src/components/letters/StructuredFooterEditor.tsx`
+**Datei:** `index.html`, `src/hooks/useFavicon.ts`
 
 ---
 
-## Phase 2: Feature-Erweiterungen (Punkte 6-9)
+## 3. Logo in Allgemeinen Einstellungen wird nicht angezeigt / Upload funktioniert nicht
 
-### 6. Canvas-Vorschau und Achsen fuer alle Block-Tabs
-
-**Problem:** Die Tabs Adressfeld, Ruecksende, Info-Block, Betreff und Anlagen haben nur einen einfachen Block-Canvas (`renderBlockCanvas`), ohne die Achsen-Guides und ohne die Bilder-Galerie / Text-Block-Drag-and-Drop, die der Header hat.
+**Problem:** Der `upsert` in `GeneralSettings.tsx` (Zeile 196) nutzt `onConflict: 'setting_key'`. Die Datenbank hat aber eine UNIQUE-Constraint nur auf `setting_key` **ohne** `tenant_id`. Das heisst: Wenn Tenant A den Wert fuer `app_logo_url` speichert und Tenant B versucht dasselbe zu tun, schlaegt der Upsert fehl, weil `setting_key` bereits existiert. Der Upsert muss die Kombination `(tenant_id, setting_key)` verwenden.
 
 **Loesung:**
-- `renderBlockCanvas()` in `LetterTemplateManager.tsx` erweitern:
-  - Achsen-Toggle (horizontale und vertikale Mittellinien) hinzufuegen, analog zum Header ("Achsen"-Button)
-  - Canvas dot-pattern Hintergrund wie beim Header
-  - Text-Block als draggable Element (wie im Header) anbieten, statt nur "Text hinzufuegen"-Button
-  - Bilder-Galerie einbinden (gleiche Galerie wie im Header, gespeist aus dem Systemordner)
-  - Drag-and-Drop vom Sidebar-Bereich in den Canvas ermoeglichen
 
-**Dateien:** `src/components/LetterTemplateManager.tsx`
+- Datenbank-Migration: Die bestehende UNIQUE-Constraint `app_settings_setting_key_key` auf `(tenant_id, setting_key)` aendern
+- In `GeneralSettings.tsx` (Zeile 196): `onConflict` auf `'tenant_id,setting_key'` aendern
+- Logo-Anzeige: Sicherstellen, dass `logoPreviewUrl` korrekt das Bild laedt (ggf. `crossOrigin="anonymous"` hinzufuegen)
 
-### 7. Bloecke als draggable Elemente im Header
+**Dateien:** `src/components/GeneralSettings.tsx`, SQL-Migration
 
-**Problem:** Bloecke im Header werden derzeit in einer separaten "Bloecke"-Card verwaltet und unten im Canvas fest positioniert. Gewuenscht: Bloecke sollen wie andere Elemente in der "Elemente hinzufuegen"-Card als draggable Element angeboten werden.
+---
+
+## 4. Vorschau bei Erfolgs-Animationen bricht ab
+
+**Problem:** `UnicornAnimation.tsx` nutzt `React.useId()` (Zeilen 36-40), aber importiert `React` nicht als Modul-Variable. Der Build-Error bestaetigt: "React refers to a UMD global, but the current file is a module."
 
 **Loesung:**
-- In "Elemente hinzufuegen" einen neuen draggable Eintrag "Block hinzufuegen" ergaenzen
-- Beim Drop auf den Canvas wird ein neuer Block erstellt und als positionierbares Element auf dem Canvas platziert
-- Die separate "Bloecke"-Card entfernen; Block-Details werden unter dem ausgewaehlten Element angezeigt (wie bei Text/Bild)
-- Bloecke erhalten `x`, `y`, `width`, `height` Koordinaten (in mm) wie andere Elemente
 
-**Datei:** `src/components/letters/StructuredHeaderEditor.tsx`
+- In `src/components/celebrations/UnicornAnimation.tsx`: `import React` hinzufuegen (Zeile 1 erweitern um `React`)
 
-### 8. Bloecke im Canvas verschiebbar
+**Datei:** `src/components/celebrations/UnicornAnimation.tsx` (Zeile 1)
 
-**Problem:** Bloecke sind im Canvas nicht verschiebbar (fest am unteren Rand positioniert).
+---
 
-**Loesung:** (Wird durch Punkt 7 mit abgedeckt)
-- Wenn Bloecke als positionierbare Elemente im Canvas existieren, koennen sie per Drag verschoben werden
-- Die gleiche MouseDown/MouseMove/MouseUp-Logik wie fuer Text- und Bild-Elemente anwenden
-- Snap-to-Grid und Snap-to-Elements funktionieren automatisch
+## 5. RSVP-System Erweiterungen
 
-**Datei:** `src/components/letters/StructuredHeaderEditor.tsx`
+**Aktuelle Struktur:** `EventRSVPManager.tsx` hat ein einfaches System: Kontakte auswaehlen, sofort Einladungen versenden, Status anzeigen (accepted/declined/invited). Es fehlen: Vormerken, verzoegertes Senden, Mail-Anpassung, Erinnerungen, Tracking, "tentative"-Anzeige, Hinweise an Angemeldete.
 
-### 9. Formen auf dem Canvas
+### 5a. Datenbank-Erweiterungen
 
-**Neues Feature:** Geometrische Formen als Canvas-Elemente einfuegen und bearbeiten.
+Neue Spalten fuer `event_rsvps`:
 
-**Implementierung:**
-- Neuer Element-Typ `shape` im `HeaderElement`-Interface mit Feld `shapeType`
-- Unterstuetzte Formen:
-  - **Linie** (`line`): Start-/Endpunkt, Strichstaerke, Farbe
-  - **Kreis** (`circle`): Mittelpunkt, Radius, Fuell- und Randfarbe
-  - **Quadrat/Rechteck** (`rectangle`): Position, Breite, Hoehe, Fuell- und Randfarbe, Border-Radius
-  - **Sonnenblume der Gruenen** (`sunflower`): Verwendet die vorhandene SVG-Datei `src/assets/sunflower.svg`
-- In "Elemente hinzufuegen": Dropdown oder Buttons fuer jede Form
-- Canvas-Rendering: SVG-basiert fuer Formen (innerhalb des Canvas-Containers)
-- Bearbeitbare Eigenschaften in der Seitenleiste: Farbe, Strichstaerke, Groesse, Rotation
-- Formen sind verschiebbar und skalierbar wie Bilder
+- `reminder_sent_at` (timestamptz) -- wann Erinnerung verschickt wurde
+- `reminder_count` (integer, default 0) -- Anzahl Erinnerungen
+- `invitation_sent` (boolean, default false) -- ob Einladung tatsaechlich verschickt wurde (fuer Vormerken)
+- `notes_sent` (jsonb, default '[]') -- Array von gesendeten Hinweisen mit Zeitstempel
+
+Neue Tabelle `event_rsvp_distribution_lists`:
+
+- `id` (uuid)
+- `event_planning_id` (uuid)
+- `distribution_list_id` (uuid)
+- `added_at` (timestamptz)
+
+### 5b. Vormerken vs. Versenden
+
+- Kontakte/Verteilerlisten koennen "vorgemerkt" werden (insert mit `invitation_sent = false`)
+- Separater Button "Einladungen jetzt versenden" setzt `invitation_sent = true` und loest E-Mail-Versand aus
+- In der Tabelle sichtbar: ob Einladung versendet wurde oder noch vorgemerkt ist
+
+### 5c. Einladungsmail anpassen
+
+- Neues Textfeld/Dialog zum Bearbeiten des E-Mail-Textes vor dem Versand
+- Standardtext wird vorbelegt, kann individuell angepasst werden
+- Text wird als Parameter an die Edge-Function `send-event-invitation` uebergeben
+
+### 5d. Erinnerungsmail
+
+- Button "Erinnerung senden" pro Gast oder fuer alle Ausstehenden
+- Trackt `reminder_sent_at` und `reminder_count`
+- In der Tabelle sichtbar: wann/ob Erinnerung gesendet wurde
+- Neue Edge-Function oder Erweiterung von `send-event-invitation`
+
+### 5e. "Vorbehalt" (tentative) in der Uebersicht
+
+- Status `tentative` wird aktuell als Badge gerendert, aber nicht in der Zusammenfassungsleiste gezaehlt
+- Fix: `const tentative = rsvps.filter(r => r.status === 'tentative').length` hinzufuegen und in der Zusammenfassung anzeigen
+
+### 5f. Hinweise an Angemeldete versenden
+
+- Neuer Button "Hinweis an Zugesagte senden"
+- Dialog mit Textfeld fuer die Nachricht
+- Sendet E-Mail an alle mit Status `accepted` (und optional `tentative`)
+- Wird in `notes_sent` getrackt
+
+### 5g. Verteilerlisten-Integration
+
+- Im Einladungsdialog: zusaetzlich zum Kontakt-Selektor ein Verteilerlisten-Selektor
+- Laedt alle Kontakte der ausgewaehlten Liste und fuegt sie als Einzeleintraege hinzu
 
 **Dateien:**
-- `src/components/letters/StructuredHeaderEditor.tsx` -- Neuer Element-Typ + Rendering + Sidebar-Einstellungen
-- `src/assets/sunflower.svg` -- Bereits vorhanden, wird als inline SVG in den Canvas gerendert
+
+- `src/components/events/EventRSVPManager.tsx` (Hauptrefaktor)
+- SQL-Migration fuer neue Spalten/Tabelle
+- Edge-Function `send-event-invitation` (erweitern fuer Erinnerungen und Hinweise)
 
 ---
 
-## Technische Details
+## Zusammenfassung der Aenderungen
 
-### Geaenderte Dateien (Phase 1)
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/letters/StructuredHeaderEditor.tsx` | Galerie-Loeschung robust machen, Blob-URL fuer Canvas-Bilder, Resize-Handles, Drag-and-Drop Galerie |
-| `src/components/letters/StructuredFooterEditor.tsx` | Canvas-Hoehe korrekt skalieren |
 
-### Geaenderte Dateien (Phase 2)
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/LetterTemplateManager.tsx` | `renderBlockCanvas` mit Achsen, Galerie, DnD erweitern |
-| `src/components/letters/StructuredHeaderEditor.tsx` | Bloecke als positionierbare Canvas-Elemente, Formen-System |
-
-### Moegliche SQL-Migration
-- Storage-RLS-Policy fuer `letter-assets` Bucket pruefen (DELETE fuer authenticated users)
-
----
-
-## Empfehlung
-
-Aufgrund des Umfangs empfehle ich, **Phase 1 (Punkte 1-5)** zuerst umzusetzen und zu testen, bevor Phase 2 angegangen wird. Phase 2 veraendert die Canvas-Architektur grundlegend (Bloecke werden zu positionierbaren Elementen), was gruendlich getestet werden muss.
+| Datei                                              | Aenderung                                                                              |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `src/components/MyWorkView.tsx`                    | Logo-Groesse erhoehen, mobile Sichtbarkeit                                             |
+| `index.html`                                       | Standard-Favicon-Tag                                                                   |
+| `src/hooks/useFavicon.ts`                          | Fallback-Favicon                                                                       |
+| `src/components/GeneralSettings.tsx`               | onConflict-Fix, crossOrigin                                                            |
+| SQL-Migration                                      | UNIQUE-Constraint aendern, event_rsvps Spalten                                         |
+| `src/components/celebrations/UnicornAnimation.tsx` | React-Import hinzufuegen                                                               |
+| `src/components/events/EventRSVPManager.tsx`       | Vormerken, Erinnerungen, Mail-Anpassung, Hinweise, tentative-Zaehlung, Verteilerlisten |
+| Edge-Function `send-event-invitation`              | Erinnerung, Hinweis-Mails, Custom-Text                                                 |
