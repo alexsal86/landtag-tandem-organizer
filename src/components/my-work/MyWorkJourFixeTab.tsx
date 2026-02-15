@@ -341,7 +341,7 @@ export function MyWorkJourFixeTab() {
                 ) : (
                   <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                 )}
-                <span className={cn("font-medium text-sm truncate", getMeetingStatusColor(meeting))}>
+                <span className={cn("font-semibold text-base truncate", getMeetingStatusColor(meeting))}>
                   {meeting.title}
                 </span>
                 {meeting.is_public && meeting.user_id !== user?.id && (
@@ -472,7 +472,7 @@ export function MyWorkJourFixeTab() {
                                 </div>
                                 {/* Show individual notes under sub-item quick_notes */}
                                 {subItem.system_type === 'quick_notes' && notes.length > 0 && (
-                                  <ul className="ml-4 mt-0.5 space-y-0.5">
+                                  <ul className="ml-8 mt-0.5 space-y-0.5">
                                     {notes.map((note, nIdx) => (
                                       <li key={note.id} className="flex items-center gap-1.5 text-muted-foreground">
                                         <StickyNote className="h-2.5 w-2.5 text-amber-500" />
@@ -483,7 +483,7 @@ export function MyWorkJourFixeTab() {
                                 )}
                                 {/* Show individual tasks under sub-item tasks */}
                                 {subItem.system_type === 'tasks' && tasks.length > 0 && (
-                                  <ul className="ml-4 mt-0.5 space-y-0.5">
+                                  <ul className="ml-8 mt-0.5 space-y-0.5">
                                     {tasks.map((task) => (
                                       <li key={task.id} className="flex items-center gap-1.5 text-muted-foreground">
                                         <ListTodo className="h-2.5 w-2.5 text-green-500" />
