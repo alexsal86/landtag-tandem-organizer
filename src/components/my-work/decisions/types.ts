@@ -53,6 +53,7 @@ export interface SidebarOpenQuestion {
   participantBadgeColor: string | null;
   participantAvatarUrl: string | null;
   comment: string | null;
+  createdAt: string;
 }
 
 export interface SidebarNewComment {
@@ -64,6 +65,7 @@ export interface SidebarNewComment {
   participantAvatarUrl: string | null;
   responseType: string;
   comment: string | null;
+  createdAt: string;
 }
 
 export interface SidebarDiscussionComment {

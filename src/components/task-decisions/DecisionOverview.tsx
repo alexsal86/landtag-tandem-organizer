@@ -151,6 +151,17 @@ export const DecisionOverview = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
   const [commentsDecisionTitle, setCommentsDecisionTitle] = useState<string>("");
+  const [recentDiscussionActivities, setRecentDiscussionActivities] = useState<Array<{
+    id: string;
+    decisionId: string;
+    decisionTitle: string;
+    type: "comment";
+    actorName: string | null;
+    actorBadgeColor: string | null;
+    actorAvatarUrl: string | null;
+    content: string | null;
+    createdAt: string;
+  }>>([]);
   // Handle URL action parameter for QuickActions
   useEffect(() => {
     const action = searchParams.get('action');
@@ -800,7 +811,76 @@ export const DecisionOverview = () => {
       });
     });
 
-    return { openQuestions, newComments };
+    const responseActivities = decisions
+      .filter((decision) => decision.status !== 'archived')
+      .flatMap((decision) =>
+        (decision.participants || []).flatMap((participant) =>
+          participant.responses.map((response) => ({
+            id: `response-${response.id}`,
+            decisionId: decision.id,
+            decisionTitle: decision.title,
+            type: 'response' as const,
+            actorName: participant.profile?.display_name || null,
+            actorBadgeColor: participant.profile?.badge_color || null,
+            actorAvatarUrl: participant.profile?.avatar_url || null,
+            content: response.comment,
+            createdAt: response.created_at,
+          }))
+        )
+      );
+
+    const recentActivities = [...responseActivities, ...recentDiscussionActivities]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 4);
+
+    return { openQuestions, newComments, recentActivities };
+  }, [decisions, recentDiscussionActivities]);
+
+  useEffect(() => {
+    if (decisions.length === 0) {
+      setRecentDiscussionActivities([]);
+      return;
+    }
+
+    const loadRecentComments = async () => {
+      const decisionIds = decisions.map((d) => d.id);
+      const { data: comments } = await supabase
+        .from('task_decision_comments')
+        .select('id, decision_id, user_id, content, created_at')
+        .in('decision_id', decisionIds)
+        .order('created_at', { ascending: false })
+        .limit(40);
+
+      if (!comments || comments.length === 0) {
+        setRecentDiscussionActivities([]);
+        return;
+      }
+
+      const decisionTitleMap = new Map(decisions.map((d) => [d.id, d.title]));
+      const userIds = [...new Set(comments.map((c) => c.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, badge_color, avatar_url')
+        .in('user_id', userIds);
+
+      const profileMap = new Map(profiles?.map((p) => [p.user_id, p]) || []);
+
+      setRecentDiscussionActivities(
+        comments.map((comment) => ({
+          id: `comment-${comment.id}`,
+          decisionId: comment.decision_id,
+          decisionTitle: decisionTitleMap.get(comment.decision_id) || 'Entscheidung',
+          type: 'comment' as const,
+          actorName: profileMap.get(comment.user_id)?.display_name || null,
+          actorBadgeColor: profileMap.get(comment.user_id)?.badge_color || null,
+          actorAvatarUrl: profileMap.get(comment.user_id)?.avatar_url || null,
+          content: comment.content,
+          createdAt: comment.created_at,
+        }))
+      );
+    };
+
+    loadRecentComments();
   }, [decisions]);
 
   // Get decision IDs for comment counts
@@ -1304,8 +1384,10 @@ export const DecisionOverview = () => {
           <DecisionSidebar
             openQuestions={sidebarData.openQuestions}
             newComments={sidebarData.newComments}
+            recentActivities={sidebarData.recentActivities}
             onQuestionClick={handleOpenDetails}
             onCommentClick={handleOpenDetails}
+            onActivityClick={handleOpenDetails}
             onResponseSent={() => user?.id && loadDecisionRequests(user.id)}
           />
         </div>

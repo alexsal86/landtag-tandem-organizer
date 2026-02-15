@@ -370,6 +370,64 @@ export function MyWorkDecisionsTab() {
   }, [decisions, activeTab, searchQuery]);
 
   // Sidebar data
+  const [sidebarComments, setSidebarComments] = useState<SidebarDiscussionComment[]>([]);
+
+  // Load discussion comments for sidebar
+  useEffect(() => {
+    if (!user || decisions.length === 0) {
+      setSidebarComments([]);
+      return;
+    }
+
+    const loadDiscussionComments = async () => {
+      const decisionIds = decisions.map(d => d.id);
+      const { data: comments } = await supabase
+        .from('task_decision_comments')
+        .select('id, decision_id, user_id, content, created_at')
+        .in('decision_id', decisionIds)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!comments || comments.length === 0) {
+        setSidebarComments([]);
+        return;
+      }
+
+      const userIds = [...new Set(comments.map(c => c.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, badge_color, avatar_url')
+        .in('user_id', userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const recentComments: SidebarDiscussionComment[] = comments
+        .filter(c => new Date(c.created_at) > sevenDaysAgo)
+        .map(c => {
+          const decision = decisions.find(d => d.id === c.decision_id);
+          const profile = profileMap.get(c.user_id);
+          const isMention = c.content?.includes(`data-mention-user-id="${user.id}"`) || false;
+          return {
+            id: c.id,
+            decisionId: c.decision_id,
+            decisionTitle: decision?.title || 'Entscheidung',
+            authorName: profile?.display_name || null,
+            authorBadgeColor: profile?.badge_color || null,
+            authorAvatarUrl: profile?.avatar_url || null,
+            content: c.content,
+            createdAt: c.created_at,
+            isMention,
+          };
+        });
+
+      setSidebarComments(recentComments);
+    };
+
+    loadDiscussionComments();
+  }, [user, decisions]);
+
   const sidebarData = useMemo(() => {
     const openQuestions: SidebarOpenQuestion[] = [];
     const newComments: SidebarNewComment[] = [];
@@ -388,6 +446,7 @@ export function MyWorkDecisionsTab() {
             participantBadgeColor: participant.profile?.badge_color || null,
             participantAvatarUrl: participant.profile?.avatar_url || null,
             comment: latest.comment,
+            createdAt: latest.created_at,
           });
         }
 
@@ -404,14 +463,47 @@ export function MyWorkDecisionsTab() {
               participantAvatarUrl: participant.profile?.avatar_url || null,
               responseType: latest.response_type,
               comment: latest.comment,
+              createdAt: latest.created_at,
             });
           }
         }
       });
     });
 
-    return { openQuestions, newComments };
-  }, [decisions]);
+    const responseActivities = decisions.flatMap((decision) =>
+      (decision.participants || []).flatMap((participant) =>
+        participant.responses.map((response) => ({
+          id: `response-${response.id}`,
+          decisionId: decision.id,
+          decisionTitle: decision.title,
+          type: 'response' as const,
+          actorName: participant.profile?.display_name || null,
+          actorBadgeColor: participant.profile?.badge_color || null,
+          actorAvatarUrl: participant.profile?.avatar_url || null,
+          content: response.comment,
+          createdAt: response.created_at,
+        }))
+      )
+    );
+
+    const commentActivities = sidebarComments.map((comment) => ({
+      id: `comment-${comment.id}`,
+      decisionId: comment.decisionId,
+      decisionTitle: comment.decisionTitle,
+      type: 'comment' as const,
+      actorName: comment.authorName,
+      actorBadgeColor: comment.authorBadgeColor,
+      actorAvatarUrl: comment.authorAvatarUrl,
+      content: comment.content,
+      createdAt: comment.createdAt,
+    }));
+
+    const recentActivities = [...responseActivities, ...commentActivities]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 4);
+
+    return { openQuestions, newComments, discussionComments: sidebarComments, recentActivities };
+  }, [decisions, sidebarComments]);
 
   // Inline reply to activity from card
   const sendActivityReply = async ({
@@ -619,6 +711,8 @@ export function MyWorkDecisionsTab() {
               <MyWorkDecisionSidebar
                 openQuestions={sidebarData.openQuestions}
                 newComments={sidebarData.newComments}
+                discussionComments={sidebarData.discussionComments}
+                recentActivities={sidebarData.recentActivities}
                 onQuestionClick={handleOpenDetails}
                 onCommentClick={handleOpenDetails}
                 onResponseSent={loadDecisions}
