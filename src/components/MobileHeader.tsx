@@ -88,7 +88,7 @@ export function MobileHeader() {
                   <span className="sr-only">Navigation öffnen</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-[280px] bg-[hsl(var(--nav))] border-[hsl(var(--nav-foreground)/0.1)]">
+              <SheetContent side="left" className="p-0 w-[72px] bg-[hsl(var(--nav))] border-[hsl(var(--nav-foreground)/0.1)]">
                 <AppNavigation 
                   activeSection={activeSection} 
                   onSectionChange={(section) => {
