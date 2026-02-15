@@ -27,6 +27,7 @@ export function GeneralSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [logoLoadFailed, setLogoLoadFailed] = useState(false);
 
   // Load current settings for this tenant
   useEffect(() => {
@@ -153,6 +154,10 @@ export function GeneralSettings() {
     }
   };
 
+  useEffect(() => {
+    setLogoLoadFailed(false);
+  }, [settings.app_logo_url]);
+
   const saveSettings = async () => {
     if (!currentTenant?.id) {
       toast({
@@ -241,24 +246,23 @@ export function GeneralSettings() {
           <div className="space-y-2">
             <Label>Logo</Label>
             <div className="flex items-center gap-4">
-            {settings.app_logo_url ? (
-                <div className="h-20 w-20 rounded-lg border bg-muted/30 p-2 flex items-center justify-center">
-                  <img 
-                    src={settings.app_logo_url} 
-                    alt="App Logo" 
-                    className="max-h-16 max-w-16 object-contain"
-                    onError={(e) => {
-                      console.error("Logo konnte nicht geladen werden:", settings.app_logo_url);
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement?.classList.add('hidden');
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="h-20 w-20 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
-                  <FileText className="h-8 w-8 text-muted-foreground" />
-                </div>
-              )}
+            {settings.app_logo_url && !logoLoadFailed ? (
+              <div className="h-20 w-20 rounded-lg border bg-muted/30 p-2 flex items-center justify-center">
+                <img
+                  src={settings.app_logo_url}
+                  alt="App Logo"
+                  className="max-h-16 max-w-16 object-contain"
+                  onError={() => {
+                    console.error("Logo konnte nicht geladen werden:", settings.app_logo_url);
+                    setLogoLoadFailed(true);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="h-20 w-20 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
+                <FileText className="h-8 w-8 text-muted-foreground" />
+              </div>
+            )}
               
               <div className="flex flex-col gap-2">
                 <input
