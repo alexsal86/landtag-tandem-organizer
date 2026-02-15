@@ -3975,11 +3975,16 @@ export type Database = {
         Row: {
           comment: string | null
           created_at: string | null
+          custom_message: string | null
           email: string
           event_planning_id: string
           id: string
+          invitation_sent: boolean
           invited_at: string | null
           name: string
+          notes_sent: Json
+          reminder_count: number
+          reminder_sent_at: string | null
           responded_at: string | null
           status: string
           tenant_id: string | null
@@ -3988,11 +3993,16 @@ export type Database = {
         Insert: {
           comment?: string | null
           created_at?: string | null
+          custom_message?: string | null
           email: string
           event_planning_id: string
           id?: string
+          invitation_sent?: boolean
           invited_at?: string | null
           name: string
+          notes_sent?: Json
+          reminder_count?: number
+          reminder_sent_at?: string | null
           responded_at?: string | null
           status?: string
           tenant_id?: string | null
@@ -4001,11 +4011,16 @@ export type Database = {
         Update: {
           comment?: string | null
           created_at?: string | null
+          custom_message?: string | null
           email?: string
           event_planning_id?: string
           id?: string
+          invitation_sent?: boolean
           invited_at?: string | null
           name?: string
+          notes_sent?: Json
+          reminder_count?: number
+          reminder_sent_at?: string | null
           responded_at?: string | null
           status?: string
           tenant_id?: string | null
