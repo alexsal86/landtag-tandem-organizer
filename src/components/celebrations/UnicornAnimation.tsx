@@ -16,9 +16,9 @@ const getSpeedDuration = (speed: string): number => {
 
 const getSizeDimensions = (size: string): { width: number; height: number } => {
   switch (size) {
-    case 'small': return { width: 120, height: 90 };
-    case 'large': return { width: 280, height: 210 };
-    default: return { width: 200, height: 150 };
+    case 'small': return { width: 130, height: 95 };
+    case 'large': return { width: 300, height: 220 };
+    default: return { width: 220, height: 160 };
   }
 };
 
@@ -27,11 +27,10 @@ export function UnicornAnimation({ speed = 'normal', size = 'medium', onComplete
   const duration = getSpeedDuration(speed);
   const dimensions = getSizeDimensions(size);
 
+  const bodyGradientId = React.useId();
   const hornGradientId = React.useId();
   const maneGradientId = React.useId();
-  const maneGradientSoftId = React.useId();
   const tailGradientId = React.useId();
-  const coatGradientId = React.useId();
   const shadowGradientId = React.useId();
 
   useEffect(() => {
@@ -49,40 +48,35 @@ export function UnicornAnimation({ speed = 'normal', size = 'medium', onComplete
     <>
       <style>{`
         @keyframes unicornRun {
-          0% { transform: translateX(-250px) translateY(50vh); }
-          50% { transform: translateX(50vw) translateY(50vh); }
-          100% { transform: translateX(calc(100vw + 50px)) translateY(50vh); }
+          0% { transform: translateX(-300px) translateY(52vh); }
+          100% { transform: translateX(calc(100vw + 80px)) translateY(52vh); }
         }
 
         @keyframes unicornFade {
-          0% { opacity: 1; transform: scale(1); }
-          70% { opacity: 1; transform: scale(1); }
-          100% { opacity: 0; transform: scale(0.8); }
+          0% { opacity: 0; }
+          8% { opacity: 1; }
+          78% { opacity: 1; }
+          100% { opacity: 0; }
         }
 
-        @keyframes unicornBob {
+        @keyframes unicornBounce {
           0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-6px); }
+          50% { transform: translateY(-8px); }
         }
 
-        @keyframes legStepFront {
-          0%, 100% { transform: rotate(10deg); }
-          50% { transform: rotate(-10deg); }
+        @keyframes legFront {
+          0%, 100% { transform: rotate(12deg); }
+          50% { transform: rotate(-12deg); }
         }
 
-        @keyframes legStepBack {
-          0%, 100% { transform: rotate(-8deg); }
-          50% { transform: rotate(8deg); }
+        @keyframes legBack {
+          0%, 100% { transform: rotate(-10deg); }
+          50% { transform: rotate(10deg); }
         }
 
-        @keyframes blink {
-          0%, 44%, 48%, 100% { transform: scaleY(1); }
-          46% { transform: scaleY(0.15); }
-        }
-
-        @keyframes shimmer {
-          0%, 100% { opacity: 0.2; }
-          50% { opacity: 0.55; }
+        @keyframes tailSway {
+          0%, 100% { transform: rotate(8deg); }
+          50% { transform: rotate(-8deg); }
         }
 
         .unicorn-container {
@@ -91,21 +85,27 @@ export function UnicornAnimation({ speed = 'normal', size = 'medium', onComplete
           left: 0;
           width: ${dimensions.width}px;
           height: ${dimensions.height}px;
-          animation: unicornRun ${duration}ms ease-out forwards;
+          animation: unicornRun ${duration}ms linear forwards;
         }
 
         .unicorn-svg {
-          filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.2));
-          animation: unicornFade ${duration}ms ease-out forwards, unicornBob 420ms ease-in-out infinite;
+          animation: unicornFade ${duration}ms ease-out forwards, unicornBounce 330ms ease-in-out infinite;
+          filter: drop-shadow(3px 4px 7px rgba(0, 0, 0, 0.2));
         }
 
-        .sparkles {
-          animation: shimmer 1.4s ease-in-out infinite;
+        .leg-front {
+          transform-origin: center 138px;
+          animation: legFront 240ms ease-in-out infinite;
         }
 
-        .sparkles circle,
-        .sparkles path {
-          filter: drop-shadow(0 0 2px currentColor);
+        .leg-back {
+          transform-origin: center 138px;
+          animation: legBack 240ms ease-in-out infinite;
+        }
+
+        .tail {
+          transform-origin: 167px 95px;
+          animation: tailSway 260ms ease-in-out infinite;
         }
 
         .unicorn-eye {
@@ -125,98 +125,73 @@ export function UnicornAnimation({ speed = 'normal', size = 'medium', onComplete
       `}</style>
       <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
         <div className="unicorn-container">
-          <svg
-            width={dimensions.width}
-            height={dimensions.height}
-            viewBox="0 0 200 150"
-            className="unicorn-svg"
-          >
+          <svg width={dimensions.width} height={dimensions.height} viewBox="0 0 220 160" className="unicorn-svg" role="img" aria-label="Laufendes Einhorn">
             <defs>
+              <linearGradient id={bodyGradientId} x1="20%" y1="0%" x2="80%" y2="100%">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="100%" stopColor="#edf3ff" />
+              </linearGradient>
               <linearGradient id={hornGradientId} x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#ffd700" />
-                <stop offset="50%" stopColor="#ffed4e" />
-                <stop offset="100%" stopColor="#fbbf24" />
+                <stop offset="0%" stopColor="#fff1a8" />
+                <stop offset="100%" stopColor="#f6b73c" />
               </linearGradient>
               <linearGradient id={maneGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#ff0000" />
-                <stop offset="16%" stopColor="#ff8000" />
-                <stop offset="33%" stopColor="#ffff00" />
-                <stop offset="50%" stopColor="#00ff00" />
-                <stop offset="66%" stopColor="#0080ff" />
-                <stop offset="83%" stopColor="#8000ff" />
-                <stop offset="100%" stopColor="#ff0080" />
-              </linearGradient>
-              <linearGradient id={maneGradientSoftId} x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#ff4080" />
-                <stop offset="16%" stopColor="#ff8040" />
-                <stop offset="33%" stopColor="#ffff40" />
-                <stop offset="50%" stopColor="#40ff40" />
-                <stop offset="66%" stopColor="#4080ff" />
-                <stop offset="83%" stopColor="#8040ff" />
-                <stop offset="100%" stopColor="#ff4080" />
+                <stop offset="0%" stopColor="#ff77c8" />
+                <stop offset="35%" stopColor="#8f7dff" />
+                <stop offset="70%" stopColor="#5cc9ff" />
+                <stop offset="100%" stopColor="#79e7b7" />
               </linearGradient>
               <linearGradient id={tailGradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#ffffff" />
-                <stop offset="25%" stopColor="#ffe7f5" />
-                <stop offset="50%" stopColor="#d7f4ff" />
-                <stop offset="100%" stopColor="#f3e9ff" />
-              </linearGradient>
-              <linearGradient id={coatGradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#ffffff" />
-                <stop offset="50%" stopColor="#f8fbff" />
-                <stop offset="100%" stopColor="#edf2f9" />
+                <stop offset="0%" stopColor="#ffd8f0" />
+                <stop offset="50%" stopColor="#9fc8ff" />
+                <stop offset="100%" stopColor="#a7f3d0" />
               </linearGradient>
               <radialGradient id={shadowGradientId} cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#91a1b5" stopOpacity="0.45" />
-                <stop offset="100%" stopColor="#91a1b5" stopOpacity="0" />
+                <stop offset="0%" stopColor="#7b8ca8" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#7b8ca8" stopOpacity="0" />
               </radialGradient>
             </defs>
 
-            <ellipse cx="100" cy="145" rx="55" ry="8" fill={`url(#${shadowGradientId})`} opacity="0.35" />
-            <ellipse cx="100" cy="100" rx="40" ry="25" fill={`url(#${coatGradientId})`} stroke="#dbe4ef" strokeWidth="2" />
-            <ellipse cx="70" cy="70" rx="25" ry="20" fill="#ffffff" stroke="#dbe4ef" strokeWidth="2" />
-            <path d="M 130 90 Q 152 88 158 100" stroke="#ffffff" strokeOpacity="0.7" strokeWidth="3" fill="none" strokeLinecap="round" />
+            <ellipse cx="110" cy="150" rx="62" ry="9" fill={`url(#${shadowGradientId})`} />
 
-            <polygon points="70,45 75,18 65,18" fill={`url(#${hornGradientId})`} stroke="#ffd26f" strokeWidth="1" />
-            <path d="M 45 60 Q 35 45 50 35 Q 40 25 55 20 Q 45 10 60 15 Q 50 5 70 10 Q 60 0 80 5 Q 70 -5 90 0" fill="none" stroke={`url(#${maneGradientId})`} strokeWidth="8" strokeLinecap="round" />
-            <path d="M 48 65 Q 38 50 53 40 Q 43 30 58 25 Q 48 15 63 20 Q 53 10 73 15 Q 63 5 83 10 Q 73 0 93 5" fill="none" stroke={`url(#${maneGradientSoftId})`} strokeWidth="6" strokeLinecap="round" />
+            <g>
+              <ellipse cx="114" cy="100" rx="54" ry="30" fill={`url(#${bodyGradientId})`} stroke="#d9e3f2" strokeWidth="2.5" />
 
-            <g className="unicorn-eye">
-              <circle cx="60" cy="65" r="4" fill="#2b2d42" />
+              <path d="M 78 85 C 62 78, 54 60, 72 50 C 78 46, 87 46, 95 52" fill="none" stroke={`url(#${maneGradientId})`} strokeWidth="13" strokeLinecap="round" />
+              <path d="M 86 82 C 76 73, 74 62, 83 57 C 88 54, 95 56, 101 62" fill="none" stroke="#ffe7fb" strokeWidth="6" strokeLinecap="round" opacity="0.8" />
+
+              <g className="tail">
+                <path d="M 166 96 C 182 90, 194 102, 190 117 C 186 133, 173 140, 160 130 C 164 117, 160 106, 166 96 Z" fill={`url(#${tailGradientId})`} stroke="#8b78ff" strokeWidth="2" />
+              </g>
+
+              <ellipse cx="72" cy="69" rx="25" ry="20" fill={`url(#${bodyGradientId})`} stroke="#d9e3f2" strokeWidth="2.5" />
+              <polygon points="71,45 78,16 66,17" fill={`url(#${hornGradientId})`} stroke="#e8a93a" strokeWidth="1" />
+              <path d="M 64 49 L 71 44 L 76 50" fill="none" stroke="#ffd8f1" strokeWidth="2" strokeLinecap="round" />
+
+              <ellipse cx="63" cy="69" rx="4.5" ry="5" fill="#243047" />
+              <circle cx="64.5" cy="67.2" r="1.2" fill="#fff" />
+              <path d="M 52 78 Q 61 84 70 79" fill="none" stroke="#f394b8" strokeWidth="1.8" strokeLinecap="round" />
+
+              <rect className="leg-front" x="86" y="122" width="9" height="24" rx="4.5" fill="#f1f5fd" stroke="#d5dff0" strokeWidth="1.2" />
+              <rect className="leg-back" x="101" y="122" width="9" height="24" rx="4.5" fill="#f1f5fd" stroke="#d5dff0" strokeWidth="1.2" />
+              <rect className="leg-back" x="122" y="122" width="9" height="24" rx="4.5" fill="#f1f5fd" stroke="#d5dff0" strokeWidth="1.2" />
+              <rect className="leg-front" x="137" y="122" width="9" height="24" rx="4.5" fill="#f1f5fd" stroke="#d5dff0" strokeWidth="1.2" />
+
+              <ellipse cx="90" cy="149" rx="5" ry="2.4" fill="#667085" />
+              <ellipse cx="105" cy="149" rx="5" ry="2.4" fill="#667085" />
+              <ellipse cx="126" cy="149" rx="5" ry="2.4" fill="#667085" />
+              <ellipse cx="141" cy="149" rx="5" ry="2.4" fill="#667085" />
             </g>
-            <circle cx="62" cy="63" r="1.5" fill="#ffffff" />
-            <ellipse cx="50" cy="75" rx="2.4" ry="1.2" fill="#ff9eb8" />
-            <path d="M 59 74 Q 64 77 68 74" stroke="#ff7aa2" strokeWidth="1.2" fill="none" strokeLinecap="round" />
 
-            <rect className="leg-front" x="75" y="120" width="6" height="20" fill="#e9eef5" rx="3" />
-            <rect className="leg-back" x="85" y="120" width="6" height="20" fill="#e9eef5" rx="3" />
-            <rect className="leg-back" x="105" y="120" width="6" height="20" fill="#e9eef5" rx="3" />
-            <rect className="leg-front" x="115" y="120" width="6" height="20" fill="#e9eef5" rx="3" />
-            <ellipse cx="78" cy="145" rx="4" ry="2" fill="#696969" />
-            <ellipse cx="88" cy="145" rx="4" ry="2" fill="#696969" />
-            <ellipse cx="108" cy="145" rx="4" ry="2" fill="#696969" />
-            <ellipse cx="118" cy="145" rx="4" ry="2" fill="#696969" />
-
-            <path d="M 140 95 Q 160 85 170 105 Q 175 120 165 135 Q 155 145 145 130 Q 150 115 145 105" fill={`url(#${tailGradientId})`} stroke={`url(#${maneGradientId})`} strokeWidth="2" />
-
-            <g className="sparkles">
-              <path d="M 30 37 L 32 41 L 36 42 L 32 44 L 31 48 L 28 44 L 24 42 L 28 40 Z" fill="#ffe169" opacity="0.8">
-                <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.1s" repeatCount="indefinite" />
-              </path>
-              <circle cx="30" cy="40" r="2" fill="#ffd700" opacity="0.8">
-                <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1s" repeatCount="indefinite" />
+            <g opacity="0.85">
+              <circle cx="20" cy="52" r="2" fill="#ffd866">
+                <animate attributeName="opacity" values="0.9;0.3;0.9" dur="1.2s" repeatCount="indefinite" />
               </circle>
-              <circle cx="150" cy="30" r="1.5" fill="#ff69b4" opacity="0.6">
-                <animate attributeName="opacity" values="0.6;0.1;0.6" dur="1.2s" repeatCount="indefinite" />
+              <circle cx="34" cy="34" r="1.6" fill="#ff89d7">
+                <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.6s" repeatCount="indefinite" />
               </circle>
-              <circle cx="170" cy="60" r="1" fill="#87ceeb" opacity="0.7">
-                <animate attributeName="opacity" values="0.7;0.2;0.7" dur="0.8s" repeatCount="indefinite" />
-              </circle>
-              <circle cx="20" cy="80" r="1.5" fill="#98fb98" opacity="0.5">
-                <animate attributeName="opacity" values="0.5;0.1;0.5" dur="1.5s" repeatCount="indefinite" />
-              </circle>
-              <circle cx="180" cy="100" r="2" fill="#dda0dd" opacity="0.6">
-                <animate attributeName="opacity" values="0.6;0.2;0.6" dur="0.9s" repeatCount="indefinite" />
+              <circle cx="194" cy="62" r="1.7" fill="#87ceff">
+                <animate attributeName="opacity" values="0.9;0.2;0.9" dur="1.0s" repeatCount="indefinite" />
               </circle>
             </g>
           </svg>
