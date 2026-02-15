@@ -34,7 +34,7 @@ export function GeneralSettings() {
     
     const loadSettings = async () => {
       try {
-        // First try tenant-specific settings
+        // First load tenant-specific settings
         const { data: tenantData, error } = await supabase
           .from('app_settings')
           .select('setting_key, setting_value')
@@ -49,20 +49,30 @@ export function GeneralSettings() {
           return acc;
         }, {} as Partial<AppSettings>);
 
-        // Fallback for missing values: use global settings (tenant_id IS NULL)
-        const { data: globalData, error: globalError } = await supabase
-          .from('app_settings')
-          .select('setting_key, setting_value')
-          .is('tenant_id', null)
-          .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
+        const hasAllTenantValues = Boolean(
+          tenantSettings.app_name && tenantSettings.app_subtitle && tenantSettings.app_logo_url
+        );
 
-        if (globalError) throw globalError;
+        // If tenant settings are incomplete, fill missing values from global defaults.
+        // Important: do not fail the whole page when global settings are not accessible.
+        let globalSettings: Partial<AppSettings> = {};
+        if (!hasAllTenantValues) {
+          const { data: globalData, error: globalError } = await supabase
+            .from('app_settings')
+            .select('setting_key, setting_value')
+            .is('tenant_id', null)
+            .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
 
-        const globalSettings = (globalData || []).reduce((acc, item) => {
-          const key = item.setting_key as keyof AppSettings;
-          acc[key] = item.setting_value || '';
-          return acc;
-        }, {} as Partial<AppSettings>);
+          if (!globalError) {
+            globalSettings = (globalData || []).reduce((acc, item) => {
+              const key = item.setting_key as keyof AppSettings;
+              acc[key] = item.setting_value || '';
+              return acc;
+            }, {} as Partial<AppSettings>);
+          } else {
+            console.warn('Global app settings fallback not available:', globalError);
+          }
+        }
 
         setSettings({
           app_name: tenantSettings.app_name || globalSettings.app_name || "LandtagsOS",
