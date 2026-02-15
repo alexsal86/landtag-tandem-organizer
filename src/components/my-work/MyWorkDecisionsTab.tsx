@@ -19,7 +19,7 @@ import { DefaultParticipantsDialog } from "@/components/task-decisions/DefaultPa
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { MyWorkDecisionCard } from "./decisions/MyWorkDecisionCard";
 import { MyWorkDecisionSidebar } from "./decisions/MyWorkDecisionSidebar";
-import { MyWorkDecision, SidebarOpenQuestion, SidebarNewComment, SidebarDiscussionComment, getResponseSummary } from "./decisions/types";
+import { MyWorkDecision, SidebarOpenQuestion, SidebarNewComment, getResponseSummary } from "./decisions/types";
 
 export function MyWorkDecisionsTab() {
   const { user } = useAuth();
@@ -385,7 +385,6 @@ export function MyWorkDecisionsTab() {
         .from('task_decision_comments')
         .select('id, decision_id, user_id, content, created_at')
         .in('decision_id', decisionIds)
-        .neq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -447,10 +446,11 @@ export function MyWorkDecisionsTab() {
             participantBadgeColor: participant.profile?.badge_color || null,
             participantAvatarUrl: participant.profile?.avatar_url || null,
             comment: latest.comment,
+            createdAt: latest.created_at,
           });
         }
 
-        if (decision.isCreator && latest.comment && latest.response_type !== 'question') {
+        if (decision.isCreator && latest.comment && latest.response_type !== 'question' && !latest.creator_response) {
           const sevenDaysAgo = new Date();
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
           if (new Date(latest.created_at) > sevenDaysAgo) {
@@ -463,13 +463,46 @@ export function MyWorkDecisionsTab() {
               participantAvatarUrl: participant.profile?.avatar_url || null,
               responseType: latest.response_type,
               comment: latest.comment,
+              createdAt: latest.created_at,
             });
           }
         }
       });
     });
 
-    return { openQuestions, newComments, discussionComments: sidebarComments };
+    const responseActivities = decisions.flatMap((decision) =>
+      (decision.participants || []).flatMap((participant) =>
+        participant.responses.map((response) => ({
+          id: `response-${response.id}`,
+          decisionId: decision.id,
+          decisionTitle: decision.title,
+          type: 'response' as const,
+          actorName: participant.profile?.display_name || null,
+          actorBadgeColor: participant.profile?.badge_color || null,
+          actorAvatarUrl: participant.profile?.avatar_url || null,
+          content: response.comment,
+          createdAt: response.created_at,
+        }))
+      )
+    );
+
+    const commentActivities = sidebarComments.map((comment) => ({
+      id: `comment-${comment.id}`,
+      decisionId: comment.decisionId,
+      decisionTitle: comment.decisionTitle,
+      type: 'comment' as const,
+      actorName: comment.authorName,
+      actorBadgeColor: comment.authorBadgeColor,
+      actorAvatarUrl: comment.authorAvatarUrl,
+      content: comment.content,
+      createdAt: comment.createdAt,
+    }));
+
+    const recentActivities = [...responseActivities, ...commentActivities]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 4);
+
+    return { openQuestions, newComments, discussionComments: sidebarComments, recentActivities };
   }, [decisions, sidebarComments]);
 
   // Inline reply to activity from card
@@ -679,9 +712,9 @@ export function MyWorkDecisionsTab() {
                 openQuestions={sidebarData.openQuestions}
                 newComments={sidebarData.newComments}
                 discussionComments={sidebarData.discussionComments}
+                recentActivities={sidebarData.recentActivities}
                 onQuestionClick={handleOpenDetails}
                 onCommentClick={handleOpenDetails}
-                onDiscussionClick={handleOpenDetails}
                 onResponseSent={loadDecisions}
               />
             </div>

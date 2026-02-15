@@ -6,14 +6,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { MessageCircle, Bell, Send, AtSign } from "lucide-react";
+import { MessageCircle, Bell, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
-import { de } from "date-fns/locale";
-import { SidebarDiscussionComment } from "./types";
-import { useAuth } from "@/hooks/useAuth";
 
 interface OpenQuestion {
   id: string;
@@ -40,9 +36,19 @@ interface MyWorkDecisionSidebarProps {
   openQuestions: OpenQuestion[];
   newComments: NewComment[];
   discussionComments?: SidebarDiscussionComment[];
+  recentActivities?: Array<{
+    id: string;
+    decisionId: string;
+    decisionTitle: string;
+    type: "comment" | "response";
+    actorName: string | null;
+    actorBadgeColor: string | null;
+    actorAvatarUrl: string | null;
+    content: string | null;
+    createdAt: string;
+  }>;
   onQuestionClick: (decisionId: string) => void;
   onCommentClick: (decisionId: string) => void;
-  onDiscussionClick?: (decisionId: string) => void;
   onResponseSent?: () => void;
 }
 
@@ -55,17 +61,16 @@ export function MyWorkDecisionSidebar({
   openQuestions,
   newComments,
   discussionComments = [],
+  recentActivities = [],
   onQuestionClick,
   onCommentClick,
-  onDiscussionClick,
   onResponseSent,
 }: MyWorkDecisionSidebarProps) {
-  const { user } = useAuth();
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [responseText, setResponseText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const totalItems = openQuestions.length + newComments.length + discussionComments.length;
+  const totalItems = openQuestions.length + newComments.length;
 
   const handleSendResponse = async (responseId: string) => {
     if (!responseText.trim()) return;
@@ -91,40 +96,52 @@ export function MyWorkDecisionSidebar({
     }
   };
 
-  const handleSendDiscussionReply = async (discussionComment: SidebarDiscussionComment) => {
-    if (!responseText.trim() || !user) return;
-    setIsLoading(true);
-
-    try {
-      const { error } = await supabase
-        .from("task_decision_comments")
-        .insert({
-          decision_id: discussionComment.decisionId,
-          user_id: user.id,
-          parent_id: discussionComment.id,
-          content: responseText.trim(),
-        });
-
-      if (error) throw error;
-
-      toast.success("Antwort gesendet");
-      setResponseText("");
-      setRespondingTo(null);
-      onResponseSent?.();
-    } catch (error) {
-      console.error("Error sending discussion reply:", error);
-      toast.error("Fehler beim Senden");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <aside className="hidden lg:block space-y-3 sticky top-4">
       <Card>
         <CardHeader className="pb-2 px-3 pt-3">
+          <CardTitle className="text-sm font-bold">Letzte Aktivitäten</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 px-3 pb-3 space-y-2">
+          {recentActivities.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-1">Keine Aktivitäten vorhanden.</p>
+          ) : (
+            recentActivities.map((activity) => (
+              <button
+                key={activity.id}
+                onClick={() => onCommentClick(activity.decisionId)}
+                className="w-full text-left p-2 rounded-md border hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-center gap-1 mb-1">
+                  <Avatar className="h-4 w-4">
+                    {activity.actorAvatarUrl && <AvatarImage src={activity.actorAvatarUrl} />}
+                    <AvatarFallback className="text-[8px]" style={{ backgroundColor: activity.actorBadgeColor || undefined }}>
+                      {getInitials(activity.actorName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-muted-foreground line-clamp-1">
+                    {activity.actorName || 'Unbekannt'} · {activity.type === 'comment' ? 'Kommentar' : 'Rückmeldung'}
+                  </span>
+                </div>
+                <p className="text-xs font-semibold line-clamp-1">{activity.decisionTitle}</p>
+                {activity.content && (
+                  <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    <RichTextDisplay content={activity.content} className="text-xs" />
+                  </div>
+                )}
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true, locale: de })}
+                </p>
+              </button>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2 px-3 pt-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-bold">Aktionen</CardTitle>
+            <CardTitle className="text-sm font-bold">Was liegt für mich an?</CardTitle>
             {totalItems > 0 && (
               <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
                 {totalItems}
@@ -136,7 +153,7 @@ export function MyWorkDecisionSidebar({
           <ScrollArea className="max-h-[50vh]">
             {totalItems === 0 ? (
               <p className="text-xs text-muted-foreground py-3 text-center">
-                Keine offenen Aktionen
+                Keine offenen Antworten
               </p>
             ) : (
               <div className="space-y-3">
@@ -262,95 +279,6 @@ export function MyWorkDecisionSidebar({
                   </div>
                 )}
 
-                {/* Discussion Comments */}
-                {discussionComments.length > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1 text-xs font-medium text-blue-600">
-                      <AtSign className="h-3 w-3" />
-                      <span>Diskussion</span>
-                      <Badge variant="outline" className="text-blue-600 border-blue-600 text-xs px-1.5 py-0">
-                        {discussionComments.length}
-                      </Badge>
-                    </div>
-                    {discussionComments.slice(0, 5).map((dc) => (
-                      <div
-                        key={dc.id}
-                        className="p-2 rounded-md border-l-2 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20"
-                      >
-                        <button
-                          onClick={() => onDiscussionClick?.(dc.decisionId)}
-                          className="w-full text-left hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors rounded -m-0.5 p-0.5"
-                        >
-                          <p className="text-xs font-semibold line-clamp-2">{dc.decisionTitle}</p>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <Avatar className="h-4 w-4">
-                              {dc.authorAvatarUrl && <AvatarImage src={dc.authorAvatarUrl} />}
-                              <AvatarFallback className="text-[8px]" style={{ backgroundColor: dc.authorBadgeColor || undefined }}>
-                                {getInitials(dc.authorName)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs text-muted-foreground">{dc.authorName || 'Unbekannt'}</span>
-                            {dc.isMention && (
-                              <Badge variant="outline" className="text-xs px-1 py-0 text-blue-600 border-blue-400">
-                                @Erwähnt
-                              </Badge>
-                            )}
-                            <span className="text-xs text-muted-foreground ml-auto">
-                              {formatDistanceToNow(new Date(dc.createdAt), { addSuffix: true, locale: de })}
-                            </span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            <RichTextDisplay content={dc.content} className="text-xs" />
-                          </div>
-                        </button>
-
-                        {respondingTo === dc.id ? (
-                          <div className="mt-1.5 pt-1.5 border-t border-blue-200 dark:border-blue-800 space-y-1.5">
-                            <SimpleRichTextEditor
-                              initialContent=""
-                              onChange={setResponseText}
-                              placeholder="Antwort..."
-                              minHeight="50px"
-                            />
-                            <div className="flex gap-1.5">
-                              <Button
-                                size="sm"
-                                onClick={() => handleSendDiscussionReply(dc)}
-                                disabled={isLoading || !responseText.trim()}
-                                className="text-[10px] h-6"
-                              >
-                                <Send className="h-2.5 w-2.5 mr-1" />Senden
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setRespondingTo(null);
-                                  setResponseText("");
-                                }}
-                                className="text-[10px] h-6"
-                              >
-                                Abbrechen
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="mt-1.5 text-[10px] w-full h-6"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setRespondingTo(dc.id);
-                            }}
-                          >
-                            Antworten
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </ScrollArea>
