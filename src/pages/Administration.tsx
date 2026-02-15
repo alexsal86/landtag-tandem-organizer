@@ -1058,9 +1058,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="border rounded-lg p-4 bg-card">
-                    <LetterTemplateManager />
-                  </div>
+                  <LetterTemplateManager />
                 </CardContent>
               </Card>
 
