@@ -2,7 +2,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Menu, Search, X } from "lucide-react";
+import { LogOut, Menu, Search, Settings, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { AppNavigation } from "@/components/AppNavigation";
@@ -11,12 +11,19 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function MobileHeader() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { currentTenant } = useTenant();
 
   // Derive active section from URL path (same logic as Index.tsx)
@@ -75,6 +82,11 @@ export function MobileHeader() {
 
   if (!isMobile) return null;
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))]">
@@ -132,15 +144,41 @@ export function MobileHeader() {
             <NotificationBell />
 
             {/* User Avatar */}
-            <Avatar className="h-8 w-8">
-              <AvatarImage 
-                src={userProfile?.avatar_url || undefined} 
-                alt={userProfile?.display_name || 'Benutzer'} 
-              />
-              <AvatarFallback className="text-xs bg-[hsl(var(--nav-hover))] text-[hsl(var(--nav-foreground))]">
-                {userProfile?.display_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full p-0 text-[hsl(var(--nav-foreground))] hover:bg-[hsl(var(--nav-hover))]"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={userProfile?.avatar_url || undefined}
+                      alt={userProfile?.display_name || 'Benutzer'}
+                    />
+                    <AvatarFallback className="text-xs bg-[hsl(var(--nav-hover))] text-[hsl(var(--nav-foreground))]">
+                      {userProfile?.display_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="sr-only">Benutzermenü öffnen</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => navigate('/profile/edit')}>
+                  <User className="mr-2 h-4 w-4" />
+                  Profil bearbeiten
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Einstellungen
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Abmelden
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
