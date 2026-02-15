@@ -73,7 +73,7 @@ export function MyWorkView() {
   const [isEmployee, setIsEmployee] = useState(false);
   const [isAbgeordneter, setIsAbgeordneter] = useState(false);
   const [isBueroleitung, setIsBueroleitung] = useState(false);
-  const [isTabLogoBroken, setIsTabLogoBroken] = useState(false);
+  const [isTabLogoError, setIsTabLogoError] = useState(false);
   const [totalCounts, setTotalCounts] = useState<TabCounts>({
     tasks: 0,
     decisions: 0,
@@ -133,8 +133,9 @@ export function MyWorkView() {
     }
   }, [searchParams, activeTab, setSearchParams]);
 
+
   useEffect(() => {
-    setIsTabLogoBroken(false);
+    setIsTabLogoError(false);
   }, [app_logo_url]);
 
   // Memoized loadCounts for realtime updates
@@ -474,12 +475,13 @@ export function MyWorkView() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {tab.isLogo ? (
+                {tab.isLogo && app_logo_url && !isTabLogoError ? (
                   <img
-                    src={!isTabLogoBroken && app_logo_url ? app_logo_url : "/favicon.ico"}
+                    src={app_logo_url}
                     alt="Logo"
                     className="h-5 w-5 object-contain rounded"
-                    onError={() => setIsTabLogoBroken(true)}
+                    crossOrigin="anonymous"
+                    onError={() => setIsTabLogoError(true)}
                   />
                 ) : (
                   <Icon className="h-4 w-4" />

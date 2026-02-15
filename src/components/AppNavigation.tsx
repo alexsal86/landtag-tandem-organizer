@@ -11,6 +11,7 @@ import { useMatrixClient } from "@/contexts/MatrixClientContext";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { useFavicon } from "@/hooks/useFavicon";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
@@ -40,6 +41,7 @@ export function AppNavigation({
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
   const { totalUnreadCount: matrixUnreadCount } = useMatrixClient();
   const appSettings = useAppSettings();
+  useFavicon(appSettings.app_logo_url);
   
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);

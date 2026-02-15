@@ -33,6 +33,12 @@ export function UnicornAnimation({ speed = 'normal', size = 'medium', onComplete
   const duration = getSpeedDuration(speed);
   const scale = getScale(size);
 
+  const bodyGradientId = React.useId();
+  const hornGradientId = React.useId();
+  const maneGradientId = React.useId();
+  const tailGradientId = React.useId();
+  const shadowGradientId = React.useId();
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setShouldRender(false);
