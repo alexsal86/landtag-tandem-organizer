@@ -193,7 +193,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
                 </div>
               )}
               {/* Reply button for unanswered questions (creator only) */}
-              {isCreator && item.type === 'question' && !item.creatorResponse && onReply && replyingTo !== item.id && (
+              {isCreator && !item.creatorResponse && onReply && replyingTo !== item.id && (
                 <Button
                   variant="ghost"
                   size="sm"

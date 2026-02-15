@@ -519,7 +519,7 @@ export function MyWorkDecisionsTab() {
 
     const payload = mode === 'creator_response'
       ? { creator_response: text.trim() }
-      : { comment: text.trim(), response_type: 'question', creator_response: null };
+      : { comment: text.trim(), creator_response: null };
 
     const { error } = await supabase
       .from('task_decision_responses')
