@@ -35,7 +35,7 @@ export function GeneralSettings() {
     const loadSettings = async () => {
       try {
         // First try tenant-specific settings
-        const { data, error } = await supabase
+        const { data: tenantData, error } = await supabase
           .from('app_settings')
           .select('setting_key, setting_value')
           .eq('tenant_id', currentTenant.id)
@@ -43,26 +43,32 @@ export function GeneralSettings() {
 
         if (error) throw error;
 
-        if (data && data.length > 0) {
-          const settingsMap = data.reduce((acc, item) => {
-            const key = item.setting_key as keyof AppSettings;
-            acc[key] = item.setting_value || '';
-            return acc;
-          }, {} as AppSettings);
+        const tenantSettings = (tenantData || []).reduce((acc, item) => {
+          const key = item.setting_key as keyof AppSettings;
+          acc[key] = item.setting_value || '';
+          return acc;
+        }, {} as Partial<AppSettings>);
 
-          setSettings({
-            app_name: settingsMap.app_name || "LandtagsOS",
-            app_subtitle: settingsMap.app_subtitle || "Koordinationssystem", 
-            app_logo_url: settingsMap.app_logo_url || ""
-          });
-        } else {
-          // No tenant-specific settings - use defaults
-          setSettings({
-            app_name: "LandtagsOS",
-            app_subtitle: "Koordinationssystem",
-            app_logo_url: ""
-          });
-        }
+        // Fallback for missing values: use global settings (tenant_id IS NULL)
+        const { data: globalData, error: globalError } = await supabase
+          .from('app_settings')
+          .select('setting_key, setting_value')
+          .is('tenant_id', null)
+          .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
+
+        if (globalError) throw globalError;
+
+        const globalSettings = (globalData || []).reduce((acc, item) => {
+          const key = item.setting_key as keyof AppSettings;
+          acc[key] = item.setting_value || '';
+          return acc;
+        }, {} as Partial<AppSettings>);
+
+        setSettings({
+          app_name: tenantSettings.app_name || globalSettings.app_name || "LandtagsOS",
+          app_subtitle: tenantSettings.app_subtitle || globalSettings.app_subtitle || "Koordinationssystem",
+          app_logo_url: tenantSettings.app_logo_url || globalSettings.app_logo_url || ""
+        });
       } catch (error) {
         console.error('Error loading settings:', error);
         toast({
