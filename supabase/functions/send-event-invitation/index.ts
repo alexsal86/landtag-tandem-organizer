@@ -20,9 +20,9 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { eventPlanningId, eventTitle, rsvpIds } = await req.json();
+    const { eventPlanningId, eventTitle, rsvpIds, type = 'invitation', customMessage } = await req.json();
 
-    console.log('Sending event invitations:', { eventPlanningId, eventTitle, rsvpIds });
+    console.log('Processing event email:', { eventPlanningId, eventTitle, rsvpIds, type });
 
     // Get event details
     const { data: event, error: eventError } = await supabase
@@ -55,6 +55,95 @@ const handler = async (req: Request): Promise<Response> => {
     const origin = req.headers.get('origin') || req.headers.get('referer');
     const domain = origin ? new URL(origin).origin : 'https://wawofclbehbkebjivdte.supabase.co';
 
+    const getSubject = (rsvpName: string) => {
+      switch (type) {
+        case 'reminder': return `Erinnerung: ${event.title}`;
+        case 'note': return `Hinweis: ${event.title}`;
+        default: return `Einladung: ${event.title}`;
+      }
+    };
+
+    const getEmailHtml = (rsvp: { name: string; token: string }, rsvpUrl: string) => {
+      const personalizedMessage = customMessage
+        ? customMessage
+            .replace(/\{name\}/g, rsvp.name)
+            .replace(/\{eventTitle\}/g, event.title)
+            .replace(/\n/g, '<br/>')
+        : '';
+
+      if (type === 'note') {
+        // Simple note email - no RSVP link needed
+        return `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #333; font-size: 24px;">Hinweis zur Veranstaltung</h1>
+            <p style="color: #666;">Hallo ${rsvp.name},</p>
+            <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0;">
+              <h3 style="margin: 0 0 8px 0; color: #333;">${event.title}</h3>
+              ${personalizedMessage ? `<p style="color: #666; margin: 8px 0;">${personalizedMessage}</p>` : ''}
+            </div>
+            <p style="color: #666;">Absender: ${creatorName}</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+            <p style="color: #999; font-size: 12px;">Diese E-Mail wurde automatisch generiert.</p>
+          </div>
+        `;
+      }
+
+      if (type === 'reminder') {
+        return `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #333; font-size: 24px;">Erinnerung</h1>
+            <p style="color: #666;">Hallo ${rsvp.name},</p>
+            ${personalizedMessage
+              ? `<p style="color: #666;">${personalizedMessage}</p>`
+              : `<p style="color: #666;">${creatorName} erinnert Sie an die folgende Veranstaltung:</p>`
+            }
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0;">
+              <h3 style="margin: 0 0 8px 0; color: #333;">${event.title}</h3>
+              ${event.description ? `<p style="margin: 0 0 4px 0; color: #666;">${event.description}</p>` : ''}
+              ${event.confirmed_date ? `<p style="margin: 0 0 4px 0; color: #666;">📅 ${event.confirmed_date}</p>` : ''}
+              ${event.location ? `<p style="margin: 0; color: #666;">📍 ${event.location}</p>` : ''}
+            </div>
+            <p style="color: #666;">Bitte teilen Sie uns mit, ob Sie teilnehmen können:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${rsvpUrl}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                Zu-/Absage mitteilen
+              </a>
+            </div>
+            <p style="color: #999; font-size: 14px;"><a href="${rsvpUrl}" style="color: #3b82f6;">${rsvpUrl}</a></p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+            <p style="color: #999; font-size: 12px;">Diese E-Mail wurde automatisch generiert.</p>
+          </div>
+        `;
+      }
+
+      // Default: invitation
+      return `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #333; font-size: 24px;">Einladung zur Veranstaltung</h1>
+          <p style="color: #666;">Hallo ${rsvp.name},</p>
+          ${personalizedMessage
+            ? `<p style="color: #666;">${personalizedMessage}</p>`
+            : `<p style="color: #666;">${creatorName} lädt Sie herzlich ein:</p>`
+          }
+          <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0;">
+            <h3 style="margin: 0 0 8px 0; color: #333;">${event.title}</h3>
+            ${event.description ? `<p style="margin: 0 0 4px 0; color: #666;">${event.description}</p>` : ''}
+            ${event.confirmed_date ? `<p style="margin: 0 0 4px 0; color: #666;">📅 ${event.confirmed_date}</p>` : ''}
+            ${event.location ? `<p style="margin: 0; color: #666;">📍 ${event.location}</p>` : ''}
+          </div>
+          <p style="color: #666;">Bitte teilen Sie uns mit, ob Sie teilnehmen können:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${rsvpUrl}" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              Zu-/Absage mitteilen
+            </a>
+          </div>
+          <p style="color: #999; font-size: 14px;"><a href="${rsvpUrl}" style="color: #3b82f6;">${rsvpUrl}</a></p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">Diese E-Mail wurde automatisch generiert.</p>
+        </div>
+      `;
+    };
+
     const results = await Promise.all(
       (rsvps || []).map(async (rsvp) => {
         const rsvpUrl = `${domain}/event-rsvp/${eventPlanningId}?token=${rsvp.token}`;
@@ -63,33 +152,8 @@ const handler = async (req: Request): Promise<Response> => {
           const emailResponse = await resend.emails.send({
             from: 'Veranstaltung <noreply@alexander-salomon.de>',
             to: [rsvp.email],
-            subject: `Einladung: ${event.title}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h1 style="color: #333; font-size: 24px;">Einladung zur Veranstaltung</h1>
-                <p style="color: #666;">Hallo ${rsvp.name},</p>
-                <p style="color: #666;">${creatorName} lädt Sie herzlich ein:</p>
-                <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0;">
-                  <h3 style="margin: 0 0 8px 0; color: #333;">${event.title}</h3>
-                  ${event.description ? `<p style="margin: 0 0 4px 0; color: #666;">${event.description}</p>` : ''}
-                  ${event.confirmed_date ? `<p style="margin: 0 0 4px 0; color: #666;">📅 ${event.confirmed_date}</p>` : ''}
-                  ${event.location ? `<p style="margin: 0; color: #666;">📍 ${event.location}</p>` : ''}
-                </div>
-                <p style="color: #666;">Bitte teilen Sie uns mit, ob Sie teilnehmen können:</p>
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="${rsvpUrl}" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                    Zu-/Absage mitteilen
-                  </a>
-                </div>
-                <p style="color: #999; font-size: 14px;">
-                  <a href="${rsvpUrl}" style="color: #3b82f6;">${rsvpUrl}</a>
-                </p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                <p style="color: #999; font-size: 12px;">
-                  Diese E-Mail wurde automatisch generiert.
-                </p>
-              </div>
-            `,
+            subject: getSubject(rsvp.name),
+            html: getEmailHtml(rsvp, rsvpUrl),
           });
 
           console.log(`Email sent to ${rsvp.email}:`, emailResponse);

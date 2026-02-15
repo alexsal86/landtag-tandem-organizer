@@ -479,7 +479,7 @@ export function MyWorkView() {
                   <img
                     src={app_logo_url}
                     alt="Logo"
-                    className="h-5 w-5 object-contain rounded"
+                    className="h-8 w-8 object-contain rounded flex-shrink-0"
                     crossOrigin="anonymous"
                     onError={() => setIsTabLogoError(true)}
                   />

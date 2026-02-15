@@ -13,15 +13,16 @@ const getFaviconType = (url: string) => {
 
 export const useFavicon = (faviconUrl?: string | null) => {
   useEffect(() => {
-    if (!faviconUrl) return;
+    const url = faviconUrl || '/src/assets/sunflower.svg';
+
 
     const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
     existingFavicons.forEach((link) => link.remove());
 
     const faviconLink = document.createElement("link");
     faviconLink.rel = "icon";
-    faviconLink.href = faviconUrl;
-    faviconLink.type = getFaviconType(faviconUrl);
+    faviconLink.href = url;
+    faviconLink.type = getFaviconType(url);
 
     document.head.appendChild(faviconLink);
   }, [faviconUrl]);

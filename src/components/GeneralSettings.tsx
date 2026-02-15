@@ -193,7 +193,7 @@ export function GeneralSettings() {
 
       const { error } = await supabase
         .from('app_settings')
-        .upsert(updates, { onConflict: 'setting_key' });
+        .upsert(updates, { onConflict: 'tenant_id,setting_key' });
 
       if (error) throw error;
 
