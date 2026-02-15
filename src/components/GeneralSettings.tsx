@@ -191,20 +191,11 @@ export function GeneralSettings() {
         { tenant_id: currentTenant.id, setting_key: 'app_logo_url', setting_value: settings.app_logo_url }
       ];
 
-      for (const update of updates) {
-        // Delete existing if any, then insert
-        await supabase
-          .from('app_settings')
-          .delete()
-          .eq('tenant_id', currentTenant.id)
-          .eq('setting_key', update.setting_key);
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert(updates, { onConflict: 'setting_key' });
 
-        const { error } = await supabase
-          .from('app_settings')
-          .insert(update);
-        
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Gespeichert",
