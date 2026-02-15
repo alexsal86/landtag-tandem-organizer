@@ -28,6 +28,7 @@ export function GeneralSettings() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
+  const [logoCacheBuster, setLogoCacheBuster] = useState(Date.now());
 
   // Load current settings for this tenant
   useEffect(() => {
@@ -100,7 +101,12 @@ export function GeneralSettings() {
     if (!file) return;
 
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
+    const fileExtension = (file.name.split('.').pop() || '').toLowerCase();
+    const hasAllowedType = !!file.type && allowedTypes.includes(file.type);
+    const hasAllowedExtension = allowedExtensions.includes(fileExtension);
+
+    if (!hasAllowedType && !hasAllowedExtension) {
       toast({
         title: "Fehler",
         description: "Bitte wählen Sie eine Bilddatei aus (JPG, PNG, GIF, SVG, WebP).",
@@ -120,14 +126,16 @@ export function GeneralSettings() {
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = (file.name.split('.').pop() || "png").toLowerCase();
       const fileName = `app-logo-${currentTenant?.id}-${Date.now()}.${fileExt}`;
-      
+      const inferredContentType = file.type || (fileExt === "svg" ? "image/svg+xml" : undefined);
+
       const { data, error } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: false,
+          contentType: inferredContentType
         });
 
       if (error) throw error;
@@ -136,6 +144,8 @@ export function GeneralSettings() {
         .from('avatars')
         .getPublicUrl(fileName);
 
+      setLogoLoadFailed(false);
+      setLogoCacheBuster(Date.now());
       setSettings(prev => ({ ...prev, app_logo_url: urlData.publicUrl }));
       
       toast({
@@ -156,7 +166,12 @@ export function GeneralSettings() {
 
   useEffect(() => {
     setLogoLoadFailed(false);
+    setLogoCacheBuster(Date.now());
   }, [settings.app_logo_url]);
+
+  const logoPreviewUrl = settings.app_logo_url
+    ? `${settings.app_logo_url}${settings.app_logo_url.includes('?') ? '&' : '?'}v=${logoCacheBuster}`
+    : "";
 
   const saveSettings = async () => {
     if (!currentTenant?.id) {
@@ -240,7 +255,7 @@ export function GeneralSettings() {
             {settings.app_logo_url && !logoLoadFailed ? (
               <div className="h-20 w-20 rounded-lg border bg-muted/30 p-2 flex items-center justify-center">
                 <img
-                  src={settings.app_logo_url}
+                  src={logoPreviewUrl}
                   alt="App Logo"
                   className="max-h-16 max-w-16 object-contain"
                   onError={() => {
