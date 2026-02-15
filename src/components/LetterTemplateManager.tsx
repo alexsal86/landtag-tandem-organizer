@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Edit3, Trash2, Plus, Save, X, Eye, Upload, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,6 +55,14 @@ interface InformationBlock {
   is_default: boolean;
 }
 
+
+interface GalleryImage {
+  name: string;
+  path: string;
+  blobUrl: string;
+  publicUrl: string;
+}
+
 const LetterTemplateManager: React.FC = () => {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
@@ -70,8 +78,10 @@ const LetterTemplateManager: React.FC = () => {
   const [selectedBlockItem, setSelectedBlockItem] = useState<Record<string, string | null>>({});
   const [showBlockRuler, setShowBlockRuler] = useState<Record<string, boolean>>({});
   const [showPreview, setShowPreview] = useState<string | null>(null);
-  const [selectedGalleryImage, setSelectedGalleryImage] = useState<Record<string, { name: string; url: string } | null>>({});
-  const [systemImages, setSystemImages] = useState<{ name: string; url: string }[]>([]);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<Record<string, GalleryImage | null>>({});
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const galleryBlobUrlsRef = useRef<Map<string, string>>(new Map());
   const [formData, setFormData] = useState({
     name: '',
     letterhead_html: '',
@@ -84,36 +94,67 @@ const LetterTemplateManager: React.FC = () => {
     layout_settings: DEFAULT_DIN5008_LAYOUT as LetterLayoutSettings
   });
 
+  const loadGalleryImages = useCallback(async () => {
+    if (!currentTenant?.id) return;
+    setGalleryLoading(true);
+    try {
+      const folderPath = `${currentTenant.id}/header-images`;
+      const { data: files, error } = await supabase.storage.from('letter-assets').list(folderPath);
+      if (error) return;
+
+      const imageFiles = (files || []).filter((file) => file.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(file.name));
+      const loaded: GalleryImage[] = [];
+      const nextMap = new Map<string, string>();
+
+      for (const file of imageFiles) {
+        const filePath = `${folderPath}/${file.name}`;
+        const cached = galleryBlobUrlsRef.current.get(filePath);
+        if (cached) {
+          nextMap.set(filePath, cached);
+          const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(filePath);
+          loaded.push({ name: file.name, path: filePath, blobUrl: cached, publicUrl });
+          continue;
+        }
+
+        try {
+          const { data: blob, error: dlError } = await supabase.storage.from('letter-assets').download(filePath);
+          if (dlError || !blob) continue;
+          const blobUrl = URL.createObjectURL(blob);
+          nextMap.set(filePath, blobUrl);
+          const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(filePath);
+          loaded.push({ name: file.name, path: filePath, blobUrl, publicUrl });
+        } catch (error) {
+          console.error('Error downloading gallery image:', error);
+        }
+      }
+
+      galleryBlobUrlsRef.current.forEach((blobUrl, path) => {
+        if (!nextMap.has(path)) URL.revokeObjectURL(blobUrl);
+      });
+      galleryBlobUrlsRef.current = nextMap;
+      setGalleryImages(loaded);
+    } catch (error) {
+      console.error('Error loading gallery images:', error);
+    } finally {
+      setGalleryLoading(false);
+    }
+  }, [currentTenant?.id]);
+
   useEffect(() => {
     if (currentTenant) {
       fetchTemplates();
       fetchSenderInfos();
       fetchInformationBlocks();
-      loadSystemImages();
+      loadGalleryImages();
     }
-  }, [currentTenant]);
+  }, [currentTenant, loadGalleryImages]);
 
-  const loadSystemImages = async () => {
-    if (!currentTenant?.id) return;
-    try {
-      const { data, error } = await supabase.storage
-        .from('letter-assets')
-        .list(`${currentTenant.id}/_system/briefvorlagen-bilder`);
-      if (error) return;
-      if (data) {
-        const images = data
-          .filter((f) => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name))
-          .map((f) => {
-            const path = `${currentTenant.id}/_system/briefvorlagen-bilder/${f.name}`;
-            const { data: urlData } = supabase.storage.from('letter-assets').getPublicUrl(path);
-            return { name: f.name, url: urlData.publicUrl };
-          });
-        setSystemImages(images);
-      }
-    } catch (error) {
-      console.error('Error loading system images:', error);
-    }
-  };
+  useEffect(() => {
+    return () => {
+      galleryBlobUrlsRef.current.forEach((blobUrl) => URL.revokeObjectURL(blobUrl));
+      galleryBlobUrlsRef.current.clear();
+    };
+  }, []);
 
   const handleSubjectImageUpload = () => {
     const input = document.createElement('input');
@@ -124,13 +165,13 @@ const LetterTemplateManager: React.FC = () => {
       if (!file || !currentTenant?.id) return;
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${currentTenant.id}/_system/briefvorlagen-bilder/${fileName}`;
+      const filePath = `${currentTenant.id}/header-images/${fileName}`;
       const { error } = await supabase.storage.from('letter-assets').upload(filePath, file);
       if (error) {
         toast({ title: 'Fehler', description: 'Bild konnte nicht hochgeladen werden', variant: 'destructive' });
         return;
       }
-      await loadSystemImages();
+      await loadGalleryImages();
       toast({ title: 'Bild hochgeladen' });
     };
     input.click();
@@ -373,18 +414,20 @@ const LetterTemplateManager: React.FC = () => {
               <Button type="button" variant="outline" size="sm" className="w-full text-xs" onClick={handleSubjectImageUpload}>
                 <Upload className="h-3 w-3 mr-1" /> Bild hochladen
               </Button>
-              {systemImages.length > 0 && (
+              {galleryLoading ? (
+                <p className="text-xs text-muted-foreground">Lade Bilder...</p>
+              ) : galleryImages.length > 0 && (
                 <div className="grid grid-cols-4 gap-1">
-                  {systemImages.map((img) => (
+                  {galleryImages.map((img) => (
                     <div
                       key={img.name}
                       draggable
                       onClick={() => setSelectedGalleryImage((prev) => ({ ...prev, [blockKey]: img }))}
-                      onDragStart={(e) => { e.dataTransfer.setData('application/x-block-tool', 'image'); e.dataTransfer.setData('application/x-block-image-url', img.url); e.dataTransfer.effectAllowed = 'copy'; }}
-                      className={`border rounded overflow-hidden cursor-grab active:cursor-grabbing aspect-square bg-muted/30 ${selectedGalleryImage[blockKey]?.url === img.url ? 'ring-2 ring-primary' : ''}`}
+                      onDragStart={(e) => { e.dataTransfer.setData('application/x-block-tool', 'image'); e.dataTransfer.setData('application/x-block-image-url', img.publicUrl); e.dataTransfer.effectAllowed = 'copy'; }}
+                      className={`border rounded overflow-hidden cursor-grab active:cursor-grabbing aspect-square bg-muted/30 ${selectedGalleryImage[blockKey]?.path === img.path ? 'ring-2 ring-primary' : ''}`}
                       title={img.name}
                     >
-                      <img src={img.url} alt={img.name} className="w-full h-full object-contain" />
+                      <img src={img.blobUrl} alt={img.name} className="w-full h-full object-contain" />
                     </div>
                   ))}
                 </div>
@@ -395,7 +438,7 @@ const LetterTemplateManager: React.FC = () => {
                   <div className="rounded border bg-white p-2">
                     <div className="relative h-20 w-full overflow-hidden rounded border border-dashed border-muted-foreground/40 bg-[radial-gradient(circle,_#e5e7eb_1px,_transparent_1px)] bg-[length:10px_10px]">
                       <img
-                        src={selectedGalleryImage[blockKey]?.url}
+                        src={selectedGalleryImage[blockKey]?.blobUrl}
                         alt={selectedGalleryImage[blockKey]?.name}
                         className="absolute left-1/2 top-1/2 h-14 w-24 -translate-x-1/2 -translate-y-1/2 object-contain"
                       />
@@ -407,7 +450,7 @@ const LetterTemplateManager: React.FC = () => {
                     variant="secondary"
                     size="sm"
                     className="w-full text-xs"
-                    onClick={() => addImageItemToBlock(blockKey, selectedGalleryImage[blockKey]!.url, rect)}
+                    onClick={() => addImageItemToBlock(blockKey, selectedGalleryImage[blockKey]!.publicUrl, rect)}
                   >
                     <ImageIcon className="h-3 w-3 mr-1" /> In Canvas einfügen
                   </Button>
