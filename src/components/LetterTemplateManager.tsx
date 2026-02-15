@@ -276,77 +276,169 @@ const LetterTemplateManager: React.FC = () => {
     });
   };
 
+  // Block canvas drag state
+  const [blockDrag, setBlockDrag] = useState<{ blockKey: string; itemId: string; startX: number; startY: number; ox: number; oy: number } | null>(null);
+  const [blockResize, setBlockResize] = useState<{ blockKey: string; itemId: string; startX: number; startY: number; ow: number; oh: number } | null>(null);
+
+  const onBlockCanvasMouseMove = (e: React.MouseEvent, blockKey: string, scale: number) => {
+    if (blockResize && blockResize.blockKey === blockKey) {
+      const dx = (e.clientX - blockResize.startX) / scale;
+      const dy = (e.clientY - blockResize.startY) / scale;
+      const newW = Math.max(5, blockResize.ow + dx);
+      const newH = Math.max(5, blockResize.oh + dy);
+      const items = getBlockItems(blockKey as any);
+      setBlockItems(blockKey as any, items.map((item: any) => item.id === blockResize.itemId ? { ...item, width: Math.round(newW), height: Math.round(newH) } : item));
+      return;
+    }
+    if (blockDrag && blockDrag.blockKey === blockKey) {
+      const dx = (e.clientX - blockDrag.startX) / scale;
+      const dy = (e.clientY - blockDrag.startY) / scale;
+      const newX = Math.max(0, Math.round(blockDrag.ox + dx));
+      const newY = Math.max(0, Math.round(blockDrag.oy + dy));
+      const items = getBlockItems(blockKey as any);
+      setBlockItems(blockKey as any, items.map((item: any) => item.id === blockDrag.itemId ? { ...item, x: newX, y: newY } : item));
+    }
+  };
+
+  const onBlockCanvasMouseUp = () => { setBlockDrag(null); setBlockResize(null); };
+
   const renderBlockCanvas = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments', title: string, rect: { top: number; left: number; width: number; height: number }) => {
     const items = getBlockItems(blockKey);
     const scale = 2.4;
     const selectedId = selectedBlockItem[blockKey] || items[0]?.id || null;
-    const selected = items.find((item) => item.id === selectedId) || null;
+    const selected = items.find((item: any) => item.id === selectedId) || null;
     const ruler = !!showBlockRuler[blockKey];
     const showAxes = !!showBlockRuler[`${blockKey}_axes`];
 
-    const addText = () => {
-      const id = Date.now().toString();
-      setBlockItems(blockKey, [...items, { id, type: 'text', x: 5, y: 5, width: 60, content: 'Neuer Text', fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' }]);
-      setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
-    };
-
-    const updateItem = (id: string, updates: any) => setBlockItems(blockKey, items.map((item) => (item.id === id ? { ...item, ...updates } : item)));
+    const updateItem = (id: string, updates: any) => setBlockItems(blockKey, items.map((item: any) => (item.id === id ? { ...item, ...updates } : item)));
 
     const deleteItem = (id: string) => {
-      setBlockItems(blockKey, items.filter((item) => item.id !== id));
+      setBlockItems(blockKey, items.filter((item: any) => item.id !== id));
       if (selectedId === id) setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: null }));
     };
 
     const canvasW = rect.width * scale;
     const canvasH = Math.max(rect.height, 25) * scale;
 
+    const variablePlaceholders = [
+      { label: 'Betreff', variable: '{{betreff}}' },
+      { label: 'Datum', variable: '{{datum}}' },
+      { label: 'Empfänger', variable: '{{empfaenger_name}}' },
+      { label: 'Absender', variable: '{{absender_name}}' },
+      { label: 'Adresse', variable: '{{empfaenger_adresse}}' },
+      { label: 'PLZ/Ort', variable: '{{empfaenger_plz_ort}}' },
+    ];
+
     return (
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">{title}</h3>
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
-          <div className="space-y-3 border rounded-lg p-3">
+          <div className="space-y-3 border rounded-lg p-3 overflow-y-auto max-h-[70vh]">
             {/* Draggable text tool */}
             <div draggable onDragStart={(e) => { e.dataTransfer.setData('application/x-block-tool', 'text'); e.dataTransfer.effectAllowed = 'copy'; }} className="rounded border bg-background px-3 py-2 text-sm cursor-grab active:cursor-grabbing flex items-start gap-2">
               <span className="text-muted-foreground mt-0.5">⠿</span>
               <div><div className="font-medium text-xs">Text-Block</div><div className="text-xs text-muted-foreground">Auf Canvas ziehen</div></div>
             </div>
+            {/* Variablen-Platzhalter */}
+            <div className="space-y-1">
+              <Label className="text-xs uppercase text-muted-foreground">Variablen</Label>
+              <div className="flex flex-wrap gap-1">
+                {variablePlaceholders.map((v) => (
+                  <div
+                    key={v.variable}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', v.variable); e.dataTransfer.setData('application/x-block-tool', 'variable'); e.dataTransfer.effectAllowed = 'copy'; }}
+                    className="px-2 py-1 rounded-full border bg-amber-50 text-amber-800 border-amber-300 text-[11px] cursor-grab active:cursor-grabbing select-none"
+                  >
+                    {v.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Bilder-Galerie */}
+            <div className="space-y-1">
+              <Label className="text-xs uppercase text-muted-foreground">Bilder</Label>
+              <Button type="button" variant="outline" size="sm" className="w-full text-xs" onClick={handleSubjectImageUpload}>
+                <Upload className="h-3 w-3 mr-1" /> Bild hochladen
+              </Button>
+              {systemImages.length > 0 && (
+                <div className="grid grid-cols-4 gap-1">
+                  {systemImages.map((img) => (
+                    <div
+                      key={img.name}
+                      draggable
+                      onDragStart={(e) => { e.dataTransfer.setData('application/x-block-tool', 'image'); e.dataTransfer.setData('application/x-block-image-url', img.url); e.dataTransfer.effectAllowed = 'copy'; }}
+                      className="border rounded overflow-hidden cursor-grab active:cursor-grabbing aspect-square bg-muted/30"
+                      title={img.name}
+                    >
+                      <img src={img.url} alt={img.name} className="w-full h-full object-contain" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="flex gap-2">
               <Button type="button" variant={ruler ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [blockKey]: !prev[blockKey] }))}>Lineal</Button>
               <Button type="button" variant={showAxes ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_axes`]: !prev[`${blockKey}_axes`] }))}>Achsen</Button>
             </div>
-            <div className="space-y-2 max-h-52 overflow-auto">
-              {items.map((item) => (
+            {/* Element list */}
+            <div className="space-y-2 max-h-40 overflow-auto">
+              {items.map((item: any) => (
                 <div key={item.id} className={`p-2 border rounded cursor-pointer flex items-center justify-between ${selectedId === item.id ? 'border-primary bg-primary/10' : 'border-border'}`} onClick={() => setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id }))}>
-                  <span className="text-sm truncate">{(item.content || 'Textblock').toString().slice(0, 35)}</span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    {item.isVariable && <span className="text-amber-600 text-[10px]">⚡</span>}
+                    <span className="text-sm truncate">{(item.content || item.type || 'Element').toString().slice(0, 30)}</span>
+                  </div>
                   <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} className="h-6 w-6 p-0 shrink-0">
                     <Trash2 className="h-3 w-3 text-destructive" />
                   </Button>
                 </div>
               ))}
             </div>
+            {/* Selected element properties */}
             {selected && (
-              <>
-                <Label>Textinhalt</Label>
-                <Textarea value={selected.content || ''} onChange={(e) => updateItem(selected.id, { content: e.target.value })} rows={4} />
-                <Label>Schriftart</Label>
-                <Select value={selected.fontFamily || 'Arial'} onValueChange={(value) => updateItem(selected.id, { fontFamily: value })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Arial">Arial</SelectItem>
-                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                    <SelectItem value="Calibri">Calibri</SelectItem>
-                    <SelectItem value="Verdana">Verdana</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button type="button" size="sm" variant={selected.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontWeight: selected.fontWeight === 'bold' ? 'normal' : 'bold' })}>Fett</Button>
-                  <Button type="button" size="sm" variant={selected.fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontStyle: selected.fontStyle === 'italic' ? 'normal' : 'italic' })}>Kursiv</Button>
-                  <Button type="button" size="sm" variant={selected.textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { textDecoration: selected.textDecoration === 'underline' ? 'none' : 'underline' })}>Unterstr.</Button>
+              <div className="space-y-2 border-t pt-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label className="text-xs">X (mm)</Label><Input type="number" value={selected.x || 0} onChange={(e) => updateItem(selected.id, { x: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" /></div>
+                  <div><Label className="text-xs">Y (mm)</Label><Input type="number" value={selected.y || 0} onChange={(e) => updateItem(selected.id, { y: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" /></div>
                 </div>
-              </>
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label className="text-xs">Breite (mm)</Label><Input type="number" value={selected.width || 50} onChange={(e) => updateItem(selected.id, { width: parseFloat(e.target.value) || 50 })} className="h-7 text-xs" /></div>
+                  {selected.height != null && <div><Label className="text-xs">Höhe (mm)</Label><Input type="number" value={selected.height || 10} onChange={(e) => updateItem(selected.id, { height: parseFloat(e.target.value) || 10 })} className="h-7 text-xs" /></div>}
+                </div>
+                {(selected.type === 'text' || !selected.type) && (
+                  <>
+                    <Label className="text-xs">Textinhalt</Label>
+                    <Textarea value={selected.content || ''} onChange={(e) => updateItem(selected.id, { content: e.target.value })} rows={3} className="text-xs" />
+                    <Label className="text-xs">Schriftart</Label>
+                    <Select value={selected.fontFamily || 'Arial'} onValueChange={(value) => updateItem(selected.id, { fontFamily: value })}>
+                      <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Arial">Arial</SelectItem>
+                        <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                        <SelectItem value="Calibri">Calibri</SelectItem>
+                        <SelectItem value="Verdana">Verdana</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="grid grid-cols-3 gap-1">
+                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontWeight: selected.fontWeight === 'bold' ? 'normal' : 'bold' })}>Fett</Button>
+                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontStyle: selected.fontStyle === 'italic' ? 'normal' : 'italic' })}>Kursiv</Button>
+                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { textDecoration: selected.textDecoration === 'underline' ? 'none' : 'underline' })}>U</Button>
+                    </div>
+                  </>
+                )}
+                {selected.type === 'image' && (
+                  <p className="text-xs text-muted-foreground">Bild-Element. Position und Größe oben anpassen.</p>
+                )}
+              </div>
             )}
           </div>
-          <div className="border rounded-lg p-3 bg-muted/30 overflow-auto">
+          {/* Canvas area - centered */}
+          <div className="border rounded-lg p-6 bg-muted/30 overflow-auto flex items-center justify-center min-h-[200px]"
+            onMouseMove={(e) => onBlockCanvasMouseMove(e, blockKey, scale)}
+            onMouseUp={onBlockCanvasMouseUp}
+            onMouseLeave={onBlockCanvasMouseUp}
+          >
             <div className="relative" style={{ width: canvasW + 24, height: canvasH + 24 }}>
               {ruler && (
                 <>
@@ -354,19 +446,61 @@ const LetterTemplateManager: React.FC = () => {
                   <div className="absolute top-6 left-0 bottom-0 w-6 border rounded bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(Math.max(rect.height, 25) / 10) + 1 }).map((_, i) => <span key={`by-${i}`} className="absolute" style={{ top: i * 10 * scale }}>{i * 10}</span>)}</div>
                 </>
               )}
-              <div className="absolute left-6 top-6 relative bg-white border"
+              <div className="absolute left-6 top-6 relative bg-white border select-none"
                 style={{ width: canvasW, height: canvasH, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '8px 8px' }}
-                onKeyDown={(e) => { if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) { e.preventDefault(); deleteItem(selectedId); } }}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) { e.preventDefault(); deleteItem(selectedId); return; }
+                  if (!selectedId) return;
+                  let dx = 0, dy = 0;
+                  if (e.key === 'ArrowLeft') dx = -1;
+                  if (e.key === 'ArrowRight') dx = 1;
+                  if (e.key === 'ArrowUp') dy = -1;
+                  if (e.key === 'ArrowDown') dy = 1;
+                  if (dx || dy) {
+                    e.preventDefault();
+                    const item = items.find((i: any) => i.id === selectedId);
+                    if (item) updateItem(selectedId, { x: Math.max(0, (item.x || 0) + dx), y: Math.max(0, (item.y || 0) + dy) });
+                  }
+                }}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
+                  const domRect = e.currentTarget.getBoundingClientRect();
+                  const x = Math.round((e.clientX - domRect.left) / scale);
+                  const y = Math.round((e.clientY - domRect.top) / scale);
                   const tool = e.dataTransfer.getData('application/x-block-tool');
+                  // Handle text drop
                   if (tool === 'text') {
-                    const domRect = e.currentTarget.getBoundingClientRect();
-                    const x = Math.round((e.clientX - domRect.left) / scale);
-                    const y = Math.round((e.clientY - domRect.top) / scale);
                     const id = Date.now().toString();
                     setBlockItems(blockKey, [...items, { id, type: 'text', x, y, width: 60, content: 'Neuer Text', fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' }]);
+                    setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
+                    return;
+                  }
+                  // Handle variable drop
+                  if (tool === 'variable') {
+                    const varText = e.dataTransfer.getData('text/plain');
+                    if (varText && varText.startsWith('{{')) {
+                      const id = Date.now().toString();
+                      setBlockItems(blockKey, [...items, { id, type: 'text', x, y, width: 60, content: varText, isVariable: true, fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' }]);
+                      setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
+                      return;
+                    }
+                  }
+                  // Handle image drop
+                  if (tool === 'image') {
+                    const imgUrl = e.dataTransfer.getData('application/x-block-image-url');
+                    if (imgUrl) {
+                      const id = Date.now().toString();
+                      setBlockItems(blockKey, [...items, { id, type: 'image', x, y, width: 30, height: 15, imageUrl: imgUrl }]);
+                      setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
+                      return;
+                    }
+                  }
+                  // Fallback: check text/plain for variables
+                  const textData = e.dataTransfer.getData('text/plain');
+                  if (textData && textData.startsWith('{{')) {
+                    const id = Date.now().toString();
+                    setBlockItems(blockKey, [...items, { id, type: 'text', x, y, width: 60, content: textData, isVariable: true, fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' }]);
                     setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
                   }
                 }}
@@ -379,17 +513,37 @@ const LetterTemplateManager: React.FC = () => {
                     <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none z-10" />
                   </>
                 )}
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    onMouseDown={(e) => { if (e.target === e.currentTarget || (e.target as HTMLElement).closest('[data-block-item]')) { setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id })); } }}
-                    data-block-item
-                    className={`absolute border px-2 py-1 text-xs ${selectedId === item.id ? 'border-primary bg-primary/15' : 'border-primary/50 bg-primary/10'}`}
-                    style={{ left: (item.x || 0) * scale, top: (item.y || 0) * scale, width: (item.width || 50) * scale, fontFamily: item.fontFamily || 'Arial', fontWeight: item.fontWeight || 'normal', fontStyle: item.fontStyle || 'normal', textDecoration: item.textDecoration || 'none' }}
-                  >
-                    {item.content || 'Text'}
-                  </div>
-                ))}
+                {items.map((item: any) => {
+                  const isSelected = selectedId === item.id;
+                  // Image element
+                  if (item.type === 'image' && item.imageUrl) {
+                    return (
+                      <div
+                        key={item.id}
+                        className={`absolute cursor-move border ${isSelected ? 'border-primary border-dashed border-2' : 'border-transparent'}`}
+                        style={{ left: (item.x || 0) * scale, top: (item.y || 0) * scale, width: (item.width || 30) * scale, height: (item.height || 15) * scale }}
+                        onMouseDown={(e) => { e.stopPropagation(); setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id })); setBlockDrag({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ox: item.x || 0, oy: item.y || 0 }); }}
+                      >
+                        <img src={item.imageUrl} alt="" className="w-full h-full object-contain pointer-events-none" draggable={false} />
+                        {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => { e.stopPropagation(); setBlockResize({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ow: item.width || 30, oh: item.height || 15 }); }} />}
+                      </div>
+                    );
+                  }
+                  // Text element (default)
+                  return (
+                    <div
+                      key={item.id}
+                      onMouseDown={(e) => { e.stopPropagation(); setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id })); setBlockDrag({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ox: item.x || 0, oy: item.y || 0 }); }}
+                      data-block-item
+                      className={`absolute border px-2 py-1 text-xs cursor-move ${isSelected ? 'border-primary bg-primary/15' : 'border-primary/50 bg-primary/10'} ${item.isVariable ? 'bg-amber-50 border-amber-400 text-amber-900' : ''}`}
+                      style={{ left: (item.x || 0) * scale, top: (item.y || 0) * scale, width: (item.width || 50) * scale, fontFamily: item.fontFamily || 'Arial', fontWeight: item.fontWeight || 'normal', fontStyle: item.fontStyle || 'normal', textDecoration: item.textDecoration || 'none' }}
+                    >
+                      {item.isVariable && <span className="text-[9px] text-amber-600 mr-1">⚡</span>}
+                      {item.content || 'Text'}
+                      {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => { e.stopPropagation(); setBlockResize({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ow: item.width || 50, oh: item.height || 10 }); }} />}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -565,49 +719,6 @@ const LetterTemplateManager: React.FC = () => {
           width: formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
           height: Math.max(8, formData.layout_settings.subject.marginBottom + 4),
         })}
-        <div className="border-t pt-4">
-          <h3 className="text-lg font-semibold mb-3">Variablen-Platzhalter</h3>
-          <p className="text-sm text-muted-foreground mb-3">Ziehen Sie Platzhalter per Drag-and-Drop auf den Canvas oben.</p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { label: 'Betreff', variable: '{{betreff}}' },
-              { label: 'Datum', variable: '{{datum}}' },
-              { label: 'Empfänger', variable: '{{empfaenger_name}}' },
-              { label: 'Absender', variable: '{{absender_name}}' },
-            ].map((v) => (
-              <div
-                key={v.variable}
-                draggable
-                onDragStart={(e) => { e.dataTransfer.setData('text/plain', v.variable); e.dataTransfer.effectAllowed = 'copy'; }}
-                className="px-3 py-1.5 rounded-full border bg-muted text-sm cursor-grab active:cursor-grabbing select-none"
-              >
-                {v.label} <span className="text-muted-foreground text-xs ml-1">{v.variable}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="border-t pt-4">
-          <h3 className="text-lg font-semibold mb-3">Bilder</h3>
-          <p className="text-sm text-muted-foreground mb-3">Ziehen Sie Bilder auf den Canvas oder laden Sie neue hoch.</p>
-          <Button variant="outline" size="sm" onClick={handleSubjectImageUpload} className="mb-3">
-            <Upload className="h-4 w-4 mr-2" /> Bild hochladen
-          </Button>
-          {systemImages.length > 0 && (
-            <div className="grid grid-cols-6 gap-2">
-              {systemImages.map((img) => (
-                <div
-                  key={img.name}
-                  draggable
-                  onDragStart={(e) => { e.dataTransfer.setData('application/x-subject-image', img.url); e.dataTransfer.effectAllowed = 'copy'; }}
-                  className="border rounded overflow-hidden cursor-grab active:cursor-grabbing aspect-square bg-muted/30"
-                  title={img.name}
-                >
-                  <img src={img.url} alt={img.name} className="w-full h-full object-contain" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </TabsContent>
 
       <TabsContent value="block-content" className="space-y-4">
@@ -694,13 +805,16 @@ const LetterTemplateManager: React.FC = () => {
         </div>
       ))}
 
-      {/* Edit Dialog */}
-      {editingTemplate && (
-        <Dialog open={!!editingTemplate} onOpenChange={(open) => !open && cancelEditing()}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Template bearbeiten: {editingTemplate.name}</DialogTitle>
-            </DialogHeader>
+      {/* Edit Template - inline card (same as create) */}
+      {editingTemplate && !showCreateDialog && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Template bearbeiten: {editingTemplate.name}</CardTitle>
+              <Button variant="ghost" size="sm" onClick={cancelEditing}><X className="h-4 w-4" /></Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               {renderTabsList()}
               {renderCommonTabsContent()}
@@ -709,8 +823,8 @@ const LetterTemplateManager: React.FC = () => {
               <Button variant="outline" onClick={cancelEditing}><X className="h-4 w-4 mr-2" />Abbrechen</Button>
               <Button onClick={handleUpdateTemplate}><Save className="h-4 w-4 mr-2" />Speichern</Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </CardContent>
+        </Card>
       )}
 
       {templates.length === 0 && !loading && !showCreateDialog && !editingTemplate && (

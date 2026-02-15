@@ -671,7 +671,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           <CardTitle className="text-sm">Vorschau</CardTitle>
           <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht. Resize + Ctrl = Seitenverhältnis.</p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center min-h-[340px]">
           <div className="relative pl-8 pt-8">
             {showRuler && (
               <>
@@ -728,6 +729,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 return null;
               })}
             </div>
+          </div>
           </div>
         </CardContent>
       </Card>
