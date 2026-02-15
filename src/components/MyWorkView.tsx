@@ -73,6 +73,7 @@ export function MyWorkView() {
   const [isEmployee, setIsEmployee] = useState(false);
   const [isAbgeordneter, setIsAbgeordneter] = useState(false);
   const [isBueroleitung, setIsBueroleitung] = useState(false);
+  const [failedTabLogoUrl, setFailedTabLogoUrl] = useState<string | null>(null);
   const [totalCounts, setTotalCounts] = useState<TabCounts>({
     tasks: 0,
     decisions: 0,
