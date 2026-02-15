@@ -19,7 +19,7 @@ import { DefaultParticipantsDialog } from "@/components/task-decisions/DefaultPa
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { MyWorkDecisionCard } from "./decisions/MyWorkDecisionCard";
 import { MyWorkDecisionSidebar } from "./decisions/MyWorkDecisionSidebar";
-import { MyWorkDecision, SidebarOpenQuestion, SidebarNewComment, SidebarDiscussionComment, getResponseSummary } from "./decisions/types";
+import { MyWorkDecision, SidebarOpenQuestion, SidebarNewComment, getResponseSummary } from "./decisions/types";
 
 export function MyWorkDecisionsTab() {
   const { user } = useAuth();
@@ -370,65 +370,6 @@ export function MyWorkDecisionsTab() {
   }, [decisions, activeTab, searchQuery]);
 
   // Sidebar data
-  const [sidebarComments, setSidebarComments] = useState<SidebarDiscussionComment[]>([]);
-
-  // Load discussion comments for sidebar
-  useEffect(() => {
-    if (!user || decisions.length === 0) {
-      setSidebarComments([]);
-      return;
-    }
-
-    const loadDiscussionComments = async () => {
-      const decisionIds = decisions.map(d => d.id);
-      const { data: comments } = await supabase
-        .from('task_decision_comments')
-        .select('id, decision_id, user_id, content, created_at')
-        .in('decision_id', decisionIds)
-        .neq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (!comments || comments.length === 0) {
-        setSidebarComments([]);
-        return;
-      }
-
-      const userIds = [...new Set(comments.map(c => c.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, badge_color, avatar_url')
-        .in('user_id', userIds);
-
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      const recentComments: SidebarDiscussionComment[] = comments
-        .filter(c => new Date(c.created_at) > sevenDaysAgo)
-        .map(c => {
-          const decision = decisions.find(d => d.id === c.decision_id);
-          const profile = profileMap.get(c.user_id);
-          const isMention = c.content?.includes(`data-mention-user-id="${user.id}"`) || false;
-          return {
-            id: c.id,
-            decisionId: c.decision_id,
-            decisionTitle: decision?.title || 'Entscheidung',
-            authorName: profile?.display_name || null,
-            authorBadgeColor: profile?.badge_color || null,
-            authorAvatarUrl: profile?.avatar_url || null,
-            content: c.content,
-            createdAt: c.created_at,
-            isMention,
-          };
-        });
-
-      setSidebarComments(recentComments);
-    };
-
-    loadDiscussionComments();
-  }, [user, decisions]);
-
   const sidebarData = useMemo(() => {
     const openQuestions: SidebarOpenQuestion[] = [];
     const newComments: SidebarNewComment[] = [];
@@ -450,7 +391,7 @@ export function MyWorkDecisionsTab() {
           });
         }
 
-        if (decision.isCreator && latest.comment && latest.response_type !== 'question') {
+        if (decision.isCreator && latest.comment && latest.response_type !== 'question' && !latest.creator_response) {
           const sevenDaysAgo = new Date();
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
           if (new Date(latest.created_at) > sevenDaysAgo) {
@@ -469,8 +410,8 @@ export function MyWorkDecisionsTab() {
       });
     });
 
-    return { openQuestions, newComments, discussionComments: sidebarComments };
-  }, [decisions, sidebarComments]);
+    return { openQuestions, newComments };
+  }, [decisions]);
 
   // Inline reply to questions from card
   const sendCreatorResponse = async (responseId: string, responseText: string) => {
@@ -661,10 +602,8 @@ export function MyWorkDecisionsTab() {
               <MyWorkDecisionSidebar
                 openQuestions={sidebarData.openQuestions}
                 newComments={sidebarData.newComments}
-                discussionComments={sidebarData.discussionComments}
                 onQuestionClick={handleOpenDetails}
                 onCommentClick={handleOpenDetails}
-                onDiscussionClick={handleOpenDetails}
                 onResponseSent={loadDecisions}
               />
             </div>
