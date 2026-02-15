@@ -70,6 +70,7 @@ const LetterTemplateManager: React.FC = () => {
   const [selectedBlockItem, setSelectedBlockItem] = useState<Record<string, string | null>>({});
   const [showBlockRuler, setShowBlockRuler] = useState<Record<string, boolean>>({});
   const [showPreview, setShowPreview] = useState<string | null>(null);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<Record<string, { name: string; url: string } | null>>({});
   const [systemImages, setSystemImages] = useState<{ name: string; url: string }[]>([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -302,6 +303,17 @@ const LetterTemplateManager: React.FC = () => {
 
   const onBlockCanvasMouseUp = () => { setBlockDrag(null); setBlockResize(null); };
 
+  const addImageItemToBlock = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments', imageUrl: string, rect: { width: number; height: number }) => {
+    const items = getBlockItems(blockKey);
+    const id = Date.now().toString();
+    const defaultW = Math.min(40, Math.max(20, rect.width * 0.35));
+    const defaultH = Math.min(18, Math.max(10, rect.height * 0.7));
+    const x = Math.max(0, Math.round((rect.width - defaultW) / 2));
+    const y = Math.max(0, Math.round((Math.max(rect.height, 25) - defaultH) / 2));
+    setBlockItems(blockKey, [...items, { id, type: 'image', x, y, width: defaultW, height: defaultH, imageUrl }]);
+    setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
+  };
+
   const renderBlockCanvas = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments', title: string, rect: { top: number; left: number; width: number; height: number }) => {
     const items = getBlockItems(blockKey);
     const scale = 2.4;
@@ -367,13 +379,38 @@ const LetterTemplateManager: React.FC = () => {
                     <div
                       key={img.name}
                       draggable
+                      onClick={() => setSelectedGalleryImage((prev) => ({ ...prev, [blockKey]: img }))}
                       onDragStart={(e) => { e.dataTransfer.setData('application/x-block-tool', 'image'); e.dataTransfer.setData('application/x-block-image-url', img.url); e.dataTransfer.effectAllowed = 'copy'; }}
-                      className="border rounded overflow-hidden cursor-grab active:cursor-grabbing aspect-square bg-muted/30"
+                      className={`border rounded overflow-hidden cursor-grab active:cursor-grabbing aspect-square bg-muted/30 ${selectedGalleryImage[blockKey]?.url === img.url ? 'ring-2 ring-primary' : ''}`}
                       title={img.name}
                     >
                       <img src={img.url} alt={img.name} className="w-full h-full object-contain" />
                     </div>
                   ))}
+                </div>
+              )}
+              {selectedGalleryImage[blockKey] && (
+                <div className="space-y-2 rounded-md border p-2 bg-muted/30">
+                  <Label className="text-xs uppercase text-muted-foreground">Canvas-Vorschau</Label>
+                  <div className="rounded border bg-white p-2">
+                    <div className="relative h-20 w-full overflow-hidden rounded border border-dashed border-muted-foreground/40 bg-[radial-gradient(circle,_#e5e7eb_1px,_transparent_1px)] bg-[length:10px_10px]">
+                      <img
+                        src={selectedGalleryImage[blockKey]?.url}
+                        alt={selectedGalleryImage[blockKey]?.name}
+                        className="absolute left-1/2 top-1/2 h-14 w-24 -translate-x-1/2 -translate-y-1/2 object-contain"
+                      />
+                    </div>
+                    <p className="mt-1 truncate text-[11px] text-muted-foreground">{selectedGalleryImage[blockKey]?.name}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={() => addImageItemToBlock(blockKey, selectedGalleryImage[blockKey]!.url, rect)}
+                  >
+                    <ImageIcon className="h-3 w-3 mr-1" /> In Canvas einfügen
+                  </Button>
                 </div>
               )}
             </div>
