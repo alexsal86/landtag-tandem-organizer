@@ -132,6 +132,7 @@ export function MyWorkView() {
     }
   }, [searchParams, activeTab, setSearchParams]);
 
+
   // Memoized loadCounts for realtime updates
   const loadCounts = useCallback(async () => {
     if (!user) return;
@@ -470,7 +471,17 @@ export function MyWorkView() {
                 }`}
               >
                 {tab.isLogo && app_logo_url ? (
-                  <img src={app_logo_url} alt="Logo" className="h-5 w-5 object-contain rounded" crossOrigin="anonymous" />
+                  <img
+                    src={app_logo_url}
+                    alt="Logo"
+                    className="h-5 w-5 object-contain rounded"
+                    onError={(event) => {
+                      const target = event.currentTarget;
+                      if (!target.src.endsWith('/favicon.ico')) {
+                        target.src = '/favicon.ico';
+                      }
+                    }}
+                  />
                 ) : (
                   <Icon className="h-4 w-4" />
                 )}
