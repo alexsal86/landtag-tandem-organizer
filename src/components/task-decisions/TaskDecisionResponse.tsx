@@ -290,6 +290,7 @@ export const TaskDecisionResponse = ({
               size="sm"
               onClick={() => {
                 setQuestionComment(currentResponse?.comment || "");
+                setShowCommentField(true);
                 setShowEdit(true);
               }}
               className="text-xs"
