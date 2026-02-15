@@ -27,6 +27,7 @@ export function GeneralSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [logoLoadFailed, setLogoLoadFailed] = useState(false);
 
   // Load current settings for this tenant
   useEffect(() => {
@@ -34,8 +35,8 @@ export function GeneralSettings() {
     
     const loadSettings = async () => {
       try {
-        // First try tenant-specific settings
-        const { data, error } = await supabase
+        // First load tenant-specific settings
+        const { data: tenantData, error } = await supabase
           .from('app_settings')
           .select('setting_key, setting_value')
           .eq('tenant_id', currentTenant.id)
@@ -43,26 +44,42 @@ export function GeneralSettings() {
 
         if (error) throw error;
 
-        if (data && data.length > 0) {
-          const settingsMap = data.reduce((acc, item) => {
-            const key = item.setting_key as keyof AppSettings;
-            acc[key] = item.setting_value || '';
-            return acc;
-          }, {} as AppSettings);
+        const tenantSettings = (tenantData || []).reduce((acc, item) => {
+          const key = item.setting_key as keyof AppSettings;
+          acc[key] = item.setting_value || '';
+          return acc;
+        }, {} as Partial<AppSettings>);
 
-          setSettings({
-            app_name: settingsMap.app_name || "LandtagsOS",
-            app_subtitle: settingsMap.app_subtitle || "Koordinationssystem", 
-            app_logo_url: settingsMap.app_logo_url || ""
-          });
-        } else {
-          // No tenant-specific settings - use defaults
-          setSettings({
-            app_name: "LandtagsOS",
-            app_subtitle: "Koordinationssystem",
-            app_logo_url: ""
-          });
+        const hasAllTenantValues = Boolean(
+          tenantSettings.app_name && tenantSettings.app_subtitle && tenantSettings.app_logo_url
+        );
+
+        // If tenant settings are incomplete, fill missing values from global defaults.
+        // Important: do not fail the whole page when global settings are not accessible.
+        let globalSettings: Partial<AppSettings> = {};
+        if (!hasAllTenantValues) {
+          const { data: globalData, error: globalError } = await supabase
+            .from('app_settings')
+            .select('setting_key, setting_value')
+            .is('tenant_id', null)
+            .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
+
+          if (!globalError) {
+            globalSettings = (globalData || []).reduce((acc, item) => {
+              const key = item.setting_key as keyof AppSettings;
+              acc[key] = item.setting_value || '';
+              return acc;
+            }, {} as Partial<AppSettings>);
+          } else {
+            console.warn('Global app settings fallback not available:', globalError);
+          }
         }
+
+        setSettings({
+          app_name: tenantSettings.app_name || globalSettings.app_name || "LandtagsOS",
+          app_subtitle: tenantSettings.app_subtitle || globalSettings.app_subtitle || "Koordinationssystem",
+          app_logo_url: tenantSettings.app_logo_url || globalSettings.app_logo_url || ""
+        });
       } catch (error) {
         console.error('Error loading settings:', error);
         toast({
@@ -136,6 +153,10 @@ export function GeneralSettings() {
       setUploading(false);
     }
   };
+
+  useEffect(() => {
+    setLogoLoadFailed(false);
+  }, [settings.app_logo_url]);
 
   const saveSettings = async () => {
     if (!currentTenant?.id) {
@@ -225,24 +246,23 @@ export function GeneralSettings() {
           <div className="space-y-2">
             <Label>Logo</Label>
             <div className="flex items-center gap-4">
-            {settings.app_logo_url ? (
-                <div className="h-20 w-20 rounded-lg border bg-muted/30 p-2 flex items-center justify-center">
-                  <img 
-                    src={settings.app_logo_url} 
-                    alt="App Logo" 
-                    className="max-h-16 max-w-16 object-contain"
-                    onError={(e) => {
-                      console.error("Logo konnte nicht geladen werden:", settings.app_logo_url);
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement?.classList.add('hidden');
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="h-20 w-20 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
-                  <FileText className="h-8 w-8 text-muted-foreground" />
-                </div>
-              )}
+            {settings.app_logo_url && !logoLoadFailed ? (
+              <div className="h-20 w-20 rounded-lg border bg-muted/30 p-2 flex items-center justify-center">
+                <img
+                  src={settings.app_logo_url}
+                  alt="App Logo"
+                  className="max-h-16 max-w-16 object-contain"
+                  onError={() => {
+                    console.error("Logo konnte nicht geladen werden:", settings.app_logo_url);
+                    setLogoLoadFailed(true);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="h-20 w-20 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
+                <FileText className="h-8 w-8 text-muted-foreground" />
+              </div>
+            )}
               
               <div className="flex flex-col gap-2">
                 <input
