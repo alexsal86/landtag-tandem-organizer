@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 
 interface ResponseHistoryEntry {
   id: string;
@@ -106,7 +107,10 @@ export const ResponseHistoryTimeline = ({ participantId, decisionId }: ResponseH
               )}
             </div>
             {entry.comment && (
-              <p className="text-muted-foreground text-xs">{entry.comment}</p>
+              <RichTextDisplay
+                content={entry.comment}
+                className="text-muted-foreground text-xs"
+              />
             )}
           </div>
         </div>
