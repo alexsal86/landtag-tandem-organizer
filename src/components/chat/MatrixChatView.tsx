@@ -276,7 +276,7 @@ export function MatrixChatView() {
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Verschlüsselung nicht verfügbar</AlertTitle>
                   <AlertDescription className="mt-1">
-                    Ende-zu-Ende-Verschlüsselung erfordert, dass die App in einem eigenständigen Browser-Tab läuft (nicht im Lovable Preview).
+                    Die Verschlüsselung konnte in dieser Sitzung nicht initialisiert werden. Öffnen Sie die App in einem eigenen HTTPS-Tab und laden Sie die Seite neu.
                     <a 
                       href={window.location.href} 
                       target="_blank" 

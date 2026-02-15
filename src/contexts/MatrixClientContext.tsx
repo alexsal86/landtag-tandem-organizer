@@ -137,11 +137,16 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         userId: creds.userId,
       });
 
+      const syncCryptoEnabledState = () => {
+        setCryptoEnabled(Boolean(matrixClient.getCrypto()));
+      };
+
       // Listen for sync events
       matrixClient.on(sdk.ClientEvent.Sync, (state: string) => {
         if (state === 'PREPARED') {
           setIsConnected(true);
           setIsConnecting(false);
+          syncCryptoEnabledState();
           updateRoomList(matrixClient);
         } else if (state === 'ERROR') {
           setConnectionError('Sync-Fehler aufgetreten');
@@ -331,10 +336,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         if (crypto) {
           console.log('Matrix E2EE initialized successfully');
           console.log('Device ID:', matrixClient.getDeviceId());
-          setCryptoEnabled(true);
         } else {
-          console.warn('Crypto API not available after initialization');
-          setCryptoEnabled(false);
+          console.warn('Crypto API not available directly after initialization, retry after client start');
         }
       } catch (cryptoError) {
         console.error('Failed to initialize E2EE:', cryptoError);
@@ -345,6 +348,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       // Start the client with E2EE support
       await matrixClient.startClient({ initialSyncLimit: 50 });
+      setCryptoEnabled(Boolean(matrixClient.getCrypto()));
       
       setClient(matrixClient);
       setCredentials(creds);
