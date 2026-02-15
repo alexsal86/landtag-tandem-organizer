@@ -30,12 +30,17 @@ interface DecisionCardActivityProps {
   participants?: Participant[];
   maxItems?: number;
   isCreator?: boolean;
+  currentUserId?: string;
   creatorProfile?: {
     display_name: string | null;
     badge_color: string | null;
     avatar_url: string | null;
   };
-  onReply?: (responseId: string, text: string) => Promise<void>;
+  onReply?: (payload: {
+    responseId: string;
+    text: string;
+    mode: 'creator_response' | 'participant_followup';
+  }) => Promise<void>;
 }
 
 const getInitials = (name: string | null) => {
@@ -43,7 +48,7 @@ const getInitials = (name: string | null) => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 };
 
-export function DecisionCardActivity({ participants = [], maxItems = 2, isCreator = false, creatorProfile, onReply }: DecisionCardActivityProps) {
+export function DecisionCardActivity({ participants = [], maxItems = 2, isCreator = false, currentUserId, creatorProfile, onReply }: DecisionCardActivityProps) {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -57,6 +62,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
     comment: string | null;
     creatorResponse: string | null;
     createdAt: string;
+    userId: string;
   }> = [];
 
   participants.forEach(p => {
@@ -73,6 +79,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
         comment: latest.comment,
         creatorResponse: latest.creator_response,
         createdAt: latest.updated_at || latest.created_at,
+        userId: p.user_id,
       });
     } else if (latest.comment) {
       activityItems.push({
@@ -84,6 +91,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
         comment: latest.comment,
         creatorResponse: latest.creator_response,
         createdAt: latest.updated_at || latest.created_at,
+        userId: p.user_id,
       });
     }
   });
@@ -92,11 +100,11 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
 
   const displayed = activityItems.slice(0, maxItems);
 
-  const handleSendReply = async (responseId: string) => {
+  const handleSendReply = async (responseId: string, mode: 'creator_response' | 'participant_followup') => {
     if (!replyText.trim() || !onReply) return;
     setIsSending(true);
     try {
-      await onReply(responseId, replyText.trim());
+      await onReply({ responseId, text: replyText.trim(), mode });
       setReplyText("");
       setReplyingTo(null);
     } catch (e) {
@@ -112,6 +120,11 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
     } catch {
       return '';
     }
+  };
+
+  const getReplyMode = () => {
+    if (isCreator) return 'creator_response' as const;
+    return 'participant_followup' as const;
   };
 
   return (
@@ -180,7 +193,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
                 </div>
               )}
               {/* Reply button for unanswered questions (creator only) */}
-              {isCreator && item.type === 'question' && !item.creatorResponse && onReply && replyingTo !== item.id && (
+              {isCreator && !item.creatorResponse && onReply && replyingTo !== item.id && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -188,6 +201,18 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
                   onClick={(e) => { e.stopPropagation(); setReplyingTo(item.id); }}
                 >
                   <Reply className="h-2.5 w-2.5 mr-0.5" />
+                  Antworten
+                </Button>
+              )}
+
+              {!isCreator && currentUserId === item.userId && item.creatorResponse && onReply && replyingTo !== item.id && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-1.5 text-[10px] text-primary hover:text-primary mt-0.5 -ml-1.5"
+                  onClick={(e) => { e.stopPropagation(); setReplyingTo(item.id); }}
+                >
+                  <ArrowRight className="h-2.5 w-2.5 mr-0.5" />
                   Antworten
                 </Button>
               )}
@@ -208,7 +233,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
                 <Button
                   size="sm"
                   className="h-6 text-[10px] px-2"
-                  onClick={(e) => { e.stopPropagation(); handleSendReply(item.id); }}
+                  onClick={(e) => { e.stopPropagation(); handleSendReply(item.id, getReplyMode()); }}
                   disabled={isSending || !replyText.trim()}
                 >
                   {isSending ? (

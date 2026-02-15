@@ -1151,12 +1151,13 @@ export const DecisionOverview = () => {
             participants={decision.participants} 
             maxItems={2} 
             isCreator={decision.isCreator}
+            currentUserId={user?.id}
             creatorProfile={decision.creator ? {
               display_name: decision.creator.display_name,
               badge_color: decision.creator.badge_color,
               avatar_url: decision.creator.avatar_url,
             } : undefined}
-            onReply={(responseId, text) => sendCreatorResponse(responseId, text)}
+            onReply={({ responseId, text }) => sendCreatorResponse(responseId, text)}
           />
 
         </CardContent>

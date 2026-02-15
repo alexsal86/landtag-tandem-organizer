@@ -29,7 +29,11 @@ interface MyWorkDecisionCardProps {
   onCreateTask: (decision: MyWorkDecision) => void;
   onResponseSubmitted: () => void;
   onOpenComments: (decisionId: string, title: string) => void;
-  onReply?: (responseId: string, text: string) => Promise<void>;
+  onReply?: (payload: {
+    responseId: string;
+    text: string;
+    mode: 'creator_response' | 'participant_followup';
+  }) => Promise<void>;
   commentCount: number;
   creatingTaskId: string | null;
   currentUserId: string;
@@ -342,6 +346,7 @@ const MyWorkDecisionCardInner = ({
           participants={decision.participants} 
           maxItems={2} 
           isCreator={decision.isCreator}
+          currentUserId={currentUserId}
           creatorProfile={decision.creator ? {
             display_name: decision.creator.display_name,
             badge_color: decision.creator.badge_color,

@@ -472,13 +472,25 @@ export function MyWorkDecisionsTab() {
     return { openQuestions, newComments, discussionComments: sidebarComments };
   }, [decisions, sidebarComments]);
 
-  // Inline reply to questions from card
-  const sendCreatorResponse = async (responseId: string, responseText: string) => {
-    if (!responseText?.trim()) return;
+  // Inline reply to activity from card
+  const sendActivityReply = async ({
+    responseId,
+    text,
+    mode,
+  }: {
+    responseId: string;
+    text: string;
+    mode: 'creator_response' | 'participant_followup';
+  }) => {
+    if (!text?.trim()) return;
+
+    const payload = mode === 'creator_response'
+      ? { creator_response: text.trim() }
+      : { comment: text.trim(), creator_response: null };
 
     const { error } = await supabase
       .from('task_decision_responses')
-      .update({ creator_response: responseText.trim() })
+      .update(payload)
       .eq('id', responseId);
 
     if (error) {
@@ -486,7 +498,12 @@ export function MyWorkDecisionsTab() {
       throw error;
     }
 
-    toast({ title: "Erfolgreich", description: "Antwort wurde gesendet." });
+    toast({
+      title: "Erfolgreich",
+      description: mode === 'creator_response'
+        ? "Antwort wurde gesendet."
+        : "Deine Rückfrage wurde gesendet.",
+    });
     loadDecisions();
   };
 
@@ -647,7 +664,7 @@ export function MyWorkDecisionsTab() {
                         onCreateTask={createTaskFromDecision}
                         onResponseSubmitted={loadDecisions}
                         onOpenComments={(id, title) => { setCommentsDecisionId(id); setCommentsDecisionTitle(title); }}
-                        onReply={sendCreatorResponse}
+                        onReply={sendActivityReply}
                         commentCount={getCommentCount(decision.id)}
                         creatingTaskId={creatingTaskId}
                         currentUserId={user?.id || ""}
