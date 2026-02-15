@@ -471,13 +471,17 @@ export function MyWorkView() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {tab.isLogo && app_logo_url && failedTabLogoUrl !== app_logo_url ? (
+                {tab.isLogo && app_logo_url ? (
                   <img
                     src={app_logo_url}
                     alt="Logo"
                     className="h-5 w-5 object-contain rounded"
-                    crossOrigin="anonymous"
-                    onError={() => setFailedTabLogoUrl(app_logo_url)}
+                    onError={(event) => {
+                      const target = event.currentTarget;
+                      if (!target.src.endsWith('/favicon.ico')) {
+                        target.src = '/favicon.ico';
+                      }
+                    }}
                   />
                 ) : (
                   <Icon className="h-4 w-4" />
