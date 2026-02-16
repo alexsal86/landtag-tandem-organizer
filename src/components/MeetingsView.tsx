@@ -1457,7 +1457,7 @@ export function MeetingsView() {
               await supabase.from('subtasks').insert({
                 task_id: taskId,
                 user_id: user.id,
-                description: `${meetingContext}: ${resultText}`,
+                description: `${resultText}\n${meetingContext}`,
                 assigned_to: originalTask.user_id || user.id,
                 is_completed: false,
                 order_index: nextOrder,
