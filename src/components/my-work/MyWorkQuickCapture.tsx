@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Pin, Palette, Save, ListTodo, Vote, Loader2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Pin, Palette, Save, ListTodo, Loader2, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -101,11 +102,43 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
     }
   };
 
+  const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      if (!saving && content.trim()) {
+        void handleSaveNote();
+      }
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      if (!saving && content.trim()) {
+        void handleSaveNote();
+      }
+    }
+  };
+
   return (
     <Card className="transition-colors border-l-4" style={{ borderLeftColor: selectedColor }}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Quick Notes</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-1.5">
+            Quick Notes
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="text-muted-foreground hover:text-foreground">
+                    <Info className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Enter speichert, Shift + Enter erzeugt eine neue Zeile.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -148,12 +181,14 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           placeholder="Titel (optional)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={handleTitleKeyDown}
           className="bg-background/50"
         />
         <div className="min-h-[120px]">
           <SimpleRichTextEditor
             initialContent={content}
             onChange={setContent}
+            onKeyDown={handleEditorKeyDown}
             placeholder="Notiz, Idee oder Gedanke..."
             minHeight="100px"
           />

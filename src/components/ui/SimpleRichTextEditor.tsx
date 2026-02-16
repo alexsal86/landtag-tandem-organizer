@@ -28,6 +28,7 @@ interface SimpleRichTextEditorProps {
   disabled?: boolean;
   minHeight?: string;
   onMentionInsert?: (userId: string, displayName: string) => void;
+  onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
 }
 
 // Toolbar Component
@@ -160,6 +161,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   disabled = false,
   minHeight = "120px",
   onMentionInsert,
+  onKeyDown,
 }) => {
   const initialConfig = {
     namespace: 'SimpleRichTextEditor',
@@ -209,6 +211,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
               <ContentEditable 
                 className="p-3 focus:outline-none prose prose-sm max-w-none"
                 style={{ minHeight }}
+                onKeyDown={onKeyDown}
                 aria-placeholder={placeholder}
                 placeholder={
                   <div 
