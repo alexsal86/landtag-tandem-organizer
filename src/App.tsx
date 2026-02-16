@@ -27,7 +27,6 @@ import AppointmentPreparationDetail from "./pages/AppointmentPreparationDetail";
 import NotificationsPage from "./pages/NotificationsPage";
 import EmployeeMeetingDetail from "./pages/EmployeeMeetingDetail";
 import MapsView from "./pages/MapsView";
-import CommentThreadPlayground from "./pages/CommentThreadPlayground";
 
 import { TaskArchiveView } from "./components/TaskArchiveView";
 import Auth from "./pages/Auth";
@@ -70,7 +69,6 @@ const AppContent = () => {
           <Route path="/contacts/import" element={<ImportContacts />} />
           
           <Route path="/maps" element={<MapsView />} />
-          <Route path="/dev/comment-thread" element={<CommentThreadPlayground />} />
             
             
           <Route path="/profile/edit" element={<Navigate to="/profile-edit" replace />} />

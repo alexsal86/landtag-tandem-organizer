@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
@@ -34,7 +34,6 @@ interface CommentThreadProps {
   onDelete: (commentId: string, hasReplies: boolean) => Promise<void>;
   currentUserId?: string;
   isLastReply?: boolean;
-  avatarRef?: (node: HTMLElement | null) => void;
 }
 
 const getInitials = (name: string | null) => {
@@ -51,16 +50,12 @@ export function CommentThread({
   onDelete,
   currentUserId,
   isLastReply = false,
-  avatarRef,
 }: CommentThreadProps) {
   const [isReplying, setIsReplying] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [editContent, setEditContent] = useState(comment.content);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const threadRef = useRef<HTMLDivElement>(null);
-  const [lastReplyTerminalAvatarEl, setLastReplyTerminalAvatarEl] = useState<HTMLElement | null>(null);
-  const [connectorBottomOffset, setConnectorBottomOffset] = useState(0);
 
   const isOwnComment = currentUserId === comment.user_id;
   const isDeleted = comment.content === DELETED_COMMENT_TEXT;
@@ -110,73 +105,9 @@ export function CommentThread({
   // Avatar size is 24px (h-6), center is at 12px
   const AVATAR_SIZE = 24;
   const AVATAR_CENTER = AVATAR_SIZE / 2; // 12px
-  const CONNECTOR_RADIUS = 8;
-  const CONNECTOR_STROKE = 2;
-
-  useLayoutEffect(() => {
-    if (!hasReplies || !threadRef.current || !lastReplyTerminalAvatarEl) {
-      setConnectorBottomOffset(0);
-      return;
-    }
-
-    const updateConnectorBottom = () => {
-      if (!threadRef.current || !lastReplyTerminalAvatarEl) return;
-
-      const threadRect = threadRef.current.getBoundingClientRect();
-      const lastAvatarRect = lastReplyTerminalAvatarEl.getBoundingClientRect();
-      const lastAvatarCenterY = lastAvatarRect.top + AVATAR_CENTER;
-      const bottomOffset = threadRect.bottom - lastAvatarCenterY;
-
-      setConnectorBottomOffset(Math.max(0, bottomOffset));
-    };
-
-    updateConnectorBottom();
-
-    const resizeObserver = new ResizeObserver(updateConnectorBottom);
-    resizeObserver.observe(threadRef.current);
-    resizeObserver.observe(lastReplyTerminalAvatarEl);
-
-    window.addEventListener("resize", updateConnectorBottom);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", updateConnectorBottom);
-    };
-  }, [AVATAR_CENTER, hasReplies, lastReplyTerminalAvatarEl]);
-
-  useLayoutEffect(() => {
-    if (!hasReplies || !threadRef.current || !lastDirectReplyAvatarEl) {
-      setConnectorBottomOffset(0);
-      return;
-    }
-
-    const updateConnectorBottom = () => {
-      if (!threadRef.current || !lastDirectReplyAvatarEl) return;
-
-      const threadRect = threadRef.current.getBoundingClientRect();
-      const lastAvatarRect = lastDirectReplyAvatarEl.getBoundingClientRect();
-      const lastAvatarCenterY = lastAvatarRect.top + AVATAR_CENTER;
-      const bottomOffset = threadRect.bottom - lastAvatarCenterY;
-
-      setConnectorBottomOffset(Math.max(0, bottomOffset));
-    };
-
-    updateConnectorBottom();
-
-    const resizeObserver = new ResizeObserver(updateConnectorBottom);
-    resizeObserver.observe(threadRef.current);
-    resizeObserver.observe(lastDirectReplyAvatarEl);
-
-    window.addEventListener("resize", updateConnectorBottom);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", updateConnectorBottom);
-    };
-  }, [AVATAR_CENTER, hasReplies, lastDirectReplyAvatarEl]);
 
   return (
-    <div className={cn("relative", depth > 0 && "ml-8")} ref={threadRef}>
+    <div className={cn("relative", depth > 0 && "ml-8")}>
       {/* Vertical line from this comment's avatar down through all replies */}
       {hasReplies && (
         <div
@@ -185,51 +116,63 @@ export function CommentThread({
           style={{
             left: `${AVATAR_CENTER}px`,
             top: `${AVATAR_SIZE + 4}px`,
-            bottom: `${connectorBottomOffset}px`,
+            bottom: 0,
             width: '2px',
           }}
         />
       )}
 
-      {/* SVG connector for reply elbow and optional sibling continuation */}
+      {/* L-shaped rounded connector from parent's vertical line to this reply's avatar */}
       {depth > 0 && (
-        <svg
-          className="absolute pointer-events-none overflow-visible"
+        <div
+          className="absolute border-border/70"
           aria-hidden="true"
           style={{
             left: `-${AVATAR_CENTER + 8}px`,
             top: 0,
-            width: `${AVATAR_CENTER + 8 + CONNECTOR_STROKE}px`,
-            height: '100%',
+            width: `${AVATAR_CENTER + 8 - 4}px`,
+            height: `${AVATAR_CENTER}px`,
+            borderLeft: '2px solid',
+            borderBottom: '2px solid',
+            borderBottomLeftRadius: '8px',
+            borderColor: 'inherit',
           }}
-        >
-          <path
-            d={`M ${CONNECTOR_STROKE / 2} ${AVATAR_CENTER - CONNECTOR_RADIUS} Q ${CONNECTOR_STROKE / 2} ${AVATAR_CENTER} ${CONNECTOR_STROKE / 2 + CONNECTOR_RADIUS} ${AVATAR_CENTER} L ${AVATAR_CENTER + 8} ${AVATAR_CENTER}`}
-            fill="none"
-            stroke="hsl(var(--border) / 0.7)"
-            strokeWidth={CONNECTOR_STROKE}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+        />
+      )}
 
-          {!isLastReply && (
-            <line
-              x1={CONNECTOR_STROKE / 2}
-              y1={AVATAR_CENTER}
-              x2={CONNECTOR_STROKE / 2}
-              y2="100%"
-              stroke="hsl(var(--border) / 0.7)"
-              strokeWidth={CONNECTOR_STROKE}
-              strokeLinecap="round"
-            />
-          )}
-        </svg>
+      {/* Continuous vertical line for parent's remaining siblings (if not last reply) */}
+      {depth > 0 && !isLastReply && (
+        <div
+          className="absolute bg-border/70"
+          aria-hidden="true"
+          style={{
+            left: `-${AVATAR_CENTER + 8}px`,
+            top: `${AVATAR_CENTER}px`,
+            bottom: 0,
+            width: '2px',
+          }}
+        />
+      )}
+
+      {/* Mask to hide parent's vertical line below last reply's avatar center */}
+      {depth > 0 && isLastReply && (
+        <div
+          className="absolute bg-background"
+          aria-hidden="true"
+          style={{
+            left: `${-(AVATAR_CENTER + 8 + 1)}px`,
+            top: `${AVATAR_CENTER}px`,
+            bottom: 0,
+            width: '4px',
+            zIndex: 1,
+          }}
+        />
       )}
 
       {/* The comment itself */}
       <div className="group flex items-start gap-2 relative">
 
-        <Avatar className="h-6 w-6 flex-shrink-0 relative z-10" ref={!hasReplies ? avatarRef : undefined}>
+        <Avatar className="h-6 w-6 flex-shrink-0 relative z-10">
           {comment.profile?.avatar_url && (
             <AvatarImage src={comment.profile.avatar_url} alt={comment.profile.display_name || 'Avatar'} />
           )}
@@ -344,24 +287,19 @@ export function CommentThread({
 
       {/* Nested replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="mt-2">
+        <div className="mt-2 space-y-2">
           {comment.replies.map((reply, index) => (
-            <div key={reply.id} className={cn(index < comment.replies!.length - 1 && "pb-2")}>
-              <CommentThread
-                comment={reply}
-                depth={depth + 1}
-                maxDepth={maxDepth}
-                onReply={onReply}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                currentUserId={currentUserId}
-                isLastReply={index === comment.replies!.length - 1}
-                avatarRef={index === comment.replies!.length - 1 ? (node) => {
-                  setLastReplyTerminalAvatarEl(node);
-                  avatarRef?.(node);
-                } : undefined}
-              />
-            </div>
+            <CommentThread
+              key={reply.id}
+              comment={reply}
+              depth={depth + 1}
+              maxDepth={maxDepth}
+              onReply={onReply}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              currentUserId={currentUserId}
+              isLastReply={index === comment.replies!.length - 1}
+            />
           ))}
         </div>
       )}
