@@ -22,6 +22,7 @@ export function MatrixChatView() {
     isConnecting,
     connectionError,
     cryptoEnabled,
+    e2eeDiagnostics,
     rooms,
     credentials,
     sendMessage,
@@ -276,7 +277,21 @@ export function MatrixChatView() {
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Verschlüsselung nicht verfügbar</AlertTitle>
                   <AlertDescription className="mt-1">
-                    Ende-zu-Ende-Verschlüsselung erfordert, dass die App in einem eigenständigen Browser-Tab läuft (nicht im Lovable Preview).
+                    Die Verschlüsselung konnte in dieser Sitzung nicht initialisiert werden. Laut Matrix JS SDK sollten für Rust-Crypto mindestens sicherer Kontext, Cross-Origin-Isolation und SharedArrayBuffer verfügbar sein.
+                    <ul className="mt-2 space-y-1 text-xs">
+                      <li>• HTTPS / sicherer Kontext: {e2eeDiagnostics.secureContext ? '✅' : '❌'}</li>
+                      <li>• Cross-Origin-Isolation: {e2eeDiagnostics.crossOriginIsolated ? '✅' : '❌'}</li>
+                      <li>• SharedArrayBuffer: {e2eeDiagnostics.sharedArrayBuffer ? '✅' : '❌'}</li>
+                      <li>• Service Worker aktiv: {e2eeDiagnostics.serviceWorkerControlled ? '✅' : '❌'}</li>
+                      <li>• Secret Storage bereit: {e2eeDiagnostics.secretStorageReady === null ? '–' : e2eeDiagnostics.secretStorageReady ? '✅' : '❌'}</li>
+                      <li>• Cross-Signing bereit: {e2eeDiagnostics.crossSigningReady === null ? '–' : e2eeDiagnostics.crossSigningReady ? '✅' : '❌'}</li>
+                      <li>• Key Backup aktiv: {e2eeDiagnostics.keyBackupEnabled === null ? '–' : e2eeDiagnostics.keyBackupEnabled ? '✅' : '❌'}</li>
+                    </ul>
+                    {e2eeDiagnostics.cryptoError && (
+                      <p className="mt-2 text-xs break-words">
+                        Letzter Fehler: {e2eeDiagnostics.cryptoError}
+                      </p>
+                    )}
                     <a 
                       href={window.location.href} 
                       target="_blank" 
