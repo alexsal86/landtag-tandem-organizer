@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { AssignedItemsSection } from "./tasks/AssignedItemsSection";
+import { LetterSourceLink } from "@/components/letters/LetterSourceLink";
+import { extractLetterSourceId, stripLetterSourceMarker } from "@/utils/letterSource";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -1852,7 +1854,12 @@ export function TasksView() {
               </CardContent>
             </Card>
           ) : (
-            filteredTasksWithSnooze.map((task) => (
+            filteredTasksWithSnooze.map((task) => {
+              const taskSourceLetterId = extractLetterSourceId(task.description) || extractLetterSourceId(task.title);
+              const cleanTaskTitle = stripLetterSourceMarker(task.title);
+              const cleanTaskDescription = stripLetterSourceMarker(task.description);
+
+              return (
               <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer relative" onClick={() => handleTaskClick(task)}>
                 <NewItemIndicator isVisible={isItemNew(task.id, task.created_at || '')} />
                 <CardContent className="p-4">
@@ -1869,9 +1876,14 @@ export function TasksView() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
-                          <h3 className="font-medium text-foreground text-lg">{task.title}</h3>
-                          {task.description && (
-                            <RichTextDisplay content={task.description} className="mt-1 leading-relaxed" />
+                          <h3 className="font-medium text-foreground text-lg">{cleanTaskTitle || task.title}</h3>
+                          {cleanTaskDescription && (
+                            <RichTextDisplay content={cleanTaskDescription} className="mt-1 leading-relaxed" />
+                          )}
+                          {taskSourceLetterId && (
+                            <div className="mt-2">
+                              <LetterSourceLink letterId={taskSourceLetterId} />
+                            </div>
                           )}
                         </div>
                         
@@ -2074,7 +2086,11 @@ export function TasksView() {
                            </div>
                            
                            {/* Subtasks List */}
-                           {subtasks[task.id].map((subtask) => (
+                           {subtasks[task.id].map((subtask) => {
+                             const subtaskSourceLetterId = extractLetterSourceId(subtask.title);
+                             const cleanSubtaskTitle = stripLetterSourceMarker(subtask.title);
+
+                             return (
                              <div key={subtask.id} className="border border-border rounded-lg p-4 bg-muted/20">
                                <div className="flex items-start gap-3">
                                  <Checkbox
@@ -2114,8 +2130,13 @@ export function TasksView() {
                                  />
                                  <div className="flex-1">
                                    <div className={`font-medium ${subtask.is_completed ? "line-through text-muted-foreground" : ""}`}>
-                                     {subtask.title}
+                                     {cleanSubtaskTitle || subtask.title}
                                    </div>
+                                    {subtaskSourceLetterId && (
+                                      <div className="mt-2">
+                                        <LetterSourceLink letterId={subtaskSourceLetterId} className="h-6 px-1" />
+                                      </div>
+                                    )}
                                     {subtask.is_completed && (
                                       <div className="mt-2 p-3 bg-emerald-500/10 border-l-4 border-emerald-500 rounded">
                                         {subtask.result_text && (
@@ -2221,7 +2242,7 @@ export function TasksView() {
                                  </div>
                                </div>
                              </div>
-                           ))}
+                           )})}
                          </div>
                        )}
                        
@@ -2483,7 +2504,7 @@ export function TasksView() {
                     </div>
                   </CardContent>
                 </Card>
-            ))
+            )})
           )}
         </div>
       </div>
