@@ -210,9 +210,13 @@ export function MatrixLoginForm() {
         description: 'Öffnen Sie Ihren zweiten Element-Login und bestätigen Sie die Geräte-Verifizierung.',
       });
     } catch (error) {
+      const description = error instanceof Error
+        ? `${error.message} Falls der Fehler bleibt: Chat einmal trennen, Browserdaten für diese App löschen und erneut verbinden.`
+        : 'Verifizierung konnte nicht gestartet werden';
+
       toast({
         title: 'Verifizierung fehlgeschlagen',
-        description: error instanceof Error ? error.message : 'Verifizierung konnte nicht gestartet werden',
+        description,
         variant: 'destructive',
       });
     } finally {
