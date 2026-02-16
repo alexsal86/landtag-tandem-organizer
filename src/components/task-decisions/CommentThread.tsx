@@ -33,6 +33,7 @@ interface CommentThreadProps {
   onEdit: (commentId: string, content: string) => Promise<void>;
   onDelete: (commentId: string, hasReplies: boolean) => Promise<void>;
   currentUserId?: string;
+  isLastReply?: boolean;
 }
 
 const getInitials = (name: string | null) => {
@@ -48,6 +49,7 @@ export function CommentThread({
   onEdit,
   onDelete,
   currentUserId,
+  isLastReply = false,
 }: CommentThreadProps) {
   const [isReplying, setIsReplying] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -61,7 +63,6 @@ export function CommentThread({
 
   const handleSubmitReply = async () => {
     if (!replyContent.trim()) return;
-    
     setIsSubmitting(true);
     try {
       await onReply(comment.id, replyContent.trim());
@@ -74,7 +75,6 @@ export function CommentThread({
 
   const handleSubmitEdit = async () => {
     if (!editContent.trim()) return;
-
     setIsSubmitting(true);
     try {
       await onEdit(comment.id, editContent.trim());
@@ -90,9 +90,7 @@ export function CommentThread({
         ? "Dieser Kommentar hat Antworten und wird als gelöscht markiert. Fortfahren?"
         : "Möchten Sie diesen Kommentar wirklich löschen?"
     );
-
     if (!confirmed) return;
-
     setIsSubmitting(true);
     try {
       await onDelete(comment.id, hasReplies);
@@ -104,38 +102,89 @@ export function CommentThread({
   const canReply = depth < maxDepth && !isDeleted;
   const showEditedLabel = Boolean(comment.updated_at && new Date(comment.updated_at) > new Date(comment.created_at));
 
+  // Avatar size is 24px (h-6), center is at 12px
+  const AVATAR_SIZE = 24;
+  const AVATAR_CENTER = AVATAR_SIZE / 2; // 12px
+
   return (
-    <div className={cn("space-y-2 relative", depth > 0 && "ml-5")}>
+    <div className={cn("relative", depth > 0 && "ml-8")}>
+      {/* L-shaped connector from parent's vertical line to this reply's avatar */}
       {depth > 0 && (
-        <>
-          {/* Parent-center to child-center connector with small gaps to avatars */}
-          <div className="absolute -left-4 -top-4 h-7 w-px bg-border/70" aria-hidden="true" />
-          <div className="absolute -left-4 top-3 h-px w-3 bg-border/70" aria-hidden="true" />
-        </>
+        <div aria-hidden="true">
+          {/* Vertical part of L-connector: from top to avatar center */}
+          <div
+            className="absolute bg-border/70"
+            style={{
+              left: `-${AVATAR_CENTER + 8}px`, // 8px gap (half of ml-8=32px minus avatar center)
+              top: 0,
+              width: '1px',
+              height: `${AVATAR_CENTER}px`,
+            }}
+          />
+          {/* Horizontal part of L-connector: from vertical line to avatar center */}
+          <div
+            className="absolute bg-border/70"
+            style={{
+              left: `-${AVATAR_CENTER + 8}px`,
+              top: `${AVATAR_CENTER}px`,
+              width: `${AVATAR_CENTER + 8}px`,
+              height: '1px',
+            }}
+          />
+        </div>
       )}
 
-      <div className="group flex items-start gap-2">
-        <Avatar className="h-6 w-6 flex-shrink-0">
+      {/* Continuous vertical line for parent's remaining siblings (if not last reply) */}
+      {depth > 0 && !isLastReply && (
+        <div
+          className="absolute bg-border/70"
+          aria-hidden="true"
+          style={{
+            left: `-${AVATAR_CENTER + 8}px`,
+            top: `${AVATAR_CENTER}px`,
+            bottom: 0,
+            width: '1px',
+          }}
+        />
+      )}
+
+      {/* The comment itself */}
+      <div className="group flex items-start gap-2 relative">
+        {/* Vertical line from this avatar down through replies */}
+        {hasReplies && (
+          <div
+            className="absolute bg-border/70"
+            aria-hidden="true"
+            style={{
+              left: `${AVATAR_CENTER}px`,
+              top: `${AVATAR_SIZE}px`,
+              bottom: 0,
+              width: '1px',
+            }}
+          />
+        )}
+
+        <Avatar className="h-6 w-6 flex-shrink-0 relative z-10">
           {comment.profile?.avatar_url && (
             <AvatarImage src={comment.profile.avatar_url} alt={comment.profile.display_name || 'Avatar'} />
           )}
-          <AvatarFallback 
+          <AvatarFallback
             className="text-[9px]"
             style={{ backgroundColor: comment.profile?.badge_color || undefined }}
           >
             {getInitials(comment.profile?.display_name)}
           </AvatarFallback>
         </Avatar>
-        
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold">
               {comment.profile?.display_name || 'Unbekannt'}
             </span>
             <span className="text-[10px] text-muted-foreground">
-              {formatDistanceToNow(new Date(comment.created_at), { 
-                addSuffix: true, 
-                locale: de 
+              {formatDistanceToNow(new Date(comment.created_at), {
+                addSuffix: true,
+                locale: de
               })}
             </span>
             {showEditedLabel && (
@@ -176,23 +225,10 @@ export function CommentThread({
                 minHeight="60px"
               />
               <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={handleSubmitEdit}
-                  disabled={isSubmitting || !editContent.trim()}
-                  className="text-xs"
-                >
+                <Button size="sm" onClick={handleSubmitEdit} disabled={isSubmitting || !editContent.trim()} className="text-xs">
                   Speichern
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setEditContent(comment.content);
-                  }}
-                  className="text-xs"
-                >
+                <Button size="sm" variant="ghost" onClick={() => { setIsEditing(false); setEditContent(comment.content); }} className="text-xs">
                   Abbrechen
                 </Button>
               </div>
@@ -200,7 +236,7 @@ export function CommentThread({
           ) : (
             <RichTextDisplay content={comment.content} className={cn("text-xs mt-1", isDeleted && "italic text-muted-foreground")} />
           )}
-          
+
           {canReply && (
             <Button
               variant="ghost"
@@ -217,7 +253,7 @@ export function CommentThread({
 
       {/* Reply input */}
       {isReplying && (
-        <div className="ml-8 space-y-2">
+        <div className="ml-8 mt-2 space-y-2">
           <div className="flex items-start gap-2">
             <CornerDownRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-2" />
             <div className="flex-1">
@@ -228,21 +264,11 @@ export function CommentThread({
                 minHeight="60px"
               />
               <div className="flex gap-2 mt-2">
-                <Button
-                  size="sm"
-                  onClick={handleSubmitReply}
-                  disabled={isSubmitting || !replyContent.trim()}
-                  className="text-xs"
-                >
+                <Button size="sm" onClick={handleSubmitReply} disabled={isSubmitting || !replyContent.trim()} className="text-xs">
                   <Send className="h-3 w-3 mr-1" />
                   {isSubmitting ? "Senden..." : "Senden"}
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => { setIsReplying(false); setReplyContent(""); }}
-                  className="text-xs"
-                >
+                <Button size="sm" variant="ghost" onClick={() => { setIsReplying(false); setReplyContent(""); }} className="text-xs">
                   Abbrechen
                 </Button>
               </div>
@@ -253,8 +279,8 @@ export function CommentThread({
 
       {/* Nested replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="space-y-2">
-          {comment.replies.map((reply) => (
+        <div className="mt-2 space-y-2">
+          {comment.replies.map((reply, index) => (
             <CommentThread
               key={reply.id}
               comment={reply}
@@ -264,6 +290,7 @@ export function CommentThread({
               onEdit={onEdit}
               onDelete={onDelete}
               currentUserId={currentUserId}
+              isLastReply={index === comment.replies!.length - 1}
             />
           ))}
         </div>
