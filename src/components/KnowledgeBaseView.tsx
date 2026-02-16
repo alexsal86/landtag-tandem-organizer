@@ -33,7 +33,8 @@ const KnowledgeBaseView = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { subId: documentId } = useParams<{ subId: string }>();
+  const { subId, documentId: legacyDocumentId } = useParams<{ subId?: string; documentId?: string }>();
+  const documentId = subId ?? legacyDocumentId;
   const [searchParams, setSearchParams] = useSearchParams();
   const { topics, getActiveTopics } = useTopics();
   
@@ -765,6 +766,7 @@ const KnowledgeBaseView = () => {
           {/* Editor Content */}
           <div className="flex-1 overflow-hidden">
             <EnhancedLexicalEditor
+              key={selectedDocument.id}
               content={selectedDocument.content || ''}
               onChange={(newContent) => {
                 setEditorContent(newContent);
