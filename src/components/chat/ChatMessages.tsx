@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -137,7 +136,7 @@ export function ChatMessages({
   }
 
   return (
-    <ScrollArea className="flex-1 px-4">
+    <div className="flex-1 px-4 overflow-y-auto">
       <div className="py-4 space-y-4">
         {groupedMessages.map((group) => (
           <div key={group.date}>
@@ -245,6 +244,6 @@ export function ChatMessages({
         ))}
         <div ref={bottomRef} />
       </div>
-    </ScrollArea>
+    </div>
   );
 }
