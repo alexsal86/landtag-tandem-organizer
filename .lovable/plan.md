@@ -1,55 +1,33 @@
 
 
-# Verbesserungen der Kommentar-Threading-Linien
+# Fix: Elternlinie endet am letzten Kinderelement
 
-## Probleme im aktuellen Zustand
+## Problem
 
-1. **Aussetzer/Luecken**: Die vertikale Linie hat Unterbrechungen zwischen Kommentaren, weil `space-y-2` Gaps erzeugt, die die absolut positionierten Linien nicht ueberbruecken
-2. **Linienstaerke**: Aktuell nur 1px -- soll auf 2px verdoppelt werden
-3. **Abstand zu Avataren**: Linien beginnen/enden direkt am Avatar -- soll etwas Luft haben (ca. 4px)
-4. **Harte Ecken**: Der L-Konnektor besteht aus zwei geraden Linien -- soll einen weichen, abgerundeten Uebergang haben (wie bei Facebook)
+Die vertikale Linie des Elternkommentars laeuft bis `bottom: 0` des aeusseren Containers weiter, auch wenn kein weiteres Kind mehr folgt. Der Masking-Ansatz (ein `bg-background` Div darueber legen) funktioniert nicht zuverlaessig.
 
 ## Loesung
 
-### 1. Durchgaengige Linien ohne Aussetzer
+Statt die Elternlinie pauschal bis `bottom: 0` zu ziehen und dann zu maskieren, wird die Logik umgebaut:
 
-- Die vertikale Linie des Eltern-Kommentars (die von dessen Avatar nach unten geht) muss aus dem `group flex`-Container heraus in den aeusseren `relative`-Container verschoben werden, damit sie ueber die gesamte Hoehe inkl. `space-y-2` Gaps laeuft
-- Die vertikale Fortsetzungslinie bei nicht-letzten Replies muss ebenfalls `bottom: 0` korrekt referenzieren und ueber den vollen Bereich gehen
+1. **Elternlinie (hasReplies)**: Die vertikale Linie vom Avatar nach unten bleibt, aber sie laeuft nur bis zum Reply-Container, nicht bis zum absoluten Boden. Da die Replies innerhalb des gleichen aeusseren Containers liegen, reicht `bottom: 0` hier technisch -- das Problem ist aber, dass bei verschachtelten Replies die Linie zu weit geht.
 
-### 2. Linienstaerke verdoppeln
+2. **Kernidee -- Fortsetzungslinien pro Kind**: Jedes Kind-Element (depth > 0) ist dafuer verantwortlich, die Elternlinie auf seiner linken Seite weiterzufuehren:
+   - **Nicht-letztes Kind** (`!isLastReply`): Zeichnet eine vertikale Linie auf der linken Seite von `top: 0` bis `bottom: 0` (ueberbrueckt den vollen Bereich inkl. Gaps)
+   - **Letztes Kind** (`isLastReply`): Zeichnet **nur** die L-Kurve von `top: 0` bis `AVATAR_CENTER` -- keine Fortsetzung darunter
 
-- Alle `width: '1px'` und `height: '1px'` Angaben auf `2px` aendern
+3. **Elternlinie entfernen**: Die bisherige vertikale Linie im Eltern-Container (`hasReplies`-Div) wird so gekuerzt, dass sie nur vom Avatar-Boden bis zum Anfang des Reply-Bereichs reicht, oder komplett entfernt und durch die Kinder-Fortsetzungslinien ersetzt.
 
-### 3. Abstand zu Avataren
-
-- Vertikale Linie beginnt nicht direkt am Avatar-Rand, sondern mit ~4px Abstand (`top: AVATAR_SIZE + 4` statt `AVATAR_SIZE`)
-- L-Konnektor endet nicht direkt am Avatar, sondern mit ~4px Abstand (horizontale Linie 4px kuerzer)
-
-### 4. Weicher L-Uebergang (abgerundete Ecke)
-
-- Den L-Konnektor durch ein einzelnes `div` mit `border-left` + `border-bottom` und `border-radius` auf der unteren linken Ecke ersetzen
-- Das erzeugt eine weiche, abgerundete Kurve wie bei Facebook
-- Radius ca. 8px fuer einen natuerlichen Uebergang
-
-## Technische Details
+## Technische Aenderungen
 
 **Datei: `src/components/task-decisions/CommentThread.tsx`**
 
-Aenderungen im Detail:
+- **Masking-Div entfernen** (das `bg-background` Div bei `isLastReply`) -- wird nicht mehr gebraucht
+- **Vertikale Elternlinie** bei `hasReplies`: Bleibt bestehen, laeuft von `AVATAR_SIZE + 4` bis `bottom: 0` -- das funktioniert korrekt, weil die Kinder innerhalb des Containers sind
+- **Fortsetzungslinie bei Kindern** (`depth > 0 && !isLastReply`): Vertikale Linie links von `top: AVATAR_CENTER` (statt 0) bis `bottom: 0`, damit sie nahtlos an die L-Kurve anschliesst und nach unten weiter laeuft
+- **Letztes Kind** (`depth > 0 && isLastReply`): Nur die L-Kurve, **keine** Fortsetzungslinie darunter, **kein** Masking-Div
 
-- **L-Konnektor** (depth > 0): Die zwei separaten divs (vertikal + horizontal) werden durch ein einziges div ersetzt:
-  - `border-left: 2px solid` + `border-bottom: 2px solid` mit `border-bottom-left-radius: 8px`
-  - Hoehe vom oberen Rand bis zum Avatar-Center, Breite bis 4px vor dem Avatar
-  - Farbe: `border-border/70`
+Der entscheidende Fix: Die Fortsetzungslinie (`depth > 0 && !isLastReply`) muss von `top: 0` bis `bottom: 0` gehen (nicht ab `AVATAR_CENTER`), damit sie den gesamten Bereich des Kind-Elements ueberdeckt und nahtlos in das naechste Kind uebergeht. Beim letzten Kind fehlt diese Linie komplett -- dadurch endet die Elternlinie genau an der L-Kurve.
 
-- **Vertikale Linie bei Replies** (depth > 0, nicht letztes Element): Breite auf 2px, Position bleibt gleich
+Keine anderen Dateien betroffen.
 
-- **Vertikale Linie des Elternkommentars** (hasReplies): 
-  - Aus dem inneren flex-Container herausnehmen und in den aeusseren Container verschieben
-  - Start: `AVATAR_SIZE + 4` px von oben (4px Abstand vom Avatar)
-  - Breite: 2px
-  - `bottom: 0` damit sie bis zum Ende des Containers (inkl. Replies) laeuft
-
-- **Replies-Container**: `space-y-2` beibehalten, aber die Linien laufen jetzt korrekt durch, da sie im uebergeordneten Container positioniert sind
-
-Keine anderen Dateien muessen geaendert werden.
