@@ -390,7 +390,6 @@ export const DecisionOverview = () => {
               creator_response,
               parent_response_id,
               created_at,
-              response_deadline,
               updated_at
             )
           `)
