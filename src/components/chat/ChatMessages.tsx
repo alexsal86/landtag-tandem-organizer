@@ -48,7 +48,7 @@ export function ChatMessages({
   onAddReaction,
   onRemoveReaction,
 }: ChatMessagesProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -137,7 +137,7 @@ export function ChatMessages({
   }
 
   return (
-    <ScrollArea className="flex-1 px-4" ref={scrollRef}>
+    <ScrollArea className="flex-1 px-4">
       <div className="py-4 space-y-4">
         {groupedMessages.map((group) => (
           <div key={group.date}>
