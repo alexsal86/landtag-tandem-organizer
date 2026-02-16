@@ -664,16 +664,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const getMessages = useCallback((roomId: string, limit: number = 50): MatrixMessage[] => {
     if (!client) return [];
 
-    const cached = messages.get(roomId) || [];
-    if (cached.length > 0) {
-      return cached.slice(-limit);
-    }
-
     const room = client.getRoom(roomId);
-    if (!room) return [];
+    if (!room) return messages.get(roomId)?.slice(-limit) || [];
 
     const timeline = room.getLiveTimeline().getEvents();
-    const roomMessages: MatrixMessage[] = timeline
+    const timelineMessages: MatrixMessage[] = timeline
       .filter(event => ['m.room.message', 'm.room.encrypted'].includes(event.getType()))
       .map(event => {
         const content = event.getContent();
@@ -697,20 +692,25 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             info: content.info,
           } : undefined,
         };
-      })
+      });
+
+    const cached = messages.get(roomId) || [];
+    const mergedByEventId = new Map<string, MatrixMessage>();
+    for (const msg of cached) mergedByEventId.set(msg.eventId, msg);
+    for (const msg of timelineMessages) mergedByEventId.set(msg.eventId, msg);
+
+    const mergedMessages = Array.from(mergedByEventId.values())
+      .sort((a, b) => a.timestamp - b.timestamp)
       .slice(-limit);
 
-    // Use functional update to avoid dependency on messages
     setMessages(prev => {
-      // Only update if not already cached
-      if (prev.get(roomId)?.length) return prev;
       const updated = new Map(prev);
-      updated.set(roomId, roomMessages);
+      updated.set(roomId, mergedMessages);
       return updated;
     });
 
-    return roomMessages;
-  }, [client]); // Remove messages from dependencies
+    return mergedMessages;
+  }, [client, messages]);
 
   const totalUnreadCount = rooms.reduce((sum, room) => sum + room.unreadCount, 0);
 

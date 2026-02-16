@@ -74,6 +74,18 @@ export function MatrixChatView() {
     }
   }, [selectedRoomId, isConnected, getMessages]);
 
+
+  // Fallback refresh for encrypted timelines if event callbacks are delayed/missed
+  useEffect(() => {
+    if (!selectedRoomId || !isConnected) return;
+
+    const intervalId = window.setInterval(() => {
+      getMessages(selectedRoomId, 100);
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [selectedRoomId, isConnected, getMessages]);
+
   const handleSendMessage = useCallback(async (message: string) => {
     if (!selectedRoomId) return;
 
