@@ -85,7 +85,7 @@ const KnowledgeBaseView = () => {
           setSelectedDocument(doc);
           setEditorContent(doc.content || '');
           setIsEditorOpen(true);
-          setIsSidebarCollapsed(true);
+          setIsSidebarCollapsed(false);
           setHasUnsavedChanges(false);
         }
       } else if (!loading) {
@@ -276,7 +276,7 @@ const KnowledgeBaseView = () => {
       setSelectedDocument(docWithCreator);
       setEditorContent(data.content || '');
       setIsEditorOpen(true);
-      setIsSidebarCollapsed(true);
+      setIsSidebarCollapsed(false);
       
       navigate(`/knowledge/${data.id}`, { replace: true });
     } catch (error) {
