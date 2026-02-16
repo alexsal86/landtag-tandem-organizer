@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Save, TestTube, CheckCircle, XCircle, Link2 } from 'lucide-react';
+import { Loader2, Save, TestTube, CheckCircle, XCircle, Link2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,14 +15,18 @@ export function MatrixLoginForm() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
-  const { isConnected, connect, disconnect, credentials } = useMatrixClient();
+  const { isConnected, connect, disconnect, credentials, requestSelfVerification } = useMatrixClient();
 
   const [matrixUserId, setMatrixUserId] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [homeserverUrl, setHomeserverUrl] = useState('https://matrix.org');
+  const [deviceId, setDeviceId] = useState('');
+  const [recoveryKey, setRecoveryKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+  const [verificationTargetDeviceId, setVerificationTargetDeviceId] = useState('');
+  const [isStartingVerification, setIsStartingVerification] = useState(false);
 
   // Load existing credentials
   useEffect(() => {
@@ -38,9 +42,14 @@ export function MatrixLoginForm() {
           .maybeSingle();
 
         if (profile) {
-          setMatrixUserId(profile.matrix_user_id || '');
+          const loadedUserId = profile.matrix_user_id || '';
+          setMatrixUserId(loadedUserId);
           setAccessToken(profile.matrix_access_token || '');
           setHomeserverUrl(profile.matrix_homeserver_url || 'https://matrix.org');
+          if (loadedUserId) {
+            setDeviceId(localStorage.getItem(`matrix_device_id:${loadedUserId}`) || '');
+            setRecoveryKey(localStorage.getItem(`matrix_recovery_key:${loadedUserId}`) || '');
+          }
         }
       } catch (error) {
         console.error('Error loading Matrix credentials:', error);
@@ -107,6 +116,20 @@ export function MatrixLoginForm() {
 
       if (error) throw error;
 
+      const sanitizedUserId = matrixUserId.trim();
+      const trimmedDeviceId = deviceId.trim();
+      const trimmedRecoveryKey = recoveryKey.trim();
+      if (trimmedDeviceId) {
+        localStorage.setItem(`matrix_device_id:${sanitizedUserId}`, trimmedDeviceId);
+      } else {
+        localStorage.removeItem(`matrix_device_id:${sanitizedUserId}`);
+      }
+      if (trimmedRecoveryKey) {
+        localStorage.setItem(`matrix_recovery_key:${sanitizedUserId}`, trimmedRecoveryKey);
+      } else {
+        localStorage.removeItem(`matrix_recovery_key:${sanitizedUserId}`);
+      }
+
       toast({
         title: 'Gespeichert',
         description: 'Matrix-Zugangsdaten wurden gespeichert'
@@ -116,7 +139,8 @@ export function MatrixLoginForm() {
       await connect({
         userId: matrixUserId.trim(),
         accessToken: accessToken.trim(),
-        homeserverUrl: homeserverUrl.trim()
+        homeserverUrl: homeserverUrl.trim(),
+        deviceId: deviceId.trim() || undefined,
       });
 
     } catch (error) {
@@ -142,7 +166,8 @@ export function MatrixLoginForm() {
       await connect({
         userId: matrixUserId.trim(),
         accessToken: accessToken.trim(),
-        homeserverUrl: homeserverUrl.trim()
+        homeserverUrl: homeserverUrl.trim(),
+        deviceId: deviceId.trim() || undefined,
       });
 
       // Wait a bit for connection to establish
@@ -163,6 +188,35 @@ export function MatrixLoginForm() {
       });
     } finally {
       setIsTesting(false);
+    }
+  };
+
+
+  const handleStartVerification = async () => {
+    if (!isConnected) {
+      toast({
+        title: 'Nicht verbunden',
+        description: 'Bitte zuerst mit Matrix verbinden.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsStartingVerification(true);
+    try {
+      await requestSelfVerification(verificationTargetDeviceId.trim() || undefined);
+      toast({
+        title: 'Verifizierung gestartet',
+        description: 'Öffnen Sie Ihren zweiten Element-Login und bestätigen Sie die Geräte-Verifizierung.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Verifizierung fehlgeschlagen',
+        description: error instanceof Error ? error.message : 'Verifizierung konnte nicht gestartet werden',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsStartingVerification(false);
     }
   };
 
@@ -235,7 +289,56 @@ export function MatrixLoginForm() {
               Die URL Ihres Matrix-Homeservers
             </p>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="matrix-device-id">Device ID (wichtig für E2EE)</Label>
+            <Input
+              id="matrix-device-id"
+              placeholder="z.B. ABCDEFGHIJ"
+              value={deviceId}
+              onChange={(e) => setDeviceId(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional, aber empfohlen: In Element unter „Einstellungen → Hilfe & Info“. Ohne Device ID kann Rust-Crypto nicht initialisieren.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="matrix-recovery-key">Recovery Key (optional)</Label>
+            <Input
+              id="matrix-recovery-key"
+              type="password"
+              placeholder="Für Secret Storage & Key Backup"
+              value={recoveryKey}
+              onChange={(e) => setRecoveryKey(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional: Lokale Speicherung im Browser, damit verschlüsselte Chat-Historie über Key Backup entschlüsselt werden kann.
+            </p>
+          </div>
         </div>
+
+
+        {isConnected && (
+          <div className="space-y-2 rounded-md border p-3 bg-muted/30">
+            <Label htmlFor="verify-device-id">Anderes Gerät verifizieren (optional Device ID)</Label>
+            <Input
+              id="verify-device-id"
+              placeholder="z.B. ABCDEFGHIJ"
+              value={verificationTargetDeviceId}
+              onChange={(e) => setVerificationTargetDeviceId(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Startet eine Verifizierungsanfrage an Ihren eigenen Matrix-Account. In Element am zweiten Gerät bestätigen.
+            </p>
+            <Button onClick={handleStartVerification} variant="secondary" disabled={isStartingVerification}>
+              {isStartingVerification ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-4 w-4 mr-2" />
+              )}
+              Geräte-Verifizierung starten
+            </Button>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2 pt-2">
           <Button onClick={handleSave} disabled={isSaving}>
