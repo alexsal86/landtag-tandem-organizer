@@ -149,22 +149,21 @@ export function CommentThread({
       )}
 
       {/* L-shaped rounded connector from parent's vertical line to this reply's avatar */}
-      {depth > 0 && (
-        <div
-          className="absolute border-border/70"
-          aria-hidden="true"
-          style={{
-            left: `-${AVATAR_CENTER + 8}px`,
-            top: 0,
-            width: `${AVATAR_CENTER + 8 - 4}px`,
-            height: `${AVATAR_CENTER}px`,
-            borderLeft: '2px solid',
-            borderBottom: '2px solid',
-            borderBottomLeftRadius: '8px',
-            borderColor: 'inherit',
-          }}
-        />
-      )}
+{depth > 0 && (
+  <div
+    className="absolute"
+    aria-hidden="true"
+    style={{
+      left: `-${AVATAR_CENTER + 8}px`,
+      top: 0,
+      width: `${AVATAR_CENTER + 8 - 4}px`,
+      height: `${AVATAR_CENTER}px`,
+      borderLeft: '2px solid hsl(var(--border) / 0.7)',
+      borderBottom: '2px solid hsl(var(--border) / 0.7)',
+      borderBottomLeftRadius: '8px',
+    }}
+  />
+)}
 
       {/* The comment itself */}
       <div className="group flex items-start gap-2 relative">
