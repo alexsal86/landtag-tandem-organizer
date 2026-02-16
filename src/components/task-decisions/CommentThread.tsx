@@ -34,7 +34,7 @@ interface CommentThreadProps {
   onDelete: (commentId: string, hasReplies: boolean) => Promise<void>;
   currentUserId?: string;
   isLastReply?: boolean;
-  avatarRef?: (node: HTMLSpanElement | null) => void;
+  avatarRef?: (node: HTMLElement | null) => void;
 }
 
 const getInitials = (name: string | null) => {
@@ -59,7 +59,7 @@ export function CommentThread({
   const [editContent, setEditContent] = useState(comment.content);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
-  const lastDirectReplyAvatarRef = useRef<HTMLSpanElement | null>(null);
+  const [lastDirectReplyAvatarEl, setLastDirectReplyAvatarEl] = useState<HTMLElement | null>(null);
   const [connectorBottomOffset, setConnectorBottomOffset] = useState(0);
 
   const isOwnComment = currentUserId === comment.user_id;
@@ -112,16 +112,16 @@ export function CommentThread({
   const AVATAR_CENTER = AVATAR_SIZE / 2; // 12px
 
   useLayoutEffect(() => {
-    if (!hasReplies || !threadRef.current || !lastDirectReplyAvatarRef.current) {
+    if (!hasReplies || !threadRef.current || !lastDirectReplyAvatarEl) {
       setConnectorBottomOffset(0);
       return;
     }
 
     const updateConnectorBottom = () => {
-      if (!threadRef.current || !lastDirectReplyAvatarRef.current) return;
+      if (!threadRef.current || !lastDirectReplyAvatarEl) return;
 
       const threadRect = threadRef.current.getBoundingClientRect();
-      const lastAvatarRect = lastDirectReplyAvatarRef.current.getBoundingClientRect();
+      const lastAvatarRect = lastDirectReplyAvatarEl.getBoundingClientRect();
       const lastAvatarCenterY = lastAvatarRect.top + AVATAR_CENTER;
       const bottomOffset = threadRect.bottom - lastAvatarCenterY;
 
@@ -129,12 +129,18 @@ export function CommentThread({
     };
 
     updateConnectorBottom();
+
+    const resizeObserver = new ResizeObserver(updateConnectorBottom);
+    resizeObserver.observe(threadRef.current);
+    resizeObserver.observe(lastDirectReplyAvatarEl);
+
     window.addEventListener("resize", updateConnectorBottom);
 
     return () => {
+      resizeObserver.disconnect();
       window.removeEventListener("resize", updateConnectorBottom);
     };
-  }, [AVATAR_CENTER, comment.replies, hasReplies]);
+  }, [AVATAR_CENTER, hasReplies, lastDirectReplyAvatarEl]);
 
   return (
     <div className={cn("relative", depth > 0 && "ml-8")} ref={threadRef}>
@@ -315,7 +321,7 @@ export function CommentThread({
               currentUserId={currentUserId}
               isLastReply={index === comment.replies!.length - 1}
               avatarRef={index === comment.replies!.length - 1 ? (node) => {
-                lastDirectReplyAvatarRef.current = node;
+                setLastDirectReplyAvatarEl(node);
               } : undefined}
             />
           ))}
