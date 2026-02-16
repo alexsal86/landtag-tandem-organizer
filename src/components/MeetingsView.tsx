@@ -34,6 +34,7 @@ import { MeetingParticipantAvatars } from "@/components/meetings/MeetingParticip
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
 import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
+import { BirthdayAgendaItem } from "@/components/meetings/BirthdayAgendaItem";
 import { FocusModeView } from "@/components/meetings/FocusModeView";
 import { MultiUserAssignSelect } from "@/components/meetings/MultiUserAssignSelect";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -3554,6 +3555,19 @@ export function MeetingsView() {
                         </div>
                       )}
 
+                      {item.system_type === 'birthdays' && (
+                        <div className="ml-12 mb-4">
+                          <BirthdayAgendaItem
+                            meetingDate={selectedMeeting?.meeting_date}
+                            meetingId={selectedMeeting?.id}
+                            resultText={item.result_text}
+                            onUpdateResult={(result: string) => updateAgendaItemResult(item.id!, 'result_text', result)}
+                            isEmbedded
+                            className="border-l-0 shadow-none bg-transparent"
+                          />
+                        </div>
+                      )}
+
                       {/* Note: Removed fallback for "Aktuelles aus dem Landtag" - system_type should be used exclusively */}
 
                       {/* Display notes if available */}
@@ -3825,6 +3839,24 @@ export function MeetingsView() {
                                           ) : (
                                             <p className="text-sm text-muted-foreground pl-4">Keine Aufgaben vorhanden.</p>
                                           )}
+                                        </div>
+                                      ) : subItem.system_type === 'birthdays' ? (
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              {index + 1}.{subIndex + 1}
+                                            </span>
+                                            <Cake className="h-4 w-4 text-pink-500" />
+                                            <span className="text-sm font-medium">Geburtstage</span>
+                                          </div>
+                                          <BirthdayAgendaItem
+                                            meetingDate={selectedMeeting?.meeting_date}
+                                            meetingId={selectedMeeting?.id}
+                                            resultText={subItem.result_text}
+                                            onUpdateResult={(result: string) => updateAgendaItemResult(subItem.id!, 'result_text', result)}
+                                            isEmbedded
+                                            className="border-l-0 shadow-none bg-transparent"
+                                          />
                                         </div>
                                       ) : (
                                    <>
