@@ -20,6 +20,7 @@ export function MatrixLoginForm() {
   const [matrixUserId, setMatrixUserId] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [homeserverUrl, setHomeserverUrl] = useState('https://matrix.org');
+  const [deviceId, setDeviceId] = useState('');
   const [recoveryKey, setRecoveryKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -44,6 +45,7 @@ export function MatrixLoginForm() {
           setAccessToken(profile.matrix_access_token || '');
           setHomeserverUrl(profile.matrix_homeserver_url || 'https://matrix.org');
           if (loadedUserId) {
+            setDeviceId(localStorage.getItem(`matrix_device_id:${loadedUserId}`) || '');
             setRecoveryKey(localStorage.getItem(`matrix_recovery_key:${loadedUserId}`) || '');
           }
         }
@@ -113,7 +115,13 @@ export function MatrixLoginForm() {
       if (error) throw error;
 
       const sanitizedUserId = matrixUserId.trim();
+      const trimmedDeviceId = deviceId.trim();
       const trimmedRecoveryKey = recoveryKey.trim();
+      if (trimmedDeviceId) {
+        localStorage.setItem(`matrix_device_id:${sanitizedUserId}`, trimmedDeviceId);
+      } else {
+        localStorage.removeItem(`matrix_device_id:${sanitizedUserId}`);
+      }
       if (trimmedRecoveryKey) {
         localStorage.setItem(`matrix_recovery_key:${sanitizedUserId}`, trimmedRecoveryKey);
       } else {
@@ -129,7 +137,8 @@ export function MatrixLoginForm() {
       await connect({
         userId: matrixUserId.trim(),
         accessToken: accessToken.trim(),
-        homeserverUrl: homeserverUrl.trim()
+        homeserverUrl: homeserverUrl.trim(),
+        deviceId: deviceId.trim() || undefined,
       });
 
     } catch (error) {
@@ -155,7 +164,8 @@ export function MatrixLoginForm() {
       await connect({
         userId: matrixUserId.trim(),
         accessToken: accessToken.trim(),
-        homeserverUrl: homeserverUrl.trim()
+        homeserverUrl: homeserverUrl.trim(),
+        deviceId: deviceId.trim() || undefined,
       });
 
       // Wait a bit for connection to establish
@@ -246,6 +256,18 @@ export function MatrixLoginForm() {
             />
             <p className="text-xs text-muted-foreground">
               Die URL Ihres Matrix-Homeservers
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="matrix-device-id">Device ID (wichtig für E2EE)</Label>
+            <Input
+              id="matrix-device-id"
+              placeholder="z.B. ABCDEFGHIJ"
+              value={deviceId}
+              onChange={(e) => setDeviceId(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional, aber empfohlen: In Element unter „Einstellungen → Hilfe & Info“. Ohne Device ID kann Rust-Crypto nicht initialisieren.
             </p>
           </div>
           <div className="space-y-2">

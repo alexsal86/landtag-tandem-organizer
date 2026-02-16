@@ -8,6 +8,7 @@ interface MatrixCredentials {
   userId: string;
   accessToken: string;
   homeserverUrl: string;
+  deviceId?: string;
 }
 
 interface MatrixRoom {
@@ -124,10 +125,12 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
 
         if (profile?.matrix_user_id && profile?.matrix_access_token) {
+          const storedDeviceId = localStorage.getItem(`matrix_device_id:${profile.matrix_user_id}`) || undefined;
           const creds: MatrixCredentials = {
             userId: profile.matrix_user_id,
             accessToken: profile.matrix_access_token,
-            homeserverUrl: profile.matrix_homeserver_url || 'https://matrix.org'
+            homeserverUrl: profile.matrix_homeserver_url || 'https://matrix.org',
+            deviceId: storedDeviceId,
           };
           setCredentials(creds);
         }
@@ -153,10 +156,39 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     setConnectionError(null);
 
     try {
+      const fetchDeviceIdFromWhoAmI = async (): Promise<string | null> => {
+        try {
+          const response = await fetch(`${creds.homeserverUrl.replace(/\/$/, '')}/_matrix/client/v3/account/whoami`, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${creds.accessToken}`,
+            },
+          });
+
+          if (!response.ok) {
+            return null;
+          }
+
+          const whoami = await response.json();
+          return typeof whoami?.device_id === 'string' ? whoami.device_id : null;
+        } catch (error) {
+          console.error('Could not resolve Matrix device ID via whoami:', error);
+          return null;
+        }
+      };
+
+      const localDeviceId = localStorage.getItem(`matrix_device_id:${creds.userId}`) || null;
+      const resolvedDeviceId = creds.deviceId || localDeviceId || await fetchDeviceIdFromWhoAmI();
+
+      if (!resolvedDeviceId) {
+        throw new Error('Matrix Device ID konnte nicht ermittelt werden. Bitte tragen Sie die Device ID in den Matrix-Einstellungen ein (Element: Einstellungen → Hilfe & Info).');
+      }
+
       const matrixClient = sdk.createClient({
         baseUrl: creds.homeserverUrl,
         accessToken: creds.accessToken,
         userId: creds.userId,
+        deviceId: resolvedDeviceId,
         cryptoCallbacks: {
           getSecretStorageKey: async ({ keys }) => {
             const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`);
@@ -445,8 +477,9 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       updateRuntimeDiagnostics(lastCryptoError, { secretStorageReady, crossSigningReady, keyBackupEnabled });
       
+      localStorage.setItem(`matrix_device_id:${creds.userId}`, resolvedDeviceId);
       setClient(matrixClient);
-      setCredentials(creds);
+      setCredentials({ ...creds, deviceId: resolvedDeviceId });
     } catch (error) {
       console.error('Error connecting to Matrix:', error);
       setConnectionError(error instanceof Error ? error.message : 'Verbindungsfehler');
