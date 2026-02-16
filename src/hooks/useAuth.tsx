@@ -12,6 +12,41 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const trackSession = async (userId: string) => {
+  try {
+    // Upsert session based on user_id + device
+    const deviceInfo = navigator.userAgent;
+    
+    // Check if a session with this device already exists
+    const { data: existing } = await supabase
+      .from('user_sessions' as any)
+      .select('id')
+      .eq('user_id', userId)
+      .eq('device_info', deviceInfo)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      // Update last_active_at
+      await supabase
+        .from('user_sessions' as any)
+        .update({ last_active_at: new Date().toISOString(), is_current: true } as any)
+        .eq('id', (existing[0] as any).id);
+    } else {
+      // Insert new session
+      await supabase
+        .from('user_sessions' as any)
+        .insert({
+          user_id: userId,
+          device_info: deviceInfo,
+          is_current: true,
+          last_active_at: new Date().toISOString(),
+        } as any);
+    }
+  } catch (error) {
+    console.error('Error tracking session:', error);
+  }
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -24,6 +59,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Track session on sign in
+        if (event === 'SIGNED_IN' && session?.user?.id) {
+          setTimeout(() => trackSession(session.user.id), 0);
+        }
       }
     );
 
@@ -32,6 +72,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // Track session for existing login
+      if (session?.user?.id) {
+        setTimeout(() => trackSession(session.user.id), 0);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -48,10 +93,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     // Clear tenant selection on logout to prevent cross-user tenant leakage
-    // Remove both legacy global key and user-specific key
     localStorage.removeItem('currentTenantId');
     if (user?.id) {
       localStorage.removeItem(`currentTenantId_${user.id}`);
+    }
+    
+    // Remove current session tracking
+    if (user?.id) {
+      try {
+        await supabase
+          .from('user_sessions' as any)
+          .delete()
+          .eq('user_id', user.id)
+          .eq('device_info', navigator.userAgent);
+      } catch (e) {
+        console.error('Error removing session:', e);
+      }
     }
     
     await supabase.auth.signOut();

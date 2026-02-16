@@ -24,10 +24,10 @@ interface StatusHistoryEntry {
 interface CaseFileCurrentStatusProps {
   caseFile: CaseFile;
   onUpdate: (note: string) => Promise<boolean>;
-  onUpdateProcessingStatus?: (status: string | null) => Promise<boolean>;
+  onUpdateProcessingStatuses?: (statuses: string[]) => Promise<boolean>;
 }
 
-export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingStatus }: CaseFileCurrentStatusProps) {
+export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingStatuses }: CaseFileCurrentStatusProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(caseFile.current_status_note || "");
   const [saving, setSaving] = useState(false);
@@ -35,7 +35,8 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
   const [history, setHistory] = useState<StatusHistoryEntry[]>([]);
   const { statuses: processingStatuses } = useCaseFileProcessingStatuses();
 
-  const currentProcessingStatus = (caseFile as any).processing_status;
+  const currentProcessingStatuses: string[] = (caseFile as any).processing_statuses || 
+    ((caseFile as any).processing_status ? [(caseFile as any).processing_status] : []);
 
   const getIconComponent = (iconName?: string | null): LucideIcon | null => {
     if (!iconName) return null;
@@ -101,9 +102,12 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
   };
 
   const handleProcessingStatusChange = async (statusName: string) => {
-    if (!onUpdateProcessingStatus) return;
-    const newStatus = statusName === currentProcessingStatus ? null : statusName;
-    await onUpdateProcessingStatus(newStatus);
+    if (!onUpdateProcessingStatuses) return;
+    const isSelected = currentProcessingStatuses.includes(statusName);
+    const newStatuses = isSelected
+      ? currentProcessingStatuses.filter(s => s !== statusName)
+      : [...currentProcessingStatuses, statusName];
+    await onUpdateProcessingStatuses(newStatuses);
   };
 
   return (
@@ -134,7 +138,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
         <div className="flex flex-wrap gap-1.5">
           {processingStatuses.map((status) => {
             const StatusIcon = getIconComponent(status.icon);
-            const isSelected = currentProcessingStatus === status.name;
+            const isSelected = currentProcessingStatuses.includes(status.name);
             return (
               <button
                 key={status.id}

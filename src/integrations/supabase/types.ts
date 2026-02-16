@@ -1644,6 +1644,7 @@ export type Database = {
           is_private: boolean | null
           priority: string | null
           processing_status: string | null
+          processing_statuses: string[] | null
           reference_number: string | null
           risks_and_opportunities: Json | null
           start_date: string | null
@@ -1667,6 +1668,7 @@ export type Database = {
           is_private?: boolean | null
           priority?: string | null
           processing_status?: string | null
+          processing_statuses?: string[] | null
           reference_number?: string | null
           risks_and_opportunities?: Json | null
           start_date?: string | null
@@ -1690,6 +1692,7 @@ export type Database = {
           is_private?: boolean | null
           priority?: string | null
           processing_status?: string | null
+          processing_statuses?: string[] | null
           reference_number?: string | null
           risks_and_opportunities?: Json | null
           start_date?: string | null
@@ -9302,6 +9305,36 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_sessions: {
+        Row: {
+          created_at: string | null
+          device_info: string | null
+          id: string
+          ip_address: string | null
+          is_current: boolean | null
+          last_active_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          is_current?: boolean | null
+          last_active_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          is_current?: boolean | null
+          last_active_at?: string | null
           user_id?: string
         }
         Relationships: []
