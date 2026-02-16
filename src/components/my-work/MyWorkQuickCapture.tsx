@@ -36,6 +36,16 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   const [isPinned, setIsPinned] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingAsTask, setSavingAsTask] = useState(false);
+  const [editorResetKey, setEditorResetKey] = useState(0);
+
+
+  const resetQuickCaptureForm = () => {
+    setContent("");
+    setTitle("");
+    setSelectedColor("#3b82f6");
+    setIsPinned(false);
+    setEditorResetKey((prev) => prev + 1);
+  };
 
   const handleSaveNote = async () => {
     if (!content.trim() || !user) return;
@@ -54,10 +64,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       if (error) throw error;
 
       toast({ title: "Notiz gespeichert" });
-      setContent("");
-      setTitle("");
-      setSelectedColor("#3b82f6");
-      setIsPinned(false);
+      resetQuickCaptureForm();
       onNoteSaved?.();
     } catch (error) {
       console.error("Error saving note:", error);
@@ -89,10 +96,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       if (error) throw error;
 
       toast({ title: "Als Aufgabe gespeichert" });
-      setContent("");
-      setTitle("");
-      setSelectedColor("#3b82f6");
-      setIsPinned(false);
+      resetQuickCaptureForm();
       onNoteSaved?.();
     } catch (error) {
       console.error("Error saving as task:", error);
@@ -186,6 +190,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
         />
         <div className="min-h-[120px]">
           <SimpleRichTextEditor
+            key={editorResetKey}
             initialContent={content}
             onChange={setContent}
             onKeyDown={handleEditorKeyDown}
