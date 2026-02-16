@@ -26,6 +26,7 @@ interface ResponseThread {
   response_type: string;
   comment: string | null;
   created_at: string;
+  updated_at: string;
   creator_response: string | null;
   parent_response_id: string | null;
   participant_id: string;
@@ -36,6 +37,16 @@ interface ResponseThread {
     avatar_url: string | null;
   };
   replies?: ResponseThread[];
+}
+
+interface DecisionComment {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  profile?: {
+    display_name: string | null;
+  };
 }
 
 interface Participant {
@@ -69,6 +80,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
   const [creatorResponses, setCreatorResponses] = useState<{[key: string]: string}>({});
   const [isLoading, setIsLoading] = useState(false);
   const [responseThreads, setResponseThreads] = useState<ResponseThread[]>([]);
+  const [decisionComments, setDecisionComments] = useState<DecisionComment[]>([]);
   const [creatorProfile, setCreatorProfile] = useState<{ display_name: string | null; badge_color: string | null; avatar_url: string | null } | null>(null);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -144,6 +156,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
             response_type,
             comment,
             created_at,
+            updated_at,
             creator_response,
             parent_response_id,
             participant_id
@@ -166,6 +179,23 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
       if (profilesError) throw profilesError;
 
       const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('task_decision_comments')
+        .select('id, content, created_at, user_id')
+        .eq('decision_id', decisionId)
+        .order('created_at', { ascending: false });
+
+      if (commentsError) throw commentsError;
+
+      const formattedComments: DecisionComment[] = (commentsData || []).map((comment) => ({
+        ...comment,
+        profile: {
+          display_name: profileMap.get(comment.user_id)?.display_name || null,
+        },
+      }));
+
+      setDecisionComments(formattedComments);
 
       // Store creator profile for display
       const creatorProf = profileMap.get(decisionData.created_by);
@@ -209,6 +239,10 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
         } else {
           rootResponses.push(node);
         }
+      });
+
+      responseMap.forEach((response) => {
+        response.replies?.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       });
 
       // Sort root responses by date desc
@@ -397,10 +431,8 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
   };
 
   const renderResponseThread = (thread: ResponseThread, participantId: string, depth: number): React.ReactNode => {
-    const isParticipantMessage = !thread.parent_response_id || depth % 2 === 0;
-    
     return (
-      <div key={thread.id} className={cn("space-y-2", depth > 0 && "ml-4 pl-3 border-l-2 border-muted")}>
+      <div key={thread.id} className={cn("space-y-2", depth > 0 && "ml-6 pl-4 border-l-2 border-muted")}>
         {/* The response message */}
         {thread.comment && (
           <div className="flex items-start justify-between">
@@ -442,6 +474,9 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                 )}
                 <span className="text-xs font-medium text-foreground">
                   {creatorProfile?.display_name || 'Ersteller'}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {formatDistanceToNow(new Date(thread.updated_at || thread.created_at), { addSuffix: true, locale: de })}
                 </span>
               </div>
               <RichTextDisplay content={thread.creator_response} className="text-sm" />
@@ -514,28 +549,6 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
       </div>
     );
   };
-
-  const flattenComments = (threads: ResponseThread[]): ResponseThread[] => {
-    const comments: ResponseThread[] = [];
-
-    const walk = (nodes: ResponseThread[]) => {
-      nodes.forEach((node) => {
-        if (node.comment) {
-          comments.push(node);
-        }
-
-        if (node.replies?.length) {
-          walk(node.replies);
-        }
-      });
-    };
-
-    walk(threads);
-
-    return comments.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  };
-
-  const allComments = flattenComments(responseThreads);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -688,22 +701,22 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
               <CardTitle className="text-sm">Kommentare</CardTitle>
             </CardHeader>
             <CardContent>
-              {allComments.length === 0 ? (
+              {decisionComments.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Noch keine Kommentare vorhanden.</p>
               ) : (
                 <div className="space-y-3">
-                  {allComments.map((commentThread) => (
-                    <div key={commentThread.id} className="rounded-md border p-3">
+                  {decisionComments.map((comment) => (
+                    <div key={comment.id} className="rounded-md border p-3">
                       <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="font-medium text-foreground">
-                          {commentThread.participant_profile?.display_name || 'Unbekannt'}
+                          {comment.profile?.display_name || 'Unbekannt'}
                         </span>
                         <span>•</span>
                         <span>
-                          {formatDistanceToNow(new Date(commentThread.created_at), { addSuffix: true, locale: de })}
+                          {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: de })}
                         </span>
                       </div>
-                      <RichTextDisplay content={commentThread.comment || ''} className="text-sm" />
+                      <RichTextDisplay content={comment.content || ''} className="text-sm" />
                     </div>
                   ))}
                 </div>
