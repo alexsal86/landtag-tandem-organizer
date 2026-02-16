@@ -307,11 +307,12 @@ export const DashboardGreetingSection = () => {
     
     const message = selectMessage(context);
     
+    const dayReference = isShowingTomorrow ? 'Morgen' : 'Heute';
     const roleSpecificLead = {
-      abgeordneter: 'Heute stehen politische Prioritäten und klare Entscheidungen im Fokus.',
-      bueroleitung: 'Heute zählt ein klarer Überblick über Team, Fristen und Prioritäten.',
-      mitarbeiter: 'Heute geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.',
-      praktikant: 'Heute ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.'
+      abgeordneter: `${dayReference} stehen politische Prioritäten und klare Entscheidungen im Fokus.`,
+      bueroleitung: `${dayReference} zählt ein klarer Überblick über Team, Fristen und Prioritäten.`,
+      mitarbeiter: `${dayReference} geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.`,
+      praktikant: `${dayReference} ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.`
     } as const;
 
     const roleLine = roleSpecificLead[userRole as keyof typeof roleSpecificLead];
@@ -401,6 +402,15 @@ export const DashboardGreetingSection = () => {
       <span className="text-xl lg:text-2xl font-light tracking-tight text-foreground/90 block whitespace-pre-wrap">
         {parsedContent}
       </span>
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => setShowWeather((prev) => !prev)}
+          className="text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+        >
+          {showWeather ? 'Wetter ausblenden' : 'Wetter anzeigen (optional)'}
+        </button>
+      </div>
     </div>
   );
 };
