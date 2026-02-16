@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { StickyNote, Keyboard, Loader2 } from "lucide-react";
+import { StickyNote, Keyboard, Loader2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -76,11 +77,25 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
     }
   };
 
-  // Handle Enter key for quick save (Ctrl/Cmd + Enter)
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+  // Handle Enter key for quick save
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    const target = e.target as HTMLElement;
+    const isTextarea = target.tagName === "TEXTAREA";
+
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      if (!isTextarea || (isTextarea && !(e.metaKey || e.ctrlKey))) {
+        e.preventDefault();
+        if (!saving) {
+          void handleSave();
+        }
+      }
+    }
+
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
-      handleSave();
+      if (!saving) {
+        void handleSave();
+      }
     }
   };
 
@@ -108,13 +123,28 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
             onChange={(e) => setContent(e.target.value)}
             rows={4}
             disabled={saving}
+            onKeyDown={handleKeyDown}
           />
         </div>
         
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mr-auto">
-            <Keyboard className="h-3 w-3" />
-            <span>Cmd/Ctrl + .</span>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mr-auto">
+            <div className="flex items-center gap-1">
+              <Keyboard className="h-3 w-3" />
+              <span>Cmd/Ctrl + .</span>
+            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="hover:text-foreground">
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Enter speichert, Shift + Enter erzeugt eine neue Zeile.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Abbrechen
