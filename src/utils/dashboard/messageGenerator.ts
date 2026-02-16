@@ -28,6 +28,7 @@ export interface DashboardContext {
   completedTasks: number;
   isHoliday: boolean;
   month: number;
+  userRole?: string;
   hasPlenum?: boolean;
   hasCommittee?: boolean;
   multipleSessions?: boolean;
