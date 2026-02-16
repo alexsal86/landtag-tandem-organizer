@@ -394,7 +394,7 @@ export function MyWorkDecisionsTab() {
         .select('id, decision_id, user_id, content, created_at')
         .in('decision_id', decisionIds)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(40);
 
       if (!comments || comments.length === 0) {
         setSidebarComments([]);
@@ -408,27 +408,23 @@ export function MyWorkDecisionsTab() {
         .in('user_id', userIds);
 
       const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const decisionTitleMap = new Map(decisions.map(d => [d.id, d.title]));
 
-      const recentComments: SidebarDiscussionComment[] = comments
-        .filter(c => new Date(c.created_at) > sevenDaysAgo)
-        .map(c => {
-          const decision = decisions.find(d => d.id === c.decision_id);
-          const profile = profileMap.get(c.user_id);
-          const isMention = c.content?.includes(`data-mention-user-id="${user.id}"`) || false;
-          return {
-            id: c.id,
-            decisionId: c.decision_id,
-            decisionTitle: decision?.title || 'Entscheidung',
-            authorName: profile?.display_name || null,
-            authorBadgeColor: profile?.badge_color || null,
-            authorAvatarUrl: profile?.avatar_url || null,
-            content: c.content,
-            createdAt: c.created_at,
-            isMention,
-          };
-        });
+      const recentComments: SidebarDiscussionComment[] = comments.map(c => {
+        const profile = profileMap.get(c.user_id);
+        const isMention = c.content?.includes(`data-mention-user-id="${user.id}"`) || false;
+        return {
+          id: c.id,
+          decisionId: c.decision_id,
+          decisionTitle: decisionTitleMap.get(c.decision_id) || 'Entscheidung',
+          authorName: profile?.display_name || null,
+          authorBadgeColor: profile?.badge_color || null,
+          authorAvatarUrl: profile?.avatar_url || null,
+          content: c.content,
+          createdAt: c.created_at,
+          isMention,
+        };
+      });
 
       setSidebarComments(recentComments);
     };
@@ -478,21 +474,23 @@ export function MyWorkDecisionsTab() {
       });
     });
 
-    const responseActivities = decisions.flatMap((decision) =>
-      (decision.participants || []).flatMap((participant) =>
-        participant.responses.map((response) => ({
-          id: `response-${response.id}`,
-          decisionId: decision.id,
-          decisionTitle: decision.title,
-          type: 'response' as const,
-          actorName: participant.profile?.display_name || null,
-          actorBadgeColor: participant.profile?.badge_color || null,
-          actorAvatarUrl: participant.profile?.avatar_url || null,
-          content: response.comment,
-          createdAt: response.created_at,
-        }))
-      )
-    );
+    const responseActivities = decisions
+      .filter((decision) => decision.status !== 'archived')
+      .flatMap((decision) =>
+        (decision.participants || []).flatMap((participant) =>
+          participant.responses.map((response) => ({
+            id: `response-${response.id}`,
+            decisionId: decision.id,
+            decisionTitle: decision.title,
+            type: 'response' as const,
+            actorName: participant.profile?.display_name || null,
+            actorBadgeColor: participant.profile?.badge_color || null,
+            actorAvatarUrl: participant.profile?.avatar_url || null,
+            content: response.comment,
+            createdAt: response.created_at,
+          }))
+        )
+      );
 
     const commentActivities = sidebarComments.map((comment) => ({
       id: `comment-${comment.id}`,
