@@ -59,7 +59,7 @@ const AppContent = () => {
         <GlobalSearchCommand />
         <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Navigate to="/mywork" replace />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/contacts/new" element={<CreateContact />} />
           <Route path="/contacts/:id" element={<ContactDetail />} />
