@@ -154,6 +154,21 @@ export function CommentThread({
         />
       )}
 
+      {/* Mask to hide parent's vertical line below last reply's avatar center */}
+      {depth > 0 && isLastReply && (
+        <div
+          className="absolute bg-background"
+          aria-hidden="true"
+          style={{
+            left: `${-(AVATAR_CENTER + 8 + 1)}px`,
+            top: `${AVATAR_CENTER}px`,
+            bottom: 0,
+            width: '4px',
+            zIndex: 1,
+          }}
+        />
+      )}
+
       {/* The comment itself */}
       <div className="group flex items-start gap-2 relative">
 
