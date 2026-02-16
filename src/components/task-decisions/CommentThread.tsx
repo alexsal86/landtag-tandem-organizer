@@ -144,6 +144,37 @@ export function CommentThread({
     };
   }, [AVATAR_CENTER, hasReplies, lastReplyTerminalAvatarEl]);
 
+  useLayoutEffect(() => {
+    if (!hasReplies || !threadRef.current || !lastDirectReplyAvatarEl) {
+      setConnectorBottomOffset(0);
+      return;
+    }
+
+    const updateConnectorBottom = () => {
+      if (!threadRef.current || !lastDirectReplyAvatarEl) return;
+
+      const threadRect = threadRef.current.getBoundingClientRect();
+      const lastAvatarRect = lastDirectReplyAvatarEl.getBoundingClientRect();
+      const lastAvatarCenterY = lastAvatarRect.top + AVATAR_CENTER;
+      const bottomOffset = threadRect.bottom - lastAvatarCenterY;
+
+      setConnectorBottomOffset(Math.max(0, bottomOffset));
+    };
+
+    updateConnectorBottom();
+
+    const resizeObserver = new ResizeObserver(updateConnectorBottom);
+    resizeObserver.observe(threadRef.current);
+    resizeObserver.observe(lastDirectReplyAvatarEl);
+
+    window.addEventListener("resize", updateConnectorBottom);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateConnectorBottom);
+    };
+  }, [AVATAR_CENTER, hasReplies, lastDirectReplyAvatarEl]);
+
   return (
     <div className={cn("relative", depth > 0 && "ml-8")} ref={threadRef}>
       {/* Vertical line from this comment's avatar down through all replies */}
