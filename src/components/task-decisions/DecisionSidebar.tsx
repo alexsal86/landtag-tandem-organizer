@@ -107,49 +107,6 @@ export function DecisionSidebar({
     <aside className="hidden lg:block space-y-4 sticky top-6">
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-bold">Letzte Aktivitäten</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0 space-y-2">
-          {recentActivities.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-1">Keine Aktivitäten vorhanden.</p>
-          ) : (
-            recentActivities.map((activity) => (
-              <button
-                key={activity.id}
-                onClick={() => onActivityClick(activity.decisionId)}
-                className="w-full text-left p-2 rounded-md border hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Avatar className="h-4 w-4">
-                    {activity.actorAvatarUrl && <AvatarImage src={activity.actorAvatarUrl} />}
-                    <AvatarFallback
-                      className="text-[8px]"
-                      style={{ backgroundColor: activity.actorBadgeColor || undefined }}
-                    >
-                      {getInitials(activity.actorName)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs text-muted-foreground line-clamp-1">
-                    {activity.actorName || "Unbekannt"} · {activity.type === "comment" ? "Kommentar" : "Rückmeldung"}
-                  </span>
-                </div>
-                <p className="text-xs font-medium line-clamp-1">{activity.decisionTitle}</p>
-                {activity.content && (
-                  <div className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                    <RichTextDisplay content={activity.content} className="text-xs" />
-                  </div>
-                )}
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true, locale: de })}
-                </p>
-              </button>
-            ))
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-bold">Was liegt für mich an?</CardTitle>
             {totalItems > 0 && (
@@ -373,6 +330,49 @@ export function DecisionSidebar({
               </div>
             )}
           </ScrollArea>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-bold">Letzte Aktivitäten</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-2">
+          {recentActivities.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-1">Keine Aktivitäten vorhanden.</p>
+          ) : (
+            recentActivities.map((activity) => (
+              <button
+                key={activity.id}
+                onClick={() => onActivityClick(activity.decisionId)}
+                className="w-full text-left p-2 rounded-md border hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Avatar className="h-4 w-4">
+                    {activity.actorAvatarUrl && <AvatarImage src={activity.actorAvatarUrl} />}
+                    <AvatarFallback
+                      className="text-[8px]"
+                      style={{ backgroundColor: activity.actorBadgeColor || undefined }}
+                    >
+                      {getInitials(activity.actorName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-muted-foreground line-clamp-1">
+                    {activity.actorName || "Unbekannt"} · {activity.type === "comment" ? "Kommentar" : "Rückmeldung"}
+                  </span>
+                </div>
+                <p className="text-xs font-medium line-clamp-1">{activity.decisionTitle}</p>
+                {activity.content && (
+                  <div className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                    <RichTextDisplay content={activity.content} className="text-xs" />
+                  </div>
+                )}
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true, locale: de })}
+                </p>
+              </button>
+            ))
+          )}
         </CardContent>
       </Card>
     </aside>
