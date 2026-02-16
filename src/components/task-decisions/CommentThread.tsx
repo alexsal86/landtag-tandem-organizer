@@ -166,11 +166,11 @@ export function CommentThread({
           style={{
             left: `-${AVATAR_CENTER + 8}px`,
             top: 0,
-            width: `${AVATAR_CENTER + 8 - 4}px`,
-            height: `${AVATAR_CENTER}px`,
+            width: `${AVATAR_CENTER + 10}px`,
+            height: `${AVATAR_CENTER + 1}px`,
             borderLeft: '2px solid',
             borderBottom: '2px solid',
-            borderBottomLeftRadius: '8px',
+            borderBottomLeftRadius: '12px',
             borderColor: 'inherit',
           }}
         />
@@ -308,22 +308,23 @@ export function CommentThread({
 
       {/* Nested replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="mt-2 space-y-2">
+        <div className="mt-2">
           {comment.replies.map((reply, index) => (
-            <CommentThread
-              key={reply.id}
-              comment={reply}
-              depth={depth + 1}
-              maxDepth={maxDepth}
-              onReply={onReply}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              currentUserId={currentUserId}
-              isLastReply={index === comment.replies!.length - 1}
-              avatarRef={index === comment.replies!.length - 1 ? (node) => {
-                setLastDirectReplyAvatarEl(node);
-              } : undefined}
-            />
+            <div key={reply.id} className={cn(index < comment.replies!.length - 1 && "pb-2")}>
+              <CommentThread
+                comment={reply}
+                depth={depth + 1}
+                maxDepth={maxDepth}
+                onReply={onReply}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                currentUserId={currentUserId}
+                isLastReply={index === comment.replies!.length - 1}
+                avatarRef={index === comment.replies!.length - 1 ? (node) => {
+                  setLastDirectReplyAvatarEl(node);
+                } : undefined}
+              />
+            </div>
           ))}
         </div>
       )}
