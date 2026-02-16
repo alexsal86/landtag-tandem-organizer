@@ -228,7 +228,7 @@ export function MyWorkDecisionsTab() {
           .from('task_decision_participants')
           .select(`
             id, user_id, decision_id,
-            task_decision_responses (id, response_type, comment, creator_response, created_at, updated_at)
+            task_decision_responses (id, response_type, comment, creator_response, parent_response_id, created_at, updated_at)
           `)
           .in('decision_id', allDecisionIds);
 
@@ -271,7 +271,12 @@ export function MyWorkDecisionsTab() {
               avatar_url: profileMap.get(p.user_id)?.avatar_url || null,
             },
             responses: (p.task_decision_responses || [])
-              .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .sort((a: any, b: any) => {
+                const aIsChild = !!a.parent_response_id;
+                const bIsChild = !!b.parent_response_id;
+                if (aIsChild !== bIsChild) return aIsChild ? 1 : -1;
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+              })
               .map((r: any) => ({ ...r, response_type: r.response_type as string })),
           });
         });
@@ -517,18 +522,42 @@ export function MyWorkDecisionsTab() {
   }) => {
     if (!text?.trim()) return;
 
-    const payload = mode === 'creator_response'
-      ? { creator_response: text.trim() }
-      : { comment: text.trim(), creator_response: null };
+    if (mode === 'creator_response') {
+      const { error } = await supabase
+        .from('task_decision_responses')
+        .update({ creator_response: text.trim() })
+        .eq('id', responseId);
 
-    const { error } = await supabase
-      .from('task_decision_responses')
-      .update(payload)
-      .eq('id', responseId);
+      if (error) {
+        toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
+        throw error;
+      }
+    } else {
+      const { data: parentResponse, error: parentError } = await supabase
+        .from('task_decision_responses')
+        .select('decision_id, participant_id')
+        .eq('id', responseId)
+        .maybeSingle();
 
-    if (error) {
-      toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
-      throw error;
+      if (parentError || !parentResponse) {
+        toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
+        throw parentError || new Error('Ausgangsnachricht nicht gefunden.');
+      }
+
+      const { error } = await supabase
+        .from('task_decision_responses')
+        .insert({
+          decision_id: parentResponse.decision_id,
+          participant_id: parentResponse.participant_id,
+          response_type: 'question',
+          comment: text.trim(),
+          parent_response_id: responseId,
+        });
+
+      if (error) {
+        toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
+        throw error;
+      }
     }
 
     toast({

@@ -99,6 +99,7 @@ export const TaskDecisionResponse = ({
         .from('task_decision_responses')
         .select('*')
         .eq('participant_id', participantId)
+        .is('parent_response_id', null)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -126,6 +127,7 @@ export const TaskDecisionResponse = ({
         .select('id')
         .eq('participant_id', participantId)
         .eq('decision_id', decisionId)
+        .is('parent_response_id', null)
         .maybeSingle();
 
       if (checkError) {
