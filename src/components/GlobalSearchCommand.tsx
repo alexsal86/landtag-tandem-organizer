@@ -103,10 +103,13 @@ export function GlobalSearchCommand() {
   useEffect(() => {
     const handleOpenSearch = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.query) {
-        setSearchQuery(detail.query);
-      }
       setOpen(true);
+
+      if (detail?.query) {
+        queueMicrotask(() => {
+          setSearchQuery(detail.query);
+        });
+      }
     };
     window.addEventListener('openGlobalSearch', handleOpenSearch);
     return () => window.removeEventListener('openGlobalSearch', handleOpenSearch);
@@ -179,7 +182,7 @@ export function GlobalSearchCommand() {
         query = query.eq('category', filters.category);
       }
       
-      const { data } = await query.limit(5);
+      const { data } = await query.limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -208,7 +211,7 @@ export function GlobalSearchCommand() {
       const { data } = await query
         .gte('start_time', new Date().toISOString())
         .order('start_time', { ascending: true })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -239,7 +242,7 @@ export function GlobalSearchCommand() {
       
       const { data } = await query
         .order('due_date', { ascending: true })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -264,7 +267,7 @@ export function GlobalSearchCommand() {
       
       const { data } = await query
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -280,7 +283,7 @@ export function GlobalSearchCommand() {
         .eq('tenant_id', currentTenant!.id)
         .or(`title.ilike.%${searchQuery}%,recipient_name.ilike.%${searchQuery}%`)
         .order('letter_date', { ascending: false })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -296,7 +299,7 @@ export function GlobalSearchCommand() {
         .eq('tenant_id', currentTenant!.id)
         .ilike('title', `%${searchQuery}%`)
         .order('meeting_date', { ascending: false })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -312,7 +315,7 @@ export function GlobalSearchCommand() {
         .eq('tenant_id', currentTenant!.id)
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,reference_number.ilike.%${searchQuery}%`)
         .order('updated_at', { ascending: false })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -329,7 +332,7 @@ export function GlobalSearchCommand() {
         .eq('user_id', user!.id)
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
         .order('archived_at', { ascending: false })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && !!user && searchQuery.length >= 2,
