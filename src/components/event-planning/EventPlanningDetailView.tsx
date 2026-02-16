@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone } from "lucide-react";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -79,6 +79,18 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
 
   if (!selectedPlanning) return null;
 
+  const planningCollaborators = collaborators.filter(
+    (collab) => collab.event_planning_id === selectedPlanning.id,
+  );
+  const uniquePlanningCollaborators = Array.from(
+    new Map(planningCollaborators.map((collab) => [collab.user_id, collab])).values(),
+  );
+  const availableProfilesToAdd = allProfiles.filter(
+    (profile) =>
+      profile.user_id !== selectedPlanning.user_id &&
+      !uniquePlanningCollaborators.some((collab) => collab.user_id === profile.user_id),
+  );
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="space-y-6">
@@ -89,11 +101,11 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
           </div>
           <div className="flex items-center space-x-4">
             {/* Collaborator avatars */}
-            {collaborators.length > 0 && (
+            {uniquePlanningCollaborators.length > 0 && (
               <Dialog open={isManageCollaboratorsOpen} onOpenChange={setIsManageCollaboratorsOpen}>
                 <DialogTrigger asChild>
                   <div className="flex -space-x-2 cursor-pointer" title="Klicken zum Verwalten der Freigaben">
-                    {collaborators.slice(0, 5).map((collab) => (
+                    {uniquePlanningCollaborators.slice(0, 5).map((collab) => (
                       <div key={collab.id} className="relative">
                         <Avatar className={cn("h-8 w-8 border-2 hover:z-10 transition-transform hover:scale-110", collab.can_edit ? "border-primary ring-2 ring-primary/20" : "border-muted-foreground/30 opacity-60")}>
                           <AvatarImage src={collab.profiles?.avatar_url} />
@@ -102,7 +114,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                         {!collab.can_edit && <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5"><Eye className="h-3 w-3 text-muted-foreground" /></div>}
                       </div>
                     ))}
-                    {collaborators.length > 5 && <Avatar className="h-8 w-8 border-2 border-background"><AvatarFallback>+{collaborators.length - 5}</AvatarFallback></Avatar>}
+                    {uniquePlanningCollaborators.length > 5 && <Avatar className="h-8 w-8 border-2 border-background"><AvatarFallback>+{uniquePlanningCollaborators.length - 5}</AvatarFallback></Avatar>}
                   </div>
                 </DialogTrigger>
                 <DialogContent>
@@ -111,7 +123,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                     <DialogDescription>Berechtigungen ändern oder Mitarbeiter entfernen.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                    {collaborators.map((collab) => (
+                    {uniquePlanningCollaborators.map((collab) => (
                       <div key={collab.id} className="flex items-center justify-between p-3 border rounded-md">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8"><AvatarImage src={collab.profiles?.avatar_url} /><AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
@@ -129,7 +141,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                         </div>
                       </div>
                     ))}
-                    {collaborators.length === 0 && <p className="text-center text-muted-foreground py-4">Noch keine Mitarbeiter freigegeben.</p>}
+                    {uniquePlanningCollaborators.length === 0 && <p className="text-center text-muted-foreground py-4">Noch keine Mitarbeiter freigegeben.</p>}
                   </div>
                 </DialogContent>
               </Dialog>
@@ -141,10 +153,10 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
               <DialogContent className="max-h-[80vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Mitarbeiter hinzufügen</DialogTitle><DialogDescription>Wählen Sie Mitarbeiter aus der Liste aus.</DialogDescription></DialogHeader>
                 <div className="space-y-2">
-                  {collaborators.length > 0 && (
+                  {uniquePlanningCollaborators.length > 0 && (
                     <div className="mb-4">
                       <p className="text-sm font-medium text-muted-foreground mb-2">Bereits freigegeben:</p>
-                      {collaborators.map((collab) => (
+                      {uniquePlanningCollaborators.map((collab) => (
                         <div key={collab.id} className="flex items-center justify-between p-2 rounded-md bg-muted/30">
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6"><AvatarImage src={collab.profiles?.avatar_url} /><AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
@@ -155,8 +167,8 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                       ))}
                     </div>
                   )}
-                  {allProfiles.filter(profile => profile.user_id !== selectedPlanning?.user_id && !collaborators.some(c => c.user_id === profile.user_id)).length > 0 && <p className="text-sm font-medium text-muted-foreground mb-2">Hinzufügen:</p>}
-                  {allProfiles.filter(profile => profile.user_id !== selectedPlanning?.user_id && !collaborators.some(c => c.user_id === profile.user_id)).map((profile) => (
+                  {availableProfilesToAdd.length > 0 && <p className="text-sm font-medium text-muted-foreground mb-2">Hinzufügen:</p>}
+                  {availableProfilesToAdd.map((profile) => (
                     <div key={profile.user_id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6"><AvatarImage src={profile.avatar_url} /><AvatarFallback>{profile.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
@@ -168,12 +180,12 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                       </div>
                     </div>
                   ))}
-                  {allProfiles.filter(profile => profile.user_id !== selectedPlanning?.user_id && !collaborators.some(c => c.user_id === profile.user_id)).length === 0 && collaborators.length === 0 && <p className="text-center text-muted-foreground py-4">Keine Mitarbeiter verfügbar.</p>}
+                  {availableProfilesToAdd.length === 0 && uniquePlanningCollaborators.length === 0 && <p className="text-center text-muted-foreground py-4">Keine Mitarbeiter verfügbar.</p>}
                 </div>
               </DialogContent>
             </Dialog>
 
-            {(selectedPlanning.user_id === user?.id || collaborators.some(c => c.user_id === user?.id && c.can_edit)) && (
+            {(selectedPlanning.user_id === user?.id || uniquePlanningCollaborators.some(c => c.user_id === user?.id && c.can_edit)) && (
               <Button variant={(selectedPlanning as any).is_completed ? "default" : "outline"} className={cn((selectedPlanning as any).is_completed && "bg-green-600 hover:bg-green-700")} onClick={() => togglePlanningCompleted(selectedPlanning.id, !(selectedPlanning as any).is_completed)}>
                 <CheckCircle className="mr-2 h-4 w-4" />{(selectedPlanning as any).is_completed ? "Erledigt" : "Als erledigt markieren"}
               </Button>
@@ -376,10 +388,47 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
               </CardHeader>
               <CardContent>
                 {speakers.length > 0 ? (
-                  <div className="space-y-2">
-                    {speakers.map((speaker) => (
-                      <div key={speaker.id} className="flex items-center justify-between p-2 rounded-md border">
-                        <div><p className="font-medium">{speaker.name}</p>{speaker.topic && <p className="text-sm font-medium text-primary">{speaker.topic}</p>}<div className="text-sm text-muted-foreground space-y-1">{speaker.email && <p>📧 {speaker.email}</p>}{speaker.phone && <p>📞 {speaker.phone}</p>}{speaker.bio && <p className="mt-1">{speaker.bio}</p>}</div></div>
+                  <div className="space-y-3">
+                    {speakers.map((speaker, index) => (
+                      <div key={speaker.id} className="group flex items-start justify-between rounded-md bg-muted/10 p-3">
+                        <div className="space-y-2">
+                          <p className="text-sm font-bold text-foreground">Referent {index + 1}</p>
+                          <p className="font-medium text-foreground">{speaker.name}</p>
+
+                          {speaker.bio && (
+                            <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                              <span>{speaker.bio}</span>
+                            </p>
+                          )}
+
+                          {speaker.topic && (
+                            <p className="text-sm font-medium text-foreground">
+                              Thema: {speaker.topic}
+                            </p>
+                          )}
+
+                          {(speaker.email || speaker.phone) && (
+                            <div className="mt-3 flex flex-wrap items-center gap-3 text-muted-foreground">
+                              {speaker.email && (
+                                <div className="flex items-center gap-2 rounded-md p-1 transition-colors group-hover:bg-muted/60">
+                                  <Mail className="h-4 w-4" />
+                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100">
+                                    {speaker.email}
+                                  </span>
+                                </div>
+                              )}
+                              {speaker.phone && (
+                                <div className="flex items-center gap-2 rounded-md p-1 transition-colors group-hover:bg-muted/60">
+                                  <Phone className="h-4 w-4" />
+                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100">
+                                    {speaker.phone}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="sm" onClick={() => { setEditingSpeaker(speaker); setIsEditSpeakerDialogOpen(true); }}><Edit2 className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="sm" onClick={() => removeSpeaker(speaker.id)}><X className="h-4 w-4" /></Button>

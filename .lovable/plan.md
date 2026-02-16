@@ -1,131 +1,147 @@
-# Plan: 5 Bugfixes und RSVP-Erweiterungen
 
-## 1. Sonnenblume/Logo in der Tab-Leiste
 
-**Problem:** Das Logo im Dashboard-Tab hat die Klasse `h-5 w-5` (20x20px) -- zu klein. Auf mobilen Geraeten wird der gleiche Tab gerendert, aber moeglicherweise nicht sichtbar wegen Overflow.
+# Plan: Bugfixes, Multi-Status FallAkten, Sicherheits-Sessions
+
+## 1. Logo in Allgemeinen Einstellungen nicht angezeigt
+
+**Analyse:** Die Daten in der DB sind korrekt (URL existiert mit tenant_id). Die Lade-Logik sieht korrekt aus. Das Problem ist wahrscheinlich, dass der SVG-File aus Supabase Storage ohne korrektes `crossOrigin`-Attribut geladen wird und der `onError`-Handler `logoLoadFailed` auf `true` setzt, wodurch das Bild verschwindet.
 
 **Loesung:**
+- `crossOrigin="anonymous"` zum `<img>`-Tag hinzufuegen (Zeile 257-265 in `GeneralSettings.tsx`)
+- Einen zusaetzlichen Debug-Log im `onError` hinzufuegen, der die tatsaechliche URL anzeigt
+- Sicherstellen, dass der `logoLoadFailed`-State beim initialen Laden korrekt zurueckgesetzt wird
 
-- In `src/components/MyWorkView.tsx` (Zeile 482): Logo-Groesse von `h-5 w-5` auf `h-8 w-8` erhoehen
-- Sicherstellen, dass der Dashboard-Tab (mit `isLogo: true`) auch auf Mobilgeraeten angezeigt wird -- der Tab hat `label: ""`, daher nur das Icon. Pruefen ob `overflow-x-auto` ihn abschneidet und ggf. `flex-shrink-0` setzen
-
-**Datei:** `src/components/MyWorkView.tsx` (Zeile 478-488)
+**Datei:** `src/components/GeneralSettings.tsx`
 
 ---
 
-## 2. Favicon = Seitenlogo
+## 2. Favicon ist nicht das Logo
 
-**Problem:** Der `useFavicon`-Hook existiert bereits und wird in `AppNavigation.tsx` und `Navigation.tsx` mit `app_logo_url` aufgerufen. Das Favicon sollte also bereits funktionieren. Moegliches Problem: Die `index.html` hat kein Standard-Favicon-Tag definiert, daher koennte der Browser ein leeres Favicon cachen.
+**Analyse:** Der `useFavicon`-Hook wird in `AppNavigation.tsx` und `Navigation.tsx` mit `appSettings.app_logo_url` aufgerufen. Die `index.html` hat bereits ein Standard-Favicon-Tag (Zeile 28). Der Hook setzt dynamisch das Favicon. Das Problem: Wenn `app_logo_url` ein leerer String ist (z.B. weil die Settings noch laden), wird der Fallback `/src/assets/sunflower.svg` verwendet. Aber in der Production-Build ist `/src/assets/sunflower.svg` nicht unter diesem Pfad erreichbar.
 
 **Loesung:**
+- In `useFavicon.ts`: Den Fallback-Pfad korrigieren -- stattdessen `new URL('@/assets/sunflower.svg', import.meta.url).href` verwenden oder den Pfad als importiertes Asset referenzieren
+- Alternativ: Das Sunflower-SVG als statischen Import verwenden und als Fallback nutzen
+- Sicherstellen, dass der Hook nicht ueberschrieben wird, wenn `app_logo_url` leer ist waehrend des Ladens
 
-- In `index.html` ein Standard-`<link rel="icon">` Tag hinzufuegen (wird dynamisch ueberschrieben)
-- Der bestehende Hook sollte funktionieren. Falls `app_logo_url` leer ist, wird kein Favicon gesetzt -- ein Fallback auf die Sonnenblume (`/src/assets/sunflower.svg`) einbauen
-
-**Datei:** `index.html`, `src/hooks/useFavicon.ts`
+**Datei:** `src/hooks/useFavicon.ts`
 
 ---
 
-## 3. Logo in Allgemeinen Einstellungen wird nicht angezeigt / Upload funktioniert nicht
+## 3. Entscheidungen unter Meine Arbeit -- Build-Fehler
 
-**Problem:** Der `upsert` in `GeneralSettings.tsx` (Zeile 196) nutzt `onConflict: 'setting_key'`. Die Datenbank hat aber eine UNIQUE-Constraint nur auf `setting_key` **ohne** `tenant_id`. Das heisst: Wenn Tenant A den Wert fuer `app_logo_url` speichert und Tenant B versucht dasselbe zu tun, schlaegt der Upsert fehl, weil `setting_key` bereits existiert. Der Upsert muss die Kombination `(tenant_id, setting_key)` verwenden.
+**Problem:** `SidebarDiscussionComment` wird in `MyWorkDecisionsTab.tsx` (Zeile 373, 406) und `MyWorkDecisionSidebar.tsx` (Zeile 38) verwendet, aber nicht importiert. Ebenso fehlen `formatDistanceToNow` und `de` in `MyWorkDecisionSidebar.tsx` (Zeile 133).
 
 **Loesung:**
+- In `MyWorkDecisionsTab.tsx` (Zeile 22): `SidebarDiscussionComment` zum bestehenden Import hinzufuegen:
+  ```
+  import { MyWorkDecision, SidebarOpenQuestion, SidebarNewComment, SidebarDiscussionComment, getResponseSummary } from "./decisions/types";
+  ```
+- In `MyWorkDecisionSidebar.tsx`: Drei fehlende Imports hinzufuegen:
+  ```
+  import { SidebarDiscussionComment } from "./types";
+  import { formatDistanceToNow } from "date-fns";
+  import { de } from "date-fns/locale";
+  ```
 
-- Datenbank-Migration: Die bestehende UNIQUE-Constraint `app_settings_setting_key_key` auf `(tenant_id, setting_key)` aendern
-- In `GeneralSettings.tsx` (Zeile 196): `onConflict` auf `'tenant_id,setting_key'` aendern
-- Logo-Anzeige: Sicherstellen, dass `logoPreviewUrl` korrekt das Bild laedt (ggf. `crossOrigin="anonymous"` hinzufuegen)
-
-**Dateien:** `src/components/GeneralSettings.tsx`, SQL-Migration
+**Dateien:** `src/components/my-work/MyWorkDecisionsTab.tsx`, `src/components/my-work/decisions/MyWorkDecisionSidebar.tsx`
 
 ---
 
-## 4. Vorschau bei Erfolgs-Animationen bricht ab
+## 4. Mehrere Zustaende fuer FallAkten (Multi-Status)
 
-**Problem:** `UnicornAnimation.tsx` nutzt `React.useId()` (Zeilen 36-40), aber importiert `React` nicht als Modul-Variable. Der Build-Error bestaetigt: "React refers to a UMD global, but the current file is a module."
+**Analyse:** Aktuell speichert `case_files.processing_status` einen einzelnen Text-Wert. Die UI toggelt zwischen einem Status und null. Gewuenscht: Mehrere Statuse gleichzeitig (z.B. "Antwort ausstehend" + "Politisch sensibel").
 
 **Loesung:**
 
-- In `src/components/celebrations/UnicornAnimation.tsx`: `import React` hinzufuegen (Zeile 1 erweitern um `React`)
+### 4a. Datenbank-Migration
+- Neue Spalte `processing_statuses text[] DEFAULT '{}'` zur Tabelle `case_files` hinzufuegen
+- Bestehende Werte migrieren: `UPDATE case_files SET processing_statuses = ARRAY[processing_status] WHERE processing_status IS NOT NULL`
 
-**Datei:** `src/components/celebrations/UnicornAnimation.tsx` (Zeile 1)
+### 4b. CaseFileCurrentStatus.tsx anpassen
+- `currentProcessingStatus` (string) ersetzen durch `currentProcessingStatuses` (string[])
+- Toggle-Logik aendern: Klick fuegt Status zum Array hinzu oder entfernt ihn (statt Ersetzen)
+- Callback-Signatur aendern: `onUpdateProcessingStatus?: (statuses: string[]) => Promise<boolean>`
 
----
+### 4c. CaseFileCard.tsx und CaseFileDetailHeader.tsx
+- Statt einem einzelnen Badge: alle aktiven Statuse als Badges anzeigen
+- `processing_statuses` Array auslesen statt `processing_status`
 
-## 5. RSVP-System Erweiterungen
+### 4d. useCaseFileDetails.tsx
+- `updateProcessingStatus` anpassen: `processing_statuses` Array an DB senden
 
-**Aktuelle Struktur:** `EventRSVPManager.tsx` hat ein einfaches System: Kontakte auswaehlen, sofort Einladungen versenden, Status anzeigen (accepted/declined/invited). Es fehlen: Vormerken, verzoegertes Senden, Mail-Anpassung, Erinnerungen, Tracking, "tentative"-Anzeige, Hinweise an Angemeldete.
-
-### 5a. Datenbank-Erweiterungen
-
-Neue Spalten fuer `event_rsvps`:
-
-- `reminder_sent_at` (timestamptz) -- wann Erinnerung verschickt wurde
-- `reminder_count` (integer, default 0) -- Anzahl Erinnerungen
-- `invitation_sent` (boolean, default false) -- ob Einladung tatsaechlich verschickt wurde (fuer Vormerken)
-- `notes_sent` (jsonb, default '[]') -- Array von gesendeten Hinweisen mit Zeitstempel
-
-Neue Tabelle `event_rsvp_distribution_lists`:
-
-- `id` (uuid)
-- `event_planning_id` (uuid)
-- `distribution_list_id` (uuid)
-- `added_at` (timestamptz)
-
-### 5b. Vormerken vs. Versenden
-
-- Kontakte/Verteilerlisten koennen "vorgemerkt" werden (insert mit `invitation_sent = false`)
-- Separater Button "Einladungen jetzt versenden" setzt `invitation_sent = true` und loest E-Mail-Versand aus
-- In der Tabelle sichtbar: ob Einladung versendet wurde oder noch vorgemerkt ist
-
-### 5c. Einladungsmail anpassen
-
-- Neues Textfeld/Dialog zum Bearbeiten des E-Mail-Textes vor dem Versand
-- Standardtext wird vorbelegt, kann individuell angepasst werden
-- Text wird als Parameter an die Edge-Function `send-event-invitation` uebergeben
-
-### 5d. Erinnerungsmail
-
-- Button "Erinnerung senden" pro Gast oder fuer alle Ausstehenden
-- Trackt `reminder_sent_at` und `reminder_count`
-- In der Tabelle sichtbar: wann/ob Erinnerung gesendet wurde
-- Neue Edge-Function oder Erweiterung von `send-event-invitation`
-
-### 5e. "Vorbehalt" (tentative) in der Uebersicht
-
-- Status `tentative` wird aktuell als Badge gerendert, aber nicht in der Zusammenfassungsleiste gezaehlt
-- Fix: `const tentative = rsvps.filter(r => r.status === 'tentative').length` hinzufuegen und in der Zusammenfassung anzeigen
-
-### 5f. Hinweise an Angemeldete versenden
-
-- Neuer Button "Hinweis an Zugesagte senden"
-- Dialog mit Textfeld fuer die Nachricht
-- Sendet E-Mail an alle mit Status `accepted` (und optional `tentative`)
-- Wird in `notes_sent` getrackt
-
-### 5g. Verteilerlisten-Integration
-
-- Im Einladungsdialog: zusaetzlich zum Kontakt-Selektor ein Verteilerlisten-Selektor
-- Laedt alle Kontakte der ausgewaehlten Liste und fuegt sie als Einzeleintraege hinzu
+### 4e. CaseFileRightSidebar.tsx
+- Prop-Typ aktualisieren
 
 **Dateien:**
-
-- `src/components/events/EventRSVPManager.tsx` (Hauptrefaktor)
-- SQL-Migration fuer neue Spalten/Tabelle
-- Edge-Function `send-event-invitation` (erweitern fuer Erinnerungen und Hinweise)
+- SQL-Migration
+- `src/components/case-files/CaseFileCurrentStatus.tsx`
+- `src/components/case-files/CaseFileCard.tsx`
+- `src/components/case-files/CaseFileDetailHeader.tsx`
+- `src/components/case-files/CaseFileRightSidebar.tsx`
+- `src/hooks/useCaseFileDetails.tsx`
 
 ---
 
-## Zusammenfassung der Aenderungen
+## 5. Sicherheit: Aktive Sitzungen und globales Logout
 
+### 5a. Datenbank
+Neue Tabelle `user_sessions`:
+```text
+id          uuid PK
+user_id     uuid (FK auth.users, ON DELETE CASCADE)
+device_info text (User-Agent)
+ip_address  text
+last_active_at timestamptz
+created_at  timestamptz DEFAULT now()
+is_current  boolean DEFAULT false
+```
+RLS: Benutzer sehen/loeschen nur eigene Sessions.
 
-| Datei                                              | Aenderung                                                                              |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `src/components/MyWorkView.tsx`                    | Logo-Groesse erhoehen, mobile Sichtbarkeit                                             |
-| `index.html`                                       | Standard-Favicon-Tag                                                                   |
-| `src/hooks/useFavicon.ts`                          | Fallback-Favicon                                                                       |
-| `src/components/GeneralSettings.tsx`               | onConflict-Fix, crossOrigin                                                            |
-| SQL-Migration                                      | UNIQUE-Constraint aendern, event_rsvps Spalten                                         |
-| `src/components/celebrations/UnicornAnimation.tsx` | React-Import hinzufuegen                                                               |
-| `src/components/events/EventRSVPManager.tsx`       | Vormerken, Erinnerungen, Mail-Anpassung, Hinweise, tentative-Zaehlung, Verteilerlisten |
-| Edge-Function `send-event-invitation`              | Erinnerung, Hinweis-Mails, Custom-Text                                                 |
+### 5b. Session-Tracking in useAuth.tsx
+- Bei `SIGNED_IN`-Event: Eintrag in `user_sessions` erstellen mit `navigator.userAgent`
+- Bei App-Start: `last_active_at` der aktuellen Session aktualisieren
+- Bei `SIGNED_OUT`: Session-Eintrag loeschen
+
+### 5c. Neue Komponente ActiveSessionsCard
+- Zeigt alle aktiven Sessions: Geraet (aus User-Agent geparst), letzter Zugriff, aktuelle Session markiert
+- Button "Von allen anderen Geraeten abmelden"
+- Integration in die Profilseite (`EditProfile.tsx`)
+
+### 5d. Edge-Function global-logout
+- Empfaengt authentifizierte Anfrage
+- Ruft `supabase.auth.admin.signOut(userId, 'global')` auf
+- Loescht alle `user_sessions`-Eintraege des Benutzers (ausser aktuelle)
+
+**Dateien:**
+- SQL-Migration
+- `src/hooks/useAuth.tsx`
+- Neue Datei: `src/components/account/ActiveSessionsCard.tsx`
+- `src/pages/EditProfile.tsx`
+- Neue Datei: `supabase/functions/global-logout/index.ts`
+- `supabase/config.toml`
+
+---
+
+## 6. Groesstes Potential der Plattform
+
+Die Plattform hat in folgenden Bereichen das groesste Entwicklungspotential:
+
+- **Workflow-Automatisierung**: Fristbasierte Erinnerungen, automatische Eskalation bei ueberfaelligen Vorgaengen, Status-Uebergaenge bei FallAkten
+- **Analytik/Reporting**: Dashboards fuer Bearbeitungszeiten, Entscheidungs-Statistiken, RSVP-Auswertungen
+- **KI-Integration**: Zusammenfassungen von Diskussionen, intelligente Kategorisierung, Entwuerfe fuer Antwortschreiben
+- **Mobile/PWA**: Offline-Faehigkeit, Push-Benachrichtigungen fuer zeitkritische Vorgaenge
+- **Echtzeit-Kollaboration**: Gemeinsames Bearbeiten von Dokumenten, Live-Updates in FallAkten
+
+---
+
+## Zusammenfassung und Reihenfolge
+
+| # | Aufgabe | Dateien | Prioritaet |
+|---|---------|---------|------------|
+| 3 | Build-Fehler Entscheidungen (Imports) | `MyWorkDecisionsTab.tsx`, `MyWorkDecisionSidebar.tsx` | Kritisch |
+| 1 | Logo-Anzeige in Einstellungen | `GeneralSettings.tsx` | Hoch |
+| 2 | Favicon = Logo | `useFavicon.ts` | Hoch |
+| 4 | Multi-Status FallAkten | SQL-Migration, 5 Komponenten, 1 Hook | Mittel |
+| 5 | Aktive Sessions + globales Logout | SQL-Migration, `useAuth.tsx`, neue Komponente, Edge-Function | Mittel |
+
