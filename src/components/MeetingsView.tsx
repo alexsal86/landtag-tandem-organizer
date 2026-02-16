@@ -1360,6 +1360,81 @@ export function MeetingsView() {
         }
       }
 
+      // Step 3b: Create birthday follow-up tasks for all employees
+      const birthdayItems = agendaItemsData?.filter(item =>
+        item.system_type === 'birthdays' && item.result_text?.trim()
+      ) || [];
+
+      if (birthdayItems.length > 0 && profiles.length > 0) {
+        for (const birthdayItem of birthdayItems) {
+          try {
+            const parsedResults = JSON.parse(birthdayItem.result_text || '{}') as Record<string, { action?: 'card' | 'mail' | 'call' | 'gift' }>;
+            const selectedContactIds = Object.keys(parsedResults).filter(contactId => parsedResults[contactId]?.action);
+
+            if (selectedContactIds.length === 0) continue;
+
+            const { data: contactsData, error: contactsError } = await supabase
+              .from('contacts')
+              .select('id, name, birthday')
+              .in('id', selectedContactIds)
+              .eq('tenant_id', currentTenant?.id || '');
+
+            if (contactsError) {
+              console.error('Error loading birthday contacts for task creation:', contactsError);
+              continue;
+            }
+
+            if (!contactsData || contactsData.length === 0) continue;
+
+            const actionLabelMap: Record<'card' | 'mail' | 'call' | 'gift', string> = {
+              card: 'Karte',
+              mail: 'Mail',
+              call: 'Anruf',
+              gift: 'Geschenk'
+            };
+
+            const tasksToInsert = profiles.flatMap((profile) =>
+              contactsData
+                .map((contact) => {
+                  const action = parsedResults[contact.id]?.action;
+                  if (!action) return null;
+
+                  const birthdayDate = contact.birthday
+                    ? format(new Date(contact.birthday), 'dd.MM.yyyy', { locale: de })
+                    : 'unbekannt';
+
+                  return {
+                    user_id: user.id,
+                    title: `Geburtstag: ${actionLabelMap[action]} für ${contact.name}`,
+                    description: `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Aktion:** ${actionLabelMap[action]}\n**Kontakt:** ${contact.name}\n**Geburtstag:** ${birthdayDate}`,
+                    priority: 'medium',
+                    category: 'meeting',
+                    status: 'todo',
+                    assigned_to: profile.user_id,
+                    tenant_id: currentTenant?.id || '',
+                    due_date: new Date(new Date(meeting.meeting_date).getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+                  };
+                })
+                .filter(Boolean)
+            );
+
+            if (tasksToInsert.length > 0) {
+              const { error: birthdayTasksError } = await supabase
+                .from('tasks')
+                .insert(tasksToInsert as any[]);
+
+              if (birthdayTasksError) {
+                console.error('Error creating birthday tasks:', birthdayTasksError);
+              } else {
+                console.log(`Created ${tasksToInsert.length} birthday tasks for meeting ${meeting.id}`);
+              }
+            }
+          } catch (birthdayError) {
+            console.error('Error processing birthday tasks (non-fatal):', birthdayError);
+          }
+        }
+      }
+
       // Step 4: Create follow-up task with subtasks for remaining items
       let followUpTask = null;
       try {
