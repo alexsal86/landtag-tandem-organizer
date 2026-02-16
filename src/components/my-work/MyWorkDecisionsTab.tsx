@@ -72,7 +72,7 @@ export function MyWorkDecisionsTab() {
           id,
           decision_id,
           task_decisions!inner (
-            id, title, description, status, created_at, created_by, visible_to_all, response_options, priority,
+            id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
             task_decision_attachments (id, file_name, file_path)
           ),
           task_decision_responses (id, response_type)
@@ -86,7 +86,7 @@ export function MyWorkDecisionsTab() {
       const { data: creatorData, error: creatorError } = await supabase
         .from("task_decisions")
         .select(`
-          id, title, description, status, created_at, created_by, visible_to_all, response_options, priority,
+          id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
           task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
           task_decision_attachments (id, file_name, file_path)
         `)
@@ -99,7 +99,7 @@ export function MyWorkDecisionsTab() {
       const { data: publicData, error: publicError } = await supabase
         .from("task_decisions")
         .select(`
-          id, title, description, status, created_at, created_by, visible_to_all, response_options, priority,
+          id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
           task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
           task_decision_attachments (id, file_name, file_path)
         `)
@@ -128,6 +128,7 @@ export function MyWorkDecisionsTab() {
           id: item.task_decisions.id,
           title: item.task_decisions.title,
           description: item.task_decisions.description,
+          response_deadline: item.task_decisions.response_deadline,
           status: item.task_decisions.status,
           created_at: item.task_decisions.created_at,
           created_by: item.task_decisions.created_by,
@@ -156,6 +157,7 @@ export function MyWorkDecisionsTab() {
           id: item.id,
           title: item.title,
           description: item.description,
+          response_deadline: item.response_deadline,
           status: item.status,
           created_at: item.created_at,
           created_by: item.created_by,
@@ -187,6 +189,7 @@ export function MyWorkDecisionsTab() {
             id: item.id,
             title: item.title,
             description: item.description,
+            response_deadline: item.response_deadline,
             status: item.status,
             created_at: item.created_at,
             created_by: item.created_by,

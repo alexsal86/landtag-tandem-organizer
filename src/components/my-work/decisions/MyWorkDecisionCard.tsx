@@ -215,6 +215,12 @@ const MyWorkDecisionCardInner = ({
             {new Date(decision.created_at).toLocaleDateString('de-DE')}
           </span>
 
+          {decision.response_deadline && (
+            <Badge variant={new Date(decision.response_deadline) < new Date() ? "destructive" : "secondary"} className="gap-1">
+              Frist: {new Date(decision.response_deadline).toLocaleDateString('de-DE')} {new Date(decision.response_deadline).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+            </Badge>
+          )}
+
           {decision.creator && (
             <span className="flex items-center gap-1">
               <Avatar className="h-5 w-5">
