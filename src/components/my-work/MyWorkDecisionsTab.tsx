@@ -19,7 +19,7 @@ import { DefaultParticipantsDialog } from "@/components/task-decisions/DefaultPa
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { MyWorkDecisionCard } from "./decisions/MyWorkDecisionCard";
 import { MyWorkDecisionSidebar } from "./decisions/MyWorkDecisionSidebar";
-import { MyWorkDecision, SidebarOpenQuestion, SidebarNewComment, getResponseSummary } from "./decisions/types";
+import { MyWorkDecision, SidebarOpenQuestion, SidebarNewComment, SidebarDiscussionComment, getResponseSummary } from "./decisions/types";
 
 export function MyWorkDecisionsTab() {
   const { user } = useAuth();

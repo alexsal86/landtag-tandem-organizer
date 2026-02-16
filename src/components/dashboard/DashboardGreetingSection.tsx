@@ -6,6 +6,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getWeather, translateCondition, getWeatherIcon } from '@/utils/dashboard/weatherApi';
+import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -20,23 +21,27 @@ interface AppointmentData {
 export const DashboardGreetingSection = () => {
   const { user } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
-  
+
+  const [userName, setUserName] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>('');
+  const [weatherKarlsruhe, setWeatherKarlsruhe] = useState<{ temp: number; condition: string; icon: string } | null>(null);
+  const [weatherStuttgart, setWeatherStuttgart] = useState<{ temp: number; condition: string; icon: string } | null>(null);
+  const [appointments, setAppointments] = useState<AppointmentData[]>([]);
+  const [openTasksCount, setOpenTasksCount] = useState(0);
+  const [completedTasksToday, setCompletedTasksToday] = useState(0);
+  const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
+  const [showWeather, setShowWeather] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
   // Show skeleton while tenant is loading
   if (tenantLoading) {
     return <div className="animate-pulse h-32 bg-muted rounded-lg mb-6" />;
   }
-  
+
   // Don't render without tenant
   if (!currentTenant?.id) {
     return null;
   }
-  const [userName, setUserName] = useState<string>('');
-  const [weatherKarlsruhe, setWeatherKarlsruhe] = useState<{ temp: number; condition: string; icon: string } | null>(null);
-  const [weatherStuttgart, setWeatherStuttgart] = useState<{ temp: number; condition: string; icon: string } | null>(null);
-  const [appointments, setAppointments] = useState<AppointmentData[]>([]);
-  const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  
 
   // Load user name
   useEffect(() => {
@@ -48,8 +53,15 @@ export const DashboardGreetingSection = () => {
         .select('display_name')
         .eq('user_id', user.id)
         .maybeSingle();
+
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
       
       setUserName(data?.display_name || user.email?.split('@')[0] || 'Nutzer');
+      setUserRole(roleData?.role || '');
     };
     
     loadUserName();
@@ -80,6 +92,35 @@ export const DashboardGreetingSection = () => {
     
     loadWeather();
   }, []);
+
+  // Load task stats for contextual greeting
+  useEffect(() => {
+    const loadTaskStats = async () => {
+      if (!user?.id) return;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const [{ count: openCount }, { count: completedTodayCount }] = await Promise.all([
+        supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
+          .neq('status', 'completed'),
+        supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
+          .eq('status', 'completed')
+          .gte('completed_at', today.toISOString())
+      ]);
+
+      setOpenTasksCount(openCount || 0);
+      setCompletedTasksToday(completedTodayCount || 0);
+    };
+
+    loadTaskStats();
+  }, [user]);
 
   // Load today's and tomorrow's appointments
   useEffect(() => {
@@ -254,10 +295,11 @@ export const DashboardGreetingSection = () => {
       timeSlot,
       dayOfWeek: getCurrentDayOfWeek(),
       appointmentsCount: appointments.length,
-      tasksCount: 0,
-      completedTasks: 0,
+      tasksCount: openTasksCount,
+      completedTasks: completedTasksToday,
       isHoliday: false,
       month: new Date().getMonth() + 1,
+      userRole,
       hasPlenum,
       hasCommittee,
       multipleSessions
@@ -265,23 +307,52 @@ export const DashboardGreetingSection = () => {
     
     const message = selectMessage(context);
     
-    let text = `${greeting}, ${userName}!\n\n${message.text}\n\n`;
-    
-    // Weather section
-    text += '☀️ **Das Wetter heute:**\n';
-    if (weatherKarlsruhe) {
-      const translatedCondition = translateCondition(weatherKarlsruhe.condition);
-      const hint = getWeatherHint(weatherKarlsruhe.condition, weatherKarlsruhe.temp);
-      text += `${getWeatherIcon(weatherKarlsruhe.icon)} Karlsruhe: ${Math.round(weatherKarlsruhe.temp)}°C, ${translatedCondition}`;
-      if (hint) text += ` ${hint}`;
-      text += '\n';
+    const dayReference = isShowingTomorrow ? 'Morgen' : 'Heute';
+    const roleSpecificLead = {
+      abgeordneter: `${dayReference} stehen politische Prioritäten und klare Entscheidungen im Fokus.`,
+      bueroleitung: `${dayReference} zählt ein klarer Überblick über Team, Fristen und Prioritäten.`,
+      mitarbeiter: `${dayReference} geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.`,
+      praktikant: `${dayReference} ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.`
+    } as const;
+
+    const roleLine = roleSpecificLead[userRole as keyof typeof roleSpecificLead];
+
+    let text = `${greeting}, ${userName}!\n\n`;
+    if (roleLine) {
+      text += `${roleLine}\n\n`;
     }
-    if (weatherStuttgart) {
-      const translatedCondition = translateCondition(weatherStuttgart.condition);
-      const hint = getWeatherHint(weatherStuttgart.condition, weatherStuttgart.temp);
-      text += `${getWeatherIcon(weatherStuttgart.icon)} Stuttgart: ${Math.round(weatherStuttgart.temp)}°C, ${translatedCondition}`;
-      if (hint) text += ` ${hint}`;
-      text += '\n';
+
+    text += `${message.text}\n\n`;
+
+    const specialDayHint = getSpecialDayHint();
+    if (specialDayHint) {
+      text += `${specialDayHint}\n\n`;
+    }
+    
+    // Task summary section
+    text += '✅ **Aufgabenstatus:**\n';
+    text += `${openTasksCount} offen`;
+    if (completedTasksToday > 0) {
+      text += ` · ${completedTasksToday} heute abgeschlossen`;
+    }
+    text += '\n';
+
+    if (showWeather) {
+      text += '\n☀️ **Das Wetter heute (optional):**\n';
+      if (weatherKarlsruhe) {
+        const translatedCondition = translateCondition(weatherKarlsruhe.condition);
+        const hint = getWeatherHint(weatherKarlsruhe.condition, weatherKarlsruhe.temp);
+        text += `${getWeatherIcon(weatherKarlsruhe.icon)} Karlsruhe: ${Math.round(weatherKarlsruhe.temp)}°C, ${translatedCondition}`;
+        if (hint) text += ` ${hint}`;
+        text += '\n';
+      }
+      if (weatherStuttgart) {
+        const translatedCondition = translateCondition(weatherStuttgart.condition);
+        const hint = getWeatherHint(weatherStuttgart.condition, weatherStuttgart.temp);
+        text += `${getWeatherIcon(weatherStuttgart.icon)} Stuttgart: ${Math.round(weatherStuttgart.temp)}°C, ${translatedCondition}`;
+        if (hint) text += ` ${hint}`;
+        text += '\n';
+      }
     }
     
     // Appointments section mit dynamischer Überschrift
@@ -303,7 +374,7 @@ export const DashboardGreetingSection = () => {
     }
     
     return text;
-  }, [isLoading, userName, weatherKarlsruhe, weatherStuttgart, appointments, isShowingTomorrow]);
+  }, [isLoading, userName, userRole, weatherKarlsruhe, weatherStuttgart, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, showWeather]);
 
   // Parse text for bold markers (**text**)
   const parsedContent = useMemo(() => {
@@ -319,9 +390,27 @@ export const DashboardGreetingSection = () => {
 
   return (
     <div>
+      <div className="mb-2">
+        <button
+          type="button"
+          onClick={() => setShowWeather((prev) => !prev)}
+          className="text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+        >
+          {showWeather ? 'Wetter ausblenden' : 'Wetter anzeigen (optional)'}
+        </button>
+      </div>
       <span className="text-xl lg:text-2xl font-light tracking-tight text-foreground/90 block whitespace-pre-wrap">
         {parsedContent}
       </span>
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => setShowWeather((prev) => !prev)}
+          className="text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+        >
+          {showWeather ? 'Wetter ausblenden' : 'Wetter anzeigen (optional)'}
+        </button>
+      </div>
     </div>
   );
 };

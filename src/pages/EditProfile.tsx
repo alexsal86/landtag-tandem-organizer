@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { ImageCropper } from "@/components/ui/ImageCropper";
+import { ActiveSessionsCard } from "@/components/account/ActiveSessionsCard";
 
 interface ProfileData {
   display_name: string;
@@ -454,6 +455,9 @@ export function EditProfile() {
                   </ul>
                 </CardContent>
               </Card>
+
+              {/* Aktive Sitzungen */}
+              <ActiveSessionsCard />
             </div>
           </div>
         </form>
