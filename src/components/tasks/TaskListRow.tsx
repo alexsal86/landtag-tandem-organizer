@@ -13,6 +13,7 @@ import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
 import { LetterSourceLink } from "@/components/letters/LetterSourceLink";
 import { extractLetterSourceId, stripLetterSourceMarker } from "@/utils/letterSource";
+import { parseMeetingSubtaskDescription } from "@/utils/meetingSubtask";
 
 interface Task {
   id: string;
@@ -263,28 +264,39 @@ export function TaskListRow({
       {/* Subtasks */}
       {expanded && hasSubtasks && (
         <div className="bg-muted/30 border-b">
-          {subtasks.map((subtask) => (
-            <div
-              key={subtask.id}
-              className="flex items-center gap-2 px-3 py-1.5 pl-12 hover:bg-accent/50 transition-colors"
-            >
-              <Checkbox
-                className="h-4 w-4"
-                onCheckedChange={() => onSubtaskComplete(subtask.id)}
-              />
-              <span className="text-sm text-foreground flex-1 truncate">
-                {stripLetterSourceMarker(subtask.description)}
-              </span>
-              {extractLetterSourceId(subtask.description) && (
-                <LetterSourceLink letterId={extractLetterSourceId(subtask.description)!} className="h-6 px-1" />
-              )}
-              {subtask.due_date && (
-                <span className={cn("text-xs", getDueDateColor(subtask.due_date))}>
-                  {format(new Date(subtask.due_date), "dd.MM.", { locale: de })}
-                </span>
-              )}
-            </div>
-          ))}
+          {subtasks.map((subtask) => {
+            const parsedSubtask = parseMeetingSubtaskDescription(stripLetterSourceMarker(subtask.description));
+
+            return (
+              <div
+                key={subtask.id}
+                className="flex items-center gap-2 px-3 py-1.5 pl-12 hover:bg-accent/50 transition-colors"
+              >
+                <Checkbox
+                  className="h-4 w-4"
+                  onCheckedChange={() => onSubtaskComplete(subtask.id)}
+                />
+                <div className="text-sm flex-1 min-w-0 leading-snug">
+                  <div className="text-foreground truncate">
+                    {parsedSubtask.resultText}
+                  </div>
+                  {parsedSubtask.meetingContext && (
+                    <div className="text-xs text-muted-foreground truncate mt-0.5">
+                      {parsedSubtask.meetingContext}
+                    </div>
+                  )}
+                </div>
+                {extractLetterSourceId(subtask.description) && (
+                  <LetterSourceLink letterId={extractLetterSourceId(subtask.description)!} className="h-6 px-1" />
+                )}
+                {subtask.due_date && (
+                  <span className={cn("text-xs", getDueDateColor(subtask.due_date))}>
+                    {format(new Date(subtask.due_date), "dd.MM.", { locale: de })}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
