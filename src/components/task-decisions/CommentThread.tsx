@@ -75,7 +75,7 @@ export function CommentThread({
       const containerTop = container.getBoundingClientRect().top;
       const lastChildTop = lastChild.getBoundingClientRect().top;
       const lineStart = AVATAR_SIZE + 4;
-      const lineEnd = lastChildTop - containerTop + AVATAR_CENTER;
+      const lineEnd = lastChildTop - containerTop;
       setParentLineHeight(Math.max(0, lineEnd - lineStart));
     };
     measure();
