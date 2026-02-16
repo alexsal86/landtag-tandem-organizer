@@ -21,6 +21,17 @@ interface MatrixRoom {
   isEncrypted: boolean;
 }
 
+interface MatrixE2EEDiagnostics {
+  secureContext: boolean;
+  crossOriginIsolated: boolean;
+  sharedArrayBuffer: boolean;
+  serviceWorkerControlled: boolean;
+  secretStorageReady: boolean | null;
+  crossSigningReady: boolean | null;
+  keyBackupEnabled: boolean | null;
+  cryptoError: string | null;
+}
+
 export interface MatrixMessage {
   eventId: string;
   roomId: string;
@@ -57,6 +68,7 @@ interface MatrixClientContextType {
   isConnecting: boolean;
   connectionError: string | null;
   cryptoEnabled: boolean;
+  e2eeDiagnostics: MatrixE2EEDiagnostics;
   rooms: MatrixRoom[];
   credentials: MatrixCredentials | null;
   connect: (credentials: MatrixCredentials) => Promise<void>;
@@ -87,6 +99,16 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const [credentials, setCredentials] = useState<MatrixCredentials | null>(null);
   const [messages, setMessages] = useState<Map<string, MatrixMessage[]>>(new Map());
   const [typingUsers, setTypingUsers] = useState<Map<string, string[]>>(new Map());
+  const [e2eeDiagnostics, setE2eeDiagnostics] = useState<MatrixE2EEDiagnostics>({
+    secureContext: window.isSecureContext,
+    crossOriginIsolated: window.crossOriginIsolated,
+    sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+    serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller),
+    secretStorageReady: null,
+    crossSigningReady: null,
+    keyBackupEnabled: null,
+    cryptoError: null,
+  });
 
   // Load saved credentials from database
   useEffect(() => {
@@ -135,11 +157,46 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         baseUrl: creds.homeserverUrl,
         accessToken: creds.accessToken,
         userId: creds.userId,
+        cryptoCallbacks: {
+          getSecretStorageKey: async ({ keys }) => {
+            const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`);
+            if (!recoveryKey) return null;
+
+            const keyIds = Object.keys(keys);
+            if (keyIds.length === 0) return null;
+
+            try {
+              const privateKey = (matrixClient as any).keyBackupKeyFromRecoveryKey(recoveryKey.trim()) as Uint8Array;
+              return [keyIds[0], privateKey];
+            } catch (error) {
+              console.error('Invalid Matrix recovery key from local storage:', error);
+              return null;
+            }
+          },
+        },
       });
+
+      const updateRuntimeDiagnostics = (
+        cryptoError: string | null = null,
+        cryptoState?: { secretStorageReady: boolean | null; crossSigningReady: boolean | null; keyBackupEnabled: boolean | null }
+      ) => {
+        setE2eeDiagnostics({
+          secureContext: window.isSecureContext,
+          crossOriginIsolated: window.crossOriginIsolated,
+          sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+          serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller),
+          secretStorageReady: cryptoState?.secretStorageReady ?? null,
+          crossSigningReady: cryptoState?.crossSigningReady ?? null,
+          keyBackupEnabled: cryptoState?.keyBackupEnabled ?? null,
+          cryptoError,
+        });
+      };
 
       const syncCryptoEnabledState = () => {
         setCryptoEnabled(Boolean(matrixClient.getCrypto()));
       };
+
+      updateRuntimeDiagnostics();
 
       // Listen for sync events
       matrixClient.on(sdk.ClientEvent.Sync, (state: string) => {
@@ -314,6 +371,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         });
       });
 
+      let lastCryptoError: string | null = null;
+
       // Initialize E2EE with Rust Crypto
       try {
         // Check Cross-Origin Isolation status (required for SharedArrayBuffer)
@@ -342,13 +401,49 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       } catch (cryptoError) {
         console.error('Failed to initialize E2EE:', cryptoError);
         console.error('E2EE will not be available for encrypted rooms.');
+        lastCryptoError = cryptoError instanceof Error ? cryptoError.message : 'E2EE-Initialisierung fehlgeschlagen';
+        updateRuntimeDiagnostics(lastCryptoError);
         setCryptoEnabled(false);
         // Continue without encryption - user will see warning for encrypted rooms
       }
 
       // Start the client with E2EE support
       await matrixClient.startClient({ initialSyncLimit: 50 });
-      setCryptoEnabled(Boolean(matrixClient.getCrypto()));
+
+      // Retry once after start in case crypto was not ready during first init attempt
+      if (!matrixClient.getCrypto()) {
+        try {
+          await matrixClient.initRustCrypto();
+        } catch (retryError) {
+          console.error('Retry initRustCrypto after start failed:', retryError);
+          if (!lastCryptoError) {
+            lastCryptoError = retryError instanceof Error ? retryError.message : 'E2EE-Initialisierung nach Start fehlgeschlagen';
+          }
+        }
+      }
+
+      const crypto = matrixClient.getCrypto();
+      setCryptoEnabled(Boolean(crypto));
+
+      let secretStorageReady: boolean | null = null;
+      let crossSigningReady: boolean | null = null;
+      let keyBackupEnabled: boolean | null = null;
+
+      if (crypto) {
+        try {
+          secretStorageReady = await crypto.isSecretStorageReady();
+          crossSigningReady = await crypto.isCrossSigningReady();
+          keyBackupEnabled = (await crypto.checkKeyBackupAndEnable()) !== null;
+        } catch (cryptoStateError) {
+          console.error('Failed to read Matrix crypto state:', cryptoStateError);
+        }
+      }
+
+      if (!crypto && !lastCryptoError) {
+        lastCryptoError = 'Rust-Crypto wurde initialisiert, aber es wurde keine CryptoApi bereitgestellt. Bitte Browser-Konsole prüfen.';
+      }
+
+      updateRuntimeDiagnostics(lastCryptoError, { secretStorageReady, crossSigningReady, keyBackupEnabled });
       
       setClient(matrixClient);
       setCredentials(creds);
@@ -366,6 +461,16 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     }
     setIsConnected(false);
     setCryptoEnabled(false);
+    setE2eeDiagnostics({
+      secureContext: window.isSecureContext,
+      crossOriginIsolated: window.crossOriginIsolated,
+      sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+      serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller),
+      secretStorageReady: null,
+      crossSigningReady: null,
+      keyBackupEnabled: null,
+      cryptoError: null,
+    });
     setRooms([]);
     setMessages(new Map());
     setTypingUsers(new Map());
@@ -557,6 +662,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     isConnecting,
     connectionError,
     cryptoEnabled,
+    e2eeDiagnostics,
     rooms,
     credentials,
     connect,

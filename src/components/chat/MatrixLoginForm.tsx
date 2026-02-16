@@ -20,6 +20,7 @@ export function MatrixLoginForm() {
   const [matrixUserId, setMatrixUserId] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [homeserverUrl, setHomeserverUrl] = useState('https://matrix.org');
+  const [recoveryKey, setRecoveryKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
@@ -38,9 +39,13 @@ export function MatrixLoginForm() {
           .maybeSingle();
 
         if (profile) {
-          setMatrixUserId(profile.matrix_user_id || '');
+          const loadedUserId = profile.matrix_user_id || '';
+          setMatrixUserId(loadedUserId);
           setAccessToken(profile.matrix_access_token || '');
           setHomeserverUrl(profile.matrix_homeserver_url || 'https://matrix.org');
+          if (loadedUserId) {
+            setRecoveryKey(localStorage.getItem(`matrix_recovery_key:${loadedUserId}`) || '');
+          }
         }
       } catch (error) {
         console.error('Error loading Matrix credentials:', error);
@@ -106,6 +111,14 @@ export function MatrixLoginForm() {
         .eq('tenant_id', currentTenant.id);
 
       if (error) throw error;
+
+      const sanitizedUserId = matrixUserId.trim();
+      const trimmedRecoveryKey = recoveryKey.trim();
+      if (trimmedRecoveryKey) {
+        localStorage.setItem(`matrix_recovery_key:${sanitizedUserId}`, trimmedRecoveryKey);
+      } else {
+        localStorage.removeItem(`matrix_recovery_key:${sanitizedUserId}`);
+      }
 
       toast({
         title: 'Gespeichert',
@@ -233,6 +246,19 @@ export function MatrixLoginForm() {
             />
             <p className="text-xs text-muted-foreground">
               Die URL Ihres Matrix-Homeservers
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="matrix-recovery-key">Recovery Key (optional)</Label>
+            <Input
+              id="matrix-recovery-key"
+              type="password"
+              placeholder="Für Secret Storage & Key Backup"
+              value={recoveryKey}
+              onChange={(e) => setRecoveryKey(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional: Lokale Speicherung im Browser, damit verschlüsselte Chat-Historie über Key Backup entschlüsselt werden kann.
             </p>
           </div>
         </div>
