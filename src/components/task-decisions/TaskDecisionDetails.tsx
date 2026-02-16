@@ -9,12 +9,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserBadge } from "@/components/ui/user-badge";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { Check, X, MessageCircle, Send, Archive, History, Paperclip, Vote, CheckCircle2, XCircle, HelpCircle, Reply } from "lucide-react";
+import { Check, X, MessageCircle, Send, Archive, History, Paperclip, Vote, CheckCircle2, XCircle, HelpCircle, Reply, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ResponseHistoryTimeline } from "./ResponseHistoryTimeline";
 import { DecisionFileUpload } from "./DecisionFileUpload";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
+import { DecisionEditDialog } from "./DecisionEditDialog";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
@@ -71,6 +72,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
   const [creatorProfile, setCreatorProfile] = useState<{ display_name: string | null; badge_color: string | null; avatar_url: string | null } | null>(null);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -100,6 +102,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
           title,
           description,
           response_options,
+          response_deadline,
           created_by,
           created_at,
           status,
@@ -541,15 +544,26 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
           <div className="flex items-center justify-between">
             <DialogTitle>{decision.title}</DialogTitle>
             {isCreator && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={archiveDecision}
-                disabled={isLoading}
-              >
-                <Archive className="h-4 w-4 mr-2" />
-                Archivieren
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditDialogOpen(true)}
+                  disabled={isLoading}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Bearbeiten
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={archiveDecision}
+                  disabled={isLoading}
+                >
+                  <Archive className="h-4 w-4 mr-2" />
+                  Archivieren
+                </Button>
+              </div>
             )}
           </div>
           <p className="text-sm text-muted-foreground">
@@ -572,6 +586,17 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
               minute: '2-digit'
             })}
           </p>
+          {decision.response_deadline && (
+            <p className="text-xs text-muted-foreground">
+              Antwortfrist: {new Date(decision.response_deadline).toLocaleString('de-DE', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </p>
+          )}
         </DialogHeader>
 
         <div className="space-y-4">
@@ -808,6 +833,18 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
           </Card>
         </div>
       </DialogContent>
+
+      {decisionId && (
+        <DecisionEditDialog
+          decisionId={decisionId}
+          isOpen={isEditDialogOpen}
+          onClose={() => setIsEditDialogOpen(false)}
+          onUpdated={async () => {
+            setIsEditDialogOpen(false);
+            await loadDecisionDetails();
+          }}
+        />
+      )}
     </Dialog>
   );
 };

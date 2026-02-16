@@ -4,6 +4,7 @@ export interface MyWorkDecision {
   id: string;
   title: string;
   description: string | null;
+  response_deadline: string | null;
   status: string;
   created_at: string;
   created_by: string;
