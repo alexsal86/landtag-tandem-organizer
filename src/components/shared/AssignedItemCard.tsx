@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { UserBadge } from "@/components/ui/user-badge";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import { LetterSourceLink } from "@/components/letters/LetterSourceLink";
+import { extractLetterSourceId, stripLetterSourceMarker } from "@/utils/letterSource";
 import { 
   CheckCircle, 
   AlarmClock, 
@@ -107,6 +109,9 @@ export function AssignedItemCard({
   const borderColor = priorityBorderColors[priority];
   const typeInfo = typeLabels[type];
   const overdue = dueDate ? isOverdue(dueDate) : false;
+  const sourceLetterId = extractLetterSourceId(description) || extractLetterSourceId(title);
+  const cleanTitle = stripLetterSourceMarker(title);
+  const cleanDescription = stripLetterSourceMarker(description);
 
   return (
     <Card 
@@ -137,7 +142,7 @@ export function AssignedItemCard({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base font-semibold text-foreground truncate">
-                  {title}
+                  {cleanTitle || title}
                 </h3>
                 {isCompleted && (
                   <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
@@ -185,11 +190,16 @@ export function AssignedItemCard({
         <div className="grid grid-cols-[3fr_2fr] gap-4">
           {/* Left column (60%) - Description & Topics */}
           <div className="space-y-2 min-w-0">
-            {description && (
+            {cleanDescription && (
               <RichTextDisplay 
-                content={description} 
+                content={cleanDescription} 
                 className="text-sm text-muted-foreground line-clamp-2" 
               />
+            )}
+            {sourceLetterId && (
+              <div>
+                <LetterSourceLink letterId={sourceLetterId} className="h-6 px-1" />
+              </div>
             )}
             {topicIds.length > 0 && (
               <TopicDisplay topicIds={topicIds} maxDisplay={3} />
