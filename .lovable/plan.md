@@ -1,41 +1,55 @@
 
 
-# Facebook-Style Comment Threading
+# Verbesserungen der Kommentar-Threading-Linien
 
-## What Changes
+## Probleme im aktuellen Zustand
 
-The comment thread connector lines will be redesigned to match the Facebook comment style:
+1. **Aussetzer/Luecken**: Die vertikale Linie hat Unterbrechungen zwischen Kommentaren, weil `space-y-2` Gaps erzeugt, die die absolut positionierten Linien nicht ueberbruecken
+2. **Linienstaerke**: Aktuell nur 1px -- soll auf 2px verdoppelt werden
+3. **Abstand zu Avataren**: Linien beginnen/enden direkt am Avatar -- soll etwas Luft haben (ca. 4px)
+4. **Harte Ecken**: Der L-Konnektor besteht aus zwei geraden Linien -- soll einen weichen, abgerundeten Uebergang haben (wie bei Facebook)
 
-1. **Continuous vertical line** from the center of the parent avatar running down alongside all child comments
-2. **Horizontal connector** from that vertical line curving into each child comment's avatar center
-3. **Child comments indented** to start at the text level of the parent (not at the avatar level)
-4. **Proper spacing** so the vertical line originates from the bottom-center of the parent avatar
+## Loesung
 
-## Visual Concept
+### 1. Durchgaengige Linien ohne Aussetzer
 
-```text
-[Avatar] Name
-         Comment text here
-         |
-         |--[Avatar] Reply Name
-         |           Reply text
-         |
-         |--[Avatar] Another Reply
-                     More text
-```
+- Die vertikale Linie des Eltern-Kommentars (die von dessen Avatar nach unten geht) muss aus dem `group flex`-Container heraus in den aeusseren `relative`-Container verschoben werden, damit sie ueber die gesamte Hoehe inkl. `space-y-2` Gaps laeuft
+- Die vertikale Fortsetzungslinie bei nicht-letzten Replies muss ebenfalls `bottom: 0` korrekt referenzieren und ueber den vollen Bereich gehen
 
-## Technical Details
+### 2. Linienstaerke verdoppeln
 
-**File: `src/components/task-decisions/CommentThread.tsx`**
+- Alle `width: '1px'` und `height: '1px'` Angaben auf `2px` aendern
 
-- Remove the current simple line connectors (the two absolute-positioned divs)
-- Add a Facebook-style threading system:
-  - Parent comments that have replies get a **vertical line** starting from the bottom of their avatar, running down the left side through all replies
-  - Each reply gets a small **L-shaped connector** (vertical segment + horizontal segment) from the parent's vertical line to the reply's avatar center
-  - The last reply's connector uses a rounded corner (no line continuing below)
-- Increase left margin for nested comments from `ml-5` to approximately `ml-8` so replies align with the parent's text area
-- Use CSS pseudo-elements or absolute-positioned divs with proper `top`/`bottom`/`left` calculations based on avatar size (24px / h-6)
-- The vertical line position will be calculated relative to the parent avatar center (12px from left edge of parent)
+### 3. Abstand zu Avataren
 
-**No other files need changes** -- DecisionComments.tsx and useDecisionComments.ts remain the same.
+- Vertikale Linie beginnt nicht direkt am Avatar-Rand, sondern mit ~4px Abstand (`top: AVATAR_SIZE + 4` statt `AVATAR_SIZE`)
+- L-Konnektor endet nicht direkt am Avatar, sondern mit ~4px Abstand (horizontale Linie 4px kuerzer)
 
+### 4. Weicher L-Uebergang (abgerundete Ecke)
+
+- Den L-Konnektor durch ein einzelnes `div` mit `border-left` + `border-bottom` und `border-radius` auf der unteren linken Ecke ersetzen
+- Das erzeugt eine weiche, abgerundete Kurve wie bei Facebook
+- Radius ca. 8px fuer einen natuerlichen Uebergang
+
+## Technische Details
+
+**Datei: `src/components/task-decisions/CommentThread.tsx`**
+
+Aenderungen im Detail:
+
+- **L-Konnektor** (depth > 0): Die zwei separaten divs (vertikal + horizontal) werden durch ein einziges div ersetzt:
+  - `border-left: 2px solid` + `border-bottom: 2px solid` mit `border-bottom-left-radius: 8px`
+  - Hoehe vom oberen Rand bis zum Avatar-Center, Breite bis 4px vor dem Avatar
+  - Farbe: `border-border/70`
+
+- **Vertikale Linie bei Replies** (depth > 0, nicht letztes Element): Breite auf 2px, Position bleibt gleich
+
+- **Vertikale Linie des Elternkommentars** (hasReplies): 
+  - Aus dem inneren flex-Container herausnehmen und in den aeusseren Container verschieben
+  - Start: `AVATAR_SIZE + 4` px von oben (4px Abstand vom Avatar)
+  - Breite: 2px
+  - `bottom: 0` damit sie bis zum Ende des Containers (inkl. Replies) laeuft
+
+- **Replies-Container**: `space-y-2` beibehalten, aber die Linien laufen jetzt korrekt durch, da sie im uebergeordneten Container positioniert sind
+
+Keine anderen Dateien muessen geaendert werden.
