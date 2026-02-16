@@ -307,15 +307,30 @@ export const DashboardGreetingSection = () => {
     
     const message = selectMessage(context);
     
-    const dayReference = isShowingTomorrow ? 'Morgen' : 'Heute';
     const roleSpecificLead = {
-      abgeordneter: `${dayReference} stehen politische Prioritäten und klare Entscheidungen im Fokus.`,
-      bueroleitung: `${dayReference} zählt ein klarer Überblick über Team, Fristen und Prioritäten.`,
-      mitarbeiter: `${dayReference} geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.`,
-      praktikant: `${dayReference} ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.`
+      abgeordneter: {
+        day: 'Heute stehen politische Prioritäten und klare Entscheidungen im Fokus.',
+        evening: 'Für morgen stehen politische Prioritäten und klare Entscheidungen im Fokus.'
+      },
+      bueroleitung: {
+        day: 'Heute zählt ein klarer Überblick über Team, Fristen und Prioritäten.',
+        evening: 'Für morgen zählt ein klarer Überblick über Team, Fristen und Prioritäten.'
+      },
+      mitarbeiter: {
+        day: 'Heute geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.',
+        evening: 'Für morgen geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.'
+      },
+      praktikant: {
+        day: 'Heute ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.',
+        evening: 'Morgen ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.'
+      }
     } as const;
 
-    const roleLine = roleSpecificLead[userRole as keyof typeof roleSpecificLead];
+    const roleConfig = roleSpecificLead[userRole as keyof typeof roleSpecificLead];
+    const isLateDay = timeSlot === 'evening' || timeSlot === 'night';
+    const roleLine = roleConfig
+      ? (isShowingTomorrow || isLateDay ? roleConfig.evening : roleConfig.day)
+      : undefined;
 
     let text = `${greeting}, ${userName}!\n\n`;
     if (roleLine) {
