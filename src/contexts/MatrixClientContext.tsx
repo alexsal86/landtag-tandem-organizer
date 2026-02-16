@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import * as sdk from 'matrix-js-sdk';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -100,6 +100,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const [rooms, setRooms] = useState<MatrixRoom[]>([]);
   const [credentials, setCredentials] = useState<MatrixCredentials | null>(null);
   const [messages, setMessages] = useState<Map<string, MatrixMessage[]>>(new Map());
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const [typingUsers, setTypingUsers] = useState<Map<string, string[]>>(new Map());
   const [e2eeDiagnostics, setE2eeDiagnostics] = useState<MatrixE2EEDiagnostics>({
     secureContext: window.isSecureContext,
@@ -665,7 +667,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     if (!client) return [];
 
     const room = client.getRoom(roomId);
-    if (!room) return messages.get(roomId)?.slice(-limit) || [];
+    if (!room) return messagesRef.current.get(roomId)?.slice(-limit) || [];
 
     const timeline = room.getLiveTimeline().getEvents();
     const timelineMessages: MatrixMessage[] = timeline
@@ -694,7 +696,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         };
       });
 
-    const cached = messages.get(roomId) || [];
+    const cached = messagesRef.current.get(roomId) || [];
     const mergedByEventId = new Map<string, MatrixMessage>();
     for (const msg of cached) mergedByEventId.set(msg.eventId, msg);
     for (const msg of timelineMessages) mergedByEventId.set(msg.eventId, msg);
@@ -710,7 +712,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     });
 
     return mergedMessages;
-  }, [client, messages]);
+  }, [client]);
 
   const totalUnreadCount = rooms.reduce((sum, room) => sum + room.unreadCount, 0);
 
