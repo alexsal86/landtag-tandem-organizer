@@ -44,6 +44,9 @@ import {
   Settings,
   Archive,
   RotateCcw,
+  ListTodo,
+  ListTree,
+  Loader2,
   Info,
   Inbox,
   Save,
@@ -129,6 +132,11 @@ interface Letter {
   archived_by?: string;
 }
 
+interface ParentTaskOption {
+  id: string;
+  title: string;
+}
+
 export function DocumentsView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
@@ -160,6 +168,13 @@ export function DocumentsView() {
   const [showArchiveSettings, setShowArchiveSettings] = useState(false);
   const [showArchivedLetterDetails, setShowArchivedLetterDetails] = useState(false);
   const [selectedArchivedDocument, setSelectedArchivedDocument] = useState<Document | null>(null);
+  const [taskDialogMode, setTaskDialogMode] = useState<'task' | 'subtask' | null>(null);
+  const [sourceLetterForTask, setSourceLetterForTask] = useState<Letter | null>(null);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [parentTaskId, setParentTaskId] = useState('none');
+  const [availableParentTasks, setAvailableParentTasks] = useState<ParentTaskOption[]>([]);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
   
   // Folder management state
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
@@ -247,11 +262,30 @@ export function DocumentsView() {
     if (tab === 'emails') {
       setActiveTab('emails');
     }
+    if (tab === 'letters') {
+      setActiveTab('letters');
+      setLetterSubTab('active');
+    }
     if (action === 'compose-press') {
       setActiveTab('emails');
       setEmailSubTab('compose');
     }
   }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const letterId = searchParams.get('letter');
+    if (!letterId || activeTab !== 'letters' || letters.length === 0 || showLetterEditor) return;
+
+    const targetLetter = letters.find((letter) => letter.id === letterId);
+    if (!targetLetter) return;
+
+    setSelectedLetter(targetLetter);
+    setShowLetterEditor(true);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('letter');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams, activeTab, letters, showLetterEditor]);
 
   useEffect(() => {
     if (user && currentTenant) {
@@ -656,6 +690,123 @@ export function DocumentsView() {
   const handleEditLetter = (letter: Letter) => {
     setSelectedLetter(letter);
     setShowLetterEditor(true);
+  };
+
+  const openTaskDialog = async (letter: Letter, mode: 'task' | 'subtask') => {
+    setSourceLetterForTask(letter);
+    setTaskDialogMode(mode);
+    setTaskTitle(letter.title?.trim() || 'Aufgabe aus Brief');
+    setTaskDescription(letter.content?.trim() || '');
+    setParentTaskId('none');
+
+    if (mode === 'subtask' && currentTenant) {
+      try {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('id, title')
+          .eq('tenant_id', currentTenant.id)
+          .is('parent_task_id', null)
+          .order('updated_at', { ascending: false })
+          .limit(100);
+
+        if (error) throw error;
+        setAvailableParentTasks((data || []) as ParentTaskOption[]);
+      } catch (error) {
+        console.error('Error loading parent tasks:', error);
+        setAvailableParentTasks([]);
+        toast({
+          title: 'Fehler',
+          description: 'Übergeordnete Aufgaben konnten nicht geladen werden.',
+          variant: 'destructive',
+        });
+      }
+    } else {
+      setAvailableParentTasks([]);
+    }
+  };
+
+  const closeTaskDialog = () => {
+    setTaskDialogMode(null);
+    setSourceLetterForTask(null);
+    setTaskTitle('');
+    setTaskDescription('');
+    setParentTaskId('none');
+    setAvailableParentTasks([]);
+  };
+
+  const createTaskFromLetter = async () => {
+    if (!user || !currentTenant || !sourceLetterForTask || !taskDialogMode) return;
+
+    if (!taskTitle.trim()) {
+      toast({
+        title: 'Titel fehlt',
+        description: 'Bitte geben Sie einen Titel ein.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (taskDialogMode === 'subtask' && parentTaskId === 'none') {
+      toast({
+        title: 'Übergeordnete Aufgabe fehlt',
+        description: 'Bitte wählen Sie eine Hauptaufgabe aus.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCreatingTask(true);
+
+    try {
+      if (taskDialogMode === 'task') {
+        const { error } = await supabase.from('tasks').insert({
+          user_id: user.id,
+          tenant_id: currentTenant.id,
+          title: taskTitle.trim(),
+          description: [taskDescription.trim(), sourceLetterForTask.id ? `[[letter:${sourceLetterForTask.id}]]` : '']
+            .filter(Boolean)
+            .join('\n\n'),
+          status: 'todo',
+          priority: 'medium',
+          category: 'personal',
+        });
+
+        if (error) throw error;
+      } else {
+        const { count: existingSubtasksCount, error: countError } = await supabase
+          .from('subtasks')
+          .select('id', { count: 'exact', head: true })
+          .eq('task_id', parentTaskId);
+
+        if (countError) throw countError;
+
+        const { error } = await supabase.from('subtasks').insert({
+          task_id: parentTaskId,
+          description: sourceLetterForTask.id ? `${taskTitle.trim()} [[letter:${sourceLetterForTask.id}]]` : taskTitle.trim(),
+          user_id: user.id,
+          order_index: existingSubtasksCount || 0,
+        });
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: taskDialogMode === 'task' ? 'Aufgabe erstellt' : 'Unteraufgabe erstellt',
+        description: 'Der Brief wurde erfolgreich übernommen.',
+      });
+      closeTaskDialog();
+    } catch (error) {
+      console.error('Error creating task from letter:', error);
+      toast({
+        title: 'Fehler',
+        description: taskDialogMode === 'task'
+          ? 'Die Aufgabe konnte nicht erstellt werden.'
+          : 'Die Unteraufgabe konnte nicht erstellt werden.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingTask(false);
+    }
   };
 
   const handleDeleteLetter = async (letterId: string) => {
@@ -1996,6 +2147,22 @@ export function DocumentsView() {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  title="Als Aufgabe übernehmen"
+                                  onClick={() => openTaskDialog(letter, 'task')}
+                                >
+                                  <ListTodo className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  title="Als Unteraufgabe übernehmen"
+                                  onClick={() => openTaskDialog(letter, 'subtask')}
+                                >
+                                  <ListTree className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => handleEditLetter(letter)}
                                 >
                                   <Edit3 className="h-4 w-4 mr-1" />
@@ -2044,9 +2211,9 @@ export function DocumentsView() {
                     <TableRow>
                       <TableHead>Titel</TableHead>
                       <TableHead>Empfänger</TableHead>
+                      <TableHead>Erstellt / Versand</TableHead>
+                      <TableHead>Export</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Erstellt</TableHead>
-                      <TableHead>Versendet</TableHead>
                       <TableHead className="text-right">Aktionen</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -2063,6 +2230,32 @@ export function DocumentsView() {
                           {letter.recipient_name || '-'}
                         </TableCell>
                         <TableCell>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span>{format(new Date(letter.created_at), "dd.MM.yyyy", { locale: de })}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Send className="h-3.5 w-3.5" />
+                              <span>{letter.sent_date ? format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de }) : '-'}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-start gap-1">
+                            <LetterPDFExport 
+                              letter={letter} 
+                              disabled={false}
+                              showPagination={letter.show_pagination || false}
+                              size="sm"
+                            />
+                            <LetterDOCXExport 
+                              letter={letter}
+                              size="sm"
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
                            <Badge className={
                              letter.status === 'sent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
                              letter.status === 'archived' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' :
@@ -2076,24 +2269,42 @@ export function DocumentsView() {
                               letter.status === 'sent' ? 'Versendet' : 'Archiviert'}
                            </Badge>
                         </TableCell>
-                        <TableCell>
-                          {format(new Date(letter.created_at), "dd.MM.yyyy", { locale: de })}
-                        </TableCell>
-                        <TableCell>
-                          {letter.sent_date ? format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de }) : '-'}
-                        </TableCell>
                          <TableCell className="text-right">
                             <div className="flex items-center gap-1 justify-end">
                               {letterSubTab === 'active' ? (
                                 <>
-                                    <LetterPDFExport 
-                                      letter={letter} 
-                                      disabled={false}
-                                      showPagination={letter.show_pagination || false}
-                                    />
-                                    <LetterDOCXExport 
-                                      letter={letter} 
-                                    />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    title="Als Aufgabe übernehmen"
+                                    onClick={() => openTaskDialog(letter, 'task')}
+                                  >
+                                    <ListTodo className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    title="Als Unteraufgabe übernehmen"
+                                    onClick={() => openTaskDialog(letter, 'subtask')}
+                                  >
+                                    <ListTree className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    title="Als Aufgabe übernehmen"
+                                    onClick={() => openTaskDialog(letter, 'task')}
+                                  >
+                                    <ListTodo className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    title="Als Unteraufgabe übernehmen"
+                                    onClick={() => openTaskDialog(letter, 'subtask')}
+                                  >
+                                    <ListTree className="h-4 w-4" />
+                                  </Button>
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -2105,14 +2316,6 @@ export function DocumentsView() {
                                 </>
                              ) : (
                                <>
-                                 <LetterPDFExport 
-                                   letter={letter} 
-                                   disabled={false}
-                                   showPagination={true}
-                                 />
-                                 <LetterDOCXExport 
-                                   letter={letter} 
-                                 />
                                  <Button
                                    variant="ghost"
                                    size="sm"
@@ -2160,6 +2363,70 @@ export function DocumentsView() {
           }}
           onSave={handleSaveLetter}
         />
+
+        <Dialog open={taskDialogMode !== null} onOpenChange={(open) => !open && closeTaskDialog()}>
+          <DialogContent className="sm:max-w-[560px]">
+            <DialogHeader>
+              <DialogTitle>
+                {taskDialogMode === 'task' ? 'Aufgabe aus Brief erstellen' : 'Unteraufgabe aus Brief erstellen'}
+              </DialogTitle>
+              <DialogDescription>
+                {taskDialogMode === 'task'
+                  ? 'Dieser Brief wird als neue Aufgabe angelegt.'
+                  : 'Wählen Sie eine Hauptaufgabe, zu der die Unteraufgabe angelegt werden soll.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="task-from-letter-title">Titel</Label>
+                <Input
+                  id="task-from-letter-title"
+                  value={taskTitle}
+                  onChange={(e) => setTaskTitle(e.target.value)}
+                  placeholder="Aufgabentitel"
+                />
+              </div>
+
+              {taskDialogMode === 'subtask' && (
+                <div className="space-y-2">
+                  <Label htmlFor="task-from-letter-parent">Übergeordnete Aufgabe</Label>
+                  <Select value={parentTaskId} onValueChange={setParentTaskId}>
+                    <SelectTrigger id="task-from-letter-parent">
+                      <SelectValue placeholder="Aufgabe wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Bitte wählen</SelectItem>
+                      {availableParentTasks.map((task) => (
+                        <SelectItem key={task.id} value={task.id}>{task.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {taskDialogMode === 'task' && (
+                <div className="space-y-2">
+                  <Label htmlFor="task-from-letter-description">Beschreibung</Label>
+                  <Textarea
+                    id="task-from-letter-description"
+                    value={taskDescription}
+                    onChange={(e) => setTaskDescription(e.target.value)}
+                    rows={5}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={closeTaskDialog} disabled={isCreatingTask}>Abbrechen</Button>
+              <Button onClick={createTaskFromLetter} disabled={isCreatingTask}>
+                {isCreatingTask && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {taskDialogMode === 'task' ? 'Aufgabe erstellen' : 'Unteraufgabe erstellen'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         
         {/* Archive Settings Dialog */}
         <Dialog open={showArchiveSettings} onOpenChange={setShowArchiveSettings}>

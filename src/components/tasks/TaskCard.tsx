@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
+import { LetterSourceLink } from "@/components/letters/LetterSourceLink";
+import { extractLetterSourceId, stripLetterSourceMarker } from "@/utils/letterSource";
 
 interface Task {
   id: string;
@@ -83,6 +85,8 @@ export function TaskCard({
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
   const hasSubtasks = subtasks.length > 0;
+  const sourceLetterId = extractLetterSourceId(task.description);
+  const cleanDescription = stripLetterSourceMarker(task.description);
 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) {
@@ -193,14 +197,20 @@ export function TaskCard({
               className="min-h-[60px] text-xs"
               rows={2}
             />
-          ) : task.description ? (
+          ) : cleanDescription ? (
             <div 
               className="cursor-text hover:bg-muted/50 px-1 -mx-1 rounded"
               onClick={() => onUpdateDescription && setEditingDescription(true)}
             >
-              <RichTextDisplay content={task.description} className="text-xs line-clamp-2" />
+              <RichTextDisplay content={cleanDescription} className="text-xs line-clamp-2" />
             </div>
           ) : null}
+
+          {sourceLetterId && (
+            <div className="px-1">
+              <LetterSourceLink letterId={sourceLetterId} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -302,8 +312,11 @@ export function TaskCard({
                 onCheckedChange={() => onSubtaskComplete(subtask.id)}
               />
               <span className="text-sm text-foreground flex-1 truncate">
-                {subtask.description}
+                {stripLetterSourceMarker(subtask.description)}
               </span>
+              {extractLetterSourceId(subtask.description) && (
+                <LetterSourceLink letterId={extractLetterSourceId(subtask.description)!} className="h-6 px-1" />
+              )}
               {subtask.due_date && (
                 <span className={cn("text-xs", getDueDateColor(subtask.due_date))}>
                   {format(new Date(subtask.due_date), "dd.MM.", { locale: de })}

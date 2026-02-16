@@ -8365,6 +8365,7 @@ export type Database = {
           description: string | null
           id: string
           priority: number | null
+          response_deadline: string | null
           response_options: Json | null
           status: string
           subtask_id: string | null
@@ -8382,6 +8383,7 @@ export type Database = {
           description?: string | null
           id?: string
           priority?: number | null
+          response_deadline?: string | null
           response_options?: Json | null
           status?: string
           subtask_id?: string | null
@@ -8399,6 +8401,7 @@ export type Database = {
           description?: string | null
           id?: string
           priority?: number | null
+          response_deadline?: string | null
           response_options?: Json | null
           status?: string
           subtask_id?: string | null

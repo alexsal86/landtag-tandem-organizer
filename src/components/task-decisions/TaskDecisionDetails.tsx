@@ -512,6 +512,28 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
     );
   };
 
+  const flattenComments = (threads: ResponseThread[]): ResponseThread[] => {
+    const comments: ResponseThread[] = [];
+
+    const walk = (nodes: ResponseThread[]) => {
+      nodes.forEach((node) => {
+        if (node.comment) {
+          comments.push(node);
+        }
+
+        if (node.replies?.length) {
+          walk(node.replies);
+        }
+      });
+    };
+
+    walk(threads);
+
+    return comments.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  };
+
+  const allComments = flattenComments(responseThreads);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
@@ -635,6 +657,34 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
             </Card>
           )}
           </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Kommentare</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {allComments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Noch keine Kommentare vorhanden.</p>
+              ) : (
+                <div className="space-y-3">
+                  {allComments.map((commentThread) => (
+                    <div key={commentThread.id} className="rounded-md border p-3">
+                      <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">
+                          {commentThread.participant_profile?.display_name || 'Unbekannt'}
+                        </span>
+                        <span>•</span>
+                        <span>
+                          {formatDistanceToNow(new Date(commentThread.created_at), { addSuffix: true, locale: de })}
+                        </span>
+                      </div>
+                      <RichTextDisplay content={commentThread.comment || ''} className="text-sm" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Participants with threaded conversations */}
           <div className="space-y-3">
