@@ -33,6 +33,7 @@ interface CommentThreadProps {
   onEdit: (commentId: string, content: string) => Promise<void>;
   onDelete: (commentId: string, hasReplies: boolean) => Promise<void>;
   currentUserId?: string;
+  isLastReply?: boolean;
 }
 
 const getInitials = (name: string | null) => {
@@ -48,6 +49,7 @@ export function CommentThread({
   onEdit,
   onDelete,
   currentUserId,
+  isLastReply = false,
 }: CommentThreadProps) {
   const [isReplying, setIsReplying] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -61,7 +63,6 @@ export function CommentThread({
 
   const handleSubmitReply = async () => {
     if (!replyContent.trim()) return;
-    
     setIsSubmitting(true);
     try {
       await onReply(comment.id, replyContent.trim());
@@ -116,23 +117,23 @@ export function CommentThread({
           {comment.profile?.avatar_url && (
             <AvatarImage src={comment.profile.avatar_url} alt={comment.profile.display_name || 'Avatar'} />
           )}
-          <AvatarFallback 
+          <AvatarFallback
             className="text-[9px]"
             style={{ backgroundColor: comment.profile?.badge_color || undefined }}
           >
             {getInitials(comment.profile?.display_name)}
           </AvatarFallback>
         </Avatar>
-        
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-semibold">
               {comment.profile?.display_name || 'Unbekannt'}
             </span>
             <span className="text-[10px] text-muted-foreground">
-              {formatDistanceToNow(new Date(comment.created_at), { 
-                addSuffix: true, 
-                locale: de 
+              {formatDistanceToNow(new Date(comment.created_at), {
+                addSuffix: true,
+                locale: de
               })}
             </span>
             {showEditedLabel && (
@@ -214,7 +215,7 @@ export function CommentThread({
 
       {/* Reply input */}
       {isReplying && (
-        <div className="ml-8 space-y-2">
+        <div className="ml-8 mt-2 space-y-2">
           <div className="flex items-start gap-2">
             <CornerDownRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-2" />
             <div className="flex-1">
@@ -225,21 +226,11 @@ export function CommentThread({
                 minHeight="60px"
               />
               <div className="flex gap-2 mt-2">
-                <Button
-                  size="sm"
-                  onClick={handleSubmitReply}
-                  disabled={isSubmitting || !replyContent.trim()}
-                  className="text-xs"
-                >
+                <Button size="sm" onClick={handleSubmitReply} disabled={isSubmitting || !replyContent.trim()} className="text-xs">
                   <Send className="h-3 w-3 mr-1" />
                   {isSubmitting ? "Senden..." : "Senden"}
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => { setIsReplying(false); setReplyContent(""); }}
-                  className="text-xs"
-                >
+                <Button size="sm" variant="ghost" onClick={() => { setIsReplying(false); setReplyContent(""); }} className="text-xs">
                   Abbrechen
                 </Button>
               </div>
