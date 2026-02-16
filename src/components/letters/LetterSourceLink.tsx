@@ -43,7 +43,7 @@ export function LetterSourceLink({ letterId, className }: LetterSourceLinkProps)
   };
 
   const handleOpenLetter = () => {
-    navigate(`/?section=documents&tab=letters&letter=${letterId}`);
+    navigate(`/documents?tab=letters&letter=${letterId}`);
   };
 
   return (
@@ -84,4 +84,3 @@ export function LetterSourceLink({ letterId, className }: LetterSourceLinkProps)
     </TooltipProvider>
   );
 }
-
