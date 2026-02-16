@@ -371,6 +371,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         });
       });
 
+      let lastCryptoError: string | null = null;
+
       // Initialize E2EE with Rust Crypto
       try {
         // Check Cross-Origin Isolation status (required for SharedArrayBuffer)
@@ -399,13 +401,27 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       } catch (cryptoError) {
         console.error('Failed to initialize E2EE:', cryptoError);
         console.error('E2EE will not be available for encrypted rooms.');
-        updateRuntimeDiagnostics(cryptoError instanceof Error ? cryptoError.message : 'E2EE-Initialisierung fehlgeschlagen');
+        lastCryptoError = cryptoError instanceof Error ? cryptoError.message : 'E2EE-Initialisierung fehlgeschlagen';
+        updateRuntimeDiagnostics(lastCryptoError);
         setCryptoEnabled(false);
         // Continue without encryption - user will see warning for encrypted rooms
       }
 
       // Start the client with E2EE support
       await matrixClient.startClient({ initialSyncLimit: 50 });
+
+      // Retry once after start in case crypto was not ready during first init attempt
+      if (!matrixClient.getCrypto()) {
+        try {
+          await matrixClient.initRustCrypto();
+        } catch (retryError) {
+          console.error('Retry initRustCrypto after start failed:', retryError);
+          if (!lastCryptoError) {
+            lastCryptoError = retryError instanceof Error ? retryError.message : 'E2EE-Initialisierung nach Start fehlgeschlagen';
+          }
+        }
+      }
+
       const crypto = matrixClient.getCrypto();
       setCryptoEnabled(Boolean(crypto));
 
@@ -423,7 +439,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      updateRuntimeDiagnostics(null, { secretStorageReady, crossSigningReady, keyBackupEnabled });
+      if (!crypto && !lastCryptoError) {
+        lastCryptoError = 'Rust-Crypto wurde initialisiert, aber es wurde keine CryptoApi bereitgestellt. Bitte Browser-Konsole prüfen.';
+      }
+
+      updateRuntimeDiagnostics(lastCryptoError, { secretStorageReady, crossSigningReady, keyBackupEnabled });
       
       setClient(matrixClient);
       setCredentials(creds);
