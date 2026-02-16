@@ -13,6 +13,7 @@ import { Check, X, MessageCircle, Send, Archive, History, Paperclip, Vote, Check
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ResponseHistoryTimeline } from "./ResponseHistoryTimeline";
+import { CommentThread, CommentData } from "./CommentThread";
 import { DecisionFileUpload } from "./DecisionFileUpload";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
 import { DecisionEditDialog } from "./DecisionEditDialog";
@@ -39,19 +40,7 @@ interface ResponseThread {
   replies?: ResponseThread[];
 }
 
-interface DecisionComment {
-  id: string;
-  content: string;
-  created_at: string;
-  parent_id: string | null;
-  user_id: string;
-  profile?: {
-    display_name: string | null;
-    badge_color: string | null;
-    avatar_url: string | null;
-  };
-  replies?: DecisionComment[];
-}
+const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
 
 interface Participant {
   id: string;
@@ -84,7 +73,9 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
   const [creatorResponses, setCreatorResponses] = useState<{[key: string]: string}>({});
   const [isLoading, setIsLoading] = useState(false);
   const [responseThreads, setResponseThreads] = useState<ResponseThread[]>([]);
-  const [decisionComments, setDecisionComments] = useState<DecisionComment[]>([]);
+  const [decisionComments, setDecisionComments] = useState<CommentData[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
   const [creatorProfile, setCreatorProfile] = useState<{ display_name: string | null; badge_color: string | null; avatar_url: string | null } | null>(null);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -186,13 +177,13 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
 
       const { data: commentsData, error: commentsError } = await supabase
         .from('task_decision_comments')
-        .select('id, content, created_at, parent_id, user_id')
+        .select('id, content, created_at, updated_at, parent_id, user_id')
         .eq('decision_id', decisionId)
         .order('created_at', { ascending: true });
 
       if (commentsError) throw commentsError;
 
-      const commentsWithProfiles: DecisionComment[] = (commentsData || []).map((comment) => ({
+      const commentsWithProfiles: CommentData[] = (commentsData || []).map((comment) => ({
         ...comment,
         profile: {
           display_name: profileMap.get(comment.user_id)?.display_name || null,
@@ -202,8 +193,8 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
         replies: [],
       }));
 
-      const commentMap = new Map<string, DecisionComment>();
-      const rootComments: DecisionComment[] = [];
+      const commentMap = new Map<string, CommentData>();
+      const rootComments: CommentData[] = [];
 
       commentsWithProfiles.forEach((comment) => {
         commentMap.set(comment.id, comment);
@@ -361,6 +352,142 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
       toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSubmitComment = async (parentId: string | null = null, content?: string) => {
+    const commentContent = content || newComment;
+    if (!commentContent.trim() || !currentUserId || !decisionId) return;
+
+    setIsCommentSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('task_decision_comments')
+        .insert({
+          decision_id: decisionId,
+          user_id: currentUserId,
+          parent_id: parentId,
+          content: commentContent.trim(),
+        });
+
+      if (error) throw error;
+
+      if (decision) {
+        const { data: participantsData } = await supabase
+          .from('task_decision_participants')
+          .select('user_id')
+          .eq('decision_id', decisionId);
+
+        const notifyUserIds = new Set<string>();
+        if (decision.created_by !== currentUserId) {
+          notifyUserIds.add(decision.created_by);
+        }
+
+        participantsData?.forEach((participant) => {
+          if (participant.user_id !== currentUserId) {
+            notifyUserIds.add(participant.user_id);
+          }
+        });
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', currentUserId)
+          .single();
+
+        for (const recipientId of notifyUserIds) {
+          await supabase.rpc('create_notification', {
+            user_id_param: recipientId,
+            type_name: 'task_decision_comment_received',
+            title_param: 'Neuer Kommentar',
+            message_param: `${profile?.display_name || 'Jemand'} hat einen Kommentar zu "${decision.title}" hinterlassen.`,
+            data_param: JSON.stringify({
+              decision_id: decisionId,
+              decision_title: decision.title,
+            }),
+            priority_param: 'low',
+          });
+        }
+      }
+
+      toast({
+        title: 'Erfolg',
+        description: 'Diskussionsbeitrag wurde hinzugefügt.',
+      });
+
+      setNewComment('');
+      await loadDecisionDetails();
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+      toast({
+        title: 'Fehler',
+        description: 'Kommentar konnte nicht gespeichert werden.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCommentSubmitting(false);
+    }
+  };
+
+  const handleReply = async (parentId: string, content: string) => {
+    await handleSubmitComment(parentId, content);
+  };
+
+  const handleEditComment = async (commentId: string, content: string) => {
+    if (!currentUserId || !content.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('task_decision_comments')
+        .update({ content: content.trim() })
+        .eq('id', commentId)
+        .eq('user_id', currentUserId);
+
+      if (error) throw error;
+
+      toast({ title: 'Kommentar aktualisiert' });
+      await loadDecisionDetails();
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      toast({
+        title: 'Fehler',
+        description: 'Kommentar konnte nicht bearbeitet werden.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string, hasReplies: boolean) => {
+    if (!currentUserId) return;
+
+    try {
+      if (hasReplies) {
+        const { error } = await supabase
+          .from('task_decision_comments')
+          .update({ content: DELETED_COMMENT_TEXT })
+          .eq('id', commentId)
+          .eq('user_id', currentUserId);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('task_decision_comments')
+          .delete()
+          .eq('id', commentId)
+          .eq('user_id', currentUserId);
+
+        if (error) throw error;
+      }
+
+      toast({ title: hasReplies ? 'Kommentar als gelöscht markiert' : 'Kommentar gelöscht' });
+      await loadDecisionDetails();
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      toast({
+        title: 'Fehler',
+        description: 'Kommentar konnte nicht gelöscht werden.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -770,16 +897,51 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Kommentare</CardTitle>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" />
+                Diskussion
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               {decisionComments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Noch keine Kommentare vorhanden.</p>
+                <div className="text-center py-6 text-muted-foreground text-sm border rounded-md">
+                  <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Noch keine Diskussionsbeiträge.</p>
+                  <p className="text-xs mt-1">Hinterlassen Sie einen Hinweis oder starten Sie die Diskussion!</p>
+                </div>
               ) : (
-                <div className="space-y-3">
-                  {decisionComments.map((comment) => renderDecisionComment(comment))}
+                <div className="space-y-4">
+                  {decisionComments.map((comment) => (
+                    <CommentThread
+                      key={comment.id}
+                      comment={comment}
+                      onReply={handleReply}
+                      onEdit={handleEditComment}
+                      onDelete={handleDeleteComment}
+                      currentUserId={currentUserId || undefined}
+                    />
+                  ))}
                 </div>
               )}
+
+              <div className="border-t pt-4 space-y-2">
+                <SimpleRichTextEditor
+                  initialContent=""
+                  onChange={setNewComment}
+                  placeholder="Hinweis oder Diskussionsbeitrag schreiben..."
+                  minHeight="60px"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => handleSubmitComment()}
+                    disabled={isCommentSubmitting || !newComment.trim()}
+                    size="sm"
+                  >
+                    <Send className="h-3 w-3 mr-1" />
+                    {isCommentSubmitting ? 'Senden...' : 'Beitrag senden'}
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

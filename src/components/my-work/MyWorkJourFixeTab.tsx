@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo, Globe } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo, Globe, Cake } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { cn } from "@/lib/utils";
-import { format, isToday, isPast } from "date-fns";
+import { addDays, differenceInYears, format, isToday, isPast } from "date-fns";
 import { de } from "date-fns/locale";
 
 interface MeetingParticipant {
@@ -43,8 +44,17 @@ interface SystemItemData {
   user_id?: string;
 }
 
+interface BirthdayItemData {
+  id: string;
+  name: string;
+  birthDate: Date;
+  nextBirthday: Date;
+  age: number;
+}
+
 export function MyWorkJourFixeTab() {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -65,6 +75,7 @@ export function MyWorkJourFixeTab() {
   // State for system item data (notes and tasks per meeting)
   const [meetingQuickNotes, setMeetingQuickNotes] = useState<Record<string, SystemItemData[]>>({});
   const [meetingTasks, setMeetingTasks] = useState<Record<string, SystemItemData[]>>({});
+  const [meetingBirthdays, setMeetingBirthdays] = useState<Record<string, BirthdayItemData[]>>({});
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -221,7 +232,7 @@ export function MyWorkJourFixeTab() {
     }
   };
 
-  const loadAgendaForMeeting = async (meetingId: string) => {
+  const loadAgendaForMeeting = async (meetingId: string, meetingDate?: string) => {
     // Already loaded
     if (agendaItems[meetingId]) return;
     
@@ -239,7 +250,7 @@ export function MyWorkJourFixeTab() {
       setAgendaItems(prev => ({ ...prev, [meetingId]: items }));
       
       // Load system item data if needed
-      await loadMeetingSystemData(meetingId, items);
+      await loadMeetingSystemData(meetingId, items, meetingDate);
     } catch (error) {
       console.error('Error loading agenda:', error);
     } finally {
@@ -247,9 +258,10 @@ export function MyWorkJourFixeTab() {
     }
   };
 
-  const loadMeetingSystemData = async (meetingId: string, items: AgendaItem[]) => {
+  const loadMeetingSystemData = async (meetingId: string, items: AgendaItem[], meetingDate?: string) => {
     const hasNotes = items.some(i => i.system_type === 'quick_notes');
     const hasTasks = items.some(i => i.system_type === 'tasks');
+    const hasBirthdays = items.some(i => i.system_type === 'birthdays');
     
     if (hasNotes) {
       try {
@@ -271,6 +283,54 @@ export function MyWorkJourFixeTab() {
         setMeetingTasks(prev => ({ ...prev, [meetingId]: data || [] }));
       } catch { /* ignore */ }
     }
+
+    if (hasBirthdays && currentTenant?.id) {
+      try {
+        const referenceDate = meetingDate ? new Date(meetingDate) : new Date();
+        const endDate = addDays(referenceDate, 14);
+
+        const { data: contacts } = await supabase
+          .from('contacts')
+          .select('id, name, birthday')
+          .eq('tenant_id', currentTenant.id)
+          .not('birthday', 'is', null);
+
+        if (!contacts || contacts.length === 0) {
+          setMeetingBirthdays(prev => ({ ...prev, [meetingId]: [] }));
+          return;
+        }
+
+        const birthdays: BirthdayItemData[] = [];
+        const referenceYear = referenceDate.getFullYear();
+
+        for (const contact of contacts) {
+          if (!contact.birthday) continue;
+
+          const originalBirthday = new Date(contact.birthday);
+          const month = originalBirthday.getMonth();
+          const day = originalBirthday.getDate();
+
+          for (const year of [referenceYear, referenceYear + 1]) {
+            const nextBirthday = new Date(year, month, day);
+            if (nextBirthday >= referenceDate && nextBirthday <= endDate) {
+              birthdays.push({
+                id: contact.id,
+                name: contact.name,
+                birthDate: originalBirthday,
+                nextBirthday,
+                age: differenceInYears(nextBirthday, originalBirthday),
+              });
+              break;
+            }
+          }
+        }
+
+        birthdays.sort((a, b) => a.nextBirthday.getTime() - b.nextBirthday.getTime());
+        setMeetingBirthdays(prev => ({ ...prev, [meetingId]: birthdays }));
+      } catch {
+        setMeetingBirthdays(prev => ({ ...prev, [meetingId]: [] }));
+      }
+    }
   };
 
   const getInitials = (name: string | null | undefined) => {
@@ -287,6 +347,7 @@ export function MyWorkJourFixeTab() {
     if (systemType === 'quick_notes') return <StickyNote className="h-3 w-3 text-amber-500" />;
     if (systemType === 'upcoming_appointments') return <Calendar className="h-3 w-3 text-blue-500" />;
     if (systemType === 'tasks') return <ListTodo className="h-3 w-3 text-green-500" />;
+    if (systemType === 'birthdays') return <Cake className="h-3 w-3 text-pink-500" />;
     return null;
   };
 
@@ -305,6 +366,7 @@ export function MyWorkJourFixeTab() {
     const participants = meetingParticipants[meeting.id] || [];
     const notes = meetingQuickNotes[meeting.id] || [];
     const tasks = meetingTasks[meeting.id] || [];
+    const birthdays = meetingBirthdays[meeting.id] || [];
     
     // Get only main items (no parent)
     const mainItems = meetingAgenda
@@ -317,7 +379,7 @@ export function MyWorkJourFixeTab() {
         setExpandedMeetingId(null);
       } else {
         setExpandedMeetingId(meeting.id);
-        loadAgendaForMeeting(meeting.id);
+        loadAgendaForMeeting(meeting.id, meeting.meeting_date);
       }
     };
 
@@ -457,6 +519,18 @@ export function MyWorkJourFixeTab() {
                           ))}
                         </ul>
                       )}
+                      {item.system_type === 'birthdays' && birthdays.length > 0 && (
+                        <ul className="ml-6 mt-1 space-y-0.5">
+                          {birthdays.map((birthday) => (
+                            <li key={birthday.id} className="flex items-center gap-1.5 text-muted-foreground">
+                              <Cake className="h-2.5 w-2.5 text-pink-500" />
+                              <span>
+                                {birthday.name} ({format(birthday.nextBirthday, "dd.MM.", { locale: de })}, geb. {format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, {birthday.age} Jahre)
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                       {subItems.length > 0 && (
                         <ul className="ml-6 mt-1 space-y-0.5">
                           {subItems.map((subItem, subIndex) => {
@@ -488,6 +562,18 @@ export function MyWorkJourFixeTab() {
                                       <li key={task.id} className="flex items-center gap-1.5 text-muted-foreground">
                                         <ListTodo className="h-2.5 w-2.5 text-green-500" />
                                         <span>{task.title}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                                {subItem.system_type === 'birthdays' && birthdays.length > 0 && (
+                                  <ul className="ml-8 mt-0.5 space-y-0.5">
+                                    {birthdays.map((birthday) => (
+                                      <li key={birthday.id} className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Cake className="h-2.5 w-2.5 text-pink-500" />
+                                        <span>
+                                          {birthday.name} ({format(birthday.nextBirthday, "dd.MM.", { locale: de })}, geb. {format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, {birthday.age} Jahre)
+                                        </span>
                                       </li>
                                     ))}
                                   </ul>

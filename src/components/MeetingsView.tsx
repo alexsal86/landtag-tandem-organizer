@@ -34,6 +34,7 @@ import { MeetingParticipantAvatars } from "@/components/meetings/MeetingParticip
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
 import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
+import { BirthdayAgendaItem } from "@/components/meetings/BirthdayAgendaItem";
 import { FocusModeView } from "@/components/meetings/FocusModeView";
 import { MultiUserAssignSelect } from "@/components/meetings/MultiUserAssignSelect";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -87,6 +88,7 @@ interface AgendaItem {
 
 interface Meeting {
   id?: string;
+  tenant_id?: string;
   user_id?: string;
   title: string;
   description?: string;
@@ -240,6 +242,12 @@ export function MeetingsView() {
       loadStarredAppointments(selectedMeeting.id);
     }
   }, [selectedMeeting?.id, activeMeeting]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(updateTimeouts.current).forEach((timeout) => clearTimeout(timeout));
+    };
+  }, []);
 
   // Sync task changes to meeting agenda items (only title and description, not files)
   useEffect(() => {
@@ -1186,28 +1194,35 @@ export function MeetingsView() {
   };
 
   const updateQuickNoteResult = async (noteId: string, result: string) => {
-    try {
-      const { error } = await supabase
-        .from('quick_notes')
-        .update({ meeting_result: result })
-        .eq('id', noteId);
+    // Update local state immediately to avoid dropped characters while requests are in-flight
+    setLinkedQuickNotes(prev =>
+      prev.map(note =>
+        note.id === noteId ? { ...note, meeting_result: result } : note
+      )
+    );
 
-      if (error) throw error;
-
-      // Update local state
-      setLinkedQuickNotes(prev => 
-        prev.map(note => 
-          note.id === noteId ? { ...note, meeting_result: result } : note
-        )
-      );
-    } catch (error) {
-      console.error('Error updating quick note result:', error);
-      toast({
-        title: "Fehler",
-        description: "Das Ergebnis konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+    const timeoutKey = `quick-note-${noteId}-meeting_result`;
+    if (updateTimeouts.current[timeoutKey]) {
+      clearTimeout(updateTimeouts.current[timeoutKey]);
     }
+
+    updateTimeouts.current[timeoutKey] = setTimeout(async () => {
+      try {
+        const { error } = await supabase
+          .from('quick_notes')
+          .update({ meeting_result: result })
+          .eq('id', noteId);
+
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error updating quick note result:', error);
+        toast({
+          title: "Fehler",
+          description: "Das Ergebnis konnte nicht gespeichert werden.",
+          variant: "destructive",
+        });
+      }
+    }, 500);
   };
 
   const startMeeting = async (meeting: Meeting) => {
@@ -1260,78 +1275,163 @@ export function MeetingsView() {
         }
       }
 
-      // Step 3: Create standalone tasks for items with assigned_to AND result_text
-      // Also handle items that already have a task_id - append result to existing task
-      const itemsWithAssignment = agendaItemsData?.filter(item => 
-        item.assigned_to && item.result_text?.trim()
+      // Step 3a: Agenda items that are already linked to a task
+      // -> append meeting result to the existing task description
+      const itemsWithLinkedTaskResult = agendaItemsData?.filter(item =>
+        item.task_id && item.result_text?.trim()
       ) || [];
-      
-      for (const item of itemsWithAssignment) {
-        try {
-          if (item.task_id) {
-            // Item already has a linked task - append result to existing task description
-            const { data: existingTask } = await supabase
-              .from('tasks')
-              .select('description')
-              .eq('id', item.task_id)
-              .maybeSingle();
 
-            if (existingTask) {
-              const meetingResult = `\n\n--- Ergebnis aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}: ---\n${item.result_text}`;
-              await supabase
-                .from('tasks')
-                .update({
-                  description: (existingTask.description || '') + meetingResult,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', item.task_id);
-              console.log(`Updated existing task with result for: ${item.title}`);
-            }
-          } else {
-            // No linked task - create new standalone task
-            let assignedUserId: string | null = null;
-            if (Array.isArray(item.assigned_to)) {
-              const flattened = item.assigned_to.flat().filter(Boolean) as string[];
-              assignedUserId = flattened[0] || null;
-            } else if (typeof item.assigned_to === 'string') {
-              assignedUserId = item.assigned_to;
-            }
-            
-            const assigneeNames = Array.isArray(item.assigned_to) 
-              ? item.assigned_to.flat().filter(Boolean).map(id => {
-                  const profile = profiles.find(p => p.user_id === id);
-                  return profile?.display_name || 'Unbekannt';
-                }).join(', ')
-              : '';
-            
-            const multiAssigneeNote = assigneeNames && item.assigned_to && item.assigned_to.length > 1
-              ? `\n\n**Zuständige:** ${assigneeNames}`
-              : '';
-            
-            const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Ergebnis:**\n${item.result_text}${item.description ? `\n\n**Details:**\n${item.description}` : ''}${item.notes ? `\n\n**Notizen:**\n${item.notes}` : ''}${multiAssigneeNote}`;
-            
-            const { error: taskInsertError } = await supabase
+      for (const item of itemsWithLinkedTaskResult) {
+        try {
+          const { data: existingTask } = await supabase
+            .from('tasks')
+            .select('description')
+            .eq('id', item.task_id)
+            .maybeSingle();
+
+          if (existingTask) {
+            const meetingResult = `\n\n--- Ergebnis aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}: ---\n${item.result_text}`;
+            await supabase
               .from('tasks')
-              .insert({
-                user_id: user.id,
-                title: item.title,
-                description: taskDescription,
-                priority: 'medium',
-                category: 'meeting',
-                status: 'todo',
-                assigned_to: assignedUserId,
-                tenant_id: currentTenant?.id || '',
-                due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-              });
-            
-            if (taskInsertError) {
-              console.error('Error inserting task for assigned item:', taskInsertError);
-            }
-            
-            console.log(`Created task for assigned item: ${item.title}`);
+              .update({
+                description: (existingTask.description || '') + meetingResult,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', item.task_id);
+            console.log(`Updated existing task with result for: ${item.title}`);
           }
         } catch (taskCreateError) {
           console.error('Error creating task for assigned item (non-fatal):', taskCreateError);
+        }
+      }
+
+      // Step 3b: Create standalone tasks for all assigned agenda items without linked task
+      const itemsWithAssignment = agendaItemsData?.filter(item =>
+        item.assigned_to && !item.task_id
+      ) || [];
+
+      for (const item of itemsWithAssignment) {
+        try {
+          let assignedUserId: string | null = null;
+          if (Array.isArray(item.assigned_to)) {
+            const flattened = item.assigned_to.flat().filter(Boolean) as string[];
+            assignedUserId = flattened[0] || null;
+          } else if (typeof item.assigned_to === 'string') {
+            assignedUserId = item.assigned_to;
+          }
+
+          const assigneeNames = Array.isArray(item.assigned_to)
+            ? item.assigned_to.flat().filter(Boolean).map(id => {
+                const profile = profiles.find(p => p.user_id === id);
+                return profile?.display_name || 'Unbekannt';
+              }).join(', ')
+            : '';
+
+          const detailsBlock = item.description?.trim() ? `\n\n**Details:**\n${item.description}` : '';
+          const notesBlock = item.notes?.trim() ? `\n\n**Notizen:**\n${item.notes}` : '';
+          const resultBlock = item.result_text?.trim() ? `\n\n**Ergebnis:**\n${item.result_text}` : '';
+          const multiAssigneeNote = assigneeNames && item.assigned_to && item.assigned_to.length > 1
+            ? `\n\n**Zuständige:** ${assigneeNames}`
+            : '';
+
+          const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}${resultBlock}${detailsBlock}${notesBlock}${multiAssigneeNote}`;
+
+          const { error: taskInsertError } = await supabase
+            .from('tasks')
+            .insert({
+              user_id: user.id,
+              title: item.title,
+              description: taskDescription,
+              priority: 'medium',
+              category: 'meeting',
+              status: 'todo',
+              assigned_to: assignedUserId,
+              tenant_id: currentTenant?.id || '',
+              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+            });
+
+          if (taskInsertError) {
+            console.error('Error inserting task for assigned item:', taskInsertError);
+          }
+
+          console.log(`Created task for assigned item: ${item.title}`);
+        } catch (taskCreateError) {
+          console.error('Error creating task for assigned item (non-fatal):', taskCreateError);
+        }
+      }
+
+      // Step 3b: Create birthday follow-up tasks for all employees
+      const birthdayItems = agendaItemsData?.filter(item =>
+        item.system_type === 'birthdays' && item.result_text?.trim()
+      ) || [];
+
+      if (birthdayItems.length > 0 && profiles.length > 0) {
+        for (const birthdayItem of birthdayItems) {
+          try {
+            const parsedResults = JSON.parse(birthdayItem.result_text || '{}') as Record<string, { action?: 'card' | 'mail' | 'call' | 'gift' }>;
+            const selectedContactIds = Object.keys(parsedResults).filter(contactId => parsedResults[contactId]?.action);
+
+            if (selectedContactIds.length === 0) continue;
+
+            const { data: contactsData, error: contactsError } = await supabase
+              .from('contacts')
+              .select('id, name, birthday')
+              .in('id', selectedContactIds)
+              .eq('tenant_id', currentTenant?.id || '');
+
+            if (contactsError) {
+              console.error('Error loading birthday contacts for task creation:', contactsError);
+              continue;
+            }
+
+            if (!contactsData || contactsData.length === 0) continue;
+
+            const actionLabelMap: Record<'card' | 'mail' | 'call' | 'gift', string> = {
+              card: 'Karte',
+              mail: 'Mail',
+              call: 'Anruf',
+              gift: 'Geschenk'
+            };
+
+            const tasksToInsert = profiles.flatMap((profile) =>
+              contactsData
+                .map((contact) => {
+                  const action = parsedResults[contact.id]?.action;
+                  if (!action) return null;
+
+                  const birthdayDate = contact.birthday
+                    ? format(new Date(contact.birthday), 'dd.MM.yyyy', { locale: de })
+                    : 'unbekannt';
+
+                  return {
+                    user_id: user.id,
+                    title: `Geburtstag: ${actionLabelMap[action]} für ${contact.name}`,
+                    description: `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Aktion:** ${actionLabelMap[action]}\n**Kontakt:** ${contact.name}\n**Geburtstag:** ${birthdayDate}`,
+                    priority: 'medium',
+                    category: 'meeting',
+                    status: 'todo',
+                    assigned_to: profile.user_id,
+                    tenant_id: currentTenant?.id || '',
+                    due_date: new Date(new Date(meeting.meeting_date).getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+                  };
+                })
+                .filter(Boolean)
+            );
+
+            if (tasksToInsert.length > 0) {
+              const { error: birthdayTasksError } = await supabase
+                .from('tasks')
+                .insert(tasksToInsert as any[]);
+
+              if (birthdayTasksError) {
+                console.error('Error creating birthday tasks:', birthdayTasksError);
+              } else {
+                console.log(`Created ${tasksToInsert.length} birthday tasks for meeting ${meeting.id}`);
+              }
+            }
+          } catch (birthdayError) {
+            console.error('Error processing birthday tasks (non-fatal):', birthdayError);
+          }
         }
       }
 
@@ -1365,9 +1465,9 @@ export function MeetingsView() {
         const subtasksToCreate = [];
         
         for (const item of agendaItemsData) {
-          // Skip items that were assigned (already handled in Step 3, including those with task_id)
-          if (item.assigned_to && item.result_text?.trim()) continue;
-          // Skip items with task_id that were already handled in Step 3
+          // Skip items that were assigned (already handled in Step 3b)
+          if (item.assigned_to) continue;
+          // Skip items with task_id that were already handled in Step 3a
           if (item.task_id) continue;
           
           if (item.result_text?.trim()) {
@@ -1443,7 +1543,7 @@ export function MeetingsView() {
               await supabase.from('subtasks').insert({
                 task_id: taskId,
                 user_id: user.id,
-                description: `${meetingContext}: ${resultText}`,
+                description: `${resultText}\n${meetingContext}`,
                 assigned_to: originalTask.user_id || user.id,
                 is_completed: false,
                 order_index: nextOrder,
@@ -1459,12 +1559,17 @@ export function MeetingsView() {
 
       // Step 5d: Create single task with subtasks for starred appointments
       try {
+        const meetingTenantId = currentTenant?.id || meeting.tenant_id;
+        if (!meetingTenantId) {
+          console.warn('Skipping starred appointments task creation because no tenant_id is available');
+        }
+
         const { data: starredAppts } = await supabase
           .from('starred_appointments')
           .select('id, appointment_id, external_event_id')
           .eq('meeting_id', meeting.id);
 
-        if (starredAppts && starredAppts.length > 0) {
+        if (meetingTenantId && starredAppts && starredAppts.length > 0) {
           const appointmentIds = starredAppts.filter(s => s.appointment_id).map(s => s.appointment_id);
           const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => s.external_event_id);
           
@@ -1491,12 +1596,19 @@ export function MeetingsView() {
               .from('meeting_participants')
               .select('user_id')
               .eq('meeting_id', meeting.id);
-            
-            const participantIds = participants?.map(p => p.user_id) || [user.id];
-            // Ensure the meeting creator is also included
-            if (!participantIds.includes(user.id)) {
+
+            const participantIds = Array.from(new Set([
+              ...(participants?.map(p => p.user_id).filter(Boolean) || []),
+              meeting.user_id,
+            ].filter(Boolean))) as string[];
+
+            if (participantIds.length === 0) {
               participantIds.push(user.id);
             }
+
+            allAppointments.sort(
+              (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+            );
             
             // Create one task per participant with the same subtasks
             for (const participantId of participantIds) {
@@ -1510,7 +1622,7 @@ export function MeetingsView() {
                   category: 'meeting',
                   status: 'todo',
                   assigned_to: participantId,
-                  tenant_id: currentTenant?.id || '',
+                  tenant_id: meetingTenantId,
                   due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
                 })
                 .select()
@@ -1521,7 +1633,7 @@ export function MeetingsView() {
                   task_id: apptTask.id,
                   user_id: user.id,
                   description: `${apt.title} (${format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`,
-                  assigned_to: null,
+                  assigned_to: participantId,
                   is_completed: false,
                   order_index: idx,
                 }));
@@ -3554,6 +3666,19 @@ export function MeetingsView() {
                         </div>
                       )}
 
+                      {item.system_type === 'birthdays' && (
+                        <div className="ml-12 mb-4">
+                          <BirthdayAgendaItem
+                            meetingDate={selectedMeeting?.meeting_date}
+                            meetingId={selectedMeeting?.id}
+                            resultText={item.result_text}
+                            onUpdateResult={(result: string) => updateAgendaItemResult(item.id!, 'result_text', result)}
+                            isEmbedded
+                            className="border-l-0 shadow-none bg-transparent"
+                          />
+                        </div>
+                      )}
+
                       {/* Note: Removed fallback for "Aktuelles aus dem Landtag" - system_type should be used exclusively */}
 
                       {/* Display notes if available */}
@@ -3825,6 +3950,24 @@ export function MeetingsView() {
                                           ) : (
                                             <p className="text-sm text-muted-foreground pl-4">Keine Aufgaben vorhanden.</p>
                                           )}
+                                        </div>
+                                      ) : subItem.system_type === 'birthdays' ? (
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              {index + 1}.{subIndex + 1}
+                                            </span>
+                                            <Cake className="h-4 w-4 text-pink-500" />
+                                            <span className="text-sm font-medium">Geburtstage</span>
+                                          </div>
+                                          <BirthdayAgendaItem
+                                            meetingDate={selectedMeeting?.meeting_date}
+                                            meetingId={selectedMeeting?.id}
+                                            resultText={subItem.result_text}
+                                            onUpdateResult={(result: string) => updateAgendaItemResult(subItem.id!, 'result_text', result)}
+                                            isEmbedded
+                                            className="border-l-0 shadow-none bg-transparent"
+                                          />
                                         </div>
                                       ) : (
                                    <>
