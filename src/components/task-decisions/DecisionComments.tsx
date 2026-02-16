@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
+const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
+
 interface DecisionCommentsProps {
   decisionId: string;
   decisionTitle: string;
@@ -43,6 +45,7 @@ export function DecisionComments({
           user_id,
           content,
           created_at,
+          updated_at,
           parent_id
         `)
         .eq('decision_id', decisionId)
@@ -190,6 +193,65 @@ export function DecisionComments({
     await handleSubmitComment(parentId, content);
   };
 
+  const handleEditComment = async (commentId: string, content: string) => {
+    if (!user || !content.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('task_decision_comments')
+        .update({ content: content.trim() })
+        .eq('id', commentId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({ title: "Kommentar aktualisiert" });
+      loadComments();
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht bearbeitet werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string, hasReplies: boolean) => {
+    if (!user) return;
+
+    try {
+      if (hasReplies) {
+        const { error } = await supabase
+          .from('task_decision_comments')
+          .update({ content: DELETED_COMMENT_TEXT })
+          .eq('id', commentId)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('task_decision_comments')
+          .delete()
+          .eq('id', commentId)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      }
+
+      toast({ title: hasReplies ? "Kommentar als gelöscht markiert" : "Kommentar gelöscht" });
+      loadComments();
+      onCommentAdded?.();
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Count total comments including nested
   const countComments = (list: CommentData[]): number => {
     return list.reduce((acc, c) => acc + 1 + (c.replies ? countComments(c.replies) : 0), 0);
@@ -230,6 +292,8 @@ export function DecisionComments({
                     key={comment.id}
                     comment={comment}
                     onReply={handleReply}
+                    onEdit={handleEditComment}
+                    onDelete={handleDeleteComment}
                     currentUserId={user?.id}
                   />
                 ))}
