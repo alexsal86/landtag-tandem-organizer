@@ -715,7 +715,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   );
                 }
                 if (element.type === 'image') {
-                  const imgSrc = element.blobUrl || element.imageUrl;
+                  const imgSrc = element.imageUrl || element.blobUrl;
                   if (!imgSrc) return null;
                   const elW = (element.width || 50) * scaleX;
                   const elH = (element.height || 30) * scaleY;
