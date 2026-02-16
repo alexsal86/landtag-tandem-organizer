@@ -88,6 +88,7 @@ interface AgendaItem {
 
 interface Meeting {
   id?: string;
+  tenant_id?: string;
   user_id?: string;
   title: string;
   description?: string;
@@ -1483,12 +1484,17 @@ export function MeetingsView() {
 
       // Step 5d: Create single task with subtasks for starred appointments
       try {
+        const meetingTenantId = currentTenant?.id || meeting.tenant_id;
+        if (!meetingTenantId) {
+          console.warn('Skipping starred appointments task creation because no tenant_id is available');
+        }
+
         const { data: starredAppts } = await supabase
           .from('starred_appointments')
           .select('id, appointment_id, external_event_id')
           .eq('meeting_id', meeting.id);
 
-        if (starredAppts && starredAppts.length > 0) {
+        if (meetingTenantId && starredAppts && starredAppts.length > 0) {
           const appointmentIds = starredAppts.filter(s => s.appointment_id).map(s => s.appointment_id);
           const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => s.external_event_id);
           
@@ -1515,12 +1521,19 @@ export function MeetingsView() {
               .from('meeting_participants')
               .select('user_id')
               .eq('meeting_id', meeting.id);
-            
-            const participantIds = participants?.map(p => p.user_id) || [user.id];
-            // Ensure the meeting creator is also included
-            if (!participantIds.includes(user.id)) {
+
+            const participantIds = Array.from(new Set([
+              ...(participants?.map(p => p.user_id).filter(Boolean) || []),
+              meeting.user_id,
+            ].filter(Boolean))) as string[];
+
+            if (participantIds.length === 0) {
               participantIds.push(user.id);
             }
+
+            allAppointments.sort(
+              (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+            );
             
             // Create one task per participant with the same subtasks
             for (const participantId of participantIds) {
@@ -1534,7 +1547,7 @@ export function MeetingsView() {
                   category: 'meeting',
                   status: 'todo',
                   assigned_to: participantId,
-                  tenant_id: currentTenant?.id || '',
+                  tenant_id: meetingTenantId,
                   due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
                 })
                 .select()
@@ -1545,7 +1558,7 @@ export function MeetingsView() {
                   task_id: apptTask.id,
                   user_id: user.id,
                   description: `${apt.title} (${format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`,
-                  assigned_to: null,
+                  assigned_to: participantId,
                   is_completed: false,
                   order_index: idx,
                 }));
