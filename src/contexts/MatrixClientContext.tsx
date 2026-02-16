@@ -249,14 +249,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
         const eventType = event.getType();
 
-        // Handle message events (including decrypted ones)
-        if (eventType === 'm.room.message') {
+        // Handle message events (plain + encrypted placeholders that will be replaced after decryption)
+        if (eventType === 'm.room.message' || eventType === 'm.room.encrypted') {
           const content = event.getContent();
-          
-          // Skip if still encrypted (waiting for decryption)
-          if (!content.msgtype && event.isEncrypted?.()) {
-            return;
-          }
+
+          const isStillEncrypted = eventType === 'm.room.encrypted' || (!content.msgtype && event.isEncrypted?.());
           const relatesTo = content['m.relates_to'];
           
           // Skip if this is a reaction or edit
@@ -285,13 +282,13 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             roomId: room.roomId,
             sender: event.getSender() || '',
             senderDisplayName: room.getMember(event.getSender() || '')?.name || event.getSender() || '',
-            content: content.body || '',
+            content: isStillEncrypted ? '[Encrypted]' : (content.body || ''),
             timestamp: event.getTs(),
-            type: content.msgtype || 'm.text',
+            type: isStillEncrypted ? 'm.bad.encrypted' : (content.msgtype || 'm.text'),
             status: 'sent',
             replyTo,
             reactions: new Map(),
-            mediaContent: isMedia ? {
+            mediaContent: !isStillEncrypted && isMedia ? {
               msgtype: content.msgtype,
               body: content.body,
               url: content.url,
@@ -365,10 +362,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         const roomId = event.getRoomId();
         if (!roomId) return;
 
-        const eventType = event.getType();
-        if (eventType !== 'm.room.message') return;
+        const clearType = (event as any).getClearType?.();
+        if (clearType && clearType !== 'm.room.message') return;
 
         const content = event.getContent();
+        if (!content?.msgtype) return;
         const room = matrixClient.getRoom(roomId);
         if (!room) return;
 
@@ -395,10 +393,16 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         setMessages(prev => {
           const roomMessages = prev.get(roomId) || [];
           const updated = new Map(prev);
-          // Replace the encrypted placeholder with decrypted message
-          updated.set(roomId, roomMessages.map(m =>
-            m.eventId === decryptedMessage.eventId ? decryptedMessage : m
-          ));
+
+          const existingIndex = roomMessages.findIndex(m => m.eventId === decryptedMessage.eventId);
+          if (existingIndex >= 0) {
+            const next = [...roomMessages];
+            next[existingIndex] = decryptedMessage;
+            updated.set(roomId, next);
+          } else {
+            updated.set(roomId, [...roomMessages, decryptedMessage].slice(-100));
+          }
+
           return updated;
         });
       });
@@ -650,22 +654,23 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
     const timeline = room.getLiveTimeline().getEvents();
     const roomMessages: MatrixMessage[] = timeline
-      .filter(event => event.getType() === 'm.room.message')
+      .filter(event => ['m.room.message', 'm.room.encrypted'].includes(event.getType()))
       .map(event => {
         const content = event.getContent();
+        const isEncrypted = event.getType() === 'm.room.encrypted' || (!content.msgtype && event.isEncrypted?.());
         const isMedia = ['m.image', 'm.video', 'm.audio', 'm.file'].includes(content.msgtype);
-        
+
         return {
           eventId: event.getId() || '',
           roomId,
           sender: event.getSender() || '',
           senderDisplayName: room.getMember(event.getSender() || '')?.name || event.getSender() || '',
-          content: content.body || '',
+          content: isEncrypted ? '[Encrypted]' : (content.body || ''),
           timestamp: event.getTs(),
-          type: content.msgtype || 'm.text',
+          type: isEncrypted ? 'm.bad.encrypted' : (content.msgtype || 'm.text'),
           status: 'sent' as const,
           reactions: new Map(),
-          mediaContent: isMedia ? {
+          mediaContent: !isEncrypted && isMedia ? {
             msgtype: content.msgtype,
             body: content.body,
             url: content.url,
