@@ -75,6 +75,7 @@ export function CommentThread({
 
   const handleSubmitEdit = async () => {
     if (!editContent.trim()) return;
+
     setIsSubmitting(true);
     try {
       await onEdit(comment.id, editContent.trim());
@@ -90,7 +91,9 @@ export function CommentThread({
         ? "Dieser Kommentar hat Antworten und wird als gelöscht markiert. Fortfahren?"
         : "Möchten Sie diesen Kommentar wirklich löschen?"
     );
+
     if (!confirmed) return;
+
     setIsSubmitting(true);
     try {
       await onDelete(comment.id, hasReplies);
@@ -102,69 +105,15 @@ export function CommentThread({
   const canReply = depth < maxDepth && !isDeleted;
   const showEditedLabel = Boolean(comment.updated_at && new Date(comment.updated_at) > new Date(comment.created_at));
 
-  // Avatar size is 24px (h-6), center is at 12px
-  const AVATAR_SIZE = 24;
-  const AVATAR_CENTER = AVATAR_SIZE / 2; // 12px
-
   return (
-    <div className={cn("relative", depth > 0 && "ml-8")}>
-      {/* L-shaped connector from parent's vertical line to this reply's avatar */}
+    <div className={cn("space-y-2 relative", depth > 0 && "ml-5")}>
       {depth > 0 && (
-        <div aria-hidden="true">
-          {/* Vertical part of L-connector: from top to avatar center */}
-          <div
-            className="absolute bg-border/70"
-            style={{
-              left: `-${AVATAR_CENTER + 8}px`, // 8px gap (half of ml-8=32px minus avatar center)
-              top: 0,
-              width: '1px',
-              height: `${AVATAR_CENTER}px`,
-            }}
-          />
-          {/* Horizontal part of L-connector: from vertical line to avatar center */}
-          <div
-            className="absolute bg-border/70"
-            style={{
-              left: `-${AVATAR_CENTER + 8}px`,
-              top: `${AVATAR_CENTER}px`,
-              width: `${AVATAR_CENTER + 8}px`,
-              height: '1px',
-            }}
-          />
-        </div>
+        /* Horizontal elbow from level spine to this avatar center, with small gap before avatar */
+        <div className="absolute -left-4 top-3 h-px w-3 bg-border/70" aria-hidden="true" />
       )}
 
-      {/* Continuous vertical line for parent's remaining siblings (if not last reply) */}
-      {depth > 0 && !isLastReply && (
-        <div
-          className="absolute bg-border/70"
-          aria-hidden="true"
-          style={{
-            left: `-${AVATAR_CENTER + 8}px`,
-            top: `${AVATAR_CENTER}px`,
-            bottom: 0,
-            width: '1px',
-          }}
-        />
-      )}
-
-      {/* The comment itself */}
-      <div className="group flex items-start gap-2 relative">
-        {/* Vertical line from this avatar down through replies */}
-        {hasReplies && (
-          <div
-            className="absolute bg-border/70"
-            aria-hidden="true"
-            style={{
-              left: `${AVATAR_CENTER}px`,
-              top: `${AVATAR_SIZE}px`,
-              bottom: 0,
-              width: '1px',
-            }}
-          />
-        )}
-
-        <Avatar className="h-6 w-6 flex-shrink-0 relative z-10">
+      <div className="group flex items-start gap-2">
+        <Avatar className="h-6 w-6 flex-shrink-0">
           {comment.profile?.avatar_url && (
             <AvatarImage src={comment.profile.avatar_url} alt={comment.profile.display_name || 'Avatar'} />
           )}
@@ -225,10 +174,23 @@ export function CommentThread({
                 minHeight="60px"
               />
               <div className="flex gap-2">
-                <Button size="sm" onClick={handleSubmitEdit} disabled={isSubmitting || !editContent.trim()} className="text-xs">
+                <Button
+                  size="sm"
+                  onClick={handleSubmitEdit}
+                  disabled={isSubmitting || !editContent.trim()}
+                  className="text-xs"
+                >
                   Speichern
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => { setIsEditing(false); setEditContent(comment.content); }} className="text-xs">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditContent(comment.content);
+                  }}
+                  className="text-xs"
+                >
                   Abbrechen
                 </Button>
               </div>
@@ -236,7 +198,7 @@ export function CommentThread({
           ) : (
             <RichTextDisplay content={comment.content} className={cn("text-xs mt-1", isDeleted && "italic text-muted-foreground")} />
           )}
-
+          
           {canReply && (
             <Button
               variant="ghost"
@@ -279,20 +241,24 @@ export function CommentThread({
 
       {/* Nested replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="mt-2 space-y-2">
-          {comment.replies.map((reply, index) => (
-            <CommentThread
-              key={reply.id}
-              comment={reply}
-              depth={depth + 1}
-              maxDepth={maxDepth}
-              onReply={onReply}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              currentUserId={currentUserId}
-              isLastReply={index === comment.replies!.length - 1}
-            />
-          ))}
+        <div className="relative ml-5">
+          {/* Continuous vertical spine for all siblings on this depth level */}
+          <div className="absolute -left-4 top-0 bottom-0 w-px bg-border/70" aria-hidden="true" />
+
+          <div className="space-y-2">
+            {comment.replies.map((reply) => (
+              <CommentThread
+                key={reply.id}
+                comment={reply}
+                depth={depth + 1}
+                maxDepth={maxDepth}
+                onReply={onReply}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                currentUserId={currentUserId}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
