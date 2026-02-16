@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import sunflowerSvg from "@/assets/sunflower.svg";
 
 const getFaviconType = (url: string) => {
   const normalizedUrl = url.toLowerCase();
@@ -13,8 +14,7 @@ const getFaviconType = (url: string) => {
 
 export const useFavicon = (faviconUrl?: string | null) => {
   useEffect(() => {
-    const url = faviconUrl || '/src/assets/sunflower.svg';
-
+    const url = (faviconUrl && faviconUrl.trim() !== '') ? faviconUrl : sunflowerSvg;
 
     const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
     existingFavicons.forEach((link) => link.remove());

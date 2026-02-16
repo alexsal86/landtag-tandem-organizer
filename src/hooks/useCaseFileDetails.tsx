@@ -747,13 +747,13 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     }
   };
 
-  const updateProcessingStatus = async (status: string | null) => {
+  const updateProcessingStatuses = async (statuses: string[]) => {
     if (!caseFileId) return false;
 
     try {
       const { error } = await supabase
         .from('case_files')
-        .update({ processing_status: status } as any)
+        .update({ processing_statuses: statuses } as any)
         .eq('id', caseFileId);
 
       if (error) throw error;
@@ -802,6 +802,6 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     updateRisksOpportunities,
     completeTask,
     updateAssignedTo,
-    updateProcessingStatus,
+    updateProcessingStatuses,
   };
 };

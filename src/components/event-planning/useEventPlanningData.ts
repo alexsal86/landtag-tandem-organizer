@@ -544,7 +544,14 @@ export function useEventPlanningData() {
   };
 
   const toggleChecklistItem = async (itemId: string, isCompleted: boolean) => {
-    const canEdit = selectedPlanning?.user_id === user?.id || collaborators.some(c => c.user_id === user?.id && c.can_edit);
+    const canEdit =
+      selectedPlanning?.user_id === user?.id ||
+      collaborators.some(
+        (c) =>
+          c.event_planning_id === selectedPlanning?.id &&
+          c.user_id === user?.id &&
+          c.can_edit,
+      );
     if (!canEdit) { toast({ title: "Keine Berechtigung", description: "Sie haben keine Bearbeitungsrechte für diese Checkliste.", variant: "destructive" }); return; }
 
     const previousItems = [...checklistItems];
@@ -626,7 +633,29 @@ export function useEventPlanningData() {
 
   const addCollaborator = async (userId: string, canEdit: boolean) => {
     if (!selectedPlanning) return;
-    const { error } = await supabase.from("event_planning_collaborators").insert({ event_planning_id: selectedPlanning.id, user_id: userId, can_edit: canEdit });
+
+    const existingCollaborator = collaborators.find(
+      (collab) => collab.event_planning_id === selectedPlanning.id && collab.user_id === userId,
+    );
+
+    if (existingCollaborator) {
+      if (existingCollaborator.can_edit === canEdit) {
+        toast({ title: "Hinweis", description: "Mitarbeiter ist bereits mit dieser Berechtigung freigegeben." });
+        return;
+      }
+
+      await updateCollaboratorPermission(existingCollaborator.id, canEdit);
+      setIsCollaboratorDialogOpen(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("event_planning_collaborators")
+      .upsert(
+        { event_planning_id: selectedPlanning.id, user_id: userId, can_edit: canEdit },
+        { onConflict: "event_planning_id,user_id" },
+      );
+
     if (error) { toast({ title: "Fehler", description: "Mitarbeiter konnte nicht hinzugefügt werden.", variant: "destructive" }); return; }
     fetchPlanningDetails(selectedPlanning.id);
     setIsCollaboratorDialogOpen(false);
