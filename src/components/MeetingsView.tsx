@@ -1274,76 +1274,86 @@ export function MeetingsView() {
         }
       }
 
-      // Step 3: Create standalone tasks for items with assigned_to AND result_text
-      // Also handle items that already have a task_id - append result to existing task
-      const itemsWithAssignment = agendaItemsData?.filter(item => 
-        item.assigned_to && item.result_text?.trim()
+      // Step 3a: Agenda items that are already linked to a task
+      // -> append meeting result to the existing task description
+      const itemsWithLinkedTaskResult = agendaItemsData?.filter(item =>
+        item.task_id && item.result_text?.trim()
       ) || [];
-      
+
+      for (const item of itemsWithLinkedTaskResult) {
+        try {
+          const { data: existingTask } = await supabase
+            .from('tasks')
+            .select('description')
+            .eq('id', item.task_id)
+            .maybeSingle();
+
+          if (existingTask) {
+            const meetingResult = `\n\n--- Ergebnis aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}: ---\n${item.result_text}`;
+            await supabase
+              .from('tasks')
+              .update({
+                description: (existingTask.description || '') + meetingResult,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', item.task_id);
+            console.log(`Updated existing task with result for: ${item.title}`);
+          }
+        } catch (taskCreateError) {
+          console.error('Error creating task for assigned item (non-fatal):', taskCreateError);
+        }
+      }
+
+      // Step 3b: Create standalone tasks for all assigned agenda items without linked task
+      const itemsWithAssignment = agendaItemsData?.filter(item =>
+        item.assigned_to && !item.task_id
+      ) || [];
+
       for (const item of itemsWithAssignment) {
         try {
-          if (item.task_id) {
-            // Item already has a linked task - append result to existing task description
-            const { data: existingTask } = await supabase
-              .from('tasks')
-              .select('description')
-              .eq('id', item.task_id)
-              .maybeSingle();
-
-            if (existingTask) {
-              const meetingResult = `\n\n--- Ergebnis aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}: ---\n${item.result_text}`;
-              await supabase
-                .from('tasks')
-                .update({
-                  description: (existingTask.description || '') + meetingResult,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', item.task_id);
-              console.log(`Updated existing task with result for: ${item.title}`);
-            }
-          } else {
-            // No linked task - create new standalone task
-            let assignedUserId: string | null = null;
-            if (Array.isArray(item.assigned_to)) {
-              const flattened = item.assigned_to.flat().filter(Boolean) as string[];
-              assignedUserId = flattened[0] || null;
-            } else if (typeof item.assigned_to === 'string') {
-              assignedUserId = item.assigned_to;
-            }
-            
-            const assigneeNames = Array.isArray(item.assigned_to) 
-              ? item.assigned_to.flat().filter(Boolean).map(id => {
-                  const profile = profiles.find(p => p.user_id === id);
-                  return profile?.display_name || 'Unbekannt';
-                }).join(', ')
-              : '';
-            
-            const multiAssigneeNote = assigneeNames && item.assigned_to && item.assigned_to.length > 1
-              ? `\n\n**Zuständige:** ${assigneeNames}`
-              : '';
-            
-            const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Ergebnis:**\n${item.result_text}${item.description ? `\n\n**Details:**\n${item.description}` : ''}${item.notes ? `\n\n**Notizen:**\n${item.notes}` : ''}${multiAssigneeNote}`;
-            
-            const { error: taskInsertError } = await supabase
-              .from('tasks')
-              .insert({
-                user_id: user.id,
-                title: item.title,
-                description: taskDescription,
-                priority: 'medium',
-                category: 'meeting',
-                status: 'todo',
-                assigned_to: assignedUserId,
-                tenant_id: currentTenant?.id || '',
-                due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-              });
-            
-            if (taskInsertError) {
-              console.error('Error inserting task for assigned item:', taskInsertError);
-            }
-            
-            console.log(`Created task for assigned item: ${item.title}`);
+          let assignedUserId: string | null = null;
+          if (Array.isArray(item.assigned_to)) {
+            const flattened = item.assigned_to.flat().filter(Boolean) as string[];
+            assignedUserId = flattened[0] || null;
+          } else if (typeof item.assigned_to === 'string') {
+            assignedUserId = item.assigned_to;
           }
+
+          const assigneeNames = Array.isArray(item.assigned_to)
+            ? item.assigned_to.flat().filter(Boolean).map(id => {
+                const profile = profiles.find(p => p.user_id === id);
+                return profile?.display_name || 'Unbekannt';
+              }).join(', ')
+            : '';
+
+          const detailsBlock = item.description?.trim() ? `\n\n**Details:**\n${item.description}` : '';
+          const notesBlock = item.notes?.trim() ? `\n\n**Notizen:**\n${item.notes}` : '';
+          const resultBlock = item.result_text?.trim() ? `\n\n**Ergebnis:**\n${item.result_text}` : '';
+          const multiAssigneeNote = assigneeNames && item.assigned_to && item.assigned_to.length > 1
+            ? `\n\n**Zuständige:** ${assigneeNames}`
+            : '';
+
+          const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}${resultBlock}${detailsBlock}${notesBlock}${multiAssigneeNote}`;
+
+          const { error: taskInsertError } = await supabase
+            .from('tasks')
+            .insert({
+              user_id: user.id,
+              title: item.title,
+              description: taskDescription,
+              priority: 'medium',
+              category: 'meeting',
+              status: 'todo',
+              assigned_to: assignedUserId,
+              tenant_id: currentTenant?.id || '',
+              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+            });
+
+          if (taskInsertError) {
+            console.error('Error inserting task for assigned item:', taskInsertError);
+          }
+
+          console.log(`Created task for assigned item: ${item.title}`);
         } catch (taskCreateError) {
           console.error('Error creating task for assigned item (non-fatal):', taskCreateError);
         }
@@ -1379,9 +1389,9 @@ export function MeetingsView() {
         const subtasksToCreate = [];
         
         for (const item of agendaItemsData) {
-          // Skip items that were assigned (already handled in Step 3, including those with task_id)
-          if (item.assigned_to && item.result_text?.trim()) continue;
-          // Skip items with task_id that were already handled in Step 3
+          // Skip items that were assigned (already handled in Step 3b)
+          if (item.assigned_to) continue;
+          // Skip items with task_id that were already handled in Step 3a
           if (item.task_id) continue;
           
           if (item.result_text?.trim()) {
