@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
@@ -56,10 +56,36 @@ export function CommentThread({
   const [replyContent, setReplyContent] = useState("");
   const [editContent, setEditContent] = useState(comment.content);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const repliesRef = useRef<HTMLDivElement>(null);
+  const hasReplies = Boolean(comment.replies?.length);
+  const [parentLineHeight, setParentLineHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!hasReplies || !containerRef.current || !repliesRef.current) {
+      setParentLineHeight(null);
+      return;
+    }
+    const measure = () => {
+      const container = containerRef.current;
+      const repliesEl = repliesRef.current;
+      if (!container || !repliesEl) return;
+      const lastChild = repliesEl.lastElementChild as HTMLElement | null;
+      if (!lastChild) return;
+      const containerTop = container.getBoundingClientRect().top;
+      const lastChildTop = lastChild.getBoundingClientRect().top;
+      const lineStart = AVATAR_SIZE + 4;
+      const lineEnd = lastChildTop - containerTop + AVATAR_CENTER;
+      setParentLineHeight(Math.max(0, lineEnd - lineStart));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(repliesRef.current);
+    return () => observer.disconnect();
+  }, [hasReplies, comment.replies?.length]);
 
   const isOwnComment = currentUserId === comment.user_id;
   const isDeleted = comment.content === DELETED_COMMENT_TEXT;
-  const hasReplies = Boolean(comment.replies?.length);
 
   const handleSubmitReply = async () => {
     if (!replyContent.trim()) return;
@@ -107,16 +133,16 @@ export function CommentThread({
   const AVATAR_CENTER = AVATAR_SIZE / 2; // 12px
 
   return (
-    <div className={cn("relative", depth > 0 && "ml-8")}>
+    <div ref={containerRef} className={cn("relative", depth > 0 && "ml-8", depth > 0 && !isLastReply && "mb-2")}>
       {/* Vertical line from this comment's avatar down through all replies */}
-      {hasReplies && (
+      {hasReplies && parentLineHeight != null && parentLineHeight > 0 && (
         <div
           className="absolute bg-border/70"
           aria-hidden="true"
           style={{
             left: `${AVATAR_CENTER}px`,
             top: `${AVATAR_SIZE + 4}px`,
-            bottom: 0,
+            height: `${parentLineHeight}px`,
             width: '2px',
           }}
         />
@@ -272,7 +298,7 @@ export function CommentThread({
 
       {/* Nested replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="mt-2 space-y-2">
+        <div ref={repliesRef} className="mt-2">
           {comment.replies.map((reply, index) => (
             <CommentThread
               key={reply.id}
