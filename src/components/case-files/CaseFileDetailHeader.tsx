@@ -53,11 +53,9 @@ export function CaseFileDetailHeader({
     return Icon || null;
   };
 
-  // Processing status badge
-  const processingStatus = processingStatuses.find(
-    (s) => s.name === (caseFile as any).processing_status
-  );
-  const ProcessingIcon = getIconComponent(processingStatus?.icon);
+  const activeProcessingStatuses = ((caseFile as any).processing_statuses || 
+    ((caseFile as any).processing_status ? [(caseFile as any).processing_status] : [])
+  ).map((name: string) => processingStatuses.find(s => s.name === name)).filter(Boolean);
 
   return (
     <div className="bg-card border rounded-lg p-4 space-y-3">
@@ -118,14 +116,15 @@ export function CaseFileDetailHeader({
 
         {/* Processing Status Badge only */}
         <div className="flex items-center gap-2 flex-wrap">
-          {processingStatus && (
-            <Badge
-              style={{ backgroundColor: processingStatus.color || undefined, color: '#fff' }}
-            >
-              {ProcessingIcon && <ProcessingIcon className="h-3 w-3 mr-1" />}
-              {processingStatus.label}
-            </Badge>
-          )}
+          {activeProcessingStatuses.map((ps: any) => {
+            const PIcon = getIconComponent(ps?.icon);
+            return (
+              <Badge key={ps.name} style={{ backgroundColor: ps.color || undefined, color: '#fff' }}>
+                {PIcon && <PIcon className="h-3 w-3 mr-1" />}
+                {ps.label}
+              </Badge>
+            );
+          })}
         </div>
       </div>
     </div>

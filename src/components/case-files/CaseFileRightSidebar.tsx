@@ -9,7 +9,7 @@ interface CaseFileRightSidebarProps {
   tasks: CaseFileTask[];
   caseFileId: string;
   onUpdateCurrentStatus: (note: string) => Promise<boolean>;
-  onUpdateProcessingStatus?: (status: string | null) => Promise<boolean>;
+  onUpdateProcessingStatuses?: (statuses: string[]) => Promise<boolean>;
   onUpdateRisksOpportunities: (data: { risks: string[]; opportunities: string[] }) => Promise<boolean>;
   onCompleteTask: (taskId: string) => Promise<boolean>;
   onAddTask: (taskId: string, notes?: string, taskTitle?: string) => Promise<boolean>;
@@ -21,7 +21,7 @@ export function CaseFileRightSidebar({
   tasks,
   caseFileId,
   onUpdateCurrentStatus,
-  onUpdateProcessingStatus,
+  onUpdateProcessingStatuses,
   onUpdateRisksOpportunities,
   onCompleteTask,
   onAddTask,
@@ -32,7 +32,7 @@ export function CaseFileRightSidebar({
       <CaseFileCurrentStatus
         caseFile={caseFile}
         onUpdate={onUpdateCurrentStatus}
-        onUpdateProcessingStatus={onUpdateProcessingStatus}
+        onUpdateProcessingStatuses={onUpdateProcessingStatuses}
       />
       <CaseFileNextSteps
         tasks={tasks}

@@ -258,8 +258,9 @@ export function GeneralSettings() {
                   src={logoPreviewUrl}
                   alt="App Logo"
                   className="max-h-16 max-w-16 object-contain"
-                  onError={() => {
-                    console.error("Logo konnte nicht geladen werden:", settings.app_logo_url);
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    console.error("Logo konnte nicht geladen werden:", logoPreviewUrl, e);
                     setLogoLoadFailed(true);
                   }}
                 />

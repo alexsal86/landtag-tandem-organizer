@@ -405,6 +405,15 @@ export const DashboardGreetingSection = () => {
 
   return (
     <div>
+      <div className="mb-2">
+        <button
+          type="button"
+          onClick={() => setShowWeather((prev) => !prev)}
+          className="text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+        >
+          {showWeather ? 'Wetter ausblenden' : 'Wetter anzeigen (optional)'}
+        </button>
+      </div>
       <span className="text-xl lg:text-2xl font-light tracking-tight text-foreground/90 block whitespace-pre-wrap">
         {parsedContent}
       </span>

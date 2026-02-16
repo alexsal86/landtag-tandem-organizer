@@ -146,7 +146,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
             tasks={tasks}
             caseFileId={caseFileId}
             onUpdateCurrentStatus={details.updateCurrentStatus}
-            onUpdateProcessingStatus={details.updateProcessingStatus}
+            onUpdateProcessingStatuses={details.updateProcessingStatuses}
             onUpdateRisksOpportunities={details.updateRisksOpportunities}
             onCompleteTask={details.completeTask}
             onAddTask={details.addTask}
