@@ -226,7 +226,9 @@ const LettersView: React.FC = () => {
           user_id: user.id,
           tenant_id: currentTenant.id,
           title: taskTitle.trim(),
-          description: [taskDescription.trim(), `Quelle: ${letterReference}`].filter(Boolean).join('\n\n'),
+          description: sourceLetterForTask.id
+            ? [taskDescription.trim(), `[[letter:${sourceLetterForTask.id}]]`].filter(Boolean).join('\n\n')
+            : [taskDescription.trim(), `Quelle: ${letterReference}`].filter(Boolean).join('\n\n'),
           status: 'todo',
           priority: 'medium',
           category: 'personal',
@@ -243,7 +245,9 @@ const LettersView: React.FC = () => {
 
         const { error } = await supabase.from('subtasks').insert({
           task_id: parentTaskId,
-          description: [taskTitle.trim(), `Quelle: ${letterReference}`].filter(Boolean).join(' · '),
+          description: sourceLetterForTask.id
+            ? `${taskTitle.trim()} [[letter:${sourceLetterForTask.id}]]`
+            : [taskTitle.trim(), `Quelle: ${letterReference}`].filter(Boolean).join(' · '),
           user_id: user.id,
           order_index: existingSubtasksCount || 0,
         });
