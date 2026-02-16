@@ -103,10 +103,13 @@ export function GlobalSearchCommand() {
   useEffect(() => {
     const handleOpenSearch = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.query) {
-        setSearchQuery(detail.query);
-      }
       setOpen(true);
+
+      if (detail?.query) {
+        queueMicrotask(() => {
+          setSearchQuery(detail.query);
+        });
+      }
     };
     window.addEventListener('openGlobalSearch', handleOpenSearch);
     return () => window.removeEventListener('openGlobalSearch', handleOpenSearch);
@@ -169,17 +172,17 @@ export function GlobalSearchCommand() {
       if (!searchQuery || searchQuery.length < 2) return [];
       let query = supabase
         .from('contacts')
-        .select('id, name, organization, avatar_url, category')
+        .select('id, name, organization, avatar_url, category, company, email, phone, mobile_phone, role, position')
         .eq('tenant_id', currentTenant!.id);
       
       // Fuzzy search using pg_trgm similarity
-      query = query.or(`name.ilike.%${searchQuery}%,organization.ilike.%${searchQuery}%`);
+      query = query.or(`name.ilike.%${searchQuery}%,organization.ilike.%${searchQuery}%,company.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,mobile_phone.ilike.%${searchQuery}%,role.ilike.%${searchQuery}%,position.ilike.%${searchQuery}%`);
       
       if (filters.category) {
         query = query.eq('category', filters.category);
       }
       
-      const { data } = await query.limit(5);
+      const { data } = await query.limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -191,9 +194,9 @@ export function GlobalSearchCommand() {
       if (!searchQuery || searchQuery.length < 2) return [];
       let query = supabase
         .from('appointments')
-        .select('id, title, start_time, location, category')
+        .select('id, title, start_time, location, category, description, meeting_details')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`);
+        .or(`title.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,meeting_details.ilike.%${searchQuery}%`);
       
       if (filters.dateFrom) {
         query = query.gte('start_time', filters.dateFrom);
@@ -208,7 +211,7 @@ export function GlobalSearchCommand() {
       const { data } = await query
         .gte('start_time', new Date().toISOString())
         .order('start_time', { ascending: true })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -220,9 +223,9 @@ export function GlobalSearchCommand() {
       if (!searchQuery || searchQuery.length < 2) return [];
       let query = supabase
         .from('tasks')
-        .select('id, title, due_date, status, priority')
+        .select('id, title, due_date, status, priority, category')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,status.ilike.%${searchQuery}%`);
       
       if (filters.status && filters.status !== 'completed') {
         query = query.eq('status', filters.status);
@@ -239,7 +242,7 @@ export function GlobalSearchCommand() {
       
       const { data } = await query
         .order('due_date', { ascending: true })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -251,9 +254,9 @@ export function GlobalSearchCommand() {
       if (!searchQuery || searchQuery.length < 2) return [];
       let query = supabase
         .from('documents')
-        .select('id, title, description, category, status')
+        .select('id, title, description, category, status, file_name, document_type, file_type, tags')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,file_name.ilike.%${searchQuery}%,document_type.ilike.%${searchQuery}%,file_type.ilike.%${searchQuery}%`);
       
       if (filters.category) {
         query = query.eq('category', filters.category);
@@ -264,7 +267,7 @@ export function GlobalSearchCommand() {
       
       const { data } = await query
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -276,11 +279,11 @@ export function GlobalSearchCommand() {
       if (!searchQuery || searchQuery.length < 2) return [];
       const { data } = await supabase
         .from('letters')
-        .select('id, title, recipient_name, letter_date')
+        .select('id, title, recipient_name, letter_date, subject, subject_line, reference_number')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${searchQuery}%,recipient_name.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${searchQuery}%,recipient_name.ilike.%${searchQuery}%,subject.ilike.%${searchQuery}%,subject_line.ilike.%${searchQuery}%,reference_number.ilike.%${searchQuery}%`)
         .order('letter_date', { ascending: false })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -292,11 +295,11 @@ export function GlobalSearchCommand() {
       if (!searchQuery || searchQuery.length < 2) return [];
       const { data } = await supabase
         .from('meetings')
-        .select('id, title, meeting_date')
+        .select('id, title, meeting_date, description, location')
         .eq('tenant_id', currentTenant!.id)
-        .ilike('title', `%${searchQuery}%`)
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`)
         .order('meeting_date', { ascending: false })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -308,11 +311,11 @@ export function GlobalSearchCommand() {
       if (!searchQuery || searchQuery.length < 2) return [];
       const { data } = await supabase
         .from('case_files')
-        .select('id, title, reference_number, status, case_type')
+        .select('id, title, reference_number, status, case_type, tags, current_status_note, processing_status, priority')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,reference_number.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,reference_number.ilike.%${searchQuery}%,current_status_note.ilike.%${searchQuery}%,case_type.ilike.%${searchQuery}%,processing_status.ilike.%${searchQuery}%,status.ilike.%${searchQuery}%,priority.ilike.%${searchQuery}%`)
         .order('updated_at', { ascending: false })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
@@ -325,15 +328,52 @@ export function GlobalSearchCommand() {
       if (!searchQuery || searchQuery.length < 2) return [];
       const { data } = await supabase
         .from('archived_tasks')
-        .select('id, title, description, completed_at')
+        .select('id, title, description, completed_at, category, priority')
         .eq('user_id', user!.id)
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,priority.ilike.%${searchQuery}%`)
         .order('archived_at', { ascending: false })
-        .limit(5);
+        .limit(10);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && !!user && searchQuery.length >= 2,
   });
+
+  const { data: decisions, isLoading: decisionsLoading } = useQuery({
+    queryKey: ['global-search-decisions', searchQuery, currentTenant?.id],
+    queryFn: async () => {
+      if (!searchQuery || searchQuery.length < 2) return [];
+      const { data } = await supabase
+        .from('task_decisions')
+        .select('id, title, description, status, priority, archived_at, updated_at')
+        .eq('tenant_id', currentTenant!.id)
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,status.ilike.%${searchQuery}%`)
+        .order('updated_at', { ascending: false })
+        .limit(10);
+      return data || [];
+    },
+    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+  });
+
+  const { data: plannings, isLoading: planningsLoading } = useQuery({
+    queryKey: ['global-search-plannings', searchQuery, currentTenant?.id],
+    queryFn: async () => {
+      if (!searchQuery || searchQuery.length < 2) return [];
+      const { data } = await supabase
+        .from('event_plannings')
+        .select('id, title, description, location, contact_person, is_archived, archived_at, updated_at')
+        .eq('tenant_id', currentTenant!.id)
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%,contact_person.ilike.%${searchQuery}%`)
+        .order('updated_at', { ascending: false })
+        .limit(10);
+      return data || [];
+    },
+    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+  });
+
+  const activeDecisions = decisions?.filter((decision) => !decision.archived_at) || [];
+  const archivedDecisions = decisions?.filter((decision) => !!decision.archived_at) || [];
+  const activePlannings = plannings?.filter((planning) => !planning.archived_at && !planning.is_archived) || [];
+  const archivedPlannings = plannings?.filter((planning) => !!planning.archived_at || !!planning.is_archived) || [];
 
   // Track search when results change
   useEffect(() => {
@@ -341,7 +381,9 @@ export function GlobalSearchCommand() {
       const resultCount = (contacts?.length || 0) + (appointments?.length || 0) + 
                           (tasks?.length || 0) + (documents?.length || 0) + 
                           (letters?.length || 0) + (protocols?.length || 0) +
-                          (caseFiles?.length || 0) + (archivedTasks?.length || 0);
+                          (caseFiles?.length || 0) + (archivedTasks?.length || 0) +
+                          activeDecisions.length + archivedDecisions.length +
+                          activePlannings.length + archivedPlannings.length;
       const resultTypes: string[] = [];
       if (contacts?.length) resultTypes.push('contacts');
       if (appointments?.length) resultTypes.push('appointments');
@@ -351,10 +393,14 @@ export function GlobalSearchCommand() {
       if (protocols?.length) resultTypes.push('protocols');
       if (caseFiles?.length) resultTypes.push('casefiles');
       if (archivedTasks?.length) resultTypes.push('archived_tasks');
+      if (activeDecisions.length) resultTypes.push('decisions');
+      if (archivedDecisions.length) resultTypes.push('archived_decisions');
+      if (activePlannings.length) resultTypes.push('plannings');
+      if (archivedPlannings.length) resultTypes.push('archived_plannings');
       
       trackSearchMutation.mutate({ query: searchQuery, resultCount, resultTypes });
     }
-  }, [contacts, appointments, tasks, documents, letters, protocols, caseFiles, archivedTasks, searchQuery]);
+  }, [contacts, appointments, tasks, documents, letters, protocols, caseFiles, archivedTasks, activeDecisions.length, archivedDecisions.length, activePlannings.length, archivedPlannings.length, searchQuery]);
 
   const runCommand = useCallback((command: () => void) => {
     if (searchQuery && searchQuery.length >= 2) {
@@ -395,10 +441,13 @@ export function GlobalSearchCommand() {
   const hasResults = (contacts?.length || 0) + (appointments?.length || 0) + 
                      (tasks?.length || 0) + (documents?.length || 0) + 
                      (letters?.length || 0) + (protocols?.length || 0) +
-                     (caseFiles?.length || 0) + (archivedTasks?.length || 0) > 0;
+                     (caseFiles?.length || 0) + (archivedTasks?.length || 0) +
+                     activeDecisions.length + archivedDecisions.length +
+                     activePlannings.length + archivedPlannings.length > 0;
 
   const isSearching = contactsLoading || appointmentsLoading || tasksLoading || 
-                      documentsLoading || lettersLoading || protocolsLoading || caseFilesLoading || archivedTasksLoading;
+                      documentsLoading || lettersLoading || protocolsLoading || caseFilesLoading || archivedTasksLoading ||
+                      decisionsLoading || planningsLoading;
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
@@ -691,6 +740,71 @@ export function GlobalSearchCommand() {
                     ({caseFile.reference_number})
                   </span>
                 )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+
+        {activeDecisions.length > 0 && (
+          <CommandGroup heading="🗳️ Entscheidungen">
+            {activeDecisions.map((decision) => (
+              <CommandItem
+                key={decision.id}
+                onSelect={() => runCommand(() => navigate(`/decisions?id=${decision.id}`))}
+              >
+                <Vote className="mr-2 h-4 w-4" />
+                <span>{decision.title}</span>
+                {decision.status && (
+                  <span className="ml-2 text-xs text-muted-foreground">({decision.status})</span>
+                )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {archivedDecisions.length > 0 && (
+          <CommandGroup heading="🗄️ Archivierte Entscheidungen">
+            {archivedDecisions.map((decision) => (
+              <CommandItem
+                key={decision.id}
+                onSelect={() => runCommand(() => navigate(`/decisions?id=${decision.id}`))}
+              >
+                <Vote className="mr-2 h-4 w-4" />
+                <span>{decision.title}</span>
+                <Badge variant="outline" className="ml-2 text-xs">Archiv</Badge>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {activePlannings.length > 0 && (
+          <CommandGroup heading="📝 Planungen">
+            {activePlannings.map((planning) => (
+              <CommandItem
+                key={planning.id}
+                onSelect={() => runCommand(() => navigate(`/eventplanning?planningId=${planning.id}`))}
+              >
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                <span>{planning.title}</span>
+                {planning.location && (
+                  <span className="ml-2 text-xs text-muted-foreground">({planning.location})</span>
+                )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {archivedPlannings.length > 0 && (
+          <CommandGroup heading="🗄️ Archivierte Planungen">
+            {archivedPlannings.map((planning) => (
+              <CommandItem
+                key={planning.id}
+                onSelect={() => runCommand(() => navigate(`/eventplanning?planningId=${planning.id}`))}
+              >
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                <span>{planning.title}</span>
+                <Badge variant="outline" className="ml-2 text-xs">Archiv</Badge>
               </CommandItem>
             ))}
           </CommandGroup>

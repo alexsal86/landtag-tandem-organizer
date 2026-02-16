@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import * as sdk from 'matrix-js-sdk';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -150,6 +150,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const [rooms, setRooms] = useState<MatrixRoom[]>([]);
   const [credentials, setCredentials] = useState<MatrixCredentials | null>(null);
   const [messages, setMessages] = useState<Map<string, MatrixMessage[]>>(new Map());
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const [typingUsers, setTypingUsers] = useState<Map<string, string[]>>(new Map());
   const [e2eeDiagnostics, setE2eeDiagnostics] = useState<MatrixE2EEDiagnostics>({
     secureContext: window.isSecureContext,

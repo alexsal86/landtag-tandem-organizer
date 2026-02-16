@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateLetterDOCX } from "@/utils/letterDOCXGenerator";
 
@@ -31,7 +31,7 @@ interface LetterDOCXExportProps {
 
 export default function LetterDOCXExport({ 
   letter, 
-  variant = "outline", 
+  variant = "ghost", 
   size = "sm", 
   className = "" 
 }: LetterDOCXExportProps) {
@@ -83,9 +83,9 @@ export default function LetterDOCXExport({
       size={size}
       onClick={handleExport}
       disabled={isExporting}
-      className={className}
+      className={className || "flex items-center gap-2"}
     >
-      <FileText className="h-4 w-4" />
+      <Download className="h-4 w-4" />
       {isExporting ? "Exportiert..." : "DOCX"}
     </Button>
   );
