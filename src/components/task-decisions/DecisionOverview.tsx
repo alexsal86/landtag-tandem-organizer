@@ -127,7 +127,9 @@ interface DecisionRequest {
       response_type: string;
       comment: string | null;
       creator_response: string | null;
+      parent_response_id?: string | null;
       created_at: string;
+      updated_at?: string;
     }>;
   }>;
 }
@@ -380,6 +382,7 @@ export const DecisionOverview = () => {
               response_type,
               comment,
               creator_response,
+              parent_response_id,
               created_at,
               updated_at
             )
@@ -428,7 +431,12 @@ export const DecisionOverview = () => {
               avatar_url: profileMap.get(participant.user_id)?.avatar_url || null,
             },
             responses: (participant.task_decision_responses || [])
-              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+              .sort((a, b) => {
+                const aIsChild = !!a.parent_response_id;
+                const bIsChild = !!b.parent_response_id;
+                if (aIsChild !== bIsChild) return aIsChild ? 1 : -1;
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+              }),
           });
         });
 
@@ -476,31 +484,58 @@ export const DecisionOverview = () => {
     }
   };
 
-  const sendCreatorResponse = async (responseId: string, responseText?: string) => {
+  const sendCreatorResponse = async (
+    responseId: string,
+    responseText?: string,
+    mode: 'creator_response' | 'participant_followup' = 'creator_response'
+  ) => {
     const text = responseText || creatorResponses[responseId];
     if (!text?.trim()) return;
 
     setIsLoading(true);
     
     try {
-      // Kernoperation ZUERST: Update der creator_response
-      const { error: updateError } = await supabase
-        .from('task_decision_responses')
-        .update({ creator_response: text.trim() })
-        .eq('id', responseId);
+      const actionError = mode === 'creator_response'
+        ? (await supabase
+            .from('task_decision_responses')
+            .update({ creator_response: text.trim() })
+            .eq('id', responseId)).error
+        : (await supabase
+            .from('task_decision_responses')
+            .select('decision_id, participant_id')
+            .eq('id', responseId)
+            .maybeSingle()
+            .then(async ({ data, error }) => {
+              if (error) return error;
+              if (!data) return new Error('Ausgangsnachricht nicht gefunden.');
 
-      if (updateError) throw updateError;
+              const { error: insertError } = await supabase
+                .from('task_decision_responses')
+                .insert({
+                  decision_id: data.decision_id,
+                  participant_id: data.participant_id,
+                  response_type: 'question',
+                  comment: text.trim(),
+                  parent_response_id: responseId,
+                });
+
+              return insertError;
+            }));
+
+      if (actionError) throw actionError;
 
       // Erfolg melden sofort
       toast({
         title: "Erfolgreich",
-        description: "Antwort wurde gesendet.",
+        description: mode === 'creator_response' ? "Antwort wurde gesendet." : "Rückmeldung wurde gesendet.",
       });
 
       setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
 
       // Best-effort: Notification senden (in separatem try/catch)
       try {
+        if (mode !== 'creator_response') return;
+
         const { data: responseData } = await supabase
           .from('task_decision_responses')
           .select(`
@@ -1237,7 +1272,7 @@ export const DecisionOverview = () => {
               badge_color: decision.creator.badge_color,
               avatar_url: decision.creator.avatar_url,
             } : undefined}
-            onReply={({ responseId, text }) => sendCreatorResponse(responseId, text)}
+            onReply={({ responseId, text, mode }) => sendCreatorResponse(responseId, text, mode)}
           />
 
         </CardContent>

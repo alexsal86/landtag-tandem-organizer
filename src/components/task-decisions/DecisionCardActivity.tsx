@@ -21,6 +21,7 @@ interface Participant {
     response_type: string;
     comment: string | null;
     creator_response: string | null;
+    parent_response_id?: string | null;
     created_at: string;
     updated_at?: string;
   }>;
@@ -61,13 +62,18 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
     avatarUrl: string | null;
     comment: string | null;
     creatorResponse: string | null;
+    participantFollowup: string | null;
     createdAt: string;
     userId: string;
   }> = [];
 
   participants.forEach(p => {
-    const latest = p.responses[0];
+    const latest = p.responses.find((response) => !response.parent_response_id);
     if (!latest) return;
+
+    const latestFollowup = p.responses
+      .filter((response) => response.parent_response_id === latest.id)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
     if (latest.response_type === 'question') {
       activityItems.unshift({
@@ -78,6 +84,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
         avatarUrl: p.profile?.avatar_url || null,
         comment: latest.comment,
         creatorResponse: latest.creator_response,
+        participantFollowup: latestFollowup?.comment || null,
         createdAt: latest.updated_at || latest.created_at,
         userId: p.user_id,
       });
@@ -90,6 +97,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
         avatarUrl: p.profile?.avatar_url || null,
         comment: latest.comment,
         creatorResponse: latest.creator_response,
+        participantFollowup: latestFollowup?.comment || null,
         createdAt: latest.updated_at || latest.created_at,
         userId: p.user_id,
       });
@@ -189,6 +197,25 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
                   </div>
                   <div className="line-clamp-2">
                     <RichTextDisplay content={item.creatorResponse} className="text-[11px] [&_p]:m-0" />
+                  </div>
+                </div>
+              )}
+
+              {item.participantFollowup && (
+                <div className="ml-8 mt-1 pl-2 border-l-2 border-primary/40 bg-muted/30 rounded-r px-2 py-1">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <Avatar className="h-3 w-3 flex-shrink-0">
+                      {item.avatarUrl && <AvatarImage src={item.avatarUrl} />}
+                      <AvatarFallback className="text-[6px]" style={{ backgroundColor: item.badgeColor || undefined }}>
+                        {getInitials(item.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium text-[10px] text-muted-foreground">
+                      {item.name || 'Unbekannt'}
+                    </span>
+                  </div>
+                  <div className="line-clamp-2">
+                    <RichTextDisplay content={item.participantFollowup} className="text-[11px] [&_p]:m-0" />
                   </div>
                 </div>
               )}
