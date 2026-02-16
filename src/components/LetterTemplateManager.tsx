@@ -63,6 +63,62 @@ interface GalleryImage {
   publicUrl: string;
 }
 
+const STORAGE_PATH_PREFIXES = [
+  '/storage/v1/object/public/letter-assets/',
+  '/storage/v1/object/sign/letter-assets/',
+  '/storage/v1/object/authenticated/letter-assets/',
+];
+
+const extractStoragePathFromUrl = (value?: string | null): string | null => {
+  if (!value) return null;
+
+  // Already a relative storage path
+  if (!value.startsWith('http://') && !value.startsWith('https://')) {
+    return value;
+  }
+
+  try {
+    const parsed = new URL(value);
+    const matchedPrefix = STORAGE_PATH_PREFIXES.find((prefix) => parsed.pathname.includes(prefix));
+    if (!matchedPrefix) return null;
+    const [, rawPath = ''] = parsed.pathname.split(matchedPrefix);
+    if (!rawPath) return null;
+    return decodeURIComponent(rawPath);
+  } catch {
+    return null;
+  }
+};
+
+const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSettings) => {
+  const blockContent = ((layoutSettings as any).blockContent || {}) as Record<string, any[]>;
+  const normalizedContent = Object.fromEntries(
+    Object.entries(blockContent).map(([key, items]) => {
+      if (!Array.isArray(items)) return [key, items];
+
+      const normalizedItems = items.map((item: any) => {
+        if (!item || item.type !== 'image') return item;
+
+        const storagePath = item.storagePath || extractStoragePathFromUrl(item.imageUrl);
+        if (!storagePath) return item;
+
+        const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(storagePath);
+        return {
+          ...item,
+          storagePath,
+          imageUrl: publicUrl,
+        };
+      });
+
+      return [key, normalizedItems];
+    })
+  );
+
+  return {
+    ...layoutSettings,
+    blockContent: normalizedContent,
+  } as LetterLayoutSettings;
+};
+
 const LetterTemplateManager: React.FC = () => {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
@@ -296,7 +352,8 @@ const LetterTemplateManager: React.FC = () => {
       name: template.name, letterhead_html: template.letterhead_html, letterhead_css: template.letterhead_css,
       response_time_days: template.response_time_days, default_sender_id: template.default_sender_id || '',
       default_info_blocks: template.default_info_blocks || [], header_elements: headerElements,
-      footer_blocks: footerBlocks, layout_settings: template.layout_settings || DEFAULT_DIN5008_LAYOUT
+      footer_blocks: footerBlocks,
+      layout_settings: normalizeLayoutBlockContentImages(template.layout_settings || DEFAULT_DIN5008_LAYOUT)
     });
   };
 
@@ -344,14 +401,19 @@ const LetterTemplateManager: React.FC = () => {
 
   const onBlockCanvasMouseUp = () => { setBlockDrag(null); setBlockResize(null); };
 
-  const addImageItemToBlock = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments', imageUrl: string, rect: { width: number; height: number }) => {
+  const addImageItemToBlock = (
+    blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments',
+    imageUrl: string,
+    rect: { width: number; height: number },
+    storagePath?: string
+  ) => {
     const items = getBlockItems(blockKey);
     const id = Date.now().toString();
     const defaultW = Math.min(40, Math.max(20, rect.width * 0.35));
     const defaultH = Math.min(18, Math.max(10, rect.height * 0.7));
     const x = Math.max(0, Math.round((rect.width - defaultW) / 2));
     const y = Math.max(0, Math.round((Math.max(rect.height, 25) - defaultH) / 2));
-    setBlockItems(blockKey, [...items, { id, type: 'image', x, y, width: defaultW, height: defaultH, imageUrl }]);
+    setBlockItems(blockKey, [...items, { id, type: 'image', x, y, width: defaultW, height: defaultH, imageUrl, storagePath }]);
     setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
   };
 
@@ -423,7 +485,12 @@ const LetterTemplateManager: React.FC = () => {
                       key={img.name}
                       draggable
                       onClick={() => setSelectedGalleryImage((prev) => ({ ...prev, [blockKey]: img }))}
-                      onDragStart={(e) => { e.dataTransfer.setData('application/x-block-tool', 'image'); e.dataTransfer.setData('application/x-block-image-url', img.publicUrl); e.dataTransfer.effectAllowed = 'copy'; }}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('application/x-block-tool', 'image');
+                        e.dataTransfer.setData('application/x-block-image-url', img.publicUrl);
+                        e.dataTransfer.setData('application/x-block-image-path', img.path);
+                        e.dataTransfer.effectAllowed = 'copy';
+                      }}
                       className={`border rounded overflow-hidden cursor-grab active:cursor-grabbing aspect-square bg-muted/30 ${selectedGalleryImage[blockKey]?.path === img.path ? 'ring-2 ring-primary' : ''}`}
                       title={img.name}
                     >
@@ -450,7 +517,7 @@ const LetterTemplateManager: React.FC = () => {
                     variant="secondary"
                     size="sm"
                     className="w-full text-xs"
-                    onClick={() => addImageItemToBlock(blockKey, selectedGalleryImage[blockKey]!.publicUrl, rect)}
+                    onClick={() => addImageItemToBlock(blockKey, selectedGalleryImage[blockKey]!.publicUrl, rect, selectedGalleryImage[blockKey]!.path)}
                   >
                     <ImageIcon className="h-3 w-3 mr-1" /> In Canvas einfügen
                   </Button>
@@ -569,9 +636,10 @@ const LetterTemplateManager: React.FC = () => {
                   // Handle image drop
                   if (tool === 'image') {
                     const imgUrl = e.dataTransfer.getData('application/x-block-image-url');
+                    const imgPath = e.dataTransfer.getData('application/x-block-image-path');
                     if (imgUrl) {
                       const id = Date.now().toString();
-                      setBlockItems(blockKey, [...items, { id, type: 'image', x, y, width: 30, height: 15, imageUrl: imgUrl }]);
+                      setBlockItems(blockKey, [...items, { id, type: 'image', x, y, width: 30, height: 15, imageUrl: imgUrl, storagePath: imgPath || null }]);
                       setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
                       return;
                     }
