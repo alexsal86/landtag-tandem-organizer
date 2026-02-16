@@ -454,10 +454,8 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                                   <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100 hover:max-w-[280px] hover:opacity-100">
                                     {speaker.email}
                                   </span>
-                                  {copiedSpeakerContact === `${speaker.id}-email` ? (
+                                  {copiedSpeakerContact === `${speaker.id}-email` && (
                                     <span className="text-xs font-medium text-green-600">Kopiert</span>
-                                  ) : (
-                                    <Copy className="h-3.5 w-3.5" />
                                   )}
                                 </button>
                               )}
@@ -472,10 +470,8 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                                   <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100 hover:max-w-[280px] hover:opacity-100">
                                     {speaker.phone}
                                   </span>
-                                  {copiedSpeakerContact === `${speaker.id}-phone` ? (
+                                  {copiedSpeakerContact === `${speaker.id}-phone` && (
                                     <span className="text-xs font-medium text-green-600">Kopiert</span>
-                                  ) : (
-                                    <Copy className="h-3.5 w-3.5" />
                                   )}
                                 </button>
                               )}
