@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Filter, Calendar, User, Eye, Edit3, Trash2, Grid, List, Download } from 'lucide-react';
+import { Search, Plus, FileText, Filter, Calendar, User, Edit3, Trash2, Grid, List, ListTodo, ListTree, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -38,6 +41,11 @@ interface Letter {
   archived_at?: string | null;
 }
 
+interface ParentTaskOption {
+  id: string;
+  title: string;
+}
+
 const LettersView: React.FC = () => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -51,7 +59,13 @@ const LettersView: React.FC = () => {
   const [selectedLetter, setSelectedLetter] = useState<Letter | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [taskDialogMode, setTaskDialogMode] = useState<'task' | 'subtask' | null>(null);
+  const [sourceLetterForTask, setSourceLetterForTask] = useState<Letter | null>(null);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [parentTaskId, setParentTaskId] = useState<string>('none');
+  const [availableParentTasks, setAvailableParentTasks] = useState<ParentTaskOption[]>([]);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
 
 
   useEffect(() => {
@@ -138,6 +152,124 @@ const LettersView: React.FC = () => {
   const handleEditLetter = (letter: Letter) => {
     setSelectedLetter(letter);
     setIsEditorOpen(true);
+  };
+
+  const openTaskDialog = async (letter: Letter, mode: 'task' | 'subtask') => {
+    setSourceLetterForTask(letter);
+    setTaskDialogMode(mode);
+    const initialTitle = letter.title?.trim() || `Aufgabe aus Brief vom ${new Date(letter.updated_at).toLocaleDateString('de-DE')}`;
+    setTaskTitle(initialTitle);
+    setTaskDescription(letter.content?.trim() || '');
+    setParentTaskId('none');
+
+    if (mode === 'subtask' && currentTenant) {
+      try {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('id, title')
+          .eq('tenant_id', currentTenant.id)
+          .is('parent_task_id', null)
+          .order('updated_at', { ascending: false })
+          .limit(100);
+
+        if (error) throw error;
+        setAvailableParentTasks((data || []) as ParentTaskOption[]);
+      } catch (error) {
+        console.error('Error fetching parent tasks:', error);
+        setAvailableParentTasks([]);
+        toast({
+          title: 'Fehler',
+          description: 'Übergeordnete Aufgaben konnten nicht geladen werden.',
+          variant: 'destructive',
+        });
+      }
+    } else {
+      setAvailableParentTasks([]);
+    }
+  };
+
+  const closeTaskDialog = () => {
+    setTaskDialogMode(null);
+    setSourceLetterForTask(null);
+    setTaskTitle('');
+    setTaskDescription('');
+    setParentTaskId('none');
+    setAvailableParentTasks([]);
+  };
+
+  const createTaskFromLetter = async () => {
+    if (!user || !currentTenant || !taskDialogMode || !sourceLetterForTask) return;
+    if (!taskTitle.trim()) {
+      toast({
+        title: 'Titel fehlt',
+        description: 'Bitte einen Titel für die Aufgabe eingeben.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (taskDialogMode === 'subtask' && parentTaskId === 'none') {
+      toast({
+        title: 'Übergeordnete Aufgabe fehlt',
+        description: 'Bitte wählen Sie eine Aufgabe für die Unteraufgabe aus.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCreatingTask(true);
+    const letterReference = sourceLetterForTask.title ? `Brief: ${sourceLetterForTask.title}` : 'Brief';
+
+    try {
+      if (taskDialogMode === 'task') {
+        const { error } = await supabase.from('tasks').insert({
+          user_id: user.id,
+          tenant_id: currentTenant.id,
+          title: taskTitle.trim(),
+          description: [taskDescription.trim(), `Quelle: ${letterReference}`].filter(Boolean).join('\n\n'),
+          status: 'todo',
+          priority: 'medium',
+          category: 'personal',
+        });
+
+        if (error) throw error;
+      } else {
+        const { count: existingSubtasksCount, error: countError } = await supabase
+          .from('subtasks')
+          .select('id', { count: 'exact', head: true })
+          .eq('task_id', parentTaskId);
+
+        if (countError) throw countError;
+
+        const { error } = await supabase.from('subtasks').insert({
+          task_id: parentTaskId,
+          description: [taskTitle.trim(), `Quelle: ${letterReference}`].filter(Boolean).join(' · '),
+          user_id: user.id,
+          order_index: existingSubtasksCount || 0,
+        });
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: taskDialogMode === 'task' ? 'Aufgabe erstellt' : 'Unteraufgabe erstellt',
+        description: taskDialogMode === 'task'
+          ? 'Der Brief wurde als Aufgabe übernommen.'
+          : 'Der Brief wurde als Unteraufgabe übernommen.',
+      });
+      closeTaskDialog();
+    } catch (error) {
+      console.error('Error creating task from letter:', error);
+      toast({
+        title: 'Fehler',
+        description: taskDialogMode === 'task'
+          ? 'Die Aufgabe konnte nicht erstellt werden.'
+          : 'Die Unteraufgabe konnte nicht erstellt werden.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingTask(false);
+    }
   };
 
   const handleDeleteLetter = async (letterId: string) => {
@@ -316,8 +448,25 @@ const LettersView: React.FC = () => {
                         variant="ghost" 
                         size="sm"
                         onClick={() => handleEditLetter(letter)}
+                        title="Brief bearbeiten"
                       >
                         <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openTaskDialog(letter, 'task')}
+                        title="Als Aufgabe übernehmen"
+                      >
+                        <ListTodo className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openTaskDialog(letter, 'subtask')}
+                        title="Als Unteraufgabe übernehmen"
+                      >
+                        <ListTree className="h-4 w-4" />
                       </Button>
                       <LetterPDFExport 
                         letter={letter as any} 
@@ -383,8 +532,25 @@ const LettersView: React.FC = () => {
                           variant="ghost" 
                           size="sm"
                           onClick={() => handleEditLetter(letter)}
+                          title="Brief bearbeiten"
                         >
                           <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openTaskDialog(letter, 'task')}
+                          title="Als Aufgabe übernehmen"
+                        >
+                          <ListTodo className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openTaskDialog(letter, 'subtask')}
+                          title="Als Unteraufgabe übernehmen"
+                        >
+                          <ListTree className="h-4 w-4" />
                         </Button>
                         <LetterPDFExport 
                           letter={letter as any} 
@@ -433,6 +599,75 @@ const LettersView: React.FC = () => {
           setSelectedLetter(null);
         }}
       />
+
+      <Dialog open={taskDialogMode !== null} onOpenChange={(open) => !open && closeTaskDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {taskDialogMode === 'task' ? 'Aufgabe aus Brief erstellen' : 'Unteraufgabe aus Brief erstellen'}
+            </DialogTitle>
+            <DialogDescription>
+              {taskDialogMode === 'task'
+                ? 'Erstellen Sie direkt aus diesem Brief eine neue Aufgabe.'
+                : 'Wählen Sie eine bestehende Aufgabe aus, zu der diese Unteraufgabe gehören soll.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="letter-task-title">Titel</Label>
+              <Input
+                id="letter-task-title"
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                placeholder="Titel der Aufgabe"
+              />
+            </div>
+
+            {taskDialogMode === 'subtask' && (
+              <div className="space-y-2">
+                <Label htmlFor="letter-parent-task">Übergeordnete Aufgabe</Label>
+                <Select value={parentTaskId} onValueChange={setParentTaskId}>
+                  <SelectTrigger id="letter-parent-task">
+                    <SelectValue placeholder="Bitte Aufgabe wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Bitte wählen</SelectItem>
+                    {availableParentTasks.map((task) => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {taskDialogMode === 'task' && (
+              <div className="space-y-2">
+                <Label htmlFor="letter-task-description">Beschreibung</Label>
+                <Textarea
+                  id="letter-task-description"
+                  value={taskDescription}
+                  onChange={(e) => setTaskDescription(e.target.value)}
+                  placeholder="Beschreibung (optional)"
+                  rows={5}
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeTaskDialog} disabled={isCreatingTask}>
+              Abbrechen
+            </Button>
+            <Button onClick={createTaskFromLetter} disabled={isCreatingTask}>
+              {isCreatingTask && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {taskDialogMode === 'task' ? 'Aufgabe erstellen' : 'Unteraufgabe erstellen'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
