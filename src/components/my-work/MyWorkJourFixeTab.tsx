@@ -47,6 +47,7 @@ interface SystemItemData {
 interface BirthdayItemData {
   id: string;
   name: string;
+  birthDate: Date;
   nextBirthday: Date;
   age: number;
 }
@@ -315,6 +316,7 @@ export function MyWorkJourFixeTab() {
               birthdays.push({
                 id: contact.id,
                 name: contact.name,
+                birthDate: originalBirthday,
                 nextBirthday,
                 age: differenceInYears(nextBirthday, originalBirthday),
               });
@@ -523,7 +525,7 @@ export function MyWorkJourFixeTab() {
                             <li key={birthday.id} className="flex items-center gap-1.5 text-muted-foreground">
                               <Cake className="h-2.5 w-2.5 text-pink-500" />
                               <span>
-                                {birthday.name} ({format(birthday.nextBirthday, "dd.MM.", { locale: de })}, {birthday.age})
+                                {birthday.name} ({format(birthday.nextBirthday, "dd.MM.", { locale: de })}, geb. {format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, {birthday.age} Jahre)
                               </span>
                             </li>
                           ))}
@@ -570,7 +572,7 @@ export function MyWorkJourFixeTab() {
                                       <li key={birthday.id} className="flex items-center gap-1.5 text-muted-foreground">
                                         <Cake className="h-2.5 w-2.5 text-pink-500" />
                                         <span>
-                                          {birthday.name} ({format(birthday.nextBirthday, "dd.MM.", { locale: de })}, {birthday.age})
+                                          {birthday.name} ({format(birthday.nextBirthday, "dd.MM.", { locale: de })}, geb. {format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, {birthday.age} Jahre)
                                         </span>
                                       </li>
                                     ))}
