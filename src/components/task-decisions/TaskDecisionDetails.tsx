@@ -581,53 +581,6 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const renderDecisionComment = (comment: DecisionComment, depth = 0, parentAuthor?: string | null): React.ReactNode => {
-    return (
-      <div key={comment.id} className={cn("space-y-2", depth > 0 && "ml-5 pl-4 border-l border-border/70 relative")}>
-        {depth > 0 && (
-          <div className="absolute -left-px top-4 h-px w-3 bg-border/70" aria-hidden="true" />
-        )}
-
-        <div className="rounded-md border p-3">
-          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Avatar className="h-5 w-5">
-                {comment.profile?.avatar_url && <AvatarImage src={comment.profile.avatar_url} />}
-                <AvatarFallback
-                  className="text-[8px]"
-                  style={{ backgroundColor: comment.profile?.badge_color || undefined }}
-                >
-                  {getInitials(comment.profile?.display_name)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="font-medium text-foreground">
-                {comment.profile?.display_name || 'Unbekannt'}
-              </span>
-            </div>
-            <span>•</span>
-            <span>
-              {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: de })}
-            </span>
-          </div>
-
-          {depth > 0 && parentAuthor && (
-            <div className="mb-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-              <CornerDownRight className="h-3 w-3" />
-              Antwort auf {parentAuthor}
-            </div>
-          )}
-
-          <RichTextDisplay content={comment.content || ''} className="text-sm" />
-        </div>
-
-        {comment.replies && comment.replies.length > 0 && (
-          <div className="space-y-2">
-            {comment.replies.map((reply) => renderDecisionComment(reply, depth + 1, comment.profile?.display_name))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   const renderResponseThread = (thread: ResponseThread, participantId: string, depth: number): React.ReactNode => {
     return (

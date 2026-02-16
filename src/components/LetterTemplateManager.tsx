@@ -272,18 +272,42 @@ const LetterTemplateManager: React.FC = () => {
     } catch (error) { console.error('Error fetching info blocks:', error); }
   };
 
+  // Strip blobUrl from elements before persisting - blobUrls are runtime-only
+  const stripBlobUrls = (elements: any[]): any[] =>
+    elements.map(({ blobUrl, ...rest }) => rest);
+
+  const stripBlobUrlsFromLayoutSettings = (settings: any): any => {
+    if (!settings || typeof settings !== 'object') return settings;
+    const cleaned = { ...settings };
+    if (cleaned.blockContent && typeof cleaned.blockContent === 'object') {
+      const cleanedBlocks: any = {};
+      for (const [key, items] of Object.entries(cleaned.blockContent)) {
+        if (Array.isArray(items)) {
+          cleanedBlocks[key] = stripBlobUrls(items);
+        } else {
+          cleanedBlocks[key] = items;
+        }
+      }
+      cleaned.blockContent = cleanedBlocks;
+    }
+    return cleaned;
+  };
+
   const handleCreateTemplate = async () => {
     if (!currentTenant || !user || !formData.name.trim()) return;
+    const cleanedHeaderElements = stripBlobUrls(formData.header_elements);
+    const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
+    const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(formData.layout_settings);
     try {
       const { error } = await supabase.from('letter_templates').insert({
         name: formData.name.trim(), letterhead_html: formData.letterhead_html, letterhead_css: formData.letterhead_css,
         response_time_days: formData.response_time_days, tenant_id: currentTenant.id, created_by: user.id,
         is_default: false, is_active: true, default_sender_id: formData.default_sender_id || null,
         default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
-        header_layout_type: formData.header_elements.length > 0 ? 'structured' : 'html',
-        header_text_elements: formData.header_elements.length > 0 ? formData.header_elements : null,
-        footer_blocks: formData.footer_blocks.length > 0 ? formData.footer_blocks : null,
-        layout_settings: formData.layout_settings as any
+        header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
+        header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
+        footer_blocks: cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null,
+        layout_settings: cleanedLayoutSettings as any
       });
       if (error) throw error;
       toast({ title: "Template erstellt" });
@@ -299,15 +323,18 @@ const LetterTemplateManager: React.FC = () => {
 
   const handleUpdateTemplate = async () => {
     if (!editingTemplate) return;
+    const cleanedHeaderElements = stripBlobUrls(formData.header_elements);
+    const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
+    const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(formData.layout_settings);
     try {
       const { error } = await supabase.from('letter_templates').update({
         name: formData.name.trim(), letterhead_html: formData.letterhead_html, letterhead_css: formData.letterhead_css,
         response_time_days: formData.response_time_days, default_sender_id: formData.default_sender_id || null,
         default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
-        header_layout_type: formData.header_elements.length > 0 ? 'structured' : 'html',
-        header_text_elements: formData.header_elements.length > 0 ? formData.header_elements : null,
-        footer_blocks: formData.footer_blocks.length > 0 ? formData.footer_blocks : null,
-        layout_settings: formData.layout_settings as any, updated_at: new Date().toISOString()
+        header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
+        header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
+        footer_blocks: cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null,
+        layout_settings: cleanedLayoutSettings as any, updated_at: new Date().toISOString()
       }).eq('id', editingTemplate.id);
       if (error) throw error;
       toast({ title: "Template aktualisiert" });
