@@ -2193,8 +2193,7 @@ export function DocumentsView() {
                       <TableHead>Titel</TableHead>
                       <TableHead>Empfänger</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Erstellt</TableHead>
-                      <TableHead>Versendet</TableHead>
+                      <TableHead>Erstellt / Versand</TableHead>
                       <TableHead className="text-right">Aktionen</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -2225,10 +2224,16 @@ export function DocumentsView() {
                            </Badge>
                         </TableCell>
                         <TableCell>
-                          {format(new Date(letter.created_at), "dd.MM.yyyy", { locale: de })}
-                        </TableCell>
-                        <TableCell>
-                          {letter.sent_date ? format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de }) : '-'}
+                          <div className="space-y-1 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span>{format(new Date(letter.created_at), "dd.MM.yyyy", { locale: de })}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Send className="h-3.5 w-3.5" />
+                              <span>{letter.sent_date ? format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de }) : '-'}</span>
+                            </div>
+                          </div>
                         </TableCell>
                          <TableCell className="text-right">
                             <div className="flex items-center gap-1 justify-end">
