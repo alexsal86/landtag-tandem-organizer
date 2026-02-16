@@ -2292,22 +2292,6 @@ export function DocumentsView() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    title="Als Aufgabe übernehmen"
-                                    onClick={() => openTaskDialog(letter, 'task')}
-                                  >
-                                    <ListTodo className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    title="Als Unteraufgabe übernehmen"
-                                    onClick={() => openTaskDialog(letter, 'subtask')}
-                                  >
-                                    <ListTree className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
                                     onClick={() => handleEditLetter(letter)}
                                   >
                                     <Edit3 className="h-4 w-4" />
