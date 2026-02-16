@@ -33,7 +33,7 @@ const KnowledgeBaseView = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { documentId } = useParams<{ documentId: string }>();
+  const { subId: documentId } = useParams<{ subId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { topics, getActiveTopics } = useTopics();
   
