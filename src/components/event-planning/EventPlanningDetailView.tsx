@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone } from "lucide-react";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -388,10 +388,47 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
               </CardHeader>
               <CardContent>
                 {speakers.length > 0 ? (
-                  <div className="space-y-2">
-                    {speakers.map((speaker) => (
-                      <div key={speaker.id} className="flex items-center justify-between p-2 rounded-md border">
-                        <div><p className="font-medium">{speaker.name}</p>{speaker.topic && <p className="text-sm font-medium text-primary">{speaker.topic}</p>}<div className="text-sm text-muted-foreground space-y-1">{speaker.email && <p>📧 {speaker.email}</p>}{speaker.phone && <p>📞 {speaker.phone}</p>}{speaker.bio && <p className="mt-1">{speaker.bio}</p>}</div></div>
+                  <div className="space-y-3">
+                    {speakers.map((speaker, index) => (
+                      <div key={speaker.id} className="group flex items-start justify-between rounded-md bg-muted/10 p-3">
+                        <div className="space-y-2">
+                          <p className="text-sm font-bold text-foreground">Referent {index + 1}</p>
+                          <p className="font-medium text-foreground">{speaker.name}</p>
+
+                          {speaker.bio && (
+                            <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                              <span>{speaker.bio}</span>
+                            </p>
+                          )}
+
+                          {speaker.topic && (
+                            <p className="text-sm font-medium text-foreground">
+                              Thema: {speaker.topic}
+                            </p>
+                          )}
+
+                          {(speaker.email || speaker.phone) && (
+                            <div className="mt-3 flex flex-wrap items-center gap-3 text-muted-foreground">
+                              {speaker.email && (
+                                <div className="flex items-center gap-2 rounded-md p-1 transition-colors group-hover:bg-muted/60">
+                                  <Mail className="h-4 w-4" />
+                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100">
+                                    {speaker.email}
+                                  </span>
+                                </div>
+                              )}
+                              {speaker.phone && (
+                                <div className="flex items-center gap-2 rounded-md p-1 transition-colors group-hover:bg-muted/60">
+                                  <Phone className="h-4 w-4" />
+                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100">
+                                    {speaker.phone}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="sm" onClick={() => { setEditingSpeaker(speaker); setIsEditSpeakerDialogOpen(true); }}><Edit2 className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="sm" onClick={() => removeSpeaker(speaker.id)}><X className="h-4 w-4" /></Button>
