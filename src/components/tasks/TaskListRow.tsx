@@ -11,6 +11,8 @@ import { Calendar as CalendarIcon, ChevronDown, ChevronRight, ExternalLink } fro
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
+import { LetterSourceLink } from "@/components/letters/LetterSourceLink";
+import { extractLetterSourceId, stripLetterSourceMarker } from "@/utils/letterSource";
 
 interface Task {
   id: string;
@@ -76,6 +78,7 @@ export function TaskListRow({
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const hasSubtasks = subtasks.length > 0;
+  const sourceLetterId = extractLetterSourceId(task.description);
 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) {
@@ -159,18 +162,21 @@ export function TaskListRow({
               className="h-6 text-sm py-0"
             />
           ) : (
-            <span
-              className="text-sm truncate block cursor-text hover:bg-muted px-1 -mx-1 rounded"
-              onDoubleClick={() => onUpdateTitle && setEditingTitle(true)}
-              onClick={() => onNavigate(task.id)}
-            >
-              {task.title}
-              {hasSubtasks && (
-                <span className="text-xs text-muted-foreground ml-2">
-                  ({subtasks.length})
-                </span>
-              )}
-            </span>
+            <div className="flex items-center gap-1">
+              <span
+                className="text-sm truncate block cursor-text hover:bg-muted px-1 -mx-1 rounded"
+                onDoubleClick={() => onUpdateTitle && setEditingTitle(true)}
+                onClick={() => onNavigate(task.id)}
+              >
+                {task.title}
+                {hasSubtasks && (
+                  <span className="text-xs text-muted-foreground ml-2">
+                    ({subtasks.length})
+                  </span>
+                )}
+              </span>
+              {sourceLetterId && <LetterSourceLink letterId={sourceLetterId} className="h-6 px-1" />}
+            </div>
           )}
         </div>
 
@@ -267,8 +273,11 @@ export function TaskListRow({
                 onCheckedChange={() => onSubtaskComplete(subtask.id)}
               />
               <span className="text-sm text-foreground flex-1 truncate">
-                {subtask.description}
+                {stripLetterSourceMarker(subtask.description)}
               </span>
+              {extractLetterSourceId(subtask.description) && (
+                <LetterSourceLink letterId={extractLetterSourceId(subtask.description)!} className="h-6 px-1" />
+              )}
               {subtask.due_date && (
                 <span className={cn("text-xs", getDueDateColor(subtask.due_date))}>
                   {format(new Date(subtask.due_date), "dd.MM.", { locale: de })}

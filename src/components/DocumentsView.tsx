@@ -262,11 +262,30 @@ export function DocumentsView() {
     if (tab === 'emails') {
       setActiveTab('emails');
     }
+    if (tab === 'letters') {
+      setActiveTab('letters');
+      setLetterSubTab('active');
+    }
     if (action === 'compose-press') {
       setActiveTab('emails');
       setEmailSubTab('compose');
     }
   }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const letterId = searchParams.get('letter');
+    if (!letterId || activeTab !== 'letters' || letters.length === 0 || showLetterEditor) return;
+
+    const targetLetter = letters.find((letter) => letter.id === letterId);
+    if (!targetLetter) return;
+
+    setSelectedLetter(targetLetter);
+    setShowLetterEditor(true);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('letter');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams, activeTab, letters, showLetterEditor]);
 
   useEffect(() => {
     if (user && currentTenant) {
@@ -744,7 +763,7 @@ export function DocumentsView() {
           user_id: user.id,
           tenant_id: currentTenant.id,
           title: taskTitle.trim(),
-          description: [taskDescription.trim(), `Quelle: Brief \"${sourceLetterForTask.title || 'Ohne Titel'}\"`]
+          description: [taskDescription.trim(), sourceLetterForTask.id ? `[[letter:${sourceLetterForTask.id}]]` : '']
             .filter(Boolean)
             .join('\n\n'),
           status: 'todo',
@@ -763,7 +782,7 @@ export function DocumentsView() {
 
         const { error } = await supabase.from('subtasks').insert({
           task_id: parentTaskId,
-          description: `${taskTitle.trim()} · Quelle: Brief \"${sourceLetterForTask.title || 'Ohne Titel'}\"`,
+          description: sourceLetterForTask.id ? `${taskTitle.trim()} [[letter:${sourceLetterForTask.id}]]` : taskTitle.trim(),
           user_id: user.id,
           order_index: existingSubtasksCount || 0,
         });
