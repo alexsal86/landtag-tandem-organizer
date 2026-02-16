@@ -220,7 +220,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
 
   return (
     <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-background border rounded-xl shadow-2xl">
+      <div className="w-full max-w-2xl max-h-[calc(100vh-2rem)] bg-background border rounded-xl shadow-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div>
@@ -245,7 +245,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
         </div>
 
         {/* Content */}
-        <div className="p-6 min-h-[400px]">
+        <div className="p-6 min-h-0 overflow-y-auto flex-1">
           {/* Step 1: Occasion */}
           {step === 1 && (
             <div className="space-y-4">
