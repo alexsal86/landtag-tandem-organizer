@@ -3,16 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { Reply, Send, CornerDownRight } from "lucide-react";
+import { Reply, Send, CornerDownRight, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+
+const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
 
 export interface CommentData {
   id: string;
   user_id: string;
   content: string;
   created_at: string;
+  updated_at?: string;
   parent_id: string | null;
   profile?: {
     display_name: string | null;
@@ -27,6 +30,8 @@ interface CommentThreadProps {
   depth?: number;
   maxDepth?: number;
   onReply: (parentId: string, content: string) => Promise<void>;
+  onEdit: (commentId: string, content: string) => Promise<void>;
+  onDelete: (commentId: string, hasReplies: boolean) => Promise<void>;
   currentUserId?: string;
 }
 
@@ -40,11 +45,19 @@ export function CommentThread({
   depth = 0,
   maxDepth = 3,
   onReply,
+  onEdit,
+  onDelete,
   currentUserId,
 }: CommentThreadProps) {
   const [isReplying, setIsReplying] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [replyContent, setReplyContent] = useState("");
+  const [editContent, setEditContent] = useState(comment.content);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isOwnComment = currentUserId === comment.user_id;
+  const isDeleted = comment.content === DELETED_COMMENT_TEXT;
+  const hasReplies = Boolean(comment.replies?.length);
 
   const handleSubmitReply = async () => {
     if (!replyContent.trim()) return;
@@ -59,11 +72,45 @@ export function CommentThread({
     }
   };
 
-  const canReply = depth < maxDepth;
+  const handleSubmitEdit = async () => {
+    if (!editContent.trim()) return;
+
+    setIsSubmitting(true);
+    try {
+      await onEdit(comment.id, editContent.trim());
+      setIsEditing(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      hasReplies
+        ? "Dieser Kommentar hat Antworten und wird als gelöscht markiert. Fortfahren?"
+        : "Möchten Sie diesen Kommentar wirklich löschen?"
+    );
+
+    if (!confirmed) return;
+
+    setIsSubmitting(true);
+    try {
+      await onDelete(comment.id, hasReplies);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const canReply = depth < maxDepth && !isDeleted;
+  const showEditedLabel = Boolean(comment.updated_at && new Date(comment.updated_at) > new Date(comment.created_at));
 
   return (
-    <div className={cn("space-y-2", depth > 0 && "ml-4 pl-3 border-l-2 border-muted")}>
-      <div className="flex items-start gap-2">
+    <div className={cn("space-y-2", depth > 0 && "ml-5 pl-4 border-l border-border/70 relative")}>
+      {depth > 0 && (
+        <div className="absolute -left-px top-4 h-px w-3 bg-border/70" aria-hidden="true" />
+      )}
+
+      <div className="group flex items-start gap-2">
         <Avatar className="h-6 w-6 flex-shrink-0">
           {comment.profile?.avatar_url && (
             <AvatarImage src={comment.profile.avatar_url} alt={comment.profile.display_name || 'Avatar'} />
@@ -87,9 +134,68 @@ export function CommentThread({
                 locale: de 
               })}
             </span>
+            {showEditedLabel && (
+              <span className="text-[10px] text-muted-foreground">(bearbeitet)</span>
+            )}
+
+            {isOwnComment && !isDeleted && (
+              <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsEditing((value) => !value)}
+                  className="h-6 w-6"
+                  disabled={isSubmitting}
+                  aria-label="Kommentar bearbeiten"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleDelete}
+                  className="h-6 w-6 text-destructive hover:text-destructive"
+                  disabled={isSubmitting}
+                  aria-label="Kommentar löschen"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
           </div>
-          
-          <RichTextDisplay content={comment.content} className="text-xs mt-1" />
+
+          {isEditing ? (
+            <div className="mt-2 space-y-2">
+              <SimpleRichTextEditor
+                initialContent={comment.content}
+                onChange={setEditContent}
+                minHeight="60px"
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleSubmitEdit}
+                  disabled={isSubmitting || !editContent.trim()}
+                  className="text-xs"
+                >
+                  Speichern
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditContent(comment.content);
+                  }}
+                  className="text-xs"
+                >
+                  Abbrechen
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <RichTextDisplay content={comment.content} className={cn("text-xs mt-1", isDeleted && "italic text-muted-foreground")} />
+          )}
           
           {canReply && (
             <Button
@@ -151,6 +257,8 @@ export function CommentThread({
               depth={depth + 1}
               maxDepth={maxDepth}
               onReply={onReply}
+              onEdit={onEdit}
+              onDelete={onDelete}
               currentUserId={currentUserId}
             />
           ))}
