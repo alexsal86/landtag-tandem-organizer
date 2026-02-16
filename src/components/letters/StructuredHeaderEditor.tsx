@@ -61,6 +61,12 @@ interface StructuredHeaderEditorProps {
   onElementsChange: (elements: HeaderElement[]) => void;
 }
 
+const getShapeFillColor = (element: HeaderElement, fallback = '#000000') =>
+  element.fillColor ?? element.color ?? fallback;
+
+const getShapeStrokeColor = (element: HeaderElement, fallback = '#000000') =>
+  element.strokeColor ?? element.color ?? fallback;
+
 // Sunflower SVG inline component
 const SunflowerSVG: React.FC<{ width: number; height: number; className?: string }> = ({ width, height, className }) => (
   <svg width={width} height={height} viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -460,13 +466,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       <div key={element.id} style={wrapperStyle} onMouseDown={(e) => onElementMouseDown(e, element)} className={`${isSelected ? 'ring-2 ring-primary ring-dashed' : ''}`}>
         <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
           {element.shapeType === 'line' && (
-            <line x1="0" y1={h / 2} x2={w} y2={h / 2} stroke={element.strokeColor || '#000'} strokeWidth={element.strokeWidth || 2} />
+            <line x1="0" y1={h / 2} x2={w} y2={h / 2} stroke={getShapeStrokeColor(element, '#000000')} strokeWidth={element.strokeWidth ?? 2} />
           )}
           {element.shapeType === 'circle' && (
-            <ellipse cx={w / 2} cy={h / 2} rx={w / 2 - (element.strokeWidth || 1)} ry={h / 2 - (element.strokeWidth || 1)} fill={element.fillColor || '#22c55e'} stroke={element.strokeColor || '#15803d'} strokeWidth={element.strokeWidth || 1} />
+            <ellipse cx={w / 2} cy={h / 2} rx={w / 2 - (element.strokeWidth ?? 1)} ry={h / 2 - (element.strokeWidth ?? 1)} fill={getShapeFillColor(element, '#22c55e')} stroke={getShapeStrokeColor(element, '#15803d')} strokeWidth={element.strokeWidth ?? 1} />
           )}
           {element.shapeType === 'rectangle' && (
-            <rect x={(element.strokeWidth || 1) / 2} y={(element.strokeWidth || 1) / 2} width={w - (element.strokeWidth || 1)} height={h - (element.strokeWidth || 1)} rx={element.borderRadius || 0} fill={element.fillColor || '#3b82f6'} stroke={element.strokeColor || '#1e40af'} strokeWidth={element.strokeWidth || 1} />
+            <rect x={(element.strokeWidth ?? 1) / 2} y={(element.strokeWidth ?? 1) / 2} width={w - (element.strokeWidth ?? 1)} height={h - (element.strokeWidth ?? 1)} rx={element.borderRadius ?? 0} fill={getShapeFillColor(element, '#3b82f6')} stroke={getShapeStrokeColor(element, '#1e40af')} strokeWidth={element.strokeWidth ?? 1} />
           )}
         </svg>
         {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} />}
@@ -629,8 +635,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                           {element.shapeType !== 'sunflower' && (
                             <>
                               <div className="grid grid-cols-2 gap-2">
-                                <div><Label className="text-xs">Füllfarbe</Label><Input type="color" value={element.fillColor || '#000000'} onChange={(e) => updateElement(element.id, { fillColor: e.target.value })} className="h-7" /></div>
-                                <div><Label className="text-xs">Randfarbe</Label><Input type="color" value={element.strokeColor || '#000000'} onChange={(e) => updateElement(element.id, { strokeColor: e.target.value })} className="h-7" /></div>
+                                <div><Label className="text-xs">Füllfarbe</Label><Input type="color" value={getShapeFillColor(element)} onChange={(e) => updateElement(element.id, { fillColor: e.target.value })} className="h-7" /></div>
+                                <div><Label className="text-xs">Randfarbe</Label><Input type="color" value={getShapeStrokeColor(element)} onChange={(e) => updateElement(element.id, { strokeColor: e.target.value })} className="h-7" /></div>
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div><Label className="text-xs">Strichstärke</Label><Input type="number" value={element.strokeWidth || 1} onChange={(e) => updateElement(element.id, { strokeWidth: parseFloat(e.target.value) || 1 })} className="h-7 text-xs" min={0} max={10} /></div>
