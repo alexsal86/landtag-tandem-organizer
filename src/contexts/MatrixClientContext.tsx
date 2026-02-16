@@ -63,6 +63,56 @@ export interface MatrixMessage {
   };
 }
 
+const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): MatrixMessage | null => {
+  const eventType = event.getType();
+  const clearType = (event as any).getClearType?.();
+  const isMessageEvent = eventType === 'm.room.message' || clearType === 'm.room.message' || eventType === 'm.room.encrypted';
+
+  if (!isMessageEvent) return null;
+
+  const content = event.getContent();
+  const canReadMessageContent = Boolean(content?.msgtype);
+  const isStillEncrypted = Boolean(event.isEncrypted?.()) && !canReadMessageContent;
+  const relatesTo = content['m.relates_to'];
+
+  if (relatesTo?.rel_type === 'm.annotation' || relatesTo?.rel_type === 'm.replace') {
+    return null;
+  }
+
+  let replyTo: MatrixMessage['replyTo'] = undefined;
+  if (relatesTo?.['m.in_reply_to']?.event_id) {
+    const replyEvent = room.findEventById(relatesTo['m.in_reply_to'].event_id);
+    if (replyEvent) {
+      replyTo = {
+        eventId: replyEvent.getId() || '',
+        sender: room.getMember(replyEvent.getSender() || '')?.name || replyEvent.getSender() || '',
+        content: replyEvent.getContent().body || '',
+      };
+    }
+  }
+
+  const isMedia = ['m.image', 'm.video', 'm.audio', 'm.file'].includes(content.msgtype);
+
+  return {
+    eventId: event.getId() || '',
+    roomId: room.roomId,
+    sender: event.getSender() || '',
+    senderDisplayName: room.getMember(event.getSender() || '')?.name || event.getSender() || '',
+    content: isStillEncrypted ? '[Encrypted]' : (content.body || ''),
+    timestamp: event.getTs(),
+    type: isStillEncrypted ? 'm.bad.encrypted' : (content.msgtype || 'm.text'),
+    status: 'sent',
+    replyTo,
+    reactions: new Map(),
+    mediaContent: !isStillEncrypted && isMedia ? {
+      msgtype: content.msgtype,
+      body: content.body,
+      url: content.url,
+      info: content.info,
+    } : undefined,
+  };
+};
+
 interface MatrixClientContextType {
   client: sdk.MatrixClient | null;
   isConnected: boolean;
@@ -254,50 +304,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
         // Handle message events (plain + encrypted placeholders that will be replaced after decryption)
         if (eventType === 'm.room.message' || eventType === 'm.room.encrypted') {
-          const content = event.getContent();
-
-          const isStillEncrypted = eventType === 'm.room.encrypted' || (!content.msgtype && event.isEncrypted?.());
-          const relatesTo = content['m.relates_to'];
-          
-          // Skip if this is a reaction or edit
-          if (relatesTo?.rel_type === 'm.annotation' || relatesTo?.rel_type === 'm.replace') {
-            return;
-          }
-
-          // Get reply info if present
-          let replyTo: MatrixMessage['replyTo'] = undefined;
-          if (relatesTo?.['m.in_reply_to']?.event_id) {
-            const replyEvent = room.findEventById(relatesTo['m.in_reply_to'].event_id);
-            if (replyEvent) {
-              replyTo = {
-                eventId: replyEvent.getId() || '',
-                sender: room.getMember(replyEvent.getSender() || '')?.name || replyEvent.getSender() || '',
-                content: replyEvent.getContent().body || '',
-              };
-            }
-          }
-
-          // Check if this is a media message
-          const isMedia = ['m.image', 'm.video', 'm.audio', 'm.file'].includes(content.msgtype);
-
-          const newMessage: MatrixMessage = {
-            eventId: event.getId() || '',
-            roomId: room.roomId,
-            sender: event.getSender() || '',
-            senderDisplayName: room.getMember(event.getSender() || '')?.name || event.getSender() || '',
-            content: isStillEncrypted ? '[Encrypted]' : (content.body || ''),
-            timestamp: event.getTs(),
-            type: isStillEncrypted ? 'm.bad.encrypted' : (content.msgtype || 'm.text'),
-            status: 'sent',
-            replyTo,
-            reactions: new Map(),
-            mediaContent: !isStillEncrypted && isMedia ? {
-              msgtype: content.msgtype,
-              body: content.body,
-              url: content.url,
-              info: content.info,
-            } : undefined,
-          };
+          const newMessage = mapMatrixEventToMessage(room, event);
+          if (!newMessage) return;
 
           setMessages(prev => {
             const roomMessages = prev.get(room.roomId) || [];
@@ -667,39 +675,22 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     if (!client) return [];
 
     const room = client.getRoom(roomId);
-    if (!room) return messagesRef.current.get(roomId)?.slice(-limit) || [];
+    if (!room) return messages.get(roomId)?.slice(-limit) || [];
 
     const timeline = room.getLiveTimeline().getEvents();
     const timelineMessages: MatrixMessage[] = timeline
-      .filter(event => ['m.room.message', 'm.room.encrypted'].includes(event.getType()))
-      .map(event => {
-        const content = event.getContent();
-        const isEncrypted = event.getType() === 'm.room.encrypted' || (!content.msgtype && event.isEncrypted?.());
-        const isMedia = ['m.image', 'm.video', 'm.audio', 'm.file'].includes(content.msgtype);
+      .map(event => mapMatrixEventToMessage(room, event))
+      .filter((message): message is MatrixMessage => Boolean(message));
 
-        return {
-          eventId: event.getId() || '',
-          roomId,
-          sender: event.getSender() || '',
-          senderDisplayName: room.getMember(event.getSender() || '')?.name || event.getSender() || '',
-          content: isEncrypted ? '[Encrypted]' : (content.body || ''),
-          timestamp: event.getTs(),
-          type: isEncrypted ? 'm.bad.encrypted' : (content.msgtype || 'm.text'),
-          status: 'sent' as const,
-          reactions: new Map(),
-          mediaContent: !isEncrypted && isMedia ? {
-            msgtype: content.msgtype,
-            body: content.body,
-            url: content.url,
-            info: content.info,
-          } : undefined,
-        };
-      });
-
-    const cached = messagesRef.current.get(roomId) || [];
+    const cached = messages.get(roomId) || [];
     const mergedByEventId = new Map<string, MatrixMessage>();
-    for (const msg of cached) mergedByEventId.set(msg.eventId, msg);
     for (const msg of timelineMessages) mergedByEventId.set(msg.eventId, msg);
+    for (const msg of cached) {
+      const existing = mergedByEventId.get(msg.eventId);
+      if (!existing || (existing.type === 'm.bad.encrypted' && msg.type !== 'm.bad.encrypted')) {
+        mergedByEventId.set(msg.eventId, msg);
+      }
+    }
 
     const mergedMessages = Array.from(mergedByEventId.values())
       .sort((a, b) => a.timestamp - b.timestamp)
@@ -712,7 +703,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     });
 
     return mergedMessages;
-  }, [client]);
+  }, [client, messages]);
 
   const totalUnreadCount = rooms.reduce((sum, room) => sum + room.unreadCount, 0);
 
