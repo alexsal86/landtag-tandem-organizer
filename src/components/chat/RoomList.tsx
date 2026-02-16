@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { MessageSquare, Hash, User, Lock } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -53,7 +53,7 @@ export function RoomList({ rooms, selectedRoomId, onSelectRoom }: RoomListProps)
   }
 
   return (
-    <ScrollArea className="h-full">
+    <div className="overflow-y-auto h-full">
       <div className="space-y-1 p-2">
         {rooms.map((room) => (
           <button
@@ -107,6 +107,6 @@ export function RoomList({ rooms, selectedRoomId, onSelectRoom }: RoomListProps)
           </button>
         ))}
       </div>
-    </ScrollArea>
+    </div>
   );
 }

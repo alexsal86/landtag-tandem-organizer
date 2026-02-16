@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -67,7 +67,7 @@ export function ChatSearch({ messages, onSelectMessage, onClose }: ChatSearchPro
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         {searchQuery.trim() && (
           <div className="p-2">
             {searchResults.length === 0 ? (
@@ -104,7 +104,7 @@ export function ChatSearch({ messages, onSelectMessage, onClose }: ChatSearchPro
             )}
           </div>
         )}
-      </ScrollArea>
+      </div>
     </div>
   );
 }
