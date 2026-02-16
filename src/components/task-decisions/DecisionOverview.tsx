@@ -90,6 +90,7 @@ interface DecisionRequest {
   task_id: string | null;
   title: string;
   description: string | null;
+  response_deadline: string | null;
   created_at: string;
   created_by: string;
   participant_id: string | null;
@@ -191,6 +192,7 @@ export const DecisionOverview = () => {
             task_id,
             title,
             description,
+            response_deadline,
             created_at,
             created_by,
             status,
@@ -221,6 +223,7 @@ export const DecisionOverview = () => {
           task_id,
           title,
           description,
+          response_deadline,
           created_at,
           created_by,
           status,
@@ -254,6 +257,7 @@ export const DecisionOverview = () => {
           task_id,
           title,
           description,
+          response_deadline,
           created_at,
           created_by,
           status,
@@ -289,6 +293,7 @@ export const DecisionOverview = () => {
         title: item.task_decisions.title,
         description: item.task_decisions.description,
         created_at: item.task_decisions.created_at,
+        response_deadline: item.task_decisions.response_deadline,
         created_by: item.task_decisions.created_by,
         status: item.task_decisions.status,
         archived_at: item.task_decisions.archived_at,
@@ -325,6 +330,7 @@ export const DecisionOverview = () => {
             title: item.title,
             description: item.description,
             created_at: item.created_at,
+            response_deadline: item.response_deadline,
             created_by: item.created_by,
             status: item.status,
             archived_at: item.archived_at,
@@ -381,6 +387,7 @@ export const DecisionOverview = () => {
               comment,
               creator_response,
               created_at,
+              response_deadline,
               updated_at
             )
           `)
@@ -1092,9 +1099,15 @@ export const DecisionOverview = () => {
           <div className="flex items-center flex-wrap gap-3 mt-4 text-xs text-muted-foreground">
             {/* Date */}
             <span className="flex items-center gap-1">
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
               {new Date(decision.created_at).toLocaleDateString('de-DE')}
             </span>
+
+            {decision.response_deadline && (
+              <Badge variant={new Date(decision.response_deadline) < new Date() ? "destructive" : "secondary"} className="gap-1">
+                Frist: {new Date(decision.response_deadline).toLocaleDateString('de-DE')} {new Date(decision.response_deadline).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+              </Badge>
+            )}
 
             {/* Creator */}
             {decision.creator && (

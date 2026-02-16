@@ -55,6 +55,7 @@ export const TaskDecisionCreator = ({
   
   const [title, setTitle] = useState(initialTitle || "");
   const [description, setDescription] = useState(initialDescription || "");
+  const [responseDeadline, setResponseDeadline] = useState("");
   
   // Update fields when dialog opens with initial values
   useEffect(() => {
@@ -279,6 +280,7 @@ export const TaskDecisionCreator = ({
         task_id: taskId,
         title: title.trim(),
         description: description.trim() || null,
+        response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : null,
         created_by: userData.user.id,
         tenant_id: tenantData.tenant_id,
         visible_to_all: visibleToAll,
@@ -520,6 +522,7 @@ export const TaskDecisionCreator = ({
       // Reset form
       setTitle("");
       setDescription("");
+      setResponseDeadline("");
       setSelectedUsers([]);
       setSelectedFiles([]);
       setSelectedTopicIds([]);
@@ -588,6 +591,14 @@ export const TaskDecisionCreator = ({
               onChange={setDescription}
               placeholder="Zusätzliche Details zur Entscheidung"
               minHeight="100px"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Antwortfrist (optional)</label>
+            <Input
+              type="datetime-local"
+              value={responseDeadline}
+              onChange={(e) => setResponseDeadline(e.target.value)}
             />
           </div>
           {/* Öffentlich + Priorität nebeneinander */}

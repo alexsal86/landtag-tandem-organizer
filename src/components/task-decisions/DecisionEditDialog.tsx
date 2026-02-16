@@ -26,6 +26,7 @@ interface Profile {
 export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: DecisionEditDialogProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [responseDeadline, setResponseDeadline] = useState("");
   const [visibleToAll, setVisibleToAll] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -89,7 +90,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
     try {
       const { data: decision, error: decisionError } = await supabase
         .from('task_decisions')
-        .select('title, description, visible_to_all')
+        .select('title, description, visible_to_all, response_deadline')
         .eq('id', decisionId)
         .single();
 
@@ -98,6 +99,11 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       setTitle(decision.title || "");
       setDescription(decision.description || "");
       setVisibleToAll(decision.visible_to_all || false);
+      setResponseDeadline(
+        decision.response_deadline
+          ? new Date(decision.response_deadline).toISOString().slice(0, 16)
+          : ""
+      );
 
       const { data: participants, error: participantsError } = await supabase
         .from('task_decision_participants')
@@ -180,6 +186,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
           title: title.trim(),
           description: description.trim() || null,
           visible_to_all: visibleToAll,
+          response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : null,
         })
         .eq('id', decisionId);
 
@@ -289,6 +296,15 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
               onChange={setDescription}
               placeholder="Zusätzliche Details zur Entscheidung"
               minHeight="100px"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Antwortfrist (optional)</label>
+            <Input
+              type="datetime-local"
+              value={responseDeadline}
+              onChange={(e) => setResponseDeadline(e.target.value)}
             />
           </div>
 
