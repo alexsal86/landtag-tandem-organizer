@@ -147,24 +147,9 @@ export function CommentThread({
           aria-hidden="true"
           style={{
             left: `-${AVATAR_CENTER + 8}px`,
-            top: `${AVATAR_CENTER}px`,
+            top: 0,
             bottom: 0,
             width: '2px',
-          }}
-        />
-      )}
-
-      {/* Mask to hide parent's vertical line below last reply's avatar center */}
-      {depth > 0 && isLastReply && (
-        <div
-          className="absolute bg-background"
-          aria-hidden="true"
-          style={{
-            left: `${-(AVATAR_CENTER + 8 + 1)}px`,
-            top: `${AVATAR_CENTER}px`,
-            bottom: 0,
-            width: '4px',
-            zIndex: 1,
           }}
         />
       )}
