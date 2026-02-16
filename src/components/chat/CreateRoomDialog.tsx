@@ -25,6 +25,7 @@ export interface CreateRoomOptions {
   name: string;
   topic?: string;
   isPrivate: boolean;
+  enableEncryption: boolean;
   inviteUserIds?: string[];
 }
 
@@ -35,6 +36,7 @@ export function CreateRoomDialog({ onCreateRoom, trigger }: CreateRoomDialogProp
   const [name, setName] = useState('');
   const [topic, setTopic] = useState('');
   const [isPrivate, setIsPrivate] = useState(true);
+  const [enableEncryption, setEnableEncryption] = useState(true);
   const [inviteUsers, setInviteUsers] = useState('');
 
   const handleCreate = async () => {
@@ -58,6 +60,7 @@ export function CreateRoomDialog({ onCreateRoom, trigger }: CreateRoomDialogProp
         name: name.trim(),
         topic: topic.trim() || undefined,
         isPrivate,
+        enableEncryption,
         inviteUserIds: inviteUserIds.length > 0 ? inviteUserIds : undefined,
       });
 
@@ -70,6 +73,7 @@ export function CreateRoomDialog({ onCreateRoom, trigger }: CreateRoomDialogProp
       setName('');
       setTopic('');
       setIsPrivate(true);
+      setEnableEncryption(true);
       setInviteUsers('');
       setOpen(false);
     } catch (error) {
@@ -144,6 +148,24 @@ export function CreateRoomDialog({ onCreateRoom, trigger }: CreateRoomDialogProp
               id="private-room"
               checked={isPrivate}
               onCheckedChange={setIsPrivate}
+              disabled={isCreating}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="encrypted-room" className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Ende-zu-Ende-Verschlüsselung
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Nachrichten können nur von Raummitgliedern entschlüsselt werden
+              </p>
+            </div>
+            <Switch
+              id="encrypted-room"
+              checked={enableEncryption}
+              onCheckedChange={setEnableEncryption}
               disabled={isCreating}
             />
           </div>

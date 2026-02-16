@@ -8,6 +8,7 @@ interface MatrixCredentials {
   userId: string;
   accessToken: string;
   homeserverUrl: string;
+  deviceId?: string;
 }
 
 interface MatrixRoom {
@@ -19,6 +20,17 @@ interface MatrixRoom {
   isDirect: boolean;
   memberCount: number;
   isEncrypted: boolean;
+}
+
+interface MatrixE2EEDiagnostics {
+  secureContext: boolean;
+  crossOriginIsolated: boolean;
+  sharedArrayBuffer: boolean;
+  serviceWorkerControlled: boolean;
+  secretStorageReady: boolean | null;
+  crossSigningReady: boolean | null;
+  keyBackupEnabled: boolean | null;
+  cryptoError: string | null;
 }
 
 export interface MatrixMessage {
@@ -57,6 +69,7 @@ interface MatrixClientContextType {
   isConnecting: boolean;
   connectionError: string | null;
   cryptoEnabled: boolean;
+  e2eeDiagnostics: MatrixE2EEDiagnostics;
   rooms: MatrixRoom[];
   credentials: MatrixCredentials | null;
   connect: (credentials: MatrixCredentials) => Promise<void>;
@@ -69,7 +82,7 @@ interface MatrixClientContextType {
   sendTypingNotification: (roomId: string, isTyping: boolean) => void;
   addReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
   removeReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
-  createRoom: (options: { name: string; topic?: string; isPrivate: boolean; inviteUserIds?: string[] }) => Promise<string>;
+  createRoom: (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => Promise<string>;
 }
 
 const MatrixClientContext = createContext<MatrixClientContextType | null>(null);
@@ -87,6 +100,16 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const [credentials, setCredentials] = useState<MatrixCredentials | null>(null);
   const [messages, setMessages] = useState<Map<string, MatrixMessage[]>>(new Map());
   const [typingUsers, setTypingUsers] = useState<Map<string, string[]>>(new Map());
+  const [e2eeDiagnostics, setE2eeDiagnostics] = useState<MatrixE2EEDiagnostics>({
+    secureContext: window.isSecureContext,
+    crossOriginIsolated: window.crossOriginIsolated,
+    sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+    serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller),
+    secretStorageReady: null,
+    crossSigningReady: null,
+    keyBackupEnabled: null,
+    cryptoError: null,
+  });
 
   // Load saved credentials from database
   useEffect(() => {
@@ -102,10 +125,12 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
 
         if (profile?.matrix_user_id && profile?.matrix_access_token) {
+          const storedDeviceId = localStorage.getItem(`matrix_device_id:${profile.matrix_user_id}`) || undefined;
           const creds: MatrixCredentials = {
             userId: profile.matrix_user_id,
             accessToken: profile.matrix_access_token,
-            homeserverUrl: profile.matrix_homeserver_url || 'https://matrix.org'
+            homeserverUrl: profile.matrix_homeserver_url || 'https://matrix.org',
+            deviceId: storedDeviceId,
           };
           setCredentials(creds);
         }
@@ -131,17 +156,86 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     setConnectionError(null);
 
     try {
+      const fetchDeviceIdFromWhoAmI = async (): Promise<string | null> => {
+        try {
+          const response = await fetch(`${creds.homeserverUrl.replace(/\/$/, '')}/_matrix/client/v3/account/whoami`, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${creds.accessToken}`,
+            },
+          });
+
+          if (!response.ok) {
+            return null;
+          }
+
+          const whoami = await response.json();
+          return typeof whoami?.device_id === 'string' ? whoami.device_id : null;
+        } catch (error) {
+          console.error('Could not resolve Matrix device ID via whoami:', error);
+          return null;
+        }
+      };
+
+      const localDeviceId = localStorage.getItem(`matrix_device_id:${creds.userId}`) || null;
+      const resolvedDeviceId = creds.deviceId || localDeviceId || await fetchDeviceIdFromWhoAmI();
+
+      if (!resolvedDeviceId) {
+        throw new Error('Matrix Device ID konnte nicht ermittelt werden. Bitte tragen Sie die Device ID in den Matrix-Einstellungen ein (Element: Einstellungen → Hilfe & Info).');
+      }
+
       const matrixClient = sdk.createClient({
         baseUrl: creds.homeserverUrl,
         accessToken: creds.accessToken,
         userId: creds.userId,
+        deviceId: resolvedDeviceId,
+        cryptoCallbacks: {
+          getSecretStorageKey: async ({ keys }) => {
+            const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`);
+            if (!recoveryKey) return null;
+
+            const keyIds = Object.keys(keys);
+            if (keyIds.length === 0) return null;
+
+            try {
+              const privateKey = (matrixClient as any).keyBackupKeyFromRecoveryKey(recoveryKey.trim()) as Uint8Array;
+              return [keyIds[0], privateKey];
+            } catch (error) {
+              console.error('Invalid Matrix recovery key from local storage:', error);
+              return null;
+            }
+          },
+        },
       });
+
+      const updateRuntimeDiagnostics = (
+        cryptoError: string | null = null,
+        cryptoState?: { secretStorageReady: boolean | null; crossSigningReady: boolean | null; keyBackupEnabled: boolean | null }
+      ) => {
+        setE2eeDiagnostics({
+          secureContext: window.isSecureContext,
+          crossOriginIsolated: window.crossOriginIsolated,
+          sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+          serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller),
+          secretStorageReady: cryptoState?.secretStorageReady ?? null,
+          crossSigningReady: cryptoState?.crossSigningReady ?? null,
+          keyBackupEnabled: cryptoState?.keyBackupEnabled ?? null,
+          cryptoError,
+        });
+      };
+
+      const syncCryptoEnabledState = () => {
+        setCryptoEnabled(Boolean(matrixClient.getCrypto()));
+      };
+
+      updateRuntimeDiagnostics();
 
       // Listen for sync events
       matrixClient.on(sdk.ClientEvent.Sync, (state: string) => {
         if (state === 'PREPARED') {
           setIsConnected(true);
           setIsConnecting(false);
+          syncCryptoEnabledState();
           updateRoomList(matrixClient);
         } else if (state === 'ERROR') {
           setConnectionError('Sync-Fehler aufgetreten');
@@ -155,14 +249,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
         const eventType = event.getType();
 
-        // Handle message events (including decrypted ones)
-        if (eventType === 'm.room.message') {
+        // Handle message events (plain + encrypted placeholders that will be replaced after decryption)
+        if (eventType === 'm.room.message' || eventType === 'm.room.encrypted') {
           const content = event.getContent();
-          
-          // Skip if still encrypted (waiting for decryption)
-          if (!content.msgtype && event.isEncrypted?.()) {
-            return;
-          }
+
+          const isStillEncrypted = eventType === 'm.room.encrypted' || (!content.msgtype && event.isEncrypted?.());
           const relatesTo = content['m.relates_to'];
           
           // Skip if this is a reaction or edit
@@ -191,13 +282,13 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             roomId: room.roomId,
             sender: event.getSender() || '',
             senderDisplayName: room.getMember(event.getSender() || '')?.name || event.getSender() || '',
-            content: content.body || '',
+            content: isStillEncrypted ? '[Encrypted]' : (content.body || ''),
             timestamp: event.getTs(),
-            type: content.msgtype || 'm.text',
+            type: isStillEncrypted ? 'm.bad.encrypted' : (content.msgtype || 'm.text'),
             status: 'sent',
             replyTo,
             reactions: new Map(),
-            mediaContent: isMedia ? {
+            mediaContent: !isStillEncrypted && isMedia ? {
               msgtype: content.msgtype,
               body: content.body,
               url: content.url,
@@ -271,10 +362,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         const roomId = event.getRoomId();
         if (!roomId) return;
 
-        const eventType = event.getType();
-        if (eventType !== 'm.room.message') return;
+        const clearType = (event as any).getClearType?.();
+        if (clearType && clearType !== 'm.room.message') return;
 
         const content = event.getContent();
+        if (!content?.msgtype) return;
         const room = matrixClient.getRoom(roomId);
         if (!room) return;
 
@@ -301,13 +393,21 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         setMessages(prev => {
           const roomMessages = prev.get(roomId) || [];
           const updated = new Map(prev);
-          // Replace the encrypted placeholder with decrypted message
-          updated.set(roomId, roomMessages.map(m =>
-            m.eventId === decryptedMessage.eventId ? decryptedMessage : m
-          ));
+
+          const existingIndex = roomMessages.findIndex(m => m.eventId === decryptedMessage.eventId);
+          if (existingIndex >= 0) {
+            const next = [...roomMessages];
+            next[existingIndex] = decryptedMessage;
+            updated.set(roomId, next);
+          } else {
+            updated.set(roomId, [...roomMessages, decryptedMessage].slice(-100));
+          }
+
           return updated;
         });
       });
+
+      let lastCryptoError: string | null = null;
 
       // Initialize E2EE with Rust Crypto
       try {
@@ -331,23 +431,59 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         if (crypto) {
           console.log('Matrix E2EE initialized successfully');
           console.log('Device ID:', matrixClient.getDeviceId());
-          setCryptoEnabled(true);
         } else {
-          console.warn('Crypto API not available after initialization');
-          setCryptoEnabled(false);
+          console.warn('Crypto API not available directly after initialization, retry after client start');
         }
       } catch (cryptoError) {
         console.error('Failed to initialize E2EE:', cryptoError);
         console.error('E2EE will not be available for encrypted rooms.');
+        lastCryptoError = cryptoError instanceof Error ? cryptoError.message : 'E2EE-Initialisierung fehlgeschlagen';
+        updateRuntimeDiagnostics(lastCryptoError);
         setCryptoEnabled(false);
         // Continue without encryption - user will see warning for encrypted rooms
       }
 
       // Start the client with E2EE support
       await matrixClient.startClient({ initialSyncLimit: 50 });
+
+      // Retry once after start in case crypto was not ready during first init attempt
+      if (!matrixClient.getCrypto()) {
+        try {
+          await matrixClient.initRustCrypto();
+        } catch (retryError) {
+          console.error('Retry initRustCrypto after start failed:', retryError);
+          if (!lastCryptoError) {
+            lastCryptoError = retryError instanceof Error ? retryError.message : 'E2EE-Initialisierung nach Start fehlgeschlagen';
+          }
+        }
+      }
+
+      const crypto = matrixClient.getCrypto();
+      setCryptoEnabled(Boolean(crypto));
+
+      let secretStorageReady: boolean | null = null;
+      let crossSigningReady: boolean | null = null;
+      let keyBackupEnabled: boolean | null = null;
+
+      if (crypto) {
+        try {
+          secretStorageReady = await crypto.isSecretStorageReady();
+          crossSigningReady = await crypto.isCrossSigningReady();
+          keyBackupEnabled = (await crypto.checkKeyBackupAndEnable()) !== null;
+        } catch (cryptoStateError) {
+          console.error('Failed to read Matrix crypto state:', cryptoStateError);
+        }
+      }
+
+      if (!crypto && !lastCryptoError) {
+        lastCryptoError = 'Rust-Crypto wurde initialisiert, aber es wurde keine CryptoApi bereitgestellt. Bitte Browser-Konsole prüfen.';
+      }
+
+      updateRuntimeDiagnostics(lastCryptoError, { secretStorageReady, crossSigningReady, keyBackupEnabled });
       
+      localStorage.setItem(`matrix_device_id:${creds.userId}`, resolvedDeviceId);
       setClient(matrixClient);
-      setCredentials(creds);
+      setCredentials({ ...creds, deviceId: resolvedDeviceId });
     } catch (error) {
       console.error('Error connecting to Matrix:', error);
       setConnectionError(error instanceof Error ? error.message : 'Verbindungsfehler');
@@ -362,6 +498,16 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     }
     setIsConnected(false);
     setCryptoEnabled(false);
+    setE2eeDiagnostics({
+      secureContext: window.isSecureContext,
+      crossOriginIsolated: window.crossOriginIsolated,
+      sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+      serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller),
+      secretStorageReady: null,
+      crossSigningReady: null,
+      keyBackupEnabled: null,
+      cryptoError: null,
+    });
     setRooms([]);
     setMessages(new Map());
     setTypingUsers(new Map());
@@ -464,7 +610,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     console.log('Remove reaction not fully implemented:', roomId, eventId, emoji);
   }, [client, isConnected]);
 
-  const createRoom = useCallback(async (options: { name: string; topic?: string; isPrivate: boolean; inviteUserIds?: string[] }) => {
+  const createRoom = useCallback(async (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => {
     if (!client || !isConnected) {
       throw new Error('Nicht mit Matrix verbunden');
     }
@@ -476,6 +622,16 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       preset: options.isPrivate ? sdk.Preset.PrivateChat : sdk.Preset.PublicChat,
       invite: options.inviteUserIds,
     };
+
+    if (options.enableEncryption) {
+      createRoomOptions.initial_state = [
+        {
+          type: 'm.room.encryption',
+          state_key: '',
+          content: { algorithm: 'm.megolm.v1.aes-sha2' },
+        },
+      ];
+    }
 
     const result = await client.createRoom(createRoomOptions);
     
@@ -498,22 +654,23 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
     const timeline = room.getLiveTimeline().getEvents();
     const roomMessages: MatrixMessage[] = timeline
-      .filter(event => event.getType() === 'm.room.message')
+      .filter(event => ['m.room.message', 'm.room.encrypted'].includes(event.getType()))
       .map(event => {
         const content = event.getContent();
+        const isEncrypted = event.getType() === 'm.room.encrypted' || (!content.msgtype && event.isEncrypted?.());
         const isMedia = ['m.image', 'm.video', 'm.audio', 'm.file'].includes(content.msgtype);
-        
+
         return {
           eventId: event.getId() || '',
           roomId,
           sender: event.getSender() || '',
           senderDisplayName: room.getMember(event.getSender() || '')?.name || event.getSender() || '',
-          content: content.body || '',
+          content: isEncrypted ? '[Encrypted]' : (content.body || ''),
           timestamp: event.getTs(),
-          type: content.msgtype || 'm.text',
+          type: isEncrypted ? 'm.bad.encrypted' : (content.msgtype || 'm.text'),
           status: 'sent' as const,
           reactions: new Map(),
-          mediaContent: isMedia ? {
+          mediaContent: !isEncrypted && isMedia ? {
             msgtype: content.msgtype,
             body: content.body,
             url: content.url,
@@ -543,6 +700,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     isConnecting,
     connectionError,
     cryptoEnabled,
+    e2eeDiagnostics,
     rooms,
     credentials,
     connect,
