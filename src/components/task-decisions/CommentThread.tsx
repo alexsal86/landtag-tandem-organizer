@@ -166,20 +166,6 @@ export function CommentThread({
         />
       )}
 
-      {/* Continuous vertical line for parent's remaining siblings (if not last reply) */}
-      {depth > 0 && !isLastReply && (
-        <div
-          className="absolute bg-border/70"
-          aria-hidden="true"
-          style={{
-            left: `-${AVATAR_CENTER + 8}px`,
-            top: 0,
-            bottom: 0,
-            width: '2px',
-          }}
-        />
-      )}
-
       {/* The comment itself */}
       <div className="group flex items-start gap-2 relative">
 
