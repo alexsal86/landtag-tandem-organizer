@@ -34,6 +34,7 @@ import { MeetingParticipantAvatars } from "@/components/meetings/MeetingParticip
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
 import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
+import { BirthdayAgendaItem } from "@/components/meetings/BirthdayAgendaItem";
 import { FocusModeView } from "@/components/meetings/FocusModeView";
 import { MultiUserAssignSelect } from "@/components/meetings/MultiUserAssignSelect";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -240,6 +241,12 @@ export function MeetingsView() {
       loadStarredAppointments(selectedMeeting.id);
     }
   }, [selectedMeeting?.id, activeMeeting]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(updateTimeouts.current).forEach((timeout) => clearTimeout(timeout));
+    };
+  }, []);
 
   // Sync task changes to meeting agenda items (only title and description, not files)
   useEffect(() => {
@@ -1186,28 +1193,35 @@ export function MeetingsView() {
   };
 
   const updateQuickNoteResult = async (noteId: string, result: string) => {
-    try {
-      const { error } = await supabase
-        .from('quick_notes')
-        .update({ meeting_result: result })
-        .eq('id', noteId);
+    // Update local state immediately to avoid dropped characters while requests are in-flight
+    setLinkedQuickNotes(prev =>
+      prev.map(note =>
+        note.id === noteId ? { ...note, meeting_result: result } : note
+      )
+    );
 
-      if (error) throw error;
-
-      // Update local state
-      setLinkedQuickNotes(prev => 
-        prev.map(note => 
-          note.id === noteId ? { ...note, meeting_result: result } : note
-        )
-      );
-    } catch (error) {
-      console.error('Error updating quick note result:', error);
-      toast({
-        title: "Fehler",
-        description: "Das Ergebnis konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+    const timeoutKey = `quick-note-${noteId}-meeting_result`;
+    if (updateTimeouts.current[timeoutKey]) {
+      clearTimeout(updateTimeouts.current[timeoutKey]);
     }
+
+    updateTimeouts.current[timeoutKey] = setTimeout(async () => {
+      try {
+        const { error } = await supabase
+          .from('quick_notes')
+          .update({ meeting_result: result })
+          .eq('id', noteId);
+
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error updating quick note result:', error);
+        toast({
+          title: "Fehler",
+          description: "Das Ergebnis konnte nicht gespeichert werden.",
+          variant: "destructive",
+        });
+      }
+    }, 500);
   };
 
   const startMeeting = async (meeting: Meeting) => {
@@ -3554,6 +3568,19 @@ export function MeetingsView() {
                         </div>
                       )}
 
+                      {item.system_type === 'birthdays' && (
+                        <div className="ml-12 mb-4">
+                          <BirthdayAgendaItem
+                            meetingDate={selectedMeeting?.meeting_date}
+                            meetingId={selectedMeeting?.id}
+                            resultText={item.result_text}
+                            onUpdateResult={(result: string) => updateAgendaItemResult(item.id!, 'result_text', result)}
+                            isEmbedded
+                            className="border-l-0 shadow-none bg-transparent"
+                          />
+                        </div>
+                      )}
+
                       {/* Note: Removed fallback for "Aktuelles aus dem Landtag" - system_type should be used exclusively */}
 
                       {/* Display notes if available */}
@@ -3825,6 +3852,24 @@ export function MeetingsView() {
                                           ) : (
                                             <p className="text-sm text-muted-foreground pl-4">Keine Aufgaben vorhanden.</p>
                                           )}
+                                        </div>
+                                      ) : subItem.system_type === 'birthdays' ? (
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              {index + 1}.{subIndex + 1}
+                                            </span>
+                                            <Cake className="h-4 w-4 text-pink-500" />
+                                            <span className="text-sm font-medium">Geburtstage</span>
+                                          </div>
+                                          <BirthdayAgendaItem
+                                            meetingDate={selectedMeeting?.meeting_date}
+                                            meetingId={selectedMeeting?.id}
+                                            resultText={subItem.result_text}
+                                            onUpdateResult={(result: string) => updateAgendaItemResult(subItem.id!, 'result_text', result)}
+                                            isEmbedded
+                                            className="border-l-0 shadow-none bg-transparent"
+                                          />
                                         </div>
                                       ) : (
                                    <>
