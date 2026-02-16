@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone, Copy } from "lucide-react";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -25,6 +26,9 @@ import type { useEventPlanningData } from "./useEventPlanningData";
 type EventPlanningDataReturn = ReturnType<typeof useEventPlanningData>;
 
 export function EventPlanningDetailView(data: EventPlanningDataReturn) {
+  const [copiedSpeakerContact, setCopiedSpeakerContact] = useState<string | null>(null);
+  const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const {
     user, selectedPlanning, setSelectedPlanning,
     planningDates, checklistItems, collaborators, allProfiles,
@@ -90,6 +94,35 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
       profile.user_id !== selectedPlanning.user_id &&
       !uniquePlanningCollaborators.some((collab) => collab.user_id === profile.user_id),
   );
+
+  const handleCopySpeakerContact = async (value: string, speakerId: string, field: "email" | "phone") => {
+    if (!value) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedSpeakerContact(`${speakerId}-${field}`);
+
+      if (copyFeedbackTimeoutRef.current) {
+        clearTimeout(copyFeedbackTimeoutRef.current);
+      }
+
+      copyFeedbackTimeoutRef.current = setTimeout(() => {
+        setCopiedSpeakerContact(null);
+      }, 1800);
+    } catch {
+      setCopiedSpeakerContact(null);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (copyFeedbackTimeoutRef.current) {
+        clearTimeout(copyFeedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
@@ -411,20 +444,40 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                           {(speaker.email || speaker.phone) && (
                             <div className="mt-3 flex flex-wrap items-center gap-3 text-muted-foreground">
                               {speaker.email && (
-                                <div className="flex items-center gap-2 rounded-md p-1 transition-colors group-hover:bg-muted/60">
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopySpeakerContact(speaker.email!, speaker.id, "email")}
+                                  className="flex items-center gap-2 rounded-md p-1 transition-colors hover:bg-muted/60"
+                                  title="E-Mail-Adresse kopieren"
+                                >
                                   <Mail className="h-4 w-4" />
-                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100">
+                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100 hover:max-w-[280px] hover:opacity-100">
                                     {speaker.email}
                                   </span>
-                                </div>
+                                  {copiedSpeakerContact === `${speaker.id}-email` ? (
+                                    <span className="text-xs font-medium text-green-600">Kopiert</span>
+                                  ) : (
+                                    <Copy className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
                               )}
                               {speaker.phone && (
-                                <div className="flex items-center gap-2 rounded-md p-1 transition-colors group-hover:bg-muted/60">
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopySpeakerContact(speaker.phone!, speaker.id, "phone")}
+                                  className="flex items-center gap-2 rounded-md p-1 transition-colors hover:bg-muted/60"
+                                  title="Telefonnummer kopieren"
+                                >
                                   <Phone className="h-4 w-4" />
-                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100">
+                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100 hover:max-w-[280px] hover:opacity-100">
                                     {speaker.phone}
                                   </span>
-                                </div>
+                                  {copiedSpeakerContact === `${speaker.id}-phone` ? (
+                                    <span className="text-xs font-medium text-green-600">Kopiert</span>
+                                  ) : (
+                                    <Copy className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
                               )}
                             </div>
                           )}
