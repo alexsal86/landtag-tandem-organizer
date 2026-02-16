@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,12 +80,16 @@ export function DecisionSidebar({
   const [visibleActivityCount, setVisibleActivityCount] = useState(ACTIVITY_BATCH_SIZE);
 
   const totalItems = openQuestions.length + newComments.length;
+  const activityDatasetKey = useMemo(
+    () => recentActivities.map((activity) => activity.id).join("|"),
+    [recentActivities]
+  );
   const visibleActivities = recentActivities.slice(0, visibleActivityCount);
   const hasMoreActivities = visibleActivityCount < recentActivities.length;
 
   useEffect(() => {
     setVisibleActivityCount(ACTIVITY_BATCH_SIZE);
-  }, [recentActivities]);
+  }, [activityDatasetKey]);
 
   const handleSendResponse = async (responseId: string) => {
     if (!responseText.trim()) return;
