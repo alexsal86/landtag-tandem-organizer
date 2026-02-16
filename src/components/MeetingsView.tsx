@@ -241,6 +241,12 @@ export function MeetingsView() {
     }
   }, [selectedMeeting?.id, activeMeeting]);
 
+  useEffect(() => {
+    return () => {
+      Object.values(updateTimeouts.current).forEach((timeout) => clearTimeout(timeout));
+    };
+  }, []);
+
   // Sync task changes to meeting agenda items (only title and description, not files)
   useEffect(() => {
     const syncTaskChanges = async () => {
@@ -1186,28 +1192,35 @@ export function MeetingsView() {
   };
 
   const updateQuickNoteResult = async (noteId: string, result: string) => {
-    try {
-      const { error } = await supabase
-        .from('quick_notes')
-        .update({ meeting_result: result })
-        .eq('id', noteId);
+    // Update local state immediately to avoid dropped characters while requests are in-flight
+    setLinkedQuickNotes(prev =>
+      prev.map(note =>
+        note.id === noteId ? { ...note, meeting_result: result } : note
+      )
+    );
 
-      if (error) throw error;
-
-      // Update local state
-      setLinkedQuickNotes(prev => 
-        prev.map(note => 
-          note.id === noteId ? { ...note, meeting_result: result } : note
-        )
-      );
-    } catch (error) {
-      console.error('Error updating quick note result:', error);
-      toast({
-        title: "Fehler",
-        description: "Das Ergebnis konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+    const timeoutKey = `quick-note-${noteId}-meeting_result`;
+    if (updateTimeouts.current[timeoutKey]) {
+      clearTimeout(updateTimeouts.current[timeoutKey]);
     }
+
+    updateTimeouts.current[timeoutKey] = setTimeout(async () => {
+      try {
+        const { error } = await supabase
+          .from('quick_notes')
+          .update({ meeting_result: result })
+          .eq('id', noteId);
+
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error updating quick note result:', error);
+        toast({
+          title: "Fehler",
+          description: "Das Ergebnis konnte nicht gespeichert werden.",
+          variant: "destructive",
+        });
+      }
+    }, 500);
   };
 
   const startMeeting = async (meeting: Meeting) => {
