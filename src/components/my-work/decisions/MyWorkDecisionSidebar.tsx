@@ -10,6 +10,9 @@ import { MessageCircle, Bell, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SidebarDiscussionComment } from "./types";
+import { formatDistanceToNow } from "date-fns";
+import { de } from "date-fns/locale";
 
 interface OpenQuestion {
   id: string;
