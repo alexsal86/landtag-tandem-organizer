@@ -108,30 +108,36 @@ export function CommentThread({
 
   return (
     <div className={cn("relative", depth > 0 && "ml-8")}>
-      {/* L-shaped connector from parent's vertical line to this reply's avatar */}
+      {/* Vertical line from this comment's avatar down through all replies */}
+      {hasReplies && (
+        <div
+          className="absolute bg-border/70"
+          aria-hidden="true"
+          style={{
+            left: `${AVATAR_CENTER}px`,
+            top: `${AVATAR_SIZE + 4}px`,
+            bottom: 0,
+            width: '2px',
+          }}
+        />
+      )}
+
+      {/* L-shaped rounded connector from parent's vertical line to this reply's avatar */}
       {depth > 0 && (
-        <div aria-hidden="true">
-          {/* Vertical part of L-connector: from top to avatar center */}
-          <div
-            className="absolute bg-border/70"
-            style={{
-              left: `-${AVATAR_CENTER + 8}px`, // 8px gap (half of ml-8=32px minus avatar center)
-              top: 0,
-              width: '1px',
-              height: `${AVATAR_CENTER}px`,
-            }}
-          />
-          {/* Horizontal part of L-connector: from vertical line to avatar center */}
-          <div
-            className="absolute bg-border/70"
-            style={{
-              left: `-${AVATAR_CENTER + 8}px`,
-              top: `${AVATAR_CENTER}px`,
-              width: `${AVATAR_CENTER + 8}px`,
-              height: '1px',
-            }}
-          />
-        </div>
+        <div
+          className="absolute border-border/70"
+          aria-hidden="true"
+          style={{
+            left: `-${AVATAR_CENTER + 8}px`,
+            top: 0,
+            width: `${AVATAR_CENTER + 8 - 4}px`,
+            height: `${AVATAR_CENTER}px`,
+            borderLeft: '2px solid',
+            borderBottom: '2px solid',
+            borderBottomLeftRadius: '8px',
+            borderColor: 'inherit',
+          }}
+        />
       )}
 
       {/* Continuous vertical line for parent's remaining siblings (if not last reply) */}
@@ -143,26 +149,13 @@ export function CommentThread({
             left: `-${AVATAR_CENTER + 8}px`,
             top: `${AVATAR_CENTER}px`,
             bottom: 0,
-            width: '1px',
+            width: '2px',
           }}
         />
       )}
 
       {/* The comment itself */}
       <div className="group flex items-start gap-2 relative">
-        {/* Vertical line from this avatar down through replies */}
-        {hasReplies && (
-          <div
-            className="absolute bg-border/70"
-            aria-hidden="true"
-            style={{
-              left: `${AVATAR_CENTER}px`,
-              top: `${AVATAR_SIZE}px`,
-              bottom: 0,
-              width: '1px',
-            }}
-          />
-        )}
 
         <Avatar className="h-6 w-6 flex-shrink-0 relative z-10">
           {comment.profile?.avatar_url && (
