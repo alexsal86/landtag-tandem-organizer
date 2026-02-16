@@ -2211,8 +2211,9 @@ export function DocumentsView() {
                     <TableRow>
                       <TableHead>Titel</TableHead>
                       <TableHead>Empfänger</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead>Erstellt / Versand</TableHead>
+                      <TableHead>Export</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead className="text-right">Aktionen</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -2229,6 +2230,32 @@ export function DocumentsView() {
                           {letter.recipient_name || '-'}
                         </TableCell>
                         <TableCell>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span>{format(new Date(letter.created_at), "dd.MM.yyyy", { locale: de })}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Send className="h-3.5 w-3.5" />
+                              <span>{letter.sent_date ? format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de }) : '-'}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-start gap-1">
+                            <LetterPDFExport 
+                              letter={letter} 
+                              disabled={false}
+                              showPagination={letter.show_pagination || false}
+                              size="sm"
+                            />
+                            <LetterDOCXExport 
+                              letter={letter}
+                              size="sm"
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
                            <Badge className={
                              letter.status === 'sent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
                              letter.status === 'archived' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' :
@@ -2242,30 +2269,10 @@ export function DocumentsView() {
                               letter.status === 'sent' ? 'Versendet' : 'Archiviert'}
                            </Badge>
                         </TableCell>
-                        <TableCell>
-                          <div className="space-y-1 text-sm">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span>{format(new Date(letter.created_at), "dd.MM.yyyy", { locale: de })}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Send className="h-3.5 w-3.5" />
-                              <span>{letter.sent_date ? format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de }) : '-'}</span>
-                            </div>
-                          </div>
-                        </TableCell>
                          <TableCell className="text-right">
                             <div className="flex items-center gap-1 justify-end">
                               {letterSubTab === 'active' ? (
                                 <>
-                                    <LetterPDFExport 
-                                      letter={letter} 
-                                      disabled={false}
-                                      showPagination={letter.show_pagination || false}
-                                    />
-                                    <LetterDOCXExport 
-                                      letter={letter} 
-                                    />
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -2293,14 +2300,6 @@ export function DocumentsView() {
                                 </>
                              ) : (
                                <>
-                                 <LetterPDFExport 
-                                   letter={letter} 
-                                   disabled={false}
-                                   showPagination={true}
-                                 />
-                                 <LetterDOCXExport 
-                                   letter={letter} 
-                                 />
                                  <Button
                                    variant="ghost"
                                    size="sm"
