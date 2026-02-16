@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,11 +73,19 @@ export function DecisionSidebar({
   onActivityClick,
   onResponseSent,
 }: DecisionSidebarProps) {
+  const ACTIVITY_BATCH_SIZE = 5;
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [responseText, setResponseText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [visibleActivityCount, setVisibleActivityCount] = useState(ACTIVITY_BATCH_SIZE);
 
   const totalItems = openQuestions.length + newComments.length;
+  const visibleActivities = recentActivities.slice(0, visibleActivityCount);
+  const hasMoreActivities = visibleActivityCount < recentActivities.length;
+
+  useEffect(() => {
+    setVisibleActivityCount(ACTIVITY_BATCH_SIZE);
+  }, [recentActivities]);
 
   const handleSendResponse = async (responseId: string) => {
     if (!responseText.trim()) return;
@@ -341,7 +349,7 @@ export function DecisionSidebar({
           {recentActivities.length === 0 ? (
             <p className="text-xs text-muted-foreground py-1">Keine Aktivitäten vorhanden.</p>
           ) : (
-            recentActivities.map((activity) => (
+            visibleActivities.map((activity) => (
               <button
                 key={activity.id}
                 onClick={() => onActivityClick(activity.decisionId)}
@@ -372,6 +380,16 @@ export function DecisionSidebar({
                 </p>
               </button>
             ))
+          )}
+          {hasMoreActivities && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => setVisibleActivityCount((prev) => prev + ACTIVITY_BATCH_SIZE)}
+            >
+              5 weitere laden
+            </Button>
           )}
         </CardContent>
       </Card>
