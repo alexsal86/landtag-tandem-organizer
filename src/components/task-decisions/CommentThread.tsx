@@ -105,9 +105,13 @@ export function CommentThread({
   const showEditedLabel = Boolean(comment.updated_at && new Date(comment.updated_at) > new Date(comment.created_at));
 
   return (
-    <div className={cn("space-y-2", depth > 0 && "ml-5 pl-4 border-l border-border/70 relative")}>
+    <div className={cn("space-y-2 relative", depth > 0 && "ml-5")}>
       {depth > 0 && (
-        <div className="absolute -left-px top-4 h-px w-3 bg-border/70" aria-hidden="true" />
+        <>
+          {/* Parent-center to child-center connector with small gaps to avatars */}
+          <div className="absolute -left-4 -top-4 h-7 w-px bg-border/70" aria-hidden="true" />
+          <div className="absolute -left-4 top-3 h-px w-3 bg-border/70" aria-hidden="true" />
+        </>
       )}
 
       <div className="group flex items-start gap-2">
