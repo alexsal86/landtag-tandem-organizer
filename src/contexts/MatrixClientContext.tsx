@@ -83,6 +83,7 @@ interface MatrixClientContextType {
   addReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
   removeReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
   createRoom: (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => Promise<string>;
+  requestSelfVerification: (otherDeviceId?: string) => Promise<void>;
 }
 
 const MatrixClientContext = createContext<MatrixClientContextType | null>(null);
@@ -641,6 +642,25 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     return result.room_id;
   }, [client, isConnected]);
 
+
+  const requestSelfVerification = useCallback(async (otherDeviceId?: string) => {
+    if (!client || !isConnected || !credentials?.userId) {
+      throw new Error('Nicht mit Matrix verbunden');
+    }
+
+    const crypto = client.getCrypto();
+    if (!crypto) {
+      throw new Error('Crypto API ist nicht verfügbar. E2EE muss zuerst aktiv sein.');
+    }
+
+    if (otherDeviceId?.trim()) {
+      await client.requestVerification(credentials.userId, [otherDeviceId.trim()]);
+      return;
+    }
+
+    await client.requestVerification(credentials.userId);
+  }, [client, isConnected, credentials?.userId]);
+
   const getMessages = useCallback((roomId: string, limit: number = 50): MatrixMessage[] => {
     if (!client) return [];
 
@@ -714,6 +734,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     addReaction,
     removeReaction,
     createRoom,
+    requestSelfVerification,
   };
 
   return (

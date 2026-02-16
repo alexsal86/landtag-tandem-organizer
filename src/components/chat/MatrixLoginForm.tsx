@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Save, TestTube, CheckCircle, XCircle, Link2 } from 'lucide-react';
+import { Loader2, Save, TestTube, CheckCircle, XCircle, Link2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,7 @@ export function MatrixLoginForm() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
-  const { isConnected, connect, disconnect, credentials } = useMatrixClient();
+  const { isConnected, connect, disconnect, credentials, requestSelfVerification } = useMatrixClient();
 
   const [matrixUserId, setMatrixUserId] = useState('');
   const [accessToken, setAccessToken] = useState('');
@@ -25,6 +25,8 @@ export function MatrixLoginForm() {
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+  const [verificationTargetDeviceId, setVerificationTargetDeviceId] = useState('');
+  const [isStartingVerification, setIsStartingVerification] = useState(false);
 
   // Load existing credentials
   useEffect(() => {
@@ -189,6 +191,35 @@ export function MatrixLoginForm() {
     }
   };
 
+
+  const handleStartVerification = async () => {
+    if (!isConnected) {
+      toast({
+        title: 'Nicht verbunden',
+        description: 'Bitte zuerst mit Matrix verbinden.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsStartingVerification(true);
+    try {
+      await requestSelfVerification(verificationTargetDeviceId.trim() || undefined);
+      toast({
+        title: 'Verifizierung gestartet',
+        description: 'Öffnen Sie Ihren zweiten Element-Login und bestätigen Sie die Geräte-Verifizierung.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Verifizierung fehlgeschlagen',
+        description: error instanceof Error ? error.message : 'Verifizierung konnte nicht gestartet werden',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsStartingVerification(false);
+    }
+  };
+
   const handleDisconnect = () => {
     disconnect();
     toast({
@@ -284,6 +315,30 @@ export function MatrixLoginForm() {
             </p>
           </div>
         </div>
+
+
+        {isConnected && (
+          <div className="space-y-2 rounded-md border p-3 bg-muted/30">
+            <Label htmlFor="verify-device-id">Anderes Gerät verifizieren (optional Device ID)</Label>
+            <Input
+              id="verify-device-id"
+              placeholder="z.B. ABCDEFGHIJ"
+              value={verificationTargetDeviceId}
+              onChange={(e) => setVerificationTargetDeviceId(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Startet eine Verifizierungsanfrage an Ihren eigenen Matrix-Account. In Element am zweiten Gerät bestätigen.
+            </p>
+            <Button onClick={handleStartVerification} variant="secondary" disabled={isStartingVerification}>
+              {isStartingVerification ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-4 w-4 mr-2" />
+              )}
+              Geräte-Verifizierung starten
+            </Button>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2 pt-2">
           <Button onClick={handleSave} disabled={isSaving}>
