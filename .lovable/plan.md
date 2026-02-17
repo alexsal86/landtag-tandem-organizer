@@ -1,110 +1,128 @@
 
 
-## Komplett-Refactor: MatrixClientContext.tsx
+## Komplett-Fix: MatrixClientContext.tsx -- Alle verbleibenden Probleme
 
-Die aktuelle Datei hat 1028 Zeilen mit zahlreichen strukturellen Problemen. Statt einzelne Patches anzubringen, wird die Datei grundlegend bereinigt und nach der kanonischen SDK-Reihenfolge neu aufgebaut.
+### Ursache des Verifizierungs-Abbruchs
 
-### Kritische Fixes
+Das Emoji-Matching funktioniert, aber die Verifizierung bricht ab, weil `bootstrapCrossSigning` mit einem leeren Auth-Dict (`{}`) aufgerufen wird. Der Homeserver lehnt das mit 401 ab, Cross-Signing wird nie eingerichtet, und Element auf dem Handy bricht die Verifizierung ab, weil die Cross-Signing-Keys fehlen.
 
-**1. setupVerifierListeners als eigenstaendige Hilfsfunktion**
+**Loesung**: Das Passwort aus dem Login-Flow wird (temporaer, nur im Speicher) an `connect` durchgereicht, damit `bootstrapCrossSigning` eine echte UIA mit Passwort durchfuehren kann.
 
-Die Funktion wird aus `connect` herausgezogen und als normale Funktion im Provider-Scope definiert. Sowohl `connect` als auch `requestSelfVerification` nutzen dieselbe Referenz -- keine Duplikation mehr.
+### Alle Aenderungen
 
-**2. Event-Listener Cleanup**
+#### 1. Passwort fuer UIA durchreichen
 
-Alle `matrixClient.on(...)` Aufrufe werden in `connect` gesammelt. Die Listener-Funktionen werden als benannte Referenzen gespeichert, damit sie in `disconnect` mit `client.off(...)` oder `client.removeListener(...)` wieder entfernt werden koennen. Ein Ref speichert die aktuelle Client-Instanz und deren Listener, sodass `disconnect` sie zuverlaessig aufraeumt.
-
-**3. getMessages: Kein setState mehr im Getter**
-
-`getMessages` wird in zwei Teile aufgeteilt:
-- Eine reine Funktion, die Nachrichten berechnet und zurueckgibt (kein Side-Effect)
-- Die Timeline-Listener und der Polling-Intervall in `MatrixChatView` uebernehmen das Aktualisieren des Message-States
-
-Stattdessen wird `getMessages` nur noch als "Refresh-Trigger" genutzt, der die Nachrichten aus der Timeline liest und per `setMessages` aktualisiert -- aber klar als Mutation benannt (`refreshMessages`), nicht als Getter.
-
-**4. Kanonische Init-Reihenfolge (laut SDK-Doku)**
+**MatrixCredentials** um optionales `password`-Feld erweitern. `handlePasswordLogin` in `MatrixLoginForm.tsx` gibt das Passwort mit an `connect()`. Das Passwort wird nur fuer `bootstrapCrossSigning` verwendet und danach verworfen (nicht in State/localStorage gespeichert).
 
 ```text
-1. createClient({ baseUrl, accessToken, userId })
-2. initRustCrypto()
-3. bootstrapSecretStorage (wenn Recovery Key vorhanden)
-4. bootstrapCrossSigning (wenn moeglich)
-5. checkKeyBackupAndEnable()
-6. startClient({ initialSyncLimit: 50 })
-7. Device ID aus client.getDeviceId() persistieren
+interface MatrixCredentials {
+  userId: string;
+  accessToken: string;
+  homeserverUrl: string;
+  deviceId?: string;
+  password?: string;  // <-- NEU: nur fuer UIA, wird nicht persistiert
+}
 ```
 
-Kein Retry von `initRustCrypto` nach `startClient`. Kein manuelles `whoAmI` fuer die Device ID.
+In `connect()` wird `bootstrapCrossSigning` dann so aufgerufen:
 
-**5. removeReaction implementiert**
+```text
+await crypto.bootstrapCrossSigning({
+  authUploadDeviceSigningKeys: async (makeRequest) => {
+    await makeRequest({
+      type: 'm.login.password',
+      identifier: { type: 'm.id.user', user: localpart },
+      password: creds.password,
+    });
+  },
+});
+```
 
-Sucht das passende Reaktions-Event im Room-Timeline und redacted es mit `client.redactEvent()`.
+Wenn kein Passwort vorhanden ist (z.B. bei Auto-Connect mit gespeichertem Token), wird der Bootstrap-Versuch mit leerem Dict beibehalten (Fallback, kann fehlschlagen).
 
-**6. connect Dependencies korrigiert**
+#### 2. bootstrapSecretStorage nur wenn noetig
 
-`connect` wird nicht mehr als `useCallback` mit `[isConnected]` definiert. Stattdessen wird die Guard-Logik ueber `isConnectingRef` allein gesteuert, und `connect` bekommt keine React-Dependencies (oder alle notwendigen).
+Vor dem Aufruf wird `isSecretStorageReady()` geprueft:
 
-**7. Race Condition beim Auto-Connect**
+```text
+const isReady = await crypto.isSecretStorageReady();
+if (!isReady && recoveryKey) {
+  await crypto.bootstrapSecretStorage({ ... });
+}
+```
 
-Der `useEffect` fuer Auto-Connect nutzt `isConnectingRef.current` als zusaetzlichen Guard. `connect` aendert sich nicht mehr bei jedem Re-Render.
+#### 3. Auto-Connect Race Condition
 
-**8. indexedDB.databases() Fallback verbessert**
+Zusaetzlicher `connectCalledRef` wird eingefuehrt. Der Auto-Connect-Effect setzt diesen Ref beim ersten Aufruf und ignoriert weitere Trigger:
 
-Prueft ob `indexedDB.databases` existiert bevor es aufgerufen wird, und nutzt ansonsten direkt die bekannten DB-Namen als Fallback.
+```text
+const connectCalledRef = useRef(false);
 
-**9. Nachrichten-Limit konsistent**
+useEffect(() => {
+  if (credentials && !connectCalledRef.current && !isConnectingRef.current) {
+    connectCalledRef.current = true;
+    connect(credentials);
+  }
+}, [credentials]);
+```
 
-Einheitlich 200 Nachrichten als Buffer, konfigurierbar ueber eine Konstante `MAX_CACHED_MESSAGES`.
+Bei `disconnect` und `resetCryptoStore` wird `connectCalledRef.current = false` zurueckgesetzt.
 
-### Datei-Aenderungen
+#### 4. updateRoomList als useCallback
+
+```text
+const updateRoomList = useCallback((matrixClient: sdk.MatrixClient) => {
+  // ... bestehende Logik ...
+}, []);
+```
+
+#### 5. sendMessage mit isConnected-Check
+
+Da `isConnected` ein State ist und in `useCallback` mit `[]` Dependencies stale waere, wird stattdessen ein `isConnectedRef` eingefuehrt:
+
+```text
+const isConnectedRef = useRef(false);
+// Synchron gehalten:
+useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
+
+const sendMessage = useCallback(async (...) => {
+  const mc = clientRef.current;
+  if (!mc || !isConnectedRef.current) throw new Error('Nicht mit Matrix verbunden');
+  // ...
+}, []);
+```
+
+#### 6. Verification-Timeout und Cancel-Handling verbessern
+
+In `requestSelfVerification`: Nach dem Warten auf "Ready"-Phase wird geprueft ob der Request noch gueltig ist bevor `startVerification` aufgerufen wird. Der Promise-Reject im Timeout wird sauber mit einem `finally`-Block aufgeraeumt:
+
+```text
+const checkReady = () => {
+  const phase = (verificationRequest as any).phase;
+  if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started) {
+    clearTimeout(timeout);
+    resolve();
+  } else if (phase === VerificationPhase.Cancelled || phase === VerificationPhase.Done) {
+    clearTimeout(timeout);
+    reject(new Error('Verifizierung wurde vom anderen Geraet abgebrochen.'));
+  }
+};
+```
+
+In `onVerificationRequestReceived` (eingehend): Der `change`-Listener wird nach Abschluss entfernt, und der `setTimeout`-Resolve wird per `clearTimeout` aufgeraeumt.
+
+### Zusammenfassung der Datei-Aenderungen
 
 | Datei | Aenderung |
 |---|---|
-| `src/contexts/MatrixClientContext.tsx` | Kompletter Refactor (alle 9 Punkte) |
+| `src/contexts/MatrixClientContext.tsx` | (1) `password` in MatrixCredentials, (2) UIA mit Passwort in bootstrapCrossSigning, (3) isSecretStorageReady-Check, (4) connectCalledRef, (5) updateRoomList als useCallback, (6) isConnectedRef + Check in sendMessage, (7) Verification-Timeout-Cleanup |
+| `src/components/chat/MatrixLoginForm.tsx` | `password` an `connect()` uebergeben im handlePasswordLogin |
 
-### Neue Struktur der Datei (ca. 850-900 Zeilen statt 1028)
+### Testen
 
-```text
-[Imports + Interfaces]             -- unveraendert
-[mapMatrixEventToMessage]          -- unveraendert
-[MAX_CACHED_MESSAGES = 200]        -- neue Konstante
-[setupVerifierListeners()]         -- extrahierte Hilfsfunktion
-[MatrixClientProvider]
-  State + Refs
-  loadCredentials useEffect         -- unveraendert
-  connect useCallback
-    1. createClient (ohne whoAmI, ohne verificationMethods)
-    2. initRustCrypto
-    3. bootstrapSecretStorage (mit Recovery Key aus localStorage)
-    4. bootstrapCrossSigning (try/catch, nicht-kritisch)
-    5. checkKeyBackupAndEnable
-    6. Event Listener registrieren (benannte Funktionen)
-    7. startClient
-    8. Device ID persistieren
-    9. Listener-Refs speichern fuer Cleanup
-  disconnect useCallback
-    - client.off(...) fuer alle Listener
-    - client.stopClient()
-    - State zuruecksetzen
-  refreshMessages (vorher getMessages)
-    - Liest Timeline, merged mit Cache
-    - Ruft setMessages auf (klar als Mutation gekennzeichnet)
-  sendMessage, sendTypingNotification, addReaction -- unveraendert
-  removeReaction -- implementiert mit redactEvent
-  createRoom -- unveraendert
-  requestSelfVerification
-    - Nutzt die extrahierte setupVerifierListeners Funktion
-    - Kein duplizierter Code mehr
-  confirmSas, rejectSas, resetCryptoStore -- unveraendert
-  Auto-connect useEffect -- mit besserem Guard
-  Context Provider
-[useMatrixClient export]
-```
-
-### Was sich fuer den Benutzer aendert
-
-- Verifizierung sollte zuverlaessiger funktionieren (kein duplizierter Code, korrekte Listener)
-- Keine Memory Leaks mehr bei mehrfachem Connect/Disconnect
-- E2EE-Setup folgt der offiziellen Reihenfolge -- bessere Chancen auf funktionierende Verschluesselung
-- Reaktionen koennen nun auch entfernt werden
+1. Crypto Store zuruecksetzen
+2. Mit Passwort anmelden (nicht manueller Token)
+3. In der Konsole sollte "Cross-Signing bootstrapped" erscheinen (nicht mehr "non-critical" Fehler)
+4. Verifizierung von Element auf dem Handy starten -- Emojis sollten erscheinen und nach Bestaetigung erfolgreich abschliessen
+5. Verifizierung von der App starten -- Element sollte reagieren und der Prozess sollte durchlaufen
 
