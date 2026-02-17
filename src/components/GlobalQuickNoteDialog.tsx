@@ -123,7 +123,6 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
             onChange={(e) => setContent(e.target.value)}
             rows={4}
             disabled={saving}
-            onKeyDown={handleKeyDown}
           />
         </div>
         
