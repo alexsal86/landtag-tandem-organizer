@@ -1490,6 +1490,18 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                   <Button 
                                                     variant="outline" 
                                                     size="sm"
+                                                    className="flex-1 justify-start border-pink-200 text-pink-700 h-7 text-xs"
+                                                    onClick={() => {
+                                                      addSystemTemplateItem('birthdays', index);
+                                                      setChildPopoverOpen(null);
+                                                    }}
+                                                  >
+                                                    <Cake className="h-3 w-3 mr-1" />
+                                                    Geburtstage
+                                                  </Button>
+                                                  <Button 
+                                                    variant="outline" 
+                                                    size="sm"
                                                     className="flex-1 justify-start border-violet-200 text-violet-700 h-7 text-xs"
                                                     onClick={() => {
                                                       addSystemTemplateItem('decisions', index);
@@ -1716,6 +1728,15 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                 >
                                   <ListTodo className="h-4 w-4 mr-2" />
                                   Aufgaben
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="border-pink-200 text-pink-700 hover:bg-pink-50 dark:border-pink-800 dark:text-pink-300 dark:hover:bg-pink-950"
+                                  onClick={() => addSystemTemplateItem('birthdays')}
+                                >
+                                  <Cake className="h-4 w-4 mr-2" />
+                                  Geburtstage
                                 </Button>
                                 <Button 
                                   variant="outline" 
