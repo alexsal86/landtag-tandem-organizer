@@ -250,7 +250,10 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
                   ))}
                 </ul>
               </div>,
-              document.body,
+              // In modal dialogs, body can be pointer-locked by the dialog manager.
+              // Rendering inside the active dialog keeps the menu mouse-interactive.
+              (anchorElementRef.current.closest('[role="dialog"]') as HTMLElement | null) ??
+                anchorElementRef.current,
             )
           : null
       }
