@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import * as sdk from 'matrix-js-sdk';
 import { CryptoEvent } from 'matrix-js-sdk';
-import { VerifierEvent, type Verifier } from 'matrix-js-sdk/lib/crypto-api/verification';
+import { VerifierEvent, VerificationPhase, type Verifier } from 'matrix-js-sdk/lib/crypto-api/verification';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
@@ -507,8 +507,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       matrixClient.on(CryptoEvent.VerificationRequestReceived, async (verificationRequest: any) => {
         console.log('[Matrix] Incoming verification request, phase:', verificationRequest.phase);
 
-        // Auto-accept if phase is 'requested'
-        if (verificationRequest.phase === 'requested') {
+        // Auto-accept if phase is Requested
+        if (verificationRequest.phase === VerificationPhase.Requested) {
           try {
             await verificationRequest.accept();
             console.log('[Matrix] Verification request accepted');
@@ -519,11 +519,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         }
 
         // Wait until ready/started
-        if (verificationRequest.phase !== 'ready' && verificationRequest.phase !== 'started') {
+        if (verificationRequest.phase !== VerificationPhase.Ready && verificationRequest.phase !== VerificationPhase.Started) {
           await new Promise<void>((resolve) => {
             const check = () => {
               const phase = verificationRequest.phase;
-              if (phase === 'ready' || phase === 'started' || phase === 'cancelled' || phase === 'done') {
+              if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started || phase === VerificationPhase.Cancelled || phase === VerificationPhase.Done) {
                 resolve();
               }
             };
@@ -533,7 +533,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           });
         }
 
-        if (verificationRequest.phase === 'cancelled' || verificationRequest.phase === 'done') return;
+        if (verificationRequest.phase === VerificationPhase.Cancelled || verificationRequest.phase === VerificationPhase.Done) return;
 
         try {
           const verifier = await verificationRequest.startVerification('m.sas.v1');
@@ -791,7 +791,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       : await crypto.requestOwnUserVerification();
 
     // Wait until the other client accepts the request (phase becomes 'ready' or 'started')
-    if ((verificationRequest as any).phase !== 'started') {
+    if ((verificationRequest as any).phase !== VerificationPhase.Started) {
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Verifizierungs-Timeout: Der andere Client hat nicht rechtzeitig geantwortet. Stellen Sie sicher, dass der andere Client online ist und die Verifizierung akzeptiert.'));
@@ -799,7 +799,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
         const checkReady = () => {
           const phase = (verificationRequest as any).phase;
-          if (phase === 'ready' || phase === 'started') {
+          if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started) {
             clearTimeout(timeout);
             resolve();
           }
