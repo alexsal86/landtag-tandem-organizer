@@ -29,6 +29,7 @@ interface SimpleRichTextEditorProps {
   minHeight?: string;
   onMentionInsert?: (userId: string, displayName: string) => void;
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
+  showToolbar?: boolean;
 }
 
 // Toolbar Component
@@ -162,6 +163,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   minHeight = "120px",
   onMentionInsert,
   onKeyDown,
+  showToolbar = true,
 }) => {
   const initialConfig = {
     namespace: 'SimpleRichTextEditor',
@@ -200,11 +202,11 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
 
   return (
     <div className={cn(
-      "border border-border rounded-lg overflow-hidden bg-background",
+      "border border-border rounded-lg bg-background",
       disabled && "opacity-50 pointer-events-none"
     )}>
       <LexicalComposer initialConfig={initialConfig}>
-        <Toolbar />
+        {showToolbar && <Toolbar />}
         <div className="relative">
           <RichTextPlugin
             contentEditable={
