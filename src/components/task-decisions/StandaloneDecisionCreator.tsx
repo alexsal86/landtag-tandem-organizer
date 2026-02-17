@@ -10,7 +10,7 @@ import { Vote, Mail, Plus, MessageSquare, Globe, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
-import { isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
+import { getUploadContentType, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { ResponseOptionsEditor } from "./ResponseOptionsEditor";
@@ -290,7 +290,9 @@ export const StandaloneDecisionCreator = ({
             // Upload to storage
             const { data: uploadData, error: uploadError } = await supabase.storage
               .from('decision-attachments')
-              .upload(fileName, file);
+              .upload(fileName, file, {
+                contentType: getUploadContentType(file),
+              });
 
             if (uploadError) throw uploadError;
 

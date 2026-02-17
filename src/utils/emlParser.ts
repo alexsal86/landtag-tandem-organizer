@@ -35,6 +35,18 @@ export function isEmailFile(file: File): boolean {
   return isEmlFile(file) || isMsgFile(file);
 }
 
+export function getUploadContentType(file: File): string {
+  if (isEmlFile(file)) {
+    return 'message/rfc822';
+  }
+
+  if (isMsgFile(file)) {
+    return 'application/vnd.ms-outlook';
+  }
+
+  return file.type || 'application/octet-stream';
+}
+
 /**
  * Strip RTF control words and return plain text.
  */
