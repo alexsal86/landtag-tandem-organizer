@@ -44,7 +44,7 @@ export function getUploadContentType(file: File): string {
     return 'application/vnd.ms-outlook';
   }
 
-  return file.type || 'application/octet-stream';
+  return 'application/octet-stream';
 }
 
 /**

@@ -285,7 +285,8 @@ export const StandaloneDecisionCreator = ({
       if (selectedFiles.length > 0) {
         for (const file of selectedFiles) {
           try {
-            const fileName = `${userData.user.id}/decisions/${decision.id}/${Date.now()}-${file.name}`;
+            const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            const fileName = `${userData.user.id}/decisions/${decision.id}/${uniqueSuffix}-${file.name}`;
 
             // Upload to storage
             const { data: uploadData, error: uploadError } = await supabase.storage
@@ -310,7 +311,7 @@ export const StandaloneDecisionCreator = ({
               file_path: uploadData.path,
               file_name: file.name,
               file_size: file.size,
-              file_type: file.type,
+              file_type: getUploadContentType(file),
               uploaded_by: userData.user.id,
             };
             if (emailMeta) {
@@ -321,7 +322,10 @@ export const StandaloneDecisionCreator = ({
               .from('task_decision_attachments')
               .insert(insertData as any);
 
-            if (dbError) throw dbError;
+            if (dbError) {
+              await supabase.storage.from('decision-attachments').remove([uploadData.path]);
+              throw dbError;
+            }
           } catch (fileError) {
             console.error('File upload error:', fileError);
             toast({
@@ -700,7 +704,7 @@ export const StandaloneDecisionCreator = ({
               <label className="text-sm font-medium">Dateien anhängen (optional)</label>
               <DecisionFileUpload
                 mode="creation"
-                onFilesSelected={(files) => setSelectedFiles(prev => [...prev, ...files])}
+                onFilesSelected={setSelectedFiles}
                 canUpload={true}
               />
             </div>
