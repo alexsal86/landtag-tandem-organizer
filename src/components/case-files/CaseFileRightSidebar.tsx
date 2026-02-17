@@ -37,6 +37,7 @@ export function CaseFileRightSidebar({
       <CaseFileNextSteps
         tasks={tasks}
         caseFileId={caseFileId}
+        tenantId={caseFile.tenant_id}
         caseFileTitle={caseFile.title}
         assignedTo={caseFile.assigned_to}
         onCompleteTask={onCompleteTask}
