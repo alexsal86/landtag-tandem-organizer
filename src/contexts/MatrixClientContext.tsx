@@ -168,6 +168,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   messagesRef.current = messages;
   const [typingUsers, setTypingUsers] = useState<Map<string, string[]>>(new Map());
   const [activeSasVerification, setActiveSasVerification] = useState<MatrixSasVerificationState | null>(null);
+  const isConnectingRef = useRef(false);
   const [lastVerificationError, setLastVerificationError] = useState<string | null>(null);
   const [e2eeDiagnostics, setE2eeDiagnostics] = useState<MatrixE2EEDiagnostics>({
     secureContext: window.isSecureContext,
@@ -211,16 +212,10 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     loadCredentials();
   }, [user, currentTenant?.id]);
 
-  // Auto-connect when credentials are available
-  useEffect(() => {
-    if (credentials && !isConnected && !isConnecting && !client) {
-      connect(credentials);
-    }
-  }, [credentials]);
-
   const connect = useCallback(async (creds: MatrixCredentials) => {
-    if (isConnecting || isConnected) return;
+    if (isConnectingRef.current || isConnected) return;
 
+    isConnectingRef.current = true;
     setIsConnecting(true);
     setConnectionError(null);
 
@@ -516,8 +511,17 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       console.error('Error connecting to Matrix:', error);
       setConnectionError(error instanceof Error ? error.message : 'Verbindungsfehler');
       setIsConnecting(false);
+    } finally {
+      isConnectingRef.current = false;
     }
-  }, [isConnecting, isConnected]);
+  }, [isConnected]);
+
+  // Auto-connect when credentials are available
+  useEffect(() => {
+    if (credentials && !isConnected && !isConnecting && !client) {
+      connect(credentials);
+    }
+  }, [credentials, isConnected, isConnecting, client, connect]);
 
   const disconnect = useCallback(() => {
     if (client) {
@@ -703,11 +707,25 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     };
 
     const trimmedDeviceId = otherDeviceId?.trim();
-    const verificationRequest = trimmedDeviceId
+    let verificationRequest = trimmedDeviceId
       ? await crypto.requestDeviceVerification(credentials.userId, trimmedDeviceId)
       : await crypto.requestOwnUserVerification();
 
-    const verifier = await verificationRequest.startVerification('m.sas.v1');
+    let verifier: sdk.Verifier;
+    try {
+      verifier = await verificationRequest.startVerification('m.sas.v1');
+    } catch (error) {
+      const reason = describeVerificationFailure(error);
+      const isUnknownDeviceError = Boolean(trimmedDeviceId) && /other device is unknown/i.test(reason);
+
+      if (!isUnknownDeviceError) {
+        throw error;
+      }
+
+      setLastVerificationError(`Device ID ${trimmedDeviceId} wurde auf dem Homeserver nicht gefunden. Verifizierung wird ohne feste Device-ID erneut gestartet.`);
+      verificationRequest = await crypto.requestOwnUserVerification();
+      verifier = await verificationRequest.startVerification('m.sas.v1');
+    }
 
     verifier.on('show_sas', (sas) => {
       const emojis = (sas.sas.emoji || []).map(([symbol, description]) => ({ symbol, description }));
