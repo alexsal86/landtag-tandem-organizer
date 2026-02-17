@@ -70,6 +70,17 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
 
   const { compact = false } = configuration;
 
+
+  const stripHtml = (value: string) => value.replace(/<[^>]*>/g, '').trim();
+  const toEditorHtml = (value: string | null | undefined) => {
+    if (!value) return '';
+    if (/<[^>]+>/.test(value)) return value;
+    return `<p>${value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')}</p>`;
+  };
+
   const taskCategories = [
     { name: 'personal', label: 'Persönlich' },
     { name: 'legislation', label: 'Gesetzgebung' },
@@ -154,7 +165,10 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   };
 
   const createNote = async () => {
-    if (!user || !newNote.trim()) return;
+    const plainTitle = stripHtml(newTitle);
+    const plainContent = newNote.trim();
+
+    if (!user || (!plainTitle && !plainContent)) return;
 
     try {
       const { error } = await supabase
@@ -162,7 +176,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         .insert({
           user_id: user.id,
           title: newTitle.trim() || undefined,
-          content: newNote.trim(),
+          content: plainContent,
           color: selectedColor,
           category: 'general'
         });
@@ -274,7 +288,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
               variant="ghost"
               size="sm"
               onClick={createNote}
-              disabled={!newNote.trim()}
+              disabled={!newNote.trim() && !stripHtml(newTitle)}
               className="h-7 w-7 p-0"
             >
               <Plus className="h-3 w-3" />
@@ -289,9 +303,9 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
           {!compact && (
             <SimpleRichTextEditor
               key={titleEditorKey}
-              initialContent={newTitle}
+              initialContent={toEditorHtml(newTitle)}
               onChange={setNewTitle}
-              placeholder="Titel (optional)"
+              placeholder="Titel (@ für Mentions)"
               minHeight="36px"
               showToolbar={false}
             />
