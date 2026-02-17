@@ -244,17 +244,14 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       };
 
       const localDeviceId = localStorage.getItem(`matrix_device_id:${creds.userId}`) || null;
-      const resolvedDeviceId = creds.deviceId || localDeviceId || await fetchDeviceIdFromWhoAmI();
-
-      if (!resolvedDeviceId) {
-        throw new Error('Matrix Device ID konnte nicht ermittelt werden. Bitte tragen Sie die Device ID in den Matrix-Einstellungen ein (Element: Einstellungen → Hilfe & Info).');
-      }
+      const resolvedDeviceId = creds.deviceId || localDeviceId || await fetchDeviceIdFromWhoAmI() || undefined;
+      // Kein Fehler mehr wenn leer -- Server vergibt automatisch eine neue Device ID
 
       const matrixClient = sdk.createClient({
         baseUrl: creds.homeserverUrl,
         accessToken: creds.accessToken,
         userId: creds.userId,
-        deviceId: resolvedDeviceId,
+        ...(resolvedDeviceId ? { deviceId: resolvedDeviceId } : {}),
         verificationMethods: ['m.sas.v1'],
         cryptoCallbacks: {
           getSecretStorageKey: async ({ keys }) => {
@@ -506,9 +503,12 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       updateRuntimeDiagnostics(lastCryptoError, { secretStorageReady, crossSigningReady, keyBackupEnabled });
       
-      localStorage.setItem(`matrix_device_id:${creds.userId}`, resolvedDeviceId);
+      const finalDeviceId = resolvedDeviceId || matrixClient.getDeviceId() || '';
+      if (finalDeviceId) {
+        localStorage.setItem(`matrix_device_id:${creds.userId}`, finalDeviceId);
+      }
       setClient(matrixClient);
-      setCredentials({ ...creds, deviceId: resolvedDeviceId });
+      setCredentials({ ...creds, deviceId: finalDeviceId || undefined });
     } catch (error) {
       console.error('Error connecting to Matrix:', error);
       setConnectionError(error instanceof Error ? error.message : 'Verbindungsfehler');
@@ -841,10 +841,17 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Device ID aus localStorage entfernen, damit der Server eine neue vergibt
+    const userId = credentials?.userId || '';
+    if (userId) {
+      localStorage.removeItem(`matrix_device_id:${userId}`);
+    }
+
     if (credentials) {
       await new Promise(r => setTimeout(r, 500));
       isConnectingRef.current = false;
-      await connect(credentials);
+      // Credentials ohne deviceId übergeben, damit eine neue ID generiert wird
+      await connect({ ...credentials, deviceId: undefined });
     }
   }, [client, credentials, connect]);
 
