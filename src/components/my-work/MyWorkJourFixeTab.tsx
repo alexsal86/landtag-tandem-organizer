@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { cn } from "@/lib/utils";
-import { addDays, format, isToday, isPast } from "date-fns";
+import { addDays, format, isToday, isPast, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
 
 interface MeetingParticipant {
@@ -360,7 +360,8 @@ export function MyWorkJourFixeTab() {
         for (const contact of contacts) {
           if (!contact.birthday) continue;
 
-          const originalBirthday = new Date(contact.birthday);
+          const originalBirthday = parseISO(contact.birthday);
+          if (Number.isNaN(originalBirthday.getTime())) continue;
           const month = originalBirthday.getMonth();
           const day = originalBirthday.getDate();
 
