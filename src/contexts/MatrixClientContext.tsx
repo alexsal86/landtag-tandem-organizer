@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import * as sdk from 'matrix-js-sdk';
+import { CryptoEvent } from 'matrix-js-sdk';
 import { VerifierEvent, type Verifier } from 'matrix-js-sdk/lib/crypto-api/verification';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -468,6 +469,82 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       // Start the client with E2EE support
       await matrixClient.startClient({ initialSyncLimit: 50 });
 
+      // --- Helper: Setup verifier listeners (reusable for outgoing + incoming) ---
+      const setupVerifierListeners = (verifier: Verifier, verificationRequest: any) => {
+        verifier.on(VerifierEvent.ShowSas, (sas) => {
+          const emojis = (sas.sas.emoji || []).map(([symbol, description]: [string, string]) => ({ symbol, description }));
+          setActiveSasVerification({
+            transactionId: verificationRequest.transactionId,
+            otherDeviceId: verificationRequest.otherDeviceId,
+            emojis,
+            decimals: sas.sas.decimal || null,
+            confirm: async () => {
+              await sas.confirm();
+              setActiveSasVerification(null);
+              setLastVerificationError(null);
+            },
+            mismatch: () => {
+              sas.mismatch();
+              setActiveSasVerification(null);
+              setLastVerificationError('Sie haben die Emoji-Codes als nicht übereinstimmend markiert.');
+            },
+            cancel: () => {
+              sas.cancel();
+              setActiveSasVerification(null);
+              setLastVerificationError('Verifizierung wurde abgebrochen.');
+            },
+          });
+        });
+
+        verifier.on(VerifierEvent.Cancel, (error) => {
+          const message = error instanceof Error ? error.message : 'Verifizierung abgebrochen';
+          setLastVerificationError(message);
+          setActiveSasVerification(null);
+        });
+      };
+
+      // --- Global listener for INCOMING verification requests ---
+      matrixClient.on(CryptoEvent.VerificationRequestReceived, async (verificationRequest: any) => {
+        console.log('[Matrix] Incoming verification request, phase:', verificationRequest.phase);
+
+        // Auto-accept if phase is 'requested'
+        if (verificationRequest.phase === 'requested') {
+          try {
+            await verificationRequest.accept();
+            console.log('[Matrix] Verification request accepted');
+          } catch (e) {
+            console.error('[Matrix] Failed to accept verification request:', e);
+            return;
+          }
+        }
+
+        // Wait until ready/started
+        if (verificationRequest.phase !== 'ready' && verificationRequest.phase !== 'started') {
+          await new Promise<void>((resolve) => {
+            const check = () => {
+              const phase = verificationRequest.phase;
+              if (phase === 'ready' || phase === 'started' || phase === 'cancelled' || phase === 'done') {
+                resolve();
+              }
+            };
+            verificationRequest.on?.('change', check);
+            check();
+            setTimeout(() => resolve(), 30000);
+          });
+        }
+
+        if (verificationRequest.phase === 'cancelled' || verificationRequest.phase === 'done') return;
+
+        try {
+          const verifier = await verificationRequest.startVerification('m.sas.v1');
+          setupVerifierListeners(verifier, verificationRequest);
+          void verifier.verify();
+          console.log('[Matrix] Incoming verification SAS started');
+        } catch (err) {
+          console.error('[Matrix] Failed to handle incoming verification:', err);
+        }
+      });
+
       // Retry once after start in case crypto was not ready during first init attempt
       if (!matrixClient.getCrypto()) {
         try {
@@ -749,8 +826,10 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       verifier = await verificationRequest.startVerification('m.sas.v1');
     }
 
+    // Use the shared setupVerifierListeners helper (defined inside connect)
+    // Since setupVerifierListeners is scoped inside connect, we inline equivalent logic here
     verifier.on(VerifierEvent.ShowSas, (sas) => {
-      const emojis = (sas.sas.emoji || []).map(([symbol, description]) => ({ symbol, description }));
+      const emojis = (sas.sas.emoji || []).map(([symbol, description]: [string, string]) => ({ symbol, description }));
       setActiveSasVerification({
         transactionId: verificationRequest.transactionId,
         otherDeviceId: verificationRequest.otherDeviceId,
