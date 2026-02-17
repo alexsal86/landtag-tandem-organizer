@@ -149,6 +149,7 @@ interface MatrixClientContextType {
   confirmSasVerification: () => Promise<void>;
   rejectSasVerification: () => void;
   lastVerificationError: string | null;
+  resetCryptoStore: () => Promise<void>;
 }
 
 const MatrixClientContext = createContext<MatrixClientContextType | null>(null);
@@ -805,6 +806,48 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     activeSasVerification.mismatch();
   }, [activeSasVerification]);
 
+  const resetCryptoStore = useCallback(async () => {
+    if (client) {
+      client.stopClient();
+      setClient(null);
+    }
+    setIsConnected(false);
+    setCryptoEnabled(false);
+
+    try {
+      const databases = await indexedDB.databases();
+      const cryptoDbs = databases.filter(db =>
+        db.name && (
+          db.name.includes('matrix-js-sdk:crypto') ||
+          db.name.includes('rust-crypto') ||
+          db.name.includes('matrix-sdk-crypto')
+        )
+      );
+      for (const db of cryptoDbs) {
+        if (db.name) {
+          indexedDB.deleteDatabase(db.name);
+          console.log('Deleted crypto DB:', db.name);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not enumerate/delete IndexedDB databases:', e);
+      const userId = credentials?.userId || '';
+      const knownNames = [
+        `matrix-js-sdk:crypto:${userId}`,
+        `matrix-rust-sdk-crypto-${userId}`,
+      ];
+      for (const name of knownNames) {
+        try { indexedDB.deleteDatabase(name); } catch {}
+      }
+    }
+
+    if (credentials) {
+      await new Promise(r => setTimeout(r, 500));
+      isConnectingRef.current = false;
+      await connect(credentials);
+    }
+  }, [client, credentials, connect]);
+
   const getMessages = useCallback((roomId: string, limit: number = 50): MatrixMessage[] => {
     if (!client) return [];
 
@@ -880,6 +923,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     confirmSasVerification,
     rejectSasVerification,
     lastVerificationError,
+    resetCryptoStore,
   };
 
   return (
