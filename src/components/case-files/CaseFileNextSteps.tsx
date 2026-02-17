@@ -12,10 +12,12 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useToast } from "@/hooks/use-toast";
 
 interface CaseFileNextStepsProps {
   tasks: CaseFileTask[];
   caseFileId: string;
+  tenantId?: string;
   caseFileTitle?: string;
   assignedTo?: string | null;
   onCompleteTask: (taskId: string) => Promise<boolean>;
@@ -26,6 +28,7 @@ interface CaseFileNextStepsProps {
 export function CaseFileNextSteps({
   tasks,
   caseFileId,
+  tenantId,
   caseFileTitle,
   assignedTo,
   onCompleteTask,
@@ -36,6 +39,8 @@ export function CaseFileNextSteps({
   const [isAdding, setIsAdding] = useState(false);
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const { toast } = useToast();
+  const resolvedTenantId = currentTenant?.id || tenantId;
 
   // Filter for open tasks only
   const openTasks = tasks
@@ -58,7 +63,7 @@ export function CaseFileNextSteps({
   ).length;
 
   const findOrCreateParentTask = async (): Promise<string | null> => {
-    if (!user || !currentTenant || !caseFileTitle) return null;
+    if (!user || !resolvedTenantId || !caseFileTitle) return null;
 
     const normalizedCaseFileTitle = caseFileTitle.trim();
     const targetAssignee = assignedTo || user.id;
@@ -98,7 +103,7 @@ export function CaseFileNextSteps({
         priority: "medium",
         category: "general",
         user_id: user.id,
-        tenant_id: currentTenant.id,
+        tenant_id: resolvedTenantId,
         assigned_to: targetAssignee,
       })
       .select()
@@ -113,7 +118,14 @@ export function CaseFileNextSteps({
   };
 
   const handleQuickAdd = async () => {
-    if (!quickTaskTitle.trim() || !user || !currentTenant) return;
+    if (!quickTaskTitle.trim() || !user || !resolvedTenantId) {
+      toast({
+        title: "Schnellaufgabe konnte nicht erstellt werden",
+        description: "Bitte prüfen Sie die Mandantenzuordnung der Fallakte.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsAdding(true);
 
     try {
@@ -129,7 +141,7 @@ export function CaseFileNextSteps({
           priority: "medium",
           category: "general",
           user_id: user.id,
-          tenant_id: currentTenant.id,
+          tenant_id: resolvedTenantId,
           assigned_to: assignedTo || user.id,
           parent_task_id: parentTaskId,
         } as any)
@@ -144,6 +156,10 @@ export function CaseFileNextSteps({
       onRefresh();
     } catch (error) {
       console.error("Error creating quick task:", error);
+      toast({
+        title: "Schnellaufgabe konnte nicht erstellt werden",
+        variant: "destructive",
+      });
     } finally {
       setIsAdding(false);
     }
