@@ -147,6 +147,7 @@ interface MatrixClientContextType {
   activeSasVerification: MatrixSasVerificationState | null;
   confirmSasVerification: () => Promise<void>;
   rejectSasVerification: () => void;
+  lastVerificationError: string | null;
 }
 
 const MatrixClientContext = createContext<MatrixClientContextType | null>(null);
@@ -167,6 +168,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   messagesRef.current = messages;
   const [typingUsers, setTypingUsers] = useState<Map<string, string[]>>(new Map());
   const [activeSasVerification, setActiveSasVerification] = useState<MatrixSasVerificationState | null>(null);
+  const [lastVerificationError, setLastVerificationError] = useState<string | null>(null);
   const [e2eeDiagnostics, setE2eeDiagnostics] = useState<MatrixE2EEDiagnostics>({
     secureContext: window.isSecureContext,
     crossOriginIsolated: window.crossOriginIsolated,
@@ -538,6 +540,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     setMessages(new Map());
     setTypingUsers(new Map());
     setActiveSasVerification(null);
+    setLastVerificationError(null);
   }, [client]);
 
   const updateRoomList = (matrixClient: sdk.MatrixClient) => {
@@ -679,6 +682,26 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       throw new Error('Crypto API ist nicht verfügbar. E2EE muss zuerst aktiv sein.');
     }
 
+    setLastVerificationError(null);
+    setActiveSasVerification(null);
+
+    const describeVerificationFailure = (error: unknown): string => {
+      if (error instanceof sdk.MatrixEvent) {
+        const content = error.getContent() || {};
+        const code = typeof content.code === 'string' ? content.code : null;
+        const reason = typeof content.reason === 'string' ? content.reason : null;
+        if (code && reason) return `${code}: ${reason}`;
+        if (reason) return reason;
+        if (code) return code;
+      }
+
+      if (error instanceof Error) {
+        return error.message;
+      }
+
+      return 'Unbekannter Verifizierungsfehler';
+    };
+
     const trimmedDeviceId = otherDeviceId?.trim();
     const verificationRequest = trimmedDeviceId
       ? await crypto.requestDeviceVerification(credentials.userId, trimmedDeviceId)
@@ -696,26 +719,36 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         confirm: async () => {
           await sas.confirm();
           setActiveSasVerification(null);
+          setLastVerificationError(null);
         },
         mismatch: () => {
           sas.mismatch();
           setActiveSasVerification(null);
+          setLastVerificationError('Sie haben die Emoji-Codes als nicht übereinstimmend markiert.');
         },
         cancel: () => {
           sas.cancel();
           setActiveSasVerification(null);
+          setLastVerificationError('Verifizierung wurde abgebrochen.');
         },
       });
     });
 
-    verifier.on('cancel', () => {
+    verifier.on('cancel', (error) => {
+      const message = describeVerificationFailure(error);
+      setLastVerificationError(message);
       setActiveSasVerification(null);
     });
 
     void verifier.verify()
-      .then(() => setActiveSasVerification(null))
+      .then(() => {
+        setLastVerificationError(null);
+        setActiveSasVerification(null);
+      })
       .catch((error) => {
+        const message = describeVerificationFailure(error);
         console.error('Matrix SAS verification failed:', error);
+        setLastVerificationError(message);
         setActiveSasVerification(null);
       });
   }, [client, isConnected, credentials?.userId]);
@@ -793,6 +826,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     activeSasVerification,
     confirmSasVerification,
     rejectSasVerification,
+    lastVerificationError,
   };
 
   return (

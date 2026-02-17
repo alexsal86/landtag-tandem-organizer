@@ -24,6 +24,7 @@ export function MatrixLoginForm() {
     activeSasVerification,
     confirmSasVerification,
     rejectSasVerification,
+    lastVerificationError,
   } = useMatrixClient();
 
   const [matrixUserId, setMatrixUserId] = useState('');
@@ -359,6 +360,14 @@ export function MatrixLoginForm() {
           </div>
         </div>
 
+
+        {lastVerificationError && (
+          <Alert variant="destructive">
+            <AlertDescription>
+              Letzter Verifizierungsfehler: {lastVerificationError}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {activeSasVerification && (
           <Alert className="border-blue-500/40 bg-blue-500/5">
