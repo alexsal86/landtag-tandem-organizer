@@ -13,6 +13,36 @@ interface DecisionAttachmentPreviewDialogProps {
 
 const getFileExtension = (fileName: string) => fileName.split('.').pop()?.toLowerCase() || '';
 
+const isHttpUrl = (value: string) => /^https?:\/\//i.test(value);
+
+const normalizeStoragePath = (rawPath: string) => {
+  const trimmed = rawPath.trim();
+  if (!trimmed) return '';
+
+  const stripBucketPrefix = (value: string) =>
+    decodeURIComponent(value)
+      .replace(/^\/+/, '')
+      .replace(/^decision-attachments\//, '');
+
+  if (!isHttpUrl(trimmed)) {
+    return stripBucketPrefix(trimmed);
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    const marker = '/decision-attachments/';
+    const markerIndex = parsed.pathname.indexOf(marker);
+    if (markerIndex === -1) {
+      return '';
+    }
+
+    const pathInBucket = parsed.pathname.slice(markerIndex + marker.length);
+    return stripBucketPrefix(pathInBucket);
+  } catch {
+    return '';
+  }
+};
+
 export function DecisionAttachmentPreviewDialog({
   open,
   onOpenChange,
@@ -24,6 +54,7 @@ export function DecisionAttachmentPreviewDialog({
   const [error, setError] = useState<string | null>(null);
 
   const extension = useMemo(() => getFileExtension(fileName), [fileName]);
+  const normalizedFilePath = useMemo(() => normalizeStoragePath(filePath), [filePath]);
   const isPdf = extension === 'pdf';
   const isWord = extension === 'doc' || extension === 'docx';
   const isExcel = extension === 'xls' || extension === 'xlsx';
@@ -39,9 +70,18 @@ export function DecisionAttachmentPreviewDialog({
       setLoading(true);
       setError(null);
       try {
+        if (isHttpUrl(filePath) && !normalizedFilePath) {
+          setSignedUrl(filePath);
+          return;
+        }
+
+        if (!normalizedFilePath) {
+          throw new Error('Invalid storage path');
+        }
+
         const { data, error: signedUrlError } = await supabase.storage
           .from('decision-attachments')
-          .createSignedUrl(filePath, 60 * 10);
+          .createSignedUrl(normalizedFilePath, 60 * 10);
 
         if (signedUrlError) throw signedUrlError;
         setSignedUrl(data.signedUrl);
@@ -54,7 +94,7 @@ export function DecisionAttachmentPreviewDialog({
     };
 
     loadSignedUrl();
-  }, [open, filePath]);
+  }, [open, filePath, normalizedFilePath]);
 
   const officeViewerUrl = signedUrl
     ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(signedUrl)}`
@@ -62,9 +102,29 @@ export function DecisionAttachmentPreviewDialog({
 
   const handleDownload = async () => {
     try {
+      if (isHttpUrl(filePath) && !normalizedFilePath) {
+        const response = await fetch(filePath);
+        if (!response.ok) throw new Error(`Download failed: ${response.status}`);
+
+        const directBlob = await response.blob();
+        const directUrl = URL.createObjectURL(directBlob);
+        const directAnchor = document.createElement('a');
+        directAnchor.href = directUrl;
+        directAnchor.download = fileName;
+        document.body.appendChild(directAnchor);
+        directAnchor.click();
+        document.body.removeChild(directAnchor);
+        URL.revokeObjectURL(directUrl);
+        return;
+      }
+
+      if (!normalizedFilePath) {
+        throw new Error('Invalid storage path');
+      }
+
       const { data, error: downloadError } = await supabase.storage
         .from('decision-attachments')
-        .download(filePath);
+        .download(normalizedFilePath);
 
       if (downloadError) throw downloadError;
 
