@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, StickyNote, ListTodo, Trash, Cake } from 'lucide-react';
+import { CalendarDays, StickyNote, ListTodo, Trash, Cake, Scale } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
 import { BirthdayAgendaItem } from './BirthdayAgendaItem';
@@ -26,13 +26,22 @@ interface ProfileInfo {
   avatar_url?: string | null;
 }
 
+interface LinkedDecision {
+  id: string;
+  title: string;
+  description?: string | null;
+  response_deadline?: string | null;
+  priority?: number | null;
+}
+
 interface SystemAgendaItemProps {
-  systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays';
+  systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions';
   meetingDate?: string | Date;
   meetingId?: string;
   allowStarring?: boolean;
   linkedQuickNotes?: any[];
   linkedTasks?: LinkedTask[];
+  linkedDecisions?: LinkedDecision[];
   profiles?: ProfileInfo[];
   resultText?: string | null;
   onUpdateNoteResult?: (noteId: string, result: string) => void;
@@ -67,6 +76,7 @@ export function SystemAgendaItem({
   allowStarring = false,
   linkedQuickNotes = [],
   linkedTasks = [],
+  linkedDecisions = [],
   profiles,
   resultText,
   onUpdateNoteResult,
@@ -83,6 +93,7 @@ export function SystemAgendaItem({
       case 'quick_notes': return 'border-l-amber-500';
       case 'tasks': return 'border-l-green-500';
       case 'birthdays': return 'border-l-pink-500';
+      case 'decisions': return 'border-l-violet-500';
       default: return 'border-l-muted';
     }
   };
@@ -93,6 +104,7 @@ export function SystemAgendaItem({
       case 'quick_notes': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
       case 'tasks': return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800';
       case 'birthdays': return 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950 dark:text-pink-300 dark:border-pink-800';
+      case 'decisions': return 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800';
       default: return '';
     }
   };
@@ -103,6 +115,7 @@ export function SystemAgendaItem({
       case 'quick_notes': return <StickyNote className="h-4 w-4 text-amber-500" />;
       case 'tasks': return <ListTodo className="h-4 w-4 text-green-500" />;
       case 'birthdays': return <Cake className="h-4 w-4 text-pink-500" />;
+      case 'decisions': return <Scale className="h-4 w-4 text-violet-500" />;
       default: return null;
     }
   };
@@ -113,6 +126,7 @@ export function SystemAgendaItem({
       case 'quick_notes': return 'Meine Notizen';
       case 'tasks': return 'Aufgaben';
       case 'birthdays': return 'Geburtstage';
+      case 'decisions': return 'Entscheidungen';
       default: return '';
     }
   };
@@ -123,6 +137,7 @@ export function SystemAgendaItem({
       case 'quick_notes': return <StickyNote className="h-3 w-3 mr-1" />;
       case 'tasks': return <ListTodo className="h-3 w-3 mr-1" />;
       case 'birthdays': return <Cake className="h-3 w-3 mr-1" />;
+      case 'decisions': return <Scale className="h-3 w-3 mr-1" />;
       default: return null;
     }
   };
@@ -240,6 +255,44 @@ export function SystemAgendaItem({
       </Card>
     );
   }
+
+
+  if (systemType === 'decisions') {
+    return (
+      <Card className={cn("border-l-4", getBorderColor(), className)}>
+        {renderHeader(
+          linkedDecisions.length > 0 ? <Badge variant="secondary">{linkedDecisions.length}</Badge> : undefined
+        )}
+        <CardContent className="px-3 pb-2 pt-0">
+          {linkedDecisions.length > 0 ? (
+            <div className="space-y-2">
+              {linkedDecisions.map((decision) => (
+                <div key={decision.id} className="p-3 bg-muted/50 rounded-md">
+                  <h4 className="font-semibold text-sm mb-1">{decision.title}</h4>
+                  {decision.description && (
+                    <RichTextDisplay content={decision.description} className="text-sm text-muted-foreground" />
+                  )}
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
+                    {decision.response_deadline && (
+                      <span>Frist: {format(new Date(decision.response_deadline), "dd.MM.yyyy", { locale: de })}</span>
+                    )}
+                    {decision.priority !== null && decision.priority !== undefined && (
+                      <span>Priorität: {decision.priority}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Keine relevanten Entscheidungen für dieses Meeting vorhanden.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (systemType === 'birthdays') {
     return (
       <BirthdayAgendaItem
