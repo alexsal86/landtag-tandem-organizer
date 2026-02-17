@@ -26,7 +26,7 @@ export function MatrixChatView() {
     rooms,
     credentials,
     sendMessage,
-    getMessages,
+    refreshMessages,
     totalUnreadCount,
     roomMessages,
     typingUsers,
@@ -71,9 +71,9 @@ export function MatrixChatView() {
   // Load initial messages when room is selected
   useEffect(() => {
     if (selectedRoomId && isConnected) {
-      getMessages(selectedRoomId, 100);
+      refreshMessages(selectedRoomId, 100);
     }
-  }, [selectedRoomId, isConnected, getMessages]);
+  }, [selectedRoomId, isConnected, refreshMessages]);
 
 
   // Fallback refresh for encrypted timelines if event callbacks are delayed/missed
@@ -81,11 +81,11 @@ export function MatrixChatView() {
     if (!selectedRoomId || !isConnected) return;
 
     const intervalId = window.setInterval(() => {
-      getMessages(selectedRoomId, 100);
+      refreshMessages(selectedRoomId, 100);
     }, 5000);
 
     return () => window.clearInterval(intervalId);
-  }, [selectedRoomId, isConnected, getMessages]);
+  }, [selectedRoomId, isConnected, refreshMessages]);
 
   const handleSendMessage = useCallback(async (message: string) => {
     if (!selectedRoomId) return;
