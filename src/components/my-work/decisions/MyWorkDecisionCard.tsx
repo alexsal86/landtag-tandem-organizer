@@ -11,6 +11,7 @@ import { TaskDecisionResponse } from "@/components/task-decisions/TaskDecisionRe
 import { DecisionCardActivity } from "@/components/task-decisions/DecisionCardActivity";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { EmailPreviewDialog } from "@/components/task-decisions/EmailPreviewDialog";
+import { DecisionAttachmentPreviewDialog } from "@/components/task-decisions/DecisionAttachmentPreviewDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { 
   MessageCircle, CheckCircle, MoreVertical, Edit, Archive, 
@@ -88,6 +89,7 @@ const MyWorkDecisionCardInner = ({
   currentUserId,
 }: MyWorkDecisionCardProps) => {
   const [previewEmail, setPreviewEmail] = useState<{ file_path: string; file_name: string } | null>(null);
+  const [previewAttachment, setPreviewAttachment] = useState<{ file_path: string; file_name: string } | null>(null);
   const summary = getResponseSummary(decision.participants);
   const isCustomTemplate = decision.response_options && decision.response_options.length > 0 &&
     !(['yes','no','question'].every(k => decision.response_options!.some(o => o.key === k)) && decision.response_options!.length <= 3);
@@ -249,13 +251,33 @@ const MyWorkDecisionCardInner = ({
             }
           </button>
 
-          {(decision.attachmentCount ?? 0) > 0 && (
-            <span className="flex items-center gap-1">
-              <Paperclip className="h-3.5 w-3.5" />
-              {(decision.attachmentCount ?? 0) - (decision.emailAttachmentCount ?? 0) > 0 
-                ? (decision.attachmentCount ?? 0) - (decision.emailAttachmentCount ?? 0) 
-                : null}
-            </span>
+          {(decision.fileAttachments?.length ?? 0) > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                >
+                  <Paperclip className="h-3.5 w-3.5" />
+                  {decision.fileAttachments?.length}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-2" onClick={(e) => e.stopPropagation()}>
+                <p className="text-xs font-medium mb-1.5">Angehängte Dateien</p>
+                <div className="space-y-1">
+                  {(decision.fileAttachments || []).map(att => (
+                    <button
+                      key={att.id}
+                      onClick={() => setPreviewAttachment({ file_path: att.file_path, file_name: att.file_name })}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-1 transition-colors w-full text-left cursor-pointer"
+                    >
+                      <Paperclip className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{att.file_name}</span>
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           )}
 
           {(decision.emailAttachmentCount ?? 0) > 0 && (
@@ -368,6 +390,13 @@ const MyWorkDecisionCardInner = ({
       onOpenChange={() => setPreviewEmail(null)}
       filePath={previewEmail?.file_path || ''}
       fileName={previewEmail?.file_name || ''}
+    />
+
+    <DecisionAttachmentPreviewDialog
+      open={!!previewAttachment}
+      onOpenChange={() => setPreviewAttachment(null)}
+      filePath={previewAttachment?.file_path || ''}
+      fileName={previewAttachment?.file_name || ''}
     />
     </>
   );

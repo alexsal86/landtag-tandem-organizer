@@ -19,6 +19,7 @@ export interface MyWorkDecision {
   attachmentCount?: number;
   emailAttachmentCount?: number;
   emailAttachments?: Array<{ id: string; file_name: string; file_path: string }>;
+  fileAttachments?: Array<{ id: string; file_name: string; file_path: string }>;
   topicIds?: string[];
   response_options?: ResponseOption[];
   priority?: number;

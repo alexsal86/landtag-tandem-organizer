@@ -16,6 +16,7 @@ import { DecisionEditDialog } from "./DecisionEditDialog";
 import { DecisionSidebar } from "./DecisionSidebar";
 import { DecisionComments } from "./DecisionComments";
 import { DecisionCardActivity } from "./DecisionCardActivity";
+import { DecisionAttachmentPreviewDialog } from "./DecisionAttachmentPreviewDialog";
 import { UserBadge } from "@/components/ui/user-badge";
 import { AvatarStack } from "@/components/ui/AvatarStack";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
@@ -30,6 +31,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -106,6 +108,7 @@ interface DecisionRequest {
   isStandalone: boolean;
   isCreator: boolean;
   attachmentCount?: number;
+  attachmentFiles?: Array<{ id: string; file_name: string; file_path: string }>;
   topicIds?: string[];
   priority?: number;
   response_options?: ResponseOption[];
@@ -165,6 +168,8 @@ export const DecisionOverview = () => {
     content: string | null;
     createdAt: string;
   }>>([]);
+  const [attachmentFilesByDecision, setAttachmentFilesByDecision] = useState<Record<string, Array<{ id: string; file_name: string; file_path: string }>>>({});
+  const [previewAttachment, setPreviewAttachment] = useState<{ file_path: string; file_name: string } | null>(null);
   // Handle URL action parameter for QuickActions
   useEffect(() => {
     const action = searchParams.get('action');
@@ -1013,7 +1018,25 @@ export const DecisionOverview = () => {
       response_type: p.responses[0]?.response_type || null,
     }));
 
-    const getInitials = (name: string | null) => {
+    const loadAttachmentFiles = async (decisionId: string) => {
+    if (attachmentFilesByDecision[decisionId]) return;
+
+    const { data, error } = await supabase
+      .from('task_decision_attachments')
+      .select('id, file_name, file_path')
+      .eq('decision_id', decisionId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading attachment files:', error);
+      toast({ title: 'Fehler', description: 'Anhänge konnten nicht geladen werden.', variant: 'destructive' });
+      return;
+    }
+
+    setAttachmentFilesByDecision(prev => ({ ...prev, [decisionId]: data || [] }));
+  };
+
+  const getInitials = (name: string | null) => {
       if (!name) return '?';
       return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     };
@@ -1175,10 +1198,38 @@ export const DecisionOverview = () => {
 
             {/* Attachments */}
             {(decision.attachmentCount ?? 0) > 0 && (
-              <span className="flex items-center gap-1">
-                <Paperclip className="h-3.5 w-3.5" />
-                {decision.attachmentCount}
-              </span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await loadAttachmentFiles(decision.id);
+                    }}
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    <Paperclip className="h-3.5 w-3.5" />
+                    {decision.attachmentCount}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-2" onClick={(e) => e.stopPropagation()}>
+                  <p className="text-xs font-medium mb-1.5">Angehängte Dateien</p>
+                  <div className="space-y-1 max-h-56 overflow-y-auto">
+                    {(attachmentFilesByDecision[decision.id] || []).map((att) => (
+                      <button
+                        key={att.id}
+                        onClick={() => setPreviewAttachment({ file_path: att.file_path, file_name: att.file_name })}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-1 transition-colors w-full text-left cursor-pointer"
+                      >
+                        <Paperclip className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{att.file_name}</span>
+                      </button>
+                    ))}
+                    {(attachmentFilesByDecision[decision.id] || []).length === 0 && (
+                      <p className="text-xs text-muted-foreground">Keine Dateiliste verfügbar.</p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
 
             {/* Topics */}
@@ -1475,6 +1526,13 @@ export const DecisionOverview = () => {
           }}
         />
       )}
+
+      <DecisionAttachmentPreviewDialog
+        open={!!previewAttachment}
+        onOpenChange={() => setPreviewAttachment(null)}
+        filePath={previewAttachment?.file_path || ''}
+        fileName={previewAttachment?.file_name || ''}
+      />
 
       <AlertDialog open={!!deletingDecisionId} onOpenChange={() => setDeletingDecisionId(null)}>
         <AlertDialogContent>
