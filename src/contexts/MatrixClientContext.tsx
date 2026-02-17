@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import * as sdk from 'matrix-js-sdk';
+import { VerifierEvent, type Verifier } from 'matrix-js-sdk/lib/crypto-api/verification';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
@@ -711,7 +712,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       ? await crypto.requestDeviceVerification(credentials.userId, trimmedDeviceId)
       : await crypto.requestOwnUserVerification();
 
-    let verifier: sdk.Verifier;
+    let verifier: Verifier;
     try {
       verifier = await verificationRequest.startVerification('m.sas.v1');
     } catch (error) {
@@ -727,7 +728,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       verifier = await verificationRequest.startVerification('m.sas.v1');
     }
 
-    verifier.on('show_sas', (sas) => {
+    verifier.on(VerifierEvent.ShowSas, (sas) => {
       const emojis = (sas.sas.emoji || []).map(([symbol, description]) => ({ symbol, description }));
       setActiveSasVerification({
         transactionId: verificationRequest.transactionId,
@@ -752,7 +753,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       });
     });
 
-    verifier.on('cancel', (error) => {
+    verifier.on(VerifierEvent.Cancel, (error) => {
       const message = describeVerificationFailure(error);
       setLastVerificationError(message);
       setActiveSasVerification(null);
