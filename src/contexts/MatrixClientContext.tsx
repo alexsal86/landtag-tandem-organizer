@@ -33,6 +33,16 @@ interface MatrixE2EEDiagnostics {
   cryptoError: string | null;
 }
 
+interface MatrixSasVerificationState {
+  transactionId?: string;
+  otherDeviceId?: string;
+  emojis: Array<{ symbol: string; description: string }>;
+  decimals: [number, number, number] | null;
+  confirm: () => Promise<void>;
+  mismatch: () => void;
+  cancel: () => void;
+}
+
 export interface MatrixMessage {
   eventId: string;
   roomId: string;
@@ -134,6 +144,9 @@ interface MatrixClientContextType {
   removeReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
   createRoom: (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => Promise<string>;
   requestSelfVerification: (otherDeviceId?: string) => Promise<void>;
+  activeSasVerification: MatrixSasVerificationState | null;
+  confirmSasVerification: () => Promise<void>;
+  rejectSasVerification: () => void;
 }
 
 const MatrixClientContext = createContext<MatrixClientContextType | null>(null);
@@ -153,6 +166,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const [typingUsers, setTypingUsers] = useState<Map<string, string[]>>(new Map());
+  const [activeSasVerification, setActiveSasVerification] = useState<MatrixSasVerificationState | null>(null);
   const [e2eeDiagnostics, setE2eeDiagnostics] = useState<MatrixE2EEDiagnostics>({
     secureContext: window.isSecureContext,
     crossOriginIsolated: window.crossOriginIsolated,
@@ -523,6 +537,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     setRooms([]);
     setMessages(new Map());
     setTypingUsers(new Map());
+    setActiveSasVerification(null);
   }, [client]);
 
   const updateRoomList = (matrixClient: sdk.MatrixClient) => {
@@ -665,14 +680,58 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     }
 
     const trimmedDeviceId = otherDeviceId?.trim();
+    const verificationRequest = trimmedDeviceId
+      ? await crypto.requestDeviceVerification(credentials.userId, trimmedDeviceId)
+      : await crypto.requestOwnUserVerification();
 
-    if (trimmedDeviceId) {
-      await crypto.requestDeviceVerification(credentials.userId, trimmedDeviceId);
-      return;
+    const verifier = await verificationRequest.startVerification('m.sas.v1');
+
+    verifier.on('show_sas', (sas) => {
+      const emojis = (sas.sas.emoji || []).map(([symbol, description]) => ({ symbol, description }));
+      setActiveSasVerification({
+        transactionId: verificationRequest.transactionId,
+        otherDeviceId: verificationRequest.otherDeviceId,
+        emojis,
+        decimals: sas.sas.decimal || null,
+        confirm: async () => {
+          await sas.confirm();
+          setActiveSasVerification(null);
+        },
+        mismatch: () => {
+          sas.mismatch();
+          setActiveSasVerification(null);
+        },
+        cancel: () => {
+          sas.cancel();
+          setActiveSasVerification(null);
+        },
+      });
+    });
+
+    verifier.on('cancel', () => {
+      setActiveSasVerification(null);
+    });
+
+    void verifier.verify()
+      .then(() => setActiveSasVerification(null))
+      .catch((error) => {
+        console.error('Matrix SAS verification failed:', error);
+        setActiveSasVerification(null);
+      });
+  }, [client, isConnected, credentials?.userId]);
+
+  const confirmSasVerification = useCallback(async () => {
+    if (!activeSasVerification) {
+      throw new Error('Keine aktive Emoji-Verifizierung vorhanden.');
     }
 
-    await crypto.requestOwnUserVerification();
-  }, [client, isConnected, credentials?.userId]);
+    await activeSasVerification.confirm();
+  }, [activeSasVerification]);
+
+  const rejectSasVerification = useCallback(() => {
+    if (!activeSasVerification) return;
+    activeSasVerification.mismatch();
+  }, [activeSasVerification]);
 
   const getMessages = useCallback((roomId: string, limit: number = 50): MatrixMessage[] => {
     if (!client) return [];
@@ -731,6 +790,9 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     removeReaction,
     createRoom,
     requestSelfVerification,
+    activeSasVerification,
+    confirmSasVerification,
+    rejectSasVerification,
   };
 
   return (
