@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type KeyboardEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1207,6 +1207,24 @@ export function QuickNotesList({
     }
   };
 
+  const handleEditTitleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      if (editContent.trim()) {
+        void handleSaveEdit();
+      }
+    }
+  };
+
+  const handleEditContentKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      if (editContent.trim()) {
+        void handleSaveEdit();
+      }
+    }
+  };
+
   // Version history state and functions
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [versionHistoryNote, setVersionHistoryNote] = useState<QuickNote | null>(null);
@@ -2250,14 +2268,19 @@ export function QuickNotesList({
               placeholder="Titel (optional)"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
+              onKeyDown={handleEditTitleKeyDown}
             />
             <SimpleRichTextEditor
               key={editDialogOpen ? editingNote?.id : 'closed'}
               initialContent={editContent}
               onChange={setEditContent}
+              onKeyDown={handleEditContentKeyDown}
               placeholder="Inhalt"
               minHeight="150px"
             />
+            <p className="text-xs text-muted-foreground">
+              Enter speichert, Shift + Enter erzeugt eine neue Zeile.
+            </p>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
