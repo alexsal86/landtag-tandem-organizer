@@ -340,6 +340,27 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       clientRef.current = matrixClient;
 
+      // Validate stored device still exists on homeserver
+      if (localDeviceId) {
+        try {
+          const resp = await fetch(
+            `${creds.homeserverUrl}/_matrix/client/v3/devices/${localDeviceId}`,
+            { headers: { Authorization: `Bearer ${creds.accessToken}` } }
+          );
+          if (!resp.ok) {
+            console.warn('Stored device no longer exists on server, creating new device');
+            localStorage.removeItem(`matrix_device_id:${creds.userId}`);
+            // Recreate client without stale deviceId
+            const freshClient = sdk.createClient({
+              baseUrl: creds.homeserverUrl,
+              accessToken: creds.accessToken,
+              userId: creds.userId,
+            });
+            clientRef.current = freshClient;
+          }
+        } catch {}
+      }
+
       const updateRuntimeDiagnostics = (
         cryptoError: string | null = null,
         cryptoState?: { secretStorageReady: boolean | null; crossSigningReady: boolean | null; keyBackupEnabled: boolean | null }
@@ -975,6 +996,26 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   // ─── resetCryptoStore ────────────────────────────────────────────────────
 
   const resetCryptoStore = useCallback(async () => {
+    const mc = clientRef.current;
+
+    // Try to delete device server-side first (prevents OTK collision on next login)
+    if (mc) {
+      try {
+        const deviceId = mc.getDeviceId();
+        if (deviceId) {
+          const localpart = credentials?.userId?.split(':')[0].substring(1);
+          await mc.deleteDevice(deviceId, credentials?.password ? {
+            type: 'm.login.password',
+            identifier: { type: 'm.id.user', user: localpart },
+            password: credentials.password,
+          } : {});
+          console.log('Device deleted from server:', deviceId);
+        }
+      } catch (e) {
+        console.warn('Could not delete device from server (non-critical):', e);
+      }
+    }
+
     disconnect();
 
     try {
