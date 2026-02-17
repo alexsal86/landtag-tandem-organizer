@@ -1,82 +1,80 @@
 
-## Fix: One-Time-Key-Kollision und Device-Validierung
 
-### Problem
+## Build-Fehler in Edge Functions beheben
 
-Beim Connect wird eine Device ID aus localStorage wiederverwendet, deren Crypto-Store (IndexedDB) aber nicht mehr zum serverseitigen State passt. Das fuehrt zu:
+Die Build-Fehler sind **nicht** durch die Matrix-Aenderungen verursacht, sondern bestehen schon laenger in mehreren Edge Functions. Es sind drei Fehler-Kategorien:
 
+### 1. `error` is of type `unknown` (6 Dateien)
+
+In `catch`-Bloecken wird `error.message` direkt aufgerufen, ohne den Typ zu pruefen. Fix: `(error as Error).message` oder `error instanceof Error ? error.message : String(error)`.
+
+**Betroffene Dateien:**
+- `batch-geocode-contacts/index.ts` (Zeilen 82, 96)
+- `fetch-karlsruhe-districts/index.ts` (Zeile 188)
+- `global-logout/index.ts` (Zeile 58)
+- `geocode-contact-address/index.ts` (Zeile 153)
+- `publish-to-ghost/index.ts` (Zeile 224)
+- `reset-user-mfa/index.ts` (Zeilen 110, 114)
+
+### 2. `Uint8Array` nicht kompatibel mit `BufferSource` (2 Dateien)
+
+Deno's neuere Typdefinitionen erfordern `.buffer` als `ArrayBuffer` (nicht `ArrayBufferLike`). Fix: `new Uint8Array(bytes)` durch `bytes.buffer as ArrayBuffer` oder einen Cast ersetzen.
+
+**Betroffene Dateien:**
+- `publish-to-ghost/index.ts` (Zeilen 46-48, 58)
+- `send-push-notification/index.ts` (Zeilen 135-137, 165-166, 178-179, 208-209)
+
+Fix-Muster:
+```text
+// Vorher:
+crypto.subtle.importKey('raw', secretBytes, ...)
+
+// Nachher:
+crypto.subtle.importKey('raw', secretBytes.buffer as ArrayBuffer, ...)
 ```
-One time key signed_curve25519:AAAAAAAAAA0 already exists → 400
-→ Crypto-Layer sendet m.key.verification.cancel
-→ Andere Seite sieht m.user_error
+
+### 3. `.catch()` auf Postgrest-Builder (reset-user-mfa)
+
+Supabase Postgrest-Builder hat kein `.catch()`. Fix: In `try/catch` umwandeln oder `.then()` verwenden.
+
+**Betroffen:** `reset-user-mfa/index.ts` (Zeilen 78, 92)
+
+Fix-Muster:
+```text
+// Vorher:
+await supabase.from('table').insert({...}).catch(err => ...);
+
+// Nachher:
+const { error: insertError } = await supabase.from('table').insert({...});
+if (insertError) console.error('Failed:', insertError);
 ```
 
-### Aenderungen in `src/contexts/MatrixClientContext.tsx`
+### 4. Array-Zugriff statt Objekt (create-daily-appointment-feedback)
 
-**1. Device-Validierung vor `initRustCrypto` (nach Zeile 338)**
+`external_calendars` ist ein Array, nicht ein Objekt. Fix: Auf erstes Element zugreifen.
 
-Bevor der Client gestartet wird, wird geprueft ob das gespeicherte Device noch auf dem Homeserver existiert. Falls nicht, wird die lokale Device ID verworfen und der Client ohne Device ID erstellt (Server vergibt eine neue).
+**Betroffen:** `create-daily-appointment-feedback/index.ts` (Zeilen 176-177)
 
 ```text
-// Nach createClient, vor initRustCrypto:
-if (localDeviceId) {
-  try {
-    const resp = await fetch(
-      `${creds.homeserverUrl}/_matrix/client/v3/devices/${localDeviceId}`,
-      { headers: { Authorization: `Bearer ${creds.accessToken}` } }
-    );
-    if (!resp.ok) {
-      console.warn('Stored device no longer exists on server, creating new device');
-      localStorage.removeItem(`matrix_device_id:${creds.userId}`);
-      // Recreate client without stale deviceId
-      matrixClient = sdk.createClient({
-        baseUrl: creds.homeserverUrl,
-        accessToken: creds.accessToken,
-        userId: creds.userId,
-      });
-      clientRef.current = matrixClient;
-    }
-  } catch {}
-}
+// Vorher:
+const userId = externalEvent.external_calendars.user_id;
+
+// Nachher:
+const userId = externalEvent.external_calendars?.[0]?.user_id;
 ```
-
-**2. `resetCryptoStore` mit serverseitigem Device-Delete (Zeilen 960-1023)**
-
-Der bestehende `resetCryptoStore` loescht nur lokale Daten. Neu wird zuerst versucht, das Device auch serverseitig zu loeschen (mit UIA-Passwort falls vorhanden). Das verhindert die Key-Kollision beim naechsten Login.
-
-```text
-// Vor disconnect() und IndexedDB-Cleanup:
-if (mc) {
-  try {
-    const deviceId = mc.getDeviceId();
-    if (deviceId) {
-      const localpart = credentials?.userId?.split(':')[0].substring(1);
-      await mc.deleteDevice(deviceId, credentials?.password ? {
-        type: 'm.login.password',
-        identifier: { type: 'm.id.user', user: localpart },
-        password: credentials.password,
-      } : {});
-      console.log('Device deleted from server:', deviceId);
-    }
-  } catch (e) {
-    console.warn('Could not delete device from server (non-critical):', e);
-  }
-}
-```
-
-**3. Credentials um password erweitern fuer resetCryptoStore**
-
-`resetCryptoStore` braucht Zugriff auf `credentials?.password`. Da das Passwort in `credentials` nach dem Login gespeichert wird (nur im Memory, nicht persistiert), ist das bereits verfuegbar -- Zeile 683: `setCredentials({ ...creds, deviceId: finalDeviceId || undefined })` speichert auch `password` mit. Es muss nichts zusaetzlich geaendert werden.
 
 ### Zusammenfassung
 
-| Stelle | Aenderung |
+| Datei | Aenderung |
 |---|---|
-| `connect()` nach createClient (Zeile 338) | Device-Validierung per GET `/devices/{id}`, bei 404 Client ohne Device ID neu erstellen |
-| `resetCryptoStore` (Zeile 960) | Serverseitiges `deleteDevice` mit UIA vor lokalem Cleanup |
+| `batch-geocode-contacts/index.ts` | `error` Typ-Guard (2 Stellen) |
+| `fetch-karlsruhe-districts/index.ts` | `error` Typ-Guard (1 Stelle) |
+| `global-logout/index.ts` | `error` Typ-Guard (1 Stelle) |
+| `geocode-contact-address/index.ts` | `error` Typ-Guard (1 Stelle) |
+| `publish-to-ghost/index.ts` | `error` Typ-Guard + `BufferSource` Cast (3 Stellen) |
+| `send-push-notification/index.ts` | `BufferSource` Cast (5 Stellen) |
+| `reset-user-mfa/index.ts` | `error` Typ-Guard + `.catch()` durch `try/catch` ersetzen (7 Stellen) |
+| `create-daily-appointment-feedback/index.ts` | Array-Zugriff `[0]` (2 Stellen) |
 
-### Was sich aendert
+Insgesamt 8 Dateien mit rein mechanischen TypeScript-Fixes. Keine Logik-Aenderungen.
 
-- Veraltete Device IDs werden beim Connect erkannt und verworfen statt Key-Kollisionen auszuloesen
-- `resetCryptoStore` raeumt auch serverseitig auf, sodass ein sauberer Neustart moeglich ist
-- Keine manuellen Browser-Cache-Loeschungen mehr noetig
