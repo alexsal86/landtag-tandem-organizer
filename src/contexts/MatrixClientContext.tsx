@@ -1,14 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import * as sdk from 'matrix-js-sdk';
+import { CryptoEvent } from 'matrix-js-sdk';
+import { VerifierEvent, VerificationPhase, type Verifier } from 'matrix-js-sdk/lib/crypto-api/verification';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
+
+// ─── Interfaces ──────────────────────────────────────────────────────────────
 
 interface MatrixCredentials {
   userId: string;
   accessToken: string;
   homeserverUrl: string;
   deviceId?: string;
+  password?: string; // Only used for UIA during bootstrapCrossSigning, never persisted
 }
 
 interface MatrixRoom {
@@ -73,6 +78,12 @@ export interface MatrixMessage {
   };
 }
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const MAX_CACHED_MESSAGES = 200;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): MatrixMessage | null => {
   const eventType = event.getType();
   const clearType = (event as any).getClearType?.();
@@ -123,6 +134,57 @@ const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): Matrix
   };
 };
 
+/**
+ * Shared helper: attach SAS verifier listeners.
+ * Used by both `connect` (incoming verification) and `requestSelfVerification` (outgoing).
+ */
+function setupVerifierListeners(
+  verifier: Verifier,
+  verificationRequest: any,
+  setActiveSasVerification: React.Dispatch<React.SetStateAction<MatrixSasVerificationState | null>>,
+  setLastVerificationError: React.Dispatch<React.SetStateAction<string | null>>,
+  describeError?: (error: unknown) => string,
+) {
+  const formatError = describeError ?? ((e: unknown) => (e instanceof Error ? e.message : 'Verifizierung abgebrochen'));
+
+  verifier.on(VerifierEvent.ShowSas, (sas) => {
+    const emojis = (sas.sas.emoji || []).map(([symbol, description]: [string, string]) => ({ symbol, description }));
+    setActiveSasVerification({
+      transactionId: verificationRequest.transactionId,
+      otherDeviceId: verificationRequest.otherDeviceId,
+      emojis,
+      decimals: sas.sas.decimal || null,
+      confirm: async () => {
+        try {
+          await sas.confirm();
+          // State-Cleanup erfolgt durch verifier.verify().then()
+          // NICHT hier null setzen -- sonst Race Condition
+        } catch (e) {
+          setLastVerificationError(e instanceof Error ? e.message : 'Bestaetigung fehlgeschlagen');
+          setActiveSasVerification(null);
+        }
+      },
+      mismatch: () => {
+        sas.mismatch();
+        setActiveSasVerification(null);
+        setLastVerificationError('Sie haben die Emoji-Codes als nicht übereinstimmend markiert.');
+      },
+      cancel: () => {
+        sas.cancel();
+        setActiveSasVerification(null);
+        setLastVerificationError('Verifizierung wurde abgebrochen.');
+      },
+    });
+  });
+
+  verifier.on(VerifierEvent.Cancel, (error) => {
+    setLastVerificationError(formatError(error));
+    setActiveSasVerification(null);
+  });
+}
+
+// ─── Context type ────────────────────────────────────────────────────────────
+
 interface MatrixClientContextType {
   client: sdk.MatrixClient | null;
   isConnected: boolean;
@@ -135,7 +197,7 @@ interface MatrixClientContextType {
   connect: (credentials: MatrixCredentials) => Promise<void>;
   disconnect: () => void;
   sendMessage: (roomId: string, message: string, replyToEventId?: string) => Promise<void>;
-  getMessages: (roomId: string, limit?: number) => MatrixMessage[];
+  refreshMessages: (roomId: string, limit?: number) => void;
   totalUnreadCount: number;
   roomMessages: Map<string, MatrixMessage[]>;
   typingUsers: Map<string, string[]>;
@@ -148,14 +210,18 @@ interface MatrixClientContextType {
   confirmSasVerification: () => Promise<void>;
   rejectSasVerification: () => void;
   lastVerificationError: string | null;
+  resetCryptoStore: () => Promise<void>;
 }
 
 const MatrixClientContext = createContext<MatrixClientContextType | null>(null);
 
+// ─── Provider ────────────────────────────────────────────────────────────────
+
 export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  
+
+  // State
   const [client, setClient] = useState<sdk.MatrixClient | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -168,7 +234,6 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   messagesRef.current = messages;
   const [typingUsers, setTypingUsers] = useState<Map<string, string[]>>(new Map());
   const [activeSasVerification, setActiveSasVerification] = useState<MatrixSasVerificationState | null>(null);
-  const isConnectingRef = useRef(false);
   const [lastVerificationError, setLastVerificationError] = useState<string | null>(null);
   const [e2eeDiagnostics, setE2eeDiagnostics] = useState<MatrixE2EEDiagnostics>({
     secureContext: window.isSecureContext,
@@ -181,7 +246,48 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     cryptoError: null,
   });
 
-  // Load saved credentials from database
+  // Refs for cleanup
+  const isConnectingRef = useRef(false);
+  const connectCalledRef = useRef(false);
+  const isConnectedRef = useRef(false);
+  const clientRef = useRef<sdk.MatrixClient | null>(null);
+  const listenersRef = useRef<Array<{ event: string; handler: (...args: any[]) => void }>>([]);
+
+  // Keep isConnectedRef in sync
+  useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
+
+  // ─── updateRoomList (stable callback) ─────────────────────────────────
+
+  const updateRoomList = useCallback((matrixClient: sdk.MatrixClient) => {
+    const joinedRooms = matrixClient.getRooms();
+
+    const roomList: MatrixRoom[] = joinedRooms.map(room => {
+      const timeline = room.getLiveTimeline().getEvents();
+      const lastMessageEvent = timeline
+        .filter(e => e.getType() === 'm.room.message')
+        .pop();
+
+      const isDirect = room.getJoinedMemberCount() === 2;
+      const isEncrypted = room.hasEncryptionStateEvent();
+
+      return {
+        roomId: room.roomId,
+        name: room.name || room.roomId,
+        lastMessage: lastMessageEvent?.getContent().body,
+        lastMessageTimestamp: lastMessageEvent?.getTs(),
+        unreadCount: room.getUnreadNotificationCount() || 0,
+        isDirect,
+        memberCount: room.getJoinedMemberCount(),
+        isEncrypted,
+      };
+    });
+
+    roomList.sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+    setRooms(roomList);
+  }, []);
+
+  // ─── Load credentials from database ─────────────────────────────────────
+
   useEffect(() => {
     const loadCredentials = async () => {
       if (!user || !currentTenant?.id) return;
@@ -196,13 +302,12 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
         if (profile?.matrix_user_id && profile?.matrix_access_token) {
           const storedDeviceId = localStorage.getItem(`matrix_device_id:${profile.matrix_user_id}`) || undefined;
-          const creds: MatrixCredentials = {
+          setCredentials({
             userId: profile.matrix_user_id,
             accessToken: profile.matrix_access_token,
             homeserverUrl: profile.matrix_homeserver_url || 'https://matrix.org',
             deviceId: storedDeviceId,
-          };
-          setCredentials(creds);
+          });
         }
       } catch (error) {
         console.error('Error loading Matrix credentials:', error);
@@ -212,66 +317,49 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     loadCredentials();
   }, [user, currentTenant?.id]);
 
+  // ─── connect ─────────────────────────────────────────────────────────────
+
   const connect = useCallback(async (creds: MatrixCredentials) => {
-    if (isConnectingRef.current || isConnected) return;
+    if (isConnectingRef.current) return;
 
     isConnectingRef.current = true;
     setIsConnecting(true);
     setConnectionError(null);
 
     try {
-      const fetchDeviceIdFromWhoAmI = async (): Promise<string | null> => {
-        try {
-          const response = await fetch(`${creds.homeserverUrl.replace(/\/$/, '')}/_matrix/client/v3/account/whoami`, {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${creds.accessToken}`,
-            },
-          });
+      // 1. Resolve device ID from localStorage (no whoAmI call)
+      const localDeviceId = creds.deviceId || localStorage.getItem(`matrix_device_id:${creds.userId}`) || undefined;
 
-          if (!response.ok) {
-            return null;
-          }
-
-          const whoami = await response.json();
-          return typeof whoami?.device_id === 'string' ? whoami.device_id : null;
-        } catch (error) {
-          console.error('Could not resolve Matrix device ID via whoami:', error);
-          return null;
-        }
-      };
-
-      const localDeviceId = localStorage.getItem(`matrix_device_id:${creds.userId}`) || null;
-      const resolvedDeviceId = creds.deviceId || localDeviceId || await fetchDeviceIdFromWhoAmI();
-
-      if (!resolvedDeviceId) {
-        throw new Error('Matrix Device ID konnte nicht ermittelt werden. Bitte tragen Sie die Device ID in den Matrix-Einstellungen ein (Element: Einstellungen → Hilfe & Info).');
-      }
-
+      // 2. Create client (canonical: no verificationMethods, no cryptoCallbacks on createClient)
       const matrixClient = sdk.createClient({
         baseUrl: creds.homeserverUrl,
         accessToken: creds.accessToken,
         userId: creds.userId,
-        deviceId: resolvedDeviceId,
-        verificationMethods: ['m.sas.v1'],
-        cryptoCallbacks: {
-          getSecretStorageKey: async ({ keys }) => {
-            const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`);
-            if (!recoveryKey) return null;
-
-            const keyIds = Object.keys(keys);
-            if (keyIds.length === 0) return null;
-
-            try {
-              const privateKey = (matrixClient as any).keyBackupKeyFromRecoveryKey(recoveryKey.trim()) as Uint8Array;
-              return [keyIds[0], privateKey];
-            } catch (error) {
-              console.error('Invalid Matrix recovery key from local storage:', error);
-              return null;
-            }
-          },
-        },
+        ...(localDeviceId ? { deviceId: localDeviceId } : {}),
       });
+
+      clientRef.current = matrixClient;
+
+      // Validate stored device still exists on homeserver
+      if (localDeviceId) {
+        try {
+          const resp = await fetch(
+            `${creds.homeserverUrl}/_matrix/client/v3/devices/${localDeviceId}`,
+            { headers: { Authorization: `Bearer ${creds.accessToken}` } }
+          );
+          if (!resp.ok) {
+            console.warn('Stored device no longer exists on server, creating new device');
+            localStorage.removeItem(`matrix_device_id:${creds.userId}`);
+            // Recreate client without stale deviceId
+            const freshClient = sdk.createClient({
+              baseUrl: creds.homeserverUrl,
+              accessToken: creds.accessToken,
+              userId: creds.userId,
+            });
+            clientRef.current = freshClient;
+          }
+        } catch {}
+      }
 
       const updateRuntimeDiagnostics = (
         cryptoError: string | null = null,
@@ -289,60 +377,132 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         });
       };
 
-      const syncCryptoEnabledState = () => {
-        setCryptoEnabled(Boolean(matrixClient.getCrypto()));
-      };
-
       updateRuntimeDiagnostics();
 
-      // Listen for sync events
-      matrixClient.on(sdk.ClientEvent.Sync, (state: string) => {
+      let lastCryptoError: string | null = null;
+
+      // 3. Init Rust Crypto (BEFORE startClient)
+      try {
+        console.log('=== Matrix E2EE Diagnostics ===');
+        console.log('Cross-Origin Isolated:', window.crossOriginIsolated);
+        console.log('SharedArrayBuffer available:', typeof SharedArrayBuffer !== 'undefined');
+
+        if (!window.crossOriginIsolated) {
+          console.warn('Cross-Origin Isolation not enabled. E2EE may not work. Try a new tab.');
+        }
+
+        await matrixClient.initRustCrypto();
+        console.log('Matrix E2EE initialized successfully');
+      } catch (cryptoError) {
+        console.error('Failed to initialize E2EE:', cryptoError);
+        lastCryptoError = cryptoError instanceof Error ? cryptoError.message : 'E2EE-Initialisierung fehlgeschlagen';
+        updateRuntimeDiagnostics(lastCryptoError);
+        setCryptoEnabled(false);
+      }
+
+      // 4. Bootstrap Secret Storage (only if NOT already ready)
+      const crypto = matrixClient.getCrypto();
+      if (crypto) {
+        const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`);
+        try {
+          const isReady = await crypto.isSecretStorageReady();
+          if (!isReady && recoveryKey) {
+            try {
+              await crypto.bootstrapSecretStorage({
+                createSecretStorageKey: async () => {
+                  try {
+                    const privateKey = (matrixClient as any).keyBackupKeyFromRecoveryKey(recoveryKey.trim()) as Uint8Array;
+                    return { privateKey, encodedPrivateKey: recoveryKey.trim() } as any;
+                  } catch {
+                    return {} as any;
+                  }
+                },
+              });
+              console.log('Secret Storage bootstrapped');
+            } catch (e) {
+              console.warn('bootstrapSecretStorage failed (non-critical):', e);
+            }
+          } else if (isReady) {
+            console.log('Secret Storage already ready, skipping bootstrap');
+          }
+        } catch (e) {
+          console.warn('isSecretStorageReady check failed:', e);
+        }
+
+        // 5. Bootstrap Cross-Signing with UIA (password if available)
+        try {
+          const localpart = creds.userId.split(':')[0].substring(1);
+          await crypto.bootstrapCrossSigning({
+            authUploadDeviceSigningKeys: async (makeRequest) => {
+              if (creds.password) {
+                // Use password-based UIA for proper cross-signing setup
+                await (makeRequest as any)({
+                  type: 'm.login.password',
+                  identifier: { type: 'm.id.user', user: localpart },
+                  password: creds.password,
+                });
+              } else {
+                // Fallback: empty dict (may fail with 401, non-critical for token-based reconnect)
+                await (makeRequest as any)({});
+              }
+            },
+          } as any);
+          console.log('Cross-Signing bootstrapped' + (creds.password ? ' (with UIA password)' : ' (empty auth)'));
+        } catch (e) {
+          console.warn('bootstrapCrossSigning failed' + (creds.password ? '' : ' (no password, expected)') + ':', e);
+        }
+
+        // 6. Check & enable key backup
+        try {
+          await crypto.checkKeyBackupAndEnable();
+          console.log('Key backup checked/enabled');
+        } catch (e) {
+          console.warn('checkKeyBackupAndEnable failed (non-critical):', e);
+        }
+      }
+
+      // 7. Register event listeners (named references for cleanup)
+      const registeredListeners: Array<{ event: string; handler: (...args: any[]) => void }> = [];
+
+      const onSync = (state: string) => {
         if (state === 'PREPARED') {
           setIsConnected(true);
           setIsConnecting(false);
-          syncCryptoEnabledState();
+          setCryptoEnabled(Boolean(matrixClient.getCrypto()));
           updateRoomList(matrixClient);
         } else if (state === 'ERROR') {
           setConnectionError('Sync-Fehler aufgetreten');
           setIsConnecting(false);
         }
-      });
+      };
 
-      // Listen for new messages
-      matrixClient.on(sdk.RoomEvent.Timeline, (event, room) => {
+      const onTimeline = (event: sdk.MatrixEvent, room: sdk.Room | undefined) => {
         if (!room) return;
-
         const eventType = event.getType();
 
-        // Handle message events (plain + encrypted placeholders that will be replaced after decryption)
         if (eventType === 'm.room.message' || eventType === 'm.room.encrypted') {
           const newMessage = mapMatrixEventToMessage(room, event);
           if (!newMessage) return;
 
           setMessages(prev => {
             const roomMessages = prev.get(room.roomId) || [];
-            if (roomMessages.some(m => m.eventId === newMessage.eventId)) {
-              return prev;
-            }
+            if (roomMessages.some(m => m.eventId === newMessage.eventId)) return prev;
             const updated = new Map(prev);
-            updated.set(room.roomId, [...roomMessages, newMessage].slice(-100));
+            updated.set(room.roomId, [...roomMessages, newMessage].slice(-MAX_CACHED_MESSAGES));
             return updated;
           });
-
           updateRoomList(matrixClient);
         }
 
-        // Handle reactions
         if (eventType === 'm.reaction') {
           const relatesTo = event.getContent()['m.relates_to'];
           if (relatesTo?.rel_type === 'm.annotation') {
             const targetEventId = relatesTo.event_id;
             const emoji = relatesTo.key;
-            
+
             setMessages(prev => {
               const roomMessages = prev.get(room.roomId);
               if (!roomMessages) return prev;
-
               const updated = new Map(prev);
               const newRoomMessages = roomMessages.map(msg => {
                 if (msg.eventId === targetEventId) {
@@ -361,15 +521,14 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             });
           }
         }
-      });
+      };
 
-      // Listen for typing events
-      matrixClient.on(sdk.RoomMemberEvent.Typing, (event, member) => {
+      const onTyping = (_event: sdk.MatrixEvent, member: sdk.RoomMember) => {
         const roomId = member.roomId;
-        const room = matrixClient.getRoom(roomId);
-        if (!room) return;
+        const r = matrixClient.getRoom(roomId);
+        if (!r) return;
 
-        const typingMembers = room.getMembers()
+        const typingMembers = r.getMembers()
           .filter(m => m.typing && m.userId !== creds.userId)
           .map(m => m.name || m.userId);
 
@@ -378,10 +537,9 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           updated.set(roomId, typingMembers);
           return updated;
         });
-      });
+      };
 
-      // Listen for decrypted events
-      matrixClient.on(sdk.MatrixEventEvent.Decrypted, (event) => {
+      const onDecrypted = (event: sdk.MatrixEvent) => {
         const roomId = event.getRoomId();
         if (!roomId) return;
 
@@ -390,8 +548,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
         const content = event.getContent();
         if (!content?.msgtype) return;
-        const room = matrixClient.getRoom(roomId);
-        if (!room) return;
+        const r = matrixClient.getRoom(roomId);
+        if (!r) return;
 
         const isMedia = ['m.image', 'm.video', 'm.audio', 'm.file'].includes(content.msgtype);
 
@@ -399,7 +557,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           eventId: event.getId() || '',
           roomId,
           sender: event.getSender() || '',
-          senderDisplayName: room.getMember(event.getSender() || '')?.name || event.getSender() || '',
+          senderDisplayName: r.getMember(event.getSender() || '')?.name || event.getSender() || '',
           content: content.body || '[Entschlüsselung fehlgeschlagen]',
           timestamp: event.getTs(),
           type: content.msgtype || 'm.text',
@@ -416,97 +574,134 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         setMessages(prev => {
           const roomMessages = prev.get(roomId) || [];
           const updated = new Map(prev);
-
           const existingIndex = roomMessages.findIndex(m => m.eventId === decryptedMessage.eventId);
           if (existingIndex >= 0) {
             const next = [...roomMessages];
             next[existingIndex] = decryptedMessage;
             updated.set(roomId, next);
           } else {
-            updated.set(roomId, [...roomMessages, decryptedMessage].slice(-100));
+            updated.set(roomId, [...roomMessages, decryptedMessage].slice(-MAX_CACHED_MESSAGES));
           }
-
           return updated;
         });
-      });
+      };
 
-      let lastCryptoError: string | null = null;
+      const onVerificationRequestReceived = async (verificationRequest: any) => {
+        console.log('[Matrix] Incoming verification request, phase:', verificationRequest.phase);
 
-      // Initialize E2EE with Rust Crypto
-      try {
-        // Check Cross-Origin Isolation status (required for SharedArrayBuffer)
-        console.log('=== Matrix E2EE Diagnostics ===');
-        console.log('Cross-Origin Isolated:', window.crossOriginIsolated);
-        console.log('SharedArrayBuffer available:', typeof SharedArrayBuffer !== 'undefined');
-        console.log('Running in iframe:', window.self !== window.top);
-        
-        if (!window.crossOriginIsolated) {
-          console.warn('Cross-Origin Isolation is not enabled. This is required for Matrix E2EE.');
-          console.warn('This typically happens when running in an iframe (like Lovable Preview).');
-          console.warn('Try opening the app in a new tab for E2EE support.');
-        }
-        
-        console.log('Initializing Matrix E2EE with Rust Crypto...');
-        await matrixClient.initRustCrypto();
-        
-        // Verify crypto is working
-        const crypto = matrixClient.getCrypto();
-        if (crypto) {
-          console.log('Matrix E2EE initialized successfully');
-          console.log('Device ID:', matrixClient.getDeviceId());
-        } else {
-          console.warn('Crypto API not available directly after initialization, retry after client start');
-        }
-      } catch (cryptoError) {
-        console.error('Failed to initialize E2EE:', cryptoError);
-        console.error('E2EE will not be available for encrypted rooms.');
-        lastCryptoError = cryptoError instanceof Error ? cryptoError.message : 'E2EE-Initialisierung fehlgeschlagen';
-        updateRuntimeDiagnostics(lastCryptoError);
-        setCryptoEnabled(false);
-        // Continue without encryption - user will see warning for encrypted rooms
-      }
-
-      // Start the client with E2EE support
-      await matrixClient.startClient({ initialSyncLimit: 50 });
-
-      // Retry once after start in case crypto was not ready during first init attempt
-      if (!matrixClient.getCrypto()) {
-        try {
-          await matrixClient.initRustCrypto();
-        } catch (retryError) {
-          console.error('Retry initRustCrypto after start failed:', retryError);
-          if (!lastCryptoError) {
-            lastCryptoError = retryError instanceof Error ? retryError.message : 'E2EE-Initialisierung nach Start fehlgeschlagen';
+        if (verificationRequest.phase === VerificationPhase.Requested) {
+          try {
+            await verificationRequest.accept();
+            console.log('[Matrix] Verification request accepted');
+          } catch (e) {
+            console.error('[Matrix] Failed to accept verification request:', e);
+            return;
           }
         }
-      }
 
-      const crypto = matrixClient.getCrypto();
-      setCryptoEnabled(Boolean(crypto));
+        if (verificationRequest.phase !== VerificationPhase.Ready && verificationRequest.phase !== VerificationPhase.Started) {
+          const waitResult = await new Promise<'ok' | 'cancelled' | 'timeout'>((resolve) => {
+            let timeoutId: ReturnType<typeof setTimeout>;
+            const check = () => {
+              const phase = verificationRequest.phase;
+              if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started) {
+                clearTimeout(timeoutId);
+                verificationRequest.off?.('change', check);
+                resolve('ok');
+              } else if (phase === VerificationPhase.Cancelled || phase === VerificationPhase.Done) {
+                clearTimeout(timeoutId);
+                verificationRequest.off?.('change', check);
+                resolve('cancelled');
+              }
+            };
+            verificationRequest.on?.('change', check);
+            check();
+            timeoutId = setTimeout(() => {
+              verificationRequest.off?.('change', check);
+              resolve('timeout');
+            }, 60000);
+          });
+
+          if (waitResult !== 'ok') {
+            try { await verificationRequest.cancel(); } catch {}
+            console.warn('[Matrix] Incoming verification aborted:', waitResult);
+            return;
+          }
+        }
+
+        if (verificationRequest.phase === VerificationPhase.Cancelled || verificationRequest.phase === VerificationPhase.Done) return;
+
+        try {
+          const verifier = await verificationRequest.startVerification('m.sas.v1');
+          setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError);
+          verifier.verify()
+            .then(() => {
+              console.log('[Matrix] Incoming SAS verification succeeded');
+              setLastVerificationError(null);
+              setActiveSasVerification(null);
+            })
+            .catch((err: unknown) => {
+              console.error('[Matrix] Incoming SAS verification failed:', err);
+              setLastVerificationError(err instanceof Error ? err.message : 'Verifizierung fehlgeschlagen');
+              setActiveSasVerification(null);
+            });
+          console.log('[Matrix] Incoming verification SAS started');
+        } catch (err) {
+          console.error('[Matrix] Failed to handle incoming verification:', err);
+        }
+      };
+
+      // Attach all listeners
+      matrixClient.on(sdk.ClientEvent.Sync, onSync);
+      matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as any);
+      matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as any);
+      matrixClient.on(sdk.MatrixEventEvent.Decrypted, onDecrypted);
+      matrixClient.on(CryptoEvent.VerificationRequestReceived, onVerificationRequestReceived);
+
+      registeredListeners.push(
+        { event: sdk.ClientEvent.Sync, handler: onSync },
+        { event: sdk.RoomEvent.Timeline, handler: onTimeline as any },
+        { event: sdk.RoomMemberEvent.Typing, handler: onTyping as any },
+        { event: sdk.MatrixEventEvent.Decrypted, handler: onDecrypted },
+        { event: CryptoEvent.VerificationRequestReceived, handler: onVerificationRequestReceived },
+      );
+      listenersRef.current = registeredListeners;
+
+      // 8. Start client
+      await matrixClient.startClient({ initialSyncLimit: 50 });
+
+      // 9. Read & persist diagnostics + device ID
+      setCryptoEnabled(Boolean(matrixClient.getCrypto()));
 
       let secretStorageReady: boolean | null = null;
       let crossSigningReady: boolean | null = null;
       let keyBackupEnabled: boolean | null = null;
 
-      if (crypto) {
+      const cryptoAfterStart = matrixClient.getCrypto();
+      if (cryptoAfterStart) {
         try {
-          secretStorageReady = await crypto.isSecretStorageReady();
-          crossSigningReady = await crypto.isCrossSigningReady();
-          keyBackupEnabled = (await crypto.checkKeyBackupAndEnable()) !== null;
-        } catch (cryptoStateError) {
-          console.error('Failed to read Matrix crypto state:', cryptoStateError);
+          secretStorageReady = await cryptoAfterStart.isSecretStorageReady();
+          crossSigningReady = await cryptoAfterStart.isCrossSigningReady();
+          keyBackupEnabled = (await cryptoAfterStart.checkKeyBackupAndEnable()) !== null;
+        } catch (e) {
+          console.error('Failed to read crypto state:', e);
         }
       }
 
-      if (!crypto && !lastCryptoError) {
-        lastCryptoError = 'Rust-Crypto wurde initialisiert, aber es wurde keine CryptoApi bereitgestellt. Bitte Browser-Konsole prüfen.';
+      if (!cryptoAfterStart && !lastCryptoError) {
+        lastCryptoError = 'Rust-Crypto wurde initialisiert, aber keine CryptoApi verfügbar.';
       }
 
       updateRuntimeDiagnostics(lastCryptoError, { secretStorageReady, crossSigningReady, keyBackupEnabled });
-      
-      localStorage.setItem(`matrix_device_id:${creds.userId}`, resolvedDeviceId);
+
+      // Persist device ID AFTER start (canonical)
+      const finalDeviceId = matrixClient.getDeviceId() || localDeviceId || '';
+      if (finalDeviceId) {
+        localStorage.setItem(`matrix_device_id:${creds.userId}`, finalDeviceId);
+      }
+
       setClient(matrixClient);
-      setCredentials({ ...creds, deviceId: resolvedDeviceId });
+      setCredentials({ ...creds, deviceId: finalDeviceId || undefined });
     } catch (error) {
       console.error('Error connecting to Matrix:', error);
       setConnectionError(error instanceof Error ? error.message : 'Verbindungsfehler');
@@ -514,18 +709,20 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     } finally {
       isConnectingRef.current = false;
     }
-  }, [isConnected]);
+  }, []); // No dependencies — guards via isConnectingRef
 
-  // Auto-connect when credentials are available
-  useEffect(() => {
-    if (credentials && !isConnected && !isConnecting && !client) {
-      connect(credentials);
-    }
-  }, [credentials, isConnected, isConnecting, client, connect]);
+  // ─── disconnect (with listener cleanup) ──────────────────────────────────
 
   const disconnect = useCallback(() => {
-    if (client) {
-      client.stopClient();
+    const mc = clientRef.current;
+    if (mc) {
+      // Remove all registered listeners
+      for (const { event, handler } of listenersRef.current) {
+        try { mc.removeListener(event as any, handler); } catch {}
+      }
+      listenersRef.current = [];
+      mc.stopClient();
+      clientRef.current = null;
       setClient(null);
     }
     setIsConnected(false);
@@ -545,262 +742,42 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     setTypingUsers(new Map());
     setActiveSasVerification(null);
     setLastVerificationError(null);
-  }, [client]);
+    connectCalledRef.current = false;
+  }, []);
 
-  const updateRoomList = (matrixClient: sdk.MatrixClient) => {
-    const joinedRooms = matrixClient.getRooms();
-    
-    const roomList: MatrixRoom[] = joinedRooms.map(room => {
-      const timeline = room.getLiveTimeline().getEvents();
-      const lastMessageEvent = timeline
-        .filter(e => e.getType() === 'm.room.message')
-        .pop();
+  // ─── refreshMessages (mutation, NOT a getter) ────────────────────────────
 
-      // Check if this is a direct message room
-      const isDirect = room.getJoinedMemberCount() === 2;
-      
-      // Check if the room has encryption enabled
-      const isEncrypted = room.hasEncryptionStateEvent();
-      
-      return {
-        roomId: room.roomId,
-        name: room.name || room.roomId,
-        lastMessage: lastMessageEvent?.getContent().body,
-        lastMessageTimestamp: lastMessageEvent?.getTs(),
-        unreadCount: room.getUnreadNotificationCount() || 0,
-        isDirect,
-        memberCount: room.getJoinedMemberCount(),
-        isEncrypted,
-      };
-    });
+  const refreshMessages = useCallback((roomId: string, limit: number = MAX_CACHED_MESSAGES) => {
+    const mc = clientRef.current;
+    if (!mc) return;
 
-    roomList.sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
-    
-    setRooms(roomList);
-  };
-
-  const sendMessage = useCallback(async (roomId: string, message: string, replyToEventId?: string) => {
-    if (!client || !isConnected) {
-      throw new Error('Nicht mit Matrix verbunden');
-    }
-
-    // Check if room is encrypted and crypto is available
-    const room = client.getRoom(roomId);
-    const isRoomEncrypted = room?.hasEncryptionStateEvent();
-    
-    if (isRoomEncrypted && !client.getCrypto()) {
-      throw new Error('Verschlüsselung ist für diesen Raum erforderlich, aber Ihr Browser unterstützt die Verschlüsselung nicht. Bitte laden Sie die Seite neu.');
-    }
-
-    const content: Record<string, unknown> = {
-      msgtype: 'm.text',
-      body: message,
-    };
-
-    // Add reply relation if replying
-    if (replyToEventId) {
-      const replyEvent = room?.findEventById(replyToEventId);
-      if (replyEvent) {
-        const replyBody = replyEvent.getContent().body || '';
-        const replySender = replyEvent.getSender() || '';
-        content['m.relates_to'] = {
-          'm.in_reply_to': {
-            event_id: replyToEventId,
-          },
-        };
-        // Format body for fallback
-        content.body = `> <${replySender}> ${replyBody}\n\n${message}`;
-        content.format = 'org.matrix.custom.html';
-        content.formatted_body = `<mx-reply><blockquote><a href="#">In reply to</a> <a href="#">${replySender}</a><br>${replyBody}</blockquote></mx-reply>${message}`;
-      }
-    }
-
-    // Use type assertion for the content to satisfy TypeScript
-    await client.sendMessage(roomId, content as any);
-  }, [client, isConnected]);
-
-  const sendTypingNotification = useCallback((roomId: string, isTyping: boolean) => {
-    if (!client || !isConnected) return;
-    client.sendTyping(roomId, isTyping, isTyping ? 30000 : 0);
-  }, [client, isConnected]);
-
-  const addReaction = useCallback(async (roomId: string, eventId: string, emoji: string) => {
-    if (!client || !isConnected) return;
-
-    // Use sendEvent with type assertion for custom event types
-    await (client as any).sendEvent(roomId, 'm.reaction', {
-      'm.relates_to': {
-        rel_type: 'm.annotation',
-        event_id: eventId,
-        key: emoji,
-      },
-    });
-  }, [client, isConnected]);
-
-  const removeReaction = useCallback(async (roomId: string, eventId: string, emoji: string) => {
-    if (!client || !isConnected) return;
-    // Note: Matrix doesn't have a direct "remove reaction" - you need to redact the reaction event
-    // This is simplified; in production you'd need to find and redact the specific reaction event
-    console.log('Remove reaction not fully implemented:', roomId, eventId, emoji);
-  }, [client, isConnected]);
-
-  const createRoom = useCallback(async (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => {
-    if (!client || !isConnected) {
-      throw new Error('Nicht mit Matrix verbunden');
-    }
-
-    const createRoomOptions: sdk.ICreateRoomOpts = {
-      name: options.name,
-      topic: options.topic,
-      visibility: options.isPrivate ? sdk.Visibility.Private : sdk.Visibility.Public,
-      preset: options.isPrivate ? sdk.Preset.PrivateChat : sdk.Preset.PublicChat,
-      invite: options.inviteUserIds,
-    };
-
-    if (options.enableEncryption) {
-      createRoomOptions.initial_state = [
-        {
-          type: 'm.room.encryption',
-          state_key: '',
-          content: { algorithm: 'm.megolm.v1.aes-sha2' },
-        },
-      ];
-    }
-
-    const result = await client.createRoom(createRoomOptions);
-    
-    // Update room list
-    updateRoomList(client);
-    
-    return result.room_id;
-  }, [client, isConnected]);
-
-
-  const requestSelfVerification = useCallback(async (otherDeviceId?: string) => {
-    if (!client || !isConnected || !credentials?.userId) {
-      throw new Error('Nicht mit Matrix verbunden');
-    }
-
-    const crypto = client.getCrypto();
-    if (!crypto) {
-      throw new Error('Crypto API ist nicht verfügbar. E2EE muss zuerst aktiv sein.');
-    }
-
-    setLastVerificationError(null);
-    setActiveSasVerification(null);
-
-    const describeVerificationFailure = (error: unknown): string => {
-      if (error instanceof sdk.MatrixEvent) {
-        const content = error.getContent() || {};
-        const code = typeof content.code === 'string' ? content.code : null;
-        const reason = typeof content.reason === 'string' ? content.reason : null;
-        if (code && reason) return `${code}: ${reason}`;
-        if (reason) return reason;
-        if (code) return code;
-      }
-
-      if (error instanceof Error) {
-        return error.message;
-      }
-
-      return 'Unbekannter Verifizierungsfehler';
-    };
-
-    const trimmedDeviceId = otherDeviceId?.trim();
-    let verificationRequest = trimmedDeviceId
-      ? await crypto.requestDeviceVerification(credentials.userId, trimmedDeviceId)
-      : await crypto.requestOwnUserVerification();
-
-    let verifier: sdk.Verifier;
-    try {
-      verifier = await verificationRequest.startVerification('m.sas.v1');
-    } catch (error) {
-      const reason = describeVerificationFailure(error);
-      const isUnknownDeviceError = Boolean(trimmedDeviceId) && /other device is unknown/i.test(reason);
-
-      if (!isUnknownDeviceError) {
-        throw error;
-      }
-
-      setLastVerificationError(`Device ID ${trimmedDeviceId} wurde auf dem Homeserver nicht gefunden. Verifizierung wird ohne feste Device-ID erneut gestartet.`);
-      verificationRequest = await crypto.requestOwnUserVerification();
-      verifier = await verificationRequest.startVerification('m.sas.v1');
-    }
-
-    verifier.on('show_sas', (sas) => {
-      const emojis = (sas.sas.emoji || []).map(([symbol, description]) => ({ symbol, description }));
-      setActiveSasVerification({
-        transactionId: verificationRequest.transactionId,
-        otherDeviceId: verificationRequest.otherDeviceId,
-        emojis,
-        decimals: sas.sas.decimal || null,
-        confirm: async () => {
-          await sas.confirm();
-          setActiveSasVerification(null);
-          setLastVerificationError(null);
-        },
-        mismatch: () => {
-          sas.mismatch();
-          setActiveSasVerification(null);
-          setLastVerificationError('Sie haben die Emoji-Codes als nicht übereinstimmend markiert.');
-        },
-        cancel: () => {
-          sas.cancel();
-          setActiveSasVerification(null);
-          setLastVerificationError('Verifizierung wurde abgebrochen.');
-        },
-      });
-    });
-
-    verifier.on('cancel', (error) => {
-      const message = describeVerificationFailure(error);
-      setLastVerificationError(message);
-      setActiveSasVerification(null);
-    });
-
-    void verifier.verify()
-      .then(() => {
-        setLastVerificationError(null);
-        setActiveSasVerification(null);
-      })
-      .catch((error) => {
-        const message = describeVerificationFailure(error);
-        console.error('Matrix SAS verification failed:', error);
-        setLastVerificationError(message);
-        setActiveSasVerification(null);
-      });
-  }, [client, isConnected, credentials?.userId]);
-
-  const confirmSasVerification = useCallback(async () => {
-    if (!activeSasVerification) {
-      throw new Error('Keine aktive Emoji-Verifizierung vorhanden.');
-    }
-
-    await activeSasVerification.confirm();
-  }, [activeSasVerification]);
-
-  const rejectSasVerification = useCallback(() => {
-    if (!activeSasVerification) return;
-    activeSasVerification.mismatch();
-  }, [activeSasVerification]);
-
-  const getMessages = useCallback((roomId: string, limit: number = 50): MatrixMessage[] => {
-    if (!client) return [];
-
-    const room = client.getRoom(roomId);
-    if (!room) return messages.get(roomId)?.slice(-limit) || [];
+    const room = mc.getRoom(roomId);
+    if (!room) return;
 
     const timeline = room.getLiveTimeline().getEvents();
+
+    // Trigger decryption for encrypted events
+    timeline.forEach(event => {
+      if (event.isEncrypted() && !event.isDecryptionFailure()) {
+        try {
+          event.attemptDecryption(mc.getCrypto() as any).catch(() => {});
+        } catch {}
+      }
+    });
+
     const timelineMessages: MatrixMessage[] = timeline
       .map(event => mapMatrixEventToMessage(room, event))
-      .filter((message): message is MatrixMessage => Boolean(message));
+      .filter((msg): msg is MatrixMessage => Boolean(msg));
 
-    const cached = messages.get(roomId) || [];
+    const cached = messagesRef.current.get(roomId) || [];
     const mergedByEventId = new Map<string, MatrixMessage>();
     for (const msg of timelineMessages) mergedByEventId.set(msg.eventId, msg);
     for (const msg of cached) {
       const existing = mergedByEventId.get(msg.eventId);
-      if (!existing || (existing.type === 'm.bad.encrypted' && msg.type !== 'm.bad.encrypted')) {
+      if (!existing ||
+        (existing.type === 'm.bad.encrypted' && msg.type !== 'm.bad.encrypted') ||
+        (existing.type === 'm.room.encrypted' && msg.type !== 'm.room.encrypted' && msg.type !== 'm.bad.encrypted') ||
+        (existing.content === '[Encrypted]' && msg.content !== '[Encrypted]')) {
         mergedByEventId.set(msg.eventId, msg);
       }
     }
@@ -814,9 +791,288 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       updated.set(roomId, mergedMessages);
       return updated;
     });
+  }, []);
 
-    return mergedMessages;
-  }, [client, messages]);
+  // ─── sendMessage ─────────────────────────────────────────────────────────
+
+  const sendMessage = useCallback(async (roomId: string, message: string, replyToEventId?: string) => {
+    const mc = clientRef.current;
+    if (!mc || !isConnectedRef.current) throw new Error('Nicht mit Matrix verbunden');
+
+    const room = mc.getRoom(roomId);
+    if (room?.hasEncryptionStateEvent() && !mc.getCrypto()) {
+      throw new Error('Verschlüsselung erforderlich, aber nicht verfügbar. Seite neu laden.');
+    }
+
+    const content: Record<string, unknown> = { msgtype: 'm.text', body: message };
+
+    if (replyToEventId) {
+      const replyEvent = room?.findEventById(replyToEventId);
+      if (replyEvent) {
+        const replyBody = replyEvent.getContent().body || '';
+        const replySender = replyEvent.getSender() || '';
+        content['m.relates_to'] = { 'm.in_reply_to': { event_id: replyToEventId } };
+        content.body = `> <${replySender}> ${replyBody}\n\n${message}`;
+        content.format = 'org.matrix.custom.html';
+        content.formatted_body = `<mx-reply><blockquote><a href="#">In reply to</a> <a href="#">${replySender}</a><br>${replyBody}</blockquote></mx-reply>${message}`;
+      }
+    }
+
+    await mc.sendMessage(roomId, content as any);
+  }, []);
+
+  // ─── sendTypingNotification ──────────────────────────────────────────────
+
+  const sendTypingNotification = useCallback((roomId: string, isTyping: boolean) => {
+    const mc = clientRef.current;
+    if (!mc) return;
+    mc.sendTyping(roomId, isTyping, isTyping ? 30000 : 0);
+  }, []);
+
+  // ─── addReaction ─────────────────────────────────────────────────────────
+
+  const addReaction = useCallback(async (roomId: string, eventId: string, emoji: string) => {
+    const mc = clientRef.current;
+    if (!mc) return;
+    await (mc as any).sendEvent(roomId, 'm.reaction', {
+      'm.relates_to': { rel_type: 'm.annotation', event_id: eventId, key: emoji },
+    });
+  }, []);
+
+  // ─── removeReaction (implemented with redactEvent) ───────────────────────
+
+  const removeReaction = useCallback(async (roomId: string, eventId: string, emoji: string) => {
+    const mc = clientRef.current;
+    if (!mc) return;
+
+    const room = mc.getRoom(roomId);
+    if (!room) return;
+
+    // Find the reaction event in the timeline
+    const timeline = room.getLiveTimeline().getEvents();
+    const myUserId = mc.getUserId();
+    const reactionEvent = timeline.find(ev => {
+      if (ev.getType() !== 'm.reaction') return false;
+      const rel = ev.getContent()['m.relates_to'];
+      return rel?.rel_type === 'm.annotation' &&
+        rel?.event_id === eventId &&
+        rel?.key === emoji &&
+        ev.getSender() === myUserId;
+    });
+
+    if (reactionEvent) {
+      const reactionEventId = reactionEvent.getId();
+      if (reactionEventId) {
+        await mc.redactEvent(roomId, reactionEventId);
+      }
+    }
+  }, []);
+
+  // ─── createRoom ──────────────────────────────────────────────────────────
+
+  const createRoom = useCallback(async (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => {
+    const mc = clientRef.current;
+    if (!mc) throw new Error('Nicht mit Matrix verbunden');
+
+    const createRoomOptions: sdk.ICreateRoomOpts = {
+      name: options.name,
+      topic: options.topic,
+      visibility: options.isPrivate ? sdk.Visibility.Private : sdk.Visibility.Public,
+      preset: options.isPrivate ? sdk.Preset.PrivateChat : sdk.Preset.PublicChat,
+      invite: options.inviteUserIds,
+    };
+
+    if (options.enableEncryption) {
+      createRoomOptions.initial_state = [
+        { type: 'm.room.encryption', state_key: '', content: { algorithm: 'm.megolm.v1.aes-sha2' } },
+      ];
+    }
+
+    const result = await mc.createRoom(createRoomOptions);
+    updateRoomList(mc);
+    return result.room_id;
+  }, []);
+
+  // ─── requestSelfVerification (uses shared setupVerifierListeners) ────────
+
+  const requestSelfVerification = useCallback(async (otherDeviceId?: string) => {
+    const mc = clientRef.current;
+    if (!mc) throw new Error('Nicht mit Matrix verbunden');
+
+    const crypto = mc.getCrypto();
+    if (!crypto) throw new Error('Crypto API nicht verfügbar.');
+
+    const userId = mc.getUserId();
+    if (!userId) throw new Error('Kein User ID');
+
+    setLastVerificationError(null);
+    setActiveSasVerification(null);
+
+    const describeError = (error: unknown): string => {
+      if (error instanceof sdk.MatrixEvent) {
+        const content = error.getContent() || {};
+        const code = typeof content.code === 'string' ? content.code : null;
+        const reason = typeof content.reason === 'string' ? content.reason : null;
+        if (code && reason) return `${code}: ${reason}`;
+        if (reason) return reason;
+        if (code) return code;
+      }
+      if (error instanceof Error) return error.message;
+      return 'Unbekannter Verifizierungsfehler';
+    };
+
+    const trimmedDeviceId = otherDeviceId?.trim();
+    let verificationRequest = trimmedDeviceId
+      ? await crypto.requestDeviceVerification(userId, trimmedDeviceId)
+      : await crypto.requestOwnUserVerification();
+
+    // Wait for the other client to accept
+    if ((verificationRequest as any).phase !== VerificationPhase.Started) {
+      await new Promise<void>((resolve, reject) => {
+        let timeoutId: ReturnType<typeof setTimeout>;
+        const checkReady = () => {
+          const phase = (verificationRequest as any).phase;
+          if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started) {
+            clearTimeout(timeoutId);
+            (verificationRequest as any).off?.('change', checkReady);
+            resolve();
+          } else if (phase === VerificationPhase.Cancelled || phase === VerificationPhase.Done) {
+            clearTimeout(timeoutId);
+            (verificationRequest as any).off?.('change', checkReady);
+            reject(new Error('Verifizierung wurde vom anderen Gerät abgebrochen.'));
+          }
+        };
+
+        (verificationRequest as any).on?.('change', checkReady);
+        checkReady();
+        timeoutId = setTimeout(() => {
+          (verificationRequest as any).off?.('change', checkReady);
+          reject(new Error('Verifizierungs-Timeout: Der andere Client hat nicht rechtzeitig geantwortet.'));
+        }, 60000);
+      });
+    }
+
+    let verifier: Verifier;
+    try {
+      verifier = await verificationRequest.startVerification('m.sas.v1');
+    } catch (error) {
+      const reason = describeError(error);
+      const isUnknownDevice = Boolean(trimmedDeviceId) && /other device is unknown/i.test(reason);
+
+      if (!isUnknownDevice) throw error;
+
+      setLastVerificationError(`Device ${trimmedDeviceId} nicht gefunden. Erneuter Versuch ohne feste Device-ID.`);
+      verificationRequest = await crypto.requestOwnUserVerification();
+      verifier = await verificationRequest.startVerification('m.sas.v1');
+    }
+
+    // Use the shared helper — no duplicated listener code
+    setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError, describeError);
+
+    void verifier.verify()
+      .then(() => {
+        setLastVerificationError(null);
+        setActiveSasVerification(null);
+      })
+      .catch((error) => {
+        console.error('Matrix SAS verification failed:', error);
+        setLastVerificationError(describeError(error));
+        setActiveSasVerification(null);
+      });
+  }, []);
+
+  // ─── confirmSas / rejectSas ──────────────────────────────────────────────
+
+  const confirmSasVerification = useCallback(async () => {
+    if (!activeSasVerification) throw new Error('Keine aktive Emoji-Verifizierung vorhanden.');
+    await activeSasVerification.confirm();
+  }, [activeSasVerification]);
+
+  const rejectSasVerification = useCallback(() => {
+    if (!activeSasVerification) return;
+    activeSasVerification.mismatch();
+  }, [activeSasVerification]);
+
+  // ─── resetCryptoStore ────────────────────────────────────────────────────
+
+  const resetCryptoStore = useCallback(async () => {
+    const mc = clientRef.current;
+
+    // Try to delete device server-side first (prevents OTK collision on next login)
+    if (mc) {
+      try {
+        const deviceId = mc.getDeviceId();
+        if (deviceId) {
+          const localpart = credentials?.userId?.split(':')[0].substring(1);
+          await mc.deleteDevice(deviceId, credentials?.password ? {
+            type: 'm.login.password',
+            identifier: { type: 'm.id.user', user: localpart },
+            password: credentials.password,
+          } : {});
+          console.log('Device deleted from server:', deviceId);
+        }
+      } catch (e) {
+        console.warn('Could not delete device from server (non-critical):', e);
+      }
+    }
+
+    disconnect();
+
+    try {
+      // Feature-detect indexedDB.databases()
+      if (typeof indexedDB.databases === 'function') {
+        const databases = await indexedDB.databases();
+        const cryptoDbs = databases.filter(db =>
+          db.name && (
+            db.name.includes('matrix-js-sdk:crypto') ||
+            db.name.includes('rust-crypto') ||
+            db.name.includes('matrix-sdk-crypto')
+          )
+        );
+        for (const db of cryptoDbs) {
+          if (db.name) {
+            indexedDB.deleteDatabase(db.name);
+            console.log('Deleted crypto DB:', db.name);
+          }
+        }
+      } else {
+        // Fallback for browsers without indexedDB.databases() (e.g. Safari < 14)
+        throw new Error('databases() not available');
+      }
+    } catch {
+      const userId = credentials?.userId || '';
+      const knownNames = [
+        `matrix-js-sdk:crypto:${userId}`,
+        `matrix-rust-sdk-crypto-${userId}`,
+      ];
+      for (const name of knownNames) {
+        try { indexedDB.deleteDatabase(name); } catch {}
+      }
+    }
+
+    const userId = credentials?.userId || '';
+    if (userId) {
+      localStorage.removeItem(`matrix_device_id:${userId}`);
+    }
+
+    if (credentials) {
+      await new Promise(r => setTimeout(r, 500));
+      isConnectingRef.current = false;
+      connectCalledRef.current = false;
+      await connect({ ...credentials, deviceId: undefined });
+    }
+  }, [credentials, connect, disconnect]);
+
+  // ─── Auto-connect (guarded by connectCalledRef) ─────────────────────────
+
+  useEffect(() => {
+    if (credentials && !connectCalledRef.current && !isConnectingRef.current) {
+      connectCalledRef.current = true;
+      connect(credentials);
+    }
+  }, [credentials, connect]);
+
+  // ─── Context value ───────────────────────────────────────────────────────
 
   const totalUnreadCount = rooms.reduce((sum, room) => sum + room.unreadCount, 0);
 
@@ -832,7 +1088,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     connect,
     disconnect,
     sendMessage,
-    getMessages,
+    refreshMessages,
     totalUnreadCount,
     roomMessages: messages,
     typingUsers,
@@ -845,6 +1101,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     confirmSasVerification,
     rejectSasVerification,
     lastVerificationError,
+    resetCryptoStore,
   };
 
   return (
