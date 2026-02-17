@@ -789,14 +789,14 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     if (!client) return [];
 
     const room = client.getRoom(roomId);
-    if (!room) return messages.get(roomId)?.slice(-limit) || [];
+    if (!room) return messagesRef.current.get(roomId)?.slice(-limit) || [];
 
     const timeline = room.getLiveTimeline().getEvents();
     const timelineMessages: MatrixMessage[] = timeline
       .map(event => mapMatrixEventToMessage(room, event))
       .filter((message): message is MatrixMessage => Boolean(message));
 
-    const cached = messages.get(roomId) || [];
+    const cached = messagesRef.current.get(roomId) || [];
     const mergedByEventId = new Map<string, MatrixMessage>();
     for (const msg of timelineMessages) mergedByEventId.set(msg.eventId, msg);
     for (const msg of cached) {
@@ -817,7 +817,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     });
 
     return mergedMessages;
-  }, [client, messages]);
+  }, [client]);
 
   const totalUnreadCount = rooms.reduce((sum, room) => sum + room.unreadCount, 0);
 
