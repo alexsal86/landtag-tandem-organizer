@@ -179,6 +179,14 @@ export function QuickNotesList({
   const [colorModeUpdating, setColorModeUpdating] = useState<string | null>(null);
 
   const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
+  const toEditorHtml = (value: string | null | undefined) => {
+    if (!value) return "";
+    if (/<[^>]+>/.test(value)) return value;
+    return `<p>${value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")}</p>`;
+  };
 
   const loadNotes = useCallback(async () => {
     if (!user) return;
@@ -1156,13 +1164,18 @@ export function QuickNotesList({
 
   const openEditDialog = (note: QuickNote) => {
     setEditingNote(note);
-    setEditTitle(note.title || "");
-    setEditContent(note.content);
+    setEditTitle(toEditorHtml(note.title));
+    setEditContent(toEditorHtml(note.content));
     setEditDialogOpen(true);
   };
 
   const handleSaveEdit = async () => {
     if (!editingNote || !user?.id) return;
+
+    if (!stripHtml(editTitle) && !stripHtml(editContent)) {
+      toast.error("Bitte Titel oder Inhalt eingeben");
+      return;
+    }
 
     try {
       // 1. Save current version to history before updating
@@ -1211,7 +1224,7 @@ export function QuickNotesList({
   const handleEditTitleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      if (editContent.trim()) {
+      if (stripHtml(editTitle) || stripHtml(editContent)) {
         void handleSaveEdit();
       }
     }
@@ -1220,7 +1233,7 @@ export function QuickNotesList({
   const handleEditContentKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      if (editContent.trim()) {
+      if (stripHtml(editTitle) || stripHtml(editContent)) {
         void handleSaveEdit();
       }
     }
@@ -2289,7 +2302,7 @@ export function QuickNotesList({
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Abbrechen
             </Button>
-            <Button onClick={handleSaveEdit} disabled={!editContent.trim()}>
+            <Button onClick={handleSaveEdit} disabled={!stripHtml(editTitle) && !stripHtml(editContent)}>
               Speichern
             </Button>
           </div>

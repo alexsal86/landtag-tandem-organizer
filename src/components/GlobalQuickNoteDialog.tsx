@@ -21,6 +21,14 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
   const [saving, setSaving] = useState(false);
 
   const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
+  const toEditorHtml = (value: string | null | undefined) => {
+    if (!value) return "";
+    if (/<[^>]+>/.test(value)) return value;
+    return `<p>${value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")}</p>`;
+  };
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -50,7 +58,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       const insertData = {
         user_id: user.id,
         title: title.trim() || null,
-        content: plainContent ? content.trim() : title.trim(),
+        content: plainContent ? content.trim() : "",
         is_pinned: false,
         priority_level: 0,
         is_archived: false
@@ -124,9 +132,9 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
         <div className="space-y-3">
           <SimpleRichTextEditor
             key={open ? 'global-quick-note-title-open' : 'global-quick-note-title-closed'}
-            initialContent={title}
+            initialContent={toEditorHtml(title)}
             onChange={setTitle}
-            placeholder="Titel (optional, @ für Mentions)"
+            placeholder="Titel (@ für Mentions)"
             minHeight="44px"
             showToolbar={false}
             onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLDivElement>}
