@@ -1,137 +1,68 @@
 
 
-## Problem-Analyse
+## Problem
 
-Die Konsolen-Logs zeigen zwei kritische Fehler, die sich in einer Endlosschleife wiederholen:
-
-1. **"Unexpected end of JSON input"** -- Die lokale IndexedDB-Datenbank, in der Rust-Crypto seine Schluessel speichert, ist beschaedigt. Jeder `/sync`-Aufruf schlaegt fehl.
-2. **"One time key signed_curve25519:AAAAAAAAAA0 already exists"** -- Der Client generiert neue Schluessel, die mit bereits auf dem Server vorhandenen kollidieren. Der Server lehnt sie ab (HTTP 400).
-
-Diese beiden Fehler blockieren sowohl die Entschluesselung als auch die Verifizierung vollstaendig. Die bisherigen Code-Aenderungen (Merge-Logik, Verifizierungs-Wartezeit) waren korrekt, koennen aber nicht greifen, solange der Crypto-Store korrupt ist.
+Der "Crypto zuruecksetzen"-Button loescht zwar die IndexedDB-Datenbanken, aber der Client verbindet sich danach mit der **gleichen Device ID** (QYAJSAHWUK). Der Server hat fuer dieses Geraet bereits One-Time-Keys gespeichert. Der frische Crypto-Store generiert neue Keys mit denselben IDs, und der Server lehnt sie ab (400 Bad Request).
 
 ## Loesung
 
-### 1. "Crypto zuruecksetzen"-Funktion im MatrixClientContext
+Beim Crypto-Reset muss zusaetzlich die **gespeicherte Device ID** aus dem localStorage geloescht werden. Dadurch wird beim naechsten `connect()` keine Device ID uebergeben, und `createClient()` registriert automatisch ein neues Geraet auf dem Server -- mit frischen Keys ohne Konflikte.
 
-Eine neue Funktion `resetCryptoStore`, die:
-- Den Matrix-Client stoppt
-- Alle IndexedDB-Datenbanken loescht, die zum Crypto-Store gehoeren (Prefix `matrix-js-sdk:crypto` und `rust-crypto`)
-- Den Client danach sauber neu initialisiert
+## Technische Aenderung
 
-**Datei:** `src/contexts/MatrixClientContext.tsx`
+**Datei:** `src/contexts/MatrixClientContext.tsx` -- Funktion `resetCryptoStore`
 
-Neue Funktion hinzufuegen:
+Vor dem erneuten Verbinden die Device ID aus localStorage entfernen:
 
 ```typescript
-const resetCryptoStore = useCallback(async () => {
-  // 1. Client stoppen
-  if (client) {
-    client.stopClient();
-    setClient(null);
-  }
-  setIsConnected(false);
-  setCryptoEnabled(false);
-
-  // 2. Alle crypto-relevanten IndexedDB-Datenbanken loeschen
-  try {
-    const databases = await indexedDB.databases();
-    const cryptoDbs = databases.filter(db => 
-      db.name && (
-        db.name.includes('matrix-js-sdk:crypto') ||
-        db.name.includes('rust-crypto') ||
-        db.name.includes('matrix-sdk-crypto')
-      )
-    );
-    for (const db of cryptoDbs) {
-      if (db.name) {
-        indexedDB.deleteDatabase(db.name);
-        console.log('Deleted crypto DB:', db.name);
-      }
-    }
-  } catch (e) {
-    console.warn('Could not enumerate/delete IndexedDB databases:', e);
-    // Fallback: versuche bekannte DB-Namen direkt zu loeschen
-    const userId = credentials?.userId || '';
-    const knownNames = [
-      `matrix-js-sdk:crypto:${userId}`,
-      `matrix-rust-sdk-crypto-${userId}`,
-    ];
-    for (const name of knownNames) {
-      try { indexedDB.deleteDatabase(name); } catch {}
-    }
-  }
-
-  // 3. Neu verbinden, falls Credentials vorhanden
-  if (credentials) {
-    // Kurz warten, damit IndexedDB-Loeschungen abgeschlossen sind
-    await new Promise(r => setTimeout(r, 500));
-    await connect(credentials);
-  }
-}, [client, credentials, connect]);
+// Nach dem Loeschen der IndexedDB-Datenbanken, vor dem reconnect:
+const userId = credentials?.userId || '';
+if (userId) {
+  localStorage.removeItem(`matrix_device_id:${userId}`);
+}
 ```
 
-Diesen Wert im Context-Provider bereitstellen:
-- Interface `MatrixClientContextType` erweitern: `resetCryptoStore: () => Promise<void>;`
-- Im `value`-Objekt ergaenzen: `resetCryptoStore`
+Ausserdem muss die `connect`-Funktion angepasst werden, damit sie auch ohne Device ID funktioniert -- aktuell wirft sie einen Fehler, wenn keine Device ID ermittelt werden kann. Die Loesung: Wenn `resolvedDeviceId` leer ist, `createClient` ohne `deviceId` aufrufen, sodass der Server automatisch eine neue Device ID vergibt. Nach dem Login wird die neue Device ID aus `matrixClient.getDeviceId()` gespeichert.
 
-### 2. "Crypto zuruecksetzen"-Button im Login-Formular
-
-**Datei:** `src/components/chat/MatrixLoginForm.tsx`
-
-Im Verifizierungs-Bereich (unterhalb der Geraete-Verifizierung) einen neuen Button ergaenzen:
+Konkret in der `connect`-Funktion (Zeile 246-251):
 
 ```typescript
-// resetCryptoStore aus useMatrixClient() holen
-const { resetCryptoStore, ...rest } = useMatrixClient();
+// Vorher:
+const resolvedDeviceId = creds.deviceId || localDeviceId || await fetchDeviceIdFromWhoAmI();
+if (!resolvedDeviceId) {
+  throw new Error('Matrix Device ID konnte nicht ermittelt werden...');
+}
 
-// Neuer Handler
-const handleResetCrypto = async () => {
-  setIsStartingVerification(true); // Lade-State wiederverwenden
-  try {
-    await resetCryptoStore();
-    toast({
-      title: 'Crypto zurueckgesetzt',
-      description: 'Der Verschluesselungs-Speicher wurde geloescht und die Verbindung neu aufgebaut. Bitte starten Sie die Geraete-Verifizierung erneut.',
-    });
-  } catch (error) {
-    toast({
-      title: 'Fehler',
-      description: error instanceof Error ? error.message : 'Crypto-Reset fehlgeschlagen',
-      variant: 'destructive',
-    });
-  } finally {
-    setIsStartingVerification(false);
-  }
-};
+// Nachher:
+const resolvedDeviceId = creds.deviceId || localDeviceId || await fetchDeviceIdFromWhoAmI() || undefined;
+// Kein Fehler mehr wenn leer -- Server vergibt automatisch eine neue ID
 ```
 
-Button im UI (nach dem Verifizierungs-Button):
+Und bei `createClient` (Zeile 253-257):
 
+```typescript
+const matrixClient = sdk.createClient({
+  baseUrl: creds.homeserverUrl,
+  accessToken: creds.accessToken,
+  userId: creds.userId,
+  ...(resolvedDeviceId ? { deviceId: resolvedDeviceId } : {}),
+  // ... rest bleibt gleich
+});
 ```
-<Button onClick={handleResetCrypto} variant="outline" size="sm" className="text-amber-600">
-  Verschluesselungs-Speicher zuruecksetzen
-</Button>
+
+Nach erfolgreichem Start die vom Server vergebene Device ID speichern (Zeile 509):
+
+```typescript
+const finalDeviceId = resolvedDeviceId || matrixClient.getDeviceId() || '';
+if (finalDeviceId) {
+  localStorage.setItem(`matrix_device_id:${creds.userId}`, finalDeviceId);
+}
 ```
 
-### 3. Fehlermeldung in der Chat-Ansicht verbessern
-
-**Datei:** `src/components/chat/MatrixChatView.tsx`
-
-In der E2EE-Warnung (wo die Diagnostik angezeigt wird) einen Hinweis und Button ergaenzen, der direkt zu den Einstellungen fuehrt, um den Crypto-Store zurueckzusetzen.
-
-### Zusammenfassung der Aenderungen
+## Zusammenfassung
 
 | Datei | Aenderung |
 |---|---|
-| `src/contexts/MatrixClientContext.tsx` | Neue Funktion `resetCryptoStore` + Interface-Erweiterung |
-| `src/components/chat/MatrixLoginForm.tsx` | "Crypto zuruecksetzen"-Button + Handler |
-| `src/components/chat/MatrixChatView.tsx` | Hinweis auf Reset-Option in der E2EE-Warnung |
-
-### Warum das funktioniert
-
-- Der korrupte IndexedDB-Store wird komplett geloescht
-- Rust-Crypto erstellt beim naechsten `initRustCrypto()` einen frischen Store
-- Neue One-Time-Keys werden generiert, die nicht mit den alten auf dem Server kollidieren
-- Danach kann die Verifizierung sauber durchlaufen und verschluesselte Nachrichten (fuer neue Sessions) gelesen werden
-- Fuer aeltere Nachrichten wird weiterhin der Recovery Key / Key Backup benoetigt
+| `src/contexts/MatrixClientContext.tsx` | In `resetCryptoStore`: localStorage-Eintrag fuer Device ID loeschen |
+| `src/contexts/MatrixClientContext.tsx` | In `connect`: Device ID optional machen, Server neue ID vergeben lassen |
 
