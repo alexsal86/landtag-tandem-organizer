@@ -1,59 +1,60 @@
 
 
-## Passwort-basiertes Matrix-Login
+## Problem: Falsche Phasen-Vergleiche in der Verifizierung
 
-Aktuell muss man den Access Token manuell aus Element kopieren. Stattdessen wird ein Passwort-Login direkt in der MatrixLoginForm integriert, das die Matrix Client-Server API nutzt.
+Der Code vergleicht `verificationRequest.phase` mit Strings wie `'requested'`, `'ready'`, `'started'` usw. Aber das SDK verwendet **numerische Enum-Werte**:
 
-### Funktionsweise
-
-1. Der Benutzer gibt **Matrix User ID**, **Passwort** und **Homeserver URL** ein
-2. Die App ruft `POST /_matrix/client/v3/login` mit `type: "m.login.password"` auf
-3. Der Server antwortet mit `access_token`, `device_id` und `user_id`
-4. Diese werden automatisch in die Formularfelder uebernommen, in Supabase gespeichert und die Matrix-Verbindung wird hergestellt
-
-### Aenderungen in `src/components/chat/MatrixLoginForm.tsx`
-
-**Neuer State:**
-- `password` (string) -- Passwort-Eingabefeld
-- `isLoggingIn` (boolean) -- Ladezustand fuer den Login-Button
-
-**Neue Funktion `handlePasswordLogin`:**
-- Validiert `matrixUserId` und `password`
-- Extrahiert den Homeserver aus der User ID (z.B. `@user:matrix.bw-messenger.de` -> `https://matrix.bw-messenger.de`), oder nutzt die manuell eingegebene Homeserver URL
-- Sendet einen `fetch`-Request an `${homeserverUrl}/_matrix/client/v3/login`:
-
-```typescript
-const response = await fetch(`${homeserverUrl}/_matrix/client/v3/login`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    type: 'm.login.password',
-    identifier: {
-      type: 'm.id.user',
-      user: matrixUserId.split(':')[0].substring(1), // @user:server -> user
-    },
-    password: password,
-    initial_device_display_name: 'Lovable App',
-  }),
-});
+```text
+VerificationPhase.Unsent    = 1
+VerificationPhase.Requested = 2
+VerificationPhase.Ready     = 3
+VerificationPhase.Started   = 4
+VerificationPhase.Cancelled = 5
+VerificationPhase.Done      = 6
 ```
 
-- Bei Erfolg: `access_token`, `device_id` in die Formularfelder setzen, Passwort-Feld leeren, Zugangsdaten in Supabase speichern, `connect()` aufrufen
-- Bei Fehler: Toast mit Fehlermeldung anzeigen
+Das bedeutet: Alle `if (phase === 'requested')` Checks sind immer `false`, weil `phase` z.B. `2` ist, nicht `'requested'`. Dadurch werden eingehende Verifizierungen nie akzeptiert und ausgehende warten nicht korrekt auf den anderen Client.
 
-**UI-Aenderungen:**
-- Neues Passwort-Eingabefeld nach der Matrix User ID
-- Neuer "Mit Passwort anmelden"-Button
-- Trennung zwischen Passwort-Login (primaer) und manuellem Access-Token (erweitert/optional)
-- Die Access-Token-Hilfe am Ende wird angepasst, da sie nicht mehr der primaere Weg ist
+## Loesung
 
-### Technische Details
+### Aenderung in `src/contexts/MatrixClientContext.tsx`
 
-| Bereich | Detail |
+**1) Import hinzufuegen:**
+
+```typescript
+import { VerificationPhase } from 'matrix-js-sdk/lib/crypto-api/verification';
+```
+
+(Neben dem bestehenden Import von `VerifierEvent` und `Verifier`)
+
+**2) Eingehende Verifizierung (Zeilen 507-546) -- String-Vergleiche durch Enum ersetzen:**
+
+Alle Vorkommen von:
+- `verificationRequest.phase === 'requested'` wird zu `verificationRequest.phase === VerificationPhase.Requested`
+- `'ready'` wird zu `VerificationPhase.Ready`
+- `'started'` wird zu `VerificationPhase.Started`
+- `'cancelled'` wird zu `VerificationPhase.Cancelled`
+- `'done'` wird zu `VerificationPhase.Done`
+
+**3) Ausgehende Verifizierung (Zeilen 794-811) -- gleiche Korrektur:**
+
+`(verificationRequest as any).phase !== 'started'` wird zu `(verificationRequest as any).phase !== VerificationPhase.Started`
+
+Und in der `checkReady`-Funktion:
+- `phase === 'ready' || phase === 'started'` wird zu `phase === VerificationPhase.Ready || phase === VerificationPhase.Started`
+
+## Zusammenfassung
+
+| Datei | Aenderung |
 |---|---|
-| API-Endpunkt | `POST /_matrix/client/v3/login` |
-| Auth-Typ | `m.login.password` mit `m.id.user` Identifier |
-| Device-Name | `Lovable App` (wird dem Server als `initial_device_display_name` mitgeteilt) |
-| Sicherheit | Passwort wird nicht gespeichert, nur fuer den Login-Request verwendet |
-| Datei | `src/components/chat/MatrixLoginForm.tsx` |
+| `src/contexts/MatrixClientContext.tsx` | `VerificationPhase` importieren |
+| `src/contexts/MatrixClientContext.tsx` | Alle String-Phasen-Vergleiche in der eingehenden Verifizierung durch Enum-Werte ersetzen |
+| `src/contexts/MatrixClientContext.tsx` | Alle String-Phasen-Vergleiche in der ausgehenden Verifizierung durch Enum-Werte ersetzen |
+
+### Danach testen
+
+1. Crypto Store zuruecksetzen
+2. Neu verbinden (Passwort-Login)
+3. Verifizierung von Element auf dem Handy starten -- die App sollte jetzt die Anfrage erkennen und Emojis anzeigen
+4. Verifizierung von der App starten -- Element sollte reagieren
 
