@@ -13,6 +13,7 @@ interface MatrixCredentials {
   accessToken: string;
   homeserverUrl: string;
   deviceId?: string;
+  password?: string; // Only used for UIA during bootstrapCrossSigning, never persisted
 }
 
 interface MatrixRoom {
@@ -242,12 +243,17 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
   // Refs for cleanup
   const isConnectingRef = useRef(false);
+  const connectCalledRef = useRef(false);
+  const isConnectedRef = useRef(false);
   const clientRef = useRef<sdk.MatrixClient | null>(null);
   const listenersRef = useRef<Array<{ event: string; handler: (...args: any[]) => void }>>([]);
 
-  // ─── updateRoomList (plain function, no hook) ────────────────────────────
+  // Keep isConnectedRef in sync
+  useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
 
-  const updateRoomList = (matrixClient: sdk.MatrixClient) => {
+  // ─── updateRoomList (stable callback) ─────────────────────────────────
+
+  const updateRoomList = useCallback((matrixClient: sdk.MatrixClient) => {
     const joinedRooms = matrixClient.getRooms();
 
     const roomList: MatrixRoom[] = joinedRooms.map(room => {
@@ -273,7 +279,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
     roomList.sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
     setRooms(roomList);
-  };
+  }, []);
 
   // ─── Load credentials from database ─────────────────────────────────────
 
@@ -368,39 +374,56 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         setCryptoEnabled(false);
       }
 
-      // 4. Bootstrap Secret Storage (if recovery key available)
+      // 4. Bootstrap Secret Storage (only if NOT already ready)
       const crypto = matrixClient.getCrypto();
       if (crypto) {
         const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`);
-        if (recoveryKey) {
-          try {
-            await crypto.bootstrapSecretStorage({
-              createSecretStorageKey: async () => {
-                // Use the stored recovery key
-                try {
-                  const privateKey = (matrixClient as any).keyBackupKeyFromRecoveryKey(recoveryKey.trim()) as Uint8Array;
-                  return { privateKey, encodedPrivateKey: recoveryKey.trim() } as any;
-                } catch {
-                  return {} as any;
-                }
-              },
-            });
-            console.log('Secret Storage bootstrapped');
-          } catch (e) {
-            console.warn('bootstrapSecretStorage failed (non-critical):', e);
+        try {
+          const isReady = await crypto.isSecretStorageReady();
+          if (!isReady && recoveryKey) {
+            try {
+              await crypto.bootstrapSecretStorage({
+                createSecretStorageKey: async () => {
+                  try {
+                    const privateKey = (matrixClient as any).keyBackupKeyFromRecoveryKey(recoveryKey.trim()) as Uint8Array;
+                    return { privateKey, encodedPrivateKey: recoveryKey.trim() } as any;
+                  } catch {
+                    return {} as any;
+                  }
+                },
+              });
+              console.log('Secret Storage bootstrapped');
+            } catch (e) {
+              console.warn('bootstrapSecretStorage failed (non-critical):', e);
+            }
+          } else if (isReady) {
+            console.log('Secret Storage already ready, skipping bootstrap');
           }
+        } catch (e) {
+          console.warn('isSecretStorageReady check failed:', e);
         }
 
-        // 5. Bootstrap Cross-Signing (non-critical)
+        // 5. Bootstrap Cross-Signing with UIA (password if available)
         try {
+          const localpart = creds.userId.split(':')[0].substring(1);
           await crypto.bootstrapCrossSigning({
             authUploadDeviceSigningKeys: async (makeRequest) => {
-              await (makeRequest as any)({});
+              if (creds.password) {
+                // Use password-based UIA for proper cross-signing setup
+                await (makeRequest as any)({
+                  type: 'm.login.password',
+                  identifier: { type: 'm.id.user', user: localpart },
+                  password: creds.password,
+                });
+              } else {
+                // Fallback: empty dict (may fail with 401, non-critical for token-based reconnect)
+                await (makeRequest as any)({});
+              }
             },
           } as any);
-          console.log('Cross-Signing bootstrapped');
+          console.log('Cross-Signing bootstrapped' + (creds.password ? ' (with UIA password)' : ' (empty auth)'));
         } catch (e) {
-          console.warn('bootstrapCrossSigning failed (non-critical):', e);
+          console.warn('bootstrapCrossSigning failed' + (creds.password ? '' : ' (no password, expected)') + ':', e);
         }
 
         // 6. Check & enable key backup
@@ -551,16 +574,29 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         }
 
         if (verificationRequest.phase !== VerificationPhase.Ready && verificationRequest.phase !== VerificationPhase.Started) {
-          await new Promise<void>((resolve) => {
+          await new Promise<void>((resolve, reject) => {
+            let timeoutId: ReturnType<typeof setTimeout>;
             const check = () => {
               const phase = verificationRequest.phase;
-              if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started || phase === VerificationPhase.Cancelled || phase === VerificationPhase.Done) {
+              if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started) {
+                clearTimeout(timeoutId);
+                verificationRequest.off?.('change', check);
                 resolve();
+              } else if (phase === VerificationPhase.Cancelled || phase === VerificationPhase.Done) {
+                clearTimeout(timeoutId);
+                verificationRequest.off?.('change', check);
+                reject(new Error('Verifizierung wurde vom anderen Gerät abgebrochen.'));
               }
             };
             verificationRequest.on?.('change', check);
             check();
-            setTimeout(() => resolve(), 30000);
+            timeoutId = setTimeout(() => {
+              verificationRequest.off?.('change', check);
+              reject(new Error('Verifizierungs-Timeout: Der andere Client hat nicht rechtzeitig geantwortet.'));
+            }, 30000);
+          }).catch(err => {
+            console.warn('[Matrix] Incoming verification wait failed:', err.message);
+            return; // exit early
           });
         }
 
@@ -667,6 +703,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     setTypingUsers(new Map());
     setActiveSasVerification(null);
     setLastVerificationError(null);
+    connectCalledRef.current = false;
   }, []);
 
   // ─── refreshMessages (mutation, NOT a getter) ────────────────────────────
@@ -721,7 +758,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
   const sendMessage = useCallback(async (roomId: string, message: string, replyToEventId?: string) => {
     const mc = clientRef.current;
-    if (!mc) throw new Error('Nicht mit Matrix verbunden');
+    if (!mc || !isConnectedRef.current) throw new Error('Nicht mit Matrix verbunden');
 
     const room = mc.getRoom(roomId);
     if (room?.hasEncryptionStateEvent() && !mc.getCrypto()) {
@@ -853,20 +890,26 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     // Wait for the other client to accept
     if ((verificationRequest as any).phase !== VerificationPhase.Started) {
       await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Verifizierungs-Timeout: Der andere Client hat nicht rechtzeitig geantwortet.'));
-        }, 60000);
-
+        let timeoutId: ReturnType<typeof setTimeout>;
         const checkReady = () => {
           const phase = (verificationRequest as any).phase;
           if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started) {
-            clearTimeout(timeout);
+            clearTimeout(timeoutId);
+            (verificationRequest as any).off?.('change', checkReady);
             resolve();
+          } else if (phase === VerificationPhase.Cancelled || phase === VerificationPhase.Done) {
+            clearTimeout(timeoutId);
+            (verificationRequest as any).off?.('change', checkReady);
+            reject(new Error('Verifizierung wurde vom anderen Gerät abgebrochen.'));
           }
         };
 
         (verificationRequest as any).on?.('change', checkReady);
         checkReady();
+        timeoutId = setTimeout(() => {
+          (verificationRequest as any).off?.('change', checkReady);
+          reject(new Error('Verifizierungs-Timeout: Der andere Client hat nicht rechtzeitig geantwortet.'));
+        }, 60000);
       });
     }
 
@@ -956,17 +999,19 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     if (credentials) {
       await new Promise(r => setTimeout(r, 500));
       isConnectingRef.current = false;
+      connectCalledRef.current = false;
       await connect({ ...credentials, deviceId: undefined });
     }
   }, [credentials, connect, disconnect]);
 
-  // ─── Auto-connect ────────────────────────────────────────────────────────
+  // ─── Auto-connect (guarded by connectCalledRef) ─────────────────────────
 
   useEffect(() => {
-    if (credentials && !isConnected && !isConnecting && !client && !isConnectingRef.current) {
+    if (credentials && !connectCalledRef.current && !isConnectingRef.current) {
+      connectCalledRef.current = true;
       connect(credentials);
     }
-  }, [credentials, isConnected, isConnecting, client, connect]);
+  }, [credentials, connect]);
 
   // ─── Context value ───────────────────────────────────────────────────────
 

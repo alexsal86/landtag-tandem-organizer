@@ -156,12 +156,13 @@ export function MatrixLoginForm() {
         localStorage.setItem(`matrix_device_id:${confirmedUserId}`, newDeviceId);
       }
 
-      // Connect
+      // Connect (pass password for UIA cross-signing bootstrap)
       await connect({
         userId: confirmedUserId,
         accessToken: newAccessToken,
         homeserverUrl: effectiveHomeserver,
         deviceId: newDeviceId || undefined,
+        password: password, // Used only for bootstrapCrossSigning UIA, not persisted
       });
 
       toast({
