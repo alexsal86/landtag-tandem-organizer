@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo, Globe, Cake } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo, Globe, Cake, Scale } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -44,6 +44,11 @@ interface SystemItemData {
   user_id?: string;
 }
 
+interface UserProfileData {
+  user_id: string;
+  display_name: string | null;
+}
+
 interface BirthdayItemData {
   id: string;
   name: string;
@@ -75,7 +80,9 @@ export function MyWorkJourFixeTab() {
   // State for system item data (notes and tasks per meeting)
   const [meetingQuickNotes, setMeetingQuickNotes] = useState<Record<string, SystemItemData[]>>({});
   const [meetingTasks, setMeetingTasks] = useState<Record<string, SystemItemData[]>>({});
+  const [meetingDecisions, setMeetingDecisions] = useState<Record<string, SystemItemData[]>>({});
   const [meetingBirthdays, setMeetingBirthdays] = useState<Record<string, BirthdayItemData[]>>({});
+  const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -261,7 +268,9 @@ export function MyWorkJourFixeTab() {
   const loadMeetingSystemData = async (meetingId: string, items: AgendaItem[], meetingDate?: string) => {
     const hasNotes = items.some(i => i.system_type === 'quick_notes');
     const hasTasks = items.some(i => i.system_type === 'tasks');
+    const hasDecisions = items.some(i => i.system_type === 'decisions');
     const hasBirthdays = items.some(i => i.system_type === 'birthdays');
+    const encounteredUserIds = new Set<string>();
     
     if (hasNotes) {
       try {
@@ -270,6 +279,7 @@ export function MyWorkJourFixeTab() {
           .select('id, title, user_id')
           .eq('meeting_id', meetingId)
           .is('deleted_at', null);
+        (data || []).forEach(note => note.user_id && encounteredUserIds.add(note.user_id));
         setMeetingQuickNotes(prev => ({ ...prev, [meetingId]: data || [] }));
       } catch { /* ignore */ }
     }
@@ -280,8 +290,52 @@ export function MyWorkJourFixeTab() {
           .from('tasks')
           .select('id, title, user_id')
           .eq('meeting_id', meetingId);
+        (data || []).forEach(task => task.user_id && encounteredUserIds.add(task.user_id));
         setMeetingTasks(prev => ({ ...prev, [meetingId]: data || [] }));
       } catch { /* ignore */ }
+    }
+
+    if (hasDecisions && currentTenant?.id && user?.id) {
+      try {
+        const now = new Date().toISOString();
+        const { data: decisions } = await supabase
+          .from('task_decisions')
+          .select('id, title, created_by, status, response_deadline, priority')
+          .eq('tenant_id', currentTenant.id)
+          .eq('status', 'active')
+          .or(`response_deadline.lt.${now},priority.not.is.null`)
+          .order('priority', { ascending: false, nullsFirst: false })
+          .order('response_deadline', { ascending: true, nullsFirst: false });
+
+        const decisionIds = (decisions || []).map(decision => decision.id);
+        let participantRows: Array<{ decision_id: string; user_id: string }> = [];
+
+        if (decisionIds.length > 0) {
+          const { data: participants } = await supabase
+            .from('task_decision_participants')
+            .select('decision_id, user_id')
+            .in('decision_id', decisionIds);
+          participantRows = participants || [];
+        }
+
+        const relevantDecisions = (decisions || [])
+          .filter((decision) =>
+            decision.created_by === user.id ||
+            participantRows.some(
+              (participant) => participant.decision_id === decision.id && participant.user_id === user.id
+            )
+          )
+          .map((decision) => ({
+            id: decision.id,
+            title: decision.title,
+            user_id: decision.created_by,
+          }));
+
+        relevantDecisions.forEach(decision => decision.user_id && encounteredUserIds.add(decision.user_id));
+        setMeetingDecisions(prev => ({ ...prev, [meetingId]: relevantDecisions }));
+      } catch {
+        setMeetingDecisions(prev => ({ ...prev, [meetingId]: [] }));
+      }
     }
 
     if (hasBirthdays && currentTenant?.id) {
@@ -331,6 +385,36 @@ export function MyWorkJourFixeTab() {
         setMeetingBirthdays(prev => ({ ...prev, [meetingId]: [] }));
       }
     }
+
+    if (encounteredUserIds.size > 0) {
+      try {
+        const missingUserIds = Array.from(encounteredUserIds).filter(userId => !userProfiles[userId]);
+        if (missingUserIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('user_id, display_name')
+            .in('user_id', missingUserIds);
+
+          if (profiles && profiles.length > 0) {
+            setUserProfiles(prev => {
+              const next = { ...prev };
+              profiles.forEach((profile) => {
+                next[profile.user_id] = profile;
+              });
+              return next;
+            });
+          }
+        }
+      } catch {
+        // ignore profile lookup errors
+      }
+    }
+  };
+
+  const getOwnerLabel = (userId?: string) => {
+    if (!userId) return null;
+    const displayName = userProfiles[userId]?.display_name;
+    return displayName ? `von ${displayName}` : 'von unbekannt';
   };
 
   const getInitials = (name: string | null | undefined) => {
@@ -347,6 +431,7 @@ export function MyWorkJourFixeTab() {
     if (systemType === 'quick_notes') return <StickyNote className="h-3 w-3 text-amber-500" />;
     if (systemType === 'upcoming_appointments') return <Calendar className="h-3 w-3 text-blue-500" />;
     if (systemType === 'tasks') return <ListTodo className="h-3 w-3 text-green-500" />;
+    if (systemType === 'decisions') return <Scale className="h-3 w-3 text-violet-500" />;
     if (systemType === 'birthdays') return <Cake className="h-3 w-3 text-pink-500" />;
     return null;
   };
@@ -366,6 +451,7 @@ export function MyWorkJourFixeTab() {
     const participants = meetingParticipants[meeting.id] || [];
     const notes = meetingQuickNotes[meeting.id] || [];
     const tasks = meetingTasks[meeting.id] || [];
+    const decisions = meetingDecisions[meeting.id] || [];
     const birthdays = meetingBirthdays[meeting.id] || [];
     
     // Get only main items (no parent)
@@ -504,6 +590,9 @@ export function MyWorkJourFixeTab() {
                             <li key={note.id} className="flex items-center gap-1.5 text-muted-foreground">
                               <StickyNote className="h-2.5 w-2.5 text-amber-500" />
                               <span>{note.title || `Notiz ${nIdx + 1}`}</span>
+                              {getOwnerLabel(note.user_id) && (
+                                <span className="text-muted-foreground/80">({getOwnerLabel(note.user_id)})</span>
+                              )}
                             </li>
                           ))}
                         </ul>
@@ -515,6 +604,22 @@ export function MyWorkJourFixeTab() {
                             <li key={task.id} className="flex items-center gap-1.5 text-muted-foreground">
                               <ListTodo className="h-2.5 w-2.5 text-green-500" />
                               <span>{task.title}</span>
+                              {getOwnerLabel(task.user_id) && (
+                                <span className="text-muted-foreground/80">({getOwnerLabel(task.user_id)})</span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {item.system_type === 'decisions' && decisions.length > 0 && (
+                        <ul className="ml-6 mt-1 space-y-0.5">
+                          {decisions.map((decision) => (
+                            <li key={decision.id} className="flex items-center gap-1.5 text-muted-foreground">
+                              <Scale className="h-2.5 w-2.5 text-violet-500" />
+                              <span>{decision.title}</span>
+                              {getOwnerLabel(decision.user_id) && (
+                                <span className="text-muted-foreground/80">({getOwnerLabel(decision.user_id)})</span>
+                              )}
                             </li>
                           ))}
                         </ul>
@@ -551,6 +656,9 @@ export function MyWorkJourFixeTab() {
                                       <li key={note.id} className="flex items-center gap-1.5 text-muted-foreground">
                                         <StickyNote className="h-2.5 w-2.5 text-amber-500" />
                                         <span>{note.title || `Notiz ${nIdx + 1}`}</span>
+                                        {getOwnerLabel(note.user_id) && (
+                                          <span className="text-muted-foreground/80">({getOwnerLabel(note.user_id)})</span>
+                                        )}
                                       </li>
                                     ))}
                                   </ul>
@@ -562,6 +670,22 @@ export function MyWorkJourFixeTab() {
                                       <li key={task.id} className="flex items-center gap-1.5 text-muted-foreground">
                                         <ListTodo className="h-2.5 w-2.5 text-green-500" />
                                         <span>{task.title}</span>
+                                        {getOwnerLabel(task.user_id) && (
+                                          <span className="text-muted-foreground/80">({getOwnerLabel(task.user_id)})</span>
+                                        )}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                                {subItem.system_type === 'decisions' && decisions.length > 0 && (
+                                  <ul className="ml-8 mt-0.5 space-y-0.5">
+                                    {decisions.map((decision) => (
+                                      <li key={decision.id} className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Scale className="h-2.5 w-2.5 text-violet-500" />
+                                        <span>{decision.title}</span>
+                                        {getOwnerLabel(decision.user_id) && (
+                                          <span className="text-muted-foreground/80">({getOwnerLabel(decision.user_id)})</span>
+                                        )}
                                       </li>
                                     ))}
                                   </ul>
