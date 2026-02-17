@@ -1,60 +1,110 @@
 
 
-## Problem: Falsche Phasen-Vergleiche in der Verifizierung
+## Komplett-Refactor: MatrixClientContext.tsx
 
-Der Code vergleicht `verificationRequest.phase` mit Strings wie `'requested'`, `'ready'`, `'started'` usw. Aber das SDK verwendet **numerische Enum-Werte**:
+Die aktuelle Datei hat 1028 Zeilen mit zahlreichen strukturellen Problemen. Statt einzelne Patches anzubringen, wird die Datei grundlegend bereinigt und nach der kanonischen SDK-Reihenfolge neu aufgebaut.
+
+### Kritische Fixes
+
+**1. setupVerifierListeners als eigenstaendige Hilfsfunktion**
+
+Die Funktion wird aus `connect` herausgezogen und als normale Funktion im Provider-Scope definiert. Sowohl `connect` als auch `requestSelfVerification` nutzen dieselbe Referenz -- keine Duplikation mehr.
+
+**2. Event-Listener Cleanup**
+
+Alle `matrixClient.on(...)` Aufrufe werden in `connect` gesammelt. Die Listener-Funktionen werden als benannte Referenzen gespeichert, damit sie in `disconnect` mit `client.off(...)` oder `client.removeListener(...)` wieder entfernt werden koennen. Ein Ref speichert die aktuelle Client-Instanz und deren Listener, sodass `disconnect` sie zuverlaessig aufraeumt.
+
+**3. getMessages: Kein setState mehr im Getter**
+
+`getMessages` wird in zwei Teile aufgeteilt:
+- Eine reine Funktion, die Nachrichten berechnet und zurueckgibt (kein Side-Effect)
+- Die Timeline-Listener und der Polling-Intervall in `MatrixChatView` uebernehmen das Aktualisieren des Message-States
+
+Stattdessen wird `getMessages` nur noch als "Refresh-Trigger" genutzt, der die Nachrichten aus der Timeline liest und per `setMessages` aktualisiert -- aber klar als Mutation benannt (`refreshMessages`), nicht als Getter.
+
+**4. Kanonische Init-Reihenfolge (laut SDK-Doku)**
 
 ```text
-VerificationPhase.Unsent    = 1
-VerificationPhase.Requested = 2
-VerificationPhase.Ready     = 3
-VerificationPhase.Started   = 4
-VerificationPhase.Cancelled = 5
-VerificationPhase.Done      = 6
+1. createClient({ baseUrl, accessToken, userId })
+2. initRustCrypto()
+3. bootstrapSecretStorage (wenn Recovery Key vorhanden)
+4. bootstrapCrossSigning (wenn moeglich)
+5. checkKeyBackupAndEnable()
+6. startClient({ initialSyncLimit: 50 })
+7. Device ID aus client.getDeviceId() persistieren
 ```
 
-Das bedeutet: Alle `if (phase === 'requested')` Checks sind immer `false`, weil `phase` z.B. `2` ist, nicht `'requested'`. Dadurch werden eingehende Verifizierungen nie akzeptiert und ausgehende warten nicht korrekt auf den anderen Client.
+Kein Retry von `initRustCrypto` nach `startClient`. Kein manuelles `whoAmI` fuer die Device ID.
 
-## Loesung
+**5. removeReaction implementiert**
 
-### Aenderung in `src/contexts/MatrixClientContext.tsx`
+Sucht das passende Reaktions-Event im Room-Timeline und redacted es mit `client.redactEvent()`.
 
-**1) Import hinzufuegen:**
+**6. connect Dependencies korrigiert**
 
-```typescript
-import { VerificationPhase } from 'matrix-js-sdk/lib/crypto-api/verification';
-```
+`connect` wird nicht mehr als `useCallback` mit `[isConnected]` definiert. Stattdessen wird die Guard-Logik ueber `isConnectingRef` allein gesteuert, und `connect` bekommt keine React-Dependencies (oder alle notwendigen).
 
-(Neben dem bestehenden Import von `VerifierEvent` und `Verifier`)
+**7. Race Condition beim Auto-Connect**
 
-**2) Eingehende Verifizierung (Zeilen 507-546) -- String-Vergleiche durch Enum ersetzen:**
+Der `useEffect` fuer Auto-Connect nutzt `isConnectingRef.current` als zusaetzlichen Guard. `connect` aendert sich nicht mehr bei jedem Re-Render.
 
-Alle Vorkommen von:
-- `verificationRequest.phase === 'requested'` wird zu `verificationRequest.phase === VerificationPhase.Requested`
-- `'ready'` wird zu `VerificationPhase.Ready`
-- `'started'` wird zu `VerificationPhase.Started`
-- `'cancelled'` wird zu `VerificationPhase.Cancelled`
-- `'done'` wird zu `VerificationPhase.Done`
+**8. indexedDB.databases() Fallback verbessert**
 
-**3) Ausgehende Verifizierung (Zeilen 794-811) -- gleiche Korrektur:**
+Prueft ob `indexedDB.databases` existiert bevor es aufgerufen wird, und nutzt ansonsten direkt die bekannten DB-Namen als Fallback.
 
-`(verificationRequest as any).phase !== 'started'` wird zu `(verificationRequest as any).phase !== VerificationPhase.Started`
+**9. Nachrichten-Limit konsistent**
 
-Und in der `checkReady`-Funktion:
-- `phase === 'ready' || phase === 'started'` wird zu `phase === VerificationPhase.Ready || phase === VerificationPhase.Started`
+Einheitlich 200 Nachrichten als Buffer, konfigurierbar ueber eine Konstante `MAX_CACHED_MESSAGES`.
 
-## Zusammenfassung
+### Datei-Aenderungen
 
 | Datei | Aenderung |
 |---|---|
-| `src/contexts/MatrixClientContext.tsx` | `VerificationPhase` importieren |
-| `src/contexts/MatrixClientContext.tsx` | Alle String-Phasen-Vergleiche in der eingehenden Verifizierung durch Enum-Werte ersetzen |
-| `src/contexts/MatrixClientContext.tsx` | Alle String-Phasen-Vergleiche in der ausgehenden Verifizierung durch Enum-Werte ersetzen |
+| `src/contexts/MatrixClientContext.tsx` | Kompletter Refactor (alle 9 Punkte) |
 
-### Danach testen
+### Neue Struktur der Datei (ca. 850-900 Zeilen statt 1028)
 
-1. Crypto Store zuruecksetzen
-2. Neu verbinden (Passwort-Login)
-3. Verifizierung von Element auf dem Handy starten -- die App sollte jetzt die Anfrage erkennen und Emojis anzeigen
-4. Verifizierung von der App starten -- Element sollte reagieren
+```text
+[Imports + Interfaces]             -- unveraendert
+[mapMatrixEventToMessage]          -- unveraendert
+[MAX_CACHED_MESSAGES = 200]        -- neue Konstante
+[setupVerifierListeners()]         -- extrahierte Hilfsfunktion
+[MatrixClientProvider]
+  State + Refs
+  loadCredentials useEffect         -- unveraendert
+  connect useCallback
+    1. createClient (ohne whoAmI, ohne verificationMethods)
+    2. initRustCrypto
+    3. bootstrapSecretStorage (mit Recovery Key aus localStorage)
+    4. bootstrapCrossSigning (try/catch, nicht-kritisch)
+    5. checkKeyBackupAndEnable
+    6. Event Listener registrieren (benannte Funktionen)
+    7. startClient
+    8. Device ID persistieren
+    9. Listener-Refs speichern fuer Cleanup
+  disconnect useCallback
+    - client.off(...) fuer alle Listener
+    - client.stopClient()
+    - State zuruecksetzen
+  refreshMessages (vorher getMessages)
+    - Liest Timeline, merged mit Cache
+    - Ruft setMessages auf (klar als Mutation gekennzeichnet)
+  sendMessage, sendTypingNotification, addReaction -- unveraendert
+  removeReaction -- implementiert mit redactEvent
+  createRoom -- unveraendert
+  requestSelfVerification
+    - Nutzt die extrahierte setupVerifierListeners Funktion
+    - Kein duplizierter Code mehr
+  confirmSas, rejectSas, resetCryptoStore -- unveraendert
+  Auto-connect useEffect -- mit besserem Guard
+  Context Provider
+[useMatrixClient export]
+```
+
+### Was sich fuer den Benutzer aendert
+
+- Verifizierung sollte zuverlaessiger funktionieren (kein duplizierter Code, korrekte Listener)
+- Keine Memory Leaks mehr bei mehrfachem Connect/Disconnect
+- E2EE-Setup folgt der offiziellen Reihenfolge -- bessere Chancen auf funktionierende Verschluesselung
+- Reaktionen koennen nun auch entfernt werden
 
