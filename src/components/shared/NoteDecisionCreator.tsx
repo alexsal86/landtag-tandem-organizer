@@ -3,18 +3,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { ResponseOptionsEditor } from "@/components/task-decisions/ResponseOptionsEditor";
-import { ResponseOption, DECISION_TEMPLATES, DEFAULT_TEMPLATE_ID, getTemplateById, getDefaultOptions } from "@/lib/decisionTemplates";
+import { ResponseOption, DECISION_TEMPLATES, DEFAULT_TEMPLATE_ID, getTemplateById } from "@/lib/decisionTemplates";
 import { ResponseOptionsPreview } from "@/components/task-decisions/ResponseOptionsPreview";
 import { DecisionFileUpload } from "@/components/task-decisions/DecisionFileUpload";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
-import { Vote, Loader2, Mail, MessageSquare, Globe, Paperclip } from "lucide-react";
+import { Vote, Loader2, Mail, MessageSquare, Globe, Paperclip, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,14 +46,19 @@ export function NoteDecisionCreator({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [responseDeadline, setResponseDeadline] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [sendByEmail, setSendByEmail] = useState(true);
   const [sendViaMatrix, setSendViaMatrix] = useState(true);
+  const defaultTemplate = getTemplateById(DEFAULT_TEMPLATE_ID);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(DEFAULT_TEMPLATE_ID);
-  const [customOptions, setCustomOptions] = useState<ResponseOption[]>(getDefaultOptions());
+  const [customOptions, setCustomOptions] = useState<ResponseOption[]>(
+    defaultTemplate ? defaultTemplate.options.map(o => ({ ...o })) : []
+  );
   const [visibleToAll, setVisibleToAll] = useState(true);
+  const [priority, setPriority] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
   const hasInitializedRef = useRef(false);
@@ -172,13 +176,17 @@ export function NoteDecisionCreator({
     }
   };
 
-  const currentOptions = useMemo(() => {
-    if (selectedTemplateId === 'custom') {
-      return customOptions;
+  const currentOptions = useMemo(() => customOptions, [customOptions]);
+
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    if (templateId !== "custom") {
+      const template = getTemplateById(templateId);
+      if (template) {
+        setCustomOptions(template.options.map(option => ({ ...option })));
+      }
     }
-    const template = getTemplateById(selectedTemplateId);
-    return template?.options || getDefaultOptions();
-  }, [selectedTemplateId, customOptions]);
+  };
 
   const userOptions = useMemo(() => {
     return profiles.map(p => ({
@@ -193,8 +201,8 @@ export function NoteDecisionCreator({
       return;
     }
 
-    if (selectedUsers.length === 0) {
-      toast.error("Bitte wählen Sie mindestens einen Teilnehmer aus");
+    if (!visibleToAll && selectedUsers.length === 0) {
+      toast.error("Bitte wählen Sie mindestens einen Teilnehmer aus oder machen Sie die Anfrage öffentlich");
       return;
     }
 
@@ -215,7 +223,9 @@ export function NoteDecisionCreator({
           tenant_id: currentTenant.id,
           status: "active",
           response_options: currentOptions as unknown as any,
-          visible_to_all: visibleToAll
+          visible_to_all: visibleToAll,
+          response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : null,
+          priority: priority ? 1 : 0,
         }])
         .select()
         .single();
@@ -332,9 +342,11 @@ export function NoteDecisionCreator({
       setTitle("");
       setDescription("");
       setSelectedUsers([]);
+      setResponseDeadline("");
       setSelectedTemplateId(DEFAULT_TEMPLATE_ID);
-      setCustomOptions(getDefaultOptions());
+      setCustomOptions(defaultTemplate ? defaultTemplate.options.map(o => ({ ...o })) : []);
       setVisibleToAll(true);
+      setPriority(false);
       setSelectedFiles([]);
       setSelectedTopicIds([]);
     } catch (error) {
@@ -370,6 +382,16 @@ export function NoteDecisionCreator({
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="response-deadline">Antwortfrist (optional)</Label>
+            <Input
+              id="response-deadline"
+              type="datetime-local"
+              value={responseDeadline}
+              onChange={(e) => setResponseDeadline(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="description">Beschreibung</Label>
             <SimpleRichTextEditor
               initialContent={description}
@@ -380,7 +402,7 @@ export function NoteDecisionCreator({
 
           <div className="space-y-2">
             <Label>Antwortoptionen</Label>
-            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+            <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Vorlage wählen" />
               </SelectTrigger>
@@ -396,7 +418,7 @@ export function NoteDecisionCreator({
               </SelectContent>
             </Select>
             
-            {selectedTemplateId === 'custom' && (
+            {(selectedTemplateId === 'custom' || selectedTemplateId === 'rating5' || selectedTemplateId === 'optionABC') && (
               <ResponseOptionsEditor
                 options={customOptions}
                 onChange={setCustomOptions}
@@ -423,17 +445,29 @@ export function NoteDecisionCreator({
             )}
           </div>
 
-          {/* Öffentlich Checkbox */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="visible-to-all"
-              checked={visibleToAll}
-              onCheckedChange={(checked) => setVisibleToAll(checked === true)}
-            />
-            <Label htmlFor="visible-to-all" className="flex items-center gap-1 text-sm cursor-pointer">
-              <Globe className="h-3.5 w-3.5" />
-              Öffentlich (für alle sichtbar)
-            </Label>
+          <div className="space-y-2 border-t pt-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="visible-to-all"
+                checked={visibleToAll}
+                onCheckedChange={(checked) => setVisibleToAll(checked === true)}
+              />
+              <Label htmlFor="visible-to-all" className="flex items-center gap-1 text-sm cursor-pointer">
+                <Globe className="h-3.5 w-3.5" />
+                Öffentlich (für alle sichtbar)
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="priority"
+                checked={priority}
+                onCheckedChange={(checked) => setPriority(checked === true)}
+              />
+              <Label htmlFor="priority" className="flex items-center gap-1 text-sm cursor-pointer">
+                <Star className="h-3.5 w-3.5 text-amber-500" />
+                Als prioritär markieren
+              </Label>
+            </div>
           </div>
 
           {/* Themen */}
@@ -462,26 +496,26 @@ export function NoteDecisionCreator({
 
           <div className="flex items-center gap-6 pt-2">
             <div className="flex items-center gap-2">
-              <Switch
+              <Checkbox
                 id="sendByEmail"
                 checked={sendByEmail}
-                onCheckedChange={setSendByEmail}
+                onCheckedChange={(checked) => setSendByEmail(checked === true)}
               />
               <Label htmlFor="sendByEmail" className="flex items-center gap-1 text-sm cursor-pointer">
                 <Mail className="h-3.5 w-3.5" />
-                Per E-Mail
+                Auch per E-Mail versenden
               </Label>
             </div>
             
             <div className="flex items-center gap-2">
-              <Switch
+              <Checkbox
                 id="sendViaMatrix"
                 checked={sendViaMatrix}
-                onCheckedChange={setSendViaMatrix}
+                onCheckedChange={(checked) => setSendViaMatrix(checked === true)}
               />
               <Label htmlFor="sendViaMatrix" className="flex items-center gap-1 text-sm cursor-pointer">
                 <MessageSquare className="h-3.5 w-3.5" />
-                Per Matrix
+                Auch via Matrix versenden
               </Label>
             </div>
           </div>
