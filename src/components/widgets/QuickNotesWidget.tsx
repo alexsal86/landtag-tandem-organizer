@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Save, Search, Settings, ListTodo, Square, ChevronDown, CheckSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -15,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { TaskDetailSidebar } from '@/components/TaskDetailSidebar';
 import { QuickNotesList } from '@/components/shared/QuickNotesList';
+import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
 
 interface QuickNotesWidgetProps {
   className?: string;
@@ -37,6 +37,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [titleEditorKey, setTitleEditorKey] = useState(0);
   
   // Tasks state
   const [tasks, setTasks] = useState<Array<{
@@ -170,6 +171,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
 
       setNewNote('');
       setNewTitle('');
+      setTitleEditorKey(prev => prev + 1);
       setRefreshTrigger(prev => prev + 1);
       toast.success('Notiz erstellt');
     } catch (error) {
@@ -285,11 +287,13 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         {/* Create Form */}
         <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
           {!compact && (
-            <Input
+            <SimpleRichTextEditor
+              key={titleEditorKey}
+              initialContent={newTitle}
+              onChange={setNewTitle}
               placeholder="Titel (optional)"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="h-8 text-xs"
+              minHeight="36px"
+              showToolbar={false}
             />
           )}
           <Textarea
