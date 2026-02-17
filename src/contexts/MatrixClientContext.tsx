@@ -155,9 +155,14 @@ function setupVerifierListeners(
       emojis,
       decimals: sas.sas.decimal || null,
       confirm: async () => {
-        await sas.confirm();
-        setActiveSasVerification(null);
-        setLastVerificationError(null);
+        try {
+          await sas.confirm();
+          // State-Cleanup erfolgt durch verifier.verify().then()
+          // NICHT hier null setzen -- sonst Race Condition
+        } catch (e) {
+          setLastVerificationError(e instanceof Error ? e.message : 'Bestaetigung fehlgeschlagen');
+          setActiveSasVerification(null);
+        }
       },
       mismatch: () => {
         sas.mismatch();
@@ -574,30 +579,33 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         }
 
         if (verificationRequest.phase !== VerificationPhase.Ready && verificationRequest.phase !== VerificationPhase.Started) {
-          await new Promise<void>((resolve, reject) => {
+          const waitResult = await new Promise<'ok' | 'cancelled' | 'timeout'>((resolve) => {
             let timeoutId: ReturnType<typeof setTimeout>;
             const check = () => {
               const phase = verificationRequest.phase;
               if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started) {
                 clearTimeout(timeoutId);
                 verificationRequest.off?.('change', check);
-                resolve();
+                resolve('ok');
               } else if (phase === VerificationPhase.Cancelled || phase === VerificationPhase.Done) {
                 clearTimeout(timeoutId);
                 verificationRequest.off?.('change', check);
-                reject(new Error('Verifizierung wurde vom anderen Gerät abgebrochen.'));
+                resolve('cancelled');
               }
             };
             verificationRequest.on?.('change', check);
             check();
             timeoutId = setTimeout(() => {
               verificationRequest.off?.('change', check);
-              reject(new Error('Verifizierungs-Timeout: Der andere Client hat nicht rechtzeitig geantwortet.'));
-            }, 30000);
-          }).catch(err => {
-            console.warn('[Matrix] Incoming verification wait failed:', err.message);
-            return; // exit early
+              resolve('timeout');
+            }, 60000);
           });
+
+          if (waitResult !== 'ok') {
+            try { await verificationRequest.cancel(); } catch {}
+            console.warn('[Matrix] Incoming verification aborted:', waitResult);
+            return;
+          }
         }
 
         if (verificationRequest.phase === VerificationPhase.Cancelled || verificationRequest.phase === VerificationPhase.Done) return;
@@ -605,7 +613,17 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         try {
           const verifier = await verificationRequest.startVerification('m.sas.v1');
           setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError);
-          void verifier.verify();
+          verifier.verify()
+            .then(() => {
+              console.log('[Matrix] Incoming SAS verification succeeded');
+              setLastVerificationError(null);
+              setActiveSasVerification(null);
+            })
+            .catch((err: unknown) => {
+              console.error('[Matrix] Incoming SAS verification failed:', err);
+              setLastVerificationError(err instanceof Error ? err.message : 'Verifizierung fehlgeschlagen');
+              setActiveSasVerification(null);
+            });
           console.log('[Matrix] Incoming verification SAS started');
         } catch (err) {
           console.error('[Matrix] Failed to handle incoming verification:', err);
