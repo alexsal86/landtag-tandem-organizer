@@ -1006,19 +1006,7 @@ export const DecisionOverview = () => {
     setCommentsDecisionTitle(decisionTitle);
   };
 
-  const renderCompactCard = (decision: DecisionRequest) => {
-    const summary = getResponseSummary(decision.participants);
-    
-    // Prepare avatar stack data
-    const avatarParticipants = (decision.participants || []).map(p => ({
-      user_id: p.user_id,
-      display_name: p.profile?.display_name || null,
-      badge_color: p.profile?.badge_color || null,
-      avatar_url: p.profile?.avatar_url || null,
-      response_type: p.responses[0]?.response_type || null,
-    }));
-
-    const loadAttachmentFiles = async (decisionId: string) => {
+  const loadAttachmentFiles = async (decisionId: string) => {
     if (attachmentFilesByDecision[decisionId]) return;
 
     const { data, error } = await supabase
@@ -1035,6 +1023,18 @@ export const DecisionOverview = () => {
 
     setAttachmentFilesByDecision(prev => ({ ...prev, [decisionId]: data || [] }));
   };
+
+  const renderCompactCard = (decision: DecisionRequest) => {
+    const summary = getResponseSummary(decision.participants);
+    
+    // Prepare avatar stack data
+    const avatarParticipants = (decision.participants || []).map(p => ({
+      user_id: p.user_id,
+      display_name: p.profile?.display_name || null,
+      badge_color: p.profile?.badge_color || null,
+      avatar_url: p.profile?.avatar_url || null,
+      response_type: p.responses[0]?.response_type || null,
+    }));
 
   const getInitials = (name: string | null) => {
       if (!name) return '?';

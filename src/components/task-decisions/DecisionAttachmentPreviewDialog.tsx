@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, FileText } from "lucide-react";
+import { Download, FileImage, FileSpreadsheet, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DecisionAttachmentPreviewDialogProps {
@@ -26,9 +26,14 @@ export function DecisionAttachmentPreviewDialog({
   const extension = useMemo(() => getFileExtension(fileName), [fileName]);
   const isPdf = extension === 'pdf';
   const isWord = extension === 'doc' || extension === 'docx';
+  const isExcel = extension === 'xls' || extension === 'xlsx';
+  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(extension);
 
   useEffect(() => {
-    if (!open || !filePath) return;
+    if (!open || !filePath) {
+      setSignedUrl(null);
+      return;
+    }
 
     const loadSignedUrl = async () => {
       setLoading(true);
@@ -101,11 +106,15 @@ export function DecisionAttachmentPreviewDialog({
             </div>
           ) : isPdf && signedUrl ? (
             <iframe title={fileName} src={signedUrl} className="w-full h-full" />
-          ) : isWord && signedUrl ? (
+          ) : isImage && signedUrl ? (
+            <div className="h-full w-full overflow-auto bg-background/70 p-4 flex items-center justify-center">
+              <img src={signedUrl} alt={fileName} className="max-w-full max-h-full object-contain" />
+            </div>
+          ) : (isWord || isExcel) && signedUrl ? (
             <iframe title={fileName} src={officeViewerUrl} className="w-full h-full" />
           ) : (
             <div className="h-full flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground p-6 text-center">
-              <FileText className="h-6 w-6" />
+              {isExcel ? <FileSpreadsheet className="h-6 w-6" /> : isImage ? <FileImage className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
               Vorschau für diesen Dateityp ist nicht verfügbar.
             </div>
           )}
