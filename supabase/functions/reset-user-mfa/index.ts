@@ -66,7 +66,7 @@ serve(async (req) => {
     // For now, we'll log the request and provide instructions
     
     // Create an audit log entry
-    await supabaseAdmin.from('admin_audit_log').insert({
+    const { error: auditError } = await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: requestingUser.id,
       action: 'mfa_reset',
       target_user_id: userId,
@@ -75,21 +75,24 @@ serve(async (req) => {
         user_email: user.email,
         timestamp: new Date().toISOString()
       }
-    }).catch(err => console.error('Failed to create audit log:', err));
+    });
+    if (auditError) console.error('Failed to create audit log:', auditError);
 
     // Send notification to the user
-    await supabaseAdmin.from('notifications').insert({
+    const { data: notificationType } = await supabaseAdmin
+      .from('notification_types')
+      .select('id')
+      .eq('name', 'system_alert')
+      .single();
+
+    const { error: notifError } = await supabaseAdmin.from('notifications').insert({
       user_id: userId,
-      notification_type_id: (await supabaseAdmin
-        .from('notification_types')
-        .select('id')
-        .eq('name', 'system_alert')
-        .single()
-      ).data?.id,
+      notification_type_id: notificationType?.id,
       title: '2FA wurde zurückgesetzt',
       message: 'Ihre Zwei-Faktor-Authentifizierung wurde von einem Administrator zurückgesetzt. Sie können 2FA in den Einstellungen erneut aktivieren.',
       priority: 'high'
-    }).catch(err => console.error('Failed to send notification:', err));
+    });
+    if (notifError) console.error('Failed to send notification:', notifError);
 
     return new Response(
       JSON.stringify({
@@ -107,11 +110,11 @@ serve(async (req) => {
     console.error('Error resetting MFA:', error);
     return new Response(
       JSON.stringify({
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: error.message.includes('Unauthorized') || error.message.includes('permissions') ? 403 : 400
+        status: error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('permissions')) ? 403 : 400
       }
     );
   }

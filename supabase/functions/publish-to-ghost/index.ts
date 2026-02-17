@@ -45,7 +45,7 @@ async function generateGhostJWT(adminApiKey: string): Promise<string> {
   const secretBytes = hexToUint8Array(keySecret);
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    secretBytes,
+    secretBytes.buffer as ArrayBuffer,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
@@ -55,7 +55,7 @@ async function generateGhostJWT(adminApiKey: string): Promise<string> {
   const signature = await crypto.subtle.sign(
     'HMAC',
     cryptoKey,
-    stringToUint8Array(signingInput)
+    stringToUint8Array(signingInput).buffer as ArrayBuffer
   );
 
   const encodedSignature = base64UrlEncode(new Uint8Array(signature));
@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('[publish-to-ghost] Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), { 
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), { 
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     });
   }
