@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, Download, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { isEmlFile, isMsgFile, isEmailFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
+import { getUploadContentType, isEmlFile, isMsgFile, isEmailFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
 
@@ -152,7 +152,9 @@ export function DecisionFileUpload({
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('decision-attachments')
-          .upload(fileName, file);
+          .upload(fileName, file, {
+            contentType: getUploadContentType(file),
+          });
 
         if (uploadError) throw uploadError;
 
