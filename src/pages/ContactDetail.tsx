@@ -48,7 +48,7 @@ export default function ContactDetail() {
       setLoading(true);
       const { data, error } = await supabase
         .from('contacts')
-        .select('*')
+        .select('id, name, role, organization, email, phone, location, category, priority, last_contact, avatar_url, notes')
         .eq('id', id)
         .eq('user_id', user!.id)
         .single();
