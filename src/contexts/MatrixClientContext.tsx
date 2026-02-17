@@ -33,6 +33,16 @@ interface MatrixE2EEDiagnostics {
   cryptoError: string | null;
 }
 
+interface MatrixSasVerificationState {
+  transactionId?: string;
+  otherDeviceId?: string;
+  emojis: Array<{ symbol: string; description: string }>;
+  decimals: [number, number, number] | null;
+  confirm: () => Promise<void>;
+  mismatch: () => void;
+  cancel: () => void;
+}
+
 export interface MatrixMessage {
   eventId: string;
   roomId: string;
@@ -134,6 +144,10 @@ interface MatrixClientContextType {
   removeReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
   createRoom: (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => Promise<string>;
   requestSelfVerification: (otherDeviceId?: string) => Promise<void>;
+  activeSasVerification: MatrixSasVerificationState | null;
+  confirmSasVerification: () => Promise<void>;
+  rejectSasVerification: () => void;
+  lastVerificationError: string | null;
 }
 
 const MatrixClientContext = createContext<MatrixClientContextType | null>(null);
@@ -153,6 +167,9 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const [typingUsers, setTypingUsers] = useState<Map<string, string[]>>(new Map());
+  const [activeSasVerification, setActiveSasVerification] = useState<MatrixSasVerificationState | null>(null);
+  const isConnectingRef = useRef(false);
+  const [lastVerificationError, setLastVerificationError] = useState<string | null>(null);
   const [e2eeDiagnostics, setE2eeDiagnostics] = useState<MatrixE2EEDiagnostics>({
     secureContext: window.isSecureContext,
     crossOriginIsolated: window.crossOriginIsolated,
@@ -195,16 +212,10 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     loadCredentials();
   }, [user, currentTenant?.id]);
 
-  // Auto-connect when credentials are available
-  useEffect(() => {
-    if (credentials && !isConnected && !isConnecting && !client) {
-      connect(credentials);
-    }
-  }, [credentials]);
-
   const connect = useCallback(async (creds: MatrixCredentials) => {
-    if (isConnecting || isConnected) return;
+    if (isConnectingRef.current || isConnected) return;
 
+    isConnectingRef.current = true;
     setIsConnecting(true);
     setConnectionError(null);
 
@@ -242,6 +253,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         accessToken: creds.accessToken,
         userId: creds.userId,
         deviceId: resolvedDeviceId,
+        verificationMethods: ['m.sas.v1'],
         cryptoCallbacks: {
           getSecretStorageKey: async ({ keys }) => {
             const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`);
@@ -499,8 +511,17 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       console.error('Error connecting to Matrix:', error);
       setConnectionError(error instanceof Error ? error.message : 'Verbindungsfehler');
       setIsConnecting(false);
+    } finally {
+      isConnectingRef.current = false;
     }
-  }, [isConnecting, isConnected]);
+  }, [isConnected]);
+
+  // Auto-connect when credentials are available
+  useEffect(() => {
+    if (credentials && !isConnected && !isConnecting && !client) {
+      connect(credentials);
+    }
+  }, [credentials, isConnected, isConnecting, client, connect]);
 
   const disconnect = useCallback(() => {
     if (client) {
@@ -522,6 +543,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     setRooms([]);
     setMessages(new Map());
     setTypingUsers(new Map());
+    setActiveSasVerification(null);
+    setLastVerificationError(null);
   }, [client]);
 
   const updateRoomList = (matrixClient: sdk.MatrixClient) => {
@@ -663,13 +686,103 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       throw new Error('Crypto API ist nicht verfügbar. E2EE muss zuerst aktiv sein.');
     }
 
-    if (otherDeviceId?.trim()) {
-      await client.requestVerification(credentials.userId, [otherDeviceId.trim()]);
-      return;
+    setLastVerificationError(null);
+    setActiveSasVerification(null);
+
+    const describeVerificationFailure = (error: unknown): string => {
+      if (error instanceof sdk.MatrixEvent) {
+        const content = error.getContent() || {};
+        const code = typeof content.code === 'string' ? content.code : null;
+        const reason = typeof content.reason === 'string' ? content.reason : null;
+        if (code && reason) return `${code}: ${reason}`;
+        if (reason) return reason;
+        if (code) return code;
+      }
+
+      if (error instanceof Error) {
+        return error.message;
+      }
+
+      return 'Unbekannter Verifizierungsfehler';
+    };
+
+    const trimmedDeviceId = otherDeviceId?.trim();
+    let verificationRequest = trimmedDeviceId
+      ? await crypto.requestDeviceVerification(credentials.userId, trimmedDeviceId)
+      : await crypto.requestOwnUserVerification();
+
+    let verifier: sdk.Verifier;
+    try {
+      verifier = await verificationRequest.startVerification('m.sas.v1');
+    } catch (error) {
+      const reason = describeVerificationFailure(error);
+      const isUnknownDeviceError = Boolean(trimmedDeviceId) && /other device is unknown/i.test(reason);
+
+      if (!isUnknownDeviceError) {
+        throw error;
+      }
+
+      setLastVerificationError(`Device ID ${trimmedDeviceId} wurde auf dem Homeserver nicht gefunden. Verifizierung wird ohne feste Device-ID erneut gestartet.`);
+      verificationRequest = await crypto.requestOwnUserVerification();
+      verifier = await verificationRequest.startVerification('m.sas.v1');
     }
 
-    await client.requestVerification(credentials.userId);
+    verifier.on('show_sas', (sas) => {
+      const emojis = (sas.sas.emoji || []).map(([symbol, description]) => ({ symbol, description }));
+      setActiveSasVerification({
+        transactionId: verificationRequest.transactionId,
+        otherDeviceId: verificationRequest.otherDeviceId,
+        emojis,
+        decimals: sas.sas.decimal || null,
+        confirm: async () => {
+          await sas.confirm();
+          setActiveSasVerification(null);
+          setLastVerificationError(null);
+        },
+        mismatch: () => {
+          sas.mismatch();
+          setActiveSasVerification(null);
+          setLastVerificationError('Sie haben die Emoji-Codes als nicht übereinstimmend markiert.');
+        },
+        cancel: () => {
+          sas.cancel();
+          setActiveSasVerification(null);
+          setLastVerificationError('Verifizierung wurde abgebrochen.');
+        },
+      });
+    });
+
+    verifier.on('cancel', (error) => {
+      const message = describeVerificationFailure(error);
+      setLastVerificationError(message);
+      setActiveSasVerification(null);
+    });
+
+    void verifier.verify()
+      .then(() => {
+        setLastVerificationError(null);
+        setActiveSasVerification(null);
+      })
+      .catch((error) => {
+        const message = describeVerificationFailure(error);
+        console.error('Matrix SAS verification failed:', error);
+        setLastVerificationError(message);
+        setActiveSasVerification(null);
+      });
   }, [client, isConnected, credentials?.userId]);
+
+  const confirmSasVerification = useCallback(async () => {
+    if (!activeSasVerification) {
+      throw new Error('Keine aktive Emoji-Verifizierung vorhanden.');
+    }
+
+    await activeSasVerification.confirm();
+  }, [activeSasVerification]);
+
+  const rejectSasVerification = useCallback(() => {
+    if (!activeSasVerification) return;
+    activeSasVerification.mismatch();
+  }, [activeSasVerification]);
 
   const getMessages = useCallback((roomId: string, limit: number = 50): MatrixMessage[] => {
     if (!client) return [];
@@ -728,6 +841,10 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     removeReaction,
     createRoom,
     requestSelfVerification,
+    activeSasVerification,
+    confirmSasVerification,
+    rejectSasVerification,
+    lastVerificationError,
   };
 
   return (
