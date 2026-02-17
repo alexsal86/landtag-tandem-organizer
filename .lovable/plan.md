@@ -1,58 +1,82 @@
 
+## Fix: One-Time-Key-Kollision und Device-Validierung
 
-## Fix: Verification bricht nach Emoji-Matching ab (m.user_error)
+### Problem
 
-### Ursache
+Beim Connect wird eine Device ID aus localStorage wiederverwendet, deren Crypto-Store (IndexedDB) aber nicht mehr zum serverseitigen State passt. Das fuehrt zu:
 
-Drei zusammenhaengende Probleme fuehren dazu, dass die Verifizierung nach dem Emoji-Abgleich abbricht:
-
-1. **`confirm()` in `setupVerifierListeners` raeumt den State zu frueh auf** (Zeile 158-160): `setActiveSasVerification(null)` wird sofort nach `sas.confirm()` gesetzt, bevor `verifier.verify()` den Handshake abschliessen kann. Die andere Seite sieht dann keinen aktiven Verifier mehr und bricht mit `m.user_error` ab.
-
-2. **Incoming-Verification: `void verifier.verify()` hat keinen Cleanup** (Zeile 608): Wenn `verify()` fehlschlaegt oder erfolgreich abschliesst, wird der State nie aufgeraeumt.
-
-3. **Timeout von 30s ist zu kurz + kein explizites Cancel bei Abbruch** (Zeile 596-600): Bei Timeout oder Cancel wird die andere Seite nicht informiert.
+```
+One time key signed_curve25519:AAAAAAAAAA0 already exists → 400
+→ Crypto-Layer sendet m.key.verification.cancel
+→ Andere Seite sieht m.user_error
+```
 
 ### Aenderungen in `src/contexts/MatrixClientContext.tsx`
 
-**1. `setupVerifierListeners` -- confirm() raeumt State nicht mehr selbst auf (Zeilen 157-161)**
+**1. Device-Validierung vor `initRustCrypto` (nach Zeile 338)**
 
-Vorher:
-```text
-confirm: async () => {
-  await sas.confirm();
-  setActiveSasVerification(null);
-  setLastVerificationError(null);
-},
-```
+Bevor der Client gestartet wird, wird geprueft ob das gespeicherte Device noch auf dem Homeserver existiert. Falls nicht, wird die lokale Device ID verworfen und der Client ohne Device ID erstellt (Server vergibt eine neue).
 
-Nachher:
 ```text
-confirm: async () => {
+// Nach createClient, vor initRustCrypto:
+if (localDeviceId) {
   try {
-    await sas.confirm();
-    // State-Cleanup erfolgt durch verifier.verify().then()
-    // NICHT hier null setzen -- sonst Race Condition
-  } catch (e) {
-    setLastVerificationError(e instanceof Error ? e.message : 'Bestaetigung fehlgeschlagen');
-    setActiveSasVerification(null);
-  }
-},
+    const resp = await fetch(
+      `${creds.homeserverUrl}/_matrix/client/v3/devices/${localDeviceId}`,
+      { headers: { Authorization: `Bearer ${creds.accessToken}` } }
+    );
+    if (!resp.ok) {
+      console.warn('Stored device no longer exists on server, creating new device');
+      localStorage.removeItem(`matrix_device_id:${creds.userId}`);
+      // Recreate client without stale deviceId
+      matrixClient = sdk.createClient({
+        baseUrl: creds.homeserverUrl,
+        accessToken: creds.accessToken,
+        userId: creds.userId,
+      });
+      clientRef.current = matrixClient;
+    }
+  } catch {}
+}
 ```
 
-**2. Incoming-Verification: Timeout auf 60s + explizites Cancel + verify()-Cleanup (Zeilen 576-612)**
+**2. `resetCryptoStore` mit serverseitigem Device-Delete (Zeilen 960-1023)**
 
-- Timeout von 30s auf 60s erhoehen
-- `reject()` durch `resolve('ok' | 'cancelled' | 'timeout')` ersetzen -- sauberes Signal ohne Exception
-- Bei `timeout` oder `cancelled`: explizit `verificationRequest.cancel()` aufrufen damit die andere Seite informiert wird
-- `void verifier.verify()` erhaelt `.then()` und `.catch()` fuer State-Cleanup (wie bei outgoing)
+Der bestehende `resetCryptoStore` loescht nur lokale Daten. Neu wird zuerst versucht, das Device auch serverseitig zu loeschen (mit UIA-Passwort falls vorhanden). Das verhindert die Key-Kollision beim naechsten Login.
 
-**3. Keine weiteren Dateien betroffen**
+```text
+// Vor disconnect() und IndexedDB-Cleanup:
+if (mc) {
+  try {
+    const deviceId = mc.getDeviceId();
+    if (deviceId) {
+      const localpart = credentials?.userId?.split(':')[0].substring(1);
+      await mc.deleteDevice(deviceId, credentials?.password ? {
+        type: 'm.login.password',
+        identifier: { type: 'm.id.user', user: localpart },
+        password: credentials.password,
+      } : {});
+      console.log('Device deleted from server:', deviceId);
+    }
+  } catch (e) {
+    console.warn('Could not delete device from server (non-critical):', e);
+  }
+}
+```
 
-### Technische Details
+**3. Credentials um password erweitern fuer resetCryptoStore**
 
-| Stelle | Zeilen | Aenderung |
-|---|---|---|
-| `setupVerifierListeners` confirm | 157-161 | Kein `setActiveSasVerification(null)` mehr in confirm, nur im Fehlerfall |
-| Incoming wait-Promise | 576-601 | Timeout 60s, resolve-basiert statt reject, explizites cancel |
-| Incoming verify() | 606-609 | `.then()/.catch()` Cleanup wie bei outgoing (Zeilen 933-942) |
+`resetCryptoStore` braucht Zugriff auf `credentials?.password`. Da das Passwort in `credentials` nach dem Login gespeichert wird (nur im Memory, nicht persistiert), ist das bereits verfuegbar -- Zeile 683: `setCredentials({ ...creds, deviceId: finalDeviceId || undefined })` speichert auch `password` mit. Es muss nichts zusaetzlich geaendert werden.
 
+### Zusammenfassung
+
+| Stelle | Aenderung |
+|---|---|
+| `connect()` nach createClient (Zeile 338) | Device-Validierung per GET `/devices/{id}`, bei 404 Client ohne Device ID neu erstellen |
+| `resetCryptoStore` (Zeile 960) | Serverseitiges `deleteDevice` mit UIA vor lokalem Cleanup |
+
+### Was sich aendert
+
+- Veraltete Device IDs werden beim Connect erkannt und verworfen statt Key-Kollisionen auszuloesen
+- `resetCryptoStore` raeumt auch serverseitig auf, sodass ein sauberer Neustart moeglich ist
+- Keine manuellen Browser-Cache-Loeschungen mehr noetig
