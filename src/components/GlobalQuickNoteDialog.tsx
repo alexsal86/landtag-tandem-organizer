@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { StickyNote, Keyboard, Loader2, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +18,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
   const toEditorHtml = (value: string | null | undefined) => {
@@ -39,6 +39,8 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
   }, [open]);
 
   const handleSave = async () => {
+    if (savingRef.current) return;
+
     const plainTitle = stripHtml(title);
     const plainContent = stripHtml(content);
 
@@ -52,6 +54,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
     
     try {
@@ -86,34 +89,29 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       console.error("Error creating quick note:", error);
       toast.error(`Fehler: ${error.message || 'Unbekannter Fehler'}`);
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
 
-  // Handle Enter key for quick save
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
-    const target = e.target as HTMLElement;
-    const isTextarea = target.tagName === "TEXTAREA";
-    const isContentEditable = target.getAttribute("contenteditable") === "true";
-
+  // Handle Enter key in title editor for quick save
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       const mentionMenuOpen = !!document.querySelector('.mentions-menu');
 
-      if (mentionMenuOpen) {
-        return;
-      }
-
-      if (isContentEditable || !isTextarea) {
+      if (!mentionMenuOpen) {
         e.preventDefault();
-        if (!saving) {
+        if (!savingRef.current) {
           void handleSave();
         }
       }
     }
+  };
 
+  const handleContentKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
-      if (!saving) {
+      if (!savingRef.current) {
         void handleSave();
       }
     }
@@ -121,7 +119,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" onKeyDown={handleKeyDown}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <StickyNote className="h-5 w-5 text-primary" />
@@ -137,13 +135,15 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
             placeholder="Titel (@ für Mentions)"
             minHeight="44px"
             showToolbar={false}
-            onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLDivElement>}
+            onKeyDown={handleTitleKeyDown}
           />
-          <Textarea
+          <SimpleRichTextEditor
+            key={open ? 'global-quick-note-content-open' : 'global-quick-note-content-closed'}
+            initialContent={toEditorHtml(content)}
+            onChange={setContent}
             placeholder="Notiz eingeben..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            rows={4}
+            minHeight="120px"
+            onKeyDown={handleContentKeyDown}
             disabled={saving}
           />
         </div>
