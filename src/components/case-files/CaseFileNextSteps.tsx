@@ -131,6 +131,14 @@ export function CaseFileNextSteps({
     try {
       // Find or create parent task
       const parentTaskId = await findOrCreateParentTask();
+      if (!parentTaskId) {
+        toast({
+          title: "Schnellaufgabe konnte nicht erstellt werden",
+          description: "Die Hauptaufgabe der Fallakte konnte nicht ermittelt werden.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       // Create sub-task
       const { data: newTask, error: taskError } = await supabase
