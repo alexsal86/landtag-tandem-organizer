@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { cn } from "@/lib/utils";
-import { addDays, differenceInYears, format, isToday, isPast } from "date-fns";
+import { addDays, format, isToday, isPast } from "date-fns";
 import { de } from "date-fns/locale";
 
 interface MeetingParticipant {
@@ -318,7 +318,7 @@ export function MyWorkJourFixeTab() {
                 name: contact.name,
                 birthDate: originalBirthday,
                 nextBirthday,
-                age: differenceInYears(nextBirthday, originalBirthday),
+                age: year - originalBirthday.getFullYear(),
               });
               break;
             }
@@ -525,7 +525,7 @@ export function MyWorkJourFixeTab() {
                             <li key={birthday.id} className="flex items-center gap-1.5 text-muted-foreground">
                               <Cake className="h-2.5 w-2.5 text-pink-500" />
                               <span>
-                                {birthday.name} ({format(birthday.nextBirthday, "dd.MM.", { locale: de })}, geb. {format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, {birthday.age} Jahre)
+                                {birthday.name} (geb. {format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, {birthday.age} Jahre)
                               </span>
                             </li>
                           ))}
@@ -572,7 +572,7 @@ export function MyWorkJourFixeTab() {
                                       <li key={birthday.id} className="flex items-center gap-1.5 text-muted-foreground">
                                         <Cake className="h-2.5 w-2.5 text-pink-500" />
                                         <span>
-                                          {birthday.name} ({format(birthday.nextBirthday, "dd.MM.", { locale: de })}, geb. {format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, {birthday.age} Jahre)
+                                          {birthday.name} (geb. {format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, {birthday.age} Jahre)
                                         </span>
                                       </li>
                                     ))}
