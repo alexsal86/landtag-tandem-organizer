@@ -15,7 +15,16 @@ export function MatrixLoginForm() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
-  const { isConnected, connect, disconnect, credentials, requestSelfVerification } = useMatrixClient();
+  const {
+    isConnected,
+    connect,
+    disconnect,
+    credentials,
+    requestSelfVerification,
+    activeSasVerification,
+    confirmSasVerification,
+    rejectSasVerification,
+  } = useMatrixClient();
 
   const [matrixUserId, setMatrixUserId] = useState('');
   const [accessToken, setAccessToken] = useState('');
@@ -27,6 +36,7 @@ export function MatrixLoginForm() {
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [verificationTargetDeviceId, setVerificationTargetDeviceId] = useState('');
   const [isStartingVerification, setIsStartingVerification] = useState(false);
+  const [isConfirmingSas, setIsConfirmingSas] = useState(false);
 
   // Load existing credentials
   useEffect(() => {
@@ -210,9 +220,13 @@ export function MatrixLoginForm() {
         description: 'Öffnen Sie Ihren zweiten Element-Login und bestätigen Sie die Geräte-Verifizierung.',
       });
     } catch (error) {
+      const description = error instanceof Error
+        ? `${error.message} Falls der Fehler bleibt: Chat einmal trennen, Browserdaten für diese App löschen und erneut verbinden.`
+        : 'Verifizierung konnte nicht gestartet werden';
+
       toast({
         title: 'Verifizierung fehlgeschlagen',
-        description: error instanceof Error ? error.message : 'Verifizierung konnte nicht gestartet werden',
+        description,
         variant: 'destructive',
       });
     } finally {
@@ -227,6 +241,35 @@ export function MatrixLoginForm() {
       description: 'Matrix-Verbindung wurde getrennt'
     });
   };
+
+  const handleConfirmSas = async () => {
+    setIsConfirmingSas(true);
+    try {
+      await confirmSasVerification();
+      toast({
+        title: 'Verifizierung bestätigt',
+        description: 'Emoji-Code bestätigt. Die Geräte werden als vertrauenswürdig markiert.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Bestätigung fehlgeschlagen',
+        description: error instanceof Error ? error.message : 'Emoji-Verifizierung konnte nicht bestätigt werden',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsConfirmingSas(false);
+    }
+  };
+
+  const handleRejectSas = () => {
+    rejectSasVerification();
+    toast({
+      title: 'Verifizierung abgebrochen',
+      description: 'Die Emoji-Codes haben nicht übereingestimmt.',
+      variant: 'destructive',
+    });
+  };
+
 
   return (
     <Card>
@@ -317,6 +360,36 @@ export function MatrixLoginForm() {
         </div>
 
 
+        {activeSasVerification && (
+          <Alert className="border-blue-500/40 bg-blue-500/5">
+            <AlertDescription className="space-y-3">
+              <p className="text-sm font-medium">Emoji-Verifizierung läuft{activeSasVerification.otherDeviceId ? ` (Gerät ${activeSasVerification.otherDeviceId})` : ''}.</p>
+              {activeSasVerification.emojis.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {activeSasVerification.emojis.map((item, index) => (
+                    <div key={`${item.symbol}-${index}`} className="rounded border px-2 py-1 text-center">
+                      <div className="text-xl">{item.symbol}</div>
+                      <div className="text-xs text-muted-foreground">{item.description}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : activeSasVerification.decimals ? (
+                <p className="font-mono text-sm">{activeSasVerification.decimals.join(' · ')}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Warte auf SAS-Daten vom anderen Gerät…</p>
+              )}
+              <p className="text-xs text-muted-foreground">Vergleichen Sie die Emojis mit dem zweiten Gerät und bestätigen Sie nur bei exakter Übereinstimmung.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={handleConfirmSas} disabled={isConfirmingSas || activeSasVerification.emojis.length === 0 && !activeSasVerification.decimals}>
+                  {isConfirmingSas ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Emojis stimmen überein
+                </Button>
+                <Button size="sm" variant="destructive" onClick={handleRejectSas}>Emojis stimmen nicht</Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {isConnected && (
           <div className="space-y-2 rounded-md border p-3 bg-muted/30">
             <Label htmlFor="verify-device-id">Anderes Gerät verifizieren (optional Device ID)</Label>
@@ -327,7 +400,7 @@ export function MatrixLoginForm() {
               onChange={(e) => setVerificationTargetDeviceId(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Startet eine Verifizierungsanfrage an Ihren eigenen Matrix-Account. In Element am zweiten Gerät bestätigen.
+              Startet eine Verifizierungsanfrage an Ihren eigenen Matrix-Account. Diese App bietet aktuell SAS/Emoji-Verifizierung (kein QR-Scan im Browser). In Element am zweiten Gerät bestätigen.
             </p>
             <Button onClick={handleStartVerification} variant="secondary" disabled={isStartingVerification}>
               {isStartingVerification ? (
