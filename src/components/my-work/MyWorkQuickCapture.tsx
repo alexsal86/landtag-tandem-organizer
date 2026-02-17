@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Pin, Palette, Save, ListTodo, Loader2, Info } from "lucide-react";
@@ -38,7 +37,17 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   const [savingAsTask, setSavingAsTask] = useState(false);
   const [editorResetKey, setEditorResetKey] = useState(0);
 
-  const canSaveNote = Boolean(title.trim() || content.trim());
+  const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
+  const toEditorHtml = (value: string | null | undefined) => {
+    if (!value) return "";
+    if (/<[^>]+>/.test(value)) return value;
+    return `<p>${value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")}</p>`;
+  };
+
+  const canSaveNote = Boolean(stripHtml(title) || stripHtml(content));
 
 
   const resetQuickCaptureForm = () => {
@@ -57,7 +66,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       const { error } = await supabase.from("quick_notes").insert({
         user_id: user.id,
         title: title.trim() || null,
-        content: content.trim() || "",
+        content: stripHtml(content) ? content.trim() : "",
         color: selectedColor,
         is_pinned: isPinned,
         category: "general",
@@ -77,13 +86,13 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   };
 
   const handleSaveAsTask = async () => {
-    if (!content.trim() || !user || !currentTenant) return;
+    if (!stripHtml(content) || !user || !currentTenant) return;
     
     setSavingAsTask(true);
     try {
       // Strip HTML tags for title
-      const plainText = content.replace(/<[^>]*>/g, '').trim();
-      const taskTitle = title.trim() || plainText.substring(0, 100);
+      const plainText = stripHtml(content);
+      const taskTitle = stripHtml(title) || plainText.substring(0, 100);
       
       const { error } = await supabase.from("tasks").insert({
         user_id: user.id,
@@ -117,8 +126,11 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
     }
   };
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      const mentionMenuOpen = !!document.querySelector('.mentions-menu');
+      if (mentionMenuOpen) return;
+
       e.preventDefault();
       if (!saving && canSaveNote) {
         void handleSaveNote();
@@ -183,17 +195,19 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Input
-          placeholder="Titel"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+        <SimpleRichTextEditor
+          key={`title-${editorResetKey}`}
+          initialContent={toEditorHtml(title)}
+          onChange={setTitle}
           onKeyDown={handleTitleKeyDown}
-          className="bg-background/50"
+          placeholder="Titel (@ für Mentions)"
+          minHeight="44px"
+          showToolbar={false}
         />
         <div className="min-h-[120px]">
           <SimpleRichTextEditor
             key={editorResetKey}
-            initialContent={content}
+            initialContent={toEditorHtml(content)}
             onChange={setContent}
             onKeyDown={handleEditorKeyDown}
             placeholder="Notiz, Idee oder Gedanke..."
@@ -216,7 +230,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           <Button
             variant="outline"
             onClick={handleSaveAsTask}
-            disabled={!content.trim() || savingAsTask}
+            disabled={!stripHtml(content) || savingAsTask}
             size="sm"
           >
             {savingAsTask ? (
