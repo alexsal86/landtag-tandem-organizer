@@ -75,13 +75,13 @@ function resolveBadgeColor(badgeColor: string | null, userId: string): string {
 function MentionsTypeaheadMenuItem({
   index,
   isSelected,
-  onClick,
+  onMouseDown,
   onMouseEnter,
   option,
 }: {
   index: number;
   isSelected: boolean;
-  onClick: () => void;
+  onMouseDown: (event: React.MouseEvent<HTMLLIElement>) => void;
   onMouseEnter: () => void;
   option: MentionTypeaheadOption;
 }) {
@@ -95,7 +95,7 @@ function MentionsTypeaheadMenuItem({
       aria-selected={isSelected}
       id={'typeahead-item-' + index}
       onMouseEnter={onMouseEnter}
-      onClick={onClick}
+      onMouseDown={onMouseDown}
     >
       <Avatar className="h-6 w-6 flex-shrink-0">
         <AvatarImage src={option.avatarUrl || undefined} />
@@ -222,13 +222,22 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
       ) =>
         anchorElementRef.current && options.length
           ? ReactDOM.createPortal(
-              <div className="typeahead-popover mentions-menu">
+              <div
+                className="typeahead-popover mentions-menu"
+                style={{
+                  position: 'fixed',
+                  top: anchorElementRef.current.getBoundingClientRect().top,
+                  left: anchorElementRef.current.getBoundingClientRect().left,
+                  zIndex: 9999,
+                }}
+              >
                 <ul>
                   {options.map((option, i: number) => (
                     <MentionsTypeaheadMenuItem
                       index={i}
                       isSelected={selectedIndex === i}
-                      onClick={() => {
+                      onMouseDown={(event) => {
+                        event.preventDefault();
                         setHighlightedIndex(i);
                         selectOptionAndCleanUp(option);
                       }}
@@ -241,7 +250,10 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
                   ))}
                 </ul>
               </div>,
-              anchorElementRef.current,
+              // In modal dialogs, body can be pointer-locked by the dialog manager.
+              // Rendering inside the active dialog keeps the menu mouse-interactive.
+              (anchorElementRef.current.closest('[role="dialog"]') as HTMLElement | null) ??
+                anchorElementRef.current,
             )
           : null
       }
