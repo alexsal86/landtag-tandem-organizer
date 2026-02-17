@@ -712,6 +712,26 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       ? await crypto.requestDeviceVerification(credentials.userId, trimmedDeviceId)
       : await crypto.requestOwnUserVerification();
 
+    // Wait until the other client accepts the request (phase becomes 'ready' or 'started')
+    if ((verificationRequest as any).phase !== 'started') {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Verifizierungs-Timeout: Der andere Client hat nicht rechtzeitig geantwortet. Stellen Sie sicher, dass der andere Client online ist und die Verifizierung akzeptiert.'));
+        }, 60000);
+
+        const checkReady = () => {
+          const phase = (verificationRequest as any).phase;
+          if (phase === 'ready' || phase === 'started') {
+            clearTimeout(timeout);
+            resolve();
+          }
+        };
+
+        (verificationRequest as any).on?.('change', checkReady);
+        checkReady();
+      });
+    }
+
     let verifier: Verifier;
     try {
       verifier = await verificationRequest.startVerification('m.sas.v1');
@@ -792,6 +812,16 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     if (!room) return messagesRef.current.get(roomId)?.slice(-limit) || [];
 
     const timeline = room.getLiveTimeline().getEvents();
+
+    // Actively trigger decryption for encrypted events
+    timeline.forEach(event => {
+      if (event.isEncrypted() && !event.isDecryptionFailure()) {
+        try {
+          event.attemptDecryption(client.getCrypto() as any).catch(() => {});
+        } catch {}
+      }
+    });
+
     const timelineMessages: MatrixMessage[] = timeline
       .map(event => mapMatrixEventToMessage(room, event))
       .filter((message): message is MatrixMessage => Boolean(message));
@@ -801,7 +831,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     for (const msg of timelineMessages) mergedByEventId.set(msg.eventId, msg);
     for (const msg of cached) {
       const existing = mergedByEventId.get(msg.eventId);
-      if (!existing || (existing.type === 'm.bad.encrypted' && msg.type !== 'm.bad.encrypted')) {
+      // Keep cached decrypted version over still-encrypted timeline version
+      if (!existing || 
+          (existing.type === 'm.bad.encrypted' && msg.type !== 'm.bad.encrypted') ||
+          (existing.type === 'm.room.encrypted' && msg.type !== 'm.room.encrypted' && msg.type !== 'm.bad.encrypted') ||
+          (existing.content === '[Encrypted]' && msg.content !== '[Encrypted]')) {
         mergedByEventId.set(msg.eventId, msg);
       }
     }
