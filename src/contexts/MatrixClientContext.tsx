@@ -242,6 +242,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         accessToken: creds.accessToken,
         userId: creds.userId,
         deviceId: resolvedDeviceId,
+        verificationMethods: ['m.sas.v1'],
         cryptoCallbacks: {
           getSecretStorageKey: async ({ keys }) => {
             const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`);
