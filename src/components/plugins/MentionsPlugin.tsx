@@ -222,7 +222,15 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
       ) =>
         anchorElementRef.current && options.length
           ? ReactDOM.createPortal(
-              <div className="typeahead-popover mentions-menu">
+              <div
+                className="typeahead-popover mentions-menu"
+                style={{
+                  position: 'fixed',
+                  top: anchorElementRef.current.getBoundingClientRect().top,
+                  left: anchorElementRef.current.getBoundingClientRect().left,
+                  zIndex: 9999,
+                }}
+              >
                 <ul>
                   {options.map((option, i: number) => (
                     <MentionsTypeaheadMenuItem
@@ -241,7 +249,7 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
                   ))}
                 </ul>
               </div>,
-              anchorElementRef.current,
+              document.body,
             )
           : null
       }
