@@ -60,30 +60,46 @@ export function CaseFileNextSteps({
   const findOrCreateParentTask = async (): Promise<string | null> => {
     if (!user || !currentTenant || !caseFileTitle) return null;
 
+    const normalizedCaseFileTitle = caseFileTitle.trim();
+    const targetAssignee = assignedTo || user.id;
+
     // Check if a parent task already exists for this case file
     const { data: existingLinks } = await supabase
       .from("case_file_tasks")
-      .select("task_id, task:tasks(id, title, parent_task_id)")
+      .select("task_id, task:tasks(id, title, parent_task_id, status)")
       .eq("case_file_id", caseFileId);
 
-    // Find a task that has no parent (= it IS the parent task)
+    // Find the dedicated parent task for this case file title
     const parentLink = (existingLinks || []).find(
-      (link: any) => link.task && !link.task.parent_task_id
+      (link: any) =>
+        link.task &&
+        !link.task.parent_task_id &&
+        link.task.title?.trim() === normalizedCaseFileTitle
     );
 
-    if (parentLink?.task?.id) return parentLink.task.id;
+    if (parentLink?.task?.id) {
+      if (parentLink.task.status === "completed" || parentLink.task.status === "cancelled") {
+        await supabase
+          .from("tasks")
+          .update({ status: "todo", assigned_to: targetAssignee })
+          .eq("id", parentLink.task.id);
+      }
+
+      return parentLink.task.id;
+    }
 
     // Create parent task
     const { data: parentTask, error } = await supabase
       .from("tasks")
       .insert({
-        title: `📂 ${caseFileTitle}`,
+        title: normalizedCaseFileTitle,
+        description: "Container-Aufgabe für Schnellaufgaben aus der Fallakte",
         status: "todo",
         priority: "medium",
         category: "general",
         user_id: user.id,
         tenant_id: currentTenant.id,
-        assigned_to: assignedTo || null,
+        assigned_to: targetAssignee,
       })
       .select()
       .single();
@@ -114,7 +130,7 @@ export function CaseFileNextSteps({
           category: "general",
           user_id: user.id,
           tenant_id: currentTenant.id,
-          assigned_to: assignedTo || null,
+          assigned_to: assignedTo || user.id,
           parent_task_id: parentTaskId,
         } as any)
         .select()
