@@ -25,6 +25,7 @@ export function MatrixLoginForm() {
     confirmSasVerification,
     rejectSasVerification,
     lastVerificationError,
+    resetCryptoStore,
   } = useMatrixClient();
 
   const [matrixUserId, setMatrixUserId] = useState('');
@@ -411,14 +412,42 @@ export function MatrixLoginForm() {
             <p className="text-xs text-muted-foreground">
               Startet eine Verifizierungsanfrage an Ihren eigenen Matrix-Account. Diese App bietet aktuell SAS/Emoji-Verifizierung (kein QR-Scan im Browser). In Element am zweiten Gerät bestätigen.
             </p>
-            <Button onClick={handleStartVerification} variant="secondary" disabled={isStartingVerification}>
-              {isStartingVerification ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <ShieldCheck className="h-4 w-4 mr-2" />
-              )}
-              Geräte-Verifizierung starten
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleStartVerification} variant="secondary" disabled={isStartingVerification}>
+                {isStartingVerification ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                )}
+                Geräte-Verifizierung starten
+              </Button>
+              <Button
+                onClick={async () => {
+                  setIsStartingVerification(true);
+                  try {
+                    await resetCryptoStore();
+                    toast({
+                      title: 'Crypto zurückgesetzt',
+                      description: 'Der Verschlüsselungs-Speicher wurde gelöscht und die Verbindung neu aufgebaut. Bitte starten Sie die Geräte-Verifizierung erneut.',
+                    });
+                  } catch (error) {
+                    toast({
+                      title: 'Fehler',
+                      description: error instanceof Error ? error.message : 'Crypto-Reset fehlgeschlagen',
+                      variant: 'destructive',
+                    });
+                  } finally {
+                    setIsStartingVerification(false);
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                disabled={isStartingVerification}
+                className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950"
+              >
+                Verschlüsselungs-Speicher zurücksetzen
+              </Button>
+            </div>
           </div>
         )}
 

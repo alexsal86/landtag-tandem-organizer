@@ -34,6 +34,7 @@ export function MatrixChatView() {
     addReaction,
     removeReaction,
     createRoom,
+    resetCryptoStore,
   } = useMatrixClient();
 
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -304,15 +305,36 @@ export function MatrixChatView() {
                         Letzter Fehler: {e2eeDiagnostics.cryptoError}
                       </p>
                     )}
-                    <a 
-                      href={window.location.href} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 ml-2 underline font-medium hover:no-underline"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      App in neuem Tab öffnen
-                    </a>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <a 
+                        href={window.location.href} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 underline font-medium hover:no-underline"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        App in neuem Tab öffnen
+                      </a>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950"
+                        onClick={async () => {
+                          try {
+                            await resetCryptoStore();
+                          } catch {}
+                        }}
+                      >
+                        Crypto zurücksetzen
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowSettings(true)}
+                      >
+                        Einstellungen
+                      </Button>
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}
