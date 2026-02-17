@@ -210,9 +210,13 @@ export function MatrixLoginForm() {
         description: 'Öffnen Sie Ihren zweiten Element-Login und bestätigen Sie die Geräte-Verifizierung.',
       });
     } catch (error) {
+      const description = error instanceof Error
+        ? `${error.message} Falls der Fehler bleibt: Chat einmal trennen, Browserdaten für diese App löschen und erneut verbinden.`
+        : 'Verifizierung konnte nicht gestartet werden';
+
       toast({
         title: 'Verifizierung fehlgeschlagen',
-        description: error instanceof Error ? error.message : 'Verifizierung konnte nicht gestartet werden',
+        description,
         variant: 'destructive',
       });
     } finally {
@@ -327,7 +331,7 @@ export function MatrixLoginForm() {
               onChange={(e) => setVerificationTargetDeviceId(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Startet eine Verifizierungsanfrage an Ihren eigenen Matrix-Account. In Element am zweiten Gerät bestätigen.
+              Startet eine Verifizierungsanfrage an Ihren eigenen Matrix-Account. Diese App bietet aktuell SAS/Emoji-Verifizierung (kein QR-Scan im Browser). In Element am zweiten Gerät bestätigen.
             </p>
             <Button onClick={handleStartVerification} variant="secondary" disabled={isStartingVerification}>
               {isStartingVerification ? (

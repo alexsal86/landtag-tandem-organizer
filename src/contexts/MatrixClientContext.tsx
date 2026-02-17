@@ -242,6 +242,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         accessToken: creds.accessToken,
         userId: creds.userId,
         deviceId: resolvedDeviceId,
+        verificationMethods: ['m.sas.v1'],
         cryptoCallbacks: {
           getSecretStorageKey: async ({ keys }) => {
             const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`);
@@ -663,12 +664,14 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       throw new Error('Crypto API ist nicht verfügbar. E2EE muss zuerst aktiv sein.');
     }
 
-    if (otherDeviceId?.trim()) {
-      await client.requestVerification(credentials.userId, [otherDeviceId.trim()]);
+    const trimmedDeviceId = otherDeviceId?.trim();
+
+    if (trimmedDeviceId) {
+      await crypto.requestDeviceVerification(credentials.userId, trimmedDeviceId);
       return;
     }
 
-    await client.requestVerification(credentials.userId);
+    await crypto.requestOwnUserVerification();
   }, [client, isConnected, credentials?.userId]);
 
   const getMessages = useCallback((roomId: string, limit: number = 50): MatrixMessage[] => {
