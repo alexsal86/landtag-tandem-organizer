@@ -14,6 +14,7 @@ interface CaseFile {
   id: string;
   title: string;
   description: string | null;
+  current_status_note: string | null;
   status: string;
   case_type: string;
   priority: string | null;
@@ -146,6 +147,12 @@ export function MyWorkCaseFilesTab() {
                 {caseFile.description && (
                   <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
                     {caseFile.description}
+                  </p>
+                )}
+                {caseFile.current_status_note && (
+                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                    <span className="font-medium">Aktueller Stand:</span>{" "}
+                    {caseFile.current_status_note.replace(/<[^>]*>/g, "").trim()}
                   </p>
                 )}
                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
