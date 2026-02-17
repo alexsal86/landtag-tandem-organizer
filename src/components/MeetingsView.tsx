@@ -4470,7 +4470,7 @@ export function MeetingsView() {
                         </Button>
                         <Button 
                           variant="outline" 
-                          size="sm"
+                          className="w-full justify-start border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300"
                           onClick={() => addSystemAgendaItem('decisions')}
                           disabled={agendaItems.some(i => i.system_type === 'decisions')}
                         >
@@ -4656,7 +4656,7 @@ export function MeetingsView() {
                                                     </Button>
                                                     <Button 
                                                       variant="outline" 
-                                                      size="sm"
+                                                      className="w-full justify-start border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300"
                                                       onClick={() => addSystemAgendaItem('decisions', item)}
                                                       disabled={agendaItems.some(i => i.system_type === 'decisions')}
                                                     >
