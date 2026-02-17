@@ -1,103 +1,59 @@
 
 
-## Problem
+## Passwort-basiertes Matrix-Login
 
-Es gibt zwei Fehler im Verifizierungs-Code:
+Aktuell muss man den Access Token manuell aus Element kopieren. Stattdessen wird ein Passwort-Login direkt in der MatrixLoginForm integriert, das die Matrix Client-Server API nutzt.
 
-1. **Eingehende Verifizierungsanfragen werden nicht behandelt.** Wenn Sie die Verifizierung starten, sendet der andere Client (Element) eine Antwort zurueck. Aber die App hoert nicht auf eingehende Verifizierungsanfragen vom Matrix-SDK. Das bedeutet: Der andere Client zeigt Emojis, aber diese App bekommt das Ereignis nie mit.
+### Funktionsweise
 
-2. **Race Condition.** Der `ShowSas`-Event-Listener wird erst NACH `startVerification` registriert. Falls die Emoji-Daten schneller ankommen als der Listener registriert wird, gehen sie verloren.
+1. Der Benutzer gibt **Matrix User ID**, **Passwort** und **Homeserver URL** ein
+2. Die App ruft `POST /_matrix/client/v3/login` mit `type: "m.login.password"` auf
+3. Der Server antwortet mit `access_token`, `device_id` und `user_id`
+4. Diese werden automatisch in die Formularfelder uebernommen, in Supabase gespeichert und die Matrix-Verbindung wird hergestellt
 
-## Loesung
+### Aenderungen in `src/components/chat/MatrixLoginForm.tsx`
 
-### Aenderung in `src/contexts/MatrixClientContext.tsx`
+**Neuer State:**
+- `password` (string) -- Passwort-Eingabefeld
+- `isLoggingIn` (boolean) -- Ladezustand fuer den Login-Button
 
-**A) Globalen Listener fuer eingehende Verifizierungsanfragen hinzufuegen**
-
-Innerhalb des `connect`-Flows (nach `matrixClient.startClient()`) einen Listener auf `CryptoEvent.VerificationRequestReceived` registrieren. Dieser faengt Verifizierungsanfragen ab, die vom anderen Geraet initiiert werden, und startet automatisch den SAS-Verifier mit Emoji-Anzeige.
+**Neue Funktion `handlePasswordLogin`:**
+- Validiert `matrixUserId` und `password`
+- Extrahiert den Homeserver aus der User ID (z.B. `@user:matrix.bw-messenger.de` -> `https://matrix.bw-messenger.de`), oder nutzt die manuell eingegebene Homeserver URL
+- Sendet einen `fetch`-Request an `${homeserverUrl}/_matrix/client/v3/login`:
 
 ```typescript
-import { CryptoEvent } from 'matrix-js-sdk';
-
-// Nach matrixClient.startClient():
-matrixClient.on(CryptoEvent.VerificationRequestReceived, async (verificationRequest) => {
-  console.log('[Matrix] Incoming verification request, phase:', verificationRequest.phase);
-  
-  // Automatisch akzeptieren (eigener User)
-  if (verificationRequest.phase === 'requested') {
-    await verificationRequest.accept();
-  }
-  
-  // Warten bis ready
-  if (verificationRequest.phase !== 'ready' && verificationRequest.phase !== 'started') {
-    await new Promise((resolve) => {
-      const check = () => {
-        const phase = verificationRequest.phase;
-        if (phase === 'ready' || phase === 'started' || phase === 'cancelled' || phase === 'done') {
-          resolve(undefined);
-        }
-      };
-      verificationRequest.on?.('change', check);
-      check();
-      setTimeout(() => resolve(undefined), 30000);
-    });
-  }
-  
-  if (verificationRequest.phase === 'cancelled' || verificationRequest.phase === 'done') return;
-  
-  try {
-    const verifier = await verificationRequest.startVerification('m.sas.v1');
-    setupVerifierListeners(verifier, verificationRequest);
-    void verifier.verify();
-  } catch (err) {
-    console.error('[Matrix] Failed to handle incoming verification:', err);
-  }
+const response = await fetch(`${homeserverUrl}/_matrix/client/v3/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    type: 'm.login.password',
+    identifier: {
+      type: 'm.id.user',
+      user: matrixUserId.split(':')[0].substring(1), // @user:server -> user
+    },
+    password: password,
+    initial_device_display_name: 'Lovable App',
+  }),
 });
 ```
 
-**B) Verifier-Listener-Setup in eine wiederverwendbare Funktion auslagern**
+- Bei Erfolg: `access_token`, `device_id` in die Formularfelder setzen, Passwort-Feld leeren, Zugangsdaten in Supabase speichern, `connect()` aufrufen
+- Bei Fehler: Toast mit Fehlermeldung anzeigen
 
-Aktuell ist der `VerifierEvent.ShowSas`-Listener inline in `requestSelfVerification`. Diesen Code in eine eigene Funktion `setupVerifierListeners(verifier, verificationRequest)` extrahieren, die sowohl von der ausgehenden als auch der eingehenden Verifizierung genutzt wird.
+**UI-Aenderungen:**
+- Neues Passwort-Eingabefeld nach der Matrix User ID
+- Neuer "Mit Passwort anmelden"-Button
+- Trennung zwischen Passwort-Login (primaer) und manuellem Access-Token (erweitert/optional)
+- Die Access-Token-Hilfe am Ende wird angepasst, da sie nicht mehr der primaere Weg ist
 
-```typescript
-const setupVerifierListeners = (verifier: Verifier, verificationRequest: any) => {
-  verifier.on(VerifierEvent.ShowSas, (sas) => {
-    const emojis = (sas.sas.emoji || []).map(([symbol, description]) => ({
-      symbol, description
-    }));
-    setActiveSasVerification({
-      transactionId: verificationRequest.transactionId,
-      otherDeviceId: verificationRequest.otherDeviceId,
-      emojis,
-      decimals: sas.sas.decimal || null,
-      confirm: async () => { await sas.confirm(); setActiveSasVerification(null); },
-      mismatch: () => { sas.mismatch(); setActiveSasVerification(null); },
-      cancel: () => { sas.cancel(); setActiveSasVerification(null); },
-    });
-  });
+### Technische Details
 
-  verifier.on(VerifierEvent.Cancel, (error) => {
-    setActiveSasVerification(null);
-    setLastVerificationError(/* ... */);
-  });
-};
-```
-
-**C) Race Condition beheben**
-
-In `requestSelfVerification`: Die Event-Listener VOR dem Aufruf von `verifier.verify()` registrieren (das ist schon der Fall), aber auch VOR `startVerification` sicherstellen, dass der Verifier sofort nach Erstellung seine Listener hat. Da `startVerification` den Verifier erst zurueckgibt, bleibt die aktuelle Reihenfolge bestehen -- das ist korrekt. Der entscheidende Fix ist Punkt A: Eingehende Anfragen abfangen.
-
-## Zusammenfassung
-
-| Datei | Aenderung |
+| Bereich | Detail |
 |---|---|
-| `src/contexts/MatrixClientContext.tsx` | `CryptoEvent.VerificationRequestReceived`-Listener nach Client-Start registrieren |
-| `src/contexts/MatrixClientContext.tsx` | Verifier-Listener-Setup in eigene Funktion auslagern |
-| `src/contexts/MatrixClientContext.tsx` | Eingehende Verifizierung automatisch akzeptieren und SAS starten |
-
-### Was Sie danach tun muessen
-
-1. Verschluesselungs-Speicher zuruecksetzen (falls noch nicht geschehen)
-2. Verifizierung auf dem anderen Geraet (Element) starten -- diesmal auch umgekehrt: Von Element aus die Verifizierung an dieses Geraet senden
-3. Die App sollte die Anfrage automatisch annehmen und die Emojis anzeigen
+| API-Endpunkt | `POST /_matrix/client/v3/login` |
+| Auth-Typ | `m.login.password` mit `m.id.user` Identifier |
+| Device-Name | `Lovable App` (wird dem Server als `initial_device_display_name` mitgeteilt) |
+| Sicherheit | Passwort wird nicht gespeichert, nur fuer den Login-Request verwendet |
+| Datei | `src/components/chat/MatrixLoginForm.tsx` |
 
