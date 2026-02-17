@@ -10,7 +10,7 @@ import { Vote, Mail, MessageSquare, Globe, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
-import { isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
+import { getUploadContentType, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { ResponseOptionsEditor } from "./ResponseOptionsEditor";
@@ -316,12 +316,15 @@ export const TaskDecisionCreator = ({
       if (selectedFiles.length > 0) {
         for (const file of selectedFiles) {
           try {
-            const fileName = `${userData.user.id}/decisions/${decision.id}/${Date.now()}-${file.name}`;
+            const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            const fileName = `${userData.user.id}/decisions/${decision.id}/${uniqueSuffix}-${file.name}`;
 
             // Upload to storage
             const { data: uploadData, error: uploadError } = await supabase.storage
               .from('decision-attachments')
-              .upload(fileName, file);
+              .upload(fileName, file, {
+                contentType: getUploadContentType(file),
+              });
 
             if (uploadError) throw uploadError;
 
@@ -339,7 +342,7 @@ export const TaskDecisionCreator = ({
               file_path: uploadData.path,
               file_name: file.name,
               file_size: file.size,
-              file_type: file.type,
+              file_type: getUploadContentType(file),
               uploaded_by: userData.user.id,
             };
             if (emailMeta) {
@@ -350,7 +353,10 @@ export const TaskDecisionCreator = ({
               .from('task_decision_attachments')
               .insert(insertFileData as any);
 
-            if (dbError) throw dbError;
+            if (dbError) {
+              await supabase.storage.from('decision-attachments').remove([uploadData.path]);
+              throw dbError;
+            }
           } catch (fileError) {
             console.error('File upload error:', fileError);
             toast({
@@ -724,7 +730,7 @@ export const TaskDecisionCreator = ({
               <label className="text-sm font-medium">Dateien anhängen (optional)</label>
               <DecisionFileUpload
                 mode="creation"
-                onFilesSelected={(files) => setSelectedFiles(prev => [...prev, ...files])}
+                onFilesSelected={setSelectedFiles}
                 canUpload={true}
               />
             </div>

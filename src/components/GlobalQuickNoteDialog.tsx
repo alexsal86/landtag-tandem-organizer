@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { StickyNote, Keyboard, Loader2, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 
 interface GlobalQuickNoteDialogProps {
   open: boolean;
@@ -20,6 +20,16 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
+  const toEditorHtml = (value: string | null | undefined) => {
+    if (!value) return "";
+    if (/<[^>]+>/.test(value)) return value;
+    return `<p>${value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")}</p>`;
+  };
+
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
@@ -29,8 +39,11 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
   }, [open]);
 
   const handleSave = async () => {
-    if (!content.trim() && !title.trim()) {
-      toast.error("Bitte Inhalt eingeben");
+    const plainTitle = stripHtml(title);
+    const plainContent = stripHtml(content);
+
+    if (!plainContent && !plainTitle) {
+      toast.error("Bitte Titel oder Inhalt eingeben");
       return;
     }
     
@@ -45,7 +58,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       const insertData = {
         user_id: user.id,
         title: title.trim() || null,
-        content: content.trim() || title.trim(),
+        content: plainContent ? content.trim() : "",
         is_pinned: false,
         priority_level: 0,
         is_archived: false
@@ -81,9 +94,16 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
   const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     const target = e.target as HTMLElement;
     const isTextarea = target.tagName === "TEXTAREA";
+    const isContentEditable = target.getAttribute("contenteditable") === "true";
 
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-      if (!isTextarea || (isTextarea && !(e.metaKey || e.ctrlKey))) {
+      const mentionMenuOpen = !!document.querySelector('.mentions-menu');
+
+      if (mentionMenuOpen) {
+        return;
+      }
+
+      if (isContentEditable || !isTextarea) {
         e.preventDefault();
         if (!saving) {
           void handleSave();
@@ -110,12 +130,14 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
         </DialogHeader>
         
         <div className="space-y-3">
-          <Input
-            placeholder="Titel (optional)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            autoFocus
-            disabled={saving}
+          <SimpleRichTextEditor
+            key={open ? 'global-quick-note-title-open' : 'global-quick-note-title-closed'}
+            initialContent={toEditorHtml(title)}
+            onChange={setTitle}
+            placeholder="Titel (@ für Mentions)"
+            minHeight="44px"
+            showToolbar={false}
+            onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLDivElement>}
           />
           <Textarea
             placeholder="Notiz eingeben..."
@@ -123,7 +145,6 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
             onChange={(e) => setContent(e.target.value)}
             rows={4}
             disabled={saving}
-            onKeyDown={handleKeyDown}
           />
         </div>
         
@@ -141,7 +162,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Enter speichert, Shift + Enter erzeugt eine neue Zeile.</p>
+                  <p>Im Titel speichert Enter direkt. Im Inhalt speichert Cmd/Ctrl + Enter.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

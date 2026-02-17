@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, X, File, Download, AlertCircle } from 'lucide-react';
+import { Upload, X, File, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { isEmlFile, isMsgFile, isEmailFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
+import { getUploadContentType, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
 
@@ -33,8 +33,10 @@ interface SelectedFileEntry {
   emailMetadata?: EmailMetadata | null;
 }
 
-export function DecisionFileUpload({ 
-  decisionId, 
+const getFileIdentity = (file: File) => `${file.name}::${file.size}::${file.lastModified}`;
+
+export function DecisionFileUpload({
+  decisionId,
   onFilesChange,
   canUpload = true,
   mode = 'view',
@@ -55,6 +57,12 @@ export function DecisionFileUpload({
       loadExistingFiles();
     }
   }, [decisionId, mode]);
+
+  useEffect(() => {
+    if (mode === 'creation') {
+      onFilesSelected?.(selectedFiles.map(entry => entry.file));
+    }
+  }, [mode, onFilesSelected, selectedFiles]);
 
   const loadExistingFiles = async () => {
     try {
@@ -118,6 +126,73 @@ export function DecisionFileUpload({
     return entries;
   };
 
+  const addSelectedEntries = async (incomingFiles: File[]) => {
+    const incomingEntries = await processFiles(incomingFiles);
+
+    setSelectedFiles(prev => {
+      const existing = new Set(prev.map(entry => getFileIdentity(entry.file)));
+      const dedupedIncoming = incomingEntries.filter(entry => !existing.has(getFileIdentity(entry.file)));
+      return [...prev, ...dedupedIncoming];
+    });
+
+    toast({
+      title: 'Dateien ausgewählt',
+      description: `${incomingFiles.length} Datei(en) ausgewählt und werden nach Erstellung hochgeladen.`,
+    });
+  };
+
+  const uploadSingleFile = async (file: File, decisionIdParam: string, userId: string) => {
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const filePath = `${userId}/decisions/${decisionIdParam}/${uniqueSuffix}-${file.name}`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('decision-attachments')
+      .upload(filePath, file, {
+        contentType: getUploadContentType(file),
+      });
+
+    if (uploadError) throw uploadError;
+
+    let emailMeta: EmailMetadata | null = null;
+    if (isEmlFile(file)) {
+      try {
+        const parsed = await parseEmlFile(file);
+        emailMeta = parsed.metadata;
+      } catch (e) {
+        console.error('EML parse error during upload:', e);
+      }
+    } else if (isMsgFile(file)) {
+      try {
+        const parsed = await parseMsgFile(file);
+        emailMeta = parsed.metadata;
+      } catch (e) {
+        console.error('MSG parse error during upload:', e);
+      }
+    }
+
+    const insertData: Record<string, unknown> = {
+      decision_id: decisionIdParam,
+      file_path: uploadData.path,
+      file_name: file.name,
+      file_size: file.size,
+      file_type: getUploadContentType(file),
+      uploaded_by: userId,
+    };
+
+    if (emailMeta) {
+      insertData.email_metadata = emailMeta;
+    }
+
+    const { error: dbError } = await supabase
+      .from('task_decision_attachments')
+      .insert(insertData as never);
+
+    if (dbError) {
+      await supabase.storage.from('decision-attachments').remove([uploadData.path]);
+      throw dbError;
+    }
+  };
+
   const handleFileSelect = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
     if (!canUpload) return;
@@ -125,13 +200,7 @@ export function DecisionFileUpload({
     const filesArray = Array.from(fileList);
 
     if (mode === 'creation') {
-      const entries = await processFiles(filesArray);
-      setSelectedFiles(prev => [...prev, ...entries]);
-      onFilesSelected?.(filesArray);
-      toast({
-        title: "Dateien ausgewählt",
-        description: `${filesArray.length} Datei(en) ausgewählt und werden nach Erstellung hochgeladen.`,
-      });
+      await addSelectedEntries(filesArray);
       return;
     }
 
@@ -143,72 +212,41 @@ export function DecisionFileUpload({
     if (!decisionId) return;
     setUploading(true);
 
-    for (const file of filesArray) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('User not authenticated');
-        
-        const fileName = `${user.id}/decisions/${decisionId}/${Date.now()}-${file.name}`;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('decision-attachments')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        let emailMeta: EmailMetadata | null = null;
-        if (isEmlFile(file)) {
-          try {
-            const parsed = await parseEmlFile(file);
-            emailMeta = parsed.metadata;
-          } catch (e) {
-            console.error('EML parse error during upload:', e);
-          }
-        } else if (isMsgFile(file)) {
-          try {
-            const parsed = await parseMsgFile(file);
-            emailMeta = parsed.metadata;
-          } catch (e) {
-            console.error('MSG parse error during upload:', e);
-          }
+      const failedFiles: string[] = [];
+      for (const file of filesArray) {
+        try {
+          await uploadSingleFile(file, decisionId, user.id);
+          toast({
+            title: 'Datei hochgeladen',
+            description: `${file.name} wurde erfolgreich hochgeladen.`,
+          });
+        } catch (error) {
+          console.error('Upload error:', error);
+          failedFiles.push(file.name);
+          toast({
+            title: 'Upload fehlgeschlagen',
+            description: `${file.name} konnte nicht hochgeladen werden.`,
+            variant: 'destructive',
+          });
         }
+      }
 
-        const insertData: Record<string, unknown> = {
-          decision_id: decisionId,
-          file_path: uploadData.path,
-          file_name: file.name,
-          file_size: file.size,
-          file_type: file.type,
-          uploaded_by: user.id,
-        };
-        if (emailMeta) {
-          insertData.email_metadata = emailMeta;
-        }
-
-        const { error: dbError } = await supabase
-          .from('task_decision_attachments')
-          .insert(insertData as any);
-
-        if (dbError) throw dbError;
-
+      if (failedFiles.length > 0 && failedFiles.length < filesArray.length) {
         toast({
-          title: "Datei hochgeladen",
-          description: `${file.name} wurde erfolgreich hochgeladen.`,
-        });
-
-      } catch (error) {
-        console.error('Upload error:', error);
-        toast({
-          title: "Upload fehlgeschlagen",
-          description: `${file.name} konnte nicht hochgeladen werden.`,
-          variant: "destructive",
+          title: 'Teilweise hochgeladen',
+          description: `${failedFiles.length} Datei(en) konnten nicht gespeichert werden.`,
+          variant: 'destructive',
         });
       }
+    } finally {
+      setUploading(false);
+      loadExistingFiles();
+      onFilesChange?.();
     }
-
-    setUploading(false);
-    loadExistingFiles();
-    onFilesChange?.();
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -221,13 +259,7 @@ export function DecisionFileUpload({
     if (droppedFiles.length === 0) return;
 
     if (mode === 'creation') {
-      const entries = await processFiles(droppedFiles);
-      setSelectedFiles(prev => [...prev, ...entries]);
-      onFilesSelected?.(droppedFiles);
-      toast({
-        title: "Dateien ausgewählt",
-        description: `${droppedFiles.length} Datei(en) per Drag & Drop hinzugefügt.`,
-      });
+      await addSelectedEntries(droppedFiles);
     } else {
       await uploadFiles(droppedFiles);
     }
@@ -267,15 +299,15 @@ export function DecisionFileUpload({
       URL.revokeObjectURL(url);
 
       toast({
-        title: "Download gestartet",
+        title: 'Download gestartet',
         description: `${fileName} wird heruntergeladen.`,
       });
     } catch (error) {
       console.error('Download error:', error);
       toast({
-        title: "Download fehlgeschlagen",
-        description: "Die Datei konnte nicht heruntergeladen werden.",
-        variant: "destructive",
+        title: 'Download fehlgeschlagen',
+        description: 'Die Datei konnte nicht heruntergeladen werden.',
+        variant: 'destructive',
       });
     }
   };
@@ -296,8 +328,8 @@ export function DecisionFileUpload({
       if (dbError) throw dbError;
 
       toast({
-        title: "Datei gelöscht",
-        description: "Die Datei wurde erfolgreich gelöscht.",
+        title: 'Datei gelöscht',
+        description: 'Die Datei wurde erfolgreich gelöscht.',
       });
 
       loadExistingFiles();
@@ -305,9 +337,9 @@ export function DecisionFileUpload({
     } catch (error) {
       console.error('Delete error:', error);
       toast({
-        title: "Löschung fehlgeschlagen",
-        description: "Die Datei konnte nicht gelöscht werden.",
-        variant: "destructive",
+        title: 'Löschung fehlgeschlagen',
+        description: 'Die Datei konnte nicht gelöscht werden.',
+        variant: 'destructive',
       });
     }
   };
@@ -343,13 +375,13 @@ export function DecisionFileUpload({
           onPreviewOpen={() => setPreviewDialog({ open: true, filePath: file.file_path, fileName: file.file_name })}
           onDownload={() => downloadFile(file.file_path, file.file_name)}
           onRemove={file.uploaded_by ? async () => {
-            if (await canDelete(file.uploaded_by!)) {
+            if (await canDelete(file.uploaded_by)) {
               removeFile(file.id!, file.file_path);
             } else {
               toast({
-                title: "Keine Berechtigung",
-                description: "Sie können nur Ihre eigenen Dateien löschen.",
-                variant: "destructive",
+                title: 'Keine Berechtigung',
+                description: 'Sie können nur Ihre eigenen Dateien löschen.',
+                variant: 'destructive',
               });
             }
           } : undefined}
@@ -377,10 +409,10 @@ export function DecisionFileUpload({
           </Button>
           {file.uploaded_by && (
             <Button type="button" variant="ghost" size="sm" onClick={async () => {
-              if (await canDelete(file.uploaded_by!)) {
+              if (await canDelete(file.uploaded_by)) {
                 removeFile(file.id!, file.file_path);
               } else {
-                toast({ title: "Keine Berechtigung", description: "Sie können nur Ihre eigenen Dateien löschen.", variant: "destructive" });
+                toast({ title: 'Keine Berechtigung', description: 'Sie können nur Ihre eigenen Dateien löschen.', variant: 'destructive' });
               }
             }}>
               <X className="h-4 w-4" />
@@ -423,7 +455,6 @@ export function DecisionFileUpload({
         </div>
       )}
 
-      {/* Selected files in creation mode */}
       {mode === 'creation' && selectedFiles.length > 0 && (
         <Card>
           <CardContent className="p-4">
@@ -437,8 +468,8 @@ export function DecisionFileUpload({
                       metadata={entry.emailMetadata}
                       fileName={entry.file.name}
                       fileSize={entry.file.size}
-                      onPreviewOpen={() => {/* No preview for unsaved files yet */}}
-                      onDownload={() => {/* File not uploaded yet */}}
+                      onPreviewOpen={() => {}}
+                      onDownload={() => {}}
                       onRemove={() => removeSelectedFile(index)}
                     />
                   ) : (
@@ -462,7 +493,6 @@ export function DecisionFileUpload({
         </Card>
       )}
 
-      {/* Uploaded files in view mode */}
       {mode === 'view' && files.length > 0 ? (
         <Card>
           <CardContent className="p-4">
@@ -477,7 +507,6 @@ export function DecisionFileUpload({
         </p>
       ) : null}
 
-      {/* Email preview dialog */}
       <EmailPreviewDialog
         open={previewDialog.open}
         onOpenChange={(open) => setPreviewDialog(prev => ({ ...prev, open }))}

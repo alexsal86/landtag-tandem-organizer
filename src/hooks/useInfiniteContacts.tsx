@@ -77,7 +77,7 @@ export const useInfiniteContacts = ({
   const buildQuery = useCallback((offset: number, limit: number) => {
     let query = supabase
       .from('contacts')
-      .select('*', { count: 'exact' })
+      .select('id, contact_type, name, role, organization, organization_id, email, phone, location, address, birthday, website, linkedin, twitter, facebook, instagram, xing, category, priority, last_contact, avatar_url, notes, additional_info, is_favorite, legal_form, industry, main_contact_person, business_description, tags, business_street, business_house_number, business_postal_code, business_city, business_country', { count: 'planned' })
       .eq('tenant_id', currentTenant?.id || '');
 
     // Filter by tab

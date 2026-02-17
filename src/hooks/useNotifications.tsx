@@ -458,6 +458,24 @@ export const useNotifications = () => {
     const maxRetries = 5;
     let retryTimeout: ReturnType<typeof setTimeout> | null = null;
     let currentChannel: ReturnType<typeof supabase.channel> | null = null;
+    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+    let subscriptionHealthy = false;
+
+    const startPollingFallback = () => {
+      if (pollingInterval) return;
+      // Polling is fallback-only and should not run continuously during healthy realtime.
+      pollingInterval = setInterval(() => {
+        if (!subscriptionHealthy) {
+          loadNotifications();
+        }
+      }, 120000);
+    };
+
+    const stopPollingFallback = () => {
+      if (!pollingInterval) return;
+      clearInterval(pollingInterval);
+      pollingInterval = null;
+    };
 
     const setupChannel = () => {
       // Clean up previous channel if exists
@@ -535,26 +553,31 @@ export const useNotifications = () => {
         .subscribe((status) => {
           console.log('📡 Notifications realtime subscription status:', status);
           if (status === 'SUBSCRIBED') {
+            subscriptionHealthy = true;
             retryCount = 0; // Reset on successful connection
+            stopPollingFallback();
             // Load notifications immediately after subscribing to catch any missed during setup
             loadNotifications();
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            subscriptionHealthy = false;
+            startPollingFallback();
             if (retryCount < maxRetries) {
               retryCount++;
               const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
               console.log(`🔄 Retrying subscription in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
               retryTimeout = setTimeout(setupChannel, delay);
             }
+          } else if (status === 'CLOSED') {
+            subscriptionHealthy = false;
+            startPollingFallback();
           }
         });
     };
 
     setupChannel();
 
-    // Polling fallback: refetch every 30 seconds to catch missed realtime events
-    const pollingInterval = setInterval(() => {
-      loadNotifications();
-    }, 30000);
+    // Start fallback until realtime is confirmed healthy.
+    startPollingFallback();
 
     // Listen for storage events for cross-tab synchronization
     const handleStorageChange = (e: StorageEvent) => {
@@ -569,7 +592,7 @@ export const useNotifications = () => {
     return () => {
       console.log('🧹 Cleaning up notifications realtime subscription');
       if (retryTimeout) clearTimeout(retryTimeout);
-      clearInterval(pollingInterval);
+      stopPollingFallback();
       if (currentChannel) supabase.removeChannel(currentChannel);
       window.removeEventListener('storage', handleStorageChange);
     };

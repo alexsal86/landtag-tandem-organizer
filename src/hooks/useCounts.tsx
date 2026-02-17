@@ -32,7 +32,7 @@ export function useCounts(): CountsData {
       // Get contacts count (persons only, excluding archived)
       const { count: contactsCount, error: contactsError } = await supabase
         .from('contacts')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'planned', head: true })
         .eq('tenant_id', currentTenant.id)
         .eq('contact_type', 'person')
         .neq('name', 'Archivierter Kontakt');
@@ -44,7 +44,7 @@ export function useCounts(): CountsData {
       // Get stakeholders count (organizations only)
       const { count: stakeholdersCount, error: stakeholdersError } = await supabase
         .from('contacts')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'planned', head: true })
         .eq('tenant_id', currentTenant.id)
         .eq('contact_type', 'organization');
 
@@ -70,7 +70,7 @@ export function useCounts(): CountsData {
       // Get distribution lists count (including those with null tenant_id)
       const { count: distributionListsCount, error: distributionError } = await supabase
         .from('distribution_lists')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'planned', head: true })
         .or(`tenant_id.eq.${currentTenant.id},tenant_id.is.null`);
 
       if (distributionError) {

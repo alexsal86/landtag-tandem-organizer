@@ -38,6 +38,8 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   const [savingAsTask, setSavingAsTask] = useState(false);
   const [editorResetKey, setEditorResetKey] = useState(0);
 
+  const canSaveNote = Boolean(title.trim() || content.trim());
+
 
   const resetQuickCaptureForm = () => {
     setContent("");
@@ -48,14 +50,14 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   };
 
   const handleSaveNote = async () => {
-    if (!content.trim() || !user) return;
+    if (!canSaveNote || !user) return;
     
     setSaving(true);
     try {
       const { error } = await supabase.from("quick_notes").insert({
         user_id: user.id,
         title: title.trim() || null,
-        content: content.trim(),
+        content: content.trim() || "",
         color: selectedColor,
         is_pinned: isPinned,
         category: "general",
@@ -109,7 +111,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      if (!saving && content.trim()) {
+      if (!saving && canSaveNote) {
         void handleSaveNote();
       }
     }
@@ -118,7 +120,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      if (!saving && content.trim()) {
+      if (!saving && canSaveNote) {
         void handleSaveNote();
       }
     }
@@ -182,7 +184,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       </CardHeader>
       <CardContent className="space-y-3">
         <Input
-          placeholder="Titel (optional)"
+          placeholder="Titel"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleTitleKeyDown}
@@ -201,7 +203,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
         <div className="flex gap-2 flex-wrap">
           <Button
             onClick={handleSaveNote}
-            disabled={!content.trim() || saving}
+            disabled={!canSaveNote || saving}
             size="sm"
           >
             {saving ? (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type KeyboardEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -177,6 +177,16 @@ export function QuickNotesList({
   
   // State to prevent double-clicks on color mode checkbox
   const [colorModeUpdating, setColorModeUpdating] = useState<string | null>(null);
+
+  const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
+  const toEditorHtml = (value: string | null | undefined) => {
+    if (!value) return "";
+    if (/<[^>]+>/.test(value)) return value;
+    return `<p>${value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")}</p>`;
+  };
 
   const loadNotes = useCallback(async () => {
     if (!user) return;
@@ -486,7 +496,7 @@ export function QuickNotesList({
     
     const query = searchQuery.toLowerCase();
     return notes.filter(note => 
-      note.title?.toLowerCase().includes(query) ||
+      stripHtml(note.title || "").toLowerCase().includes(query) ||
       note.content.toLowerCase().includes(query) ||
       note.meetings?.title?.toLowerCase().includes(query)
     );
@@ -906,7 +916,6 @@ export function QuickNotesList({
 
     try {
       // Strip HTML tags from content for clean title
-      const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim();
       const plainContent = stripHtml(note.content);
       const taskTitle = note.title 
         ? stripHtml(note.title) 
@@ -1155,13 +1164,18 @@ export function QuickNotesList({
 
   const openEditDialog = (note: QuickNote) => {
     setEditingNote(note);
-    setEditTitle(note.title || "");
-    setEditContent(note.content);
+    setEditTitle(toEditorHtml(note.title));
+    setEditContent(toEditorHtml(note.content));
     setEditDialogOpen(true);
   };
 
   const handleSaveEdit = async () => {
     if (!editingNote || !user?.id) return;
+
+    if (!stripHtml(editTitle) && !stripHtml(editContent)) {
+      toast.error("Bitte Titel oder Inhalt eingeben");
+      return;
+    }
 
     try {
       // 1. Save current version to history before updating
@@ -1204,6 +1218,24 @@ export function QuickNotesList({
     } catch (error) {
       console.error("Error updating note:", error);
       toast.error("Fehler beim Speichern");
+    }
+  };
+
+  const handleEditTitleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      if (stripHtml(editTitle) || stripHtml(editContent)) {
+        void handleSaveEdit();
+      }
+    }
+  };
+
+  const handleEditContentKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      if (stripHtml(editTitle) || stripHtml(editContent)) {
+        void handleSaveEdit();
+      }
     }
   };
 
@@ -1393,9 +1425,9 @@ export function QuickNotesList({
             {/* Title - larger */}
             <div className="flex items-start gap-2">
               {note.title && (
-                <h4 className="font-semibold text-base break-words line-clamp-2 mb-1 flex-1">
-                  {note.title}
-                </h4>
+                <div className="font-semibold text-base break-words line-clamp-2 mb-1 flex-1 [&_p]:inline [&_p]:m-0">
+                  <RichTextDisplay content={note.title} />
+                </div>
               )}
               {/* Follow-up badge with remove button */}
               {showFollowUpBadge && note.follow_up_date && (
@@ -2246,24 +2278,31 @@ export function QuickNotesList({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <Input
+            <SimpleRichTextEditor
+              key={`title-${editDialogOpen ? editingNote?.id : 'closed'}`}
+              initialContent={editTitle}
+              onChange={setEditTitle}
               placeholder="Titel (optional)"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
+              minHeight="46px"
+              showToolbar={false}
             />
             <SimpleRichTextEditor
               key={editDialogOpen ? editingNote?.id : 'closed'}
               initialContent={editContent}
               onChange={setEditContent}
+              onKeyDown={handleEditContentKeyDown}
               placeholder="Inhalt"
               minHeight="150px"
             />
+            <p className="text-xs text-muted-foreground">
+              Enter speichert, Shift + Enter erzeugt eine neue Zeile.
+            </p>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Abbrechen
             </Button>
-            <Button onClick={handleSaveEdit} disabled={!editContent.trim()}>
+            <Button onClick={handleSaveEdit} disabled={!stripHtml(editTitle) && !stripHtml(editContent)}>
               Speichern
             </Button>
           </div>

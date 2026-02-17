@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe, Star, MessageSquarePlus, ChevronRight, Cake } from "lucide-react";
+import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe, Star, MessageSquarePlus, ChevronRight, Cake, Scale } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { format, startOfDay, endOfDay, addDays } from "date-fns";
@@ -136,6 +136,7 @@ export function MeetingsView() {
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
   const [linkedQuickNotes, setLinkedQuickNotes] = useState<any[]>([]);
   const [meetingLinkedTasks, setMeetingLinkedTasks] = useState<any[]>([]);
+  const [meetingRelevantDecisions, setMeetingRelevantDecisions] = useState<any[]>([]);
   const [meetingUpcomingAppointments, setMeetingUpcomingAppointments] = useState<any[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
@@ -186,6 +187,7 @@ export function MeetingsView() {
         loadAgendaItems(urlMeetingId);
         loadLinkedQuickNotes(urlMeetingId);
         loadMeetingLinkedTasks(urlMeetingId);
+        loadMeetingRelevantDecisions();
         if (meetingFromUrl?.meeting_date) loadMeetingUpcomingAppointments(urlMeetingId, meetingFromUrl.meeting_date);
         loadStarredAppointments(urlMeetingId);
         // Clear the id param after selecting
@@ -226,6 +228,7 @@ export function MeetingsView() {
           loadAgendaItems(nextMeeting.id);
           loadLinkedQuickNotes(nextMeeting.id);
           loadMeetingLinkedTasks(nextMeeting.id);
+          loadMeetingRelevantDecisions();
           loadMeetingUpcomingAppointments(nextMeeting.id, nextMeeting.meeting_date);
           loadStarredAppointments(nextMeeting.id);
         }
@@ -238,6 +241,7 @@ export function MeetingsView() {
     if (selectedMeeting?.id && !activeMeeting) {
       loadLinkedQuickNotes(selectedMeeting.id);
       loadMeetingLinkedTasks(selectedMeeting.id);
+      loadMeetingRelevantDecisions();
       if (selectedMeeting.meeting_date) loadMeetingUpcomingAppointments(selectedMeeting.id, selectedMeeting.meeting_date);
       loadStarredAppointments(selectedMeeting.id);
     }
@@ -1094,6 +1098,48 @@ export function MeetingsView() {
     }
   };
 
+
+
+  const loadMeetingRelevantDecisions = async () => {
+    if (!currentTenant?.id || !user?.id) return;
+
+    try {
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('task_decisions')
+        .select('id, title, description, response_deadline, priority, created_by, status')
+        .eq('tenant_id', currentTenant.id)
+        .eq('status', 'active')
+        .or(`response_deadline.lt.${now},priority.not.is.null`)
+        .order('priority', { ascending: false, nullsFirst: false })
+        .order('response_deadline', { ascending: true, nullsFirst: false });
+
+      if (error) throw error;
+
+      const decisionIds = (data || []).map(d => d.id);
+      let participantRows: Array<{ decision_id: string; user_id: string }> = [];
+      if (decisionIds.length > 0) {
+        const { data: participants, error: participantError } = await supabase
+          .from('task_decision_participants')
+          .select('decision_id, user_id')
+          .in('decision_id', decisionIds);
+
+        if (participantError) throw participantError;
+        participantRows = participants || [];
+      }
+
+      const relevant = (data || []).filter((decision) =>
+        decision.created_by === user.id ||
+        participantRows.some((participant) => participant.decision_id === decision.id && participant.user_id === user.id)
+      );
+
+      setMeetingRelevantDecisions(relevant);
+    } catch (error) {
+      console.error('Error loading relevant decisions:', error);
+      setMeetingRelevantDecisions([]);
+    }
+  };
+
   const loadMeetingUpcomingAppointments = async (meetingId: string, meetingDate: string | Date) => {
     if (!currentTenant?.id) return;
     try {
@@ -1239,6 +1285,7 @@ export function MeetingsView() {
       await loadAgendaItems(meeting.id);
       await loadLinkedQuickNotes(meeting.id);
       await loadMeetingLinkedTasks(meeting.id);
+      await loadMeetingRelevantDecisions();
       await loadMeetingUpcomingAppointments(meeting.id, meeting.meeting_date);
       await loadStarredAppointments(meeting.id);
     }
@@ -1938,7 +1985,7 @@ export function MeetingsView() {
     setAgendaItems(next);
   };
 
-  const addSystemAgendaItem = async (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays', parentItem?: AgendaItem) => {
+  const addSystemAgendaItem = async (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions', parentItem?: AgendaItem) => {
     if (!selectedMeeting?.id) return;
     
     // Check if already exists
@@ -1955,7 +2002,8 @@ export function MeetingsView() {
       'upcoming_appointments': 'Kommende Termine',
       'quick_notes': 'Meine Notizen',
       'tasks': 'Aufgaben',
-      'birthdays': 'Geburtstage'
+      'birthdays': 'Geburtstage',
+      'decisions': 'Entscheidungen'
     };
 
     try {
@@ -3666,6 +3714,54 @@ export function MeetingsView() {
                         </div>
                       )}
 
+                      {item.system_type === 'decisions' && (
+                        <div className="ml-12 mb-4 space-y-3">
+                          {meetingRelevantDecisions.length > 0 ? (
+                            (() => {
+                              const decisionResults = (() => {
+                                try { return JSON.parse(item.result_text || '{}'); } catch { return {}; }
+                              })();
+                              return meetingRelevantDecisions.map((decision, decisionIdx) => (
+                                <div key={decision.id} className="pl-4 border-l-2 border-muted space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                      {String.fromCharCode(97 + decisionIdx)})
+                                    </span>
+                                    <Scale className="h-3.5 w-3.5 text-violet-500" />
+                                    <span className="text-sm font-medium">{decision.title}</span>
+                                  </div>
+                                  {decision.description && (
+                                    <RichTextDisplay content={decision.description} className="text-sm text-muted-foreground" />
+                                  )}
+                                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                    {decision.response_deadline && (
+                                      <span>Frist: {format(new Date(decision.response_deadline), "dd.MM.yyyy", { locale: de })}</span>
+                                    )}
+                                    {decision.priority !== null && decision.priority !== undefined && (
+                                      <span>Priorität: {decision.priority}</span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                    <Textarea
+                                      value={decisionResults[decision.id] || ''}
+                                      onChange={(e) => {
+                                        const newResults = { ...decisionResults, [decision.id]: e.target.value };
+                                        updateAgendaItemResult(item.id!, 'result_text', JSON.stringify(newResults));
+                                      }}
+                                      placeholder="Ergebnis für diese Entscheidung..."
+                                      className="min-h-[60px] text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              ));
+                            })()
+                          ) : (
+                            <p className="text-sm text-muted-foreground pl-4">Keine relevanten Entscheidungen vorhanden.</p>
+                          )}
+                        </div>
+                      )}
+
                       {item.system_type === 'birthdays' && (
                         <div className="ml-12 mb-4">
                           <BirthdayAgendaItem
@@ -3949,6 +4045,59 @@ export function MeetingsView() {
                                             })()
                                           ) : (
                                             <p className="text-sm text-muted-foreground pl-4">Keine Aufgaben vorhanden.</p>
+                                          )}
+                                        </div>
+                                      ) : subItem.system_type === 'decisions' ? (
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              {index + 1}.{subIndex + 1}
+                                            </span>
+                                            <Scale className="h-4 w-4 text-violet-500" />
+                                            <span className="text-sm font-medium">Entscheidungen</span>
+                                          </div>
+                                          {meetingRelevantDecisions.length > 0 ? (
+                                            (() => {
+                                              const decisionResults = (() => {
+                                                try { return JSON.parse(subItem.result_text || '{}'); } catch { return {}; }
+                                              })();
+                                              return meetingRelevantDecisions.map((decision, decisionIdx) => (
+                                                <div key={decision.id} className="pl-4 border-l-2 border-muted space-y-2 ml-4">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-medium text-muted-foreground">
+                                                      {String.fromCharCode(97 + decisionIdx)})
+                                                    </span>
+                                                    <Scale className="h-3.5 w-3.5 text-violet-500" />
+                                                    <span className="text-sm font-medium">{decision.title}</span>
+                                                  </div>
+                                                  {decision.description && (
+                                                    <RichTextDisplay content={decision.description} className="text-sm text-muted-foreground" />
+                                                  )}
+                                                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                                    {decision.response_deadline && (
+                                                      <span>Frist: {format(new Date(decision.response_deadline), "dd.MM.yyyy", { locale: de })}</span>
+                                                    )}
+                                                    {decision.priority !== null && decision.priority !== undefined && (
+                                                      <span>Priorität: {decision.priority}</span>
+                                                    )}
+                                                  </div>
+                                                  <div>
+                                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                                    <Textarea
+                                                      value={decisionResults[decision.id] || ''}
+                                                      onChange={(e) => {
+                                                        const newResults = { ...decisionResults, [decision.id]: e.target.value };
+                                                        updateAgendaItemResult(subItem.id!, 'result_text', JSON.stringify(newResults));
+                                                      }}
+                                                      placeholder="Ergebnis für diese Entscheidung..."
+                                                      className="min-h-[60px] text-xs"
+                                                    />
+                                                  </div>
+                                                </div>
+                                              ));
+                                            })()
+                                          ) : (
+                                            <p className="text-sm text-muted-foreground pl-4">Keine relevanten Entscheidungen vorhanden.</p>
                                           )}
                                         </div>
                                       ) : subItem.system_type === 'birthdays' ? (
@@ -4319,6 +4468,15 @@ export function MeetingsView() {
                           <Cake className="h-4 w-4 mr-2" />
                           Geburtstage
                         </Button>
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300"
+                          onClick={() => addSystemAgendaItem('decisions')}
+                          disabled={agendaItems.some(i => i.system_type === 'decisions')}
+                        >
+                          <Scale className="h-4 w-4 mr-2" />
+                          Entscheidungen
+                        </Button>
                       </div>
                     </PopoverContent>
                   </Popover>
@@ -4367,12 +4525,13 @@ export function MeetingsView() {
                                     </div>
                                     <div className="flex-1">
                                       <SystemAgendaItem 
-                                        systemType={item.system_type as 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays'}
+                                        systemType={item.system_type as 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions'}
                                         meetingDate={selectedMeeting?.meeting_date}
                                         meetingId={selectedMeeting?.id}
                                         allowStarring={true}
                                         linkedQuickNotes={linkedQuickNotes}
                                         linkedTasks={meetingLinkedTasks}
+                                        linkedDecisions={meetingRelevantDecisions}
                                         profiles={profiles}
                                         resultText={item.result_text}
                                         onUpdateResult={item.system_type === 'birthdays' ? (result: string) => updateAgendaItem(index, 'result_text', result) : undefined}
@@ -4494,6 +4653,15 @@ export function MeetingsView() {
                                                     >
                                                       <Cake className="h-4 w-4 mr-2" />
                                                       Geburtstage
+                                                    </Button>
+                                                    <Button 
+                                                      variant="outline" 
+                                                      className="w-full justify-start border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300"
+                                                      onClick={() => addSystemAgendaItem('decisions', item)}
+                                                      disabled={agendaItems.some(i => i.system_type === 'decisions')}
+                                                    >
+                                                      <Scale className="h-4 w-4 mr-2" />
+                                                      Entscheidungen
                                                     </Button>
                                                   </div>
                                                 </div>

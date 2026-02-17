@@ -347,6 +347,28 @@ export const TaskDecisionResponse = ({
 
   const optionRequiringComment = responseOptions.find(o => o.requires_comment);
 
+  const renderDescriptionInfo = (description: string) => (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label="Beschreibung anzeigen"
+            className="ml-1 inline-flex items-center"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Info className="h-2.5 w-2.5 opacity-50" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">{description}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
   const renderOptionButton = (option: ResponseOption) => {
     const colorClasses = getColorClasses(option.color);
     
@@ -361,7 +383,7 @@ export const TaskDecisionResponse = ({
           >
             {getIcon(option.icon)}
             <span className="ml-1">{option.label}</span>
-            {option.description && <Info className="h-2.5 w-2.5 ml-1 opacity-50" />}
+            {option.description && renderDescriptionInfo(option.description)}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[400px]">
@@ -416,26 +438,11 @@ export const TaskDecisionResponse = ({
       >
         {getIcon(option.icon)}
         <span className="ml-1">{option.label}</span>
-        {option.description && <Info className="h-2.5 w-2.5 ml-1 opacity-50" />}
+        {option.description && renderDescriptionInfo(option.description)}
       </Button>
     );
 
-    if (option.description) {
-      return (
-        <TooltipProvider key={option.key}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              {button}
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">{option.description}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
-
-    return button;
+    return <div key={option.key}>{button}</div>;
   };
 
   // Single acknowledgement mode: show a single prominent button

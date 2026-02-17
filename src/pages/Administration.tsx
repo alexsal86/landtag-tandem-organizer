@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote, MoveVertical, ArrowUp, ArrowDown, ChevronUp, ChevronDown, CornerUpLeft, ListTodo, Cake } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, GripVertical, Minus, Users, Clock, MapPin, Building, CalendarDays, StickyNote, MoveVertical, ArrowUp, ArrowDown, ChevronUp, ChevronDown, CornerUpLeft, ListTodo, Cake, Scale } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
@@ -502,11 +502,12 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       case 'quick_notes': return 'Meine Notizen';
       case 'tasks': return 'Aufgaben';
       case 'birthdays': return 'Geburtstage';
+      case 'decisions': return 'Entscheidungen';
       default: return systemType;
     }
   };
 
-  const addSystemTemplateItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays', parentIndex?: number) => {
+  const addSystemTemplateItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions', parentIndex?: number) => {
     if (!selectedTemplate) return;
     
     // Check if this system type already exists in main items OR in children
@@ -1262,6 +1263,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                           ? 'border-l-4 border-l-green-500 bg-green-50/50 dark:bg-green-950/20'
                                           : item.system_type === 'birthdays'
                                           ? 'border-l-4 border-l-pink-500 bg-pink-50/50 dark:bg-pink-950/20'
+                                          : item.system_type === 'decisions'
+                                          ? 'border-l-4 border-l-violet-500 bg-violet-50/50 dark:bg-violet-950/20'
                                           : ''
                                         : ''
                                     }`}>
@@ -1280,6 +1283,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                             <ListTodo className="h-4 w-4 text-green-600" />
                                           ) : item.system_type === 'birthdays' ? (
                                             <Cake className="h-4 w-4 text-pink-600" />
+                                          ) : item.system_type === 'decisions' ? (
+                                            <Scale className="h-4 w-4 text-violet-600" />
                                           ) : null}
                                           <span className="font-medium">{item.title}</span>
                                           <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
@@ -1428,6 +1433,9 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                               {child.system_type === 'birthdays' && (
                                                                 <Cake className="h-3 w-3 text-pink-600 shrink-0" />
                                                               )}
+                                                              {child.system_type === 'decisions' && (
+                                                                <Scale className="h-3 w-3 text-violet-600 shrink-0" />
+                                                              )}
                                                               {child.title}
                                                             </span>
                                                             <CornerUpLeft className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -1479,6 +1487,30 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                     <ListTodo className="h-3 w-3 mr-1" />
                                                     Aufgaben
                                                   </Button>
+                                                  <Button 
+                                                    variant="outline" 
+                                                    size="sm"
+                                                    className="flex-1 justify-start border-pink-200 text-pink-700 h-7 text-xs"
+                                                    onClick={() => {
+                                                      addSystemTemplateItem('birthdays', index);
+                                                      setChildPopoverOpen(null);
+                                                    }}
+                                                  >
+                                                    <Cake className="h-3 w-3 mr-1" />
+                                                    Geburtstage
+                                                  </Button>
+                                                  <Button 
+                                                    variant="outline" 
+                                                    size="sm"
+                                                    className="flex-1 justify-start border-violet-200 text-violet-700 h-7 text-xs"
+                                                    onClick={() => {
+                                                      addSystemTemplateItem('decisions', index);
+                                                      setChildPopoverOpen(null);
+                                                    }}
+                                                  >
+                                                    <Scale className="h-3 w-3 mr-1" />
+                                                    Entscheidungen
+                                                  </Button>
                                                 </div>
                                               </div>
                                             </div>
@@ -1517,6 +1549,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                     ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
                                                     : child.system_type === 'birthdays'
                                                     ? 'bg-pink-50 border-pink-200 dark:bg-pink-950/30 dark:border-pink-800'
+                                                    : child.system_type === 'decisions'
+                                                    ? 'bg-violet-50 border-violet-200 dark:bg-violet-950/30 dark:border-violet-800'
                                                     : 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
                                                   : 'bg-muted/30 border-border'
                                               }`}
@@ -1580,6 +1614,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                                         <ListTodo className="h-3.5 w-3.5 text-green-600 shrink-0" />
                                                       ) : child.system_type === 'birthdays' ? (
                                                         <Cake className="h-3.5 w-3.5 text-pink-600 shrink-0" />
+                                                      ) : child.system_type === 'decisions' ? (
+                                                        <Scale className="h-3.5 w-3.5 text-violet-600 shrink-0" />
                                                       ) : (
                                                         <StickyNote className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                                                       )}
@@ -1692,6 +1728,24 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                 >
                                   <ListTodo className="h-4 w-4 mr-2" />
                                   Aufgaben
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="border-pink-200 text-pink-700 hover:bg-pink-50 dark:border-pink-800 dark:text-pink-300 dark:hover:bg-pink-950"
+                                  onClick={() => addSystemTemplateItem('birthdays')}
+                                >
+                                  <Cake className="h-4 w-4 mr-2" />
+                                  Geburtstage
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950"
+                                  onClick={() => addSystemTemplateItem('decisions')}
+                                >
+                                  <Scale className="h-4 w-4 mr-2" />
+                                  Entscheidungen
                                 </Button>
                               </>
                             )}

@@ -6,7 +6,7 @@ import { Cake, Mail, Phone, Gift, CreditCard, Trash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
-import { format, addDays, differenceInYears } from 'date-fns';
+import { format, addDays, differenceInYears, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 interface BirthdayContact {
@@ -94,7 +94,8 @@ export function BirthdayAgendaItem({
 
         for (const contact of allContacts) {
           if (!contact.birthday) continue;
-          const bday = new Date(contact.birthday);
+          const bday = parseISO(contact.birthday);
+          if (Number.isNaN(bday.getTime())) continue;
           const month = bday.getMonth();
           const day = bday.getDate();
 

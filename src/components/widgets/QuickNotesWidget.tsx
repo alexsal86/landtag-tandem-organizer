@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Save, Search, Settings, ListTodo, Square, ChevronDown, CheckSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -15,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { TaskDetailSidebar } from '@/components/TaskDetailSidebar';
 import { QuickNotesList } from '@/components/shared/QuickNotesList';
+import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
 
 interface QuickNotesWidgetProps {
   className?: string;
@@ -37,6 +37,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [titleEditorKey, setTitleEditorKey] = useState(0);
   
   // Tasks state
   const [tasks, setTasks] = useState<Array<{
@@ -68,6 +69,17 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   });
 
   const { compact = false } = configuration;
+
+
+  const stripHtml = (value: string) => value.replace(/<[^>]*>/g, '').trim();
+  const toEditorHtml = (value: string | null | undefined) => {
+    if (!value) return '';
+    if (/<[^>]+>/.test(value)) return value;
+    return `<p>${value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')}</p>`;
+  };
 
   const taskCategories = [
     { name: 'personal', label: 'Persönlich' },
@@ -153,7 +165,10 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   };
 
   const createNote = async () => {
-    if (!user || !newNote.trim()) return;
+    const plainTitle = stripHtml(newTitle);
+    const plainContent = newNote.trim();
+
+    if (!user || (!plainTitle && !plainContent)) return;
 
     try {
       const { error } = await supabase
@@ -161,7 +176,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         .insert({
           user_id: user.id,
           title: newTitle.trim() || undefined,
-          content: newNote.trim(),
+          content: plainContent,
           color: selectedColor,
           category: 'general'
         });
@@ -170,6 +185,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
 
       setNewNote('');
       setNewTitle('');
+      setTitleEditorKey(prev => prev + 1);
       setRefreshTrigger(prev => prev + 1);
       toast.success('Notiz erstellt');
     } catch (error) {
@@ -272,7 +288,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
               variant="ghost"
               size="sm"
               onClick={createNote}
-              disabled={!newNote.trim()}
+              disabled={!newNote.trim() && !stripHtml(newTitle)}
               className="h-7 w-7 p-0"
             >
               <Plus className="h-3 w-3" />
@@ -285,11 +301,13 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         {/* Create Form */}
         <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
           {!compact && (
-            <Input
-              placeholder="Titel (optional)"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="h-8 text-xs"
+            <SimpleRichTextEditor
+              key={titleEditorKey}
+              initialContent={toEditorHtml(newTitle)}
+              onChange={setNewTitle}
+              placeholder="Titel (@ für Mentions)"
+              minHeight="36px"
+              showToolbar={false}
             />
           )}
           <Textarea

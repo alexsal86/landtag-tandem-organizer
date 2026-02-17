@@ -43,6 +43,10 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
     urgent: "text-red-500",
   };
 
+  const currentStatusPreview = caseFile.current_status_note
+    ? caseFile.current_status_note.replace(/<[^>]*>/g, "").trim()
+    : null;
+
   if (viewMode === "list") {
     return (
       <Card 
@@ -63,6 +67,11 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
               {caseFile.description && (
                 <p className="text-sm text-muted-foreground line-clamp-1 mt-1">
                   {caseFile.description}
+                </p>
+              )}
+              {currentStatusPreview && (
+                <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
+                  <span className="font-medium">Aktueller Stand:</span> {currentStatusPreview}
                 </p>
               )}
             </div>
@@ -119,6 +128,12 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
         {caseFile.description && (
           <p className="text-sm text-muted-foreground line-clamp-2">
             {caseFile.description}
+          </p>
+        )}
+
+        {currentStatusPreview && (
+          <p className="text-xs text-muted-foreground line-clamp-2">
+            <span className="font-medium">Aktueller Stand:</span> {currentStatusPreview}
           </p>
         )}
 
