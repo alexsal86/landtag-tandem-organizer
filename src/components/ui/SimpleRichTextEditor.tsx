@@ -202,7 +202,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
 
   return (
     <div className={cn(
-      "border border-border rounded-lg overflow-hidden bg-background",
+      "border border-border rounded-lg bg-background",
       disabled && "opacity-50 pointer-events-none"
     )}>
       <LexicalComposer initialConfig={initialConfig}>
