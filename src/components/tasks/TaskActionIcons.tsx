@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlarmClock, UserPlus, MessageSquare, Vote, Paperclip, CalendarDays } from "lucide-react";
+import { AlarmClock, UserPlus, MessageSquare, Vote, Paperclip, CalendarDays, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TaskActionIconsProps {
@@ -11,6 +11,7 @@ interface TaskActionIconsProps {
   onDecision?: (taskId: string) => void;
   onDocuments?: (taskId: string) => void;
   onAddToMeeting?: (taskId: string) => void;
+  onCreateChildTask?: (taskId: string) => void;
   hasComments?: boolean;
   hasDocuments?: boolean;
   hasMeetingLink?: boolean;
@@ -26,6 +27,7 @@ export function TaskActionIcons({
   onDecision,
   onDocuments,
   onAddToMeeting,
+  onCreateChildTask,
   hasComments = false,
   hasDocuments = false,
   hasMeetingLink = false,
@@ -158,6 +160,25 @@ export function TaskActionIcons({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">Jour Fixe</TooltipContent>
+          </Tooltip>
+        )}
+
+        {onCreateChildTask && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 hover:bg-muted/80 rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateChildTask(taskId);
+                }}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Unteraufgabe erstellen</TooltipContent>
           </Tooltip>
         )}
       </div>
