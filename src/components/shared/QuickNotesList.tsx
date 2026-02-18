@@ -34,7 +34,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -1221,8 +1220,11 @@ export function QuickNotesList({
     }
   };
 
-  const handleEditTitleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleEditTitleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      const mentionMenuOpen = !!document.querySelector('.mentions-menu');
+      if (mentionMenuOpen) return;
+
       e.preventDefault();
       if (stripHtml(editTitle) || stripHtml(editContent)) {
         void handleSaveEdit();
@@ -1232,6 +1234,9 @@ export function QuickNotesList({
 
   const handleEditContentKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      const mentionMenuOpen = !!document.querySelector('.mentions-menu');
+      if (mentionMenuOpen) return;
+
       e.preventDefault();
       if (stripHtml(editTitle) || stripHtml(editContent)) {
         void handleSaveEdit();
@@ -2282,6 +2287,7 @@ export function QuickNotesList({
               key={`title-${editDialogOpen ? editingNote?.id : 'closed'}`}
               initialContent={editTitle}
               onChange={setEditTitle}
+              onKeyDown={handleEditTitleKeyDown}
               placeholder="Titel (optional)"
               minHeight="46px"
               showToolbar={false}

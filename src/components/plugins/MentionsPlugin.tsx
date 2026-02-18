@@ -75,13 +75,13 @@ function resolveBadgeColor(badgeColor: string | null, userId: string): string {
 function MentionsTypeaheadMenuItem({
   index,
   isSelected,
-  onClick,
+  onMouseDown,
   onMouseEnter,
   option,
 }: {
   index: number;
   isSelected: boolean;
-  onClick: () => void;
+  onMouseDown: (event: React.MouseEvent<HTMLLIElement>) => void;
   onMouseEnter: () => void;
   option: MentionTypeaheadOption;
 }) {
@@ -95,7 +95,7 @@ function MentionsTypeaheadMenuItem({
       aria-selected={isSelected}
       id={'typeahead-item-' + index}
       onMouseEnter={onMouseEnter}
-      onClick={onClick}
+      onMouseDown={onMouseDown}
     >
       <Avatar className="h-6 w-6 flex-shrink-0">
         <AvatarImage src={option.avatarUrl || undefined} />
@@ -219,16 +219,25 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
           selectOptionAndCleanUp: (option: MentionTypeaheadOption) => void;
           setHighlightedIndex: (index: number) => void;
         },
-      ) =>
-        anchorElementRef.current && options.length
-          ? ReactDOM.createPortal(
-              <div className="typeahead-popover mentions-menu">
+      ) => {
+        if (!anchorElementRef.current || !options.length) return null;
+
+        return ReactDOM.createPortal(
+              <div
+                className="typeahead-popover mentions-menu"
+                style={{ zIndex: 9999, pointerEvents: 'auto' }}
+                onMouseDown={(event) => {
+                  // Keep editor focus while interacting with the menu.
+                  event.preventDefault();
+                }}
+              >
                 <ul>
                   {options.map((option, i: number) => (
                     <MentionsTypeaheadMenuItem
                       index={i}
                       isSelected={selectedIndex === i}
-                      onClick={() => {
+                      onMouseDown={(event) => {
+                        event.preventDefault();
                         setHighlightedIndex(i);
                         selectOptionAndCleanUp(option);
                       }}
@@ -243,8 +252,7 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
               </div>,
               anchorElementRef.current,
             )
-          : null
-      }
+      }}
     />
   );
 }
