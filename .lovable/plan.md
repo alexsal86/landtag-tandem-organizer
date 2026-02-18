@@ -1,37 +1,55 @@
 
 
-## Egress-Reduktion: PostgREST und Realtime optimieren
+## Fix: Infinite-Loop in den Radix-Patches endgueltig beheben
 
-### Phase 1 -- ERLEDIGT ✅
+### Ursache
 
-1. **`RealTimeSync.tsx`**: `removeAllChannels()` durch `supabase.removeChannel(channelRef)` ersetzt
-2. **`CombinedMessagesWidget.tsx`**: RPC-Doppelaufruf eliminiert (1 statt 2 Calls)
-3. **Realtime-Subscriptions**: Filter (tenant_id/user_id) und Debouncing hinzugefuegt:
-   - `MyWorkView.tsx`: 2s Debounce + user_id-Filter auf 8 Tabellen
-   - `useCounts.tsx`: 2 Channels → 1 Channel, 2s Debounce
-   - `useNavigationNotifications.tsx`: 1s Debounce
-   - `BlackBoard.tsx`: 1s Debounce, INSERT-only auf messages
-   - `MessageSystem.tsx`: 1s Debounce, INSERT-only auf messages
+Die `composeRefs`-Funktion in beiden Patch-Dateien sammelt immer noch Cleanup-Funktionen und gibt sie zurueck (Zeilen 28-45 in `radix-compose-refs-patch.ts`, Zeilen 24-47 in `radix-slot-patch.tsx`). 
 
-### Phase 2 -- ERLEDIGT ✅
+Wenn `composeRefs` **nicht memoized** aufgerufen wird (was Radix intern in `SlotClone` tut), erzeugt jeder Render eine neue Ref-Callback-Funktion. React 19 erkennt, dass diese Funktion eine Cleanup-Funktion zurueckgibt, ruft die Cleanup auf, setzt den Ref neu, bekommt wieder eine Cleanup, und so weiter -- Endlosschleife.
 
-4. **Messages-Subscriptions konsolidiert**: Neuer `useMessagesRealtime` Hook ersetzt 3 separate Channels:
-   - `BlackBoard.tsx`, `MessageSystem.tsx`, `CombinedMessagesWidget.tsx` nutzen jetzt einen einzigen geteilten Channel
-   - Singleton-Pattern: Nur 1 Realtime-Channel fuer messages/confirmations/recipients, egal wie viele Komponenten subscriben
-   - Eingebautes 1s Debouncing
+### Loesung
 
-5. **Notifications-Subscriptions konsolidiert**: 
-   - `useNavigationNotifications.tsx` hat keinen eigenen `notifications`-Channel mehr
-   - Reagiert stattdessen auf Custom Events (`notifications-changed`) von `useNotifications.tsx`
-   - Behaelt nur den `user_navigation_visits`-Channel
+`composeRefs` darf **niemals** eine Cleanup-Funktion zurueckgeben. Stattdessen wird `setRef` verwendet, das den Ref-Wert setzt ohne den Rueckgabewert weiterzuleiten.
 
-### Phase 3 -- Select-Optimierung (offen)
+### Aenderungen
 
-6. **`select('*')` schrittweise ersetzen**: Priorisiert contacts, event_plannings, documents
-7. **MyWorkView Debouncing**: Bereits in Phase 1 umgesetzt ✅
+**Datei 1: `src/lib/radix-compose-refs-patch.ts`**
 
-### Erwartete Reduktion (kumuliert)
+Die `composeRefs`-Funktion wird vereinfacht -- kein Sammeln von Cleanups, kein Return:
 
-- Phase 1: ~40-50% weniger Realtime-Egress
-- Phase 2: ~20-30% weniger PostgREST-Egress (weniger redundante Queries durch geteilte Channels)
-- Phase 3: ~10-20% weniger PostgREST-Egress (kleinere Payloads)
+```typescript
+export function composeRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
+  return (node: T) => {
+    refs.forEach((ref) => setRef(ref, node));
+  };
+}
+```
+
+**Datei 2: `src/lib/radix-slot-patch.tsx`**
+
+Die interne `composeRefs`-Funktion wird identisch vereinfacht:
+
+```typescript
+function composeRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
+  return (node: T) => {
+    refs.forEach((ref) => setRef(ref, node));
+  };
+}
+```
+
+### Warum das sicher ist
+
+- `setRef` ruft die Ref-Funktion auf, verwirft aber den Rueckgabewert
+- React 19 sieht keine Cleanup-Funktion und loest keinen Detach/Reattach-Zyklus aus
+- `useComposedRefs` bleibt als memoized Variante fuer Komponenten, die Cleanup benoetigen
+
+### Zusammenfassung
+
+| Datei | Aenderung |
+|---|---|
+| `src/lib/radix-compose-refs-patch.ts` | `composeRefs` gibt keine Cleanup mehr zurueck |
+| `src/lib/radix-slot-patch.tsx` | Interne `composeRefs` gibt keine Cleanup mehr zurueck |
+
+2 Dateien, rein mechanische Aenderung. Keine Logik-Aenderungen an der restlichen App.
+
