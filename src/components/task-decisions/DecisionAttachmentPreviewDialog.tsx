@@ -201,22 +201,37 @@ export function DecisionAttachmentPreviewDialog({
           return;
         }
 
-        if (!normalizedFilePath) {
+        const pathToUse = normalizedFilePath || filePath;
+        if (!pathToUse) {
           throw new Error('Invalid storage path');
         }
 
-        console.log('[DecisionPreview] Creating signed URL for path:', normalizedFilePath);
+        console.log('[DecisionPreview] Creating signed URL for path:', pathToUse);
 
+        // Try createSignedUrl first
         const { data, error: signedUrlError } = await supabase.storage
           .from('decision-attachments')
-          .createSignedUrl(normalizedFilePath, 60 * 10);
+          .createSignedUrl(pathToUse, 60 * 10);
 
-        if (signedUrlError) throw signedUrlError;
-        console.log('[DecisionPreview] Signed URL created successfully');
-        setSignedUrl(data.signedUrl);
-      } catch (e) {
-        console.error('Error creating signed URL for preview:', e, 'path:', normalizedFilePath);
-        setError(`Vorschau konnte nicht geladen werden. (Pfad: ${normalizedFilePath})`);
+        if (!signedUrlError && data?.signedUrl) {
+          console.log('[DecisionPreview] Signed URL created successfully');
+          setSignedUrl(data.signedUrl);
+          return;
+        }
+
+        console.warn('[DecisionPreview] createSignedUrl failed, trying download fallback:', signedUrlError?.message);
+
+        // Fallback: download the file and create a blob URL
+        const { data: blobData, error: downloadError } = await supabase.storage
+          .from('decision-attachments')
+          .download(pathToUse);
+
+        if (downloadError) throw downloadError;
+        const blobUrl = URL.createObjectURL(blobData);
+        setSignedUrl(blobUrl);
+      } catch (e: any) {
+        console.error('Error loading preview:', e, 'path:', normalizedFilePath, 'raw:', filePath);
+        setError(`Vorschau konnte nicht geladen werden. (${e?.message || 'Unbekannter Fehler'})`);
       } finally {
         setLoading(false);
       }
