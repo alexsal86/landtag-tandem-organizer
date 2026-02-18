@@ -35,6 +35,7 @@ interface TaskListRowProps {
   assigneeName?: string;
   hasMeetingLink?: boolean;
   hasReminder?: boolean;
+  commentCount?: number;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
@@ -56,6 +57,7 @@ export function TaskListRow({
   assigneeName,
   hasMeetingLink,
   hasReminder,
+  commentCount = 0,
   onComplete,
   onSubtaskComplete,
   onNavigate,
@@ -194,6 +196,7 @@ export function TaskListRow({
               taskId={task.id}
               hasMeetingLink={hasMeetingLink}
               hasReminder={hasReminder}
+              commentCount={commentCount}
               onReminder={onReminder}
               onAssign={onAssign}
               onComment={onComment}

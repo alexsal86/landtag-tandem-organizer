@@ -13,6 +13,7 @@ interface TaskActionIconsProps {
   onAddToMeeting?: (taskId: string) => void;
   onCreateChildTask?: (taskId: string) => void;
   hasComments?: boolean;
+  commentCount?: number;
   hasDocuments?: boolean;
   hasMeetingLink?: boolean;
   hasReminder?: boolean;
@@ -29,6 +30,7 @@ export function TaskActionIcons({
   onAddToMeeting,
   onCreateChildTask,
   hasComments = false,
+  commentCount = 0,
   hasDocuments = false,
   hasMeetingLink = false,
   hasReminder = false,
@@ -85,8 +87,8 @@ export function TaskActionIcons({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "h-6 w-6 hover:bg-muted/80 rounded-full",
-                  hasComments && "text-blue-600"
+                  "h-6 w-6 hover:bg-muted/80 rounded-full relative",
+                  (hasComments || commentCount > 0) && "text-blue-600"
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -94,6 +96,11 @@ export function TaskActionIcons({
                 }}
               >
                 <MessageSquare className="h-3 w-3" />
+                {commentCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 rounded-full bg-blue-600 text-[9px] leading-none text-white flex items-center justify-center font-medium">
+                    {commentCount > 99 ? '99+' : commentCount}
+                  </span>
+                )}
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">Kommentare</TooltipContent>
