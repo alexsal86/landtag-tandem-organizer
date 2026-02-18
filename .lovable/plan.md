@@ -125,14 +125,14 @@ Die Analyse zeigt erhebliches Einsparpotenzial in allen drei Egress-Bereichen. D
 
 ## Priorisierte Umsetzungsreihenfolge
 
-| Phase | Massnahme | Aufwand | Wirkung |
-|---|---|---|---|
-| **Phase 1** | QueryClient staleTime/gcTime Defaults | 15 Min | Hoch -- sofort 40-60% weniger PostgREST-Requests |
-| **Phase 2** | Realtime-Filter auf ungefilterte Channels | 30 Min | Hoch -- eliminiert Cross-Tenant Broadcasts |
-| **Phase 3** | Top-10 select('*') durch Spaltenauswahl ersetzen | 45 Min | Mittel -- 30-50% weniger Datentransfer |
-| **Phase 4** | QuickNotes Debouncing + Redundanz entfernen | 15 Min | Niedrig-Mittel |
-| **Phase 5** | getPublicUrl fur letter-assets | 10 Min | Niedrig -- ermoglicht Browser-Caching |
-| **Phase 6** | Blob-Cache fur Vorschaubilder | 30 Min | Niedrig |
+| Phase | Massnahme | Aufwand | Wirkung | Status |
+|---|---|---|---|---|
+| **Phase 1** | QueryClient staleTime/gcTime Defaults | 15 Min | Hoch -- sofort 40-60% weniger PostgREST-Requests | ✅ Erledigt |
+| **Phase 2** | Realtime-Filter auf ungefilterte Channels | 30 Min | Hoch -- eliminiert Cross-Tenant Broadcasts | ✅ Erledigt |
+| **Phase 3** | Top-10 select('*') durch Spaltenauswahl ersetzen | 45 Min | Mittel -- 30-50% weniger Datentransfer | ⏳ Offen (erfordert Per-Hook Audit) |
+| **Phase 4** | QuickNotes Debouncing + Redundanz entfernen | 15 Min | Niedrig-Mittel | ✅ Erledigt |
+| **Phase 5** | getPublicUrl fur letter-assets | 10 Min | Niedrig -- ermoglicht Browser-Caching | ✅ Erledigt |
+| **Phase 6** | Blob-Cache fur Vorschaubilder | 30 Min | Niedrig | ⏳ Offen |
 
 ---
 

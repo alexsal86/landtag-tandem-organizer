@@ -39,16 +39,19 @@ function ensureChannel(userId: string) {
       event: 'INSERT',
       schema: 'public',
       table: 'messages',
+      filter: `author_id=eq.${userId}`,
     }, notifyListeners)
     .on('postgres_changes', {
       event: 'UPDATE',
       schema: 'public',
       table: 'messages',
+      filter: `author_id=eq.${userId}`,
     }, notifyListeners)
     .on('postgres_changes', {
       event: '*',
       schema: 'public',
       table: 'message_recipients',
+      filter: `recipient_id=eq.${userId}`,
     }, notifyListeners)
     .on('postgres_changes', {
       event: '*',

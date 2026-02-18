@@ -153,7 +153,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
           event: 'UPDATE',
           schema: 'public',
           table: 'team_dashboards',
-          filter: `user_id=neq.${user.id}` // Don't listen to own changes
+          filter: `owner_id=neq.${user.id}` // Don't listen to own changes
         }, (payload) => {
           handleDatabaseLayoutUpdate(payload);
         })

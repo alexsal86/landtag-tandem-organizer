@@ -399,7 +399,8 @@ export function QuickNotesList({
           filter: `user_id=eq.${user.id}`
         },
         () => {
-          loadNotes();
+          // Debounce realtime refetch to avoid rapid-fire loads
+          setTimeout(() => loadNotes(), 1000);
         }
       )
       .subscribe();

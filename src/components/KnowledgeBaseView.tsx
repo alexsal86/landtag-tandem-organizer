@@ -202,7 +202,7 @@ const KnowledgeBaseView = () => {
 
   // Real-time updates
   useEffect(() => {
-    if (!user) return;
+    if (!user || !tenantId) return;
 
     const channel = supabase
       .channel('knowledge-documents-changes')
@@ -211,7 +211,8 @@ const KnowledgeBaseView = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'knowledge_documents'
+          table: 'knowledge_documents',
+          filter: `tenant_id=eq.${tenantId}`
         },
         () => {
           fetchDocuments();
@@ -222,7 +223,7 @@ const KnowledgeBaseView = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, tenantId]);
 
   const handleCreateDocument = async () => {
     if (!user || !newDocument.title.trim() || !tenantId) return;
