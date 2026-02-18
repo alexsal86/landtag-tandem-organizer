@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clipboard, Check, AlertTriangle, Clock, Users, Pin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
 import { toast } from "@/hooks/use-toast";
 
 interface BlackBoardMessage {
@@ -62,29 +63,12 @@ export function BlackBoard() {
 
   useEffect(() => {
     fetchPublicMessages();
-
-    // Set up real-time subscription
-    const messagesChannel = supabase.channel('blackboard-messages')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'messages'
-      }, () => {
-        fetchPublicMessages();
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'message_confirmations'
-      }, () => {
-        fetchPublicMessages();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(messagesChannel);
-    };
   }, [user]);
+
+  // Use shared messages realtime subscription
+  useMessagesRealtime(() => {
+    fetchPublicMessages();
+  });
 
   const confirmMessage = async (messageId: string) => {
     if (!user) return;

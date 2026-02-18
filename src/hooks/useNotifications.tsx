@@ -516,6 +516,9 @@ export const useNotifications = () => {
               setUnreadCount(prev => prev + 1);
             }
             
+            // Notify navigation notifications hook about the change
+            window.dispatchEvent(new Event('notifications-changed'));
+            
             toast({
               title: newNotification.title || 'Neue Benachrichtigung',
               description: newNotification.message || 'Sie haben eine neue Benachrichtigung erhalten.',
@@ -548,6 +551,9 @@ export const useNotifications = () => {
                 setUnreadCount(prev => prev + 1);
               }
             }
+            
+            // Notify navigation notifications hook about the change
+            window.dispatchEvent(new Event('notifications-changed'));
           }
         )
         .subscribe((status) => {

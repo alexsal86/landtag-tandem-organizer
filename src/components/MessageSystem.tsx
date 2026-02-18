@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageCircle, Check, Archive, Send, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
 import { MessageComposer } from "./MessageComposer";
 import { toast } from "@/hooks/use-toast";
 
@@ -217,36 +218,12 @@ export function MessageSystem() {
 
   useEffect(() => {
     fetchMessages();
-    
-    // Set up real-time subscriptions
-    const messagesChannel = supabase.channel('messages-channel')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'messages'
-      }, () => {
-        fetchMessages();
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'message_recipients'
-      }, () => {
-        fetchMessages();
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'message_confirmations'
-      }, () => {
-        fetchMessages();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(messagesChannel);
-    };
   }, [user]);
+
+  // Use shared messages realtime subscription
+  useMessagesRealtime(() => {
+    fetchMessages();
+  });
 
   const markAsRead = async (messageId: string, isForAllUsers: boolean) => {
     if (!user) return;

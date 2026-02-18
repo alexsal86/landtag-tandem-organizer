@@ -243,17 +243,19 @@ export function NoteDecisionCreator({
         console.warn('Error linking decision to note:', noteError);
       }
 
-      // Add participants
-      const participantInserts = selectedUsers.map(userId => ({
-        decision_id: decision.id,
-        user_id: userId
-      }));
+      // Add participants (only if there are any)
+      if (selectedUsers.length > 0) {
+        const participantInserts = selectedUsers.map(userId => ({
+          decision_id: decision.id,
+          user_id: userId
+        }));
 
-      const { error: participantError } = await supabase
-        .from("task_decision_participants")
-        .insert(participantInserts);
+        const { error: participantError } = await supabase
+          .from("task_decision_participants")
+          .insert(participantInserts);
 
-      if (participantError) throw participantError;
+        if (participantError) throw participantError;
+      }
 
       // Send notifications
       if (sendByEmail || sendViaMatrix) {
