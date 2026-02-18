@@ -2117,12 +2117,13 @@ export function TasksView() {
                            </div>
                            
                            {/* Subtasks List */}
+                           <div className="space-y-0">
                            {subtasks[task.id].map((subtask) => {
                              const subtaskSourceLetterId = extractLetterSourceId(subtask.title);
                              const cleanSubtaskTitle = stripLetterSourceMarker(subtask.title);
 
                              return (
-                             <div key={subtask.id} className="border border-border rounded-lg p-4 bg-muted/20">
+                             <div key={subtask.id} className="group/subtask ml-4 border border-border rounded-lg p-4 bg-muted/20">
                                <div className="flex items-start gap-3">
                                  <Checkbox
                                    checked={subtask.is_completed}
@@ -2201,7 +2202,7 @@ export function TasksView() {
                                      )}
                                    </div>
                                  </div>
-                                 <div className="flex gap-1">
+                                 <div className="flex gap-1 opacity-0 pointer-events-none transition-opacity group-hover/subtask:opacity-100 group-hover/subtask:pointer-events-auto">
                                    <Button
                                      variant="ghost"
                                      size="sm"
@@ -2271,6 +2272,7 @@ export function TasksView() {
                                </div>
                              </div>
                            )})}
+                           </div>
                          </div>
                        )}
                        

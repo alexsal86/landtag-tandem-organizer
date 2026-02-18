@@ -40,6 +40,7 @@ interface TaskCardProps {
   hasReminder?: boolean;
   followUpDate?: string | null;
   commentCount?: number;
+  depth?: number;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
@@ -85,6 +86,7 @@ export function TaskCard({
   const [titleValue, setTitleValue] = useState(task.title);
   const [descriptionValue, setDescriptionValue] = useState(task.description || "");
   const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -154,7 +156,11 @@ export function TaskCard({
   };
 
   return (
-    <div className={cn("group rounded-lg border bg-card relative", depth > 0 && "border-dashed")}>
+    <div
+      className={cn("rounded-lg border bg-card relative", depth > 0 && "border-dashed")}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div className="flex items-start gap-3 p-3">
         <Checkbox className="mt-0.5 h-4 w-4 flex-shrink-0" onCheckedChange={() => onComplete(task.id)} />
         <div className="flex-1 min-w-0 space-y-1">
@@ -210,7 +216,7 @@ export function TaskCard({
 
       <div className="px-3 pb-2 flex items-center justify-between">
         <div className="flex-1">
-          <div className="group-hover:hidden">
+          <div className={cn(isHovered && "hidden")}>
             <TaskBadges
               priority={task.priority}
               status={task.status}
@@ -220,7 +226,7 @@ export function TaskCard({
               isHovered={false}
             />
           </div>
-          <div className="hidden group-hover:block">
+          <div className={cn(!isHovered && "hidden")}>
             <TaskBadges
               priority={task.priority}
               status={task.status}
@@ -250,7 +256,7 @@ export function TaskCard({
                 size="sm"
                 className={cn(
                   "h-6 px-2 text-xs transition-opacity",
-                  !hasDueDate && "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
+                  !hasDueDate && !isHovered && "opacity-0 pointer-events-none",
                   getDueDateColor(task.due_date)
                 )}
               >
@@ -263,7 +269,7 @@ export function TaskCard({
             </PopoverContent>
           </Popover>
 
-          <div className="hidden group-hover:flex items-center">
+          <div className={cn("items-center", !isHovered ? "hidden" : "flex")}>
             <Separator orientation="vertical" className="h-4 mx-1" />
             <TaskActionIcons
               taskId={task.id}
@@ -287,10 +293,9 @@ export function TaskCard({
       </div>
 
       {hasSubtasks && (
-        <div className="border-t bg-muted/30 px-3 py-2 space-y-2">
+        <div className="border-t bg-muted/30 pl-4">
           {childTasks.map((childTask) => (
-            <div key={childTask.id} className="pl-2">
-              <TaskCard
+            <TaskCard
                 task={childTask}
                 subtasks={getChildTasks ? getChildTasks(childTask.id) : []}
                 assigneeName={assigneeName}
@@ -312,7 +317,6 @@ export function TaskCard({
                 onCreateChildTask={onCreateChildTask}
                 getChildTasks={getChildTasks}
               />
-            </div>
           ))}
         </div>
       )}
