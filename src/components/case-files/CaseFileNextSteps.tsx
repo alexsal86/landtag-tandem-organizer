@@ -62,6 +62,36 @@ export function CaseFileNextSteps({
     (t) => t.task?.status === "completed"
   ).length;
 
+  const handleCompleteTask = async (taskId: string) => {
+    const { data: childTasks, error } = await supabase
+      .from("tasks")
+      .select("id")
+      .eq("parent_task_id", taskId)
+      .neq("status", "cancelled");
+
+    if (error) {
+      console.error("Error checking child tasks before completion:", error);
+      toast({
+        title: "Aufgabe konnte nicht abgeschlossen werden",
+        description: "Bitte versuchen Sie es erneut.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if ((childTasks || []).length > 0) {
+      toast({
+        title: "Container-Aufgabe kann nicht geschlossen werden",
+        description:
+          "Solange Child-Tasks existieren, bleibt die Hauptaufgabe offen. Sonst werden Child-Tasks nicht mehr sichtbar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await onCompleteTask(taskId);
+  };
+
   const findOrCreateParentTask = async (): Promise<string | null> => {
     if (!user || !resolvedTenantId || !caseFileTitle) return null;
 
@@ -208,7 +238,7 @@ export function CaseFileNextSteps({
               <Checkbox
                 className="mt-0.5"
                 onCheckedChange={() => {
-                  if (item.task?.id) onCompleteTask(item.task.id);
+                  if (item.task?.id) handleCompleteTask(item.task.id);
                 }}
               />
               <div className="flex-1 min-w-0">
@@ -262,6 +292,10 @@ export function CaseFileNextSteps({
             <Plus className="h-4 w-4" />
           </Button>
         </div>
+
+        <p className="text-[11px] text-muted-foreground leading-tight">
+          Hinweis: Container-Aufgaben können erst geschlossen werden, wenn keine Child-Tasks mehr vorhanden sind.
+        </p>
       </CardContent>
     </Card>
   );
