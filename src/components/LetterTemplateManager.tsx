@@ -89,30 +89,30 @@ const extractStoragePathFromUrl = (value?: string | null): string | null => {
   }
 };
 
+const normalizeImageItem = (item: any): any => {
+  if (!item || item.type !== 'image') return item;
+
+  const storagePath = item.storagePath || extractStoragePathFromUrl(item.imageUrl);
+  if (!storagePath) return item;
+
+  const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(storagePath);
+  return {
+    ...item,
+    storagePath,
+    imageUrl: publicUrl,
+  };
+};
+
 const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSettings) => {
   const blockContent = ((layoutSettings as any).blockContent || {}) as Record<string, any[]>;
   const normalizedContent = Object.fromEntries(
     Object.entries(blockContent).map(([key, items]) => {
       if (!Array.isArray(items)) return [key, items];
-
-      const normalizedItems = items.map((item: any) => {
-        if (!item || item.type !== 'image') return item;
-
-        const storagePath = item.storagePath || extractStoragePathFromUrl(item.imageUrl);
-        if (!storagePath) return item;
-
-        const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(storagePath);
-        return {
-          ...item,
-          storagePath,
-          imageUrl: publicUrl,
-        };
-      });
-
-      return [key, normalizedItems];
+      return [key, items.map(normalizeImageItem)];
     })
   );
 
+  // Also normalize header_text_elements and footer_blocks if present in layout_settings
   return {
     ...layoutSettings,
     blockContent: normalizedContent,
@@ -375,11 +375,15 @@ const LetterTemplateManager: React.FC = () => {
       if (typeof (template as any).footer_blocks === 'string') { try { footerBlocks = JSON.parse((template as any).footer_blocks); } catch { footerBlocks = []; } }
       else if (Array.isArray((template as any).footer_blocks)) { footerBlocks = (template as any).footer_blocks; }
     }
+    // Normalize images in header/footer elements too
+    const normalizedHeader = headerElements.map(normalizeImageItem);
+    const normalizedFooter = footerBlocks.map(normalizeImageItem);
+    
     setFormData({
       name: template.name, letterhead_html: template.letterhead_html, letterhead_css: template.letterhead_css,
       response_time_days: template.response_time_days, default_sender_id: template.default_sender_id || '',
-      default_info_blocks: template.default_info_blocks || [], header_elements: headerElements,
-      footer_blocks: footerBlocks,
+      default_info_blocks: template.default_info_blocks || [], header_elements: normalizedHeader,
+      footer_blocks: normalizedFooter,
       layout_settings: normalizeLayoutBlockContentImages(template.layout_settings || DEFAULT_DIN5008_LAYOUT)
     });
   };
