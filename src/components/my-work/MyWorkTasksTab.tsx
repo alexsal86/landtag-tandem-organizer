@@ -7,7 +7,9 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { LayoutGrid, List } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
+import { ChevronDown, Clock, Hourglass, LayoutGrid, List } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +22,7 @@ import { TaskDocumentDialog } from "@/components/tasks/TaskDocumentDialog";
 import { TaskMeetingSelector } from "@/components/tasks/TaskMeetingSelector";
 import { CelebrationAnimationSystem } from "@/components/celebrations";
 import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface Task {
   id: string;
@@ -58,6 +61,8 @@ export function MyWorkTasksTab() {
   const [taskStatuses, setTaskStatuses] = useState<{name: string, label: string}[]>([]);
   const [taskSnoozes, setTaskSnoozes] = useState<Record<string, string>>({});
   const [taskCommentCounts, setTaskCommentCounts] = useState<Record<string, number>>({});
+  const [dueFollowUpsExpanded, setDueFollowUpsExpanded] = useState(true);
+  const [scheduledFollowUpsExpanded, setScheduledFollowUpsExpanded] = useState(false);
 
   // Dialog states
   const [snoozeDialogOpen, setSnoozeDialogOpen] = useState(false);
@@ -370,6 +375,7 @@ export function MyWorkTasksTab() {
 
   const handleSetSnooze = async (date: Date) => {
     if (!snoozeTaskId || !user) return;
+    const targetTaskId = snoozeTaskId;
     
     try {
       // Check if there's already a snooze for this task
@@ -400,6 +406,7 @@ export function MyWorkTasksTab() {
       }
       
       toast({ title: "Wiedervorlage gesetzt" });
+      setTaskSnoozes(prev => ({ ...prev, [targetTaskId]: date.toISOString() }));
       setSnoozeDialogOpen(false);
       setSnoozeTaskId(null);
       loadTasks();
@@ -409,21 +416,49 @@ export function MyWorkTasksTab() {
     }
   };
 
+  const clearSnoozeForTask = async (taskId: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('task_snoozes')
+      .delete()
+      .eq('task_id', taskId)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+  };
+
   const handleClearSnooze = async () => {
     if (!snoozeTaskId || !user) return;
+    const targetTaskId = snoozeTaskId;
 
     try {
-      const { error } = await supabase
-        .from('task_snoozes')
-        .delete()
-        .eq('task_id', snoozeTaskId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
+      await clearSnoozeForTask(snoozeTaskId);
 
       toast({ title: "Wiedervorlage entfernt" });
+      setTaskSnoozes(prev => {
+        const next = { ...prev };
+        delete next[targetTaskId];
+        return next;
+      });
       setSnoozeDialogOpen(false);
       setSnoozeTaskId(null);
+      loadTasks();
+    } catch (error) {
+      console.error("Error clearing snooze:", error);
+      toast({ title: "Fehler", variant: "destructive" });
+    }
+  };
+
+  const handleQuickClearSnooze = async (taskId: string) => {
+    try {
+      await clearSnoozeForTask(taskId);
+      toast({ title: "Wiedervorlage entfernt" });
+      setTaskSnoozes(prev => {
+        const next = { ...prev };
+        delete next[taskId];
+        return next;
+      });
       loadTasks();
     } catch (error) {
       console.error("Error clearing snooze:", error);
@@ -612,14 +647,14 @@ export function MyWorkTasksTab() {
         return snoozedUntil && isBefore(startOfDay(new Date(snoozedUntil)), addDays(now, 1));
       });
 
-      const hiddenScheduledCount = tasks.filter((task) => {
+      const scheduledFollowUps = tasks.filter((task) => {
         const snoozedUntil = taskSnoozes[task.id];
         return !!snoozedUntil && isAfter(startOfDay(new Date(snoozedUntil)), now);
-      }).length;
+      });
 
       const visibleTasks = tasks.filter((task) => !taskSnoozes[task.id]);
 
-      return { dueFollowUps, visibleTasks, hiddenScheduledCount };
+      return { dueFollowUps, visibleTasks, scheduledFollowUps };
     };
 
     return {
@@ -632,9 +667,9 @@ export function MyWorkTasksTab() {
     tasks: Task[],
     title: string,
     emptyMessage: string,
-    options?: { scrollable?: boolean; compact?: boolean }
+    options?: { scrollable?: boolean; compact?: boolean; allowQuickUnsnooze?: boolean; showFollowUpDateBadge?: boolean }
   ) => {
-    const { scrollable = true, compact = false } = options || {};
+    const { scrollable = true, compact = false, allowQuickUnsnooze = false, showFollowUpDateBadge = false } = options || {};
 
     const listContent = tasks.length === 0 ? (
       <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
@@ -647,6 +682,7 @@ export function MyWorkTasksTab() {
             subtasks={subtasks[task.id]}
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
             hasReminder={!!taskSnoozes[task.id]}
+            followUpDate={showFollowUpDateBadge ? taskSnoozes[task.id] : undefined}
             commentCount={taskCommentCounts[task.id] || 0}
             onComplete={handleToggleComplete}
             onSubtaskComplete={handleToggleSubtaskComplete}
@@ -654,7 +690,13 @@ export function MyWorkTasksTab() {
             onUpdateTitle={handleUpdateTitle}
             onUpdateDescription={handleUpdateDescription}
             onUpdateDueDate={handleUpdateDueDate}
-            onReminder={handleReminder}
+            onReminder={(taskId) => {
+              if (allowQuickUnsnooze && taskSnoozes[taskId]) {
+                void handleQuickClearSnooze(taskId);
+                return;
+              }
+              handleReminder(taskId);
+            }}
             onAssign={handleAssign}
             onComment={handleComment}
             onDecision={handleDecision}
@@ -672,13 +714,20 @@ export function MyWorkTasksTab() {
             subtasks={subtasks[task.id]}
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
             hasReminder={!!taskSnoozes[task.id]}
+            followUpDate={showFollowUpDateBadge ? taskSnoozes[task.id] : undefined}
             commentCount={taskCommentCounts[task.id] || 0}
             onComplete={handleToggleComplete}
             onSubtaskComplete={handleToggleSubtaskComplete}
             onNavigate={(id) => navigate(`/tasks?id=${id}`)}
             onUpdateTitle={handleUpdateTitle}
             onUpdateDueDate={handleUpdateDueDate}
-            onReminder={handleReminder}
+            onReminder={(taskId) => {
+              if (allowQuickUnsnooze && taskSnoozes[taskId]) {
+                void handleQuickClearSnooze(taskId);
+                return;
+              }
+              handleReminder(taskId);
+            }}
             onAssign={handleAssign}
             onComment={handleComment}
             onDecision={handleDecision}
@@ -739,7 +788,14 @@ export function MyWorkTasksTab() {
     ? splitTasksBySnooze.assigned.dueFollowUps
     : splitTasksBySnooze.assigned.dueFollowUps.filter(t => t.status === statusFilter);
 
-  const hiddenScheduledCount = splitTasksBySnooze.created.hiddenScheduledCount + splitTasksBySnooze.assigned.hiddenScheduledCount;
+  const filteredScheduledCreatedTasks = statusFilter === 'all'
+    ? splitTasksBySnooze.created.scheduledFollowUps
+    : splitTasksBySnooze.created.scheduledFollowUps.filter(t => t.status === statusFilter);
+  const filteredScheduledAssignedTasks = statusFilter === 'all'
+    ? splitTasksBySnooze.assigned.scheduledFollowUps
+    : splitTasksBySnooze.assigned.scheduledFollowUps.filter(t => t.status === statusFilter);
+
+  const hiddenScheduledCount = filteredScheduledCreatedTasks.length + filteredScheduledAssignedTasks.length;
   const dueFollowUpCount = filteredDueCreatedTasks.length + filteredDueAssignedTasks.length;
   const totalTasks = filteredAssignedTasks.length + filteredCreatedTasks.length;
 
@@ -750,12 +806,6 @@ export function MyWorkTasksTab() {
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Aufgaben</span>
           <Badge variant="outline">{totalTasks}</Badge>
-          <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">
-            Wiedervorlagen fällig: {dueFollowUpCount}
-          </Badge>
-          {hiddenScheduledCount > 0 && (
-            <Badge variant="secondary">Geplant: {hiddenScheduledCount}</Badge>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -787,26 +837,27 @@ export function MyWorkTasksTab() {
         </div>
       </div>
 
-      {hiddenScheduledCount > 0 && (
-        <div className="px-4 pt-2">
-          <p className="text-xs text-muted-foreground">
-            {hiddenScheduledCount} Aufgabe{hiddenScheduledCount === 1 ? '' : 'n'} mit geplanter Wiedervorlage ausgeblendet.
-          </p>
-        </div>
-      )}
-
       {dueFollowUpCount > 0 && (
         <div className="px-4 pt-2">
-          <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-medium text-amber-700">Fällige Wiedervorlagen</span>
-              <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">{dueFollowUpCount}</Badge>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {renderTaskList(filteredDueCreatedTasks, "Von mir erstellt", "Keine fälligen Wiedervorlagen", { scrollable: false, compact: true })}
-              {renderTaskList(filteredDueAssignedTasks, "Mir zugewiesen", "Keine fälligen Wiedervorlagen", { scrollable: false, compact: true })}
-            </div>
-          </div>
+          <Collapsible open={dueFollowUpsExpanded} onOpenChange={setDueFollowUpsExpanded}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <ChevronDown className={cn("h-4 w-4 transition-transform", !dueFollowUpsExpanded && "-rotate-90")} />
+                <Clock className="h-4 w-4 text-amber-600" />
+                <span className="text-xs font-medium text-amber-700">Fällige Wiedervorlagen</span>
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">{dueFollowUpCount}</Badge>
+              </div>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent className="pt-2">
+              <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {renderTaskList(filteredDueCreatedTasks, "Von mir erstellt", "Keine fälligen Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: true })}
+                  {renderTaskList(filteredDueAssignedTasks, "Mir zugewiesen", "Keine fälligen Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: true })}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
 
@@ -819,6 +870,29 @@ export function MyWorkTasksTab() {
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 min-h-0">
           {renderTaskList(filteredCreatedTasks, "Von mir erstellt", "Keine eigenen Aufgaben")}
           {renderTaskList(filteredAssignedTasks, "Mir zugewiesen", "Keine Aufgaben zugewiesen")}
+        </div>
+      )}
+
+      {hiddenScheduledCount > 0 && (
+        <div className="px-4 pb-3">
+          <Separator className="mb-3" />
+          <Collapsible open={scheduledFollowUpsExpanded} onOpenChange={setScheduledFollowUpsExpanded}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <ChevronDown className={cn("h-4 w-4 transition-transform", !scheduledFollowUpsExpanded && "-rotate-90")} />
+                <Hourglass className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Geplant (bis zum Datum ausgeblendet)</span>
+                <Badge variant="secondary" className="text-xs">{hiddenScheduledCount}</Badge>
+              </div>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent className="pt-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {renderTaskList(filteredScheduledCreatedTasks, "Von mir erstellt", "Keine geplanten Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: false, showFollowUpDateBadge: true })}
+                {renderTaskList(filteredScheduledAssignedTasks, "Mir zugewiesen", "Keine geplanten Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: false, showFollowUpDateBadge: true })}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
 
