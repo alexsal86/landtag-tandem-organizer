@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { TaskCommentSidebar } from "@/components/tasks/TaskCommentSidebar";
 import { TaskDocumentDialog } from "@/components/tasks/TaskDocumentDialog";
 import { TaskMeetingSelector } from "@/components/tasks/TaskMeetingSelector";
 import { CelebrationAnimationSystem } from "@/components/celebrations";
+import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
 
 interface Task {
   id: string;
@@ -61,6 +62,7 @@ export function MyWorkTasksTab() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [taskStatuses, setTaskStatuses] = useState<{name: string, label: string}[]>([]);
+  const [taskSnoozes, setTaskSnoozes] = useState<Record<string, string>>({});
 
   // Dialog states
   const [snoozeDialogOpen, setSnoozeDialogOpen] = useState(false);
@@ -161,17 +163,25 @@ export function MyWorkTasksTab() {
       setCreatedTasks(createdByMe);
       setAssignedTasks(assignedByOthers);
 
-      // Load subtasks for all tasks
+      // Load subtasks + existing task snoozes
       const allTaskIds = [...new Set([...createdByMe, ...assignedByOthers].map(t => t.id))];
       if (allTaskIds.length > 0) {
-        const { data: subtasksData, error: subtasksError } = await supabase
-          .from("subtasks")
-          .select("id, task_id, description, is_completed, due_date")
-          .in("task_id", allTaskIds)
-          .eq("is_completed", false)
-          .order("order_index", { ascending: true });
+        const [{ data: subtasksData, error: subtasksError }, { data: snoozesData, error: snoozesError }] = await Promise.all([
+          supabase
+            .from("subtasks")
+            .select("id, task_id, description, is_completed, due_date")
+            .in("task_id", allTaskIds)
+            .eq("is_completed", false)
+            .order("order_index", { ascending: true }),
+          supabase
+            .from("task_snoozes")
+            .select("task_id, snoozed_until")
+            .eq("user_id", user.id)
+            .in("task_id", allTaskIds),
+        ]);
 
         if (subtasksError) throw subtasksError;
+        if (snoozesError) throw snoozesError;
 
         const grouped: Record<string, Subtask[]> = {};
         (subtasksData || []).forEach(st => {
@@ -179,6 +189,17 @@ export function MyWorkTasksTab() {
           grouped[st.task_id].push(st);
         });
         setSubtasks(grouped);
+
+        const snoozeMap: Record<string, string> = {};
+        (snoozesData || []).forEach((snooze) => {
+          if (snooze.task_id) {
+            snoozeMap[snooze.task_id] = snooze.snoozed_until;
+          }
+        });
+        setTaskSnoozes(snoozeMap);
+      } else {
+        setSubtasks({});
+        setTaskSnoozes({});
       }
     } catch (error) {
       console.error("Error loading tasks:", error);
@@ -359,8 +380,31 @@ export function MyWorkTasksTab() {
       toast({ title: "Wiedervorlage gesetzt" });
       setSnoozeDialogOpen(false);
       setSnoozeTaskId(null);
+      loadTasks();
     } catch (error) {
       console.error("Error setting snooze:", error);
+      toast({ title: "Fehler", variant: "destructive" });
+    }
+  };
+
+  const handleClearSnooze = async () => {
+    if (!snoozeTaskId || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('task_snoozes')
+        .delete()
+        .eq('task_id', snoozeTaskId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({ title: "Wiedervorlage entfernt" });
+      setSnoozeDialogOpen(false);
+      setSnoozeTaskId(null);
+      loadTasks();
+    } catch (error) {
+      console.error("Error clearing snooze:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
@@ -498,65 +542,108 @@ export function MyWorkTasksTab() {
     return task?.title;
   };
 
-  const renderTaskList = (tasks: Task[], title: string, emptyMessage: string) => {
+  const splitTasksBySnooze = useMemo(() => {
+    const now = startOfDay(new Date());
+
+    const split = (tasks: Task[]) => {
+      // Analog zu Quick Notes:
+      // - fällige Wiedervorlagen separat anzeigen
+      // - geplante Wiedervorlagen bis zum Datum ausblenden
+      // - normale Hauptliste enthält nur Aufgaben OHNE Wiedervorlage
+      const dueFollowUps = tasks.filter((task) => {
+        const snoozedUntil = taskSnoozes[task.id];
+        return snoozedUntil && isBefore(startOfDay(new Date(snoozedUntil)), addDays(now, 1));
+      });
+
+      const hiddenScheduledCount = tasks.filter((task) => {
+        const snoozedUntil = taskSnoozes[task.id];
+        return !!snoozedUntil && isAfter(startOfDay(new Date(snoozedUntil)), now);
+      }).length;
+
+      const visibleTasks = tasks.filter((task) => !taskSnoozes[task.id]);
+
+      return { dueFollowUps, visibleTasks, hiddenScheduledCount };
+    };
+
+    return {
+      created: split(createdTasks),
+      assigned: split(assignedTasks),
+    };
+  }, [createdTasks, assignedTasks, taskSnoozes]);
+
+  const renderTaskList = (
+    tasks: Task[],
+    title: string,
+    emptyMessage: string,
+    options?: { scrollable?: boolean; compact?: boolean }
+  ) => {
+    const { scrollable = true, compact = false } = options || {};
+
+    const listContent = tasks.length === 0 ? (
+      <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
+    ) : viewType === "card" ? (
+      <div className="space-y-2 pr-2">
+        {tasks.map((task) => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            subtasks={subtasks[task.id]}
+            hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
+            hasReminder={!!taskSnoozes[task.id]}
+            onComplete={handleToggleComplete}
+            onSubtaskComplete={handleToggleSubtaskComplete}
+            onNavigate={(id) => navigate(`/tasks?id=${id}`)}
+            onUpdateTitle={handleUpdateTitle}
+            onUpdateDescription={handleUpdateDescription}
+            onUpdateDueDate={handleUpdateDueDate}
+            onReminder={handleReminder}
+            onAssign={handleAssign}
+            onComment={handleComment}
+            onDecision={handleDecision}
+            onDocuments={handleDocuments}
+            onAddToMeeting={handleAddToMeeting}
+          />
+        ))}
+      </div>
+    ) : (
+      <div className="border rounded-lg overflow-hidden">
+        {tasks.map((task) => (
+          <TaskListRow
+            key={task.id}
+            task={task}
+            subtasks={subtasks[task.id]}
+            hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
+            hasReminder={!!taskSnoozes[task.id]}
+            onComplete={handleToggleComplete}
+            onSubtaskComplete={handleToggleSubtaskComplete}
+            onNavigate={(id) => navigate(`/tasks?id=${id}`)}
+            onUpdateTitle={handleUpdateTitle}
+            onUpdateDueDate={handleUpdateDueDate}
+            onReminder={handleReminder}
+            onAssign={handleAssign}
+            onComment={handleComment}
+            onDecision={handleDecision}
+            onDocuments={handleDocuments}
+            onAddToMeeting={handleAddToMeeting}
+          />
+        ))}
+      </div>
+    );
+
     return (
-      <div className="flex flex-col h-full">
+      <div className={`flex flex-col ${scrollable ? 'h-full' : ''}`}>
         <div className="flex items-center justify-between mb-3 px-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-medium text-sm">{title}</h3>
+            <h3 className={`font-medium ${compact ? 'text-xs' : 'text-sm'}`}>{title}</h3>
             <Badge variant="secondary" className="text-xs">{tasks.length}</Badge>
           </div>
         </div>
-        
-        <ScrollArea className="flex-1">
-          {tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
-          ) : viewType === "card" ? (
-            <div className="space-y-2 pr-2">
-              {tasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  subtasks={subtasks[task.id]}
-                  onComplete={handleToggleComplete}
-                  onSubtaskComplete={handleToggleSubtaskComplete}
-                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-                  onUpdateTitle={handleUpdateTitle}
-                  onUpdateDescription={handleUpdateDescription}
-                  onUpdateDueDate={handleUpdateDueDate}
-                  onReminder={handleReminder}
-                  onAssign={handleAssign}
-                  onComment={handleComment}
-                  onDecision={handleDecision}
-                  onDocuments={handleDocuments}
-                  onAddToMeeting={handleAddToMeeting}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="border rounded-lg overflow-hidden">
-              {tasks.map((task) => (
-                <TaskListRow
-                  key={task.id}
-                  task={task}
-                  subtasks={subtasks[task.id]}
-                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
-                  onComplete={handleToggleComplete}
-                  onSubtaskComplete={handleToggleSubtaskComplete}
-                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-                  onUpdateTitle={handleUpdateTitle}
-                  onUpdateDueDate={handleUpdateDueDate}
-                  onReminder={handleReminder}
-                  onAssign={handleAssign}
-                  onComment={handleComment}
-                  onDecision={handleDecision}
-                  onDocuments={handleDocuments}
-                  onAddToMeeting={handleAddToMeeting}
-                />
-              ))}
-            </div>
-          )}
-        </ScrollArea>
+
+        {scrollable ? (
+          <ScrollArea className="flex-1">{listContent}</ScrollArea>
+        ) : (
+          <div>{listContent}</div>
+        )}
       </div>
     );
   };
@@ -580,12 +667,21 @@ export function MyWorkTasksTab() {
 
   // Apply status filter
   const filteredCreatedTasks = statusFilter === 'all' 
-    ? createdTasks 
-    : createdTasks.filter(t => t.status === statusFilter);
+    ? splitTasksBySnooze.created.visibleTasks 
+    : splitTasksBySnooze.created.visibleTasks.filter(t => t.status === statusFilter);
   const filteredAssignedTasks = statusFilter === 'all' 
-    ? assignedTasks 
-    : assignedTasks.filter(t => t.status === statusFilter);
+    ? splitTasksBySnooze.assigned.visibleTasks 
+    : splitTasksBySnooze.assigned.visibleTasks.filter(t => t.status === statusFilter);
 
+  const filteredDueCreatedTasks = statusFilter === 'all'
+    ? splitTasksBySnooze.created.dueFollowUps
+    : splitTasksBySnooze.created.dueFollowUps.filter(t => t.status === statusFilter);
+  const filteredDueAssignedTasks = statusFilter === 'all'
+    ? splitTasksBySnooze.assigned.dueFollowUps
+    : splitTasksBySnooze.assigned.dueFollowUps.filter(t => t.status === statusFilter);
+
+  const hiddenScheduledCount = splitTasksBySnooze.created.hiddenScheduledCount + splitTasksBySnooze.assigned.hiddenScheduledCount;
+  const dueFollowUpCount = filteredDueCreatedTasks.length + filteredDueAssignedTasks.length;
   const totalTasks = filteredAssignedTasks.length + filteredCreatedTasks.length;
 
   return (
@@ -595,6 +691,12 @@ export function MyWorkTasksTab() {
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Aufgaben</span>
           <Badge variant="outline">{totalTasks}</Badge>
+          <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+            Wiedervorlagen fällig: {dueFollowUpCount}
+          </Badge>
+          {hiddenScheduledCount > 0 && (
+            <Badge variant="secondary">Geplant: {hiddenScheduledCount}</Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -626,6 +728,29 @@ export function MyWorkTasksTab() {
         </div>
       </div>
 
+      {hiddenScheduledCount > 0 && (
+        <div className="px-4 pt-2">
+          <p className="text-xs text-muted-foreground">
+            {hiddenScheduledCount} Aufgabe{hiddenScheduledCount === 1 ? '' : 'n'} mit geplanter Wiedervorlage ausgeblendet.
+          </p>
+        </div>
+      )}
+
+      {dueFollowUpCount > 0 && (
+        <div className="px-4 pt-2">
+          <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-medium text-amber-700">Fällige Wiedervorlagen</span>
+              <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">{dueFollowUpCount}</Badge>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {renderTaskList(filteredDueCreatedTasks, "Von mir erstellt", "Keine fälligen Wiedervorlagen", { scrollable: false, compact: true })}
+              {renderTaskList(filteredDueAssignedTasks, "Mir zugewiesen", "Keine fälligen Wiedervorlagen", { scrollable: false, compact: true })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main content - 50/50 split */}
       {totalTasks === 0 ? (
         <div className="flex-1 flex items-center justify-center">
@@ -646,11 +771,16 @@ export function MyWorkTasksTab() {
           </DialogHeader>
           <Calendar
             mode="single"
-            selected={undefined}
+            selected={snoozeTaskId && taskSnoozes[snoozeTaskId] ? new Date(taskSnoozes[snoozeTaskId]) : undefined}
             onSelect={(date) => date && handleSetSnooze(date)}
             disabled={(date) => date < new Date()}
             initialFocus
           />
+          {snoozeTaskId && taskSnoozes[snoozeTaskId] && (
+            <Button variant="outline" size="sm" className="mt-3 w-full" onClick={handleClearSnooze}>
+              Wiedervorlage entfernen
+            </Button>
+          )}
         </DialogContent>
       </Dialog>
 
