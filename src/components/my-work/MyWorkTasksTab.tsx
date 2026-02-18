@@ -39,6 +39,7 @@ interface Task {
 interface Subtask {
   id: string;
   task_id: string;
+  title: string | null;
   description: string | null;
   is_completed: boolean;
   due_date: string | null;
@@ -184,9 +185,17 @@ export function MyWorkTasksTab() {
         if (snoozesError) throw snoozesError;
 
         const grouped: Record<string, Subtask[]> = {};
-        (subtasksData || []).forEach(st => {
-          if (!grouped[st.task_id]) grouped[st.task_id] = [];
-          grouped[st.task_id].push(st);
+        (childTasksData || []).forEach(childTask => {
+          if (!childTask.parent_task_id) return;
+          if (!grouped[childTask.parent_task_id]) grouped[childTask.parent_task_id] = [];
+          grouped[childTask.parent_task_id].push({
+            id: childTask.id,
+            task_id: childTask.parent_task_id,
+            title: childTask.title,
+            description: childTask.description || childTask.title,
+            is_completed: childTask.status === 'completed',
+            due_date: childTask.due_date,
+          });
         });
         setSubtasks(grouped);
 
@@ -267,8 +276,8 @@ export function MyWorkTasksTab() {
   const handleToggleSubtaskComplete = async (subtaskId: string) => {
     try {
       const { error } = await supabase
-        .from("subtasks")
-        .update({ is_completed: true })
+        .from("tasks")
+        .update({ status: 'completed', progress: 100 })
         .eq("id", subtaskId)
         .select();
 

@@ -88,6 +88,7 @@ export function TaskCard({
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
   const hasSubtasks = subtasks.length > 0;
+  const hasDueDate = Boolean(task.due_date);
   const sourceLetterId = extractLetterSourceId(task.description);
   const cleanDescription = stripLetterSourceMarker(task.description);
 
@@ -254,7 +255,8 @@ export function TaskCard({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-6 px-2 text-xs",
+                  "h-6 px-2 text-xs transition-opacity",
+                  !hasDueDate && "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
                   getDueDateColor(task.due_date)
                 )}
               >
