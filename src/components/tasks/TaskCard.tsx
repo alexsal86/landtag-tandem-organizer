@@ -9,7 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
 import { TaskBadges } from "./TaskBadges";
 import { TaskActionIcons } from "./TaskActionIcons";
-import { Calendar as CalendarIcon, ExternalLink, ListTodo } from "lucide-react";
+import { Calendar as CalendarIcon, Clock3, ExternalLink, ListTodo } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
@@ -256,6 +256,7 @@ export function TaskCard({
               taskId={task.id}
               hasReminder={hasReminder}
               hasMeetingLink={hasMeetingLink}
+              commentCount={commentCount}
               onReminder={onReminder}
               onAssign={onAssign}
               onComment={onComment}

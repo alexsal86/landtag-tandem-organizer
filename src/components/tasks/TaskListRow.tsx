@@ -7,7 +7,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
 import { TaskBadges } from "./TaskBadges";
 import { TaskActionIcons } from "./TaskActionIcons";
-import { Calendar as CalendarIcon, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, ChevronRight, Clock3, ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
@@ -196,6 +197,7 @@ export function TaskListRow({
               taskId={task.id}
               hasMeetingLink={hasMeetingLink}
               hasReminder={hasReminder}
+              commentCount={commentCount}
               onReminder={onReminder}
               onAssign={onAssign}
               onComment={onComment}
