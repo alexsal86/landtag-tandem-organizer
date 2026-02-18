@@ -61,7 +61,7 @@ export function TaskArchiveView() {
     try {
       const { data, error } = await supabase
         .from('archived_tasks')
-        .select('*')
+        .select('id, task_id, title, description, priority, category, assigned_to, progress, due_date, completed_at, archived_at, auto_delete_after_days')
         .order('archived_at', { ascending: false });
 
       if (error) throw error;
@@ -155,7 +155,7 @@ export function TaskArchiveView() {
     try {
       const { data, error } = await supabase
         .from('task_archive_settings')
-        .select('*')
+        .select('auto_delete_after_days, user_id')
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
