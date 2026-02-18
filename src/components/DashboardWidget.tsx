@@ -232,16 +232,34 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         setAssignedTasks(userAssignedTasks as Task[]);
       }
 
-      // Load subtasks
-      const { data: subtasksData } = await supabase
-        .from('subtasks')
+      // Load child tasks as subtasks
+      const { data: childTasksData } = await supabase
+        .from('tasks')
         .select('*')
-        .eq('assigned_to', user.id)
-        .eq('is_completed', false)
+        .not('parent_task_id', 'is', null)
+        .neq('status', 'completed')
         .order('due_date', { ascending: true, nullsFirst: false });
 
-      if (subtasksData) {
-        setAssignedSubtasks(subtasksData as Subtask[]);
+      if (childTasksData) {
+        const mapped = childTasksData
+          .filter(task => {
+            if (!task.assigned_to) return false;
+            const assignees = String(task.assigned_to).split(',').map((id: string) => id.trim());
+            return assignees.includes(user.id) ||
+              assignees.includes(user.email || '') ||
+              assignees.includes((user.email || '').toLowerCase());
+          })
+          .map(task => ({
+            id: task.id,
+            task_id: task.parent_task_id,
+            title: task.title,
+            description: task.description || '',
+            is_completed: task.status === 'completed',
+            due_date: task.due_date,
+            assigned_to: task.assigned_to,
+          }));
+
+        setAssignedSubtasks(mapped as Subtask[]);
       }
 
       // Load snoozes
@@ -400,8 +418,8 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                                 .eq('id', item.id);
                             } else {
                               await supabase
-                                .from('subtasks')
-                                .update({ is_completed: true })
+                                .from('tasks')
+                                .update({ status: 'completed', progress: 100 })
                                 .eq('id', item.id);
                             }
                             loadAssignedTasksAndSubtasks();

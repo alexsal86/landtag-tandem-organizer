@@ -50,6 +50,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   const [subtasks, setSubtasks] = useState<{[taskId: string]: Array<{
     id: string;
     task_id: string;
+    title?: string;
     description?: string;
     is_completed: boolean;
     due_date?: string;
@@ -139,22 +140,30 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
       if (tasksData && tasksData.length > 0) {
         const taskIds = tasksData.map(t => t.id);
         
-        const { data: subtasksData, error: subtasksError } = await supabase
-          .from('subtasks')
-          .select('id, task_id, description, is_completed, due_date, assigned_to')
-          .in('task_id', taskIds)
-          .eq('is_completed', false)
+        const { data: childTasksData, error: childTasksError } = await supabase
+          .from('tasks')
+          .select('id, parent_task_id, title, description, status, due_date, assigned_to')
+          .in('parent_task_id', taskIds)
+          .neq('status', 'completed')
           .or(`assigned_to.eq.${user.id},assigned_to.is.null`)
-          .order('order_index', { ascending: true });
+          .order('created_at', { ascending: true });
 
-        if (subtasksError) throw subtasksError;
+        if (childTasksError) throw childTasksError;
 
         const groupedSubtasks: {[taskId: string]: any[]} = {};
-        (subtasksData || []).forEach(subtask => {
-          if (!groupedSubtasks[subtask.task_id]) {
-            groupedSubtasks[subtask.task_id] = [];
+        (childTasksData || []).forEach(subtask => {
+          if (!subtask.parent_task_id) return;
+          if (!groupedSubtasks[subtask.parent_task_id]) {
+            groupedSubtasks[subtask.parent_task_id] = [];
           }
-          groupedSubtasks[subtask.task_id].push(subtask);
+          groupedSubtasks[subtask.parent_task_id].push({
+            id: subtask.id,
+            task_id: subtask.parent_task_id,
+            title: subtask.title,
+            description: subtask.description,
+            is_completed: subtask.status === 'completed',
+            due_date: subtask.due_date,
+          });
         });
 
         setSubtasks(groupedSubtasks);
@@ -254,7 +263,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                         >
                           <Square className="h-2.5 w-2.5 flex-shrink-0" />
                           <span className="flex-1 truncate">
-                            {subtask.description}
+                            {subtask.title || subtask.description}
                           </span>
                         </div>
                       ))}
