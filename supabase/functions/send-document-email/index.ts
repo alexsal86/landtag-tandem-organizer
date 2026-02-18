@@ -174,7 +174,7 @@ serve(async (req) => {
         const emailResponse = await resend.emails.send({
           from: `${fromName} <${fromEmail}>`,
           to: [recipient.email],
-          replyTo: reply_to || undefined,
+          reply_to: reply_to || undefined,
           cc: cc.length > 0 ? cc : undefined,
           bcc: bcc.length > 0 ? bcc : undefined,
           subject: personalizedSubject,
