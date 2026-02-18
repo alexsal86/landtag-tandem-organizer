@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +88,7 @@ export function TaskDetailSidebar({
   const [editFormData, setEditFormData] = useState<Partial<Task>>({});
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [newCommentEditorKey, setNewCommentEditorKey] = useState(0);
   const [editingComment, setEditingComment] = useState<{ [commentId: string]: string }>({});
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
@@ -341,6 +343,7 @@ export function TaskDetailSidebar({
       if (error) throw error;
 
       setNewComment('');
+      setNewCommentEditorKey((prev) => prev + 1);
       loadTaskComments(task.id);
 
       toast({
@@ -1118,11 +1121,12 @@ export function TaskDetailSidebar({
 
             {/* Add new comment */}
             <div className="space-y-2">
-              <Textarea
+              <SimpleRichTextEditor
+                key={newCommentEditorKey}
+                initialContent=""
+                onChange={setNewComment}
                 placeholder="Kommentar hinzufügen..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                rows={2}
+                minHeight="72px"
               />
               <Button onClick={addComment} size="sm" disabled={!newComment.trim()}>
                 <Send className="h-4 w-4 mr-2" />
@@ -1207,17 +1211,16 @@ export function TaskDetailSidebar({
                         )}
                       </div>
                       {editingComment[comment.id] !== undefined ? (
-                        <Textarea
-                          value={editingComment[comment.id]}
-                          onChange={(e) => setEditingComment(prev => ({
+                        <SimpleRichTextEditor
+                          initialContent={editingComment[comment.id]}
+                          onChange={(value) => setEditingComment(prev => ({
                             ...prev,
-                            [comment.id]: e.target.value
+                            [comment.id]: value
                           }))}
-                          className="text-sm"
-                          rows={2}
+                          minHeight="72px"
                         />
                       ) : (
-                        <p className="text-sm">{comment.content}</p>
+                        <RichTextDisplay content={comment.content} className="text-sm" />
                       )}
                     </div>
                   </div>

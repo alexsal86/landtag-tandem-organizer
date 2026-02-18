@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { AssignedItemsSection } from "./tasks/AssignedItemsSection";
@@ -99,6 +100,7 @@ export function TasksView() {
   const [editFormData, setEditFormData] = useState<Partial<Task>>({});
   const [taskComments, setTaskComments] = useState<{ [taskId: string]: TaskComment[] }>({});
   const [newComment, setNewComment] = useState<{ [taskId: string]: string }>({});
+  const [commentEditorKeys, setCommentEditorKeys] = useState<{ [taskId: string]: number }>({});
   const [taskCategories, setTaskCategories] = useState<Array<{ name: string; label: string }>>([]);
   const [taskStatuses, setTaskStatuses] = useState<Array<{ name: string; label: string }>>([]);
   const [editingComment, setEditingComment] = useState<{ [commentId: string]: string }>({});
@@ -1226,7 +1228,8 @@ export function TasksView() {
         throw error;
       }
 
-      setNewComment(prev => ({ ...prev, [taskId]: '' }));
+      setNewComment(prev => ({ ...prev, [taskId]: "" }));
+      setCommentEditorKeys(prev => ({ ...prev, [taskId]: (prev[taskId] || 0) + 1 }));
       await loadTaskComments();
       toast({ title: "Kommentar hinzugefügt" });
     } catch (error: any) {
@@ -2386,20 +2389,23 @@ export function TasksView() {
                          <div className="mt-4 space-y-3 animate-fade-in">
                            {/* Add Comment Form */}
                            <div className="border border-border rounded-lg p-3 bg-muted/10">
-                             <div className="flex gap-2">
-                               <Textarea
-                                 value={newComment[task.id] || ''}
-                                 onChange={(e) => setNewComment(prev => ({ ...prev, [task.id]: e.target.value }))}
+                             <div className="space-y-2">
+                               <SimpleRichTextEditor
+                                 key={`${task.id}-${commentEditorKeys[task.id] || 0}`}
+                                 initialContent={newComment[task.id] || ""}
+                                 onChange={(value) => setNewComment(prev => ({ ...prev, [task.id]: value }))}
                                  placeholder="Kommentar hinzufügen..."
-                                 className="flex-1 min-h-[60px]"
+                                 minHeight="60px"
                                />
-                               <Button
-                                 onClick={() => addComment(task.id)}
-                                 disabled={!newComment[task.id]?.trim()}
-                                 size="sm"
-                               >
-                                 <Send className="h-4 w-4" />
-                               </Button>
+                               <div className="flex justify-end">
+                                 <Button
+                                   onClick={() => addComment(task.id)}
+                                   disabled={!newComment[task.id]?.trim()}
+                                   size="sm"
+                                 >
+                                   <Send className="h-4 w-4" />
+                                 </Button>
+                               </div>
                              </div>
                            </div>
                            
@@ -2462,13 +2468,13 @@ export function TasksView() {
                                </div>
                                
                                {editingComment[comment.id] !== undefined ? (
-                                 <div className="flex gap-2">
-                                   <Textarea
-                                     value={editingComment[comment.id]}
-                                     onChange={(e) => setEditingComment(prev => ({ ...prev, [comment.id]: e.target.value }))}
-                                     className="flex-1 min-h-[60px]"
+                                 <div className="space-y-2">
+                                   <SimpleRichTextEditor
+                                     initialContent={editingComment[comment.id]}
+                                     onChange={(value) => setEditingComment(prev => ({ ...prev, [comment.id]: value }))}
+                                     minHeight="60px"
                                    />
-                                   <div className="flex flex-col gap-1">
+                                   <div className="flex justify-end gap-1">
                                      <Button
                                        size="sm"
                                        className="h-8"
@@ -2514,7 +2520,7 @@ export function TasksView() {
                                    </div>
                                  </div>
                                ) : (
-                                 <div className="text-sm">{comment.content}</div>
+                                 <RichTextDisplay content={comment.content} className="text-sm" />
                                )}
                              </div>
                            )) || (
