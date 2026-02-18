@@ -264,6 +264,9 @@ export function SystemAgendaItem({
           linkedDecisions.length > 0 ? <Badge variant="secondary">{linkedDecisions.length}</Badge> : undefined
         )}
         <CardContent className="px-3 pb-2 pt-0">
+          <p className="text-xs text-muted-foreground mb-3">
+            Es werden automatisch aktive Entscheidungen geladen, die priorisiert sind, deren Frist bereits abgelaufen ist oder deren Frist in den nächsten 7 Tagen endet.
+          </p>
           {linkedDecisions.length > 0 ? (
             <div className="space-y-2">
               {linkedDecisions.map((decision) => (
