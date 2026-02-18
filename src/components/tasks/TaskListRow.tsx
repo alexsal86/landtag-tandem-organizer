@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
 import { TaskBadges } from "./TaskBadges";
 import { TaskActionIcons } from "./TaskActionIcons";
-import { Calendar as CalendarIcon, ChevronDown, ChevronRight, Clock3, ExternalLink } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, ChevronRight, Clock3, ExternalLink, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
@@ -54,6 +54,8 @@ interface TaskListRowProps {
   onCreateChildTask?: (taskId: string) => void;
   onEdit?: (taskId: string) => void;
   getChildTasks?: (taskId: string) => Task[];
+  getCommentCount?: (taskId: string) => number;
+  showPersistentCommentIndicator?: boolean;
 }
 
 export function TaskListRow({
@@ -80,6 +82,8 @@ export function TaskListRow({
   onCreateChildTask,
   onEdit,
   getChildTasks,
+  getCommentCount,
+  showPersistentCommentIndicator = false,
 }: TaskListRowProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
@@ -89,6 +93,7 @@ export function TaskListRow({
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const childTasks = getChildTasks ? getChildTasks(task.id) : subtasks;
+  const currentCommentCount = getCommentCount ? getCommentCount(task.id) : commentCount;
   const hasSubtasks = childTasks.length > 0;
   const sourceLetterId = extractLetterSourceId(task.description);
   const currentAssigneeName = assigneeName ?? resolveAssigneeName?.(task.assigned_to);
@@ -223,13 +228,30 @@ export function TaskListRow({
             </PopoverContent>
           </Popover>
 
+          {showPersistentCommentIndicator && currentCommentCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="relative h-6 w-6 p-0 text-blue-600 hover:text-blue-700"
+              onClick={(e) => {
+                e.stopPropagation();
+                onComment?.(task.id);
+              }}
+            >
+              <MessageSquare className="h-3 w-3" />
+              <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 rounded-full bg-blue-600 text-[9px] leading-none text-white flex items-center justify-center font-medium">
+                {currentCommentCount > 99 ? "99+" : currentCommentCount}
+              </span>
+            </Button>
+          )}
+
           <div className={cn("items-center", !isHovered ? "hidden" : "flex")}>
             <Separator orientation="vertical" className="h-4 mx-1" />
             <TaskActionIcons
               taskId={task.id}
               hasMeetingLink={hasMeetingLink}
               hasReminder={hasReminder}
-              commentCount={commentCount}
+              commentCount={currentCommentCount}
               onReminder={onReminder}
               onAssign={onAssign}
               onComment={onComment}
@@ -272,6 +294,8 @@ export function TaskListRow({
               onCreateChildTask={onCreateChildTask}
               onEdit={onEdit}
               getChildTasks={getChildTasks}
+              getCommentCount={getCommentCount}
+              showPersistentCommentIndicator={showPersistentCommentIndicator}
             />
           ))}
         </div>
