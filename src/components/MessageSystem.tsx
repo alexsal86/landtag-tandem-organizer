@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageCircle, Check, Archive, Send, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
 import { MessageComposer } from "./MessageComposer";
 import { toast } from "@/hooks/use-toast";
 
@@ -217,37 +218,12 @@ export function MessageSystem() {
 
   useEffect(() => {
     fetchMessages();
-    
-    // Debounced real-time subscriptions
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-    const debouncedFetch = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => fetchMessages(), 1000);
-    };
-
-    const messagesChannel = supabase.channel('messages-channel')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages'
-      }, debouncedFetch)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'message_recipients'
-      }, debouncedFetch)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'message_confirmations'
-      }, debouncedFetch)
-      .subscribe();
-
-    return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      supabase.removeChannel(messagesChannel);
-    };
   }, [user]);
+
+  // Use shared messages realtime subscription
+  useMessagesRealtime(() => {
+    fetchMessages();
+  });
 
   const markAsRead = async (messageId: string, isForAllUsers: boolean) => {
     if (!user) return;
