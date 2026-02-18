@@ -159,31 +159,30 @@ export function MyWorkTasksTab() {
       setCreatedTasks(createdByMe);
       setAssignedTasks(assignedByOthers);
 
-      // Load child tasks + existing task snoozes
+      // Load subtasks + existing task snoozes
       const allTaskIds = [...new Set([...createdByMe, ...assignedByOthers].map(t => t.id))];
       if (allTaskIds.length > 0) {
-        const [{ data: childTasksData, error: childTasksError }, { data: snoozesData, error: snoozesError }] = await Promise.all([
+        const [{ data: subtasksData, error: subtasksError }, { data: snoozesData, error: snoozesError }] = await Promise.all([
           supabase
-            .from("tasks")
-            .select("*")
-            .not("parent_task_id", "is", null)
-            .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-            .neq("status", "completed")
-            .order("due_date", { ascending: true, nullsFirst: false }),
+            .from("subtasks")
+            .select("id, task_id, description, is_completed, due_date")
+            .in("task_id", allTaskIds)
+            .eq("is_completed", false)
+            .order("order_index", { ascending: true }),
           supabase
             .from("task_snoozes")
             .select("task_id, snoozed_until")
-            .eq("user_id", user.id),
+            .eq("user_id", user.id)
+            .in("task_id", allTaskIds),
         ]);
 
-        if (childTasksError) throw childTasksError;
+        if (subtasksError) throw subtasksError;
         if (snoozesError) throw snoozesError;
 
-        const grouped: Record<string, Task[]> = {};
-        (childTasksData || []).forEach((childTask) => {
-          if (!childTask.parent_task_id) return;
-          if (!grouped[childTask.parent_task_id]) grouped[childTask.parent_task_id] = [];
-          grouped[childTask.parent_task_id].push(childTask);
+        const grouped: Record<string, Subtask[]> = {};
+        (subtasksData || []).forEach(st => {
+          if (!grouped[st.task_id]) grouped[st.task_id] = [];
+          grouped[st.task_id].push(st);
         });
         setSubtasks(grouped);
 
@@ -578,17 +577,21 @@ export function MyWorkTasksTab() {
     const now = startOfDay(new Date());
 
     const split = (tasks: Task[]) => {
+      // Analog zu Quick Notes:
+      // - fällige Wiedervorlagen separat anzeigen
+      // - geplante Wiedervorlagen bis zum Datum ausblenden
+      // - normale Hauptliste enthält nur Aufgaben OHNE Wiedervorlage
       const dueFollowUps = tasks.filter((task) => {
         const snoozedUntil = taskSnoozes[task.id];
         return snoozedUntil && isBefore(startOfDay(new Date(snoozedUntil)), addDays(now, 1));
       });
 
-      const visibleTasks = tasks.filter((task) => {
+      const hiddenScheduledCount = tasks.filter((task) => {
         const snoozedUntil = taskSnoozes[task.id];
-        return !snoozedUntil || !isAfter(startOfDay(new Date(snoozedUntil)), now);
-      });
+        return !!snoozedUntil && isAfter(startOfDay(new Date(snoozedUntil)), now);
+      }).length;
 
-      const hiddenScheduledCount = tasks.length - visibleTasks.length;
+      const visibleTasks = tasks.filter((task) => !taskSnoozes[task.id]);
 
       return { dueFollowUps, visibleTasks, hiddenScheduledCount };
     };
@@ -666,63 +669,12 @@ export function MyWorkTasksTab() {
             <Badge variant="secondary" className="text-xs">{tasks.length}</Badge>
           </div>
         </div>
-        
-        <ScrollArea className="flex-1">
-          {tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
-          ) : viewType === "card" ? (
-            <div className="space-y-2 pr-2">
-              {tasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  subtasks={subtasks[task.id]}
-                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
-                  hasReminder={!!taskSnoozes[task.id]}
-                  onComplete={handleToggleComplete}
-                  onSubtaskComplete={handleToggleSubtaskComplete}
-                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-                  onUpdateTitle={handleUpdateTitle}
-                  onUpdateDescription={handleUpdateDescription}
-                  onUpdateDueDate={handleUpdateDueDate}
-                  onReminder={handleReminder}
-                  onAssign={handleAssign}
-                  onComment={handleComment}
-                  onDecision={handleDecision}
-                  onDocuments={handleDocuments}
-                  onAddToMeeting={handleAddToMeeting}
-                  onCreateChildTask={handleCreateChildTask}
-                  getChildTasks={getChildTasks}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="border rounded-lg overflow-hidden">
-              {tasks.map((task) => (
-                <TaskListRow
-                  key={task.id}
-                  task={task}
-                  subtasks={subtasks[task.id]}
-                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
-                  hasReminder={!!taskSnoozes[task.id]}
-                  onComplete={handleToggleComplete}
-                  onSubtaskComplete={handleToggleSubtaskComplete}
-                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-                  onUpdateTitle={handleUpdateTitle}
-                  onUpdateDueDate={handleUpdateDueDate}
-                  onReminder={handleReminder}
-                  onAssign={handleAssign}
-                  onComment={handleComment}
-                  onDecision={handleDecision}
-                  onDocuments={handleDocuments}
-                  onAddToMeeting={handleAddToMeeting}
-                  onCreateChildTask={handleCreateChildTask}
-                  getChildTasks={getChildTasks}
-                />
-              ))}
-            </div>
-          )}
-        </ScrollArea>
+
+        {scrollable ? (
+          <ScrollArea className="flex-1">{listContent}</ScrollArea>
+        ) : (
+          <div>{listContent}</div>
+        )}
       </div>
     );
   };
@@ -810,7 +762,7 @@ export function MyWorkTasksTab() {
       {hiddenScheduledCount > 0 && (
         <div className="px-4 pt-2">
           <p className="text-xs text-muted-foreground">
-            {hiddenScheduledCount} Aufgabe{hiddenScheduledCount === 1 ? '' : 'n'} mit zukünftiger Wiedervorlage ausgeblendet.
+            {hiddenScheduledCount} Aufgabe{hiddenScheduledCount === 1 ? '' : 'n'} mit geplanter Wiedervorlage ausgeblendet.
           </p>
         </div>
       )}

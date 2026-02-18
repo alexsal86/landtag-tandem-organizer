@@ -35,7 +35,6 @@ interface TaskListRowProps {
   assigneeName?: string;
   hasMeetingLink?: boolean;
   hasReminder?: boolean;
-  depth?: number;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
@@ -57,7 +56,6 @@ export function TaskListRow({
   assigneeName,
   hasMeetingLink,
   hasReminder,
-  depth = 0,
   onComplete,
   onSubtaskComplete,
   onNavigate,
