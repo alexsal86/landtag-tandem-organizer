@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -606,21 +607,57 @@ export function EmailComposer() {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };
 
+  // --- Which field+source is open for adding ---
+  const [openFieldSource, setOpenFieldSource] = useState<{ field: 'to' | 'cc' | 'bcc'; source: 'manual' | 'lists' | 'contacts' } | null>(null);
+
+  const toggleFieldSource = (field: 'to' | 'cc' | 'bcc', source: 'manual' | 'lists' | 'contacts') => {
+    setActiveRecipientField(field);
+    if (openFieldSource?.field === field && openFieldSource?.source === source) {
+      setOpenFieldSource(null);
+    } else {
+      setOpenFieldSource({ field, source });
+    }
+  };
+
   // --- Recipient field component ---
   const RecipientField = ({ type, label }: { type: 'to' | 'cc' | 'bcc'; label: string }) => {
     const fieldRecipients = getRecipientsByType(type);
+    const isOpen = openFieldSource?.field === type;
+    const activeSource = openFieldSource?.source;
+
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium">{label}</Label>
-          <Button
-            variant={activeRecipientField === type ? "default" : "outline"}
-            size="sm"
-            className="h-6 text-xs px-2"
-            onClick={() => setActiveRecipientField(type)}
-          >
-            {activeRecipientField === type ? "Aktiv" : "Auswählen"}
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              variant={isOpen && activeSource === 'manual' ? "default" : "outline"}
+              size="sm"
+              className="h-6 text-xs px-2"
+              onClick={() => toggleFieldSource(type, 'manual')}
+            >
+              <Mail className="h-3 w-3 mr-1" />
+              Manuell
+            </Button>
+            <Button
+              variant={isOpen && activeSource === 'lists' ? "default" : "outline"}
+              size="sm"
+              className="h-6 text-xs px-2"
+              onClick={() => toggleFieldSource(type, 'lists')}
+            >
+              <Users className="h-3 w-3 mr-1" />
+              Verteiler
+            </Button>
+            <Button
+              variant={isOpen && activeSource === 'contacts' ? "default" : "outline"}
+              size="sm"
+              className="h-6 text-xs px-2"
+              onClick={() => toggleFieldSource(type, 'contacts')}
+            >
+              <UserCircle className="h-3 w-3 mr-1" />
+              Kontakte
+            </Button>
+          </div>
         </div>
         {fieldRecipients.length > 0 && (
           <div className="flex flex-wrap gap-1">
@@ -635,8 +672,79 @@ export function EmailComposer() {
             ))}
           </div>
         )}
-        {fieldRecipients.length === 0 && (
+        {fieldRecipients.length === 0 && !isOpen && (
           <p className="text-xs text-muted-foreground">Keine Empfänger</p>
+        )}
+
+        {/* Inline input area */}
+        {isOpen && activeSource === 'manual' && (
+          <div className="flex gap-2 mt-1">
+            <Input
+              value={manualEmailInput}
+              onChange={(e) => setManualEmailInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addManualRecipient()}
+              placeholder="E-Mail-Adresse eingeben"
+              className="text-sm"
+              autoFocus
+            />
+            <Button onClick={addManualRecipient} size="sm">Hinzufügen</Button>
+          </div>
+        )}
+        {isOpen && activeSource === 'lists' && (
+          <ScrollArea className="h-[180px] mt-1 border rounded-md p-1">
+            <div className="space-y-1">
+              {distributionLists.map((list) => (
+                <div
+                  key={list.id}
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                  onClick={() => addDistributionListRecipient(list)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{list.name}</p>
+                    <p className="text-xs text-muted-foreground">{list.memberCount} Mitglieder</p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs">+ {type.toUpperCase()}</Button>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+        {isOpen && activeSource === 'contacts' && (
+          <div className="mt-1 space-y-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Kontakte durchsuchen..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 text-sm"
+                autoFocus
+              />
+            </div>
+            <ScrollArea className="h-[180px] border rounded-md p-1">
+              <div className="space-y-1">
+                {filteredContacts.map((contact) => (
+                  <div
+                    key={contact.id}
+                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                    onClick={() => addContactRecipient(contact)}
+                  >
+                    <Avatar className="h-7 w-7">
+                      <AvatarImage src={contact.avatar_url} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        {getInitials(contact.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{contact.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs flex-shrink-0">+ {type.toUpperCase()}</Button>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         )}
       </div>
     );
@@ -773,12 +881,12 @@ export function EmailComposer() {
             </CardContent>
           </Card>
 
-          {/* Preview */}
-          {showPreview && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Vorschau</CardTitle>
+          {/* Preview Dialog */}
+          <Dialog open={showPreview} onOpenChange={setShowPreview}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center justify-between">
+                  <span>Vorschau</span>
                   <Select 
                     value={previewContact?.id || ""} 
                     onValueChange={(id) => {
@@ -797,27 +905,25 @@ export function EmailComposer() {
                       ))}
                     </SelectContent>
                   </Select>
+                </DialogTitle>
+              </DialogHeader>
+              <div className="border rounded-lg p-4 bg-muted/20 space-y-2">
+                <div className="text-sm text-muted-foreground">
+                  <strong>Von:</strong> {senderInfos.find(s => s.id === selectedSender)?.landtag_email || "Kein Absender"}
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg p-4 bg-muted/20 space-y-2">
-                  <div className="text-sm text-muted-foreground">
-                    <strong>Von:</strong> {senderInfos.find(s => s.id === selectedSender)?.landtag_email || "Kein Absender"}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    <strong>An:</strong> {previewContact?.email || "Beispiel Empfänger"}
-                  </div>
-                  <div className="font-bold mt-4">{replaceVariables(subject, previewContact) || "(Kein Betreff)"}</div>
-                  <div 
-                    className="mt-2 text-sm"
-                    dangerouslySetInnerHTML={{ 
-                      __html: replaceVariables(bodyHtml, previewContact)
-                    }}
-                  />
+                <div className="text-sm text-muted-foreground">
+                  <strong>An:</strong> {previewContact?.email || "Beispiel Empfänger"}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                <div className="font-bold mt-4">{replaceVariables(subject, previewContact) || "(Kein Betreff)"}</div>
+                <div 
+                  className="mt-2 text-sm"
+                  dangerouslySetInnerHTML={{ 
+                    __html: replaceVariables(bodyHtml, previewContact)
+                  }}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Right Column (40%): Recipients + Documents + Scheduled */}
@@ -842,106 +948,8 @@ export function EmailComposer() {
               <RecipientField type="cc" label="CC" />
               <RecipientField type="bcc" label="BCC" />
 
-              <div className="border-t pt-4">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Empfänger zum aktiven Feld <Badge variant="outline" className="text-xs">{activeRecipientField.toUpperCase()}</Badge> hinzufügen:
-                </p>
 
-                <Tabs defaultValue="manual" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="manual" className="text-xs">
-                      <Mail className="h-3 w-3 mr-1" />
-                      Manuell
-                    </TabsTrigger>
-                    <TabsTrigger value="lists" className="text-xs">
-                      <Users className="h-3 w-3 mr-1" />
-                      Verteiler
-                    </TabsTrigger>
-                    <TabsTrigger value="contacts" className="text-xs">
-                      <UserCircle className="h-3 w-3 mr-1" />
-                      Kontakte
-                    </TabsTrigger>
-                  </TabsList>
 
-                  <TabsContent value="manual" className="space-y-3 mt-3">
-                    <div className="flex gap-2">
-                      <Input
-                        value={manualEmailInput}
-                        onChange={(e) => setManualEmailInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && addManualRecipient()}
-                        placeholder="E-Mail-Adresse eingeben"
-                        className="text-sm"
-                      />
-                      <Button onClick={addManualRecipient} size="sm">
-                        Hinzufügen
-                      </Button>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="lists" className="mt-3">
-                    <ScrollArea className="h-[250px]">
-                      <div className="space-y-2">
-                        {distributionLists.map((list) => (
-                          <div
-                            key={list.id}
-                            className="flex items-center justify-between p-2 rounded-lg border hover:bg-muted/50 cursor-pointer"
-                            onClick={() => addDistributionListRecipient(list)}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm">{list.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {list.memberCount} Mitglied{list.memberCount !== 1 ? "er" : ""}
-                                {list.topic && ` • ${list.topic}`}
-                              </p>
-                            </div>
-                            <Button variant="ghost" size="sm" className="h-7 text-xs">
-                              + {activeRecipientField.toUpperCase()}
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
-
-                  <TabsContent value="contacts" className="space-y-3 mt-3">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Kontakte durchsuchen..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 text-sm"
-                      />
-                    </div>
-
-                    <ScrollArea className="h-[250px]">
-                      <div className="space-y-1">
-                        {filteredContacts.map((contact) => (
-                          <div
-                            key={contact.id}
-                            className="flex items-center gap-2 p-2 rounded-lg border hover:bg-muted/50 cursor-pointer"
-                            onClick={() => addContactRecipient(contact)}
-                          >
-                            <Avatar className="h-7 w-7">
-                              <AvatarImage src={contact.avatar_url} />
-                              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                                {getInitials(contact.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{contact.name}</p>
-                              <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
-                            </div>
-                            <Button variant="ghost" size="sm" className="h-7 text-xs flex-shrink-0">
-                              + {activeRecipientField.toUpperCase()}
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
-                </Tabs>
-              </div>
             </CardContent>
           </Card>
 
