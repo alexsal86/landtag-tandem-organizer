@@ -102,12 +102,18 @@ export function useCounts(): CountsData {
     fetchCounts();
   }, [user, currentTenant]);
 
-  // Listen for changes to contacts and distribution lists
+  // Listen for changes to contacts and distribution lists (single channel, debounced)
   useEffect(() => {
     if (!user || !currentTenant) return;
 
-    const contactsChannel = supabase
-      .channel('contacts-changes')
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => fetchCounts(), 2000);
+    };
+
+    const channel = supabase
+      .channel('counts-changes')
       .on(
         'postgres_changes',
         {
@@ -116,14 +122,8 @@ export function useCounts(): CountsData {
           table: 'contacts',
           filter: `tenant_id=eq.${currentTenant.id}`,
         },
-        () => {
-          fetchCounts();
-        }
+        debouncedFetch
       )
-      .subscribe();
-
-    const distributionListsChannel = supabase
-      .channel('distribution-lists-changes')
       .on(
         'postgres_changes',
         {
@@ -132,15 +132,13 @@ export function useCounts(): CountsData {
           table: 'distribution_lists',
           filter: `tenant_id=eq.${currentTenant.id}`,
         },
-        () => {
-          fetchCounts();
-        }
+        debouncedFetch
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(contactsChannel);
-      supabase.removeChannel(distributionListsChannel);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      supabase.removeChannel(channel);
     };
   }, [user, currentTenant]);
 

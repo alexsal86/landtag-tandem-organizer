@@ -63,25 +63,28 @@ export function BlackBoard() {
   useEffect(() => {
     fetchPublicMessages();
 
-    // Set up real-time subscription
+    // Debounced real-time subscription
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => fetchPublicMessages(), 1000);
+    };
+
     const messagesChannel = supabase.channel('blackboard-messages')
       .on('postgres_changes', {
-        event: '*',
+        event: 'INSERT',
         schema: 'public',
         table: 'messages'
-      }, () => {
-        fetchPublicMessages();
-      })
+      }, debouncedFetch)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'message_confirmations'
-      }, () => {
-        fetchPublicMessages();
-      })
+      }, debouncedFetch)
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(messagesChannel);
     };
   }, [user]);

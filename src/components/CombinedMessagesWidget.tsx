@@ -23,22 +23,16 @@ export function CombinedMessagesWidget({ configuration }: CombinedMessagesWidget
     if (!user) return;
 
     try {
-      // Fetch unconfirmed BlackBoard messages (public messages)
-      const { data: blackboardData, error: blackboardError } = await (supabase as any)
+      // Single RPC call instead of two identical ones
+      const { data, error } = await (supabase as any)
         .rpc('get_user_messages', { user_id_param: user.id });
 
-      if (!blackboardError && blackboardData) {
-        const unconfirmedBlackboardMessages = blackboardData
+      if (!error && data) {
+        const unconfirmedBlackboardMessages = data
           .filter(msg => msg.is_for_all_users && !msg.has_read && msg.author_id !== user.id);
         setBlackboardCount(unconfirmedBlackboardMessages.length);
-      }
 
-      // Fetch unread personal messages
-      const { data: messagesData, error: messagesError } = await (supabase as any)
-        .rpc('get_user_messages', { user_id_param: user.id });
-
-      if (!messagesError && messagesData) {
-        const unreadPersonalMessages = messagesData
+        const unreadPersonalMessages = data
           .filter(msg => !msg.is_for_all_users && !msg.has_read && msg.author_id !== user.id);
         setMessagesCount(unreadPersonalMessages.length);
       }

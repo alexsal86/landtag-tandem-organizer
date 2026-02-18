@@ -183,9 +183,15 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     }
   }, [user, currentTenant]);
 
-  // Set up real-time subscriptions
+  // Set up real-time subscriptions (debounced to reduce refetch storms)
   useEffect(() => {
     if (!user) return;
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedLoad = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => loadNavigationCounts(), 1000);
+    };
 
     const channel = supabase
       .channel('navigation_notifications')
@@ -197,9 +203,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          loadNavigationCounts();
-        }
+        debouncedLoad
       )
       .on(
         'postgres_changes',
@@ -209,13 +213,12 @@ export const useNavigationNotifications = (): NavigationNotifications => {
           table: 'user_navigation_visits',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          loadNavigationCounts();
-        }
+        debouncedLoad
       )
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
   }, [user]);

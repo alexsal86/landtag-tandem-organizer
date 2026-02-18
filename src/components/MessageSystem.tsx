@@ -218,32 +218,33 @@ export function MessageSystem() {
   useEffect(() => {
     fetchMessages();
     
-    // Set up real-time subscriptions
+    // Debounced real-time subscriptions
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => fetchMessages(), 1000);
+    };
+
     const messagesChannel = supabase.channel('messages-channel')
       .on('postgres_changes', {
-        event: '*',
+        event: 'INSERT',
         schema: 'public',
         table: 'messages'
-      }, () => {
-        fetchMessages();
-      })
+      }, debouncedFetch)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'message_recipients'
-      }, () => {
-        fetchMessages();
-      })
+      }, debouncedFetch)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'message_confirmations'
-      }, () => {
-        fetchMessages();
-      })
+      }, debouncedFetch)
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(messagesChannel);
     };
   }, [user]);

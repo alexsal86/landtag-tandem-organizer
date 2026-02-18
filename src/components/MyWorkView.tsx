@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -276,73 +276,69 @@ export function MyWorkView() {
     }
   }, [user]);
 
+  // Debounced realtime handler to prevent rapid-fire refetches
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedUpdate = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      loadCounts();
+      refreshCounts();
+    }, 2000);
+  }, [loadCounts, refreshCounts]);
+
   // Supabase Realtime subscriptions for live updates
   useEffect(() => {
     if (!user) return;
-
-    const handleUpdate = () => {
-      loadCounts();
-      refreshCounts();
-    };
 
     const channel = supabase
       .channel('my-work-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'tasks' },
-        handleUpdate
+        { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` },
+        debouncedUpdate
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'task_decisions' },
-        handleUpdate
+        debouncedUpdate
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'task_decision_participants' },
-        handleUpdate
+        { event: '*', schema: 'public', table: 'task_decision_participants', filter: `user_id=eq.${user.id}` },
+        debouncedUpdate
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'task_decision_responses' },
-        handleUpdate
+        debouncedUpdate
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'quick_notes' },
+        { event: '*', schema: 'public', table: 'quick_notes', filter: `user_id=eq.${user.id}` },
         () => setRefreshTrigger(prev => prev + 1)
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'meetings' },
-        handleUpdate
+        { event: '*', schema: 'public', table: 'meetings', filter: `user_id=eq.${user.id}` },
+        debouncedUpdate
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'meeting_participants' },
-        handleUpdate
+        { event: '*', schema: 'public', table: 'case_files', filter: `user_id=eq.${user.id}` },
+        debouncedUpdate
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'case_files' },
-        handleUpdate
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'event_plannings' },
-        handleUpdate
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'event_planning_collaborators' },
-        handleUpdate
+        { event: '*', schema: 'public', table: 'event_plannings', filter: `user_id=eq.${user.id}` },
+        debouncedUpdate
       )
       .subscribe();
 
     return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       supabase.removeChannel(channel);
     };
-  }, [user, loadCounts, refreshCounts]);
+  }, [user, debouncedUpdate]);
 
   const loadUserRoleAndCounts = async () => {
     if (!user) return;
