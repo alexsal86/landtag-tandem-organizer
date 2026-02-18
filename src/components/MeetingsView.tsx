@@ -1104,13 +1104,15 @@ export function MeetingsView() {
     if (!currentTenant?.id || !user?.id) return;
 
     try {
-      const now = new Date().toISOString();
+      const nowDate = new Date();
+      const now = nowDate.toISOString();
+      const in7Days = addDays(nowDate, 7).toISOString();
       const { data, error } = await supabase
         .from('task_decisions')
         .select('id, title, description, response_deadline, priority, created_by, status')
         .eq('tenant_id', currentTenant.id)
         .eq('status', 'active')
-        .or(`response_deadline.lt.${now},priority.not.is.null`)
+        .or(`priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})`)
         .order('priority', { ascending: false, nullsFirst: false })
         .order('response_deadline', { ascending: true, nullsFirst: false });
 
@@ -3122,7 +3124,7 @@ export function MeetingsView() {
 
                       {/* Participants Section */}
                       <div className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 group">
                           <Users className="h-4 w-4 text-muted-foreground" />
                           <label className="text-sm font-medium">Teilnehmer</label>
                         </div>
@@ -3222,11 +3224,11 @@ export function MeetingsView() {
             </div>
 
             {/* Meeting List */}
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 space-y-2 mt-3">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Nächste Besprechungen
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {upcomingMeetings.map((meeting) => (
                   <Card 
                     key={meeting.id} 
@@ -3242,38 +3244,105 @@ export function MeetingsView() {
                       }
                     }}
                   >
-                    <CardContent className="p-3">
+                    <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-sm truncate">{meeting.title}</h4>
+                            <h4 className="font-semibold text-base truncate">{meeting.title}</h4>
                             {meeting.is_public && (
-                              <Globe className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             )}
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                            <CalendarIcon className="h-3 w-3" />
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1.5">
+                            <CalendarIcon className="h-3.5 w-3.5" />
                             <span>{format(new Date(meeting.meeting_date), 'dd.MM.', { locale: de })}</span>
                             {meeting.meeting_time && (
                               <>
-                                <Clock className="h-3 w-3 ml-1" />
+                                <Clock className="h-3.5 w-3.5 ml-1" />
                                 <span>{meeting.meeting_time.substring(0, 5)}</span>
                               </>
                             )}
                           </div>
                           {meeting.location && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                              <MapPin className="h-3 w-3" />
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
+                              <MapPin className="h-3.5 w-3.5" />
                               <span className="truncate">{meeting.location}</span>
                             </div>
                           )}
                           <MeetingParticipantAvatars meetingId={meeting.id} size="xs" />
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div className="flex items-center gap-1">
+                          {editingMeeting?.id === meeting.id ? (
+                            <>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateMeeting(meeting.id!, editingMeeting);
+                                  setEditingMeeting(null);
+                                }}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingMeeting(null);
+                                }}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingMeeting(meeting);
+                                }}
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-destructive hover:text-destructive"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Trash className="h-3.5 w-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Meeting löschen</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Sind Sie sicher, dass Sie das Meeting "{meeting.title}" löschen möchten?
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteMeeting(meeting.id!)}>Löschen</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </>
+                          )}
+                          <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        </div>
                       </div>
                       
                       {/* Start/Stop Button */}
-                      <div className="mt-2 pt-2 border-t">
+                      <div className="mt-3 pt-2 border-t">
                         {activeMeetingId === meeting.id ? (
                           <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); stopMeeting(); }} className="w-full h-7 text-xs bg-green-600 hover:bg-green-700">
                             <CheckCircle className="h-3 w-3 mr-1" />
@@ -3286,6 +3355,50 @@ export function MeetingsView() {
                           </Button>
                         )}
                       </div>
+
+                      {editingMeeting?.id === meeting.id && (
+                        <div className="mt-3 pt-3 border-t space-y-3" onClick={(e) => e.stopPropagation()}>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Titel</label>
+                            <Input value={editingMeeting.title} onChange={(e) => setEditingMeeting({ ...editingMeeting, title: e.target.value })} className="h-8 text-sm" />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Beschreibung</label>
+                            <Textarea value={editingMeeting.description || ''} onChange={(e) => setEditingMeeting({ ...editingMeeting, description: e.target.value })} className="text-sm min-h-[60px]" />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Ort</label>
+                            <Input value={editingMeeting.location || ''} onChange={(e) => setEditingMeeting({ ...editingMeeting, location: e.target.value })} className="h-8 text-sm" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Datum</label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal text-xs">
+                                    {format(new Date(editingMeeting.meeting_date), "dd.MM.yy", { locale: de })}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar mode="single" selected={new Date(editingMeeting.meeting_date)} onSelect={(date) => date && setEditingMeeting({ ...editingMeeting, meeting_date: date })} initialFocus />
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Uhrzeit</label>
+                              <TimePickerCombobox value={(editingMeeting.meeting_time || '10:00').substring(0, 5)} onChange={(time) => setEditingMeeting({ ...editingMeeting, meeting_time: time })} />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Teilnehmer</label>
+                            {meeting.id && <InlineMeetingParticipantsEditor meetingId={meeting.id} />}
+                          </div>
+                          <div className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md">
+                            <Checkbox id={`edit_public_${meeting.id}`} checked={editingMeeting?.is_public || false} onCheckedChange={(checked) => setEditingMeeting({ ...editingMeeting, is_public: !!checked })} />
+                            <label htmlFor={`edit_public_${meeting.id}`} className="text-xs cursor-pointer">Öffentlich</label>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -3297,123 +3410,6 @@ export function MeetingsView() {
               </div>
             </div>
 
-            {/* Selected Meeting Details */}
-            {selectedMeeting && !activeMeeting && (
-              <div className="border-t pt-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Details
-                  </h3>
-                  <div className="flex gap-1">
-                    {editingMeeting?.id === selectedMeeting.id ? (
-                      <>
-                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { updateMeeting(selectedMeeting.id!, editingMeeting); setEditingMeeting(null); }}>
-                          <Check className="h-3 w-3" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingMeeting(null)}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingMeeting(selectedMeeting)}>
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive hover:text-destructive">
-                              <Trash className="h-3 w-3" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Meeting löschen</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Sind Sie sicher, dass Sie das Meeting "{selectedMeeting.title}" löschen möchten?
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteMeeting(selectedMeeting.id!)}>Löschen</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </>
-                    )}
-                  </div>
-                </div>
-                
-                {editingMeeting?.id === selectedMeeting.id ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground">Titel</label>
-                      <Input value={editingMeeting.title} onChange={(e) => setEditingMeeting({ ...editingMeeting, title: e.target.value })} className="h-8 text-sm" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground">Beschreibung</label>
-                      <Textarea value={editingMeeting.description || ''} onChange={(e) => setEditingMeeting({ ...editingMeeting, description: e.target.value })} className="text-sm min-h-[60px]" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground">Ort</label>
-                      <Input value={editingMeeting.location || ''} onChange={(e) => setEditingMeeting({ ...editingMeeting, location: e.target.value })} className="h-8 text-sm" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Datum</label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal text-xs">
-                              {format(new Date(editingMeeting.meeting_date), "dd.MM.yy", { locale: de })}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={new Date(editingMeeting.meeting_date)} onSelect={(date) => date && setEditingMeeting({ ...editingMeeting, meeting_date: date })} initialFocus />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Uhrzeit</label>
-                        <TimePickerCombobox value={(editingMeeting.meeting_time || '10:00').substring(0, 5)} onChange={(time) => setEditingMeeting({ ...editingMeeting, meeting_time: time })} />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground">Teilnehmer</label>
-                      {selectedMeeting.id && <InlineMeetingParticipantsEditor meetingId={selectedMeeting.id} />}
-                    </div>
-                    <div className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md">
-                      <Checkbox id={`edit_public_${selectedMeeting.id}`} checked={editingMeeting?.is_public || false} onCheckedChange={(checked) => setEditingMeeting({ ...editingMeeting!, is_public: !!checked })} />
-                      <label htmlFor={`edit_public_${selectedMeeting.id}`} className="text-xs cursor-pointer">Öffentlich</label>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2 text-sm">
-                    {selectedMeeting.description && (
-                      <p className="text-muted-foreground text-xs">{selectedMeeting.description}</p>
-                    )}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <CalendarIcon className="h-3 w-3" />
-                      <span>{format(new Date(selectedMeeting.meeting_date), 'EEEE, d. MMMM yyyy', { locale: de })}</span>
-                    </div>
-                    {selectedMeeting.meeting_time && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>{selectedMeeting.meeting_time.substring(0, 5)} Uhr</span>
-                      </div>
-                    )}
-                    {selectedMeeting.location && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3" />
-                        <span>{selectedMeeting.location}</span>
-                      </div>
-                    )}
-                    <div className="pt-2">
-                      <label className="text-xs font-medium text-muted-foreground">Teilnehmer</label>
-                      {selectedMeeting.id && <InlineMeetingParticipantsEditor meetingId={selectedMeeting.id} />}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </ResizablePanel>
 
@@ -4559,7 +4555,7 @@ export function MeetingsView() {
                                     </div>
                                    
                                      <div className="flex-1 space-y-2">
-                                       <div className="flex items-center gap-2">
+                                       <div className="flex items-center gap-2 group">
                                          <Input
                                            value={item.title}
                                            onChange={(e) => updateAgendaItem(index, 'title', e.target.value)}
@@ -4575,11 +4571,11 @@ export function MeetingsView() {
                                           {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
                                             <Popover>
                                               <PopoverTrigger asChild>
-                                                <Button size="icon" variant="ghost" className="shrink-0" aria-label="Notizen bearbeiten">
+                                                <Button size="icon" variant="ghost" className="shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity" aria-label="Notizen bearbeiten">
                                                   <StickyNote className={cn("h-4 w-4", item.notes && "text-amber-500")} />
                                                 </Button>
                                               </PopoverTrigger>
-                                              <PopoverContent className="w-80">
+                                              <PopoverContent className="w-[min(92vw,32rem)]">
                                                 <div className="space-y-2">
                                                   <div className="text-sm font-medium mb-2">Notizen</div>
                                                   <Textarea
@@ -4596,11 +4592,11 @@ export function MeetingsView() {
                                           {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
                                             <Popover>
                                               <PopoverTrigger asChild>
-                                                <Button size="icon" variant="ghost" className="shrink-0" aria-label="Unterpunkt hinzufügen">
+                                                <Button size="icon" variant="ghost" className="shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity" aria-label="Unterpunkt hinzufügen">
                                                   <Plus className="h-4 w-4" />
                                                 </Button>
                                               </PopoverTrigger>
-                                              <PopoverContent className="w-80">
+                                              <PopoverContent className="w-[min(92vw,32rem)]">
                                                 <div className="space-y-2">
                                                   {SUBPOINT_OPTIONS[item.title] && SUBPOINT_OPTIONS[item.title].map((opt) => (
                                                     <Button key={opt} variant="outline" className="w-full justify-start text-left whitespace-normal h-auto p-3"
@@ -4671,11 +4667,11 @@ export function MeetingsView() {
                                               setShowTaskSelector(open ? {itemIndex: index} : null)
                                             }>
                                               <PopoverTrigger asChild>
-                                                <Button size="icon" variant="ghost" className="shrink-0" aria-label="Aufgabe hinzufügen">
+                                                <Button size="icon" variant="ghost" className="shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity" aria-label="Aufgabe hinzufügen">
                                                   <ListTodo className="h-4 w-4" />
                                                 </Button>
                                               </PopoverTrigger>
-                                              <PopoverContent className="w-80">
+                                              <PopoverContent className="w-[min(92vw,32rem)]">
                                                 <div className="space-y-2">
                                                   <div className="text-sm font-medium mb-3">Aufgabe als Unterpunkt hinzufügen</div>
                                                   {tasks.length > 0 ? (
@@ -4684,11 +4680,11 @@ export function MeetingsView() {
                                                         <Button 
                                                           key={task.id} 
                                                           variant="outline" 
-                                                          className="w-full justify-start text-left h-auto p-3"
+                                                          className="w-full justify-start text-left h-auto p-3 whitespace-normal"
                                                           onClick={() => addTaskToAgenda(task, item, index)}
                                                         >
                                                           <div>
-                                                            <div className="font-medium">{task.title}</div>
+                                                            <div className="font-medium whitespace-normal break-words">{task.title}</div>
                                                           </div>
                                                         </Button>
                                                       ))}
@@ -4704,7 +4700,7 @@ export function MeetingsView() {
                                           )}
                                           {/* Delete button */}
                                           {hasEditPermission && (
-                                            <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive" 
+                                            <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity" 
                                               onClick={() => deleteAgendaItem(item, index)} aria-label="Punkt löschen">
                                               <Trash className="h-4 w-4" />
                                             </Button>
