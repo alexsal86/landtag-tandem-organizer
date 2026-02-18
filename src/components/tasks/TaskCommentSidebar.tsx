@@ -1,219 +1,271 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
-import { Send, Trash2 } from "lucide-react";
+import { CommentThread, CommentData } from "@/components/task-decisions/CommentThread";
+import { Send, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
 
-interface TaskComment {
-  id: string;
-  task_id: string;
-  user_id: string;
-  content: string;
-  created_at: string;
-  user_name?: string;
-}
+const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
 
 interface TaskCommentSidebarProps {
   taskId: string | null;
   taskTitle?: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onCommentAdded?: () => void;
 }
 
 export function TaskCommentSidebar({ 
   taskId, 
   taskTitle,
   isOpen, 
-  onOpenChange 
+  onOpenChange,
+  onCommentAdded,
 }: TaskCommentSidebarProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [comments, setComments] = useState<TaskComment[]>([]);
+  const [comments, setComments] = useState<CommentData[]>([]);
   const [newComment, setNewComment] = useState("");
   const [newCommentEditorKey, setNewCommentEditorKey] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && taskId) {
-      loadComments();
-    }
-  }, [isOpen, taskId]);
-
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     if (!taskId) return;
-    setLoading(true);
     
+    setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('task_comments')
-        .select('id, task_id, user_id, content, created_at')
+        .select('id, task_id, user_id, content, created_at, updated_at, parent_id')
         .eq('task_id', taskId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
 
-      // Get user names
-      const userIds = [...new Set((data || []).map(c => c.user_id))];
+      // Load profiles for all users
+      const userIds = [...new Set(data?.map(c => c.user_id) || [])];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, display_name')
+        .select('user_id, display_name, badge_color, avatar_url')
         .in('user_id', userIds);
 
-      const userMap = new Map(profiles?.map(p => [p.user_id, p.display_name]) || []);
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
-      setComments((data || []).map(c => ({
+      // Build nested structure
+      const commentsWithProfiles: CommentData[] = (data || []).map(c => ({
         ...c,
-        user_name: userMap.get(c.user_id) || 'Unbekannt'
-      })));
+        profile: profileMap.get(c.user_id) || null,
+        replies: [],
+      }));
+
+      // Organize into tree structure
+      const commentMap = new Map<string, CommentData>();
+      const rootComments: CommentData[] = [];
+
+      commentsWithProfiles.forEach(c => {
+        commentMap.set(c.id, c);
+      });
+
+      commentsWithProfiles.forEach(c => {
+        if (c.parent_id && commentMap.has(c.parent_id)) {
+          const parent = commentMap.get(c.parent_id)!;
+          if (!parent.replies) parent.replies = [];
+          parent.replies.push(c);
+        } else {
+          rootComments.push(c);
+        }
+      });
+
+      setComments(rootComments);
     } catch (error) {
-      console.error("Error loading comments:", error);
+      console.error('Error loading comments:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentare konnten nicht geladen werden.",
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, [taskId, toast]);
 
-  const handleSubmit = async () => {
-    if (!taskId || !user || !newComment.trim()) return;
-    setSubmitting(true);
+  useEffect(() => {
+    if (isOpen && taskId) {
+      loadComments();
+    }
+  }, [isOpen, taskId, loadComments]);
 
+  const handleSubmitComment = async (parentId: string | null = null, content?: string) => {
+    const commentContent = content || newComment;
+    if (!commentContent.trim() || !user || !taskId) return;
+
+    setIsSubmitting(true);
     try {
       const { error } = await supabase
         .from('task_comments')
         .insert({
           task_id: taskId,
           user_id: user.id,
-          content: newComment.trim()
+          parent_id: parentId,
+          content: commentContent.trim(),
         });
 
       if (error) throw error;
 
+      toast({ title: "Kommentar hinzugefügt" });
+
       setNewComment("");
       setNewCommentEditorKey((prev) => prev + 1);
-      await loadComments();
-      toast({ title: "Kommentar hinzugefügt" });
+      loadComments();
+      onCommentAdded?.();
     } catch (error) {
-      console.error("Error adding comment:", error);
-      toast({ title: "Fehler", variant: "destructive" });
+      console.error('Error submitting comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (commentId: string) => {
+  const handleReply = async (parentId: string, content: string) => {
+    await handleSubmitComment(parentId, content);
+  };
+
+  const handleEditComment = async (commentId: string, content: string) => {
+    if (!user || !content.trim()) return;
+
     try {
       const { error } = await supabase
         .from('task_comments')
-        .delete()
-        .eq('id', commentId);
+        .update({ content: content.trim() })
+        .eq('id', commentId)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
-      setComments(prev => prev.filter(c => c.id !== commentId));
-      toast({ title: "Kommentar gelöscht" });
+      toast({ title: "Kommentar aktualisiert" });
+      loadComments();
     } catch (error) {
-      console.error("Error deleting comment:", error);
-      toast({ title: "Fehler", variant: "destructive" });
+      console.error('Error updating comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht bearbeitet werden.",
+        variant: "destructive",
+      });
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
+  const handleDeleteComment = async (commentId: string, hasReplies: boolean) => {
+    if (!user) return;
+
+    try {
+      if (hasReplies) {
+        const { error } = await supabase
+          .from('task_comments')
+          .update({ content: DELETED_COMMENT_TEXT })
+          .eq('id', commentId)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('task_comments')
+          .delete()
+          .eq('id', commentId)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      }
+
+      toast({ title: hasReplies ? "Kommentar als gelöscht markiert" : "Kommentar gelöscht" });
+      loadComments();
+      onCommentAdded?.();
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
   };
+
+  // Count total comments including nested
+  const countComments = (list: CommentData[]): number => {
+    return list.reduce((acc, c) => acc + 1 + (c.replies ? countComments(c.replies) : 0), 0);
+  };
+
+  const totalComments = countComments(comments);
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[540px]">
+      <SheetContent className="w-full sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Kommentare</SheetTitle>
+          <SheetTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            Kommentare ({totalComments})
+          </SheetTitle>
           {taskTitle && (
             <p className="text-sm text-muted-foreground truncate">{taskTitle}</p>
           )}
         </SheetHeader>
 
         <div className="flex flex-col h-[calc(100vh-10rem)] mt-4">
+          {/* Comments list */}
           <ScrollArea className="flex-1 pr-4">
-            {loading ? (
+            {isLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />
+                  <div key={i} className="h-16 bg-muted animate-pulse rounded" />
                 ))}
               </div>
             ) : comments.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Noch keine Kommentare
-              </p>
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Noch keine Kommentare.</p>
+                <p className="text-xs mt-1">Schreiben Sie den ersten Kommentar!</p>
+              </div>
             ) : (
               <div className="space-y-4">
                 {comments.map(comment => (
-                  <div key={comment.id} className="group flex gap-3">
-                    <Avatar className="h-8 w-8 flex-shrink-0">
-                      <AvatarFallback className="text-xs">
-                        {getInitials(comment.user_name || 'U')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{comment.user_name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(comment.created_at), "dd.MM.yy HH:mm", { locale: de })}
-                        </span>
-                        {comment.user_id === user?.id && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                            onClick={() => handleDelete(comment.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                      <RichTextDisplay content={comment.content} className="text-sm text-foreground mt-1" />
-                    </div>
-                  </div>
+                  <CommentThread
+                    key={comment.id}
+                    comment={comment}
+                    onReply={handleReply}
+                    onEdit={handleEditComment}
+                    onDelete={handleDeleteComment}
+                    currentUserId={user?.id}
+                  />
                 ))}
               </div>
             )}
           </ScrollArea>
 
-          {/* Input */}
-          <div className="border-t pt-4 mt-4">
+          {/* New comment input */}
+          <div className="border-t pt-4 mt-4 space-y-2">
             <SimpleRichTextEditor
               key={newCommentEditorKey}
               initialContent=""
               onChange={setNewComment}
               placeholder="Kommentar schreiben..."
-              minHeight="80px"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && e.ctrlKey) {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
+              minHeight="60px"
             />
-            <div className="flex justify-between items-center mt-2">
-              <span className="text-xs text-muted-foreground">Strg+Enter zum Senden</span>
-              <Button 
-                onClick={handleSubmit} 
-                disabled={!newComment.trim() || submitting}
+            <div className="flex justify-end">
+              <Button
+                onClick={() => handleSubmitComment()}
+                disabled={isSubmitting || !newComment.trim()}
                 size="sm"
               >
-                <Send className="h-4 w-4 mr-2" />
-                Senden
+                <Send className="h-3 w-3 mr-1" />
+                {isSubmitting ? "Senden..." : "Senden"}
               </Button>
             </div>
           </div>
