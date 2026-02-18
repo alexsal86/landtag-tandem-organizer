@@ -64,6 +64,7 @@ export function MyWorkTasksTab() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [taskStatuses, setTaskStatuses] = useState<{name: string, label: string}[]>([]);
   const [taskSnoozes, setTaskSnoozes] = useState<Record<string, string>>({});
+  const [taskCommentCounts, setTaskCommentCounts] = useState<Record<string, number>>({});
 
   // Dialog states
   const [snoozeDialogOpen, setSnoozeDialogOpen] = useState(false);
@@ -164,10 +165,14 @@ export function MyWorkTasksTab() {
       setCreatedTasks(createdByMe);
       setAssignedTasks(assignedByOthers);
 
-      // Load subtasks + existing task snoozes
+      // Load subtasks + existing task snoozes + comment counts
       const allTaskIds = [...new Set([...createdByMe, ...assignedByOthers].map(t => t.id))];
       if (allTaskIds.length > 0) {
-        const [{ data: subtasksData, error: subtasksError }, { data: snoozesData, error: snoozesError }] = await Promise.all([
+        const [
+          { data: subtasksData, error: subtasksError },
+          { data: snoozesData, error: snoozesError },
+          { data: commentsData, error: commentsError },
+        ] = await Promise.all([
           supabase
             .from("subtasks")
             .select("id, task_id, description, is_completed, due_date")
@@ -179,22 +184,27 @@ export function MyWorkTasksTab() {
             .select("task_id, snoozed_until")
             .eq("user_id", user.id)
             .in("task_id", allTaskIds),
+          supabase
+            .from("task_comments")
+            .select("task_id")
+            .in("task_id", allTaskIds),
         ]);
 
         if (subtasksError) throw subtasksError;
         if (snoozesError) throw snoozesError;
+        if (commentsError) throw commentsError;
 
         const grouped: Record<string, Subtask[]> = {};
-        (childTasksData || []).forEach(childTask => {
-          if (!childTask.parent_task_id) return;
-          if (!grouped[childTask.parent_task_id]) grouped[childTask.parent_task_id] = [];
-          grouped[childTask.parent_task_id].push({
-            id: childTask.id,
-            task_id: childTask.parent_task_id,
-            title: childTask.title,
-            description: childTask.description || childTask.title,
-            is_completed: childTask.status === 'completed',
-            due_date: childTask.due_date,
+        (subtasksData || []).forEach((subtask) => {
+          if (!subtask.task_id) return;
+          if (!grouped[subtask.task_id]) grouped[subtask.task_id] = [];
+          grouped[subtask.task_id].push({
+            id: subtask.id,
+            task_id: subtask.task_id,
+            title: subtask.description,
+            description: subtask.description,
+            is_completed: subtask.is_completed,
+            due_date: subtask.due_date,
           });
         });
         setSubtasks(grouped);
@@ -206,9 +216,17 @@ export function MyWorkTasksTab() {
           }
         });
         setTaskSnoozes(snoozeMap);
+
+        const commentCounts: Record<string, number> = {};
+        (commentsData || []).forEach((comment) => {
+          if (!comment.task_id) return;
+          commentCounts[comment.task_id] = (commentCounts[comment.task_id] || 0) + 1;
+        });
+        setTaskCommentCounts(commentCounts);
       } else {
         setSubtasks({});
         setTaskSnoozes({});
+        setTaskCommentCounts({});
       }
     } catch (error) {
       console.error("Error loading tasks:", error);
@@ -595,6 +613,7 @@ export function MyWorkTasksTab() {
             subtasks={subtasks[task.id]}
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
             hasReminder={!!taskSnoozes[task.id]}
+            commentCount={taskCommentCounts[task.id] || 0}
             onComplete={handleToggleComplete}
             onSubtaskComplete={handleToggleSubtaskComplete}
             onNavigate={(id) => navigate(`/tasks?id=${id}`)}
@@ -619,6 +638,7 @@ export function MyWorkTasksTab() {
             subtasks={subtasks[task.id]}
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
             hasReminder={!!taskSnoozes[task.id]}
+            commentCount={taskCommentCounts[task.id] || 0}
             onComplete={handleToggleComplete}
             onSubtaskComplete={handleToggleSubtaskComplete}
             onNavigate={(id) => navigate(`/tasks?id=${id}`)}
