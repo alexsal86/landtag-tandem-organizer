@@ -75,6 +75,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
   const [responseThreads, setResponseThreads] = useState<ResponseThread[]>([]);
   const [decisionComments, setDecisionComments] = useState<CommentData[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [newCommentEditorKey, setNewCommentEditorKey] = useState(0);
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
   const [creatorProfile, setCreatorProfile] = useState<{ display_name: string | null; badge_color: string | null; avatar_url: string | null } | null>(null);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
@@ -416,6 +417,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
       });
 
       setNewComment('');
+      setNewCommentEditorKey((prev) => prev + 1);
       await loadDecisionDetails();
     } catch (error) {
       console.error('Error submitting comment:', error);
@@ -879,6 +881,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
 
               <div className="border-t pt-4 space-y-2">
                 <SimpleRichTextEditor
+                  key={newCommentEditorKey}
                   initialContent=""
                   onChange={setNewComment}
                   placeholder="Hinweis oder Diskussionsbeitrag schreiben..."
