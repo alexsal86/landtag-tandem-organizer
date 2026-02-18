@@ -89,7 +89,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
       if (contactTags && contactTags.length > 0) {
         let query = supabase
           .from('documents')
-          .select('*')
+          .select('id, title, description, file_name, file_path, file_type, file_size, category, tags, status, folder_id, created_at, updated_at, user_id, tenant_id')
           .eq('tenant_id', currentTenant.id)
           .overlaps('tags', contactTags);
         

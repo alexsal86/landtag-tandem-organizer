@@ -16,17 +16,23 @@ export function useDecisionComments(decisionIds: string[]) {
     setIsLoading(true);
     try {
       // Get comment counts for all decisions
-      const { data, error } = await supabase
-        .from('task_decision_comments')
-        .select('decision_id')
-        .in('decision_id', decisionIds);
+      // Use individual count queries per decision for efficiency
+      const countPromises = decisionIds.map(async (decisionId) => {
+        const { count, error } = await supabase
+          .from('task_decision_comments')
+          .select('id', { count: 'exact', head: true })
+          .eq('decision_id', decisionId);
+        return { decisionId, count: count || 0, error };
+      });
+      const results = await Promise.all(countPromises);
+      const error = results.find(r => r.error)?.error;
 
       if (error) throw error;
 
-      // Count comments per decision
+      // Build counts map from results
       const counts = new Map<string, number>();
-      data?.forEach(c => {
-        counts.set(c.decision_id, (counts.get(c.decision_id) || 0) + 1);
+      results.forEach(r => {
+        counts.set(r.decisionId, r.count);
       });
 
       setCommentCounts(counts);

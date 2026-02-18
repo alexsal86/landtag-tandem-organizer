@@ -84,7 +84,7 @@ export const useCaseFiles = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('case_files')
-        .select('*')
+        .select('id, user_id, tenant_id, title, description, case_type, status, priority, reference_number, start_date, target_date, tags, is_private, visibility, current_status_note, current_status_updated_at, risks_and_opportunities, assigned_to, created_at, updated_at, processing_status, processing_statuses')
         .eq('tenant_id', currentTenant.id)
         .order('updated_at', { ascending: false });
 
