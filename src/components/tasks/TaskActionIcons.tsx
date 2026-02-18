@@ -14,6 +14,7 @@ interface TaskActionIconsProps {
   hasComments?: boolean;
   hasDocuments?: boolean;
   hasMeetingLink?: boolean;
+  hasReminder?: boolean;
   className?: string;
 }
 
@@ -28,6 +29,7 @@ export function TaskActionIcons({
   hasComments = false,
   hasDocuments = false,
   hasMeetingLink = false,
+  hasReminder = false,
   className,
 }: TaskActionIconsProps) {
   return (
@@ -39,7 +41,10 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 hover:bg-muted/80 rounded-full"
+                className={cn(
+                  "h-6 w-6 hover:bg-muted/80 rounded-full",
+                  hasReminder && "text-amber-600"
+                )}
                 onClick={(e) => {
                   e.stopPropagation();
                   onReminder(taskId);
