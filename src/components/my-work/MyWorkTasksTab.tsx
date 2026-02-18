@@ -189,7 +189,7 @@ export function MyWorkTasksTab() {
         if (snoozesError) throw snoozesError;
         if (commentsError) throw commentsError;
 
-        const grouped: Record<string, Subtask[]> = {};
+        const grouped: Record<string, any[]> = {};
         (subtasksData || []).forEach((subtask) => {
           if (!subtask.task_id) return;
           if (!grouped[subtask.task_id]) grouped[subtask.task_id] = [];
