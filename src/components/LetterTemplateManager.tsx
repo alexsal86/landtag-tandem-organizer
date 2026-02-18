@@ -764,9 +764,9 @@ const LetterTemplateManager: React.FC = () => {
   };
 
   // Consolidated tab list - used by both create and edit
-  // Order: Canvas, Header, Footer, Adressfeld, Rücksende, Info-Block, Betreff, Anlagen, Inhalt, Layout, Allgemein
+  // Order: Canvas, Header, Footer, Adressfeld, Rücksende, Info-Block, Betreff, Anlagen, Layout, Allgemein
   const renderTabsList = () => (
-    <TabsList className="grid w-full grid-cols-11">
+    <TabsList className="grid w-full grid-cols-10">
       <TabsTrigger value="canvas-designer">Canvas</TabsTrigger>
       <TabsTrigger value="header-designer">Header</TabsTrigger>
       <TabsTrigger value="footer-designer">Footer</TabsTrigger>
@@ -775,7 +775,6 @@ const LetterTemplateManager: React.FC = () => {
       <TabsTrigger value="block-info">Info-Block</TabsTrigger>
       <TabsTrigger value="block-subject">Betreff</TabsTrigger>
       <TabsTrigger value="block-attachments">Anlagen</TabsTrigger>
-      <TabsTrigger value="block-content">Inhalt</TabsTrigger>
       <TabsTrigger value="layout-settings">Layout</TabsTrigger>
       <TabsTrigger value="general">Allgemein</TabsTrigger>
     </TabsList>
@@ -898,14 +897,6 @@ const LetterTemplateManager: React.FC = () => {
           width: formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
           height: Math.max(8, formData.layout_settings.subject.marginBottom + 4),
         })}
-      </TabsContent>
-
-      <TabsContent value="block-content" className="space-y-4">
-        <h3 className="text-lg font-semibold">Inhaltsbereich</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div><Label>Top (mm)</Label><Input type="number" value={formData.layout_settings.content.top} onChange={(e) => updateLayoutSettings((l) => ({ ...l, content: { ...l.content, top: parseFloat(e.target.value) || 0 } }))} /></div>
-          <div><Label>Max. Höhe (mm)</Label><Input type="number" value={formData.layout_settings.content.maxHeight} onChange={(e) => updateLayoutSettings((l) => ({ ...l, content: { ...l.content, maxHeight: parseFloat(e.target.value) || 0 } }))} /></div>
-        </div>
       </TabsContent>
 
       <TabsContent value="block-attachments" className="space-y-4">
