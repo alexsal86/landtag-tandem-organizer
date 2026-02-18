@@ -297,13 +297,15 @@ export function MyWorkJourFixeTab() {
 
     if (hasDecisions && currentTenant?.id && user?.id) {
       try {
-        const now = new Date().toISOString();
+        const nowDate = new Date();
+        const now = nowDate.toISOString();
+        const in7Days = addDays(nowDate, 7).toISOString();
         const { data: decisions } = await supabase
           .from('task_decisions')
           .select('id, title, created_by, status, response_deadline, priority')
           .eq('tenant_id', currentTenant.id)
           .eq('status', 'active')
-          .or(`response_deadline.lt.${now},priority.not.is.null`)
+          .or(`priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})`)
           .order('priority', { ascending: false, nullsFirst: false })
           .order('response_deadline', { ascending: true, nullsFirst: false });
 
