@@ -47,6 +47,16 @@ export function getUploadContentType(file: File): string {
   return 'application/octet-stream';
 }
 
+export function getUploadContentTypeCandidates(file: File): string[] {
+  const primaryType = getUploadContentType(file);
+
+  if (isEmailFile(file) && primaryType !== 'application/octet-stream') {
+    return [primaryType, 'application/octet-stream'];
+  }
+
+  return [primaryType];
+}
+
 /**
  * Strip RTF control words and return plain text.
  */
@@ -125,10 +135,12 @@ export async function parseMsgFromArrayBuffer(buffer: ArrayBuffer): Promise<Pars
   const toRaw = (msgData as any).recipients || [];
   const toAddresses: string[] = toRaw.map((r: any) => r.email || r.name || '');
   const dateStr = (msgData as any).messageDeliveryTime || (msgData as any).clientSubmitTime || (msgData as any).creationTime || '';
-  const date = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
+  const parsedDate = dateStr ? new Date(dateStr) : null;
+  const date = parsedDate && !Number.isNaN(parsedDate.getTime())
+    ? parsedDate.toISOString()
+    : new Date().toISOString();
 
   // Body: prefer HTML > text > RTF stripped
-  const htmlBody: string | null = (msgData as any).htmlBody || (msgData as any).body?.replace ? null : null;
   let bodyHtml: string | null = null;
   let bodyText: string | null = null;
 

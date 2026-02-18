@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getUploadContentType, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
+import { getUploadContentType, getUploadContentTypeCandidates, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
 
@@ -145,13 +145,26 @@ export function DecisionFileUpload({
     const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const filePath = `${userId}/decisions/${decisionIdParam}/${uniqueSuffix}-${file.name}`;
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('decision-attachments')
-      .upload(filePath, file, {
-        contentType: getUploadContentType(file),
-      });
+    const uploadContentTypes = getUploadContentTypeCandidates(file);
 
-    if (uploadError) throw uploadError;
+    let uploadData: { path: string } | null = null;
+    let uploadError: unknown = null;
+
+    for (const contentType of uploadContentTypes) {
+      const result = await supabase.storage
+        .from('decision-attachments')
+        .upload(filePath, file, { contentType });
+
+      if (!result.error && result.data) {
+        uploadData = result.data;
+        uploadError = null;
+        break;
+      }
+
+      uploadError = result.error;
+    }
+
+    if (!uploadData) throw uploadError ?? new Error("Upload failed");
 
     let emailMeta: EmailMetadata | null = null;
     if (isEmlFile(file)) {
