@@ -36,8 +36,7 @@ interface TaskListRowProps {
   assigneeName?: string;
   hasMeetingLink?: boolean;
   hasReminder?: boolean;
-  followUpDate?: string | null;
-  commentCount?: number;
+  depth?: number;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
@@ -51,7 +50,6 @@ interface TaskListRowProps {
   onAddToMeeting?: (taskId: string) => void;
   onCreateChildTask?: (taskId: string) => void;
   getChildTasks?: (taskId: string) => Task[];
-  depth?: number;
 }
 
 export function TaskListRow({
@@ -60,8 +58,6 @@ export function TaskListRow({
   assigneeName,
   hasMeetingLink,
   hasReminder,
-  followUpDate,
-  commentCount = 0,
   depth = 0,
   onComplete,
   onSubtaskComplete,
@@ -183,16 +179,6 @@ export function TaskListRow({
         </div>
 
         <div className="flex items-center flex-shrink-0">
-          {followUpDate && (
-            <Badge
-              variant="outline"
-              className="mr-1 h-6 px-2 text-[11px] border-amber-400 text-amber-700 bg-amber-50"
-            >
-              <Clock3 className="h-3 w-3 mr-1" />
-              {format(new Date(followUpDate), "dd.MM.yy", { locale: de })}
-            </Badge>
-          )}
-
           <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className={cn("h-6 px-2 text-xs w-16 justify-start", getDueDateColor(task.due_date))}>
