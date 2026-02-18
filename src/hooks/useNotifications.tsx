@@ -303,10 +303,13 @@ export const useNotifications = () => {
     try {
       console.log('🔄 Starting push subscription process...');
       
-      // Register service worker
-      const registration = await navigator.serviceWorker.register('/sw.js');
-      await navigator.serviceWorker.ready;
-      console.log('✅ Service worker registered');
+      // Use the already-registered root service worker (COOP/COEP worker at /coi-serviceworker.js)
+      // Registering a second worker at scope '/' caused non-deterministic replacement and flaky push delivery.
+      const registration = await navigator.serviceWorker.ready;
+      if (!registration.pushManager) {
+        throw new Error('PushManager is not available on the active service worker registration');
+      }
+      console.log('✅ Service worker ready for push (scope:', registration.scope, ')');
 
       // Get existing subscription or create new one
       let subscription = await (registration as any).pushManager.getSubscription();
@@ -616,8 +619,8 @@ export const useNotifications = () => {
     const checkAndRenewSubscription = async () => {
       try {
         // Get current browser subscription endpoint
-        const registration = await navigator.serviceWorker?.getRegistration('/sw.js');
-        const currentSub = registration ? await (registration as any).pushManager?.getSubscription() : null;
+        const registration = await navigator.serviceWorker?.ready;
+        const currentSub = registration ? await registration.pushManager?.getSubscription() : null;
         const currentEndpoint = currentSub?.endpoint;
 
         const { data } = await supabase
