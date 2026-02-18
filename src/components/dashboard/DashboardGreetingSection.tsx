@@ -112,7 +112,7 @@ export const DashboardGreetingSection = () => {
           .select('*', { count: 'exact', head: true })
           .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
           .eq('status', 'completed')
-          .gte('completed_at', today.toISOString())
+          .gte('updated_at', today.toISOString())
       ]);
 
       setOpenTasksCount(openCount || 0);

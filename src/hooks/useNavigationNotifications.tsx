@@ -183,24 +183,19 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     }
   }, [user, currentTenant]);
 
-  // Set up real-time subscriptions
+  // Only subscribe to user_navigation_visits changes (notifications table is already
+  // handled by useNotifications hook which triggers localStorage events we listen to below)
   useEffect(() => {
     if (!user) return;
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedLoad = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => loadNavigationCounts(), 1000);
+    };
+
     const channel = supabase
-      .channel('navigation_notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          loadNavigationCounts();
-        }
-      )
+      .channel('navigation_visits_only')
       .on(
         'postgres_changes',
         {
@@ -209,14 +204,20 @@ export const useNavigationNotifications = (): NavigationNotifications => {
           table: 'user_navigation_visits',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          loadNavigationCounts();
-        }
+        debouncedLoad
       )
       .subscribe();
 
+    // Listen for notification changes from useNotifications hook
+    const handleNotificationUpdate = () => {
+      debouncedLoad();
+    };
+    window.addEventListener('notifications-changed', handleNotificationUpdate);
+
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
+      window.removeEventListener('notifications-changed', handleNotificationUpdate);
     };
   }, [user]);
 

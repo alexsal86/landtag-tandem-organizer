@@ -1,44 +1,59 @@
 
 
-# Zwei Fixes: Build-Fehler (Chat) und Bilder in Briefvorlagen
+## Fix: `useComposedRefs` muss eine stabile Referenz zurueckgeben
 
-## Problem 1: Build-Fehler blockiert die App
+### Ursache (endgueltig identifiziert)
 
-In `src/components/task-decisions/TaskDecisionDetails.tsx` Zeile 584 wird der Typ `DecisionComment` referenziert, den es nicht gibt. Die alte `renderDecisionComment`-Funktion ist toter Code -- sie wird nicht mehr aufgerufen, da die Kommentare jetzt ueber die `CommentThread`-Komponente gerendert werden (Zeile 914-922). Der Build-Fehler verhindert aber, dass die App korrekt laeuft.
-
-**Loesung:** Die gesamte `renderDecisionComment`-Funktion (Zeilen 584-629) entfernen. Sie wird nirgends mehr verwendet.
-
----
-
-## Problem 2: Bilder in Briefvorlagen brechen nach Neuladen
-
-**Ursache:** Beim Einfuegen eines Bildes wird eine temporaere `blobUrl` (via `URL.createObjectURL()`) erzeugt und im Element gespeichert. Diese URL lebt nur so lange wie die aktuelle Browser-Session. Beim Rendering wird `element.blobUrl || element.imageUrl` verwendet (Zeile 718) -- die `blobUrl` hat also Prioritaet. Beim Neuladen ist die `blobUrl` aber tot, und da sie als String im JSON gespeichert wurde (z.B. `"blob:https://..."`) ist sie nicht leer, sondern ein toter Link. Das Bild bricht.
-
-**Loesung (simpel):**
-
-1. **Beim Speichern `blobUrl` entfernen**: In `LetterTemplateManager.tsx` vor dem Speichern in die Datenbank die `blobUrl`-Property aus allen `header_elements` herausfiltern. `blobUrl` ist nur ein Laufzeit-Cache und darf nicht persistiert werden.
-
-2. **Rendering-Prioritaet umkehren**: In `StructuredHeaderEditor.tsx` Zeile 718 die Prioritaet aendern auf `element.imageUrl || element.blobUrl`. Die `imageUrl` (die echte Supabase-Public-URL) ist die zuverlaessige Quelle und sollte immer bevorzugt werden. Die `blobUrl` dient nur als schneller Fallback direkt nach dem Upload, bevor die `imageUrl` geladen ist.
-
-3. **Gleiche Bereinigung fuer `footer_blocks` und `layout_settings`**, falls dort ebenfalls Bild-Elemente mit `blobUrl` gespeichert werden.
-
----
-
-## Technische Details
-
-### Datei 1: `src/components/task-decisions/TaskDecisionDetails.tsx`
-- Zeilen 584-629 (`renderDecisionComment` Funktion) komplett entfernen
-
-### Datei 2: `src/components/letters/StructuredHeaderEditor.tsx`
-- Zeile 718: `element.blobUrl || element.imageUrl` aendern zu `element.imageUrl || element.blobUrl`
-
-### Datei 3: `src/components/LetterTemplateManager.tsx`
-- Vor dem Speichern (Insert und Update, ca. Zeilen 280-310): Eine Hilfsfunktion einbauen, die `blobUrl` aus allen Elementen in `header_elements`, `footer_blocks` und `layout_settings` entfernt:
+Radix Select uebergibt **Inline-Funktionen** an `useComposedRefs`:
 
 ```typescript
-const stripBlobUrls = (elements: any[]) =>
-  elements.map(({ blobUrl, ...rest }) => rest);
+// node_modules/@radix-ui/react-select/dist/index.mjs:907-912
+const composedRefs = useComposedRefs(
+  forwardedRef,
+  (node) => setItemTextNode(node),      // NEU bei jedem Render!
+  itemContext.onItemTextChange,
+  (node) => contentContext.itemTextRefCallback?.(...)  // NEU bei jedem Render!
+);
 ```
 
-- Diese auf `formData.header_elements`, `formData.footer_blocks` und die Bild-Elemente in `formData.layout_settings` anwenden, bevor die Daten an Supabase gesendet werden.
+Unsere aktuelle `useComposedRefs`-Implementierung:
+
+```typescript
+return React.useCallback(composeRefs(...refs), refs);
+//                                              ^^^^ refs aendert sich JEDES MAL
+```
+
+Da die Inline-Funktionen bei jedem Render eine neue Identitaet haben, aendert sich die `refs`-Dependency immer. `useCallback` erstellt daher jedes Mal eine neue Funktion. React erkennt einen neuen Ref-Callback, ruft Detach (null) und Attach (node) auf, was `setState` triggert, was einen Re-Render ausloest -- Endlosschleife.
+
+### Loesung
+
+`useComposedRefs` muss eine **stabile** Callback-Funktion zurueckgeben, die intern immer die aktuellsten Refs liest:
+
+```typescript
+export function useComposedRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
+  const refsRef = React.useRef(refs);
+  refsRef.current = refs;  // Immer aktuelle Refs speichern
+  return React.useCallback((node: T) => {
+    refsRef.current.forEach((ref) => setRef(ref, node));
+  }, []);  // Stabile Funktion - aendert sich NIE
+}
+```
+
+### Aenderungen
+
+| Datei | Aenderung |
+|---|---|
+| `src/lib/radix-compose-refs-patch.ts` | `useComposedRefs` mit stabiler Referenz via `useRef` |
+| `src/lib/radix-slot-patch.tsx` | Identische Aenderung an der internen `useComposedRefs` |
+
+### Warum das funktioniert
+
+- Die zurueckgegebene Funktion hat immer dieselbe Identitaet (leeres Dependency-Array)
+- React sieht keinen neuen Ref-Callback, fuehrt kein Detach/Attach durch
+- Intern werden trotzdem immer die aktuellsten Refs verwendet (`refsRef.current`)
+- Kein setState-Trigger, kein Re-Render, keine Endlosschleife
+
+### Risiko
+
+Minimal. Die Funktion ist funktional identisch, nur die Identitaet ist stabil. Alle bestehenden Radix-Komponenten (Dialog, Tooltip, Popover, etc.) profitieren ebenfalls davon.
 

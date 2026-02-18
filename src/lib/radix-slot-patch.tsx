@@ -19,38 +19,17 @@ function setRef<T>(ref: React.Ref<T> | undefined, value: T): void {
 
 function composeRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
   return (node: T) => {
-    let hasCleanup = false;
-    const cleanups = refs.map((ref) => {
-      if (typeof ref === "function") {
-        const cleanup = ref(node);
-        if (typeof cleanup === "function") {
-          hasCleanup = true;
-          return cleanup;
-        }
-      } else if (ref !== null && ref !== undefined) {
-        (ref as React.MutableRefObject<T>).current = node;
-      }
-      return undefined;
-    });
-
-    if (hasCleanup) {
-      return () => {
-        for (let i = 0; i < cleanups.length; i++) {
-          const cleanup = cleanups[i];
-          if (typeof cleanup === "function") {
-            cleanup();
-          } else {
-            setRef(refs[i], null as any);
-          }
-        }
-      };
-    }
+    refs.forEach((ref) => setRef(ref, node));
   };
 }
 
 function useComposedRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
+  const refsRef = React.useRef(refs);
+  refsRef.current = refs;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return React.useCallback(composeRefs(...refs), refs);
+  return React.useCallback((node: T) => {
+    refsRef.current.forEach((ref) => setRef(ref, node));
+  }, []);
 }
 
 // ---- Slot implementation ----

@@ -79,7 +79,7 @@ serve(async (req) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (error) {
         results.failed++;
-        results.errors.push(`${contact.id}: ${error.message}`);
+        results.errors.push(`${contact.id}: ${error instanceof Error ? error.message : String(error)}`);
         console.error(`Error geocoding ${contact.id}:`, error);
       }
     }
@@ -93,7 +93,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in batch-geocode-contacts:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

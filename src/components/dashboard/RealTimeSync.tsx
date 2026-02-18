@@ -41,6 +41,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [showUserList, setShowUserList] = useState(false);
   const [syncErrors, setSyncErrors] = useState<string[]>([]);
+  const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -62,6 +63,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
           }
         }
       });
+      channelRef.current = channel;
 
       // Track user presence
       channel
@@ -235,8 +237,11 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
   };
 
   const cleanup = () => {
-    // Remove all subscriptions
-    supabase.removeAllChannels();
+    // Only remove our own channel, not all channels in the client
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
   };
 
   const getConnectionStatus = () => {

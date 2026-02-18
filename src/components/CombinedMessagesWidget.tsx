@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageCircle, Clipboard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
 import { BlackBoard } from "./BlackBoard";
 import { MessageSystem } from "./MessageSystem";
 
@@ -17,28 +18,21 @@ export function CombinedMessagesWidget({ configuration }: CombinedMessagesWidget
   const [blackboardCount, setBlackboardCount] = useState(0);
   const [messagesCount, setMessagesCount] = useState(0);
   const [activeTab, setActiveTab] = useState("blackboard");
-  const debounceRef = useRef<NodeJS.Timeout>();
 
   const fetchUnreadCounts = useCallback(async () => {
     if (!user) return;
 
     try {
-      // Fetch unconfirmed BlackBoard messages (public messages)
-      const { data: blackboardData, error: blackboardError } = await (supabase as any)
+      // Single RPC call instead of two identical ones
+      const { data, error } = await (supabase as any)
         .rpc('get_user_messages', { user_id_param: user.id });
 
-      if (!blackboardError && blackboardData) {
-        const unconfirmedBlackboardMessages = blackboardData
+      if (!error && data) {
+        const unconfirmedBlackboardMessages = data
           .filter(msg => msg.is_for_all_users && !msg.has_read && msg.author_id !== user.id);
         setBlackboardCount(unconfirmedBlackboardMessages.length);
-      }
 
-      // Fetch unread personal messages
-      const { data: messagesData, error: messagesError } = await (supabase as any)
-        .rpc('get_user_messages', { user_id_param: user.id });
-
-      if (!messagesError && messagesData) {
-        const unreadPersonalMessages = messagesData
+        const unreadPersonalMessages = data
           .filter(msg => !msg.is_for_all_users && !msg.has_read && msg.author_id !== user.id);
         setMessagesCount(unreadPersonalMessages.length);
       }
@@ -47,51 +41,14 @@ export function CombinedMessagesWidget({ configuration }: CombinedMessagesWidget
     }
   }, [user]);
 
-  // Debounced fetch to reduce API calls during rapid updates
-  const debouncedFetchUnreadCounts = useCallback(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(() => {
-      fetchUnreadCounts();
-    }, 500);
-  }, [fetchUnreadCounts]);
-
   useEffect(() => {
     fetchUnreadCounts();
+  }, [user, fetchUnreadCounts]);
 
-    // Set up real-time subscriptions for live badge updates with debouncing
-    const subscriptionChannel = supabase.channel('combined-messages-counts')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'messages'
-      }, () => {
-        debouncedFetchUnreadCounts();
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'message_confirmations'
-      }, () => {
-        debouncedFetchUnreadCounts();
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'message_recipients'
-      }, () => {
-        debouncedFetchUnreadCounts();
-      })
-      .subscribe();
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-      supabase.removeChannel(subscriptionChannel);
-    };
-  }, [user, fetchUnreadCounts, debouncedFetchUnreadCounts]);
+  // Use shared messages realtime subscription instead of 3 separate channels
+  useMessagesRealtime(() => {
+    fetchUnreadCounts();
+  });
 
   const totalCount = blackboardCount + messagesCount;
 

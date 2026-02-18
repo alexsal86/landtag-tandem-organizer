@@ -507,6 +507,53 @@ export function TasksView() {
         }
       }
 
+      // 1b. Get task-child subtasks assigned to this user
+      const { data: childTasksData, error: childTasksError } = await supabase
+        .from('tasks')
+        .select('id, title, description, parent_task_id, assigned_to, due_date, status, created_at, updated_at, priority')
+        .not('parent_task_id', 'is', null)
+        .neq('status', 'completed');
+
+      if (childTasksError) {
+        console.error('❌ Error loading task-child subtasks:', childTasksError);
+      } else {
+        for (const childTask of childTasksData || []) {
+          const assignees = Array.isArray(childTask.assigned_to)
+            ? childTask.assigned_to
+            : (childTask.assigned_to || '').split(',').map((item) => item.trim()).filter(Boolean);
+
+          const isAssigned = assignees.includes(user.id);
+          if (!isAssigned) continue;
+
+          let parentTitle = 'Unbekannte Aufgabe';
+          if (childTask.parent_task_id) {
+            const { data: parentTask } = await supabase
+              .from('tasks')
+              .select('title')
+              .eq('id', childTask.parent_task_id)
+              .single();
+            parentTitle = parentTask?.title || parentTitle;
+          }
+
+          allSubtasks.push({
+            id: childTask.id,
+            title: childTask.title,
+            description: childTask.description || '',
+            task_id: childTask.parent_task_id,
+            task_title: parentTitle,
+            source_type: 'task_child' as const,
+            assigned_to: assignees,
+            assigned_to_names: resolveUserNames(assignees),
+            due_date: childTask.due_date,
+            is_completed: childTask.status === 'completed',
+            created_at: childTask.created_at,
+            updated_at: childTask.updated_at,
+            priority: childTask.priority,
+            order_index: 0,
+          });
+        }
+      }
+
       // 2. Get planning subtasks assigned to this user
       console.log('📅 Loading planning subtasks...');
       const { data: planningSubtasksData, error: planningError } = await supabase
@@ -906,9 +953,15 @@ export function TasksView() {
         .select('id, parent_task_id')
         .not('parent_task_id', 'is', null);
 
-      if (error) throw error;
+      if (regularError) throw regularError;
+      if (childError) throw childError;
 
       const counts: { [taskId: string]: number } = {};
+      (childTasks || []).forEach(task => {
+        if (!task.parent_task_id) return;
+        counts[task.parent_task_id] = (counts[task.parent_task_id] || 0) + 1;
+      });
+
       (childTasks || []).forEach(task => {
         if (!task.parent_task_id) return;
         counts[task.parent_task_id] = (counts[task.parent_task_id] || 0) + 1;
@@ -928,7 +981,32 @@ export function TasksView() {
         .eq('parent_task_id', taskId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (regularError) throw regularError;
+      if (childError) throw childError;
+
+      const mappedRegular = (regularSubtasks || []).map(subtask => ({
+        ...subtask,
+        title: subtask.description || 'Unnamed subtask',
+        source_type: 'task' as const,
+      }));
+
+      const mappedChildTasks = (childTasks || []).map((task, index) => ({
+        id: task.id,
+        task_id: taskId,
+        title: task.title,
+        description: task.description || '',
+        is_completed: task.status === 'completed',
+        assigned_to: Array.isArray(task.assigned_to)
+          ? task.assigned_to
+          : (task.assigned_to ? String(task.assigned_to).split(',').map((item) => item.trim()).filter(Boolean) : []),
+        due_date: task.due_date,
+        order_index: mappedRegular.length + index,
+        completed_at: task.status === 'completed' ? task.updated_at : null,
+        source_type: 'task_child' as const,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+        priority: task.priority,
+      }));
 
       const mappedChildTasks = (childTasks || []).map((task, index) => ({
         id: task.id,
