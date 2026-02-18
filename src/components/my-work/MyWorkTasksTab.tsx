@@ -38,6 +38,7 @@ interface Task {
 interface Subtask {
   id: string;
   task_id: string;
+  title: string | null;
   description: string | null;
   is_completed: boolean;
   due_date: string | null;
@@ -161,22 +162,30 @@ export function MyWorkTasksTab() {
       setCreatedTasks(createdByMe);
       setAssignedTasks(assignedByOthers);
 
-      // Load subtasks for all tasks
+      // Load child tasks for all tasks
       const allTaskIds = [...new Set([...createdByMe, ...assignedByOthers].map(t => t.id))];
       if (allTaskIds.length > 0) {
-        const { data: subtasksData, error: subtasksError } = await supabase
-          .from("subtasks")
-          .select("id, task_id, description, is_completed, due_date")
-          .in("task_id", allTaskIds)
-          .eq("is_completed", false)
-          .order("order_index", { ascending: true });
+        const { data: childTasksData, error: childTasksError } = await supabase
+          .from("tasks")
+          .select("id, parent_task_id, title, description, status, due_date")
+          .in("parent_task_id", allTaskIds)
+          .neq("status", "completed")
+          .order("created_at", { ascending: true });
 
-        if (subtasksError) throw subtasksError;
+        if (childTasksError) throw childTasksError;
 
         const grouped: Record<string, Subtask[]> = {};
-        (subtasksData || []).forEach(st => {
-          if (!grouped[st.task_id]) grouped[st.task_id] = [];
-          grouped[st.task_id].push(st);
+        (childTasksData || []).forEach(childTask => {
+          if (!childTask.parent_task_id) return;
+          if (!grouped[childTask.parent_task_id]) grouped[childTask.parent_task_id] = [];
+          grouped[childTask.parent_task_id].push({
+            id: childTask.id,
+            task_id: childTask.parent_task_id,
+            title: childTask.title,
+            description: childTask.description || childTask.title,
+            is_completed: childTask.status === 'completed',
+            due_date: childTask.due_date,
+          });
         });
         setSubtasks(grouped);
       }
@@ -246,8 +255,8 @@ export function MyWorkTasksTab() {
   const handleToggleSubtaskComplete = async (subtaskId: string) => {
     try {
       const { error } = await supabase
-        .from("subtasks")
-        .update({ is_completed: true })
+        .from("tasks")
+        .update({ status: 'completed', progress: 100 })
         .eq("id", subtaskId)
         .select();
 
