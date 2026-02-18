@@ -214,19 +214,23 @@ export function NoteDecisionCreator({
     setLoading(true);
     try {
       // Create the decision
+      const insertData = {
+        title: title.trim(),
+        description,
+        created_by: user.id,
+        tenant_id: currentTenant.id,
+        status: "active",
+        response_options: JSON.parse(JSON.stringify(currentOptions)),
+        visible_to_all: visibleToAll,
+        response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : null,
+        priority: priority ? 1 : 0,
+      };
+
+      console.log('NoteDecisionCreator: Creating decision with data:', insertData);
+
       const { data: decision, error: decisionError } = await supabase
         .from("task_decisions")
-        .insert([{
-          title: title.trim(),
-          description,
-          created_by: user.id,
-          tenant_id: currentTenant.id,
-          status: "active",
-          response_options: currentOptions as unknown as any,
-          visible_to_all: visibleToAll,
-          response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : null,
-          priority: priority ? 1 : 0,
-        }])
+        .insert([insertData])
         .select()
         .single();
 
@@ -261,13 +265,18 @@ export function NoteDecisionCreator({
       if (sendByEmail || sendViaMatrix) {
         for (const userId of selectedUsers) {
           // Create notification
-          await supabase.rpc("create_notification", {
+          const { error: notificationError } = await supabase.rpc("create_notification", {
             user_id_param: userId,
             type_name: "task_decision_request",
             title_param: "Neue Entscheidungsanfrage",
             message_param: `${profiles.find(p => p.user_id === user.id)?.display_name || 'Jemand'} bittet um Ihre Entscheidung: "${title}"`,
-            data_param: { decision_id: decision.id, link: `/mywork?tab=decisions` }
+            data_param: JSON.stringify({ decision_id: decision.id, link: `/mywork?tab=decisions` }),
+            priority_param: 'medium'
           });
+
+          if (notificationError) {
+            console.warn('Notification error for user:', userId, notificationError);
+          }
 
           // Get participant token for email
           if (sendByEmail) {
