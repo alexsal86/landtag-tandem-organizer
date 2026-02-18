@@ -34,15 +34,8 @@ interface Task {
   category?: string;
   meeting_id?: string | null;
   pending_for_jour_fixe?: boolean | null;
-}
-
-interface Subtask {
-  id: string;
-  task_id: string;
-  title: string | null;
-  description: string | null;
-  is_completed: boolean;
-  due_date: string | null;
+  parent_task_id?: string | null;
+  tenant_id?: string;
 }
 
 interface Profile {
@@ -59,7 +52,7 @@ export function MyWorkTasksTab() {
   
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
   const [createdTasks, setCreatedTasks] = useState<Task[]>([]);
-  const [subtasks, setSubtasks] = useState<Record<string, Subtask[]>>({});
+  const [subtasks, setSubtasks] = useState<Record<string, Task[]>>({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [taskStatuses, setTaskStatuses] = useState<{name: string, label: string}[]>([]);
@@ -130,6 +123,7 @@ export function MyWorkTasksTab() {
         .select("*")
         .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
         .neq("status", "completed")
+        .is("parent_task_id", null)
         .order("due_date", { ascending: true, nullsFirst: false });
 
       if (assignedError) throw assignedError;
@@ -140,6 +134,7 @@ export function MyWorkTasksTab() {
         .select("*")
         .eq("user_id", user.id)
         .neq("status", "completed")
+        .is("parent_task_id", null)
         .order("due_date", { ascending: true, nullsFirst: false });
 
       if (createdError) throw createdError;
@@ -164,39 +159,45 @@ export function MyWorkTasksTab() {
       setCreatedTasks(createdByMe);
       setAssignedTasks(assignedByOthers);
 
-      // Load subtasks + existing task snoozes
+      // Load child-task tree + existing task snoozes
       const allTaskIds = [...new Set([...createdByMe, ...assignedByOthers].map(t => t.id))];
       if (allTaskIds.length > 0) {
-        const [{ data: subtasksData, error: subtasksError }, { data: snoozesData, error: snoozesError }] = await Promise.all([
-          supabase
-            .from("subtasks")
-            .select("id, task_id, description, is_completed, due_date")
-            .in("task_id", allTaskIds)
-            .eq("is_completed", false)
-            .order("order_index", { ascending: true }),
-          supabase
-            .from("task_snoozes")
-            .select("task_id, snoozed_until")
-            .eq("user_id", user.id)
-            .in("task_id", allTaskIds),
-        ]);
+        const { data: snoozesData, error: snoozesError } = await supabase
+          .from("task_snoozes")
+          .select("task_id, snoozed_until")
+          .eq("user_id", user.id);
 
-        if (subtasksError) throw subtasksError;
         if (snoozesError) throw snoozesError;
 
-        const grouped: Record<string, Subtask[]> = {};
-        (childTasksData || []).forEach(childTask => {
-          if (!childTask.parent_task_id) return;
-          if (!grouped[childTask.parent_task_id]) grouped[childTask.parent_task_id] = [];
-          grouped[childTask.parent_task_id].push({
-            id: childTask.id,
-            task_id: childTask.parent_task_id,
-            title: childTask.title,
-            description: childTask.description || childTask.title,
-            is_completed: childTask.status === 'completed',
-            due_date: childTask.due_date,
+        const grouped: Record<string, Task[]> = {};
+        const visitedParentIds = new Set<string>();
+        let parentIdsToLoad = [...allTaskIds];
+
+        while (parentIdsToLoad.length > 0) {
+          const currentBatch = parentIdsToLoad.filter((id) => !visitedParentIds.has(id));
+          if (currentBatch.length === 0) break;
+
+          currentBatch.forEach((id) => visitedParentIds.add(id));
+
+          const { data: childTasksData, error: childTasksError } = await supabase
+            .from("tasks")
+            .select("*")
+            .in("parent_task_id", currentBatch)
+            .neq("status", "completed")
+            .order("due_date", { ascending: true, nullsFirst: false });
+
+          if (childTasksError) throw childTasksError;
+
+          const children = childTasksData || [];
+          children.forEach((childTask) => {
+            if (!childTask.parent_task_id) return;
+            if (!grouped[childTask.parent_task_id]) grouped[childTask.parent_task_id] = [];
+            grouped[childTask.parent_task_id].push(childTask);
           });
-        });
+
+          parentIdsToLoad = children.map((childTask) => childTask.id);
+        }
+
         setSubtasks(grouped);
 
         const snoozeMap: Record<string, string> = {};
@@ -232,7 +233,7 @@ export function MyWorkTasksTab() {
   };
 
   const handleToggleComplete = async (taskId: string) => {
-    const task = [...assignedTasks, ...createdTasks].find(t => t.id === taskId);
+    const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find(t => t.id === taskId);
     if (!task || !user) return;
     
     try {
@@ -264,7 +265,8 @@ export function MyWorkTasksTab() {
       
       setAssignedTasks(prev => prev.filter(t => t.id !== taskId));
       setCreatedTasks(prev => prev.filter(t => t.id !== taskId));
-      
+      await loadTasks();
+
       setShowCelebration(true);
       toast({ title: "Aufgabe erledigt und archiviert" });
     } catch (error: any) {
@@ -303,6 +305,7 @@ export function MyWorkTasksTab() {
       
       setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t));
       setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t));
+      await loadTasks();
       toast({ title: "Titel aktualisiert" });
     } catch (error) {
       console.error("Error updating title:", error);
@@ -322,6 +325,7 @@ export function MyWorkTasksTab() {
       
       setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, description } : t));
       setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, description } : t));
+      await loadTasks();
       toast({ title: "Beschreibung aktualisiert" });
     } catch (error) {
       console.error("Error updating description:", error);
@@ -342,6 +346,7 @@ export function MyWorkTasksTab() {
       const newDueDate = date?.toISOString() || null;
       setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDueDate } : t));
       setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDueDate } : t));
+      await loadTasks();
       toast({ title: "Frist aktualisiert" });
     } catch (error) {
       console.error("Error updating due date:", error);
@@ -545,9 +550,44 @@ export function MyWorkTasksTab() {
     }
   };
 
+  const handleCreateChildTask = async (parentTaskId: string) => {
+    if (!user) return;
+
+    const parentTask = [...createdTasks, ...assignedTasks, ...Object.values(subtasks).flat()].find((task) => task.id === parentTaskId);
+    if (!parentTask?.tenant_id) {
+      toast({ title: "Fehler", description: "Übergeordnete Aufgabe nicht gefunden.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .insert({
+          user_id: user.id,
+          tenant_id: parentTask.tenant_id,
+          parent_task_id: parentTaskId,
+          title: "Neue Unteraufgabe",
+          description: null,
+          status: "todo",
+          priority: "medium",
+          category: parentTask.category || "personal",
+          assigned_to: user.id,
+        });
+
+      if (error) throw error;
+      toast({ title: "Unteraufgabe erstellt" });
+      await loadTasks();
+    } catch (error) {
+      console.error("Error creating child task:", error);
+      toast({ title: "Fehler", description: "Unteraufgabe konnte nicht erstellt werden.", variant: "destructive" });
+    }
+  };
+
+  const getChildTasks = (parentId: string) => subtasks[parentId] || [];
+
   const getTaskTitle = (taskId: string | null) => {
     if (!taskId) return undefined;
-    const task = [...assignedTasks, ...createdTasks].find(t => t.id === taskId);
+    const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find(t => t.id === taskId);
     return task?.title;
   };
 
@@ -610,6 +650,8 @@ export function MyWorkTasksTab() {
                   onDecision={handleDecision}
                   onDocuments={handleDocuments}
                   onAddToMeeting={handleAddToMeeting}
+                  onCreateChildTask={handleCreateChildTask}
+                  getChildTasks={getChildTasks}
                 />
               ))}
             </div>
@@ -633,6 +675,8 @@ export function MyWorkTasksTab() {
                   onDecision={handleDecision}
                   onDocuments={handleDocuments}
                   onAddToMeeting={handleAddToMeeting}
+                  onCreateChildTask={handleCreateChildTask}
+                  getChildTasks={getChildTasks}
                 />
               ))}
             </div>
