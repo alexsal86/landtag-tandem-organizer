@@ -102,7 +102,7 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
         { key: 'press_default_tags', value: defaultTags.trim() },
         { key: 'press_email_template_subject', value: emailTemplateSubject.trim() },
         { key: 'press_email_template_body', value: emailTemplateBody.trim() },
-        { key: 'press_default_distribution_list_id', value: defaultDistListId.trim() },
+        { key: 'press_default_distribution_list_id', value: defaultDistListId === 'none' ? '' : defaultDistListId.trim() },
       ];
 
       for (const { key, value } of settings) {
@@ -242,7 +242,7 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
                         <SelectValue placeholder="Kein Standard-Verteiler" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Kein Standard-Verteiler</SelectItem>
+                        <SelectItem value="none">Kein Standard-Verteiler</SelectItem>
                         {distributionLists.map((list) => (
                           <SelectItem key={list.id} value={list.id}>{list.name}</SelectItem>
                         ))}
