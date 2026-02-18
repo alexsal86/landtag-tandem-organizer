@@ -30,6 +30,7 @@ export function DecisionComments({
   const { toast } = useToast();
   const [comments, setComments] = useState<CommentData[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [newCommentEditorKey, setNewCommentEditorKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -175,6 +176,7 @@ export function DecisionComments({
       });
 
       setNewComment("");
+      setNewCommentEditorKey((prev) => prev + 1);
       loadComments();
       onCommentAdded?.();
     } catch (error) {
@@ -304,6 +306,7 @@ export function DecisionComments({
           {/* New comment input */}
           <div className="border-t pt-4 mt-4 space-y-2">
             <SimpleRichTextEditor
+              key={newCommentEditorKey}
               initialContent=""
               onChange={setNewComment}
               placeholder="Hinweis oder Diskussionsbeitrag schreiben..."
