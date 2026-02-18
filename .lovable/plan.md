@@ -1,59 +1,59 @@
 
+# Plan: Bild-Vorschau und Darstellungsfehler beheben
 
-## Fix: `useComposedRefs` muss eine stabile Referenz zurueckgeben
+## Zusammenfassung
+Es gibt vier zusammenhangende Probleme zu losen:
 
-### Ursache (endgueltig identifiziert)
+1. **Bilder in der Entscheidungs-Vorschau gebrochen** - Die `DecisionAttachmentPreviewDialog` erstellt eine signedUrl, aber das Bild ladt nicht korrekt
+2. **Word/Excel-Vorschau uber officeapps.live.com funktioniert nicht** - Die signedUrl ist zeitlich begrenzt und officeapps kann nicht darauf zugreifen
+3. **PDF-Thumbnail-Vorschau** - PDFs sollen klein als Vorschau dargestellt werden
+4. **Canvas-Bilder in Briefvorlagen gebrochen** - Bilder im LetterTemplateManager zeigen Container aber kein Bild
 
-Radix Select uebergibt **Inline-Funktionen** an `useComposedRefs`:
+---
 
-```typescript
-// node_modules/@radix-ui/react-select/dist/index.mjs:907-912
-const composedRefs = useComposedRefs(
-  forwardedRef,
-  (node) => setItemTextNode(node),      // NEU bei jedem Render!
-  itemContext.onItemTextChange,
-  (node) => contentContext.itemTextRefCallback?.(...)  // NEU bei jedem Render!
-);
-```
+## Problem-Analyse
 
-Unsere aktuelle `useComposedRefs`-Implementierung:
+### 1. Bilder in Entscheidungs-Vorschau
+Der `decision-attachments` Bucket ist **privat** (nicht public). Der Code erstellt zwar eine `signedUrl`, aber die `normalizeStoragePath`-Funktion scheint den Pfad falsch zu normalisieren. Aus dem Screenshot ist erkennbar, dass das Bild als gebrochenes `<img>` Tag dargestellt wird - die signedUrl ist entweder ungultig oder abgelaufen. Wahrscheinlich wird der `file_path` aus der Datenbank nicht korrekt auf den Storage-Pfad gemappt.
 
-```typescript
-return React.useCallback(composeRefs(...refs), refs);
-//                                              ^^^^ refs aendert sich JEDES MAL
-```
+### 2. Word/Excel ohne officeapps.live.com
+Die Microsoft Office Online Viewer braucht eine offentlich erreichbare URL. Da der Bucket privat ist, funktioniert das nicht. **Interne Alternative**: Wir konnen `docx` (bereits installiert) und `xlsx` (bereits installiert) verwenden, um Dokumente clientseitig zu parsen und als HTML darzustellen.
 
-Da die Inline-Funktionen bei jedem Render eine neue Identitaet haben, aendert sich die `refs`-Dependency immer. `useCallback` erstellt daher jedes Mal eine neue Funktion. React erkennt einen neuen Ref-Callback, ruft Detach (null) und Attach (node) auf, was `setState` triggert, was einen Re-Render ausloest -- Endlosschleife.
+### 3. PDF-Vorschau
+`pdfjs-dist` ist bereits installiert. Wir konnen die erste Seite eines PDFs als Canvas/Bild rendern und als Thumbnail anzeigen.
 
-### Loesung
+### 4. Canvas-Bilder in Briefvorlagen
+Der `letter-assets` Bucket ist **public**. Die `imageUrl`s werden via `getPublicUrl` generiert, was korrekt sein sollte. Das Problem liegt wahrscheinlich an gespeicherten `blobUrl`s, die nach einem Session-Neustart ungultig sind. Die `normalizeLayoutBlockContentImages`-Funktion lauft nur fur Layout-Block-Content, aber nicht fur alle Block-Typen (addressField, returnAddress, infoBlock, subject, attachments).
 
-`useComposedRefs` muss eine **stabile** Callback-Funktion zurueckgeben, die intern immer die aktuellsten Refs liest:
+---
 
-```typescript
-export function useComposedRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
-  const refsRef = React.useRef(refs);
-  refsRef.current = refs;  // Immer aktuelle Refs speichern
-  return React.useCallback((node: T) => {
-    refsRef.current.forEach((ref) => setRef(ref, node));
-  }, []);  // Stabile Funktion - aendert sich NIE
-}
-```
+## Technische Umsetzung
 
-### Aenderungen
+### Schritt 1: Build-Fehler beheben
+- **`send-document-email/index.ts`**: `scheduledAt` durch `scheduled_at` ersetzen (Resend API erwartet snake_case)
 
-| Datei | Aenderung |
-|---|---|
-| `src/lib/radix-compose-refs-patch.ts` | `useComposedRefs` mit stabiler Referenz via `useRef` |
-| `src/lib/radix-slot-patch.tsx` | Identische Aenderung an der internen `useComposedRefs` |
+### Schritt 2: Bild-Vorschau in Entscheidungen reparieren
+- **`DecisionAttachmentPreviewDialog.tsx`**: Die `normalizeStoragePath`-Funktion debuggen/fixen - sicherstellen, dass der Pfad korrekt aus `file_path` extrahiert wird
+- Logging hinzufugen um den tatsachlichen Pfad zu verifizieren
+- Fallback: Wenn signedUrl fehlschlagt, einen klareren Fehlertext anzeigen
 
-### Warum das funktioniert
+### Schritt 3: Word/Excel intern rendern
+- **Word (.docx)**: Mit der bereits installierten `docx`-Bibliothek den Inhalt extrahieren und als einfaches HTML darstellen (Text, Absatze, grundlegende Formatierung)
+- **Excel (.xls/.xlsx)**: Mit der bereits installierten `xlsx`-Bibliothek die Tabellendaten auslesen und als HTML-Tabelle darstellen
+- Die `officeapps.live.com`-Integration entfernen, da sie nicht funktioniert
 
-- Die zurueckgegebene Funktion hat immer dieselbe Identitaet (leeres Dependency-Array)
-- React sieht keinen neuen Ref-Callback, fuehrt kein Detach/Attach durch
-- Intern werden trotzdem immer die aktuellsten Refs verwendet (`refsRef.current`)
-- Kein setState-Trigger, kein Re-Render, keine Endlosschleife
+### Schritt 4: PDF-Thumbnail erstellen
+- `pdfjs-dist` verwenden um die erste Seite zu rendern
+- Ein Canvas-Element nutzen, um ein kleines Vorschaubild (Thumbnail) zu generieren
+- Sowohl in der Vorschau-Ansicht als auch im Dialog nutzbar
 
-### Risiko
+### Schritt 5: Canvas-Bilder in Briefvorlagen reparieren
+- **`LetterTemplateManager.tsx`**: Die `normalizeLayoutBlockContentImages`-Funktion auf alle Block-Typen erweitern, nicht nur `blockContent`
+- Sicherstellen, dass beim Laden einer Vorlage alle `imageUrl`-Werte uber `getPublicUrl` mit dem `storagePath` aktualisiert werden
+- Fallback: Wenn `imageUrl` fehlschlagt und `storagePath` vorhanden ist, `getPublicUrl` on-the-fly aufrufen
 
-Minimal. Die Funktion ist funktional identisch, nur die Identitaet ist stabil. Alle bestehenden Radix-Komponenten (Dialog, Tooltip, Popover, etc.) profitieren ebenfalls davon.
-
+### Betroffene Dateien
+- `supabase/functions/send-document-email/index.ts` - Build-Fehler
+- `src/components/task-decisions/DecisionAttachmentPreviewDialog.tsx` - Bild-Vorschau + Word/Excel/PDF intern
+- `src/components/LetterTemplateManager.tsx` - Canvas-Bild-Normalisierung erweitern
+- Eventuell neue Utility-Datei fur DOCX/XLSX-zu-HTML Konvertierung
