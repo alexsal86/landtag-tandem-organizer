@@ -27,7 +27,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Mail, Eye, CheckCircle, XCircle, Clock, Download, RefreshCw, Filter, ArrowUpDown, Calendar, Edit, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, Mail, Eye, CheckCircle, XCircle, Clock, Download, RefreshCw, Filter, ArrowUpDown, Calendar, Edit, X, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -63,6 +73,7 @@ export function EmailHistory() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showRetryDialog, setShowRetryDialog] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("sent");
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
@@ -101,11 +112,7 @@ export function EmailHistory() {
       setEmailLogs(typedData);
     } catch (error: any) {
       console.error("Error fetching email logs:", error);
-      toast({
-        title: "Fehler beim Laden",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Fehler beim Laden", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -136,15 +143,27 @@ export function EmailHistory() {
         .eq("id", emailId);
 
       if (error) throw error;
-
       toast({ title: "Abgebrochen", description: "Geplante E-Mail wurde abgebrochen" });
       fetchScheduledEmails();
     } catch (error: any) {
-      toast({
-        title: "Fehler",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteEmail = async () => {
+    if (!deleteTarget) return;
+    try {
+      const { error } = await supabase
+        .from("email_logs")
+        .delete()
+        .eq("id", deleteTarget);
+
+      if (error) throw error;
+      toast({ title: "Gelöscht", description: "E-Mail-Eintrag wurde gelöscht." });
+      setEmailLogs(prev => prev.filter(l => l.id !== deleteTarget));
+      setDeleteTarget(null);
+    } catch (error: any) {
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
     }
   };
 
@@ -365,7 +384,7 @@ export function EmailHistory() {
                       {format(new Date(log.sent_at), "dd.MM.yyyy HH:mm", { locale: de })}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1">
                         <Button variant="ghost" size="sm" onClick={() => handleViewDetails(log)}>
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -374,6 +393,14 @@ export function EmailHistory() {
                             <RefreshCw className="h-4 w-4" />
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteTarget(log.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -478,6 +505,24 @@ export function EmailHistory() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>E-Mail-Eintrag löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dieser Eintrag wird unwiderruflich aus dem Verlauf entfernt.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteEmail} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {selectedEmail && selectedEmail.failed_recipients && (
         <EmailRetryDialog
           open={showRetryDialog}
@@ -486,7 +531,10 @@ export function EmailHistory() {
           failedRecipients={selectedEmail.failed_recipients}
           emailSubject={selectedEmail.subject}
           emailBody={selectedEmail.body_html}
-          onRetrySuccess={fetchEmailLogs}
+          onRetrySuccess={() => {
+            fetchEmailLogs();
+            setShowRetryDialog(false);
+          }}
         />
       )}
     </div>

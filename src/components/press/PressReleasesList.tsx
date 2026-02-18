@@ -53,14 +53,27 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
   const [defaultTags, setDefaultTags] = useState("");
   const [emailTemplateSubject, setEmailTemplateSubject] = useState("");
   const [emailTemplateBody, setEmailTemplateBody] = useState("");
+  const [defaultDistListId, setDefaultDistListId] = useState("");
+  const [distributionLists, setDistributionLists] = useState<Array<{ id: string; name: string }>>([]);
   const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
     if (user && currentTenant) {
       fetchPressReleases();
       loadSettings();
+      fetchDistributionLists();
     }
   }, [user, currentTenant]);
+
+  const fetchDistributionLists = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("distribution_lists")
+      .select("id, name")
+      .eq("user_id", user.id)
+      .order("name");
+    setDistributionLists(data || []);
+  };
 
   const loadSettings = async () => {
     if (!currentTenant) return;
@@ -68,13 +81,14 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
       .from('app_settings')
       .select('setting_key, setting_value')
       .eq('tenant_id', currentTenant.id)
-      .in('setting_key', ['press_default_tags', 'press_email_template_subject', 'press_email_template_body']);
+      .in('setting_key', ['press_default_tags', 'press_email_template_subject', 'press_email_template_body', 'press_default_distribution_list_id']);
     let loadedSubject = '';
     let loadedBody = '';
     (data || []).forEach(s => {
       if (s.setting_key === 'press_default_tags') setDefaultTags(s.setting_value || '');
       if (s.setting_key === 'press_email_template_subject') loadedSubject = s.setting_value || '';
       if (s.setting_key === 'press_email_template_body') loadedBody = s.setting_value || '';
+      if (s.setting_key === 'press_default_distribution_list_id') setDefaultDistListId(s.setting_value || '');
     });
     setEmailTemplateSubject(loadedSubject || 'Pressemitteilung: {{titel}}');
     setEmailTemplateBody(loadedBody || 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unsere aktuelle Pressemitteilung:\n\n{{titel}}\n\n{{excerpt}}\n\nDen vollständigen Beitrag finden Sie unter:\n{{link}}');
@@ -88,6 +102,7 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
         { key: 'press_default_tags', value: defaultTags.trim() },
         { key: 'press_email_template_subject', value: emailTemplateSubject.trim() },
         { key: 'press_email_template_body', value: emailTemplateBody.trim() },
+        { key: 'press_default_distribution_list_id', value: defaultDistListId.trim() },
       ];
 
       for (const { key, value } of settings) {
@@ -218,8 +233,26 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
                 <div className="space-y-2">
                   <Label className="font-semibold">E-Mail-Template für Pressemitteilungen</Label>
                   <p className="text-xs text-muted-foreground">
-                    Variablen: {"{{titel}}"}, {"{{excerpt}}"}, {"{{link}}"}, {"{{datum}}"}
+                    Variablen: {"{{titel}}"}, {"{{excerpt}}"}, {"{{link}}"}, {"{{datum}}"}, {"{{inhalt}}"}
                   </p>
+                  <div className="space-y-2">
+                    <Label>Standard-Verteiler (BCC)</Label>
+                    <Select value={defaultDistListId} onValueChange={setDefaultDistListId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Kein Standard-Verteiler" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Kein Standard-Verteiler</SelectItem>
+                        {distributionLists.map((list) => (
+                          <SelectItem key={list.id} value={list.id}>{list.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Wird beim Presse-E-Mail-Versand automatisch als BCC eingetragen.
+                    </p>
+                  </div>
+                  <Separator />
                   <div className="space-y-2">
                     <Label>Betreff</Label>
                     <Input

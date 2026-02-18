@@ -26,7 +26,8 @@ import {
   ChevronDown,
   Save,
   Calendar as CalendarIcon,
-  Clock
+  Clock,
+  AlertTriangle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -73,6 +74,7 @@ interface SenderInfo {
   id: string;
   name: string;
   landtag_email: string;
+  is_default?: boolean;
 }
 
 interface EmailTemplate {
@@ -80,6 +82,16 @@ interface EmailTemplate {
   name: string;
   subject: string;
   body_html: string;
+}
+
+// Represents a recipient entry with its type (to/cc/bcc)
+interface RecipientEntry {
+  id: string; // unique key
+  type: 'to' | 'cc' | 'bcc';
+  label: string;
+  email?: string;
+  source: 'manual' | 'contact' | 'distribution_list';
+  sourceId?: string; // contact_id or distribution_list_id
 }
 
 export function EmailComposer() {
@@ -90,36 +102,36 @@ export function EmailComposer() {
 
   const [subject, setSubject] = useState("");
   const [bodyHtml, setBodyHtml] = useState("");
-  const [manualEmails, setManualEmails] = useState<string[]>([]);
-  const [manualEmailInput, setManualEmailInput] = useState("");
-  const [cc, setCc] = useState("");
-  const [bcc, setBcc] = useState("");
   const [replyTo, setReplyTo] = useState("");
   const [isScheduled, setIsScheduled] = useState(false);
   const [scheduledFor, setScheduledFor] = useState<Date | undefined>(undefined);
 
-  // Neue States
+  // Sender
   const [senderInfos, setSenderInfos] = useState<SenderInfo[]>([]);
   const [selectedSender, setSelectedSender] = useState<string>("");
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [previewContact, setPreviewContact] = useState<Contact | null>(null);
 
-  // Press release email tracking
+  // Press release tracking
   const [pressReleaseId, setPressReleaseId] = useState<string | null>(null);
 
-  // Recipients
+  // Data sources
   const [distributionLists, setDistributionLists] = useState<DistributionList[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
-  
-  const [selectedDistributionLists, setSelectedDistributionLists] = useState<string[]>([]);
-  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+
+  // Unified recipients with An/CC/BCC
+  const [recipients, setRecipients] = useState<RecipientEntry[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
-  
+
+  // UI
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  // Which field are we adding to?
+  const [activeRecipientField, setActiveRecipientField] = useState<'to' | 'cc' | 'bcc'>('to');
+  const [manualEmailInput, setManualEmailInput] = useState("");
 
   useEffect(() => {
     if (currentTenant) {
@@ -138,7 +150,6 @@ export function EmailComposer() {
     if (action === 'compose-press' && prId && currentTenant) {
       setPressReleaseId(prId);
       loadPressReleaseForEmail(prId);
-      // Clean up URL params
       searchParams.delete('action');
       searchParams.delete('pressReleaseId');
       setSearchParams(searchParams, { replace: true });
@@ -147,7 +158,6 @@ export function EmailComposer() {
 
   const loadPressReleaseForEmail = async (prId: string) => {
     try {
-      // Load press release data
       const { data: pr, error: prError } = await supabase
         .from('press_releases')
         .select('id, title, excerpt, content_html, ghost_post_url, published_at')
@@ -156,15 +166,16 @@ export function EmailComposer() {
 
       if (prError) throw prError;
 
-      // Load press email template from app_settings
+      // Load press email template and default distribution list from app_settings
       const { data: settings } = await supabase
         .from('app_settings')
         .select('setting_key, setting_value')
         .eq('tenant_id', currentTenant!.id)
-        .in('setting_key', ['press_email_template_subject', 'press_email_template_body']);
+        .in('setting_key', ['press_email_template_subject', 'press_email_template_body', 'press_default_distribution_list_id']);
 
       let templateSubject = 'Pressemitteilung: {{titel}}';
       let templateBody = 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unsere aktuelle Pressemitteilung:\n\n{{titel}}\n\n{{excerpt}}\n\nDen vollständigen Beitrag finden Sie unter:\n{{link}}';
+      let defaultDistListId: string | null = null;
 
       (settings || []).forEach(s => {
         if (s.setting_key === 'press_email_template_subject' && s.setting_value) {
@@ -173,9 +184,11 @@ export function EmailComposer() {
         if (s.setting_key === 'press_email_template_body' && s.setting_value) {
           templateBody = s.setting_value;
         }
+        if (s.setting_key === 'press_default_distribution_list_id' && s.setting_value) {
+          defaultDistListId = s.setting_value;
+        }
       });
 
-      // Replace template variables
       const publishedDate = pr.published_at
         ? format(new Date(pr.published_at), "dd.MM.yyyy", { locale: de })
         : format(new Date(), "dd.MM.yyyy", { locale: de });
@@ -185,14 +198,39 @@ export function EmailComposer() {
           .replace(/\{\{titel\}\}/g, pr.title || '')
           .replace(/\{\{excerpt\}\}/g, pr.excerpt || '')
           .replace(/\{\{link\}\}/g, pr.ghost_post_url || '')
-          .replace(/\{\{datum\}\}/g, publishedDate);
+          .replace(/\{\{datum\}\}/g, publishedDate)
+          .replace(/\{\{inhalt\}\}/g, pr.content_html || '');
       };
 
       setSubject(replacePressVars(templateSubject));
-      // Convert plain text newlines to HTML for the editor
       const bodyWithVars = replacePressVars(templateBody);
       const bodyAsHtml = bodyWithVars.replace(/\n/g, '<br>');
       setBodyHtml(bodyAsHtml);
+
+      // Auto-add default distribution list as BCC
+      if (defaultDistListId) {
+        const list = distributionLists.find(l => l.id === defaultDistListId);
+        if (list) {
+          addDistributionListRecipient(list, 'bcc');
+        }
+      }
+
+      // Auto-set sender email as "An" recipient
+      const defaultSenderInfo = senderInfos.find(s => s.id === selectedSender);
+      if (defaultSenderInfo?.landtag_email) {
+        // Add sender as To recipient for press emails
+        setRecipients(prev => {
+          // Don't add duplicate
+          if (prev.some(r => r.email === defaultSenderInfo.landtag_email && r.type === 'to')) return prev;
+          return [...prev, {
+            id: `manual-${Date.now()}`,
+            type: 'to',
+            label: defaultSenderInfo.landtag_email,
+            email: defaultSenderInfo.landtag_email,
+            source: 'manual',
+          }];
+        });
+      }
 
       toast({
         title: "Presse-E-Mail vorbereitet",
@@ -212,16 +250,16 @@ export function EmailComposer() {
     try {
       const { data, error } = await supabase
         .from("sender_information")
-        .select("id, name, landtag_email")
+        .select("id, name, landtag_email, is_default")
         .eq("tenant_id", currentTenant!.id)
         .eq("is_active", true);
       
       if (error) throw error;
       setSenderInfos(data || []);
       
-      // Set default sender
       const defaultSender = data?.find((s: any) => s.is_default);
       if (defaultSender) setSelectedSender(defaultSender.id);
+      else if (data && data.length > 0) setSelectedSender(data[0].id);
     } catch (error) {
       console.error("Error fetching sender infos:", error);
     }
@@ -295,7 +333,6 @@ export function EmailComposer() {
 
   const replaceVariables = (text: string, contact: Contact | null) => {
     if (!contact) return text;
-    
     return text
       .replace(/\{\{name\}\}/g, contact.name)
       .replace(/\{\{email\}\}/g, contact.email || "")
@@ -313,14 +350,12 @@ export function EmailComposer() {
 
       if (error) throw error;
 
-      // Get member counts
       const listsWithCounts = await Promise.all(
         (lists || []).map(async (list) => {
           const { count } = await supabase
             .from("distribution_list_members")
             .select("*", { count: "exact", head: true })
             .eq("distribution_list_id", list.id);
-          
           return { ...list, memberCount: count || 0 };
         })
       );
@@ -363,82 +398,132 @@ export function EmailComposer() {
     }
   };
 
-  const handleAddManualEmail = () => {
+  // --- Recipient management ---
+  const addManualRecipient = () => {
     const email = manualEmailInput.trim();
-    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setManualEmails([...manualEmails, email]);
-      setManualEmailInput("");
-    } else {
-      toast({
-        title: "Ungültige E-Mail",
-        description: "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
-        variant: "destructive",
-      });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "Ungültige E-Mail", description: "Bitte geben Sie eine gültige E-Mail-Adresse ein.", variant: "destructive" });
+      return;
     }
+    // Check duplicate
+    if (recipients.some(r => r.email === email && r.type === activeRecipientField)) {
+      toast({ title: "Bereits vorhanden", description: "Diese E-Mail ist bereits hinzugefügt.", variant: "destructive" });
+      return;
+    }
+    setRecipients(prev => [...prev, {
+      id: `manual-${Date.now()}-${Math.random()}`,
+      type: activeRecipientField,
+      label: email,
+      email,
+      source: 'manual',
+    }]);
+    setManualEmailInput("");
   };
 
-  const handleRemoveManualEmail = (email: string) => {
-    setManualEmails(manualEmails.filter(e => e !== email));
+  const addContactRecipient = (contact: Contact) => {
+    if (!contact.email) return;
+    if (recipients.some(r => r.sourceId === contact.id && r.source === 'contact' && r.type === activeRecipientField)) return;
+    setRecipients(prev => [...prev, {
+      id: `contact-${contact.id}-${activeRecipientField}`,
+      type: activeRecipientField,
+      label: contact.name,
+      email: contact.email,
+      source: 'contact',
+      sourceId: contact.id,
+    }]);
   };
 
-  const getTotalRecipients = () => {
-    const listMembers = selectedDistributionLists.reduce((sum, listId) => {
-      const list = distributionLists.find(l => l.id === listId);
-      return sum + (list?.memberCount || 0);
-    }, 0);
-    
-    return listMembers + selectedContacts.length + manualEmails.length;
+  const addDistributionListRecipient = (list: DistributionList, type?: 'to' | 'cc' | 'bcc') => {
+    const recipientType = type || activeRecipientField;
+    if (recipients.some(r => r.sourceId === list.id && r.source === 'distribution_list' && r.type === recipientType)) return;
+    setRecipients(prev => [...prev, {
+      id: `list-${list.id}-${recipientType}`,
+      type: recipientType,
+      label: `${list.name} (${list.memberCount} Mitglieder)`,
+      source: 'distribution_list',
+      sourceId: list.id,
+    }]);
   };
+
+  const removeRecipient = (id: string) => {
+    setRecipients(prev => prev.filter(r => r.id !== id));
+  };
+
+  const getRecipientsByType = (type: 'to' | 'cc' | 'bcc') => recipients.filter(r => r.type === type);
+
+  const getTotalRecipients = () => recipients.length;
+
+  // Check if only BCC recipients exist (no To)
+  const onlyBccRecipients = recipients.length > 0 && getRecipientsByType('to').length === 0 && getRecipientsByType('bcc').length > 0;
 
   const handleSend = async () => {
     if (!subject.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte geben Sie einen Betreff ein.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Bitte geben Sie einen Betreff ein.", variant: "destructive" });
       return;
     }
-
     if (!bodyHtml.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte geben Sie eine Nachricht ein.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Bitte geben Sie eine Nachricht ein.", variant: "destructive" });
       return;
     }
-
     if (getTotalRecipients() === 0) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie mindestens einen Empfänger aus.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Bitte wählen Sie mindestens einen Empfänger aus.", variant: "destructive" });
       return;
     }
-
     if (isScheduled && !scheduledFor) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie einen Zeitpunkt für den geplanten Versand.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Bitte wählen Sie einen Zeitpunkt für den geplanten Versand.", variant: "destructive" });
       return;
     }
 
     setLoading(true);
 
     try {
+      // Split recipients by type
+      const toRecipients = getRecipientsByType('to');
+      const ccRecipients = getRecipientsByType('cc');
+      const bccRecipients = getRecipientsByType('bcc');
+
+      // Collect emails and IDs
+      const manualToEmails = toRecipients.filter(r => r.source === 'manual').map(r => r.email!);
+      const manualCcEmails = ccRecipients.filter(r => r.source === 'manual').map(r => r.email!);
+      const manualBccEmails = bccRecipients.filter(r => r.source === 'manual').map(r => r.email!);
+      
+      const contactToIds = toRecipients.filter(r => r.source === 'contact').map(r => r.sourceId!);
+      const contactCcIds = ccRecipients.filter(r => r.source === 'contact').map(r => r.sourceId!);
+      const contactBccIds = bccRecipients.filter(r => r.source === 'contact').map(r => r.sourceId!);
+      
+      const distListIds = [...new Set(recipients.filter(r => r.source === 'distribution_list').map(r => r.sourceId!))];
+
+      // If only BCC, use sender as To
+      const senderInfo = senderInfos.find(s => s.id === selectedSender);
+      let finalToEmails = manualToEmails;
+      if (onlyBccRecipients && senderInfo) {
+        finalToEmails = [senderInfo.landtag_email];
+      }
+
+      // Merge contact_ids + contact emails from cc/bcc
+      // The edge function handles contact_ids as "to" recipients, so we need to resolve cc/bcc contacts to emails
+      const ccContactEmails: string[] = [];
+      const bccContactEmails: string[] = [];
+      
+      for (const cId of contactCcIds) {
+        const c = contacts.find(ct => ct.id === cId);
+        if (c?.email) ccContactEmails.push(c.email);
+      }
+      for (const cId of contactBccIds) {
+        const c = contacts.find(ct => ct.id === cId);
+        if (c?.email) bccContactEmails.push(c.email);
+      }
+
       const emailData = {
         subject,
         body_html: bodyHtml,
         reply_to: replyTo || undefined,
-        recipients: manualEmails,
-        cc: cc.split(",").map(e => e.trim()).filter(e => e),
-        bcc: bcc.split(",").map(e => e.trim()).filter(e => e),
-        distribution_list_ids: selectedDistributionLists,
-        contact_ids: selectedContacts,
+        recipients: finalToEmails,
+        recipient_emails: [],
+        cc: [...manualCcEmails, ...ccContactEmails],
+        bcc: [...manualBccEmails, ...bccContactEmails],
+        distribution_list_ids: distListIds,
+        contact_ids: contactToIds, // only To contacts go as contact_ids
         document_ids: selectedDocuments,
         tenant_id: currentTenant!.id,
         user_id: user!.id,
@@ -446,7 +531,6 @@ export function EmailComposer() {
       };
 
       if (isScheduled && scheduledFor) {
-        // Save to scheduled_emails table
         const { error } = await supabase.from("scheduled_emails").insert({
           ...emailData,
           scheduled_for: scheduledFor.toISOString(),
@@ -460,7 +544,6 @@ export function EmailComposer() {
           description: `E-Mail wird am ${format(scheduledFor, "dd.MM.yyyy 'um' HH:mm", { locale: de })} versendet.`,
         });
       } else {
-        // Immediate send
         const { data, error } = await supabase.functions.invoke("send-document-email", {
           body: emailData,
         });
@@ -496,14 +579,10 @@ export function EmailComposer() {
       // Reset form
       setSubject("");
       setBodyHtml("");
-      setManualEmails([]);
-      setCc("");
-      setBcc("");
       setReplyTo("");
       setIsScheduled(false);
       setScheduledFor(undefined);
-      setSelectedDistributionLists([]);
-      setSelectedContacts([]);
+      setRecipients([]);
       setSelectedDocuments([]);
     } catch (error: any) {
       console.error("Error sending emails:", error);
@@ -525,6 +604,42 @@ export function EmailComposer() {
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
+  };
+
+  // --- Recipient field component ---
+  const RecipientField = ({ type, label }: { type: 'to' | 'cc' | 'bcc'; label: string }) => {
+    const fieldRecipients = getRecipientsByType(type);
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">{label}</Label>
+          <Button
+            variant={activeRecipientField === type ? "default" : "outline"}
+            size="sm"
+            className="h-6 text-xs px-2"
+            onClick={() => setActiveRecipientField(type)}
+          >
+            {activeRecipientField === type ? "Aktiv" : "Auswählen"}
+          </Button>
+        </div>
+        {fieldRecipients.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {fieldRecipients.map((r) => (
+              <Badge key={r.id} variant="secondary" className="gap-1 text-xs">
+                {r.source === 'distribution_list' ? <Users className="h-3 w-3" /> : null}
+                {r.label}
+                <button onClick={() => removeRecipient(r.id)} className="ml-1 hover:text-destructive">
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+        {fieldRecipients.length === 0 && (
+          <p className="text-xs text-muted-foreground">Keine Empfänger</p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -556,85 +671,14 @@ export function EmailComposer() {
         </div>
       </div>
 
-      {/* Scheduled Sending Options */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={isScheduled}
-                onCheckedChange={setIsScheduled}
-              />
-              <div>
-                <Label className="text-base font-medium">Geplanter Versand</Label>
-                <p className="text-sm text-muted-foreground">
-                  E-Mail zu einem späteren Zeitpunkt automatisch versenden
-                </p>
-              </div>
-            </div>
-            
-            {isScheduled && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <CalendarIcon className="h-4 w-4" />
-                    {scheduledFor 
-                      ? format(scheduledFor, "dd.MM.yyyy HH:mm", { locale: de })
-                      : "Zeitpunkt wählen"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <div className="p-4 space-y-4">
-                    <Calendar
-                      mode="single"
-                      selected={scheduledFor}
-                      onSelect={(date) => {
-                        if (date) {
-                          const newDate = scheduledFor || new Date();
-                          newDate.setFullYear(date.getFullYear());
-                          newDate.setMonth(date.getMonth());
-                          newDate.setDate(date.getDate());
-                          setScheduledFor(new Date(newDate));
-                        }
-                      }}
-                      disabled={(date) => date < new Date()}
-                      className="pointer-events-auto"
-                      locale={de}
-                    />
-                    <div className="space-y-2">
-                      <Label>Uhrzeit</Label>
-                      <Input
-                        type="time"
-                        value={scheduledFor ? format(scheduledFor, "HH:mm") : ""}
-                        onChange={(e) => {
-                          const [hours, minutes] = e.target.value.split(":");
-                          const newDate = scheduledFor || new Date();
-                          newDate.setHours(parseInt(hours));
-                          newDate.setMinutes(parseInt(minutes));
-                          setScheduledFor(new Date(newDate));
-                        }}
-                      />
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid md:grid-cols-2 gap-6">
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Left: Email Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
+        {/* Left Column (60%): Email Content */}
         <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>E-Mail-Inhalt</span>
                 <div className="flex gap-2">
-                  {/* Template Dropdown */}
                   <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
                     <SelectTrigger className="w-[200px]">
                       <SelectValue placeholder="Template wählen" />
@@ -647,8 +691,6 @@ export function EmailComposer() {
                       ))}
                     </SelectContent>
                   </Select>
-                  
-                  {/* Save as Template */}
                   <Button variant="outline" size="sm" onClick={handleSaveAsTemplate}>
                     <Save className="h-4 w-4 mr-2" />
                     Als Template
@@ -657,7 +699,7 @@ export function EmailComposer() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Sender Selection */}
+              {/* Sender */}
               <div>
                 <Label htmlFor="sender">Absender *</Label>
                 <Select value={selectedSender} onValueChange={setSelectedSender}>
@@ -674,7 +716,7 @@ export function EmailComposer() {
                 </Select>
               </div>
 
-              {/* Reply-To Field */}
+              {/* Reply-To */}
               <div>
                 <Label htmlFor="replyTo">Antwort an (Reply-To)</Label>
                 <Input
@@ -686,6 +728,7 @@ export function EmailComposer() {
                 />
               </div>
 
+              {/* Subject */}
               <div>
                 <Label htmlFor="subject">Betreff *</Label>
                 <Input
@@ -696,11 +739,10 @@ export function EmailComposer() {
                 />
               </div>
 
+              {/* Body */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label htmlFor="body">Nachricht *</Label>
-                  
-                  {/* Variables Dropdown */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm">
@@ -723,30 +765,9 @@ export function EmailComposer() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                
                 <SimpleRichTextEditor
                   initialContent={bodyHtml}
                   onChange={setBodyHtml}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="cc">CC (optional)</Label>
-                <Input
-                  id="cc"
-                  value={cc}
-                  onChange={(e) => setCc(e.target.value)}
-                  placeholder="email1@example.com, email2@example.com"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="bcc">BCC (optional)</Label>
-                <Input
-                  id="bcc"
-                  value={bcc}
-                  onChange={(e) => setBcc(e.target.value)}
-                  placeholder="email1@example.com, email2@example.com"
                 />
               </div>
             </CardContent>
@@ -758,8 +779,6 @@ export function EmailComposer() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Vorschau</CardTitle>
-                  
-                  {/* Preview Contact Selector */}
                   <Select 
                     value={previewContact?.id || ""} 
                     onValueChange={(id) => {
@@ -801,163 +820,146 @@ export function EmailComposer() {
           )}
         </div>
 
-        {/* Right: Recipients */}
+        {/* Right Column (40%): Recipients + Documents + Scheduled */}
         <div className="space-y-4">
+          {/* An/CC/BCC Fields */}
           <Card>
             <CardHeader>
-              <CardTitle>Empfänger auswählen</CardTitle>
+              <CardTitle>Empfänger</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="manual" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="manual">
-                    <Mail className="h-4 w-4 mr-2" />
-                    Manuell
-                  </TabsTrigger>
-                  <TabsTrigger value="lists">
-                    <Users className="h-4 w-4 mr-2" />
-                    Verteiler
-                  </TabsTrigger>
-                  <TabsTrigger value="contacts">
-                    <UserCircle className="h-4 w-4 mr-2" />
-                    Kontakte
-                  </TabsTrigger>
-                </TabsList>
+            <CardContent className="space-y-4">
+              {/* BCC-only warning */}
+              {onlyBccRecipients && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm">
+                  <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                  <p className="text-muted-foreground">
+                    Nur BCC-Empfänger vorhanden. Ihre Absender-Adresse wird automatisch als „An" verwendet.
+                  </p>
+                </div>
+              )}
 
-                <TabsContent value="manual" className="space-y-4">
-                  <div className="flex gap-2">
-                    <Input
-                      value={manualEmailInput}
-                      onChange={(e) => setManualEmailInput(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && handleAddManualEmail()}
-                      placeholder="E-Mail-Adresse eingeben"
-                    />
-                    <Button onClick={handleAddManualEmail}>
-                      Hinzufügen
-                    </Button>
-                  </div>
-                  
-                  {manualEmails.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {manualEmails.map((email) => (
-                        <Badge key={email} variant="secondary" className="gap-1">
-                          {email}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto p-0 ml-1"
-                            onClick={() => handleRemoveManualEmail(email)}
+              <RecipientField type="to" label="An" />
+              <RecipientField type="cc" label="CC" />
+              <RecipientField type="bcc" label="BCC" />
+
+              <div className="border-t pt-4">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Empfänger zum aktiven Feld <Badge variant="outline" className="text-xs">{activeRecipientField.toUpperCase()}</Badge> hinzufügen:
+                </p>
+
+                <Tabs defaultValue="manual" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="manual" className="text-xs">
+                      <Mail className="h-3 w-3 mr-1" />
+                      Manuell
+                    </TabsTrigger>
+                    <TabsTrigger value="lists" className="text-xs">
+                      <Users className="h-3 w-3 mr-1" />
+                      Verteiler
+                    </TabsTrigger>
+                    <TabsTrigger value="contacts" className="text-xs">
+                      <UserCircle className="h-3 w-3 mr-1" />
+                      Kontakte
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="manual" className="space-y-3 mt-3">
+                    <div className="flex gap-2">
+                      <Input
+                        value={manualEmailInput}
+                        onChange={(e) => setManualEmailInput(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && addManualRecipient()}
+                        placeholder="E-Mail-Adresse eingeben"
+                        className="text-sm"
+                      />
+                      <Button onClick={addManualRecipient} size="sm">
+                        Hinzufügen
+                      </Button>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="lists" className="mt-3">
+                    <ScrollArea className="h-[250px]">
+                      <div className="space-y-2">
+                        {distributionLists.map((list) => (
+                          <div
+                            key={list.id}
+                            className="flex items-center justify-between p-2 rounded-lg border hover:bg-muted/50 cursor-pointer"
+                            onClick={() => addDistributionListRecipient(list)}
                           >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="lists" className="space-y-4">
-                  <ScrollArea className="h-[400px]">
-                    <div className="space-y-2">
-                      {distributionLists.map((list) => (
-                        <div
-                          key={list.id}
-                          className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50"
-                        >
-                          <Checkbox
-                            checked={selectedDistributionLists.includes(list.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedDistributionLists([
-                                  ...selectedDistributionLists,
-                                  list.id,
-                                ]);
-                              } else {
-                                setSelectedDistributionLists(
-                                  selectedDistributionLists.filter((id) => id !== list.id)
-                                );
-                              }
-                            }}
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium">{list.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {list.memberCount} Mitglied{list.memberCount !== 1 ? "er" : ""}
-                              {list.topic && ` • ${list.topic}`}
-                            </p>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm">{list.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {list.memberCount} Mitglied{list.memberCount !== 1 ? "er" : ""}
+                                {list.topic && ` • ${list.topic}`}
+                              </p>
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs">
+                              + {activeRecipientField.toUpperCase()}
+                            </Button>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  <TabsContent value="contacts" className="space-y-3 mt-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Kontakte durchsuchen..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 text-sm"
+                      />
                     </div>
-                  </ScrollArea>
-                </TabsContent>
 
-                <TabsContent value="contacts" className="space-y-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Kontakte durchsuchen..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-
-                  <ScrollArea className="h-[350px]">
-                    <div className="space-y-2">
-                      {filteredContacts.map((contact) => (
-                        <div
-                          key={contact.id}
-                          className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50"
-                        >
-                          <Checkbox
-                            checked={selectedContacts.includes(contact.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedContacts([...selectedContacts, contact.id]);
-                              } else {
-                                setSelectedContacts(
-                                  selectedContacts.filter((id) => id !== contact.id)
-                                );
-                              }
-                            }}
-                          />
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={contact.avatar_url} />
-                            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                              {getInitials(contact.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{contact.name}</p>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {contact.email}
-                            </p>
+                    <ScrollArea className="h-[250px]">
+                      <div className="space-y-1">
+                        {filteredContacts.map((contact) => (
+                          <div
+                            key={contact.id}
+                            className="flex items-center gap-2 p-2 rounded-lg border hover:bg-muted/50 cursor-pointer"
+                            onClick={() => addContactRecipient(contact)}
+                          >
+                            <Avatar className="h-7 w-7">
+                              <AvatarImage src={contact.avatar_url} />
+                              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                                {getInitials(contact.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{contact.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs flex-shrink-0">
+                              + {activeRecipientField.toUpperCase()}
+                            </Button>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </TabsContent>
-              </Tabs>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+                </Tabs>
+              </div>
             </CardContent>
           </Card>
 
           {/* Document attachments */}
           <Card>
             <CardHeader>
-              <CardTitle>
-                <FileText className="h-5 w-5 inline mr-2" />
-                Dokumente anhängen (optional)
+              <CardTitle className="text-base">
+                <FileText className="h-4 w-4 inline mr-2" />
+                Dokumente anhängen
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[200px]">
+              <ScrollArea className="h-[180px]">
                 <div className="space-y-2">
                   {documents.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50"
+                      className="flex items-center space-x-3 p-2 rounded-lg border hover:bg-muted/50"
                     >
                       <Checkbox
                         checked={selectedDocuments.includes(doc.id)}
@@ -965,20 +967,83 @@ export function EmailComposer() {
                           if (checked) {
                             setSelectedDocuments([...selectedDocuments, doc.id]);
                           } else {
-                            setSelectedDocuments(
-                              selectedDocuments.filter((id) => id !== doc.id)
-                            );
+                            setSelectedDocuments(selectedDocuments.filter((id) => id !== doc.id));
                           }
                         }}
                       />
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{doc.title}</p>
-                        <p className="text-xs text-muted-foreground">{doc.file_name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{doc.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{doc.file_name}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Scheduled Sending */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Switch checked={isScheduled} onCheckedChange={setIsScheduled} />
+                  <div>
+                    <Label className="text-sm font-medium">Geplanter Versand</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Automatisch später versenden
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {isScheduled && (
+                <div className="mt-4">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="gap-2 w-full">
+                        <CalendarIcon className="h-4 w-4" />
+                        {scheduledFor 
+                          ? format(scheduledFor, "dd.MM.yyyy HH:mm", { locale: de })
+                          : "Zeitpunkt wählen"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <div className="p-4 space-y-4">
+                        <Calendar
+                          mode="single"
+                          selected={scheduledFor}
+                          onSelect={(date) => {
+                            if (date) {
+                              const newDate = scheduledFor ? new Date(scheduledFor) : new Date();
+                              newDate.setFullYear(date.getFullYear());
+                              newDate.setMonth(date.getMonth());
+                              newDate.setDate(date.getDate());
+                              setScheduledFor(new Date(newDate));
+                            }
+                          }}
+                          disabled={(date) => date < new Date()}
+                          className="pointer-events-auto"
+                          locale={de}
+                        />
+                        <div className="space-y-2">
+                          <Label>Uhrzeit</Label>
+                          <Input
+                            type="time"
+                            value={scheduledFor ? format(scheduledFor, "HH:mm") : ""}
+                            onChange={(e) => {
+                              const [hours, minutes] = e.target.value.split(":");
+                              const newDate = scheduledFor ? new Date(scheduledFor) : new Date();
+                              newDate.setHours(parseInt(hours));
+                              newDate.setMinutes(parseInt(minutes));
+                              setScheduledFor(new Date(newDate));
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

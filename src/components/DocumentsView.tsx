@@ -76,6 +76,7 @@ import { useDocumentContacts } from "@/hooks/useDocumentContacts";
 import { useTopics } from "@/hooks/useTopics";
 import { useDocumentCategories } from "@/hooks/useDocumentCategories";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
 
 interface DocumentFolder {
   id: string;
@@ -162,7 +163,7 @@ export function DocumentsView() {
   const [activeTab, setActiveTab] = useState<'documents' | 'letters' | 'emails' | 'press'>('documents');
   const [showPressEditor, setShowPressEditor] = useState(false);
   const [selectedPressReleaseId, setSelectedPressReleaseId] = useState<string | null>(null);
-  const [emailSubTab, setEmailSubTab] = useState<'compose' | 'history' | 'templates'>('compose');
+  const [emailSubTab, setEmailSubTab] = useState<'compose' | 'history' | 'templates' | 'settings'>('compose');
   const [letterSubTab, setLetterSubTab] = useState<'active' | 'archived'>('active');
   const [autoArchiveDays, setAutoArchiveDays] = useState(30);
   const [showArchiveSettings, setShowArchiveSettings] = useState(false);
@@ -1702,9 +1703,9 @@ export function DocumentsView() {
             <div className="mb-6">
               <div className="flex border-b">
                 <button
-                  onClick={() => setLetterSubTab('active')}
+                  onClick={() => setEmailSubTab('compose')}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                    letterSubTab === 'active'
+                    emailSubTab === 'compose'
                       ? 'border-primary text-primary'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
@@ -1713,9 +1714,9 @@ export function DocumentsView() {
                   E-Mail verfassen
                 </button>
                 <button
-                  onClick={() => setLetterSubTab('archived')}
+                  onClick={() => setEmailSubTab('history')}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                    letterSubTab === 'archived'
+                    emailSubTab === 'history'
                       ? 'border-primary text-primary'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
@@ -1723,10 +1724,27 @@ export function DocumentsView() {
                   <Inbox className="h-4 w-4 inline mr-2" />
                   E-Mail-Verlauf
                 </button>
+                <button
+                  onClick={() => setEmailSubTab('settings')}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    emailSubTab === 'settings'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Settings className="h-4 w-4 inline mr-2" />
+                  Einstellungen
+                </button>
               </div>
             </div>
             
-            {letterSubTab === 'active' ? <EmailComposer /> : <EmailHistory />}
+            {emailSubTab === 'compose' ? (
+              <EmailComposer />
+            ) : emailSubTab === 'history' ? (
+              <EmailHistory />
+            ) : (
+              <SenderInformationManager />
+            )}
           </div>
         ) : activeTab === 'documents' ? (
           <>
