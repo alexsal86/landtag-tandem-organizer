@@ -134,7 +134,7 @@ async function encryptPayload(
   const subscriberPubBytes = base64ToUint8Array(p256dhKey);
   const subscriberPubKey = await crypto.subtle.importKey(
     'raw',
-    subscriberPubBytes,
+    subscriberPubBytes.buffer as ArrayBuffer,
     { name: 'ECDH', namedCurve: 'P-256' },
     false,
     []
@@ -168,7 +168,7 @@ async function encryptPayload(
   
   const ikm = new Uint8Array(
     await crypto.subtle.deriveBits(
-      { name: 'HKDF', hash: 'SHA-256', salt: authSecretBytes, info: infoIkm },
+      { name: 'HKDF', hash: 'SHA-256', salt: authSecretBytes.buffer as ArrayBuffer, info: infoIkm },
       ikmKey,
       256
     )
@@ -276,7 +276,7 @@ async function sendWebPush(
         'TTL': '86400',
         'Urgency': 'normal',
       },
-      body: encrypted.body,
+      body: encrypted.body as unknown as BodyInit,
     });
     
     if (response.status === 201 || response.status === 200) {

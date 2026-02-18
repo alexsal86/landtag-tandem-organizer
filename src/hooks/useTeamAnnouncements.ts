@@ -258,6 +258,8 @@ export function useTeamAnnouncements() {
       }
 
       toast.success("Mitteilung aktualisiert");
+      // Force refetch to ensure consistent state
+      await fetchAnnouncements();
       return true;
     } catch (error: any) {
       console.error("Error updating announcement:", error);

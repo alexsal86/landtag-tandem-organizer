@@ -222,6 +222,12 @@ export function MyWorkTasksTab() {
         });
         setTaskSnoozes(snoozeMap);
 
+        // Load comment counts for all tasks
+        const { data: commentsData } = await supabase
+          .from("task_comments")
+          .select("task_id")
+          .in("task_id", allTaskIds);
+
         const commentCounts: Record<string, number> = {};
         (commentsData || []).forEach((comment) => {
           if (!comment.task_id) return;
