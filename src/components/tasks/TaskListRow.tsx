@@ -97,6 +97,15 @@ export function TaskListRow({
   const hasSubtasks = childTasks.length > 0;
   const sourceLetterId = extractLetterSourceId(task.description);
   const currentAssigneeName = assigneeName ?? resolveAssigneeName?.(task.assigned_to);
+  const assigneeIds = (task.assigned_to || "")
+    .replace(/[{}]/g, "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const hasMultipleAssignees = assigneeIds.length > 1;
+  const assignTooltipText = currentAssigneeName
+    ? `Zugewiesen an ${currentAssigneeName}`
+    : "Zuweisen";
 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) {
@@ -235,6 +244,8 @@ export function TaskListRow({
               hasMeetingLink={hasMeetingLink}
               hasReminder={hasReminder}
               commentCount={currentCommentCount}
+              hasMultipleAssignees={hasMultipleAssignees}
+              assignTooltipText={assignTooltipText}
               onReminder={onReminder}
               onAssign={onAssign}
               onComment={onComment}

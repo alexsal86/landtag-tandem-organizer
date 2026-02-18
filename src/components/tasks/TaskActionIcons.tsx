@@ -18,6 +18,8 @@ interface TaskActionIconsProps {
   hasDocuments?: boolean;
   hasMeetingLink?: boolean;
   hasReminder?: boolean;
+  hasMultipleAssignees?: boolean;
+  assignTooltipText?: string;
   className?: string;
 }
 
@@ -36,6 +38,8 @@ export function TaskActionIcons({
   hasDocuments = false,
   hasMeetingLink = false,
   hasReminder = false,
+  hasMultipleAssignees = false,
+  assignTooltipText,
   className,
 }: TaskActionIconsProps) {
   return (
@@ -69,7 +73,10 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 hover:bg-muted/80 rounded-full"
+                className={cn(
+                  "h-6 w-6 hover:bg-muted/80 rounded-full",
+                  hasMultipleAssignees && "text-cyan-600"
+                )}
                 onClick={(e) => {
                   e.stopPropagation();
                   onAssign(taskId);
@@ -78,7 +85,7 @@ export function TaskActionIcons({
                 <UserPlus className="h-3 w-3" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top">Zuweisen</TooltipContent>
+            <TooltipContent side="top">{assignTooltipText || "Zuweisen"}</TooltipContent>
           </Tooltip>
         )}
 
