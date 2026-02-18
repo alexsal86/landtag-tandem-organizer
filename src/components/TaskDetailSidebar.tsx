@@ -53,6 +53,7 @@ interface Subtask {
   id: string;
   task_id: string;
   user_id: string;
+  title: string;
   description: string;
   assigned_to?: string; // Changed from string[] to string
   due_date?: string;
@@ -119,15 +120,25 @@ export function TaskDetailSidebar({
   const loadSubtasks = async (taskId: string) => {
     try {
       const { data, error } = await supabase
-        .from('subtasks')
-        .select('*, result_text, completed_at')
-        .eq('task_id', taskId)
-        .order('order_index', { ascending: true });
+        .from('tasks')
+        .select('*')
+        .eq('parent_task_id', taskId)
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setSubtasks((data || []).map(subtask => ({
-        ...subtask,
-        assigned_to: Array.isArray(subtask.assigned_to) ? subtask.assigned_to.join(',') : (subtask.assigned_to || '')
+      setSubtasks((data || []).map((subtask, index) => ({
+        id: subtask.id,
+        task_id: subtask.parent_task_id,
+        user_id: subtask.user_id,
+        title: subtask.title,
+        description: subtask.title || subtask.description || '',
+        assigned_to: Array.isArray(subtask.assigned_to) ? subtask.assigned_to.join(',') : (subtask.assigned_to || ''),
+        due_date: subtask.due_date,
+        is_completed: subtask.status === 'completed',
+        order_index: index,
+        created_at: subtask.created_at,
+        updated_at: subtask.updated_at,
+        completed_at: subtask.status === 'completed' ? subtask.updated_at : undefined,
       })));
     } catch (error) {
       console.error('Error loading subtasks:', error);
@@ -544,15 +555,19 @@ export function TaskDetailSidebar({
       const nextOrderIndex = Math.max(...subtasks.map(s => s.order_index), -1) + 1;
       
       const { error } = await supabase
-        .from('subtasks')
+        .from('tasks')
         .insert({
-          task_id: task.id,
+          parent_task_id: task.id,
           user_id: user.id,
-          description: newSubtask.description.trim(),
+          tenant_id: (task as any).tenant_id,
+          title: newSubtask.description.trim(),
+          description: '',
           assigned_to: newSubtask.assigned_to || '',
           due_date: newSubtask.due_date || null,
-          order_index: nextOrderIndex,
-          is_completed: false,
+          status: 'todo',
+          priority: task.priority || 'medium',
+          category: task.category || 'personal',
+          progress: 0,
         } as any);
 
       if (error) throw error;
@@ -576,9 +591,18 @@ export function TaskDetailSidebar({
 
   const updateSubtask = async (subtaskId: string, updates: Partial<Subtask>) => {
     try {
+      const taskUpdates: any = {};
+      if (updates.description !== undefined) taskUpdates.title = updates.description;
+      if (updates.assigned_to !== undefined) taskUpdates.assigned_to = updates.assigned_to;
+      if (updates.due_date !== undefined) taskUpdates.due_date = updates.due_date;
+      if (updates.is_completed !== undefined) {
+        taskUpdates.status = updates.is_completed ? 'completed' : 'todo';
+        taskUpdates.progress = updates.is_completed ? 100 : 0;
+      }
+
       const { error } = await supabase
-        .from('subtasks')
-        .update(updates as any)
+        .from('tasks')
+        .update(taskUpdates)
         .eq('id', subtaskId);
 
       if (error) throw error;
@@ -609,8 +633,8 @@ export function TaskDetailSidebar({
   const toggleSubtaskComplete = async (subtaskId: string, isCompleted: boolean) => {
     try {
       const { error } = await supabase
-        .from('subtasks')
-        .update({ is_completed: isCompleted })
+        .from('tasks')
+        .update({ status: isCompleted ? 'completed' : 'todo', progress: isCompleted ? 100 : 0 })
         .eq('id', subtaskId);
 
       if (error) throw error;
@@ -629,7 +653,7 @@ export function TaskDetailSidebar({
   const deleteSubtask = async (subtaskId: string) => {
     try {
       const { error } = await supabase
-        .from('subtasks')
+        .from('tasks')
         .delete()
         .eq('id', subtaskId);
 
@@ -869,7 +893,7 @@ export function TaskDetailSidebar({
                   {editingSubtask[subtask.id] ? (
                     <div className="space-y-3">
                       <Input
-                        value={editingSubtask[subtask.id]?.description || subtask.description}
+                        value={editingSubtask[subtask.id]?.description || subtask.title || subtask.description}
                         onChange={(e) => setEditingSubtask(prev => ({
                           ...prev,
                           [subtask.id]: { ...prev[subtask.id], description: e.target.value }
@@ -937,7 +961,7 @@ export function TaskDetailSidebar({
                       />
                        <div className="flex-1">
                          <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
-                           {subtask.description}
+                           {subtask.title || subtask.description}
                          </p>
                          {subtask.is_completed && subtask.result_text && (
                            <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
@@ -978,7 +1002,7 @@ export function TaskDetailSidebar({
                           onClick={() => setEditingSubtask(prev => ({
                             ...prev,
                             [subtask.id]: {
-                              description: subtask.description,
+                              description: subtask.title || subtask.description,
                               assigned_to: subtask.assigned_to,
                               due_date: subtask.due_date
                             }

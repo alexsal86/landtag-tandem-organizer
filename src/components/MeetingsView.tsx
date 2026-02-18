@@ -1507,40 +1507,41 @@ export function MeetingsView() {
         console.error('Error creating follow-up task (non-fatal):', followUpError);
       }
 
-      // Step 5: Create subtasks for items with results but no assignment
+      // Step 5: Create child tasks for items with results but no assignment
       if (followUpTask && agendaItemsData) {
-        const subtasksToCreate = [];
-        
+        const childTasksToCreate = [];
+
         for (const item of agendaItemsData) {
           // Skip items that were assigned (already handled in Step 3b)
           if (item.assigned_to) continue;
           // Skip items with task_id that were already handled in Step 3a
           if (item.task_id) continue;
-          
+
           if (item.result_text?.trim()) {
             let description = item.title;
             if (item.description?.trim()) description += `: ${item.description}`;
             if (item.notes?.trim()) description += (item.description ? ' - ' : ': ') + item.notes;
-            
-            subtasksToCreate.push({
-              task_id: followUpTask.id,
+
+            childTasksToCreate.push({
               user_id: user.id,
-              description: description,
-              result_text: item.result_text || '',
-              checklist_item_title: item.title,
+              tenant_id: currentTenant?.id || '',
+              parent_task_id: followUpTask.id,
+              title: description,
+              description: item.result_text || '',
               assigned_to: user.id,
-              is_completed: false,
-              order_index: subtasksToCreate.length,
-              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+              status: 'todo',
+              priority: 'medium',
+              category: 'meeting',
+              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             });
           }
         }
-        
-        if (subtasksToCreate.length > 0) {
+
+        if (childTasksToCreate.length > 0) {
           try {
-            await supabase.from('subtasks').insert(subtasksToCreate);
-          } catch (subtaskError) {
-            console.error('Error creating subtasks (non-fatal):', subtaskError);
+            await supabase.from('tasks').insert(childTasksToCreate);
+          } catch (childTaskError) {
+            console.error('Error creating child tasks (non-fatal):', childTaskError);
           }
         }
       }
@@ -1562,7 +1563,7 @@ export function MeetingsView() {
         console.error('Error processing quick note results (non-fatal):', noteResultError);
       }
 
-      // Step 5c: Process task results - add subtask to original task
+      // Step 5c: Process task results - add child task to original task
       try {
         const taskSystemItems = agendaItemsData?.filter(item => item.system_type === 'tasks') || [];
         for (const taskItem of taskSystemItems) {
@@ -1577,23 +1578,16 @@ export function MeetingsView() {
               if (!originalTask) continue;
               
               const meetingContext = `Aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}`;
-              
-              const { data: maxOrder } = await supabase
-                .from('subtasks')
-                .select('order_index')
-                .eq('task_id', taskId)
-                .order('order_index', { ascending: false })
-                .limit(1);
-              
-              const nextOrder = (maxOrder?.[0]?.order_index ?? -1) + 1;
-              
-              await supabase.from('subtasks').insert({
-                task_id: taskId,
+              await supabase.from('tasks').insert({
                 user_id: user.id,
-                description: `${resultText}\n${meetingContext}`,
+                tenant_id: currentTenant?.id || '',
+                parent_task_id: taskId,
+                title: `${resultText}`,
+                description: meetingContext,
                 assigned_to: originalTask.user_id || user.id,
-                is_completed: false,
-                order_index: nextOrder,
+                status: 'todo',
+                priority: 'medium',
+                category: 'meeting',
               });
             }
           } catch (e) {
@@ -1604,7 +1598,7 @@ export function MeetingsView() {
         console.error('Error processing task results (non-fatal):', taskResultError);
       }
 
-      // Step 5d: Create single task with subtasks for starred appointments
+      // Step 5d: Create single task with child tasks for starred appointments
       try {
         const meetingTenantId = currentTenant?.id || meeting.tenant_id;
         if (!meetingTenantId) {
@@ -1657,7 +1651,7 @@ export function MeetingsView() {
               (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
             );
             
-            // Create one task per participant with the same subtasks
+            // Create one task per participant with the same child tasks
             for (const participantId of participantIds) {
               const { data: apptTask } = await supabase
                 .from('tasks')
@@ -1676,20 +1670,23 @@ export function MeetingsView() {
                 .single();
               
               if (apptTask) {
-                const subtasks = allAppointments.map((apt, idx) => ({
-                  task_id: apptTask.id,
+                const childTasks = allAppointments.map((apt) => ({
                   user_id: user.id,
-                  description: `${apt.title} (${format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`,
+                  tenant_id: meetingTenantId,
+                  parent_task_id: apptTask.id,
+                  title: `${apt.title} (${format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`,
+                  description: null,
                   assigned_to: participantId,
-                  is_completed: false,
-                  order_index: idx,
+                  status: 'todo',
+                  priority: 'medium',
+                  category: 'meeting',
                 }));
-                
-                await supabase.from('subtasks').insert(subtasks);
+
+                await supabase.from('tasks').insert(childTasks);
               }
             }
             
-            console.log(`Created starred appointments tasks for ${participantIds.length} participants with ${allAppointments.length} subtasks each`);
+            console.log(`Created starred appointments tasks for ${participantIds.length} participants with ${allAppointments.length} child tasks each`);
           }
         }
       } catch (starredError) {
