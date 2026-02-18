@@ -1,44 +1,102 @@
 
 
-# Zwei Fixes: Build-Fehler (Chat) und Bilder in Briefvorlagen
+## Egress-Reduktion: PostgREST und Realtime optimieren
 
-## Problem 1: Build-Fehler blockiert die App
+### Analyse der Hauptverursacher
 
-In `src/components/task-decisions/TaskDecisionDetails.tsx` Zeile 584 wird der Typ `DecisionComment` referenziert, den es nicht gibt. Die alte `renderDecisionComment`-Funktion ist toter Code -- sie wird nicht mehr aufgerufen, da die Kommentare jetzt ueber die `CommentThread`-Komponente gerendert werden (Zeile 914-922). Der Build-Fehler verhindert aber, dass die App korrekt laeuft.
-
-**Loesung:** Die gesamte `renderDecisionComment`-Funktion (Zeilen 584-629) entfernen. Sie wird nirgends mehr verwendet.
+Die App hat drei systematische Probleme, die zu exzessivem Egress fuehren:
 
 ---
 
-## Problem 2: Bilder in Briefvorlagen brechen nach Neuladen
+### Problem 1: Realtime-Subscriptions ohne Filter loesen vollstaendige Refetches aus
 
-**Ursache:** Beim Einfuegen eines Bildes wird eine temporaere `blobUrl` (via `URL.createObjectURL()`) erzeugt und im Element gespeichert. Diese URL lebt nur so lange wie die aktuelle Browser-Session. Beim Rendering wird `element.blobUrl || element.imageUrl` verwendet (Zeile 718) -- die `blobUrl` hat also Prioritaet. Beim Neuladen ist die `blobUrl` aber tot, und da sie als String im JSON gespeichert wurde (z.B. `"blob:https://..."`) ist sie nicht leer, sondern ein toter Link. Das Bild bricht.
+Fast alle Realtime-Subscriptions verwenden `event: '*'` ohne tenant_id-Filter und loesen bei JEDEM Change auf der Tabelle einen kompletten Refetch aus -- auch bei Aenderungen anderer Tenants/User.
 
-**Loesung (simpel):**
+**Betroffene Stellen (18 Dateien):**
 
-1. **Beim Speichern `blobUrl` entfernen**: In `LetterTemplateManager.tsx` vor dem Speichern in die Datenbank die `blobUrl`-Property aus allen `header_elements` herausfiltern. `blobUrl` ist nur ein Laufzeit-Cache und darf nicht persistiert werden.
+| Datei | Tabellen | Auswirkung |
+|---|---|---|
+| `MyWorkView.tsx` | tasks, task_decisions, meetings, case_files, event_plannings + 5 weitere | 10 Subscriptions, jeder Change ruft `loadCounts()` + `refreshCounts()` auf |
+| `CombinedMessagesWidget.tsx` | messages, message_confirmations, message_recipients | 3 Subscriptions, jeder Change ruft `fetchUnreadCounts()` auf (2x RPC!) |
+| `BlackBoard.tsx` | messages, message_confirmations | 2 Subscriptions, jeder Change ruft `fetchPublicMessages()` auf |
+| `MessageSystem.tsx` | messages, message_recipients, message_confirmations | 3 Subscriptions, jeder Change ruft `fetchMessages()` auf (N+1 Queries!) |
+| `useNavigationNotifications.tsx` | notifications, user_navigation_visits | 2 Subscriptions, jeder Change ruft `loadNavigationCounts()` auf |
+| `useCounts.tsx` | contacts, distribution_lists | 2 Subscriptions, jeder Change ruft `fetchCounts()` auf (4 Queries) |
+| `useTeamAnnouncements.ts` | team_announcements, team_announcement_dismissals | 2 Subscriptions |
+| `useStakeholderPreload.tsx` | contacts | 1 Subscription, laedt ALLE Kontakte neu |
+| `useAllPersonContacts.tsx` | contacts | 1 Subscription, laedt ALLE Kontakte neu |
 
-2. **Rendering-Prioritaet umkehren**: In `StructuredHeaderEditor.tsx` Zeile 718 die Prioritaet aendern auf `element.imageUrl || element.blobUrl`. Die `imageUrl` (die echte Supabase-Public-URL) ist die zuverlaessige Quelle und sollte immer bevorzugt werden. Die `blobUrl` dient nur als schneller Fallback direkt nach dem Upload, bevor die `imageUrl` geladen ist.
-
-3. **Gleiche Bereinigung fuer `footer_blocks` und `layout_settings`**, falls dort ebenfalls Bild-Elemente mit `blobUrl` gespeichert werden.
+**Fix:** Filter auf `filter: \`tenant_id=eq.\${currentTenant.id}\`` setzen wo moeglich, und bei user-spezifischen Tabellen auf `user_id=eq.${user.id}`. Events auf `INSERT` oder `UPDATE` einschraenken statt `*`.
 
 ---
 
-## Technische Details
+### Problem 2: Doppelte und dreifache Subscriptions auf dieselben Tabellen
 
-### Datei 1: `src/components/task-decisions/TaskDecisionDetails.tsx`
-- Zeilen 584-629 (`renderDecisionComment` Funktion) komplett entfernen
+Wenn ein User das Dashboard oeffnet, laufen gleichzeitig:
 
-### Datei 2: `src/components/letters/StructuredHeaderEditor.tsx`
-- Zeile 718: `element.blobUrl || element.imageUrl` aendern zu `element.imageUrl || element.blobUrl`
+- `BlackBoard.tsx` hoert auf `messages` + `message_confirmations`
+- `CombinedMessagesWidget.tsx` hoert auf `messages` + `message_confirmations` + `message_recipients`
+- `MessageSystem.tsx` hoert auf `messages` + `message_recipients` + `message_confirmations`
 
-### Datei 3: `src/components/LetterTemplateManager.tsx`
-- Vor dem Speichern (Insert und Update, ca. Zeilen 280-310): Eine Hilfsfunktion einbauen, die `blobUrl` aus allen Elementen in `header_elements`, `footer_blocks` und `layout_settings` entfernt:
+Das sind **3 separate Channels** die auf dieselben 3 Tabellen hoeren. Jede Aenderung loest 3 separate Refetches aus.
 
-```typescript
-const stripBlobUrls = (elements: any[]) =>
-  elements.map(({ blobUrl, ...rest }) => rest);
-```
+Dazu kommt:
+- `useNotifications.tsx` hoert auf `notifications` (INSERT + UPDATE)
+- `useNavigationNotifications.tsx` hoert ebenfalls auf `notifications` (alle Events)
 
-- Diese auf `formData.header_elements`, `formData.footer_blocks` und die Bild-Elemente in `formData.layout_settings` anwenden, bevor die Daten an Supabase gesendet werden.
+**Fix:** Nachrichten-Subscriptions in einen gemeinsamen Hook zusammenfuehren. Notifications-Subscriptions konsolidieren.
 
+---
+
+### Problem 3: `select('*')` statt gezielter Spaltenauswahl
+
+122 Dateien verwenden `.select('*')`. Das laedt alle Spalten, auch wenn nur 2-3 gebraucht werden. Bei Tabellen mit JSONB-Feldern (z.B. `layout_data`, `content`) vervielfacht das den Egress.
+
+**Wichtigste Kandidaten:**
+- `contacts`-Tabelle: Hat viele Spalten, wird aber oft nur fuer Name + Avatar gebraucht
+- `event_plannings`: Wird mit `select('*')` geladen, obwohl nur Titel und Datum gezeigt werden
+- `documents`: Wird mit `select('*')` geladen, kann grosse content-Felder haben
+
+**Fix:** Schrittweise `.select('*')` durch explizite Spaltenauswahl ersetzen, priorisiert nach Tabellengroesse.
+
+---
+
+### Problem 4: `removeAllChannels()` in RealTimeSync
+
+In `RealTimeSync.tsx` Zeile 239 steht `supabase.removeAllChannels()`. Das entfernt ALLE Channels im gesamten Client -- auch die von Notifications, Counts, etc. Diese muessen sich dann alle neu verbinden, was zusaetzlichen Overhead erzeugt.
+
+**Fix:** Nur den eigenen Channel entfernen, nicht alle.
+
+---
+
+### Problem 5: CombinedMessagesWidget ruft RPC zweimal auf
+
+`fetchUnreadCounts()` ruft `get_user_messages` zweimal auf (Zeile 28 und 37) -- einmal fuer Blackboard-Count, einmal fuer Messages-Count. Das ist derselbe RPC-Call mit denselben Daten.
+
+**Fix:** Einmal aufrufen, Ergebnis in zwei Filter aufteilen.
+
+---
+
+### Umsetzungsplan (priorisiert nach Impact)
+
+**Phase 1 -- Sofort-Fixes (groesster Impact, geringstes Risiko):**
+
+1. **`RealTimeSync.tsx`**: `removeAllChannels()` durch `supabase.removeChannel(channel)` ersetzen
+2. **`CombinedMessagesWidget.tsx`**: RPC-Doppelaufruf eliminieren (1 statt 2 Calls)
+3. **Alle Realtime-Subscriptions**: `filter` Parameter hinzufuegen (tenant_id oder user_id)
+
+**Phase 2 -- Konsolidierung (mittel):**
+
+4. **Messages-Subscriptions zusammenfuehren**: Ein `useMessagesRealtime`-Hook statt 3 separate Channels auf messages/confirmations/recipients
+5. **Notifications-Subscriptions zusammenfuehren**: `useNotifications` und `useNavigationNotifications` teilen sich einen Channel
+
+**Phase 3 -- Select-Optimierung (laengerfristig):**
+
+6. **`select('*')` schrittweise ersetzen**: Priorisiert contacts, event_plannings, documents
+7. **MyWorkView Debouncing**: 10 Tabellen-Subscriptions die alle `loadCounts()` aufrufen -- Debounce auf 2 Sekunden
+
+### Erwartete Reduktion
+
+- Phase 1: ~40-50% weniger Realtime-Egress (Filter verhindern irrelevante Events)
+- Phase 2: ~20-30% weniger PostgREST-Egress (weniger redundante Queries)
+- Phase 3: ~10-20% weniger PostgREST-Egress (kleinere Payloads)

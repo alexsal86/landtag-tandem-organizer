@@ -250,7 +250,7 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
                   ))}
                 </ul>
               </div>,
-              anchorElementRef.current,
+              portalTarget,
             )
       }}
     />

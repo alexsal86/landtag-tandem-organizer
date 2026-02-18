@@ -173,8 +173,9 @@ Deno.serve(async (req) => {
     // Process external events
     for (const externalEvent of externalEvents || []) {
       try {
-        const userId = externalEvent.external_calendars.user_id;
-        const tenantId = externalEvent.external_calendars.tenant_id;
+        const calData = Array.isArray(externalEvent.external_calendars) ? externalEvent.external_calendars[0] : externalEvent.external_calendars;
+        const userId = calData?.user_id;
+        const tenantId = calData?.tenant_id;
 
         // Get user settings
         const { data: settings } = await supabase
