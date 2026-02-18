@@ -51,6 +51,7 @@ interface TaskListRowProps {
   onDocuments?: (taskId: string) => void;
   onAddToMeeting?: (taskId: string) => void;
   onCreateChildTask?: (taskId: string) => void;
+  onEdit?: (taskId: string) => void;
   getChildTasks?: (taskId: string) => Task[];
 }
 
@@ -75,6 +76,7 @@ export function TaskListRow({
   onDocuments,
   onAddToMeeting,
   onCreateChildTask,
+  onEdit,
   getChildTasks,
 }: TaskListRowProps) {
   const [editingTitle, setEditingTitle] = useState(false);
@@ -225,6 +227,7 @@ export function TaskListRow({
               onDocuments={onDocuments}
               onAddToMeeting={onAddToMeeting}
               onCreateChildTask={onCreateChildTask}
+              onEdit={onEdit}
             />
           </div>
 
@@ -257,6 +260,7 @@ export function TaskListRow({
               onDocuments={onDocuments}
               onAddToMeeting={onAddToMeeting}
               onCreateChildTask={onCreateChildTask}
+              onEdit={onEdit}
               getChildTasks={getChildTasks}
             />
           ))}
