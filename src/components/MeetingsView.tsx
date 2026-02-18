@@ -166,6 +166,8 @@ export function MeetingsView() {
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
   const [starredAppointmentIds, setStarredAppointmentIds] = useState<Set<string>>(new Set());
   const [expandedApptNotes, setExpandedApptNotes] = useState<Set<string>>(new Set());
+  const [showCarryoverBuffer, setShowCarryoverBuffer] = useState(false);
+  const [carryoverBufferItems, setCarryoverBufferItems] = useState<any[]>([]);
 
   // Handle URL action parameter for QuickActions
   useEffect(() => {
@@ -208,6 +210,7 @@ export function MeetingsView() {
       loadProfiles();
       loadTasks();
       loadMeetingTemplates();
+      loadCarryoverBufferItems();
     } else {
       console.log('No user or tenant found, skipping data load');
     }
@@ -1695,6 +1698,9 @@ export function MeetingsView() {
         console.error('Error creating starred appointments tasks (non-fatal):', starredError);
       }
 
+      // Step 5e: Remove carryover buffer entries that were successfully completed in this meeting
+      await clearCompletedCarryoverBuffer(meeting);
+
       // Step 6: Archiving meeting
       // Archive the meeting
       const { data: archiveData, error: archiveError } = await supabase
@@ -1745,6 +1751,90 @@ export function MeetingsView() {
     }
   };
 
+
+  const loadCarryoverBufferItems = async () => {
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('carryover_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setCarryoverBufferItems(data || []);
+    } catch (error) {
+      console.error('Error loading carryover buffer:', error);
+    }
+  };
+
+  const ensureReviewParentItem = async (meetingId: string) => {
+    const { data: existing } = await supabase
+      .from('meeting_agenda_items')
+      .select('id, order_index')
+      .eq('meeting_id', meetingId)
+      .eq('title', 'Rückblick')
+      .is('parent_id', null)
+      .maybeSingle();
+
+    if (existing?.id) return existing.id;
+
+    // move existing top-level items down by one to keep review always first
+    const { data: topLevelItems } = await supabase
+      .from('meeting_agenda_items')
+      .select('id, order_index')
+      .eq('meeting_id', meetingId)
+      .is('parent_id', null)
+      .order('order_index', { ascending: true });
+
+    if (topLevelItems && topLevelItems.length > 0) {
+      for (const item of topLevelItems) {
+        await supabase
+          .from('meeting_agenda_items')
+          .update({ order_index: (item.order_index || 0) + 1 })
+          .eq('id', item.id);
+      }
+    }
+
+    const { data: created, error: createError } = await supabase
+      .from('meeting_agenda_items')
+      .insert({
+        meeting_id: meetingId,
+        title: 'Rückblick',
+        description: 'Übertragene Punkte aus vorherigen Besprechungen',
+        order_index: 0,
+        is_completed: false,
+        is_recurring: false,
+      })
+      .select('id')
+      .single();
+
+    if (createError) throw createError;
+    return created.id;
+  };
+
+  const clearCompletedCarryoverBuffer = async (meeting: Meeting) => {
+    if (!user?.id || !meeting.id || !meeting.template_id) return;
+    const { data: carriedItems } = await supabase
+      .from('meeting_agenda_items')
+      .select('title, source_meeting_id')
+      .eq('meeting_id', meeting.id)
+      .not('source_meeting_id', 'is', null);
+
+    if (!carriedItems || carriedItems.length === 0) return;
+
+    for (const item of carriedItems) {
+      await supabase
+        .from('carryover_items')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('template_id', meeting.template_id)
+        .eq('title', item.title)
+        .eq('original_meeting_id', item.source_meeting_id);
+    }
+
+    await loadCarryoverBufferItems();
+  };
+
   const processCarryoverItems = async (meeting: Meeting, carryoverItems: AgendaItem[]) => {
     if (!user || !meeting.template_id) return;
 
@@ -1768,6 +1858,7 @@ export function MeetingsView() {
           title: "Punkte übertragen",
           description: `${carryoverItems.length} Punkte wurden auf die nächste Besprechung übertragen`
         });
+        await loadCarryoverBufferItems();
       } else {
         // Store in carryover_items table for later
         await storeCarryoverItems(carryoverItems, meeting);
@@ -1775,6 +1866,7 @@ export function MeetingsView() {
           title: "Punkte vorgemerkt",
           description: `${carryoverItems.length} Punkte wurden für die nächste Besprechung vorgemerkt`
         });
+        await loadCarryoverBufferItems();
       }
     } catch (error) {
       console.error('Error processing carryover items:', error);
@@ -1787,29 +1879,42 @@ export function MeetingsView() {
   };
 
   const transferItemsToMeeting = async (items: AgendaItem[], targetMeetingId: string, sourceMeeting: Meeting) => {
+    const reviewParentId = await ensureReviewParentItem(targetMeetingId);
+
+    const { data: existingChildren } = await supabase
+      .from('meeting_agenda_items')
+      .select('title, source_meeting_id')
+      .eq('meeting_id', targetMeetingId)
+      .eq('parent_id', reviewParentId);
+
+    let existingSet = new Set((existingChildren || []).map((i: any) => `${i.source_meeting_id}::${i.title}`));
+
+    const { data: maxOrderData } = await supabase
+      .from('meeting_agenda_items')
+      .select('order_index')
+      .eq('meeting_id', targetMeetingId)
+      .eq('parent_id', reviewParentId)
+      .order('order_index', { ascending: false })
+      .limit(1);
+
+    let nextOrderIndex = (maxOrderData?.[0]?.order_index || 0) + 1;
+
     for (const item of items) {
       try {
-        // Get current max order index for target meeting
-        const { data: maxOrderData } = await supabase
-          .from('meeting_agenda_items')
-          .select('order_index')
-          .eq('meeting_id', targetMeetingId)
-          .order('order_index', { ascending: false })
-          .limit(1);
+        const dedupeKey = `${sourceMeeting.id}::${item.title}`;
+        if (existingSet.has(dedupeKey)) continue;
 
-        const nextOrderIndex = (maxOrderData?.[0]?.order_index || 0) + 1;
-
-        // Insert the carried over item
         const { error } = await supabase
           .from('meeting_agenda_items')
           .insert({
             meeting_id: targetMeetingId,
+            parent_id: reviewParentId,
             title: item.title,
             description: item.description,
             notes: item.notes,
             result_text: item.result_text,
             assigned_to: item.assigned_to,
-            order_index: nextOrderIndex,
+            order_index: nextOrderIndex++,
             source_meeting_id: sourceMeeting.id,
             original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
             original_meeting_title: sourceMeeting.title,
@@ -1818,6 +1923,8 @@ export function MeetingsView() {
 
         if (error) {
           console.error('Error transferring item:', error);
+        } else {
+          existingSet.add(dedupeKey);
         }
       } catch (error) {
         console.error('Error transferring agenda item:', item.title, error);
@@ -1868,20 +1975,26 @@ export function MeetingsView() {
       
       console.log(`📋 Found ${pendingItems.length} carryover items to apply`);
       
-      // Get current max order_index for the new meeting
+      const reviewParentId = await ensureReviewParentItem(meetingId);
+
       const { data: existingItems } = await supabase
         .from('meeting_agenda_items')
-        .select('order_index')
+        .select('order_index, title, source_meeting_id')
         .eq('meeting_id', meetingId)
-        .order('order_index', { ascending: false })
-        .limit(1);
-      
+        .eq('parent_id', reviewParentId)
+        .order('order_index', { ascending: false });
+
+      const existingSet = new Set((existingItems || []).map((i: any) => `${i.source_meeting_id}::${i.title}`));
       let nextOrderIndex = (existingItems?.[0]?.order_index || 0) + 1;
-      
-      // Insert carryover items into the new meeting
+
+      // Insert carryover items into the new meeting (buffer remains until a meeting with them is completed)
       for (const item of pendingItems) {
+        const dedupeKey = `${item.original_meeting_id}::${item.title}`;
+        if (existingSet.has(dedupeKey)) continue;
+
         const { error: insertError } = await supabase.from('meeting_agenda_items').insert({
           meeting_id: meetingId,
+          parent_id: reviewParentId,
           title: item.title,
           description: item.description,
           notes: item.notes,
@@ -1893,15 +2006,11 @@ export function MeetingsView() {
           original_meeting_title: item.original_meeting_title,
           carryover_notes: `Übertragen von: ${item.original_meeting_title} (${item.original_meeting_date})`
         });
-        
+
         if (insertError) {
           console.error('Error inserting carryover item:', insertError);
         }
       }
-      
-      // Delete the applied carryover items
-      const itemIds = pendingItems.map(i => i.id);
-      await supabase.from('carryover_items').delete().in('id', itemIds);
       
       toast({
         title: "Übertragene Punkte hinzugefügt",
@@ -3217,6 +3326,9 @@ export function MeetingsView() {
                     </div>
                   </DialogContent>
                 </Dialog>
+                <Button variant="outline" size="sm" onClick={async () => { await loadCarryoverBufferItems(); setShowCarryoverBuffer(true); }} title="Übertragene Punkte anzeigen">
+                  <Repeat className="h-4 w-4" />
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => setShowArchive(true)}>
                   <Archive className="h-4 w-4" />
                 </Button>
@@ -3409,6 +3521,30 @@ export function MeetingsView() {
                 )}
               </div>
             </div>
+
+            <Dialog open={showCarryoverBuffer} onOpenChange={setShowCarryoverBuffer}>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Zwischenspeicher: Übertragene Punkte</DialogTitle>
+                  <DialogDescription>
+                    Diese Punkte wurden auf die nächste Sitzung vorgemerkt und bleiben im Zwischenspeicher, bis sie in einer erfolgreich beendeten Besprechung behandelt wurden.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  {carryoverBufferItems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Keine übertragenen Punkte im Zwischenspeicher.</p>
+                  ) : carryoverBufferItems.map((item) => (
+                    <Card key={item.id}>
+                      <CardContent className="p-3 space-y-1">
+                        <p className="font-medium text-sm">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">Ursprung: {item.original_meeting_title || 'Unbekannt'} ({item.original_meeting_date || '-'})</p>
+                        {item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
 
           </div>
         </ResizablePanel>
