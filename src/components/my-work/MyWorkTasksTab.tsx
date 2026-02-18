@@ -599,12 +599,70 @@ export function MyWorkTasksTab() {
     };
   }, [createdTasks, assignedTasks, taskSnoozes]);
 
-  const renderTaskList = (tasks: Task[], title: string, emptyMessage: string) => {
+  const renderTaskList = (
+    tasks: Task[],
+    title: string,
+    emptyMessage: string,
+    options?: { scrollable?: boolean; compact?: boolean }
+  ) => {
+    const { scrollable = true, compact = false } = options || {};
+
+    const listContent = tasks.length === 0 ? (
+      <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
+    ) : viewType === "card" ? (
+      <div className="space-y-2 pr-2">
+        {tasks.map((task) => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            subtasks={subtasks[task.id]}
+            hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
+            hasReminder={!!taskSnoozes[task.id]}
+            onComplete={handleToggleComplete}
+            onSubtaskComplete={handleToggleSubtaskComplete}
+            onNavigate={(id) => navigate(`/tasks?id=${id}`)}
+            onUpdateTitle={handleUpdateTitle}
+            onUpdateDescription={handleUpdateDescription}
+            onUpdateDueDate={handleUpdateDueDate}
+            onReminder={handleReminder}
+            onAssign={handleAssign}
+            onComment={handleComment}
+            onDecision={handleDecision}
+            onDocuments={handleDocuments}
+            onAddToMeeting={handleAddToMeeting}
+          />
+        ))}
+      </div>
+    ) : (
+      <div className="border rounded-lg overflow-hidden">
+        {tasks.map((task) => (
+          <TaskListRow
+            key={task.id}
+            task={task}
+            subtasks={subtasks[task.id]}
+            hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
+            hasReminder={!!taskSnoozes[task.id]}
+            onComplete={handleToggleComplete}
+            onSubtaskComplete={handleToggleSubtaskComplete}
+            onNavigate={(id) => navigate(`/tasks?id=${id}`)}
+            onUpdateTitle={handleUpdateTitle}
+            onUpdateDueDate={handleUpdateDueDate}
+            onReminder={handleReminder}
+            onAssign={handleAssign}
+            onComment={handleComment}
+            onDecision={handleDecision}
+            onDocuments={handleDocuments}
+            onAddToMeeting={handleAddToMeeting}
+          />
+        ))}
+      </div>
+    );
+
     return (
-      <div className="flex flex-col h-full">
+      <div className={`flex flex-col ${scrollable ? 'h-full' : ''}`}>
         <div className="flex items-center justify-between mb-3 px-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-medium text-sm">{title}</h3>
+            <h3 className={`font-medium ${compact ? 'text-xs' : 'text-sm'}`}>{title}</h3>
             <Badge variant="secondary" className="text-xs">{tasks.length}</Badge>
           </div>
         </div>
@@ -712,6 +770,12 @@ export function MyWorkTasksTab() {
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Aufgaben</span>
           <Badge variant="outline">{totalTasks}</Badge>
+          <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+            Wiedervorlagen fällig: {dueFollowUpCount}
+          </Badge>
+          {hiddenScheduledCount > 0 && (
+            <Badge variant="secondary">Geplant: {hiddenScheduledCount}</Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -759,8 +823,8 @@ export function MyWorkTasksTab() {
               <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">{dueFollowUpCount}</Badge>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {renderTaskList(filteredDueCreatedTasks, "Von mir erstellt", "Keine fälligen Wiedervorlagen")}
-              {renderTaskList(filteredDueAssignedTasks, "Mir zugewiesen", "Keine fälligen Wiedervorlagen")}
+              {renderTaskList(filteredDueCreatedTasks, "Von mir erstellt", "Keine fälligen Wiedervorlagen", { scrollable: false, compact: true })}
+              {renderTaskList(filteredDueAssignedTasks, "Mir zugewiesen", "Keine fälligen Wiedervorlagen", { scrollable: false, compact: true })}
             </div>
           </div>
         </div>
