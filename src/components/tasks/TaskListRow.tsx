@@ -38,6 +38,7 @@ interface TaskListRowProps {
   hasReminder?: boolean;
   followUpDate?: string | null;
   commentCount?: number;
+  depth?: number;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
@@ -50,6 +51,7 @@ interface TaskListRowProps {
   onDocuments?: (taskId: string) => void;
   onAddToMeeting?: (taskId: string) => void;
   onCreateChildTask?: (taskId: string) => void;
+  onEdit?: (taskId: string) => void;
   getChildTasks?: (taskId: string) => Task[];
 }
 
@@ -74,12 +76,14 @@ export function TaskListRow({
   onDocuments,
   onAddToMeeting,
   onCreateChildTask,
+  onEdit,
   getChildTasks,
 }: TaskListRowProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
   const [expanded, setExpanded] = useState(false);
   const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const childTasks = getChildTasks ? getChildTasks(task.id) : subtasks;
@@ -128,8 +132,13 @@ export function TaskListRow({
   };
 
   return (
-    <div className="group">
-      <div className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors border-b" style={{ paddingLeft: `${12 + depth * 20}px` }}>
+    <div>
+      <div
+        className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors border-b"
+        style={{ paddingLeft: `${12 + depth * 20}px` }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <div className="w-4 flex-shrink-0">
           {hasSubtasks && (
             <button onClick={() => setExpanded(!expanded)} className="text-muted-foreground hover:text-foreground">
@@ -166,7 +175,7 @@ export function TaskListRow({
         </div>
 
         <div className="flex-shrink-0 w-32">
-          <div className="group-hover:hidden">
+          <div className={cn(isHovered && "hidden")}>
             <TaskBadges
               priority={task.priority}
               status={task.status}
@@ -176,7 +185,7 @@ export function TaskListRow({
               isHovered={false}
             />
           </div>
-          <div className="hidden group-hover:block">
+          <div className={cn(!isHovered && "hidden")}>
             <TaskBadges priority={task.priority} status={task.status} isHovered={true} />
           </div>
         </div>
@@ -204,7 +213,7 @@ export function TaskListRow({
             </PopoverContent>
           </Popover>
 
-          <div className="hidden group-hover:flex items-center">
+          <div className={cn("items-center", !isHovered ? "hidden" : "flex")}>
             <Separator orientation="vertical" className="h-4 mx-1" />
             <TaskActionIcons
               taskId={task.id}
@@ -218,6 +227,7 @@ export function TaskListRow({
               onDocuments={onDocuments}
               onAddToMeeting={onAddToMeeting}
               onCreateChildTask={onCreateChildTask}
+              onEdit={onEdit}
             />
           </div>
 
@@ -250,6 +260,7 @@ export function TaskListRow({
               onDocuments={onDocuments}
               onAddToMeeting={onAddToMeeting}
               onCreateChildTask={onCreateChildTask}
+              onEdit={onEdit}
               getChildTasks={getChildTasks}
             />
           ))}

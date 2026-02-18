@@ -21,6 +21,8 @@ import { TaskCommentSidebar } from "@/components/tasks/TaskCommentSidebar";
 import { TaskDocumentDialog } from "@/components/tasks/TaskDocumentDialog";
 import { TaskMeetingSelector } from "@/components/tasks/TaskMeetingSelector";
 import { CelebrationAnimationSystem } from "@/components/celebrations";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { Input } from "@/components/ui/input";
 import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -87,6 +89,12 @@ export function MyWorkTasksTab() {
   
   // Unicorn animation state
   const [showCelebration, setShowCelebration] = useState(false);
+
+  const [taskEditDialogOpen, setTaskEditDialogOpen] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editTaskTitle, setEditTaskTitle] = useState('');
+  const [editTaskDescription, setEditTaskDescription] = useState('');
+
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -629,6 +637,50 @@ export function MyWorkTasksTab() {
 
   const getChildTasks = (parentId: string) => subtasks[parentId] || [];
 
+  const toEditorHtml = (value: string | null | undefined) => {
+    if (!value) return "";
+    if (/<[^>]+>/.test(value)) return value;
+    return `<p>${value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")}</p>`;
+  };
+
+  const openTaskEditDialog = (taskId: string) => {
+    const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find((t) => t.id === taskId);
+    if (!task) return;
+
+    setEditingTaskId(taskId);
+    setEditTaskTitle(task.title || '');
+    setEditTaskDescription(toEditorHtml(task.description));
+    setTaskEditDialogOpen(true);
+  };
+
+  const handleSaveTaskEdit = async () => {
+    if (!editingTaskId) return;
+
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({
+          title: editTaskTitle.trim() || 'Ohne Titel',
+          description: editTaskDescription || null,
+        })
+        .eq("id", editingTaskId)
+        .select();
+
+      if (error) throw error;
+
+      toast({ title: "Aufgabe aktualisiert" });
+      setTaskEditDialogOpen(false);
+      setEditingTaskId(null);
+      await loadTasks();
+    } catch (error) {
+      console.error("Error updating task:", error);
+      toast({ title: "Fehler beim Speichern", variant: "destructive" });
+    }
+  };
+
   const getTaskTitle = (taskId: string | null) => {
     if (!taskId) return undefined;
     const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find(t => t.id === taskId);
@@ -703,6 +755,7 @@ export function MyWorkTasksTab() {
             onDecision={handleDecision}
             onDocuments={handleDocuments}
             onAddToMeeting={handleAddToMeeting}
+            onEdit={openTaskEditDialog}
           />
         ))}
       </div>
@@ -734,6 +787,7 @@ export function MyWorkTasksTab() {
             onDecision={handleDecision}
             onDocuments={handleDocuments}
             onAddToMeeting={handleAddToMeeting}
+            onEdit={openTaskEditDialog}
           />
         ))}
       </div>
@@ -773,6 +827,7 @@ export function MyWorkTasksTab() {
                   onDocuments={handleDocuments}
                   onAddToMeeting={handleAddToMeeting}
                   onCreateChildTask={handleCreateChildTask}
+                  onEdit={openTaskEditDialog}
                   getChildTasks={getChildTasks}
                 />
               ))}
@@ -798,6 +853,7 @@ export function MyWorkTasksTab() {
                   onDocuments={handleDocuments}
                   onAddToMeeting={handleAddToMeeting}
                   onCreateChildTask={handleCreateChildTask}
+                  onEdit={openTaskEditDialog}
                   getChildTasks={getChildTasks}
                 />
               ))}
@@ -1003,6 +1059,32 @@ export function MyWorkTasksTab() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={taskEditDialogOpen} onOpenChange={setTaskEditDialogOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>Aufgabe bearbeiten</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Titel</div>
+              <Input value={editTaskTitle} onChange={(e) => setEditTaskTitle(e.target.value)} placeholder="Titel" />
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Beschreibung</div>
+              <SimpleRichTextEditor
+                initialContent={editTaskDescription}
+                onChange={setEditTaskDescription}
+                placeholder="Beschreibung eingeben..."
+                minHeight="180px"
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={handleSaveTaskEdit}>Speichern</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
