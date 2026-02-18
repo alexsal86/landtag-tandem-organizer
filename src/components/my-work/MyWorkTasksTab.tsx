@@ -34,15 +34,8 @@ interface Task {
   category?: string;
   meeting_id?: string | null;
   pending_for_jour_fixe?: boolean | null;
-}
-
-interface Subtask {
-  id: string;
-  task_id: string;
-  title: string | null;
-  description: string | null;
-  is_completed: boolean;
-  due_date: string | null;
+  parent_task_id?: string | null;
+  tenant_id?: string;
 }
 
 interface Profile {
@@ -59,7 +52,7 @@ export function MyWorkTasksTab() {
   
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
   const [createdTasks, setCreatedTasks] = useState<Task[]>([]);
-  const [subtasks, setSubtasks] = useState<Record<string, Subtask[]>>({});
+  const [subtasks, setSubtasks] = useState<Record<string, Task[]>>({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [taskStatuses, setTaskStatuses] = useState<{name: string, label: string}[]>([]);
@@ -131,6 +124,7 @@ export function MyWorkTasksTab() {
         .select("*")
         .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
         .neq("status", "completed")
+        .is("parent_task_id", null)
         .order("due_date", { ascending: true, nullsFirst: false });
 
       if (assignedError) throw assignedError;
@@ -141,6 +135,7 @@ export function MyWorkTasksTab() {
         .select("*")
         .eq("user_id", user.id)
         .neq("status", "completed")
+        .is("parent_task_id", null)
         .order("due_date", { ascending: true, nullsFirst: false });
 
       if (createdError) throw createdError;
@@ -250,7 +245,7 @@ export function MyWorkTasksTab() {
   };
 
   const handleToggleComplete = async (taskId: string) => {
-    const task = [...assignedTasks, ...createdTasks].find(t => t.id === taskId);
+    const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find(t => t.id === taskId);
     if (!task || !user) return;
     
     try {
@@ -563,9 +558,44 @@ export function MyWorkTasksTab() {
     }
   };
 
+  const handleCreateChildTask = async (parentTaskId: string) => {
+    if (!user) return;
+
+    const parentTask = [...createdTasks, ...assignedTasks, ...Object.values(subtasks).flat()].find((task) => task.id === parentTaskId);
+    if (!parentTask?.tenant_id) {
+      toast({ title: "Fehler", description: "Übergeordnete Aufgabe nicht gefunden.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .insert({
+          user_id: user.id,
+          tenant_id: parentTask.tenant_id,
+          parent_task_id: parentTaskId,
+          title: "Neue Unteraufgabe",
+          description: null,
+          status: "todo",
+          priority: "medium",
+          category: parentTask.category || "personal",
+          assigned_to: user.id,
+        });
+
+      if (error) throw error;
+      toast({ title: "Unteraufgabe erstellt" });
+      await loadTasks();
+    } catch (error) {
+      console.error("Error creating child task:", error);
+      toast({ title: "Fehler", description: "Unteraufgabe konnte nicht erstellt werden.", variant: "destructive" });
+    }
+  };
+
+  const getChildTasks = (parentId: string) => subtasks[parentId] || [];
+
   const getTaskTitle = (taskId: string | null) => {
     if (!taskId) return undefined;
-    const task = [...assignedTasks, ...createdTasks].find(t => t.id === taskId);
+    const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find(t => t.id === taskId);
     return task?.title;
   };
 
@@ -573,17 +603,21 @@ export function MyWorkTasksTab() {
     const now = startOfDay(new Date());
 
     const split = (tasks: Task[]) => {
+      // Analog zu Quick Notes:
+      // - fällige Wiedervorlagen separat anzeigen
+      // - geplante Wiedervorlagen bis zum Datum ausblenden
+      // - normale Hauptliste enthält nur Aufgaben OHNE Wiedervorlage
       const dueFollowUps = tasks.filter((task) => {
         const snoozedUntil = taskSnoozes[task.id];
         return snoozedUntil && isBefore(startOfDay(new Date(snoozedUntil)), addDays(now, 1));
       });
 
-      const visibleTasks = tasks.filter((task) => {
+      const hiddenScheduledCount = tasks.filter((task) => {
         const snoozedUntil = taskSnoozes[task.id];
-        return !snoozedUntil || !isAfter(startOfDay(new Date(snoozedUntil)), now);
-      });
+        return !!snoozedUntil && isAfter(startOfDay(new Date(snoozedUntil)), now);
+      }).length;
 
-      const hiddenScheduledCount = tasks.length - visibleTasks.length;
+      const visibleTasks = tasks.filter((task) => !taskSnoozes[task.id]);
 
       return { dueFollowUps, visibleTasks, hiddenScheduledCount };
     };
@@ -756,7 +790,7 @@ export function MyWorkTasksTab() {
       {hiddenScheduledCount > 0 && (
         <div className="px-4 pt-2">
           <p className="text-xs text-muted-foreground">
-            {hiddenScheduledCount} Aufgabe{hiddenScheduledCount === 1 ? '' : 'n'} mit zukünftiger Wiedervorlage ausgeblendet.
+            {hiddenScheduledCount} Aufgabe{hiddenScheduledCount === 1 ? '' : 'n'} mit geplanter Wiedervorlage ausgeblendet.
           </p>
         </div>
       )}

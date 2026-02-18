@@ -12,8 +12,7 @@ import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
 import { LetterSourceLink } from "@/components/letters/LetterSourceLink";
-import { extractLetterSourceId, stripLetterSourceMarker } from "@/utils/letterSource";
-import { parseMeetingSubtaskDescription } from "@/utils/meetingSubtask";
+import { extractLetterSourceId } from "@/utils/letterSource";
 
 interface Task {
   id: string;
@@ -26,19 +25,13 @@ interface Task {
   user_id: string;
   created_at: string;
   category?: string;
-}
-
-interface Subtask {
-  id: string;
-  task_id: string;
-  description: string | null;
-  is_completed: boolean;
-  due_date: string | null;
+  meeting_id?: string | null;
+  pending_for_jour_fixe?: boolean | null;
 }
 
 interface TaskListRowProps {
   task: Task;
-  subtasks?: Subtask[];
+  subtasks?: Task[];
   assigneeName?: string;
   hasMeetingLink?: boolean;
   hasReminder?: boolean;
@@ -54,6 +47,8 @@ interface TaskListRowProps {
   onDecision?: (taskId: string) => void;
   onDocuments?: (taskId: string) => void;
   onAddToMeeting?: (taskId: string) => void;
+  onCreateChildTask?: (taskId: string) => void;
+  getChildTasks?: (taskId: string) => Task[];
 }
 
 export function TaskListRow({
@@ -74,15 +69,17 @@ export function TaskListRow({
   onDecision,
   onDocuments,
   onAddToMeeting,
+  onCreateChildTask,
+  getChildTasks,
 }: TaskListRowProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
   const [expanded, setExpanded] = useState(false);
   const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  const hasSubtasks = subtasks.length > 0;
+  const childTasks = getChildTasks ? getChildTasks(task.id) : subtasks;
+  const hasSubtasks = childTasks.length > 0;
   const sourceLetterId = extractLetterSourceId(task.description);
 
   useEffect(() => {
@@ -128,34 +125,17 @@ export function TaskListRow({
 
   return (
     <div className="group">
-      <div
-        className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors border-b"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {/* Expand toggle for subtasks */}
+      <div className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors border-b" style={{ paddingLeft: `${12 + depth * 20}px` }}>
         <div className="w-4 flex-shrink-0">
           {hasSubtasks && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              {expanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
+            <button onClick={() => setExpanded(!expanded)} className="text-muted-foreground hover:text-foreground">
+              {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </button>
           )}
         </div>
 
-        {/* Checkbox */}
-        <Checkbox
-          className="h-4 w-4 flex-shrink-0"
-          onCheckedChange={() => onComplete(task.id)}
-        />
+        <Checkbox className="h-4 w-4 flex-shrink-0" onCheckedChange={() => onComplete(task.id)} />
 
-        {/* Title - inline editable on double-click */}
         <div className="flex-1 min-w-0">
           {editingTitle ? (
             <Input
@@ -174,20 +154,14 @@ export function TaskListRow({
                 onClick={() => onNavigate(task.id)}
               >
                 {task.title}
-                {hasSubtasks && (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    ({subtasks.length})
-                  </span>
-                )}
+                {hasSubtasks && <span className="text-xs text-muted-foreground ml-2">({childTasks.length})</span>}
               </span>
               {sourceLetterId && <LetterSourceLink letterId={sourceLetterId} className="h-6 px-1" />}
             </div>
           )}
         </div>
 
-        {/* Badges */}
         <div className="flex-shrink-0 w-32">
-          {/* Small squares - visible when NOT hovering */}
           <div className="group-hover:hidden">
             <TaskBadges
               priority={task.priority}
@@ -198,47 +172,24 @@ export function TaskListRow({
               isHovered={false}
             />
           </div>
-          {/* Full badges - visible on hover */}
           <div className="hidden group-hover:block">
-            <TaskBadges
-              priority={task.priority}
-              status={task.status}
-              isHovered={true}
-            />
+            <TaskBadges priority={task.priority} status={task.status} isHovered={true} />
           </div>
         </div>
 
-        {/* Due date + Actions + Navigate */}
         <div className="flex items-center flex-shrink-0">
-          {/* Due date - clickable for editing */}
           <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
             <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "h-6 px-2 text-xs w-16 justify-start",
-                  getDueDateColor(task.due_date)
-                )}
-              >
+              <Button variant="ghost" size="sm" className={cn("h-6 px-2 text-xs w-16 justify-start", getDueDateColor(task.due_date))}>
                 <CalendarIcon className="h-3 w-3 mr-1" />
-                {task.due_date 
-                  ? format(new Date(task.due_date), "dd.MM.", { locale: de })
-                  : "–"
-                }
+                {task.due_date ? format(new Date(task.due_date), "dd.MM.", { locale: de }) : "–"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={task.due_date ? new Date(task.due_date) : undefined}
-                onSelect={handleDueDateSelect}
-                initialFocus
-              />
+              <Calendar mode="single" selected={task.due_date ? new Date(task.due_date) : undefined} onSelect={handleDueDateSelect} initialFocus />
             </PopoverContent>
           </Popover>
 
-          {/* Separator + Actions - hidden when not hovered to remove spacing */}
           <div className="hidden group-hover:flex items-center">
             <Separator orientation="vertical" className="h-4 mx-1" />
             <TaskActionIcons
@@ -252,57 +203,42 @@ export function TaskListRow({
               onDecision={onDecision}
               onDocuments={onDocuments}
               onAddToMeeting={onAddToMeeting}
+              onCreateChildTask={onCreateChildTask}
             />
           </div>
 
-          {/* Navigate button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 flex-shrink-0"
-            onClick={() => onNavigate(task.id)}
-          >
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => onNavigate(task.id)}>
             <ExternalLink className="h-3 w-3" />
           </Button>
         </div>
       </div>
 
-      {/* Subtasks */}
       {expanded && hasSubtasks && (
         <div className="bg-muted/30 border-b">
-          {subtasks.map((subtask) => {
-            const parsedSubtask = parseMeetingSubtaskDescription(stripLetterSourceMarker(subtask.description));
-
-            return (
-              <div
-                key={subtask.id}
-                className="flex items-center gap-2 px-3 py-1.5 pl-12 hover:bg-accent/50 transition-colors"
-              >
-                <Checkbox
-                  className="h-4 w-4"
-                  onCheckedChange={() => onSubtaskComplete(subtask.id)}
-                />
-                <div className="text-sm flex-1 min-w-0 leading-snug">
-                  <div className="text-foreground truncate">
-                    {parsedSubtask.resultText}
-                  </div>
-                  {parsedSubtask.meetingContext && (
-                    <div className="text-xs text-muted-foreground truncate mt-0.5">
-                      {parsedSubtask.meetingContext}
-                    </div>
-                  )}
-                </div>
-                {extractLetterSourceId(subtask.description) && (
-                  <LetterSourceLink letterId={extractLetterSourceId(subtask.description)!} className="h-6 px-1" />
-                )}
-                {subtask.due_date && (
-                  <span className={cn("text-xs", getDueDateColor(subtask.due_date))}>
-                    {format(new Date(subtask.due_date), "dd.MM.", { locale: de })}
-                  </span>
-                )}
-              </div>
-            );
-          })}
+          {childTasks.map((childTask) => (
+            <TaskListRow
+              key={childTask.id}
+              task={childTask}
+              subtasks={getChildTasks ? getChildTasks(childTask.id) : []}
+              assigneeName={assigneeName}
+              hasMeetingLink={!!(childTask.meeting_id || childTask.pending_for_jour_fixe)}
+              hasReminder={hasReminder}
+              depth={depth + 1}
+              onComplete={onComplete}
+              onSubtaskComplete={onSubtaskComplete}
+              onNavigate={onNavigate}
+              onUpdateTitle={onUpdateTitle}
+              onUpdateDueDate={onUpdateDueDate}
+              onReminder={onReminder}
+              onAssign={onAssign}
+              onComment={onComment}
+              onDecision={onDecision}
+              onDocuments={onDocuments}
+              onAddToMeeting={onAddToMeeting}
+              onCreateChildTask={onCreateChildTask}
+              getChildTasks={getChildTasks}
+            />
+          ))}
         </div>
       )}
     </div>

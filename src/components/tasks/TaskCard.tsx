@@ -16,7 +16,6 @@ import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
 import { LetterSourceLink } from "@/components/letters/LetterSourceLink";
 import { extractLetterSourceId, stripLetterSourceMarker } from "@/utils/letterSource";
-import { parseMeetingSubtaskDescription } from "@/utils/meetingSubtask";
 
 interface Task {
   id: string;
@@ -29,19 +28,13 @@ interface Task {
   user_id: string;
   created_at: string;
   category?: string;
-}
-
-interface Subtask {
-  id: string;
-  task_id: string;
-  description: string | null;
-  is_completed: boolean;
-  due_date: string | null;
+  meeting_id?: string | null;
+  pending_for_jour_fixe?: boolean | null;
 }
 
 interface TaskCardProps {
   task: Task;
-  subtasks?: Subtask[];
+  subtasks?: Task[];
   assigneeName?: string;
   hasMeetingLink?: boolean;
   hasReminder?: boolean;
@@ -58,6 +51,8 @@ interface TaskCardProps {
   onDecision?: (taskId: string) => void;
   onDocuments?: (taskId: string) => void;
   onAddToMeeting?: (taskId: string) => void;
+  onCreateChildTask?: (taskId: string) => void;
+  getChildTasks?: (taskId: string) => Task[];
 }
 
 export function TaskCard({
@@ -79,8 +74,9 @@ export function TaskCard({
   onDecision,
   onDocuments,
   onAddToMeeting,
+  onCreateChildTask,
+  getChildTasks,
 }: TaskCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
@@ -89,7 +85,8 @@ export function TaskCard({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
-  const hasSubtasks = subtasks.length > 0;
+  const childTasks = getChildTasks ? getChildTasks(task.id) : subtasks;
+  const hasSubtasks = childTasks.length > 0;
   const hasDueDate = Boolean(task.due_date);
   const sourceLetterId = extractLetterSourceId(task.description);
   const cleanDescription = stripLetterSourceMarker(task.description);
@@ -154,18 +151,10 @@ export function TaskCard({
   };
 
   return (
-    <div
-      className="group rounded-lg border bg-card relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div className={cn("group rounded-lg border bg-card relative", depth > 0 && "border-dashed")}>
       <div className="flex items-start gap-3 p-3">
-        <Checkbox
-          className="mt-0.5 h-4 w-4 flex-shrink-0"
-          onCheckedChange={() => onComplete(task.id)}
-        />
+        <Checkbox className="mt-0.5 h-4 w-4 flex-shrink-0" onCheckedChange={() => onComplete(task.id)} />
         <div className="flex-1 min-w-0 space-y-1">
-          {/* Title - inline editable */}
           {editingTitle ? (
             <Input
               ref={titleInputRef}
@@ -177,7 +166,7 @@ export function TaskCard({
             />
           ) : (
             <div className="flex items-center gap-2 flex-wrap">
-              <span 
+              <span
                 className="font-semibold text-sm cursor-text hover:bg-muted/50 px-1 -mx-1 rounded"
                 onClick={() => onUpdateTitle && setEditingTitle(true)}
               >
@@ -186,13 +175,12 @@ export function TaskCard({
               {hasSubtasks && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
                   <ListTodo className="h-2.5 w-2.5 mr-1" />
-                  {subtasks.length}
+                  {childTasks.length}
                 </Badge>
               )}
             </div>
           )}
 
-          {/* Description - inline editable */}
           {editingDescription ? (
             <Textarea
               ref={descriptionInputRef}
@@ -204,10 +192,7 @@ export function TaskCard({
               rows={2}
             />
           ) : cleanDescription ? (
-            <div 
-              className="cursor-text hover:bg-muted/50 px-1 -mx-1 rounded"
-              onClick={() => onUpdateDescription && setEditingDescription(true)}
-            >
+            <div className="cursor-text hover:bg-muted/50 px-1 -mx-1 rounded" onClick={() => onUpdateDescription && setEditingDescription(true)}>
               <RichTextDisplay content={cleanDescription} className="text-xs line-clamp-2" />
             </div>
           ) : null}
@@ -220,11 +205,8 @@ export function TaskCard({
         </div>
       </div>
 
-      {/* Bottom bar with badges and actions */}
       <div className="px-3 pb-2 flex items-center justify-between">
-        {/* Left: Badges */}
         <div className="flex-1">
-          {/* Small squares - visible when NOT hovering */}
           <div className="group-hover:hidden">
             <TaskBadges
               priority={task.priority}
@@ -235,7 +217,6 @@ export function TaskCard({
               isHovered={false}
             />
           </div>
-          {/* Full badges - visible on hover */}
           <div className="hidden group-hover:block">
             <TaskBadges
               priority={task.priority}
@@ -248,9 +229,7 @@ export function TaskCard({
           </div>
         </div>
 
-        {/* Right: Due date + Actions + Navigate */}
         <div className="flex items-center">
-          {/* Due date - always visible, clickable for editing */}
           <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -263,23 +242,14 @@ export function TaskCard({
                 )}
               >
                 <CalendarIcon className="h-3 w-3 mr-1" />
-                {task.due_date 
-                  ? format(new Date(task.due_date), "dd.MM.", { locale: de })
-                  : "–"
-                }
+                {task.due_date ? format(new Date(task.due_date), "dd.MM.", { locale: de }) : "–"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={task.due_date ? new Date(task.due_date) : undefined}
-                onSelect={handleDueDateSelect}
-                initialFocus
-              />
+              <Calendar mode="single" selected={task.due_date ? new Date(task.due_date) : undefined} onSelect={handleDueDateSelect} initialFocus />
             </PopoverContent>
           </Popover>
 
-          {/* Separator + Action icons - hidden when not hovered to remove spacing */}
           <div className="hidden group-hover:flex items-center">
             <Separator orientation="vertical" className="h-4 mx-1" />
             <TaskActionIcons
@@ -293,57 +263,44 @@ export function TaskCard({
               onDecision={onDecision}
               onDocuments={onDocuments}
               onAddToMeeting={onAddToMeeting}
+              onCreateChildTask={onCreateChildTask}
             />
           </div>
-          
-          {/* Navigate button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 flex-shrink-0"
-            onClick={() => onNavigate(task.id)}
-          >
+
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => onNavigate(task.id)}>
             <ExternalLink className="h-3 w-3" />
           </Button>
         </div>
       </div>
 
-      {/* Subtasks */}
       {hasSubtasks && (
-        <div className="border-t bg-muted/30 px-3 py-2 space-y-1">
-          {subtasks.map((subtask) => {
-            const parsedSubtask = parseMeetingSubtaskDescription(stripLetterSourceMarker(subtask.description));
-
-            return (
-              <div
-                key={subtask.id}
-                className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-accent/50 transition-colors"
-              >
-                <Checkbox
-                  className="h-4 w-4"
-                  onCheckedChange={() => onSubtaskComplete(subtask.id)}
-                />
-                <div className="text-sm flex-1 min-w-0 leading-snug">
-                  <div className="text-foreground truncate">
-                    {parsedSubtask.resultText}
-                  </div>
-                  {parsedSubtask.meetingContext && (
-                    <div className="text-xs text-muted-foreground truncate mt-0.5">
-                      {parsedSubtask.meetingContext}
-                    </div>
-                  )}
-                </div>
-                {extractLetterSourceId(subtask.description) && (
-                  <LetterSourceLink letterId={extractLetterSourceId(subtask.description)!} className="h-6 px-1" />
-                )}
-                {subtask.due_date && (
-                  <span className={cn("text-xs", getDueDateColor(subtask.due_date))}>
-                    {format(new Date(subtask.due_date), "dd.MM.", { locale: de })}
-                  </span>
-                )}
-              </div>
-            );
-          })}
+        <div className="border-t bg-muted/30 px-3 py-2 space-y-2">
+          {childTasks.map((childTask) => (
+            <div key={childTask.id} className="pl-2">
+              <TaskCard
+                task={childTask}
+                subtasks={getChildTasks ? getChildTasks(childTask.id) : []}
+                assigneeName={assigneeName}
+                hasMeetingLink={!!(childTask.meeting_id || childTask.pending_for_jour_fixe)}
+                hasReminder={hasReminder}
+                depth={depth + 1}
+                onComplete={onComplete}
+                onSubtaskComplete={onSubtaskComplete}
+                onNavigate={onNavigate}
+                onUpdateTitle={onUpdateTitle}
+                onUpdateDescription={onUpdateDescription}
+                onUpdateDueDate={onUpdateDueDate}
+                onReminder={onReminder}
+                onAssign={onAssign}
+                onComment={onComment}
+                onDecision={onDecision}
+                onDocuments={onDocuments}
+                onAddToMeeting={onAddToMeeting}
+                onCreateChildTask={onCreateChildTask}
+                getChildTasks={getChildTasks}
+              />
+            </div>
+          ))}
         </div>
       )}
     </div>
