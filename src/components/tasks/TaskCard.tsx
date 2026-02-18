@@ -36,6 +36,7 @@ interface TaskCardProps {
   task: Task;
   subtasks?: Task[];
   assigneeName?: string;
+  resolveAssigneeName?: (assignedTo: string | null) => string | undefined;
   hasMeetingLink?: boolean;
   hasReminder?: boolean;
   followUpDate?: string | null;
@@ -63,6 +64,7 @@ export function TaskCard({
   task,
   subtasks = [],
   assigneeName,
+  resolveAssigneeName,
   hasMeetingLink,
   hasReminder,
   followUpDate,
@@ -100,6 +102,7 @@ export function TaskCard({
   const sourceLetterId = extractLetterSourceId(task.description);
   const cleanDescription = stripLetterSourceMarker(task.description);
   const isChildTask = depth > 0;
+  const currentAssigneeName = assigneeName ?? resolveAssigneeName?.(task.assigned_to);
 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) {
@@ -233,7 +236,7 @@ export function TaskCard({
                 status={task.status}
                 category={task.category}
                 assignedTo={task.assigned_to}
-                assigneeName={assigneeName}
+                assigneeName={currentAssigneeName}
                 isHovered={false}
               />
             </div>
@@ -243,7 +246,7 @@ export function TaskCard({
                 status={task.status}
                 category={task.category}
                 assignedTo={task.assigned_to}
-                assigneeName={assigneeName}
+                assigneeName={currentAssigneeName}
                 isHovered={true}
               />
             </div>
@@ -312,7 +315,7 @@ export function TaskCard({
               key={childTask.id}
               task={childTask}
               subtasks={getChildTasks ? getChildTasks(childTask.id) : []}
-              assigneeName={assigneeName}
+              resolveAssigneeName={resolveAssigneeName}
               hasMeetingLink={!!(childTask.meeting_id || childTask.pending_for_jour_fixe)}
               hasReminder={hasReminder}
               depth={depth + 1}

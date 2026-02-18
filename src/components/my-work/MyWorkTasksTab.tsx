@@ -22,6 +22,7 @@ import { TaskDocumentDialog } from "@/components/tasks/TaskDocumentDialog";
 import { TaskMeetingSelector } from "@/components/tasks/TaskMeetingSelector";
 import { CelebrationAnimationSystem } from "@/components/celebrations";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Input } from "@/components/ui/input";
 import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -72,6 +73,7 @@ export function MyWorkTasksTab() {
   
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignTaskId, setAssignTaskId] = useState<string | null>(null);
+  const [assignSelectedUserIds, setAssignSelectedUserIds] = useState<string[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   
   const [commentSidebarOpen, setCommentSidebarOpen] = useState(false);
@@ -158,12 +160,12 @@ export function MyWorkTasksTab() {
       
       // Links: Selbst erstellte Aufgaben, ABER Meeting-Aufgaben ausschließen, die einem zugewiesen sind
       const createdByMe = allCreated.filter(t => 
-        !(t.category === 'meeting' && t.assigned_to && (t.assigned_to === user.id || t.assigned_to.includes(user.id)))
+        !(t.category === 'meeting' && normalizeAssignedTo(t.assigned_to).includes(user.id))
       );
       
       // Rechts: Von ANDEREN erstellte + Meeting-Aufgaben, die mir zugewiesen sind
       const meetingTasksAssignedToMe = allCreated.filter(t => 
-        t.category === 'meeting' && t.assigned_to && (t.assigned_to === user.id || t.assigned_to.includes(user.id))
+        t.category === 'meeting' && normalizeAssignedTo(t.assigned_to).includes(user.id)
       );
       const assignedByOthers = [
         ...allAssigned.filter(t => t.user_id !== user.id),
@@ -482,32 +484,37 @@ export function MyWorkTasksTab() {
   };
 
   const handleAssign = (taskId: string) => {
+    const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find((t) => t.id === taskId);
+    setAssignSelectedUserIds(normalizeAssignedTo(task?.assigned_to ?? null));
     setAssignTaskId(taskId);
     setAssignDialogOpen(true);
   };
 
-  const handleUpdateAssignee = async (userId: string) => {
+  const handleUpdateAssignee = async (userIds: string[]) => {
     if (!assignTaskId) return;
+    const normalizedAssignees = userIds.map((id) => id.trim()).filter(Boolean);
+    const assignedToValue = normalizedAssignees.length > 0 ? normalizedAssignees.join(',') : null;
     
     try {
       const { error } = await supabase
         .from("tasks")
-        .update({ assigned_to: userId || null })
+        .update({ assigned_to: assignedToValue })
         .eq("id", assignTaskId)
         .select();
 
       if (error) throw error;
       
       setAssignedTasks(prev => prev.map(t => 
-        t.id === assignTaskId ? { ...t, assigned_to: userId || null } : t
+        t.id === assignTaskId ? { ...t, assigned_to: assignedToValue } : t
       ));
       setCreatedTasks(prev => prev.map(t => 
-        t.id === assignTaskId ? { ...t, assigned_to: userId || null } : t
+        t.id === assignTaskId ? { ...t, assigned_to: assignedToValue } : t
       ));
       
       toast({ title: "Zuweisung aktualisiert" });
       setAssignDialogOpen(false);
       setAssignTaskId(null);
+      setAssignSelectedUserIds([]);
       loadTasks(); // Reload to update lists
     } catch (error) {
       console.error("Error updating assignee:", error);
@@ -693,6 +700,32 @@ export function MyWorkTasksTab() {
     return task?.title;
   };
 
+  const normalizeAssignedTo = (assignedTo: string | null | undefined) => {
+    if (!assignedTo) return [];
+
+    return assignedTo
+      .replace(/[{}]/g, '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
+  const profileNameMap = useMemo(() => {
+    return profiles.reduce((acc, profile) => {
+      acc[profile.user_id] = profile.display_name || profile.user_id;
+      return acc;
+    }, {} as Record<string, string>);
+  }, [profiles]);
+
+  const resolveAssigneeName = (assignedTo: string | null | undefined) => {
+    const assigneeIds = normalizeAssignedTo(assignedTo);
+    if (assigneeIds.length === 0) return undefined;
+
+    return assigneeIds
+      .map((id) => profileNameMap[id] || id)
+      .join(', ');
+  };
+
   const splitTasksBySnooze = useMemo(() => {
     const now = startOfDay(new Date());
 
@@ -739,6 +772,7 @@ export function MyWorkTasksTab() {
             key={task.id}
             task={task}
             subtasks={subtasks[task.id]}
+            resolveAssigneeName={resolveAssigneeName}
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
             hasReminder={!!taskSnoozes[task.id]}
             followUpDate={showFollowUpDateBadge ? taskSnoozes[task.id] : undefined}
@@ -772,6 +806,7 @@ export function MyWorkTasksTab() {
             key={task.id}
             task={task}
             subtasks={subtasks[task.id]}
+            resolveAssigneeName={resolveAssigneeName}
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
             hasReminder={!!taskSnoozes[task.id]}
             followUpDate={showFollowUpDateBadge ? taskSnoozes[task.id] : undefined}
@@ -1052,19 +1087,22 @@ export function MyWorkTasksTab() {
             <DialogTitle>Aufgabe zuweisen</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Select onValueChange={(value) => handleUpdateAssignee(value === "__none__" ? "" : value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Person auswählen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Keine Zuweisung</SelectItem>
-                {profiles.map(profile => (
-                  <SelectItem key={profile.user_id} value={profile.user_id}>
-                    {profile.display_name || 'Unbekannter Benutzer'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-3">
+              <MultiSelect
+                options={profiles.map((profile) => ({
+                  value: profile.user_id,
+                  label: profile.display_name || 'Unbekannter Benutzer',
+                }))}
+                selected={assignSelectedUserIds}
+                onChange={setAssignSelectedUserIds}
+                placeholder="Personen auswählen"
+              />
+              <div className="flex justify-end">
+                <Button onClick={() => handleUpdateAssignee(assignSelectedUserIds)}>
+                  Zuweisung speichern
+                </Button>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
