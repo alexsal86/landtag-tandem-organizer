@@ -222,6 +222,12 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
       ) => {
         if (!anchorElementRef.current || !options.length) return null;
 
+        // Lexical renders the typeahead anchor element itself. In modal contexts it can
+        // end up below the dialog layer or with non-interactive pointer behavior.
+        // Normalize the anchor so menu placement stays correct and mouse interaction works.
+        anchorElementRef.current.style.zIndex = '9999';
+        anchorElementRef.current.style.pointerEvents = 'auto';
+
         return ReactDOM.createPortal(
               <div
                 className="typeahead-popover mentions-menu"
