@@ -798,6 +798,7 @@ export function MyWorkTasksTab() {
   const hiddenScheduledCount = filteredScheduledCreatedTasks.length + filteredScheduledAssignedTasks.length;
   const dueFollowUpCount = filteredDueCreatedTasks.length + filteredDueAssignedTasks.length;
   const totalTasks = filteredAssignedTasks.length + filteredCreatedTasks.length;
+  const keepMainListsScrollable = hiddenScheduledCount === 0;
 
   return (
     <div className="h-[calc(100vh-20rem)] flex flex-col">
@@ -867,9 +868,37 @@ export function MyWorkTasksTab() {
           <p className="text-muted-foreground">Keine offenen Aufgaben</p>
         </div>
       ) : (
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 min-h-0">
-          {renderTaskList(filteredCreatedTasks, "Von mir erstellt", "Keine eigenen Aufgaben")}
-          {renderTaskList(filteredAssignedTasks, "Mir zugewiesen", "Keine Aufgaben zugewiesen")}
+        <div
+          className={cn(
+            "grid grid-cols-1 lg:grid-cols-2 gap-4 p-4",
+            keepMainListsScrollable && "flex-1 min-h-0"
+          )}
+        >
+          {renderTaskList(filteredCreatedTasks, "Von mir erstellt", "Keine eigenen Aufgaben", { scrollable: keepMainListsScrollable })}
+          {renderTaskList(filteredAssignedTasks, "Mir zugewiesen", "Keine Aufgaben zugewiesen", { scrollable: keepMainListsScrollable })}
+        </div>
+      )}
+
+      {hiddenScheduledCount > 0 && (
+        <div className="px-4 pb-3">
+          <Separator className="mb-3" />
+          <Collapsible open={scheduledFollowUpsExpanded} onOpenChange={setScheduledFollowUpsExpanded}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <ChevronDown className={cn("h-4 w-4 transition-transform", !scheduledFollowUpsExpanded && "-rotate-90")} />
+                <Hourglass className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Geplant (bis zum Datum ausgeblendet)</span>
+                <Badge variant="secondary" className="text-xs">{hiddenScheduledCount}</Badge>
+              </div>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent className="pt-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {renderTaskList(filteredScheduledCreatedTasks, "Von mir erstellt", "Keine geplanten Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: false, showFollowUpDateBadge: true })}
+                {renderTaskList(filteredScheduledAssignedTasks, "Mir zugewiesen", "Keine geplanten Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: false, showFollowUpDateBadge: true })}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
 
