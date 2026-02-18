@@ -1,55 +1,59 @@
 
 
-## Fix: Infinite-Loop in den Radix-Patches endgueltig beheben
+## Fix: `useComposedRefs` muss eine stabile Referenz zurueckgeben
 
-### Ursache
+### Ursache (endgueltig identifiziert)
 
-Die `composeRefs`-Funktion in beiden Patch-Dateien sammelt immer noch Cleanup-Funktionen und gibt sie zurueck (Zeilen 28-45 in `radix-compose-refs-patch.ts`, Zeilen 24-47 in `radix-slot-patch.tsx`). 
+Radix Select uebergibt **Inline-Funktionen** an `useComposedRefs`:
 
-Wenn `composeRefs` **nicht memoized** aufgerufen wird (was Radix intern in `SlotClone` tut), erzeugt jeder Render eine neue Ref-Callback-Funktion. React 19 erkennt, dass diese Funktion eine Cleanup-Funktion zurueckgibt, ruft die Cleanup auf, setzt den Ref neu, bekommt wieder eine Cleanup, und so weiter -- Endlosschleife.
+```typescript
+// node_modules/@radix-ui/react-select/dist/index.mjs:907-912
+const composedRefs = useComposedRefs(
+  forwardedRef,
+  (node) => setItemTextNode(node),      // NEU bei jedem Render!
+  itemContext.onItemTextChange,
+  (node) => contentContext.itemTextRefCallback?.(...)  // NEU bei jedem Render!
+);
+```
+
+Unsere aktuelle `useComposedRefs`-Implementierung:
+
+```typescript
+return React.useCallback(composeRefs(...refs), refs);
+//                                              ^^^^ refs aendert sich JEDES MAL
+```
+
+Da die Inline-Funktionen bei jedem Render eine neue Identitaet haben, aendert sich die `refs`-Dependency immer. `useCallback` erstellt daher jedes Mal eine neue Funktion. React erkennt einen neuen Ref-Callback, ruft Detach (null) und Attach (node) auf, was `setState` triggert, was einen Re-Render ausloest -- Endlosschleife.
 
 ### Loesung
 
-`composeRefs` darf **niemals** eine Cleanup-Funktion zurueckgeben. Stattdessen wird `setRef` verwendet, das den Ref-Wert setzt ohne den Rueckgabewert weiterzuleiten.
+`useComposedRefs` muss eine **stabile** Callback-Funktion zurueckgeben, die intern immer die aktuellsten Refs liest:
+
+```typescript
+export function useComposedRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
+  const refsRef = React.useRef(refs);
+  refsRef.current = refs;  // Immer aktuelle Refs speichern
+  return React.useCallback((node: T) => {
+    refsRef.current.forEach((ref) => setRef(ref, node));
+  }, []);  // Stabile Funktion - aendert sich NIE
+}
+```
 
 ### Aenderungen
 
-**Datei 1: `src/lib/radix-compose-refs-patch.ts`**
-
-Die `composeRefs`-Funktion wird vereinfacht -- kein Sammeln von Cleanups, kein Return:
-
-```typescript
-export function composeRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
-  return (node: T) => {
-    refs.forEach((ref) => setRef(ref, node));
-  };
-}
-```
-
-**Datei 2: `src/lib/radix-slot-patch.tsx`**
-
-Die interne `composeRefs`-Funktion wird identisch vereinfacht:
-
-```typescript
-function composeRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
-  return (node: T) => {
-    refs.forEach((ref) => setRef(ref, node));
-  };
-}
-```
-
-### Warum das sicher ist
-
-- `setRef` ruft die Ref-Funktion auf, verwirft aber den Rueckgabewert
-- React 19 sieht keine Cleanup-Funktion und loest keinen Detach/Reattach-Zyklus aus
-- `useComposedRefs` bleibt als memoized Variante fuer Komponenten, die Cleanup benoetigen
-
-### Zusammenfassung
-
 | Datei | Aenderung |
 |---|---|
-| `src/lib/radix-compose-refs-patch.ts` | `composeRefs` gibt keine Cleanup mehr zurueck |
-| `src/lib/radix-slot-patch.tsx` | Interne `composeRefs` gibt keine Cleanup mehr zurueck |
+| `src/lib/radix-compose-refs-patch.ts` | `useComposedRefs` mit stabiler Referenz via `useRef` |
+| `src/lib/radix-slot-patch.tsx` | Identische Aenderung an der internen `useComposedRefs` |
 
-2 Dateien, rein mechanische Aenderung. Keine Logik-Aenderungen an der restlichen App.
+### Warum das funktioniert
+
+- Die zurueckgegebene Funktion hat immer dieselbe Identitaet (leeres Dependency-Array)
+- React sieht keinen neuen Ref-Callback, fuehrt kein Detach/Attach durch
+- Intern werden trotzdem immer die aktuellsten Refs verwendet (`refsRef.current`)
+- Kein setState-Trigger, kein Re-Render, keine Endlosschleife
+
+### Risiko
+
+Minimal. Die Funktion ist funktional identisch, nur die Identitaet ist stabil. Alle bestehenden Radix-Komponenten (Dialog, Tooltip, Popover, etc.) profitieren ebenfalls davon.
 
