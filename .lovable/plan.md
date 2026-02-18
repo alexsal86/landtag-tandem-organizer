@@ -1,80 +1,102 @@
 
 
-## Build-Fehler in Edge Functions beheben
+## Egress-Reduktion: PostgREST und Realtime optimieren
 
-Die Build-Fehler sind **nicht** durch die Matrix-Aenderungen verursacht, sondern bestehen schon laenger in mehreren Edge Functions. Es sind drei Fehler-Kategorien:
+### Analyse der Hauptverursacher
 
-### 1. `error` is of type `unknown` (6 Dateien)
+Die App hat drei systematische Probleme, die zu exzessivem Egress fuehren:
 
-In `catch`-Bloecken wird `error.message` direkt aufgerufen, ohne den Typ zu pruefen. Fix: `(error as Error).message` oder `error instanceof Error ? error.message : String(error)`.
+---
 
-**Betroffene Dateien:**
-- `batch-geocode-contacts/index.ts` (Zeilen 82, 96)
-- `fetch-karlsruhe-districts/index.ts` (Zeile 188)
-- `global-logout/index.ts` (Zeile 58)
-- `geocode-contact-address/index.ts` (Zeile 153)
-- `publish-to-ghost/index.ts` (Zeile 224)
-- `reset-user-mfa/index.ts` (Zeilen 110, 114)
+### Problem 1: Realtime-Subscriptions ohne Filter loesen vollstaendige Refetches aus
 
-### 2. `Uint8Array` nicht kompatibel mit `BufferSource` (2 Dateien)
+Fast alle Realtime-Subscriptions verwenden `event: '*'` ohne tenant_id-Filter und loesen bei JEDEM Change auf der Tabelle einen kompletten Refetch aus -- auch bei Aenderungen anderer Tenants/User.
 
-Deno's neuere Typdefinitionen erfordern `.buffer` als `ArrayBuffer` (nicht `ArrayBufferLike`). Fix: `new Uint8Array(bytes)` durch `bytes.buffer as ArrayBuffer` oder einen Cast ersetzen.
+**Betroffene Stellen (18 Dateien):**
 
-**Betroffene Dateien:**
-- `publish-to-ghost/index.ts` (Zeilen 46-48, 58)
-- `send-push-notification/index.ts` (Zeilen 135-137, 165-166, 178-179, 208-209)
+| Datei | Tabellen | Auswirkung |
+|---|---|---|
+| `MyWorkView.tsx` | tasks, task_decisions, meetings, case_files, event_plannings + 5 weitere | 10 Subscriptions, jeder Change ruft `loadCounts()` + `refreshCounts()` auf |
+| `CombinedMessagesWidget.tsx` | messages, message_confirmations, message_recipients | 3 Subscriptions, jeder Change ruft `fetchUnreadCounts()` auf (2x RPC!) |
+| `BlackBoard.tsx` | messages, message_confirmations | 2 Subscriptions, jeder Change ruft `fetchPublicMessages()` auf |
+| `MessageSystem.tsx` | messages, message_recipients, message_confirmations | 3 Subscriptions, jeder Change ruft `fetchMessages()` auf (N+1 Queries!) |
+| `useNavigationNotifications.tsx` | notifications, user_navigation_visits | 2 Subscriptions, jeder Change ruft `loadNavigationCounts()` auf |
+| `useCounts.tsx` | contacts, distribution_lists | 2 Subscriptions, jeder Change ruft `fetchCounts()` auf (4 Queries) |
+| `useTeamAnnouncements.ts` | team_announcements, team_announcement_dismissals | 2 Subscriptions |
+| `useStakeholderPreload.tsx` | contacts | 1 Subscription, laedt ALLE Kontakte neu |
+| `useAllPersonContacts.tsx` | contacts | 1 Subscription, laedt ALLE Kontakte neu |
 
-Fix-Muster:
-```text
-// Vorher:
-crypto.subtle.importKey('raw', secretBytes, ...)
+**Fix:** Filter auf `filter: \`tenant_id=eq.\${currentTenant.id}\`` setzen wo moeglich, und bei user-spezifischen Tabellen auf `user_id=eq.${user.id}`. Events auf `INSERT` oder `UPDATE` einschraenken statt `*`.
 
-// Nachher:
-crypto.subtle.importKey('raw', secretBytes.buffer as ArrayBuffer, ...)
-```
+---
 
-### 3. `.catch()` auf Postgrest-Builder (reset-user-mfa)
+### Problem 2: Doppelte und dreifache Subscriptions auf dieselben Tabellen
 
-Supabase Postgrest-Builder hat kein `.catch()`. Fix: In `try/catch` umwandeln oder `.then()` verwenden.
+Wenn ein User das Dashboard oeffnet, laufen gleichzeitig:
 
-**Betroffen:** `reset-user-mfa/index.ts` (Zeilen 78, 92)
+- `BlackBoard.tsx` hoert auf `messages` + `message_confirmations`
+- `CombinedMessagesWidget.tsx` hoert auf `messages` + `message_confirmations` + `message_recipients`
+- `MessageSystem.tsx` hoert auf `messages` + `message_recipients` + `message_confirmations`
 
-Fix-Muster:
-```text
-// Vorher:
-await supabase.from('table').insert({...}).catch(err => ...);
+Das sind **3 separate Channels** die auf dieselben 3 Tabellen hoeren. Jede Aenderung loest 3 separate Refetches aus.
 
-// Nachher:
-const { error: insertError } = await supabase.from('table').insert({...});
-if (insertError) console.error('Failed:', insertError);
-```
+Dazu kommt:
+- `useNotifications.tsx` hoert auf `notifications` (INSERT + UPDATE)
+- `useNavigationNotifications.tsx` hoert ebenfalls auf `notifications` (alle Events)
 
-### 4. Array-Zugriff statt Objekt (create-daily-appointment-feedback)
+**Fix:** Nachrichten-Subscriptions in einen gemeinsamen Hook zusammenfuehren. Notifications-Subscriptions konsolidieren.
 
-`external_calendars` ist ein Array, nicht ein Objekt. Fix: Auf erstes Element zugreifen.
+---
 
-**Betroffen:** `create-daily-appointment-feedback/index.ts` (Zeilen 176-177)
+### Problem 3: `select('*')` statt gezielter Spaltenauswahl
 
-```text
-// Vorher:
-const userId = externalEvent.external_calendars.user_id;
+122 Dateien verwenden `.select('*')`. Das laedt alle Spalten, auch wenn nur 2-3 gebraucht werden. Bei Tabellen mit JSONB-Feldern (z.B. `layout_data`, `content`) vervielfacht das den Egress.
 
-// Nachher:
-const userId = externalEvent.external_calendars?.[0]?.user_id;
-```
+**Wichtigste Kandidaten:**
+- `contacts`-Tabelle: Hat viele Spalten, wird aber oft nur fuer Name + Avatar gebraucht
+- `event_plannings`: Wird mit `select('*')` geladen, obwohl nur Titel und Datum gezeigt werden
+- `documents`: Wird mit `select('*')` geladen, kann grosse content-Felder haben
 
-### Zusammenfassung
+**Fix:** Schrittweise `.select('*')` durch explizite Spaltenauswahl ersetzen, priorisiert nach Tabellengroesse.
 
-| Datei | Aenderung |
-|---|---|
-| `batch-geocode-contacts/index.ts` | `error` Typ-Guard (2 Stellen) |
-| `fetch-karlsruhe-districts/index.ts` | `error` Typ-Guard (1 Stelle) |
-| `global-logout/index.ts` | `error` Typ-Guard (1 Stelle) |
-| `geocode-contact-address/index.ts` | `error` Typ-Guard (1 Stelle) |
-| `publish-to-ghost/index.ts` | `error` Typ-Guard + `BufferSource` Cast (3 Stellen) |
-| `send-push-notification/index.ts` | `BufferSource` Cast (5 Stellen) |
-| `reset-user-mfa/index.ts` | `error` Typ-Guard + `.catch()` durch `try/catch` ersetzen (7 Stellen) |
-| `create-daily-appointment-feedback/index.ts` | Array-Zugriff `[0]` (2 Stellen) |
+---
 
-Insgesamt 8 Dateien mit rein mechanischen TypeScript-Fixes. Keine Logik-Aenderungen.
+### Problem 4: `removeAllChannels()` in RealTimeSync
 
+In `RealTimeSync.tsx` Zeile 239 steht `supabase.removeAllChannels()`. Das entfernt ALLE Channels im gesamten Client -- auch die von Notifications, Counts, etc. Diese muessen sich dann alle neu verbinden, was zusaetzlichen Overhead erzeugt.
+
+**Fix:** Nur den eigenen Channel entfernen, nicht alle.
+
+---
+
+### Problem 5: CombinedMessagesWidget ruft RPC zweimal auf
+
+`fetchUnreadCounts()` ruft `get_user_messages` zweimal auf (Zeile 28 und 37) -- einmal fuer Blackboard-Count, einmal fuer Messages-Count. Das ist derselbe RPC-Call mit denselben Daten.
+
+**Fix:** Einmal aufrufen, Ergebnis in zwei Filter aufteilen.
+
+---
+
+### Umsetzungsplan (priorisiert nach Impact)
+
+**Phase 1 -- Sofort-Fixes (groesster Impact, geringstes Risiko):**
+
+1. **`RealTimeSync.tsx`**: `removeAllChannels()` durch `supabase.removeChannel(channel)` ersetzen
+2. **`CombinedMessagesWidget.tsx`**: RPC-Doppelaufruf eliminieren (1 statt 2 Calls)
+3. **Alle Realtime-Subscriptions**: `filter` Parameter hinzufuegen (tenant_id oder user_id)
+
+**Phase 2 -- Konsolidierung (mittel):**
+
+4. **Messages-Subscriptions zusammenfuehren**: Ein `useMessagesRealtime`-Hook statt 3 separate Channels auf messages/confirmations/recipients
+5. **Notifications-Subscriptions zusammenfuehren**: `useNotifications` und `useNavigationNotifications` teilen sich einen Channel
+
+**Phase 3 -- Select-Optimierung (laengerfristig):**
+
+6. **`select('*')` schrittweise ersetzen**: Priorisiert contacts, event_plannings, documents
+7. **MyWorkView Debouncing**: 10 Tabellen-Subscriptions die alle `loadCounts()` aufrufen -- Debounce auf 2 Sekunden
+
+### Erwartete Reduktion
+
+- Phase 1: ~40-50% weniger Realtime-Egress (Filter verhindern irrelevante Events)
+- Phase 2: ~20-30% weniger PostgREST-Egress (weniger redundante Queries)
+- Phase 3: ~10-20% weniger PostgREST-Egress (kleinere Payloads)
