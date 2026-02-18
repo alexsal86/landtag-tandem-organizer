@@ -773,18 +773,16 @@ export function DocumentsView() {
 
         if (error) throw error;
       } else {
-        const { count: existingSubtasksCount, error: countError } = await supabase
-          .from('subtasks')
-          .select('id', { count: 'exact', head: true })
-          .eq('task_id', parentTaskId);
-
-        if (countError) throw countError;
-
-        const { error } = await supabase.from('subtasks').insert({
-          task_id: parentTaskId,
-          description: sourceLetterForTask.id ? `${taskTitle.trim()} [[letter:${sourceLetterForTask.id}]]` : taskTitle.trim(),
+        const { error } = await supabase.from('tasks').insert({
           user_id: user.id,
-          order_index: existingSubtasksCount || 0,
+          tenant_id: currentTenant.id,
+          parent_task_id: parentTaskId,
+          title: sourceLetterForTask.id ? `${taskTitle.trim()} [[letter:${sourceLetterForTask.id}]]` : taskTitle.trim(),
+          description: taskDescription.trim() || null,
+          status: 'todo',
+          priority: 'medium',
+          category: 'personal',
+          assigned_to: user.id,
         });
 
         if (error) throw error;
