@@ -46,7 +46,10 @@ export function TaskBadges({
           <div className="w-1.5 h-1.5 rounded-sm bg-violet-500" title={`Kategorie: ${category}`} />
         )}
         {assignedTo && (
-          <div className="w-1.5 h-1.5 rounded-sm bg-cyan-500" title={assigneeName || "Zugewiesen"} />
+          <div
+            className="w-1.5 h-1.5 rounded-sm bg-cyan-500"
+            title={assigneeName ? `Zugewiesen an ${assigneeName}` : "Zugewiesen"}
+          />
         )}
       </div>
     );
@@ -111,7 +114,7 @@ export function TaskBadges({
                 variant="outline" 
                 className="text-xs px-1.5 py-0 h-4 cursor-help text-cyan-600 border-cyan-300 bg-cyan-50 dark:bg-cyan-900/30"
               >
-                {assigneeName.split(' ')[0]}
+                {assigneeName.split(',')[0].trim().split(' ')[0]}
               </Badge>
             </TooltipTrigger>
             <TooltipContent>Zugewiesen an {assigneeName}</TooltipContent>
