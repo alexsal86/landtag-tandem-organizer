@@ -133,6 +133,7 @@ export function EmailComposer() {
   // Which field are we adding to?
   const [activeRecipientField, setActiveRecipientField] = useState<'to' | 'cc' | 'bcc'>('to');
   const [manualEmailInput, setManualEmailInput] = useState("");
+  const [editorKey, setEditorKey] = useState(0);
 
   useEffect(() => {
     if (currentTenant) {
@@ -207,6 +208,7 @@ export function EmailComposer() {
       const bodyWithVars = replacePressVars(templateBody);
       const bodyAsHtml = bodyWithVars.replace(/\n/g, '<br>');
       setBodyHtml(bodyAsHtml);
+      setEditorKey(k => k + 1);
 
       // Auto-add default distribution list as BCC
       if (defaultDistListId) {
@@ -287,6 +289,7 @@ export function EmailComposer() {
     if (template) {
       setSubject(template.subject);
       setBodyHtml(template.body_html);
+      setEditorKey(k => k + 1);
       setSelectedTemplate(templateId);
       toast({ title: "Template geladen", description: `"${template.name}" wurde geladen` });
     }
@@ -874,6 +877,7 @@ export function EmailComposer() {
                   </DropdownMenu>
                 </div>
                 <SimpleRichTextEditor
+                  key={editorKey}
                   initialContent={bodyHtml}
                   onChange={setBodyHtml}
                 />
