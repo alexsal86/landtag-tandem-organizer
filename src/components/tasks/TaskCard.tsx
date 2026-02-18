@@ -44,6 +44,7 @@ interface TaskCardProps {
   subtasks?: Subtask[];
   assigneeName?: string;
   hasMeetingLink?: boolean;
+  hasReminder?: boolean;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
@@ -63,6 +64,7 @@ export function TaskCard({
   subtasks = [],
   assigneeName,
   hasMeetingLink,
+  hasReminder,
   onComplete,
   onSubtaskComplete,
   onNavigate,
@@ -278,6 +280,7 @@ export function TaskCard({
             <Separator orientation="vertical" className="h-4 mx-1" />
             <TaskActionIcons
               taskId={task.id}
+              hasReminder={hasReminder}
               hasMeetingLink={hasMeetingLink}
               onReminder={onReminder}
               onAssign={onAssign}
