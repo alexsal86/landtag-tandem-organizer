@@ -39,12 +39,12 @@ export function EmailPreviewCard({
         <div className="flex items-start gap-2 flex-1 min-w-0">
           <Mail className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate">{metadata.subject}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm font-semibold break-words">{metadata.subject}</p>
+            <p className="text-xs text-muted-foreground break-all">
               Von: {metadata.from}
             </p>
             {metadata.to.length > 0 && (
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground break-all">
                 An: {metadata.to.join(', ')}
               </p>
             )}
