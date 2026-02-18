@@ -776,7 +776,6 @@ export function MyWorkTasksTab() {
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
             hasReminder={!!taskSnoozes[task.id]}
             followUpDate={showFollowUpDateBadge ? taskSnoozes[task.id] : undefined}
-            commentCount={taskCommentCounts[task.id] || 0}
             onComplete={handleToggleComplete}
             onSubtaskComplete={handleToggleSubtaskComplete}
             onNavigate={(id) => navigate(`/tasks?id=${id}`)}
@@ -796,6 +795,9 @@ export function MyWorkTasksTab() {
             onDocuments={handleDocuments}
             onAddToMeeting={handleAddToMeeting}
             onEdit={openTaskEditDialog}
+            getChildTasks={getChildTasks}
+            getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
+            showPersistentCommentIndicator
           />
         ))}
       </div>
@@ -810,7 +812,6 @@ export function MyWorkTasksTab() {
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
             hasReminder={!!taskSnoozes[task.id]}
             followUpDate={showFollowUpDateBadge ? taskSnoozes[task.id] : undefined}
-            commentCount={taskCommentCounts[task.id] || 0}
             onComplete={handleToggleComplete}
             onSubtaskComplete={handleToggleSubtaskComplete}
             onNavigate={(id) => navigate(`/tasks?id=${id}`)}
@@ -829,6 +830,9 @@ export function MyWorkTasksTab() {
             onDocuments={handleDocuments}
             onAddToMeeting={handleAddToMeeting}
             onEdit={openTaskEditDialog}
+            getChildTasks={getChildTasks}
+            getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
+            showPersistentCommentIndicator
           />
         ))}
       </div>
@@ -853,6 +857,7 @@ export function MyWorkTasksTab() {
                   key={task.id}
                   task={task}
                   subtasks={subtasks[task.id]}
+                  resolveAssigneeName={resolveAssigneeName}
                   hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
                   hasReminder={!!taskSnoozes[task.id]}
                   onComplete={handleToggleComplete}
@@ -870,6 +875,8 @@ export function MyWorkTasksTab() {
                   onCreateChildTask={handleCreateChildTask}
                   onEdit={openTaskEditDialog}
                   getChildTasks={getChildTasks}
+                  getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
+                  showPersistentCommentIndicator
                 />
               ))}
             </div>
@@ -880,6 +887,7 @@ export function MyWorkTasksTab() {
                   key={task.id}
                   task={task}
                   subtasks={subtasks[task.id]}
+                  resolveAssigneeName={resolveAssigneeName}
                   hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
                   hasReminder={!!taskSnoozes[task.id]}
                   onComplete={handleToggleComplete}
@@ -896,6 +904,8 @@ export function MyWorkTasksTab() {
                   onCreateChildTask={handleCreateChildTask}
                   onEdit={openTaskEditDialog}
                   getChildTasks={getChildTasks}
+                  getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
+                  showPersistentCommentIndicator
                 />
               ))}
             </div>

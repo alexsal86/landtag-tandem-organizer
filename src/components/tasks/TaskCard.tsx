@@ -58,6 +58,8 @@ interface TaskCardProps {
   onCreateChildTask?: (taskId: string) => void;
   onEdit?: (taskId: string) => void;
   getChildTasks?: (taskId: string) => Task[];
+  getCommentCount?: (taskId: string) => number;
+  showPersistentCommentIndicator?: boolean;
 }
 
 export function TaskCard({
@@ -86,6 +88,8 @@ export function TaskCard({
   onCreateChildTask,
   onEdit,
   getChildTasks,
+  getCommentCount,
+  showPersistentCommentIndicator = false,
 }: TaskCardProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
@@ -97,6 +101,7 @@ export function TaskCard({
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
   const childTasks = getChildTasks ? getChildTasks(task.id) : subtasks;
+  const currentCommentCount = getCommentCount ? getCommentCount(task.id) : commentCount;
   const hasSubtasks = childTasks.length > 0;
   const hasDueDate = Boolean(task.due_date);
   const sourceLetterId = extractLetterSourceId(task.description);
@@ -283,7 +288,7 @@ export function TaskCard({
               </PopoverContent>
             </Popover>
 
-            {commentCount > 0 && (
+            {showPersistentCommentIndicator && currentCommentCount > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -295,7 +300,7 @@ export function TaskCard({
               >
                 <MessageSquare className="h-3 w-3" />
                 <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 rounded-full bg-blue-600 text-[9px] leading-none text-white flex items-center justify-center font-medium">
-                  {commentCount > 99 ? "99+" : commentCount}
+                  {currentCommentCount > 99 ? "99+" : currentCommentCount}
                 </span>
               </Button>
             )}
@@ -306,7 +311,7 @@ export function TaskCard({
                 taskId={task.id}
                 hasReminder={hasReminder}
                 hasMeetingLink={hasMeetingLink}
-                commentCount={commentCount}
+                commentCount={currentCommentCount}
                 onReminder={onReminder}
                 onAssign={onAssign}
                 onComment={onComment}
@@ -352,6 +357,8 @@ export function TaskCard({
               onCreateChildTask={onCreateChildTask}
               onEdit={onEdit}
               getChildTasks={getChildTasks}
+              getCommentCount={getCommentCount}
+              showPersistentCommentIndicator={showPersistentCommentIndicator}
             />
           ))}
         </div>

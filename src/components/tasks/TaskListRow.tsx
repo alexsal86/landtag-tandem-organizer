@@ -54,6 +54,8 @@ interface TaskListRowProps {
   onCreateChildTask?: (taskId: string) => void;
   onEdit?: (taskId: string) => void;
   getChildTasks?: (taskId: string) => Task[];
+  getCommentCount?: (taskId: string) => number;
+  showPersistentCommentIndicator?: boolean;
 }
 
 export function TaskListRow({
@@ -80,6 +82,8 @@ export function TaskListRow({
   onCreateChildTask,
   onEdit,
   getChildTasks,
+  getCommentCount,
+  showPersistentCommentIndicator = false,
 }: TaskListRowProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
@@ -89,6 +93,7 @@ export function TaskListRow({
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const childTasks = getChildTasks ? getChildTasks(task.id) : subtasks;
+  const currentCommentCount = getCommentCount ? getCommentCount(task.id) : commentCount;
   const hasSubtasks = childTasks.length > 0;
   const sourceLetterId = extractLetterSourceId(task.description);
   const currentAssigneeName = assigneeName ?? resolveAssigneeName?.(task.assigned_to);
@@ -223,7 +228,7 @@ export function TaskListRow({
             </PopoverContent>
           </Popover>
 
-          {commentCount > 0 && (
+          {showPersistentCommentIndicator && currentCommentCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -235,7 +240,7 @@ export function TaskListRow({
             >
               <MessageSquare className="h-3 w-3" />
               <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 rounded-full bg-blue-600 text-[9px] leading-none text-white flex items-center justify-center font-medium">
-                {commentCount > 99 ? "99+" : commentCount}
+                {currentCommentCount > 99 ? "99+" : currentCommentCount}
               </span>
             </Button>
           )}
@@ -246,7 +251,7 @@ export function TaskListRow({
               taskId={task.id}
               hasMeetingLink={hasMeetingLink}
               hasReminder={hasReminder}
-              commentCount={commentCount}
+              commentCount={currentCommentCount}
               onReminder={onReminder}
               onAssign={onAssign}
               onComment={onComment}
@@ -289,6 +294,8 @@ export function TaskListRow({
               onCreateChildTask={onCreateChildTask}
               onEdit={onEdit}
               getChildTasks={getChildTasks}
+              getCommentCount={getCommentCount}
+              showPersistentCommentIndicator={showPersistentCommentIndicator}
             />
           ))}
         </div>
