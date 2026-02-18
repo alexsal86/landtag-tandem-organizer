@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { Send, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +38,7 @@ export function TaskCommentSidebar({
   const { toast } = useToast();
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [newCommentEditorKey, setNewCommentEditorKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -95,6 +97,7 @@ export function TaskCommentSidebar({
       if (error) throw error;
 
       setNewComment("");
+      setNewCommentEditorKey((prev) => prev + 1);
       await loadComments();
       toast({ title: "Kommentar hinzugefügt" });
     } catch (error) {
@@ -179,9 +182,7 @@ export function TaskCommentSidebar({
                           </Button>
                         )}
                       </div>
-                      <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">
-                        {comment.content}
-                      </p>
+                      <RichTextDisplay content={comment.content} className="text-sm text-foreground mt-1" />
                     </div>
                   </div>
                 ))}
@@ -191,20 +192,19 @@ export function TaskCommentSidebar({
 
           {/* Input */}
           <div className="border-t pt-4 mt-4">
-            <div className="flex gap-2">
-              <Textarea
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Kommentar schreiben..."
-                className="min-h-[80px]"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.ctrlKey) {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                }}
-              />
-            </div>
+            <SimpleRichTextEditor
+              key={newCommentEditorKey}
+              initialContent=""
+              onChange={setNewComment}
+              placeholder="Kommentar schreiben..."
+              minHeight="80px"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+            />
             <div className="flex justify-between items-center mt-2">
               <span className="text-xs text-muted-foreground">Strg+Enter zum Senden</span>
               <Button 
