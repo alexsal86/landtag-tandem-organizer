@@ -97,6 +97,7 @@ export interface QuickNote {
   meetings?: {
     title: string;
     meeting_date: string;
+    status: string | null;
   } | null;
 }
 
@@ -187,6 +188,22 @@ export function QuickNotesList({
       .replace(/>/g, "&gt;")}</p>`;
   };
 
+  const hasInactiveMeetingLink = (note: QuickNote) => {
+    if (!note.meeting_id) return false;
+    return !note.meetings || note.meetings.status === 'archived';
+  };
+
+  const normalizeMeetingLink = (note: QuickNote): QuickNote => {
+    if (!hasInactiveMeetingLink(note)) return note;
+
+    return {
+      ...note,
+      meeting_id: undefined,
+      meetings: null,
+      pending_for_jour_fixe: false,
+    };
+  };
+
   const loadNotes = useCallback(async () => {
     if (!user) return;
     
@@ -199,7 +216,7 @@ export function QuickNotesList({
             id, title, content, color, color_full_card, is_pinned, created_at, updated_at, user_id,
             is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
             task_archived_info, decision_archived_info, meeting_archived_info,
-            meetings!meeting_id(title, meeting_date)
+            meetings!meeting_id(title, meeting_date, status)
           `)
           .eq("user_id", user.id)
           .eq("is_archived", false)
@@ -269,7 +286,7 @@ export function QuickNotesList({
             id, title, content, color, color_full_card, is_pinned, created_at, updated_at, user_id,
             is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
             task_archived_info, decision_archived_info, meeting_archived_info,
-            meetings!meeting_id(title, meeting_date)
+            meetings!meeting_id(title, meeting_date, status)
           `)
           .in("id", individualNoteIds)
           .eq("is_archived", false)
@@ -302,7 +319,7 @@ export function QuickNotesList({
             id, title, content, color, color_full_card, is_pinned, created_at, updated_at, user_id,
             is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
             task_archived_info, decision_archived_info, meeting_archived_info,
-            meetings!meeting_id(title, meeting_date)
+            meetings!meeting_id(title, meeting_date, status)
           `)
           .in("user_id", globalShareUserIds)
           .eq("is_archived", false)
@@ -334,7 +351,29 @@ export function QuickNotesList({
         shared_with_users: shareDetails[note.id] || []
       })) as QuickNote[];
 
-      setNotes([...ownWithDetails, ...sharedNotes]);
+      const ownNotesWithInactiveMeetings = ownWithDetails.filter(hasInactiveMeetingLink);
+      if (ownNotesWithInactiveMeetings.length > 0) {
+        const ownNoteIdsToCleanup = ownNotesWithInactiveMeetings.map(note => note.id);
+        const timestamp = new Date().toISOString();
+
+        const { error: cleanupError } = await supabase
+          .from("quick_notes")
+          .update({
+            meeting_id: null,
+            pending_for_jour_fixe: false,
+            meeting_archived_info: null,
+            added_to_meeting_at: null,
+            updated_at: timestamp,
+          })
+          .in("id", ownNoteIdsToCleanup)
+          .eq("user_id", user.id);
+
+        if (cleanupError) {
+          console.error("Error cleaning up inactive meeting links:", cleanupError);
+        }
+      }
+
+      setNotes([...ownWithDetails, ...sharedNotes].map(normalizeMeetingLink));
     } catch (error) {
       console.error("Error loading notes:", error);
     } finally {
