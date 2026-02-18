@@ -10,7 +10,7 @@ import { Vote, Mail, MessageSquare, Globe, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
-import { getUploadContentType, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
+import { getUploadContentType, getUploadContentTypeCandidates, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { ResponseOptionsEditor } from "./ResponseOptionsEditor";
@@ -320,13 +320,25 @@ export const TaskDecisionCreator = ({
             const fileName = `${userData.user.id}/decisions/${decision.id}/${uniqueSuffix}-${file.name}`;
 
             // Upload to storage
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('decision-attachments')
-              .upload(fileName, file, {
-                contentType: getUploadContentType(file),
-              });
+            const uploadContentTypes = getUploadContentTypeCandidates(file);
+            let uploadData: { path: string } | null = null;
+            let uploadError: unknown = null;
 
-            if (uploadError) throw uploadError;
+            for (const contentType of uploadContentTypes) {
+              const result = await supabase.storage
+                .from('decision-attachments')
+                .upload(fileName, file, { contentType });
+
+              if (!result.error && result.data) {
+                uploadData = result.data;
+                uploadError = null;
+                break;
+              }
+
+              uploadError = result.error;
+            }
+
+            if (!uploadData) throw uploadError ?? new Error("Upload failed");
 
             // Extract email metadata if applicable
             let emailMeta: EmailMetadata | null = null;
