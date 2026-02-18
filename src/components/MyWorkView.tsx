@@ -299,7 +299,7 @@ export function MyWorkView() {
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'task_decisions' },
+        { event: '*', schema: 'public', table: 'task_decisions', filter: `user_id=eq.${user.id}` },
         debouncedUpdate
       )
       .on(
@@ -309,7 +309,7 @@ export function MyWorkView() {
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'task_decision_responses' },
+        { event: '*', schema: 'public', table: 'task_decision_responses', filter: `user_id=eq.${user.id}` },
         debouncedUpdate
       )
       .on(

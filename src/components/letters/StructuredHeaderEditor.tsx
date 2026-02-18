@@ -125,11 +125,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const cached = blobUrlMapRef.current.get(storagePath);
     if (cached) return cached;
     try {
-      const { data: blob, error } = await supabase.storage.from('letter-assets').download(storagePath);
-      if (error || !blob) return null;
-      const blobUrl = URL.createObjectURL(blob);
-      blobUrlMapRef.current.set(storagePath, blobUrl);
-      return blobUrl;
+      const { data } = supabase.storage.from('letter-assets').getPublicUrl(storagePath);
+      if (!data?.publicUrl) return null;
+      blobUrlMapRef.current.set(storagePath, data.publicUrl);
+      return data.publicUrl;
     } catch { return null; }
   }, []);
 
@@ -161,11 +160,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       for (const file of imageFiles) {
         const filePath = `${folderPath}/${file.name}`;
         try {
-          const { data: blob, error: dlError } = await supabase.storage.from('letter-assets').download(filePath);
-          if (dlError || !blob) continue;
-          const blobUrl = URL.createObjectURL(blob);
-          blobUrlMapRef.current.set(filePath, blobUrl);
-          loaded.push({ name: file.name, path: filePath, blobUrl });
+          const { data: urlData } = supabase.storage.from('letter-assets').getPublicUrl(filePath);
+          if (!urlData?.publicUrl) continue;
+          blobUrlMapRef.current.set(filePath, urlData.publicUrl);
+          loaded.push({ name: file.name, path: filePath, blobUrl: urlData.publicUrl });
         } catch (e) { console.error('Error downloading', file.name, e); }
       }
       setGalleryImages(loaded);

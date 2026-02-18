@@ -32,7 +32,16 @@ import { TaskArchiveView } from "./components/TaskArchiveView";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000,      // 2 minutes – data stays fresh, no refetch
+      gcTime: 10 * 60 * 1000,         // 10 minutes – cache kept in memory
+      refetchOnWindowFocus: false,     // no auto-refetch on tab switch
+      retry: 1,
+    },
+  },
+});
 
 // Inner component to use hooks
 const AppContent = () => {
