@@ -375,6 +375,7 @@ export function MyWorkTasksTab() {
 
   const handleSetSnooze = async (date: Date) => {
     if (!snoozeTaskId || !user) return;
+    const targetTaskId = snoozeTaskId;
     
     try {
       // Check if there's already a snooze for this task
@@ -405,6 +406,7 @@ export function MyWorkTasksTab() {
       }
       
       toast({ title: "Wiedervorlage gesetzt" });
+      setTaskSnoozes(prev => ({ ...prev, [targetTaskId]: date.toISOString() }));
       setSnoozeDialogOpen(false);
       setSnoozeTaskId(null);
       loadTasks();
@@ -428,11 +430,17 @@ export function MyWorkTasksTab() {
 
   const handleClearSnooze = async () => {
     if (!snoozeTaskId || !user) return;
+    const targetTaskId = snoozeTaskId;
 
     try {
       await clearSnoozeForTask(snoozeTaskId);
 
       toast({ title: "Wiedervorlage entfernt" });
+      setTaskSnoozes(prev => {
+        const next = { ...prev };
+        delete next[targetTaskId];
+        return next;
+      });
       setSnoozeDialogOpen(false);
       setSnoozeTaskId(null);
       loadTasks();
@@ -446,6 +454,11 @@ export function MyWorkTasksTab() {
     try {
       await clearSnoozeForTask(taskId);
       toast({ title: "Wiedervorlage entfernt" });
+      setTaskSnoozes(prev => {
+        const next = { ...prev };
+        delete next[taskId];
+        return next;
+      });
       loadTasks();
     } catch (error) {
       console.error("Error clearing snooze:", error);
@@ -654,9 +667,9 @@ export function MyWorkTasksTab() {
     tasks: Task[],
     title: string,
     emptyMessage: string,
-    options?: { scrollable?: boolean; compact?: boolean; allowQuickUnsnooze?: boolean }
+    options?: { scrollable?: boolean; compact?: boolean; allowQuickUnsnooze?: boolean; showFollowUpDateBadge?: boolean }
   ) => {
-    const { scrollable = true, compact = false, allowQuickUnsnooze = false } = options || {};
+    const { scrollable = true, compact = false, allowQuickUnsnooze = false, showFollowUpDateBadge = false } = options || {};
 
     const listContent = tasks.length === 0 ? (
       <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
@@ -669,6 +682,7 @@ export function MyWorkTasksTab() {
             subtasks={subtasks[task.id]}
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
             hasReminder={!!taskSnoozes[task.id]}
+            followUpDate={showFollowUpDateBadge ? taskSnoozes[task.id] : undefined}
             commentCount={taskCommentCounts[task.id] || 0}
             onComplete={handleToggleComplete}
             onSubtaskComplete={handleToggleSubtaskComplete}
@@ -700,6 +714,7 @@ export function MyWorkTasksTab() {
             subtasks={subtasks[task.id]}
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
             hasReminder={!!taskSnoozes[task.id]}
+            followUpDate={showFollowUpDateBadge ? taskSnoozes[task.id] : undefined}
             commentCount={taskCommentCounts[task.id] || 0}
             onComplete={handleToggleComplete}
             onSubtaskComplete={handleToggleSubtaskComplete}
@@ -791,12 +806,6 @@ export function MyWorkTasksTab() {
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Aufgaben</span>
           <Badge variant="outline">{totalTasks}</Badge>
-          <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">
-            Wiedervorlagen fällig: {dueFollowUpCount}
-          </Badge>
-          {hiddenScheduledCount > 0 && (
-            <Badge variant="secondary">Geplant: {hiddenScheduledCount}</Badge>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -879,8 +888,8 @@ export function MyWorkTasksTab() {
 
             <CollapsibleContent className="pt-2">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {renderTaskList(filteredScheduledCreatedTasks, "Von mir erstellt", "Keine geplanten Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: true })}
-                {renderTaskList(filteredScheduledAssignedTasks, "Mir zugewiesen", "Keine geplanten Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: true })}
+                {renderTaskList(filteredScheduledCreatedTasks, "Von mir erstellt", "Keine geplanten Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: false, showFollowUpDateBadge: true })}
+                {renderTaskList(filteredScheduledAssignedTasks, "Mir zugewiesen", "Keine geplanten Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: false, showFollowUpDateBadge: true })}
               </div>
             </CollapsibleContent>
           </Collapsible>
