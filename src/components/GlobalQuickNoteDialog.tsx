@@ -5,8 +5,11 @@ import { StickyNote, Keyboard, Loader2, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
+import { extractMentionedUserIds } from "@/utils/noteMentions";
 
 interface GlobalQuickNoteDialogProps {
   open: boolean;
@@ -15,9 +18,13 @@ interface GlobalQuickNoteDialogProps {
 
 export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDialogProps) {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
+  const [mentionPromptOpen, setMentionPromptOpen] = useState(false);
+  const [newNoteId, setNewNoteId] = useState<string | null>(null);
+  const [mentionedUsers, setMentionedUsers] = useState<Array<{ id: string; displayName: string }>>([]);
   const savingRef = useRef(false);
 
   const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
@@ -70,18 +77,41 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       const { data, error } = await supabase
         .from('quick_notes')
         .insert(insertData)
-        .select();
+        .select('id')
+        .single();
 
       if (error) {
         console.error("Supabase error:", error);
         throw error;
       }
       
+      const mentionedUserIds = extractMentionedUserIds(title, content).filter(
+        (mentionedUserId) => mentionedUserId !== user.id
+      );
+
+      if (mentionedUserIds.length > 0 && currentTenant?.id && data?.id) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, display_name")
+          .eq("tenant_id", currentTenant.id)
+          .in("user_id", mentionedUserIds);
+
+        const users = mentionedUserIds.map((userId) => ({
+          id: userId,
+          displayName:
+            profiles?.find((profile) => profile.user_id === userId)?.display_name || "Unbekannt",
+        }));
+
+        setNewNoteId(data.id);
+        setMentionedUsers(users);
+        setMentionPromptOpen(true);
+      }
+
       toast.success("Notiz erstellt");
       
       // Dispatch event to refresh notes list immediately
       window.dispatchEvent(new CustomEvent('quick-note-created', { 
-        detail: { note: data?.[0] } 
+        detail: { note: data } 
       }));
       
       onOpenChange(false);
@@ -92,6 +122,29 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       savingRef.current = false;
       setSaving(false);
     }
+  };
+
+  const handleShareMentionedUsers = async (
+    userIds: string[],
+    permission: "view" | "edit"
+  ) => {
+    if (!newNoteId || !user?.id || userIds.length === 0) return;
+
+    const { error } = await supabase.from("quick_note_shares").insert(
+      userIds.map((sharedWithUserId) => ({
+        note_id: newNoteId,
+        shared_with_user_id: sharedWithUserId,
+        shared_by_user_id: user.id,
+        permission_type: permission,
+      }))
+    );
+
+    if (error) {
+      toast.error("Freigabe für erwähnte Personen fehlgeschlagen");
+      return;
+    }
+
+    toast.success("Notiz für erwähnte Personen freigegeben");
   };
 
   // Handle Enter key in title editor for quick save
@@ -182,6 +235,13 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <MentionSharePromptDialog
+        open={mentionPromptOpen}
+        onOpenChange={setMentionPromptOpen}
+        users={mentionedUsers}
+        onConfirm={handleShareMentionedUsers}
+      />
     </Dialog>
   );
 }

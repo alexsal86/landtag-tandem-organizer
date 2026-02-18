@@ -10,6 +10,8 @@ import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
+import { extractMentionedUserIds } from "@/utils/noteMentions";
 
 const COLORS = [
   { name: "Standard", value: "#3b82f6" },
@@ -36,6 +38,9 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   const [saving, setSaving] = useState(false);
   const [savingAsTask, setSavingAsTask] = useState(false);
   const [editorResetKey, setEditorResetKey] = useState(0);
+  const [mentionPromptOpen, setMentionPromptOpen] = useState(false);
+  const [newNoteId, setNewNoteId] = useState<string | null>(null);
+  const [mentionedUsers, setMentionedUsers] = useState<Array<{ id: string; displayName: string }>>([]);
 
   const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
   const toEditorHtml = (value: string | null | undefined) => {
@@ -63,16 +68,40 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
     
     setSaving(true);
     try {
-      const { error } = await supabase.from("quick_notes").insert({
+      const { data, error } = await supabase.from("quick_notes").insert({
         user_id: user.id,
         title: title.trim() || null,
         content: stripHtml(content) ? content.trim() : "",
         color: selectedColor,
         is_pinned: isPinned,
         category: "general",
-      });
+      })
+      .select("id")
+      .single();
 
       if (error) throw error;
+
+      const mentionedUserIds = extractMentionedUserIds(title, content).filter(
+        (mentionedUserId) => mentionedUserId !== user.id
+      );
+
+      if (mentionedUserIds.length > 0 && currentTenant?.id && data?.id) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, display_name")
+          .eq("tenant_id", currentTenant.id)
+          .in("user_id", mentionedUserIds);
+
+        setNewNoteId(data.id);
+        setMentionedUsers(
+          mentionedUserIds.map((userId) => ({
+            id: userId,
+            displayName:
+              profiles?.find((profile) => profile.user_id === userId)?.display_name || "Unbekannt",
+          }))
+        );
+        setMentionPromptOpen(true);
+      }
 
       toast({ title: "Notiz gespeichert" });
       resetQuickCaptureForm();
@@ -83,6 +112,29 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleShareMentionedUsers = async (
+    userIds: string[],
+    permission: "view" | "edit"
+  ) => {
+    if (!newNoteId || !user?.id || userIds.length === 0) return;
+
+    const { error } = await supabase.from("quick_note_shares").insert(
+      userIds.map((sharedWithUserId) => ({
+        note_id: newNoteId,
+        shared_with_user_id: sharedWithUserId,
+        shared_by_user_id: user.id,
+        permission_type: permission,
+      }))
+    );
+
+    if (error) {
+      toast({ title: "Freigabe für erwähnte Personen fehlgeschlagen", variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Notiz für erwähnte Personen freigegeben" });
   };
 
   const handleSaveAsTask = async () => {
@@ -139,7 +191,8 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   };
 
   return (
-    <Card className="transition-colors border-l-4" style={{ borderLeftColor: selectedColor }}>
+    <>
+      <Card className="transition-colors border-l-4" style={{ borderLeftColor: selectedColor }}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-1.5">
@@ -242,6 +295,13 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           </Button>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+      <MentionSharePromptDialog
+        open={mentionPromptOpen}
+        onOpenChange={setMentionPromptOpen}
+        users={mentionedUsers}
+        onConfirm={handleShareMentionedUsers}
+      />
+    </>
   );
 }
