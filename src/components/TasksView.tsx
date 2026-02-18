@@ -45,6 +45,7 @@ interface Task {
   updated_at?: string;
   user_id?: string;
   call_log_id?: string;
+  tenant_id?: string;
 }
 
 interface TaskComment {
@@ -69,7 +70,7 @@ interface Subtask {
   completed_at?: string;
   result_text?: string;
   planning_item_id?: string;
-  source_type?: 'task' | 'planning' | 'call_followup';
+  source_type?: 'task_child' | 'planning' | 'call_followup';
   checklist_item_title?: string;
   call_log_id?: string;
   contact_name?: string;
@@ -459,54 +460,50 @@ export function TasksView() {
     try {
       const allSubtasks = [];
 
-      // 1. Get regular subtasks assigned to this user
-      console.log('📋 Loading regular subtasks...');
-      const { data: subtasksData, error: subtasksError } = await supabase
-        .from('subtasks')
-        .select('*')
-        .or(`assigned_to.eq.${user.id},assigned_to.eq.{${user.id}},assigned_to.like.%${user.id}%`)
-        .eq('is_completed', false);
+      // 1b. Get task-child subtasks assigned to this user
+      const { data: childTasksData, error: childTasksError } = await supabase
+        .from('tasks')
+        .select('id, title, description, parent_task_id, assigned_to, due_date, status, created_at, updated_at, priority')
+        .not('parent_task_id', 'is', null)
+        .neq('status', 'completed');
 
-      if (subtasksError) {
-        console.error('❌ Error loading regular subtasks:', subtasksError);
+      if (childTasksError) {
+        console.error('❌ Error loading task-child subtasks:', childTasksError);
       } else {
-        console.log('✅ Raw regular subtasks data:', subtasksData);
-        
-        if (subtasksData) {
-          for (const subtask of subtasksData) {
-            console.log('📝 Processing regular subtask:', subtask.id, 'assigned_to:', subtask.assigned_to);
-            
-            try {
-              // Get task title separately
-              const { data: taskData } = await supabase
-                .from('tasks')
-                .select('title')
-                .eq('id', subtask.task_id)
-                .single();
+        for (const childTask of childTasksData || []) {
+          const assignees = Array.isArray(childTask.assigned_to)
+            ? childTask.assigned_to
+            : (childTask.assigned_to || '').split(',').map((item) => item.trim()).filter(Boolean);
 
-              // Keep original assigned_to array and resolve all names
-              const resolvedAssignedTo = await resolveUserNamesAsync(subtask.assigned_to || []);
-              
-              allSubtasks.push({
-                ...subtask,
-                task_title: taskData?.title || 'Unbekannte Aufgabe',
-                source_type: 'task' as const,
-                assigned_to_names: resolvedAssignedTo,
-                assigned_to: subtask.assigned_to || [] // Keep original assignment
-              });
-              
-              console.log('✅ Added regular subtask:', subtask.id);
-            } catch (resolveError) {
-              console.error('❌ Error resolving names for subtask:', subtask.id, resolveError);
-              // Add without resolved names as fallback
-              allSubtasks.push({
-                ...subtask,
-                task_title: 'Unbekannte Aufgabe',
-                source_type: 'task' as const,
-                assigned_to_names: resolveUserNames(subtask.assigned_to)
-              });
-            }
+          const isAssigned = assignees.includes(user.id);
+          if (!isAssigned) continue;
+
+          let parentTitle = 'Unbekannte Aufgabe';
+          if (childTask.parent_task_id) {
+            const { data: parentTask } = await supabase
+              .from('tasks')
+              .select('title')
+              .eq('id', childTask.parent_task_id)
+              .single();
+            parentTitle = parentTask?.title || parentTitle;
           }
+
+          allSubtasks.push({
+            id: childTask.id,
+            title: childTask.title,
+            description: childTask.description || '',
+            task_id: childTask.parent_task_id,
+            task_title: parentTitle,
+            source_type: 'task_child' as const,
+            assigned_to: assignees,
+            assigned_to_names: resolveUserNames(assignees),
+            due_date: childTask.due_date,
+            is_completed: childTask.status === 'completed',
+            created_at: childTask.created_at,
+            updated_at: childTask.updated_at,
+            priority: childTask.priority,
+            order_index: 0,
+          });
         }
       }
 
@@ -685,7 +682,6 @@ export function TasksView() {
 
       console.log('🎯 FINAL RESULT - Total assigned subtasks found:', allSubtasks.length);
       console.log('📊 Breakdown:');
-      console.log('  - Regular subtasks:', allSubtasks.filter(s => s.source_type === 'task').length);
       console.log('  - Planning subtasks:', allSubtasks.filter(s => s.source_type === 'planning').length);  
       console.log('  - Call follow-ups:', allSubtasks.filter(s => s.source_type === 'call_followup').length);
       console.log('📋 All subtasks details:', allSubtasks.map(s => ({
@@ -710,6 +706,7 @@ export function TasksView() {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
+        .is('parent_task_id', null)
         .or(`user_id.eq.${user.id},assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
         .order('created_at', { ascending: false });
 
@@ -729,7 +726,8 @@ export function TasksView() {
         created_at: task.created_at,
         updated_at: task.updated_at,
         user_id: task.user_id,
-        call_log_id: task.call_log_id
+        call_log_id: task.call_log_id,
+        tenant_id: task.tenant_id
       }));
 
       setTasks(transformedTasks);
@@ -903,15 +901,17 @@ export function TasksView() {
 
   const loadSubtaskCounts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('subtasks')
-        .select('task_id, id, is_completed');
+      const { data: childTasks, error } = await supabase
+        .from('tasks')
+        .select('id, parent_task_id')
+        .not('parent_task_id', 'is', null);
 
       if (error) throw error;
 
       const counts: { [taskId: string]: number } = {};
-      (data || []).forEach(subtask => {
-        counts[subtask.task_id] = (counts[subtask.task_id] || 0) + 1;
+      (childTasks || []).forEach(task => {
+        if (!task.parent_task_id) return;
+        counts[task.parent_task_id] = (counts[task.parent_task_id] || 0) + 1;
       });
 
       setSubtaskCounts(counts);
@@ -922,20 +922,35 @@ export function TasksView() {
 
   const loadSubtasksForTask = async (taskId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('subtasks')
+      const { data: childTasks, error } = await supabase
+        .from('tasks')
         .select('*')
-        .eq('task_id', taskId)
-        .order('order_index');
+        .eq('parent_task_id', taskId)
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
 
+      const mappedChildTasks = (childTasks || []).map((task, index) => ({
+        id: task.id,
+        task_id: taskId,
+        title: task.title,
+        description: task.description || '',
+        is_completed: task.status === 'completed',
+        assigned_to: Array.isArray(task.assigned_to)
+          ? task.assigned_to
+          : (task.assigned_to ? String(task.assigned_to).split(',').map((item) => item.trim()).filter(Boolean) : []),
+        due_date: task.due_date,
+        order_index: index,
+        completed_at: task.status === 'completed' ? task.updated_at : null,
+        source_type: 'task_child' as const,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+        priority: task.priority,
+      }));
+
       setSubtasks(prev => ({
         ...prev,
-        [taskId]: (data || []).map(subtask => ({
-          ...subtask,
-          title: subtask.description || 'Unnamed subtask'
-        })) as any
+        [taskId]: mappedChildTasks as any
       }));
     } catch (error) {
       console.error('Error loading subtasks:', error);
@@ -1385,9 +1400,16 @@ export function TasksView() {
           .eq('id', subtaskId);
 
         if (taskError) throw taskError;
+      } else if (subtask.source_type === 'task_child') {
+        const { error } = await supabase
+          .from('tasks')
+          .update({ status: isCompleted ? 'completed' : 'todo' })
+          .eq('id', subtaskId);
+
+        if (error) throw error;
       } else {
         // Handle regular and planning subtasks
-        const tableName = subtask?.source_type === 'planning' ? 'planning_item_subtasks' : 'subtasks';
+        const tableName = 'planning_item_subtasks';
         
         const updateData: any = {
           is_completed: isCompleted,
@@ -2053,15 +2075,24 @@ export function TasksView() {
                                  if (title && user) {
                                    const addSubtask = async () => {
                                      try {
+                                       const tenantId = task.tenant_id || currentTenant?.id;
+                                       if (!tenantId) {
+                                         throw new Error('Missing tenant_id for subtask creation');
+                                       }
+
                                        const { error } = await supabase
-                                         .from('subtasks')
+                                         .from('tasks')
                                          .insert({
-                                           task_id: task.id,
+                                           title,
+                                           description: null,
+                                           status: 'todo',
+                                           priority: task.priority || 'medium',
+                                           category: task.category || 'personal',
                                            user_id: user.id,
-                                           description: title,
-                                           is_completed: false,
-                                           order_index: subtasks[task.id].length
-                                         });
+                                           tenant_id: tenantId,
+                                           assigned_to: task.assignedTo || user.id,
+                                           parent_task_id: task.id,
+                                         } as any);
                                        
                                        if (error) throw error;
                                        loadSubtasksForTask(task.id);
@@ -2099,11 +2130,8 @@ export function TasksView() {
                                      const isChecked = checked === true;
                                      try {
                                        const { error } = await supabase
-                                         .from('subtasks')
-                                         .update({ 
-                                           is_completed: isChecked,
-                                           completed_at: isChecked ? new Date().toISOString() : null
-                                         })
+                                         .from('tasks')
+                                         .update({ status: isChecked ? 'completed' : 'todo' })
                                          .eq('id', subtask.id);
                                        
                                        if (error) throw error;
@@ -2185,8 +2213,8 @@ export function TasksView() {
                                          const updateSubtask = async () => {
                                            try {
                                              const { error } = await supabase
-                                               .from('subtasks')
-                                               .update({ description: newTitle })
+                                               .from('tasks')
+                                               .update({ title: newTitle })
                                                .eq('id', subtask.id);
                                              
                                              if (error) throw error;
@@ -2217,7 +2245,7 @@ export function TasksView() {
                                        if (confirm('Unteraufgabe wirklich löschen?')) {
                                          try {
                                            const { error } = await supabase
-                                             .from('subtasks')
+                                             .from('tasks')
                                              .delete()
                                              .eq('id', subtask.id);
                                            
