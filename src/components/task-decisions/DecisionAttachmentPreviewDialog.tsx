@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, FileImage, FileSpreadsheet, FileText } from "lucide-react";
+import { Download, FileImage, FileSpreadsheet, FileText, FileIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import * as XLSX from "xlsx";
 
 interface DecisionAttachmentPreviewDialogProps {
   open: boolean;
@@ -32,16 +33,141 @@ const normalizeStoragePath = (rawPath: string) => {
     const parsed = new URL(trimmed);
     const marker = '/decision-attachments/';
     const markerIndex = parsed.pathname.indexOf(marker);
-    if (markerIndex === -1) {
-      return '';
-    }
-
+    if (markerIndex === -1) return '';
     const pathInBucket = parsed.pathname.slice(markerIndex + marker.length);
     return stripBucketPrefix(pathInBucket);
   } catch {
     return '';
   }
 };
+
+// --- PDF Thumbnail via pdfjs-dist ---
+function PdfPreview({ url, fileName }: { url: string; fileName: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const render = async () => {
+      try {
+        const pdfjsLib = await import("pdfjs-dist");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        const pdf = await pdfjsLib.getDocument(url).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = canvasRef.current;
+        if (!canvas || cancelled) return;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
+      } catch (e) {
+        console.error("PDF render error:", e);
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    render();
+    return () => { cancelled = true; };
+  }, [url]);
+
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <iframe title={fileName} src={url} className="w-full h-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full w-full overflow-auto bg-background/70 p-4 flex items-center justify-center">
+      {loading && <div className="text-sm text-muted-foreground">PDF wird geladen...</div>}
+      <canvas ref={canvasRef} className={`max-w-full max-h-full ${loading ? 'hidden' : ''}`} />
+    </div>
+  );
+}
+
+// --- Excel Preview ---
+function ExcelPreview({ url }: { url: string }) {
+  const [html, setHtml] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await fetch(url);
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rendered = XLSX.utils.sheet_to_html(firstSheet, { editable: false });
+        if (!cancelled) setHtml(rendered);
+      } catch (e) {
+        console.error("Excel render error:", e);
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [url]);
+
+  if (loading) return <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Excel wird geladen...</div>;
+  if (error || !html) return <div className="h-full flex items-center justify-center text-sm text-destructive">Excel-Vorschau fehlgeschlagen.</div>;
+
+  return (
+    <div className="h-full w-full overflow-auto p-4 bg-background/70">
+      <div
+        className="text-sm [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:bg-muted"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    </div>
+  );
+}
+
+// --- Word Preview ---
+function WordPreview({ url }: { url: string }) {
+  const [html, setHtml] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const mammoth = await import("mammoth");
+        const response = await fetch(url);
+        const arrayBuffer = await response.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+        if (!cancelled) setHtml(result.value);
+      } catch (e) {
+        console.error("Word render error:", e);
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [url]);
+
+  if (loading) return <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Word-Dokument wird geladen...</div>;
+  if (error || !html) return <div className="h-full flex items-center justify-center text-sm text-destructive">Word-Vorschau fehlgeschlagen.</div>;
+
+  return (
+    <div className="h-full w-full overflow-auto p-6 bg-background/70">
+      <div
+        className="prose prose-sm max-w-none dark:prose-invert"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    </div>
+  );
+}
 
 export function DecisionAttachmentPreviewDialog({
   open,
@@ -79,15 +205,18 @@ export function DecisionAttachmentPreviewDialog({
           throw new Error('Invalid storage path');
         }
 
+        console.log('[DecisionPreview] Creating signed URL for path:', normalizedFilePath);
+
         const { data, error: signedUrlError } = await supabase.storage
           .from('decision-attachments')
           .createSignedUrl(normalizedFilePath, 60 * 10);
 
         if (signedUrlError) throw signedUrlError;
+        console.log('[DecisionPreview] Signed URL created successfully');
         setSignedUrl(data.signedUrl);
       } catch (e) {
-        console.error('Error creating signed URL for preview:', e);
-        setError('Vorschau konnte nicht geladen werden.');
+        console.error('Error creating signed URL for preview:', e, 'path:', normalizedFilePath);
+        setError(`Vorschau konnte nicht geladen werden. (Pfad: ${normalizedFilePath})`);
       } finally {
         setLoading(false);
       }
@@ -96,16 +225,11 @@ export function DecisionAttachmentPreviewDialog({
     loadSignedUrl();
   }, [open, filePath, normalizedFilePath]);
 
-  const officeViewerUrl = signedUrl
-    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(signedUrl)}`
-    : '';
-
   const handleDownload = async () => {
     try {
       if (isHttpUrl(filePath) && !normalizedFilePath) {
         const response = await fetch(filePath);
         if (!response.ok) throw new Error(`Download failed: ${response.status}`);
-
         const directBlob = await response.blob();
         const directUrl = URL.createObjectURL(directBlob);
         const directAnchor = document.createElement('a');
@@ -118,9 +242,7 @@ export function DecisionAttachmentPreviewDialog({
         return;
       }
 
-      if (!normalizedFilePath) {
-        throw new Error('Invalid storage path');
-      }
+      if (!normalizedFilePath) throw new Error('Invalid storage path');
 
       const { data, error: downloadError } = await supabase.storage
         .from('decision-attachments')
@@ -142,6 +264,36 @@ export function DecisionAttachmentPreviewDialog({
     }
   };
 
+  const renderPreview = () => {
+    if (loading) {
+      return <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Vorschau wird geladen...</div>;
+    }
+    if (error) {
+      return <div className="h-full flex items-center justify-center text-sm text-destructive">{error}</div>;
+    }
+    if (!signedUrl) {
+      return <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Keine Vorschau verfügbar.</div>;
+    }
+
+    if (isPdf) return <PdfPreview url={signedUrl} fileName={fileName} />;
+    if (isImage) {
+      return (
+        <div className="h-full w-full overflow-auto bg-background/70 p-4 flex items-center justify-center">
+          <img src={signedUrl} alt={fileName} className="max-w-full max-h-full object-contain" />
+        </div>
+      );
+    }
+    if (isWord && extension === 'docx') return <WordPreview url={signedUrl} />;
+    if (isExcel) return <ExcelPreview url={signedUrl} />;
+
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground p-6 text-center">
+        {isExcel ? <FileSpreadsheet className="h-6 w-6" /> : isImage ? <FileImage className="h-6 w-6" /> : isWord ? <FileIcon className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
+        Vorschau für diesen Dateityp ({extension}) ist nicht verfügbar.
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -156,28 +308,7 @@ export function DecisionAttachmentPreviewDialog({
         </DialogHeader>
 
         <div className="flex-1 min-h-[60vh] border rounded-md overflow-hidden bg-muted/20">
-          {loading ? (
-            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-              Vorschau wird geladen...
-            </div>
-          ) : error ? (
-            <div className="h-full flex items-center justify-center text-sm text-destructive">
-              {error}
-            </div>
-          ) : isPdf && signedUrl ? (
-            <iframe title={fileName} src={signedUrl} className="w-full h-full" />
-          ) : isImage && signedUrl ? (
-            <div className="h-full w-full overflow-auto bg-background/70 p-4 flex items-center justify-center">
-              <img src={signedUrl} alt={fileName} className="max-w-full max-h-full object-contain" />
-            </div>
-          ) : (isWord || isExcel) && signedUrl ? (
-            <iframe title={fileName} src={officeViewerUrl} className="w-full h-full" />
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground p-6 text-center">
-              {isExcel ? <FileSpreadsheet className="h-6 w-6" /> : isImage ? <FileImage className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
-              Vorschau für diesen Dateityp ist nicht verfügbar.
-            </div>
-          )}
+          {renderPreview()}
         </div>
       </DialogContent>
     </Dialog>
