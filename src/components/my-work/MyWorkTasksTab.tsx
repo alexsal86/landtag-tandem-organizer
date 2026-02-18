@@ -165,48 +165,45 @@ export function MyWorkTasksTab() {
       setCreatedTasks(createdByMe);
       setAssignedTasks(assignedByOthers);
 
-      // Load subtasks + existing task snoozes + comment counts
+      // Load child-task tree + existing task snoozes
       const allTaskIds = [...new Set([...createdByMe, ...assignedByOthers].map(t => t.id))];
       if (allTaskIds.length > 0) {
-        const [
-          { data: subtasksData, error: subtasksError },
-          { data: snoozesData, error: snoozesError },
-          { data: commentsData, error: commentsError },
-        ] = await Promise.all([
-          supabase
-            .from("subtasks")
-            .select("id, task_id, description, is_completed, due_date")
-            .in("task_id", allTaskIds)
-            .eq("is_completed", false)
-            .order("order_index", { ascending: true }),
-          supabase
-            .from("task_snoozes")
-            .select("task_id, snoozed_until")
-            .eq("user_id", user.id)
-            .in("task_id", allTaskIds),
-          supabase
-            .from("task_comments")
-            .select("task_id")
-            .in("task_id", allTaskIds),
-        ]);
+        const { data: snoozesData, error: snoozesError } = await supabase
+          .from("task_snoozes")
+          .select("task_id, snoozed_until")
+          .eq("user_id", user.id);
 
-        if (subtasksError) throw subtasksError;
         if (snoozesError) throw snoozesError;
-        if (commentsError) throw commentsError;
 
-        const grouped: Record<string, any[]> = {};
-        (subtasksData || []).forEach((subtask) => {
-          if (!subtask.task_id) return;
-          if (!grouped[subtask.task_id]) grouped[subtask.task_id] = [];
-          grouped[subtask.task_id].push({
-            id: subtask.id,
-            task_id: subtask.task_id,
-            title: subtask.description,
-            description: subtask.description,
-            is_completed: subtask.is_completed,
-            due_date: subtask.due_date,
+        const grouped: Record<string, Task[]> = {};
+        const visitedParentIds = new Set<string>();
+        let parentIdsToLoad = [...allTaskIds];
+
+        while (parentIdsToLoad.length > 0) {
+          const currentBatch = parentIdsToLoad.filter((id) => !visitedParentIds.has(id));
+          if (currentBatch.length === 0) break;
+
+          currentBatch.forEach((id) => visitedParentIds.add(id));
+
+          const { data: childTasksData, error: childTasksError } = await supabase
+            .from("tasks")
+            .select("*")
+            .in("parent_task_id", currentBatch)
+            .neq("status", "completed")
+            .order("due_date", { ascending: true, nullsFirst: false });
+
+          if (childTasksError) throw childTasksError;
+
+          const children = childTasksData || [];
+          children.forEach((childTask) => {
+            if (!childTask.parent_task_id) return;
+            if (!grouped[childTask.parent_task_id]) grouped[childTask.parent_task_id] = [];
+            grouped[childTask.parent_task_id].push(childTask);
           });
-        });
+
+          parentIdsToLoad = children.map((childTask) => childTask.id);
+        }
+
         setSubtasks(grouped);
 
         const snoozeMap: Record<string, string> = {};
@@ -282,7 +279,8 @@ export function MyWorkTasksTab() {
       
       setAssignedTasks(prev => prev.filter(t => t.id !== taskId));
       setCreatedTasks(prev => prev.filter(t => t.id !== taskId));
-      
+      await loadTasks();
+
       setShowCelebration(true);
       toast({ title: "Aufgabe erledigt und archiviert" });
     } catch (error: any) {
@@ -321,6 +319,7 @@ export function MyWorkTasksTab() {
       
       setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t));
       setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t));
+      await loadTasks();
       toast({ title: "Titel aktualisiert" });
     } catch (error) {
       console.error("Error updating title:", error);
@@ -340,6 +339,7 @@ export function MyWorkTasksTab() {
       
       setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, description } : t));
       setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, description } : t));
+      await loadTasks();
       toast({ title: "Beschreibung aktualisiert" });
     } catch (error) {
       console.error("Error updating description:", error);
@@ -360,6 +360,7 @@ export function MyWorkTasksTab() {
       const newDueDate = date?.toISOString() || null;
       setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDueDate } : t));
       setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDueDate } : t));
+      await loadTasks();
       toast({ title: "Frist aktualisiert" });
     } catch (error) {
       console.error("Error updating due date:", error);
@@ -746,12 +747,63 @@ export function MyWorkTasksTab() {
             <Badge variant="secondary" className="text-xs">{tasks.length}</Badge>
           </div>
         </div>
-
-        {scrollable ? (
-          <ScrollArea className="flex-1">{listContent}</ScrollArea>
-        ) : (
-          <div>{listContent}</div>
-        )}
+        
+        <ScrollArea className="flex-1">
+          {tasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
+          ) : viewType === "card" ? (
+            <div className="space-y-2 pr-2">
+              {tasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  subtasks={subtasks[task.id]}
+                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
+                  hasReminder={!!taskSnoozes[task.id]}
+                  onComplete={handleToggleComplete}
+                  onSubtaskComplete={handleToggleSubtaskComplete}
+                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
+                  onUpdateTitle={handleUpdateTitle}
+                  onUpdateDescription={handleUpdateDescription}
+                  onUpdateDueDate={handleUpdateDueDate}
+                  onReminder={handleReminder}
+                  onAssign={handleAssign}
+                  onComment={handleComment}
+                  onDecision={handleDecision}
+                  onDocuments={handleDocuments}
+                  onAddToMeeting={handleAddToMeeting}
+                  onCreateChildTask={handleCreateChildTask}
+                  getChildTasks={getChildTasks}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              {tasks.map((task) => (
+                <TaskListRow
+                  key={task.id}
+                  task={task}
+                  subtasks={subtasks[task.id]}
+                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
+                  hasReminder={!!taskSnoozes[task.id]}
+                  onComplete={handleToggleComplete}
+                  onSubtaskComplete={handleToggleSubtaskComplete}
+                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
+                  onUpdateTitle={handleUpdateTitle}
+                  onUpdateDueDate={handleUpdateDueDate}
+                  onReminder={handleReminder}
+                  onAssign={handleAssign}
+                  onComment={handleComment}
+                  onDecision={handleDecision}
+                  onDocuments={handleDocuments}
+                  onAddToMeeting={handleAddToMeeting}
+                  onCreateChildTask={handleCreateChildTask}
+                  getChildTasks={getChildTasks}
+                />
+              ))}
+            </div>
+          )}
+        </ScrollArea>
       </div>
     );
   };

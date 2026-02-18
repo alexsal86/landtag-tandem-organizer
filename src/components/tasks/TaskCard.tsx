@@ -54,7 +54,6 @@ interface TaskCardProps {
   onAddToMeeting?: (taskId: string) => void;
   onCreateChildTask?: (taskId: string) => void;
   getChildTasks?: (taskId: string) => Task[];
-  depth?: number;
 }
 
 export function TaskCard({
