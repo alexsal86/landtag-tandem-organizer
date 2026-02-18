@@ -222,22 +222,10 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
       ) => {
         if (!anchorElementRef.current || !options.length) return null;
 
-        const anchorRect = anchorElementRef.current.getBoundingClientRect();
-        const dialogContainer =
-          (anchorElementRef.current.ownerDocument.querySelector('[role="dialog"][data-state="open"]') as HTMLElement | null) ??
-          null;
-        const portalTarget = dialogContainer ?? document.body;
-
         return ReactDOM.createPortal(
               <div
                 className="typeahead-popover mentions-menu"
-                style={{
-                  position: 'fixed',
-                  top: anchorRect.top,
-                  left: anchorRect.left,
-                  zIndex: 9999,
-                  pointerEvents: 'auto',
-                }}
+                style={{ zIndex: 9999, pointerEvents: 'auto' }}
                 onMouseDown={(event) => {
                   // Keep editor focus while interacting with the menu.
                   event.preventDefault();
