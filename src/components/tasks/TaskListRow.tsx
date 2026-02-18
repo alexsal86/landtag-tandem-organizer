@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
 import { TaskBadges } from "./TaskBadges";
 import { TaskActionIcons } from "./TaskActionIcons";
-import { Calendar as CalendarIcon, ChevronDown, ChevronRight, Clock3, ExternalLink, MessageSquare } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, ChevronRight, Clock3, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
@@ -227,23 +227,6 @@ export function TaskListRow({
               <Calendar mode="single" selected={task.due_date ? new Date(task.due_date) : undefined} onSelect={handleDueDateSelect} initialFocus />
             </PopoverContent>
           </Popover>
-
-          {showPersistentCommentIndicator && currentCommentCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="relative h-6 w-6 p-0 text-blue-600 hover:text-blue-700"
-              onClick={(e) => {
-                e.stopPropagation();
-                onComment?.(task.id);
-              }}
-            >
-              <MessageSquare className="h-3 w-3" />
-              <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 rounded-full bg-blue-600 text-[9px] leading-none text-white flex items-center justify-center font-medium">
-                {currentCommentCount > 99 ? "99+" : currentCommentCount}
-              </span>
-            </Button>
-          )}
 
           <div className={cn("items-center", !isHovered ? "hidden" : "flex")}>
             <Separator orientation="vertical" className="h-4 mx-1" />
