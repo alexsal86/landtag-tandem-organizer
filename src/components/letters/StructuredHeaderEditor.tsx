@@ -192,6 +192,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     };
   };
 
+  const getViewportPoint = (clientX: number, clientY: number) => {
+    if (!previewRef.current) return { x: 0, y: 0 };
+    const rect = previewRef.current.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(previewWidth, clientX - rect.left)),
+      y: Math.max(0, Math.min(previewHeight, clientY - rect.top)),
+    };
+  };
+
   const zoomAtPoint = (clientX: number, clientY: number, nextZoom: number) => {
     if (!previewRef.current) return;
     const clampedZoom = Math.max(0.5, Math.min(3, nextZoom));
@@ -719,7 +728,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     if (event.button !== 0) return;
     if (event.target !== event.currentTarget) return;
 
-    const startPoint = getCanvasPoint(event.clientX, event.clientY);
+    const startPoint = getViewportPoint(event.clientX, event.clientY);
     const startX = startPoint.x;
     const startY = startPoint.y;
 
@@ -741,16 +750,21 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }
 
     if (selectionBox && previewRef.current) {
-      const currentPoint = getCanvasPoint(event.clientX, event.clientY);
+      const currentPoint = getViewportPoint(event.clientX, event.clientY);
       const currentX = currentPoint.x;
       const currentY = currentPoint.y;
       const nextSelection = { ...selectionBox, currentX, currentY };
       setSelectionBox(nextSelection);
 
-      const left = Math.min(nextSelection.startX, nextSelection.currentX) / previewScaleX;
-      const right = Math.max(nextSelection.startX, nextSelection.currentX) / previewScaleX;
-      const top = Math.min(nextSelection.startY, nextSelection.currentY) / previewScaleY;
-      const bottom = Math.max(nextSelection.startY, nextSelection.currentY) / previewScaleY;
+      const leftPx = Math.min(nextSelection.startX, nextSelection.currentX);
+      const rightPx = Math.max(nextSelection.startX, nextSelection.currentX);
+      const topPx = Math.min(nextSelection.startY, nextSelection.currentY);
+      const bottomPx = Math.max(nextSelection.startY, nextSelection.currentY);
+
+      const left = Math.max(0, Math.min(headerMaxWidth, ((leftPx - pan.x) / zoom) / previewScaleX));
+      const right = Math.max(0, Math.min(headerMaxWidth, ((rightPx - pan.x) / zoom) / previewScaleX));
+      const top = Math.max(0, Math.min(headerMaxHeight, ((topPx - pan.y) / zoom) / previewScaleY));
+      const bottom = Math.max(0, Math.min(headerMaxHeight, ((bottomPx - pan.y) / zoom) / previewScaleY));
 
       const hits = elements
         .filter((element) => {
@@ -1727,6 +1741,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 </div>
               )}
 
+              </div>
+
               {selectionBox && (
                 <div
                   className="absolute border border-primary/80 bg-primary/10 pointer-events-none"
@@ -1738,8 +1754,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   }}
                 />
               )}
-
-              </div>
 
               {showShortcutsHelp && (
                 <div className="absolute right-3 top-3 z-20 w-72 rounded-md border bg-background/95 p-3 text-xs shadow-lg backdrop-blur">
