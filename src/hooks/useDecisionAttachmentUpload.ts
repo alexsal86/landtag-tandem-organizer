@@ -33,6 +33,32 @@ interface UploadParams {
 function getFileIdentity(file: File): string {
   return `${file.name}::${file.size}::${file.lastModified}`;
 }
+
+function sanitizeFileNameForStorage(fileName: string): string {
+  const trimmed = fileName.trim();
+  const extensionIndex = trimmed.lastIndexOf('.');
+  const hasExtension = extensionIndex > 0 && extensionIndex < trimmed.length - 1;
+
+  const baseName = hasExtension ? trimmed.slice(0, extensionIndex) : trimmed;
+  const extension = hasExtension ? trimmed.slice(extensionIndex + 1) : '';
+
+  const sanitizeSegment = (segment: string, fallback: string) => {
+    const normalized = segment
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^[._-]+|[._-]+$/g, '');
+
+    return normalized || fallback;
+  };
+
+  const safeBaseName = sanitizeSegment(baseName, 'datei').slice(0, 120);
+  const safeExtension = extension ? sanitizeSegment(extension, 'bin').toLowerCase().slice(0, 16) : '';
+
+  return safeExtension ? `${safeBaseName}.${safeExtension}` : safeBaseName;
+}
+
 function normalizeError(error: unknown): string {
   if (!error) return 'Unbekannter Fehler';
   if (typeof error === 'string') return error;
@@ -75,7 +101,8 @@ async function uploadOneFile(
   metadataByIdentity?: Record<string, EmailMetadata | null>,
 ) {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const filePath = `${userId}/decisions/${decisionId}/${uniqueSuffix}-${file.name}`;
+  const sanitizedFileName = sanitizeFileNameForStorage(file.name);
+  const filePath = `${userId}/decisions/${decisionId}/${uniqueSuffix}-${sanitizedFileName}`;
 
   const { uploadData } = await uploadToStorageWithCandidates(filePath, file);
 
