@@ -32,6 +32,16 @@ interface EmployeeSettingsRow {
   days_per_week: number;
 }
 
+const CLOCK_STORAGE = {
+  clockIn: 'timetracking_clock_in',
+  date: 'timetracking_date',
+  pauseStart: 'timetracking_pause_start',
+  pauseTotal: 'timetracking_pause_total',
+  updatedAt: 'timetracking_updated_at',
+} as const;
+
+const CLOCK_STORAGE_TTL_MS = 18 * 60 * 60 * 1000;
+
 export function MyWorkTimeTrackingTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -54,16 +64,34 @@ export function MyWorkTimeTrackingTab() {
   const [pauseStart, setPauseStart] = useState<string | null>(null);
   const [totalPauseMinutes, setTotalPauseMinutes] = useState(0);
 
+  const clearClockData = () => {
+    setClockedIn(null);
+    setClockedInDate(null);
+    setPauseStart(null);
+    setTotalPauseMinutes(0);
+    localStorage.removeItem(CLOCK_STORAGE.clockIn);
+    localStorage.removeItem(CLOCK_STORAGE.pauseStart);
+    localStorage.removeItem(CLOCK_STORAGE.pauseTotal);
+    localStorage.removeItem(CLOCK_STORAGE.date);
+    localStorage.removeItem(CLOCK_STORAGE.updatedAt);
+  };
+
+  const touchClockData = () => {
+    localStorage.setItem(CLOCK_STORAGE.updatedAt, Date.now().toString());
+  };
+
   // Beim Mount: Gespeicherte Stempelzeit laden
   useEffect(() => {
-    const savedClockIn = localStorage.getItem('timetracking_clock_in');
-    const savedClockDate = localStorage.getItem('timetracking_date');
-    const savedPauseStart = localStorage.getItem('timetracking_pause_start');
-    const savedPauseTotal = localStorage.getItem('timetracking_pause_total');
+    const savedClockIn = localStorage.getItem(CLOCK_STORAGE.clockIn);
+    const savedClockDate = localStorage.getItem(CLOCK_STORAGE.date);
+    const savedPauseStart = localStorage.getItem(CLOCK_STORAGE.pauseStart);
+    const savedPauseTotal = localStorage.getItem(CLOCK_STORAGE.pauseTotal);
+    const savedUpdatedAt = localStorage.getItem(CLOCK_STORAGE.updatedAt);
+    const isExpired = !savedUpdatedAt || Date.now() - Number(savedUpdatedAt) > CLOCK_STORAGE_TTL_MS;
     
     // Nur laden wenn das Datum heute ist
     const today = format(new Date(), "yyyy-MM-dd");
-    if (savedClockIn && savedClockDate === today) {
+    if (savedClockIn && savedClockDate === today && !isExpired) {
       setClockedIn(savedClockIn);
       setClockedInDate(savedClockDate);
       setStartTime(savedClockIn);
@@ -73,8 +101,8 @@ export function MyWorkTimeTrackingTab() {
         setTotalPauseMinutes(pauseTotal);
         setPauseMinutes(pauseTotal.toString());
       }
-    } else if (savedClockIn && savedClockDate !== today) {
-      // Alte Daten aufräumen wenn sie nicht von heute sind
+    } else if (savedClockIn && (savedClockDate !== today || isExpired)) {
+      // Alte oder abgelaufene Daten aufräumen
       clearClockData();
     }
   }, []);
@@ -88,16 +116,18 @@ export function MyWorkTimeTrackingTab() {
     setEntryDate(today);
     setTotalPauseMinutes(0);
     setPauseMinutes("0");
-    localStorage.setItem('timetracking_clock_in', now);
-    localStorage.setItem('timetracking_date', today);
-    localStorage.removeItem('timetracking_pause_total');
+    localStorage.setItem(CLOCK_STORAGE.clockIn, now);
+    localStorage.setItem(CLOCK_STORAGE.date, today);
+    localStorage.removeItem(CLOCK_STORAGE.pauseTotal);
+    touchClockData();
     toast.success(`Arbeit begonnen um ${now}`);
   };
 
   const handlePauseStart = () => {
     const now = format(new Date(), "HH:mm");
     setPauseStart(now);
-    localStorage.setItem('timetracking_pause_start', now);
+    localStorage.setItem(CLOCK_STORAGE.pauseStart, now);
+    touchClockData();
     toast.info(`Pause begonnen um ${now}`);
   };
 
@@ -114,8 +144,9 @@ export function MyWorkTimeTrackingTab() {
     setPauseMinutes(newTotal.toString());
     setPauseStart(null);
     
-    localStorage.setItem('timetracking_pause_total', newTotal.toString());
-    localStorage.removeItem('timetracking_pause_start');
+    localStorage.setItem(CLOCK_STORAGE.pauseTotal, newTotal.toString());
+    localStorage.removeItem(CLOCK_STORAGE.pauseStart);
+    touchClockData();
     
     toast.success(`Pause beendet (+${minutes} Min)`);
   };
@@ -124,17 +155,6 @@ export function MyWorkTimeTrackingTab() {
     const now = format(new Date(), "HH:mm");
     setEndTime(now);
     toast.success(`Feierabend um ${now} - Bitte Eintrag speichern`);
-  };
-
-  const clearClockData = () => {
-    setClockedIn(null);
-    setClockedInDate(null);
-    setPauseStart(null);
-    setTotalPauseMinutes(0);
-    localStorage.removeItem('timetracking_clock_in');
-    localStorage.removeItem('timetracking_pause_start');
-    localStorage.removeItem('timetracking_pause_total');
-    localStorage.removeItem('timetracking_date');
   };
 
   const today = new Date();

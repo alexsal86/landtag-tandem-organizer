@@ -133,27 +133,28 @@ export function MyWorkTasksTab() {
     if (!user) return;
     
     try {
-      // Load tasks assigned to user
-      const { data: assigned, error: assignedError } = await supabase
-        .from("tasks")
-        .select("*")
-        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
-        .neq("status", "completed")
-        .is("parent_task_id", null)
-        .order("due_date", { ascending: true, nullsFirst: false });
+      const [assignedResult, createdResult] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select("*")
+          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
+          .neq("status", "completed")
+          .is("parent_task_id", null)
+          .order("due_date", { ascending: true, nullsFirst: false }),
+        supabase
+          .from("tasks")
+          .select("*")
+          .eq("user_id", user.id)
+          .neq("status", "completed")
+          .is("parent_task_id", null)
+          .order("due_date", { ascending: true, nullsFirst: false }),
+      ]);
 
-      if (assignedError) throw assignedError;
+      if (assignedResult.error) throw assignedResult.error;
+      if (createdResult.error) throw createdResult.error;
 
-      // Load tasks created by user
-      const { data: created, error: createdError } = await supabase
-        .from("tasks")
-        .select("*")
-        .eq("user_id", user.id)
-        .neq("status", "completed")
-        .is("parent_task_id", null)
-        .order("due_date", { ascending: true, nullsFirst: false });
-
-      if (createdError) throw createdError;
+      const assigned = assignedResult.data;
+      const created = createdResult.data;
 
       const allAssigned = assigned || [];
       const allCreated = created || [];
@@ -794,6 +795,7 @@ export function MyWorkTasksTab() {
             onDecision={handleDecision}
             onDocuments={handleDocuments}
             onAddToMeeting={handleAddToMeeting}
+            onCreateChildTask={handleCreateChildTask}
             onEdit={openTaskEditDialog}
             getChildTasks={getChildTasks}
             getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
@@ -829,6 +831,7 @@ export function MyWorkTasksTab() {
             onDecision={handleDecision}
             onDocuments={handleDocuments}
             onAddToMeeting={handleAddToMeeting}
+            onCreateChildTask={handleCreateChildTask}
             onEdit={openTaskEditDialog}
             getChildTasks={getChildTasks}
             getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
@@ -847,70 +850,11 @@ export function MyWorkTasksTab() {
           </div>
         </div>
         
-        <ScrollArea className="flex-1">
-          {tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
-          ) : viewType === "card" ? (
-            <div className="space-y-2 pr-2">
-              {tasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  subtasks={subtasks[task.id]}
-                  resolveAssigneeName={resolveAssigneeName}
-                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
-                  hasReminder={!!taskSnoozes[task.id]}
-                  onComplete={handleToggleComplete}
-                  onSubtaskComplete={handleToggleSubtaskComplete}
-                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-                  onUpdateTitle={handleUpdateTitle}
-                  onUpdateDescription={handleUpdateDescription}
-                  onUpdateDueDate={handleUpdateDueDate}
-                  onReminder={handleReminder}
-                  onAssign={handleAssign}
-                  onComment={handleComment}
-                  onDecision={handleDecision}
-                  onDocuments={handleDocuments}
-                  onAddToMeeting={handleAddToMeeting}
-                  onCreateChildTask={handleCreateChildTask}
-                  onEdit={openTaskEditDialog}
-                  getChildTasks={getChildTasks}
-                  getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
-                  showPersistentCommentIndicator
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="border rounded-lg overflow-hidden">
-              {tasks.map((task) => (
-                <TaskListRow
-                  key={task.id}
-                  task={task}
-                  subtasks={subtasks[task.id]}
-                  resolveAssigneeName={resolveAssigneeName}
-                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
-                  hasReminder={!!taskSnoozes[task.id]}
-                  onComplete={handleToggleComplete}
-                  onSubtaskComplete={handleToggleSubtaskComplete}
-                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-                  onUpdateTitle={handleUpdateTitle}
-                  onUpdateDueDate={handleUpdateDueDate}
-                  onReminder={handleReminder}
-                  onAssign={handleAssign}
-                  onComment={handleComment}
-                  onDecision={handleDecision}
-                  onDocuments={handleDocuments}
-                  onAddToMeeting={handleAddToMeeting}
-                  onCreateChildTask={handleCreateChildTask}
-                  onEdit={openTaskEditDialog}
-                  getChildTasks={getChildTasks}
-                  getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
-                  showPersistentCommentIndicator
-                />
-              ))}
-            </div>
-          )}
-        </ScrollArea>
+        {scrollable ? (
+          <ScrollArea className="flex-1">{listContent}</ScrollArea>
+        ) : (
+          listContent
+        )}
       </div>
     );
   };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,6 +83,14 @@ export function MyWorkJourFixeTab() {
   const [meetingDecisions, setMeetingDecisions] = useState<Record<string, SystemItemData[]>>({});
   const [meetingBirthdays, setMeetingBirthdays] = useState<Record<string, BirthdayItemData[]>>({});
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -191,12 +199,12 @@ export function MyWorkJourFixeTab() {
         .sort((a, b) => new Date(b.meeting_date).getTime() - new Date(a.meeting_date).getTime())
         .slice(0, 10);
 
-      setUpcomingMeetings(upcoming);
-      setPastMeetings(past);
+      if (isMountedRef.current) setUpcomingMeetings(upcoming);
+      if (isMountedRef.current) setPastMeetings(past);
     } catch (error) {
       console.error("Error loading meetings:", error);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 
@@ -233,7 +241,7 @@ export function MyWorkJourFixeTab() {
         });
       });
       
-      setMeetingParticipants(participantsByMeeting);
+      if (isMountedRef.current) setMeetingParticipants(participantsByMeeting);
     } catch (error) {
       console.error('Error loading participants:', error);
     }
@@ -243,7 +251,7 @@ export function MyWorkJourFixeTab() {
     // Already loaded
     if (agendaItems[meetingId]) return;
     
-    setLoadingAgenda(meetingId);
+    if (isMountedRef.current) setLoadingAgenda(meetingId);
     try {
       const { data, error } = await supabase
         .from('meeting_agenda_items')
@@ -254,14 +262,14 @@ export function MyWorkJourFixeTab() {
       if (error) throw error;
       
       const items = data || [];
-      setAgendaItems(prev => ({ ...prev, [meetingId]: items }));
+      if (isMountedRef.current) setAgendaItems(prev => ({ ...prev, [meetingId]: items }));
       
       // Load system item data if needed
       await loadMeetingSystemData(meetingId, items, meetingDate);
     } catch (error) {
       console.error('Error loading agenda:', error);
     } finally {
-      setLoadingAgenda(null);
+      if (isMountedRef.current) setLoadingAgenda(null);
     }
   };
 
@@ -280,8 +288,10 @@ export function MyWorkJourFixeTab() {
           .eq('meeting_id', meetingId)
           .is('deleted_at', null);
         (data || []).forEach(note => note.user_id && encounteredUserIds.add(note.user_id));
-        setMeetingQuickNotes(prev => ({ ...prev, [meetingId]: data || [] }));
-      } catch { /* ignore */ }
+        if (isMountedRef.current) setMeetingQuickNotes(prev => ({ ...prev, [meetingId]: data || [] }));
+      } catch (error) {
+        console.error('Error loading quick notes for meeting:', { meetingId, error });
+      }
     }
     
     if (hasTasks) {
@@ -291,8 +301,10 @@ export function MyWorkJourFixeTab() {
           .select('id, title, user_id')
           .eq('meeting_id', meetingId);
         (data || []).forEach(task => task.user_id && encounteredUserIds.add(task.user_id));
-        setMeetingTasks(prev => ({ ...prev, [meetingId]: data || [] }));
-      } catch { /* ignore */ }
+        if (isMountedRef.current) setMeetingTasks(prev => ({ ...prev, [meetingId]: data || [] }));
+      } catch (error) {
+        console.error('Error loading tasks for meeting:', { meetingId, error });
+      }
     }
 
     if (hasDecisions && currentTenant?.id && user?.id) {
@@ -334,9 +346,9 @@ export function MyWorkJourFixeTab() {
           }));
 
         relevantDecisions.forEach(decision => decision.user_id && encounteredUserIds.add(decision.user_id));
-        setMeetingDecisions(prev => ({ ...prev, [meetingId]: relevantDecisions }));
+        if (isMountedRef.current) setMeetingDecisions(prev => ({ ...prev, [meetingId]: relevantDecisions }));
       } catch {
-        setMeetingDecisions(prev => ({ ...prev, [meetingId]: [] }));
+        if (isMountedRef.current) setMeetingDecisions(prev => ({ ...prev, [meetingId]: [] }));
       }
     }
 
@@ -352,7 +364,7 @@ export function MyWorkJourFixeTab() {
           .not('birthday', 'is', null);
 
         if (!contacts || contacts.length === 0) {
-          setMeetingBirthdays(prev => ({ ...prev, [meetingId]: [] }));
+          if (isMountedRef.current) setMeetingBirthdays(prev => ({ ...prev, [meetingId]: [] }));
           return;
         }
 
@@ -383,9 +395,9 @@ export function MyWorkJourFixeTab() {
         }
 
         birthdays.sort((a, b) => a.nextBirthday.getTime() - b.nextBirthday.getTime());
-        setMeetingBirthdays(prev => ({ ...prev, [meetingId]: birthdays }));
+        if (isMountedRef.current) setMeetingBirthdays(prev => ({ ...prev, [meetingId]: birthdays }));
       } catch {
-        setMeetingBirthdays(prev => ({ ...prev, [meetingId]: [] }));
+        if (isMountedRef.current) setMeetingBirthdays(prev => ({ ...prev, [meetingId]: [] }));
       }
     }
 
@@ -399,6 +411,7 @@ export function MyWorkJourFixeTab() {
             .in('user_id', missingUserIds);
 
           if (profiles && profiles.length > 0) {
+            if (!isMountedRef.current) return;
             setUserProfiles(prev => {
               const next = { ...prev };
               profiles.forEach((profile) => {

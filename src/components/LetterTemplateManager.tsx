@@ -806,6 +806,16 @@ const LetterTemplateManager: React.FC = () => {
         <StructuredHeaderEditor
           initialElements={formData.header_elements}
           onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
+          actionButtons={
+            <>
+              <Button variant="outline" onClick={editingTemplate ? cancelEditing : () => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>
+                <X className="h-4 w-4 mr-2" />Abbrechen
+              </Button>
+              <Button onClick={editingTemplate ? handleUpdateTemplate : handleCreateTemplate}>
+                <Save className="h-4 w-4 mr-2" />Speichern
+              </Button>
+            </>
+          }
         />
       </TabsContent>
 
