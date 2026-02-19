@@ -120,6 +120,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
   const [showRuler, setShowRuler] = useState(false);
   const [showCenterGuides, setShowCenterGuides] = useState(false);
+  const [snapLines, setSnapLines] = useState<{ x?: number; y?: number }>({});
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [clipboardElement, setClipboardElement] = useState<HeaderElement | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -133,6 +134,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const horizontalRulerRef = useRef<HTMLCanvasElement | null>(null);
   const verticalRulerRef = useRef<HTMLCanvasElement | null>(null);
+  const snapLinesTimeoutRef = useRef<number | null>(null);
   const lastReportedRef = useRef<HeaderElement[]>(initialElements);
 
   // Resize state
@@ -318,37 +320,46 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const snapToOtherElements = (id: string, x: number, y: number, allElements: HeaderElement[]) => {
     const current = allElements.find((el) => el.id === id);
-    if (!current) return { x, y };
+    if (!current) return { x, y, guides: {} as { x?: number; y?: number } };
     let sx = x, sy = y;
     const w = current.width || 50, h = current.height || 10;
+    const guides: { x?: number; y?: number } = {};
     const edgeTargets = allElements.filter((el) => el.id !== id).flatMap((el) => {
       const tw = el.width || 50, th = el.height || 10;
       return [{ x: el.x, y: el.y }, { x: el.x + tw, y: el.y + th }, { x: el.x + tw / 2, y: el.y + th / 2 }];
     });
     for (const t of edgeTargets) {
-      if (Math.abs(sx - t.x) <= SNAP_MM) sx = t.x;
-      if (Math.abs(sx + w - t.x) <= SNAP_MM) sx = t.x - w;
-      if (Math.abs(sx + w / 2 - t.x) <= SNAP_MM) sx = t.x - w / 2;
-      if (Math.abs(sy - t.y) <= SNAP_MM) sy = t.y;
-      if (Math.abs(sy + h - t.y) <= SNAP_MM) sy = t.y - h;
-      if (Math.abs(sy + h / 2 - t.y) <= SNAP_MM) sy = t.y - h / 2;
+      if (Math.abs(sx - t.x) <= SNAP_MM) { sx = t.x; guides.x = t.x; }
+      if (Math.abs(sx + w - t.x) <= SNAP_MM) { sx = t.x - w; guides.x = t.x; }
+      if (Math.abs(sx + w / 2 - t.x) <= SNAP_MM) { sx = t.x - w / 2; guides.x = t.x; }
+      if (Math.abs(sy - t.y) <= SNAP_MM) { sy = t.y; guides.y = t.y; }
+      if (Math.abs(sy + h - t.y) <= SNAP_MM) { sy = t.y - h; guides.y = t.y; }
+      if (Math.abs(sy + h / 2 - t.y) <= SNAP_MM) { sy = t.y - h / 2; guides.y = t.y; }
     }
     const centerX = headerMaxWidth / 2;
     const centerY = headerMaxHeight / 2;
     const axisTargetsX = [0, centerX, headerMaxWidth];
     const axisTargetsY = [0, centerY, headerMaxHeight];
     for (const tx of axisTargetsX) {
-      if (Math.abs(sx - tx) <= SNAP_MM) sx = tx;
-      if (Math.abs(sx + w - tx) <= SNAP_MM) sx = tx - w;
-      if (Math.abs(sx + w / 2 - tx) <= SNAP_MM) sx = tx - w / 2;
+      if (Math.abs(sx - tx) <= SNAP_MM) { sx = tx; guides.x = tx; }
+      if (Math.abs(sx + w - tx) <= SNAP_MM) { sx = tx - w; guides.x = tx; }
+      if (Math.abs(sx + w / 2 - tx) <= SNAP_MM) { sx = tx - w / 2; guides.x = tx; }
     }
     for (const ty of axisTargetsY) {
-      if (Math.abs(sy - ty) <= SNAP_MM) sy = ty;
-      if (Math.abs(sy + h - ty) <= SNAP_MM) sy = ty - h;
-      if (Math.abs(sy + h / 2 - ty) <= SNAP_MM) sy = ty - h / 2;
+      if (Math.abs(sy - ty) <= SNAP_MM) { sy = ty; guides.y = ty; }
+      if (Math.abs(sy + h - ty) <= SNAP_MM) { sy = ty - h; guides.y = ty; }
+      if (Math.abs(sy + h / 2 - ty) <= SNAP_MM) { sy = ty - h / 2; guides.y = ty; }
     }
-    return { x: Math.round(sx), y: Math.round(sy) };
+    return { x: Math.round(sx), y: Math.round(sy), guides };
   };
+
+  useEffect(() => {
+    return () => {
+      if (snapLinesTimeoutRef.current) {
+        window.clearTimeout(snapLinesTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (elements !== lastReportedRef.current) {
@@ -613,6 +624,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const nx = Math.max(0, Math.min(headerMaxWidth, origin.x + dx));
     const ny = Math.max(0, Math.min(headerMaxHeight, origin.y + dy));
     const snapped = snapToOtherElements(dragId, nx, ny, elements);
+    flashSnapLines(snapped.guides);
     const offsetX = snapped.x - origin.x;
     const offsetY = snapped.y - origin.y;
 
@@ -655,6 +667,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     setDragStart(null);
     setResizingId(null);
     setResizeStart(null);
+    setSnapLines({});
   };
 
   const cycleSelection = (direction: 1 | -1) => {
@@ -677,6 +690,102 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       next.splice(targetIndex, 0, moved);
       return next;
     });
+  };
+
+  const copySelectedElement = () => {
+    if (!selectedElement) return;
+    setClipboardElement({ ...selectedElement });
+  };
+
+  const pasteClipboardElement = () => {
+    if (!clipboardElement) return;
+    const source = clipboardElement;
+    const nextX = Math.max(0, Math.min(headerMaxWidth, source.x + 10));
+    const nextY = Math.max(0, Math.min(headerMaxHeight, source.y + 10));
+    const pasted: HeaderElement = { ...source, id: createElementId(), x: nextX, y: nextY };
+    applyElements((prev) => [...prev, pasted]);
+    setSelectedElementId(pasted.id);
+    setSelectedElementIds([pasted.id]);
+    setClipboardElement(pasted);
+  };
+
+  const duplicateSelectedElement = () => {
+    if (!selectedElement) return;
+    const source = selectedElement;
+    const pasted: HeaderElement = {
+      ...source,
+      id: createElementId(),
+      x: Math.max(0, Math.min(headerMaxWidth, source.x + 10)),
+      y: Math.max(0, Math.min(headerMaxHeight, source.y + 10)),
+    };
+    setClipboardElement({ ...source });
+    applyElements((prev) => [...prev, pasted]);
+    setSelectedElementId(pasted.id);
+    setSelectedElementIds([pasted.id]);
+  };
+
+  const canPasteFromClipboard = Boolean(clipboardElement);
+  const selectedIndex = selectedElement ? elements.findIndex((el) => el.id === selectedElement.id) : -1;
+  const canMoveLayerBackward = selectedIndex > 0;
+  const canMoveLayerForward = selectedIndex >= 0 && selectedIndex < elements.length - 1;
+  const canAlignSelection = selectedElementIds.length > 1;
+
+  const flashSnapLines = (guides: { x?: number; y?: number }) => {
+    if (!guides.x && !guides.y) {
+      return;
+    }
+    setSnapLines(guides);
+    if (snapLinesTimeoutRef.current) {
+      window.clearTimeout(snapLinesTimeoutRef.current);
+    }
+    snapLinesTimeoutRef.current = window.setTimeout(() => {
+      setSnapLines({});
+      snapLinesTimeoutRef.current = null;
+    }, 600);
+  };
+
+  const getElementDimensions = (element: HeaderElement) => ({
+    width: Math.max(1, element.width || (element.type === 'text' ? 70 : element.type === 'block' ? 45 : 50)),
+    height: Math.max(1, element.height || (element.type === 'text' ? 8 : element.type === 'block' ? 18 : 10)),
+  });
+
+  const alignSelection = (axis: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
+    if (selectedElementIds.length < 2) return;
+    const selected = elements.filter((el) => selectedElementIds.includes(el.id));
+    if (selected.length < 2) return;
+
+    const bounds = selected.reduce((acc, element) => {
+      const { width, height } = getElementDimensions(element);
+      return {
+        left: Math.min(acc.left, element.x),
+        top: Math.min(acc.top, element.y),
+        right: Math.max(acc.right, element.x + width),
+        bottom: Math.max(acc.bottom, element.y + height),
+      };
+    }, { left: Number.POSITIVE_INFINITY, top: Number.POSITIVE_INFINITY, right: Number.NEGATIVE_INFINITY, bottom: Number.NEGATIVE_INFINITY });
+
+    const centerX = (bounds.left + bounds.right) / 2;
+    const middleY = (bounds.top + bounds.bottom) / 2;
+
+    applyElements((prev) => prev.map((element) => {
+      if (!selectedElementIds.includes(element.id)) return element;
+      const { width, height } = getElementDimensions(element);
+      let x = element.x;
+      let y = element.y;
+
+      if (axis === 'left') x = bounds.left;
+      if (axis === 'center') x = centerX - width / 2;
+      if (axis === 'right') x = bounds.right - width;
+      if (axis === 'top') y = bounds.top;
+      if (axis === 'middle') y = middleY - height / 2;
+      if (axis === 'bottom') y = bounds.bottom - height;
+
+      return {
+        ...element,
+        x: Math.max(0, Math.min(headerMaxWidth, Math.round(x))),
+        y: Math.max(0, Math.min(headerMaxHeight, Math.round(y))),
+      };
+    }));
   };
 
   const copySelectedElement = () => {
@@ -1354,12 +1463,26 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 </>
               )}
 
+              {snapLines.x != null && (
+                <div
+                  className="absolute top-0 bottom-0 border-l-2 border-emerald-500/90 pointer-events-none animate-pulse"
+                  style={{ left: `${snapLines.x * previewScaleX}px` }}
+                />
+              )}
+              {snapLines.y != null && (
+                <div
+                  className="absolute left-0 right-0 border-t-2 border-emerald-500/90 pointer-events-none animate-pulse"
+                  style={{ top: `${snapLines.y * previewScaleY}px` }}
+                />
+              )}
+
               {showShortcutsHelp && (
                 <div className="absolute right-3 top-3 z-20 w-72 rounded-md border bg-background/95 p-3 text-xs shadow-lg backdrop-blur">
                   <div className="mb-2 font-semibold">Tastatur-Shortcuts</div>
                   <ul className="space-y-1 text-muted-foreground">
                     <li><span className="font-medium text-foreground">Shift + Klick</span> Mehrfachauswahl</li>
                     <li><span className="font-medium text-foreground">Ausrichten-Leiste</span> Bei Mehrfachauswahl sichtbar</li>
+                    <li><span className="font-medium text-foreground">Snap-Linien</span> Blitzen beim Einrasten kurz auf</li>
                     <li><span className="font-medium text-foreground">Tab / Shift+Tab</span> Auswahl wechseln</li>
                     <li><span className="font-medium text-foreground">Pfeiltasten</span> Auswahl bewegen</li>
                     <li><span className="font-medium text-foreground">Entf / Backspace</span> Element löschen</li>
