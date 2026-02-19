@@ -141,7 +141,19 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   // Resize state
   const [resizingId, setResizingId] = useState<string | null>(null);
-  const [resizeStart, setResizeStart] = useState<{ x: number; y: number; ow: number; oh: number } | null>(null);
+  const [resizeStart, setResizeStart] = useState<{
+    x: number;
+    y: number;
+    ow: number;
+    oh: number;
+    group?: {
+      baseWidth: number;
+      baseHeight: number;
+      left: number;
+      top: number;
+      items: Record<string, { x: number; y: number; width: number; height: number }>;
+    };
+  } | null>(null);
   const resizeInitialElementsRef = useRef<HeaderElement[] | null>(null);
 
   // Image gallery state
@@ -596,6 +608,40 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     event.stopPropagation(); event.preventDefault();
     setResizingId(element.id);
     resizeInitialElementsRef.current = elements;
+
+    const activeIds = selectedElementIds.includes(element.id) ? selectedElementIds : [element.id];
+    if (activeIds.length > 1) {
+      const selected = elements
+        .filter((el) => activeIds.includes(el.id))
+        .map((el) => {
+          const { width, height } = getElementDimensions(el);
+          return { ...el, width, height };
+        });
+      const left = Math.min(...selected.map((el) => el.x));
+      const top = Math.min(...selected.map((el) => el.y));
+      const right = Math.max(...selected.map((el) => el.x + el.width));
+      const bottom = Math.max(...selected.map((el) => el.y + el.height));
+      const items = selected.reduce<Record<string, { x: number; y: number; width: number; height: number }>>((acc, item) => {
+        acc[item.id] = { x: item.x, y: item.y, width: item.width, height: item.height };
+        return acc;
+      }, {});
+
+      setResizeStart({
+        x: event.clientX,
+        y: event.clientY,
+        ow: element.width || 50,
+        oh: element.height || 30,
+        group: {
+          baseWidth: Math.max(1, right - left),
+          baseHeight: Math.max(1, bottom - top),
+          left,
+          top,
+          items,
+        },
+      });
+      return;
+    }
+
     setResizeStart({ x: event.clientX, y: event.clientY, ow: element.width || 50, oh: element.height || 30 });
   };
 
@@ -667,6 +713,31 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       if (preserveAspect && resizeStart.ow > 0 && resizeStart.oh > 0) {
         newH = newW / (resizeStart.ow / resizeStart.oh);
       }
+
+      if (resizeStart.group) {
+        const nextGroupWidth = Math.max(5, resizeStart.group.baseWidth + dx);
+        const nextGroupHeight = preserveAspect
+          ? nextGroupWidth / (resizeStart.group.baseWidth / resizeStart.group.baseHeight)
+          : Math.max(5, resizeStart.group.baseHeight + dy);
+        const scaleX = nextGroupWidth / resizeStart.group.baseWidth;
+        const scaleY = nextGroupHeight / resizeStart.group.baseHeight;
+
+        applyElements((prev) => prev.map((el) => {
+          const source = resizeStart.group?.items[el.id];
+          if (!source) return el;
+          const relativeX = source.x - resizeStart.group!.left;
+          const relativeY = source.y - resizeStart.group!.top;
+          return {
+            ...el,
+            x: Math.max(0, Math.min(headerMaxWidth, Math.round(resizeStart.group!.left + relativeX * scaleX))),
+            y: Math.max(0, Math.min(headerMaxHeight, Math.round(resizeStart.group!.top + relativeY * scaleY))),
+            width: Math.max(5, Math.round(source.width * scaleX)),
+            height: Math.max(5, Math.round(source.height * scaleY)),
+          };
+        }), { recordHistory: false });
+        return;
+      }
+
       updateElement(resizingId, { width: Math.round(newW), height: Math.round(newH) }, { recordHistory: false });
       return;
     }
@@ -1355,7 +1426,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       <Card>
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm">Vorschau</CardTitle>
-          <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht. Resize + Ctrl = Seitenverhältnis.</p>
+          <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht. Resize + Ctrl = Seitenverhältnis. Bei Mehrfachauswahl skaliert der Handle die ganze Gruppe.</p>
         </CardHeader>
         <CardContent className="p-6">
           <div ref={previewContainerRef} className="flex items-center justify-center min-h-[340px] w-full">
@@ -1481,6 +1552,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                     <li><span className="font-medium text-foreground">Snap-Linien</span> Blitzen beim Einrasten kurz auf</li>
                     <li><span className="font-medium text-foreground">Tab / Shift+Tab</span> Auswahl wechseln</li>
                     <li><span className="font-medium text-foreground">Pfeiltasten</span> Auswahl bewegen</li>
+                    <li><span className="font-medium text-foreground">Resize-Handle</span> Skaliert bei Mehrfachauswahl die Gruppe</li>
                     <li><span className="font-medium text-foreground">Entf / Backspace</span> Element löschen</li>
                     <li><span className="font-medium text-foreground">Strg/Cmd + C / V</span> Kopieren / Einfügen</li>
                     <li><span className="font-medium text-foreground">Strg/Cmd + D</span> Duplizieren</li>
