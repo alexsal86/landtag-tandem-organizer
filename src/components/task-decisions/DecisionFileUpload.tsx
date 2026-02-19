@@ -235,6 +235,33 @@ export function DecisionFileUpload({
     setIsDragOver(false);
   };
 
+  const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (!canUpload) return;
+
+    const clipboardFiles = Array.from(e.clipboardData.files || []);
+    const itemFiles = Array.from(e.clipboardData.items || [])
+      .filter(item => item.kind === 'file')
+      .map(item => item.getAsFile())
+      .filter((file): file is File => file !== null);
+
+    const filesByIdentity = new Map<string, File>();
+    [...clipboardFiles, ...itemFiles].forEach(file => {
+      filesByIdentity.set(getFileIdentity(file), file);
+    });
+
+    const pastedFiles = Array.from(filesByIdentity.values());
+    if (pastedFiles.length === 0) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (mode === 'creation') {
+      await addSelectedEntries(pastedFiles);
+    } else {
+      await uploadFiles(pastedFiles);
+    }
+  };
+
   const removeSelectedFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
@@ -407,6 +434,10 @@ export function DecisionFileUpload({
               : 'border-muted-foreground/25 hover:border-muted-foreground/50'
           }`}
           onClick={() => fileInputRef.current?.click()}
+          onPaste={handlePaste}
+          tabIndex={0}
+          role="button"
+          aria-label="Dateien per Drag-and-Drop, Klick oder Einfügen hochladen"
         >
           <input
             ref={fileInputRef}
@@ -417,10 +448,10 @@ export function DecisionFileUpload({
           />
           <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
           <p className="text-sm font-medium">
-            {uploading ? 'Wird hochgeladen...' : 'Dateien hierher ziehen oder klicken'}
+            {uploading ? 'Wird hochgeladen...' : 'Dateien hierher ziehen, klicken oder mit Strg+V einfügen'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Dokumente, Bilder oder E-Mails (.eml, .msg) aus Outlook
+            Dokumente, Bilder oder E-Mails (.eml, .msg) aus Outlook (inkl. Einfügen aus Zwischenablage)
           </p>
         </div>
       )}
