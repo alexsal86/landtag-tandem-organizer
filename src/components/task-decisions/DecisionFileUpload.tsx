@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { isEmailFile, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
+import { isEmailFile, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, buildEmlFromOutlookHtml, type EmailMetadata } from '@/utils/emlParser';
 import { useDecisionAttachmentUpload } from '@/hooks/useDecisionAttachmentUpload';
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
@@ -229,7 +229,19 @@ export function DecisionFileUpload({
 
     if (!canUpload) return;
     const droppedFiles = Array.from(e.dataTransfer.files);
-    if (droppedFiles.length === 0) return;
+
+    if (droppedFiles.length === 0) {
+      // Outlook OLE drag doesn't provide files – show guidance
+      const hasHtml = e.dataTransfer.types.includes('text/html');
+      const hasText = e.dataTransfer.types.includes('text/plain');
+      if (hasHtml || hasText) {
+        toast({
+          title: 'Outlook-Mail erkannt',
+          description: 'Direkt-Drag aus Outlook wird vom Browser nicht unterstützt. Bitte speichern Sie die Mail als .msg-Datei (Datei → Speichern unter) und ziehen Sie die gespeicherte Datei hierher, oder kopieren Sie die Mail (Strg+C) und fügen Sie sie hier ein (Strg+V).',
+        });
+      }
+      return;
+    }
 
     if (mode === 'creation') {
       await addSelectedEntries(droppedFiles);
@@ -277,6 +289,38 @@ export function DecisionFileUpload({
     if (!canUpload) return;
 
     const pastedFiles = extractFilesFromClipboard(clipboardData);
+
+    // Fallback: if no files but HTML content exists (e.g. Outlook copy), build synthetic .eml
+    if (pastedFiles.length === 0 && clipboardData) {
+      const html = clipboardData.getData('text/html');
+      if (html) {
+        const syntheticEml = buildEmlFromOutlookHtml(html);
+        if (syntheticEml) {
+          event?.preventDefault();
+          event?.stopPropagation();
+          toast({
+            title: 'E-Mail aus Zwischenablage erkannt',
+            description: 'Die kopierte E-Mail wird als .eml-Datei importiert.',
+          });
+          if (mode === 'creation') {
+            await addSelectedEntries([syntheticEml]);
+          } else {
+            await uploadFiles([syntheticEml]);
+          }
+          return;
+        }
+        // HTML present but doesn't look like email
+        toast({
+          title: 'Kein E-Mail-Inhalt erkannt',
+          description: 'Bitte speichern Sie die Mail in Outlook als .msg-Datei (Datei → Speichern unter) und ziehen Sie die Datei hierher.',
+        });
+        event?.preventDefault();
+        event?.stopPropagation();
+        return;
+      }
+      return;
+    }
+
     if (pastedFiles.length === 0) return;
 
     event?.preventDefault();
