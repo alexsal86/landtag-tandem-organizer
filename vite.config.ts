@@ -31,6 +31,12 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
+    include: [
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      'react',
+      'react-dom',
+    ],
     exclude: [
       '@matrix-org/matrix-sdk-crypto-wasm',
       '@radix-ui/react-select',
