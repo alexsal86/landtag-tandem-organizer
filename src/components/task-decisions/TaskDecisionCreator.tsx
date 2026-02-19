@@ -322,17 +322,15 @@ export const TaskDecisionCreator = ({
           decisionId: decision.id,
           userId: userData.user.id,
           files: selectedFiles,
+          rollbackOnAnyFailure: true,
           onFileStart: (file, index, total) => {
             setUploadStatus(`Lade Anhang ${index + 1}/${total}: ${file.name}`);
           },
         });
 
         if (uploadResult.failed.length > 0) {
-          toast({
-            title: 'Anhänge nur teilweise gespeichert',
-            description: uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | '),
-            variant: 'destructive',
-          });
+          await supabase.from('task_decisions').delete().eq('id', decision.id);
+          throw new Error(`Anhänge konnten nicht gespeichert werden: ${uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | ')}`);
         }
       }
 

@@ -25,6 +25,7 @@ interface UploadParams {
   userId: string;
   files: File[];
   onFileStart?: (file: File, index: number, total: number) => void;
+  rollbackOnAnyFailure?: boolean;
 }
 
 function normalizeError(error: unknown): string {
@@ -42,29 +43,31 @@ function normalizeError(error: unknown): string {
   }
 }
 
+async function uploadToStorageWithCandidates(filePath: string, file: File, maxAttempts = 2) {
+  const candidateErrors: string[] = [];
+
+  for (const contentType of getUploadContentTypeCandidates(file)) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const result = await supabase.storage
+        .from('decision-attachments')
+        .upload(filePath, file, { contentType });
+
+      if (!result.error && result.data) {
+        return { uploadData: result.data, candidateErrors };
+      }
+
+      candidateErrors.push(`[${contentType}] Versuch ${attempt}/${maxAttempts}: ${normalizeError(result.error)}`);
+    }
+  }
+
+  throw new Error(candidateErrors.join(' | ') || 'Upload fehlgeschlagen');
+}
+
 async function uploadOneFile(file: File, decisionId: string, userId: string) {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const filePath = `${userId}/decisions/${decisionId}/${uniqueSuffix}-${file.name}`;
 
-  const candidateErrors: string[] = [];
-  let uploadData: { path: string } | null = null;
-
-  for (const contentType of getUploadContentTypeCandidates(file)) {
-    const result = await supabase.storage
-      .from('decision-attachments')
-      .upload(filePath, file, { contentType });
-
-    if (!result.error && result.data) {
-      uploadData = result.data;
-      break;
-    }
-
-    candidateErrors.push(`[${contentType}] ${normalizeError(result.error)}`);
-  }
-
-  if (!uploadData) {
-    throw new Error(candidateErrors.join(' | ') || 'Upload fehlgeschlagen');
-  }
+  const { uploadData } = await uploadToStorageWithCandidates(filePath, file);
 
   let emailMeta: EmailMetadata | null = null;
   if (isEmlFile(file)) {
@@ -102,17 +105,38 @@ async function uploadOneFile(file: File, decisionId: string, userId: string) {
     await supabase.storage.from('decision-attachments').remove([uploadData.path]);
     throw dbError;
   }
+
+  return { filePath: uploadData.path };
+}
+
+async function rollbackAttachmentBatch(decisionId: string, uploadedPaths: string[]) {
+  if (uploadedPaths.length > 0) {
+    await supabase.storage.from('decision-attachments').remove(uploadedPaths);
+  }
+
+  await supabase
+    .from('task_decision_attachments')
+    .delete()
+    .eq('decision_id', decisionId);
 }
 
 export function useDecisionAttachmentUpload() {
-  const uploadDecisionAttachments = async ({ decisionId, userId, files, onFileStart }: UploadParams): Promise<UploadResult> => {
+  const uploadDecisionAttachments = async ({
+    decisionId,
+    userId,
+    files,
+    onFileStart,
+    rollbackOnAnyFailure = false,
+  }: UploadParams): Promise<UploadResult> => {
     const failed: UploadFailure[] = [];
+    const uploadedPaths: string[] = [];
     let uploadedCount = 0;
 
     for (const [index, file] of files.entries()) {
       onFileStart?.(file, index, files.length);
       try {
-        await uploadOneFile(file, decisionId, userId);
+        const result = await uploadOneFile(file, decisionId, userId);
+        uploadedPaths.push(result.filePath);
         uploadedCount += 1;
       } catch (error) {
         const reason = normalizeError(error);
@@ -121,6 +145,11 @@ export function useDecisionAttachmentUpload() {
           reason,
           candidateErrors: reason.split(' | '),
         });
+
+        if (rollbackOnAnyFailure) {
+          await rollbackAttachmentBatch(decisionId, uploadedPaths);
+          return { uploadedCount: 0, failed };
+        }
       }
     }
 

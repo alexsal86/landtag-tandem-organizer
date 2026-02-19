@@ -238,6 +238,24 @@ export function NoteDecisionCreator({
 
       if (decisionError) throw decisionError;
 
+      // Upload files (atomic: rollback decision on any upload failure)
+      if (selectedFiles.length > 0) {
+        const uploadResult = await uploadDecisionAttachments({
+          decisionId: decision.id,
+          userId: user.id,
+          files: selectedFiles,
+          rollbackOnAnyFailure: true,
+          onFileStart: (file, index, total) => {
+            setUploadStatus(`Lade Anhang ${index + 1}/${total}: ${file.name}`);
+          },
+        });
+
+        if (uploadResult.failed.length > 0) {
+          await supabase.from('task_decisions').delete().eq('id', decision.id);
+          throw new Error(`Anhänge konnten nicht gespeichert werden: ${uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | ')}`);
+        }
+      }
+
       // Link to note
       const { error: noteError } = await supabase
         .from("quick_notes")
@@ -302,24 +320,6 @@ export function NoteDecisionCreator({
               }
             }
           }
-        }
-      }
-
-      // Upload files
-      if (selectedFiles.length > 0) {
-        const uploadResult = await uploadDecisionAttachments({
-          decisionId: decision.id,
-          userId: user.id,
-          files: selectedFiles,
-          onFileStart: (file, index, total) => {
-            setUploadStatus(`Lade Anhang ${index + 1}/${total}: ${file.name}`);
-          },
-        });
-
-        if (uploadResult.failed.length > 0) {
-          toast.error('Anhänge nur teilweise gespeichert', {
-            description: uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | '),
-          });
         }
       }
 
