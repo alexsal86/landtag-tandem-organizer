@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ export function MyWorkDecisionsTab() {
   const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
   const [commentsDecisionTitle, setCommentsDecisionTitle] = useState("");
   const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
+  const latestLoadRequestRef = useRef(0);
 
   // Comment counts
   const decisionIds = useMemo(() => decisions.map(d => d.id), [decisions]);
@@ -63,7 +64,10 @@ export function MyWorkDecisionsTab() {
 
   const loadDecisions = async () => {
     if (!user) return;
-    
+
+    const requestId = latestLoadRequestRef.current + 1;
+    latestLoadRequestRef.current = requestId;
+
     try {
       // Load participant decisions
       const { data: participantData, error: participantError } = await supabase
@@ -320,11 +324,15 @@ export function MyWorkDecisionsTab() {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
-      setDecisions(allDecisionsList);
+      if (latestLoadRequestRef.current === requestId) {
+        setDecisions(allDecisionsList);
+      }
     } catch (error) {
       console.error("Error loading decisions:", error);
     } finally {
-      setLoading(false);
+      if (latestLoadRequestRef.current === requestId) {
+        setLoading(false);
+      }
     }
   };
 

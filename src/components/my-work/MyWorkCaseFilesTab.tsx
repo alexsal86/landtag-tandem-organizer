@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Briefcase, ExternalLink, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -33,6 +34,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function MyWorkCaseFilesTab() {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -50,19 +52,20 @@ export function MyWorkCaseFilesTab() {
   }, [searchParams, setSearchParams, navigate]);
 
   useEffect(() => {
-    if (user) {
+    if (user && currentTenant?.id) {
       loadCaseFiles();
     }
-  }, [user]);
+  }, [user, currentTenant?.id]);
 
   const loadCaseFiles = async () => {
-    if (!user) return;
+    if (!user || !currentTenant?.id) return;
     
     try {
       // Load case files visible to user (RLS handles visibility filtering)
       const { data, error } = await supabase
         .from("case_files")
         .select("*")
+        .eq("tenant_id", currentTenant.id)
         .in("status", ["active", "pending"])
         .order("updated_at", { ascending: false })
         .limit(20);

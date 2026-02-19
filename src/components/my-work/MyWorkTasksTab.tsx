@@ -794,6 +794,7 @@ export function MyWorkTasksTab() {
             onDecision={handleDecision}
             onDocuments={handleDocuments}
             onAddToMeeting={handleAddToMeeting}
+            onCreateChildTask={handleCreateChildTask}
             onEdit={openTaskEditDialog}
             getChildTasks={getChildTasks}
             getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
@@ -829,6 +830,7 @@ export function MyWorkTasksTab() {
             onDecision={handleDecision}
             onDocuments={handleDocuments}
             onAddToMeeting={handleAddToMeeting}
+            onCreateChildTask={handleCreateChildTask}
             onEdit={openTaskEditDialog}
             getChildTasks={getChildTasks}
             getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
@@ -847,70 +849,11 @@ export function MyWorkTasksTab() {
           </div>
         </div>
         
-        <ScrollArea className="flex-1">
-          {tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
-          ) : viewType === "card" ? (
-            <div className="space-y-2 pr-2">
-              {tasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  subtasks={subtasks[task.id]}
-                  resolveAssigneeName={resolveAssigneeName}
-                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
-                  hasReminder={!!taskSnoozes[task.id]}
-                  onComplete={handleToggleComplete}
-                  onSubtaskComplete={handleToggleSubtaskComplete}
-                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-                  onUpdateTitle={handleUpdateTitle}
-                  onUpdateDescription={handleUpdateDescription}
-                  onUpdateDueDate={handleUpdateDueDate}
-                  onReminder={handleReminder}
-                  onAssign={handleAssign}
-                  onComment={handleComment}
-                  onDecision={handleDecision}
-                  onDocuments={handleDocuments}
-                  onAddToMeeting={handleAddToMeeting}
-                  onCreateChildTask={handleCreateChildTask}
-                  onEdit={openTaskEditDialog}
-                  getChildTasks={getChildTasks}
-                  getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
-                  showPersistentCommentIndicator
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="border rounded-lg overflow-hidden">
-              {tasks.map((task) => (
-                <TaskListRow
-                  key={task.id}
-                  task={task}
-                  subtasks={subtasks[task.id]}
-                  resolveAssigneeName={resolveAssigneeName}
-                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
-                  hasReminder={!!taskSnoozes[task.id]}
-                  onComplete={handleToggleComplete}
-                  onSubtaskComplete={handleToggleSubtaskComplete}
-                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-                  onUpdateTitle={handleUpdateTitle}
-                  onUpdateDueDate={handleUpdateDueDate}
-                  onReminder={handleReminder}
-                  onAssign={handleAssign}
-                  onComment={handleComment}
-                  onDecision={handleDecision}
-                  onDocuments={handleDocuments}
-                  onAddToMeeting={handleAddToMeeting}
-                  onCreateChildTask={handleCreateChildTask}
-                  onEdit={openTaskEditDialog}
-                  getChildTasks={getChildTasks}
-                  getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
-                  showPersistentCommentIndicator
-                />
-              ))}
-            </div>
-          )}
-        </ScrollArea>
+        {scrollable ? (
+          <ScrollArea className="flex-1">{listContent}</ScrollArea>
+        ) : (
+          listContent
+        )}
       </div>
     );
   };
