@@ -12,6 +12,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { useDecisionComments } from "@/hooks/useDecisionComments";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { useDecisionRefreshScheduler } from "@/hooks/useDecisionRefreshScheduler";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { DecisionEditDialog } from "@/components/task-decisions/DecisionEditDialog";
@@ -39,12 +40,12 @@ export function MyWorkDecisionsTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
   const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
+  const [archivingDecisionId, setArchivingDecisionId] = useState<string | null>(null);
   const [creatingTaskId, setCreatingTaskId] = useState<string | null>(null);
   const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
   const [commentsDecisionTitle, setCommentsDecisionTitle] = useState("");
   const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
   const latestLoadRequestRef = useRef(0);
-  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Comment counts
   const decisionIds = useMemo(() => decisions.map(d => d.id), [decisions]);
@@ -64,25 +65,6 @@ export function MyWorkDecisionsTab() {
     if (user) loadDecisions();
   }, [user]);
 
-  useEffect(() => {
-    return () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
-    };
-  }, []);
-
-
-  const scheduleDecisionsRefresh = (debounceMs = 150) => {
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-    }
-
-    refreshTimeoutRef.current = setTimeout(() => {
-      refreshTimeoutRef.current = null;
-      void loadDecisions();
-    }, debounceMs);
-  };
 
   const loadDecisions = async () => {
     if (!user) return;
@@ -367,6 +349,8 @@ export function MyWorkDecisionsTab() {
     }
   };
 
+  const { scheduleRefresh: scheduleDecisionsRefresh } = useDecisionRefreshScheduler(loadDecisions);
+
   // Tab counts
   const tabCounts = useMemo(() => {
     const forMeParticipant = decisions.filter(d => d.isParticipant && !d.hasResponded && !d.isCreator);
@@ -619,6 +603,7 @@ export function MyWorkDecisionsTab() {
 
   const archiveDecision = async (decisionId: string) => {
     if (!user) return;
+    setArchivingDecisionId(decisionId);
     try {
       const { error } = await supabase
         .from('task_decisions')
@@ -630,6 +615,8 @@ export function MyWorkDecisionsTab() {
     } catch (error) {
       console.error('Error archiving:', error);
       toast({ title: "Fehler", description: "Archivierung fehlgeschlagen.", variant: "destructive" });
+    } finally {
+      setArchivingDecisionId(null);
     }
   };
 
@@ -771,6 +758,8 @@ export function MyWorkDecisionsTab() {
                         onReply={sendActivityReply}
                         commentCount={getCommentCount(decision.id)}
                         creatingTaskId={creatingTaskId}
+                        archivingDecisionId={archivingDecisionId}
+                        deletingDecisionId={deletingDecisionId}
                         currentUserId={user?.id || ""}
                       />
                     ))}
