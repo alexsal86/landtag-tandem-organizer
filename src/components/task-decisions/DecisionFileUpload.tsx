@@ -4,7 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getUploadContentType, getUploadContentTypeCandidates, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
+import { isEmailFile, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
+import { useDecisionAttachmentUpload } from '@/hooks/useDecisionAttachmentUpload';
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
 
@@ -26,6 +27,7 @@ interface DecisionFileUploadProps {
   canUpload?: boolean;
   mode?: 'view' | 'creation';
   onFilesSelected?: (files: File[]) => void;
+  onFilesPrepared?: (payload: { files: File[]; metadataByIdentity: Record<string, EmailMetadata | null> }) => void;
 }
 
 interface SelectedFileEntry {
@@ -40,7 +42,8 @@ export function DecisionFileUpload({
   onFilesChange,
   canUpload = true,
   mode = 'view',
-  onFilesSelected
+  onFilesSelected,
+  onFilesPrepared
 }: DecisionFileUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -51,6 +54,7 @@ export function DecisionFileUpload({
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { uploadDecisionAttachments } = useDecisionAttachmentUpload();
 
   useEffect(() => {
     if (decisionId && mode === 'view') {
@@ -60,9 +64,15 @@ export function DecisionFileUpload({
 
   useEffect(() => {
     if (mode === 'creation') {
-      onFilesSelected?.(selectedFiles.map(entry => entry.file));
+      const files = selectedFiles.map(entry => entry.file);
+      const metadataByIdentity = Object.fromEntries(
+        selectedFiles.map(entry => [getFileIdentity(entry.file), entry.emailMetadata ?? null])
+      );
+
+      onFilesSelected?.(files);
+      onFilesPrepared?.({ files, metadataByIdentity });
     }
-  }, [mode, onFilesSelected, selectedFiles]);
+  }, [mode, onFilesPrepared, onFilesSelected, selectedFiles]);
 
   const loadExistingFiles = async () => {
     try {
@@ -137,73 +147,8 @@ export function DecisionFileUpload({
 
     toast({
       title: 'Dateien ausgewählt',
-      description: `${incomingFiles.length} Datei(en) ausgewählt und werden nach Erstellung hochgeladen.`,
+      description: 'Ausgewählte Dateien werden nach Erstellung hochgeladen.',
     });
-  };
-
-  const uploadSingleFile = async (file: File, decisionIdParam: string, userId: string) => {
-    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const filePath = `${userId}/decisions/${decisionIdParam}/${uniqueSuffix}-${file.name}`;
-
-    const uploadContentTypes = getUploadContentTypeCandidates(file);
-
-    let uploadData: { path: string } | null = null;
-    let uploadError: unknown = null;
-
-    for (const contentType of uploadContentTypes) {
-      const result = await supabase.storage
-        .from('decision-attachments')
-        .upload(filePath, file, { contentType });
-
-      if (!result.error && result.data) {
-        uploadData = result.data;
-        uploadError = null;
-        break;
-      }
-
-      uploadError = result.error;
-    }
-
-    if (!uploadData) throw uploadError ?? new Error("Upload failed");
-
-    let emailMeta: EmailMetadata | null = null;
-    if (isEmlFile(file)) {
-      try {
-        const parsed = await parseEmlFile(file);
-        emailMeta = parsed.metadata;
-      } catch (e) {
-        console.error('EML parse error during upload:', e);
-      }
-    } else if (isMsgFile(file)) {
-      try {
-        const parsed = await parseMsgFile(file);
-        emailMeta = parsed.metadata;
-      } catch (e) {
-        console.error('MSG parse error during upload:', e);
-      }
-    }
-
-    const insertData: Record<string, unknown> = {
-      decision_id: decisionIdParam,
-      file_path: uploadData.path,
-      file_name: file.name,
-      file_size: file.size,
-      file_type: getUploadContentType(file),
-      uploaded_by: userId,
-    };
-
-    if (emailMeta) {
-      insertData.email_metadata = emailMeta;
-    }
-
-    const { error: dbError } = await supabase
-      .from('task_decision_attachments')
-      .insert(insertData as never);
-
-    if (dbError) {
-      await supabase.storage.from('decision-attachments').remove([uploadData.path]);
-      throw dbError;
-    }
   };
 
   const handleFileSelect = async (fileList: FileList | null) => {
@@ -229,29 +174,29 @@ export function DecisionFileUpload({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const failedFiles: string[] = [];
-      for (const file of filesArray) {
-        try {
-          await uploadSingleFile(file, decisionId, user.id);
-          toast({
-            title: 'Datei hochgeladen',
-            description: `${file.name} wurde erfolgreich hochgeladen.`,
-          });
-        } catch (error) {
-          console.error('Upload error:', error);
-          failedFiles.push(file.name);
-          toast({
-            title: 'Upload fehlgeschlagen',
-            description: `${file.name} konnte nicht hochgeladen werden.`,
-            variant: 'destructive',
-          });
-        }
+      const preparedEntries = await processFiles(filesArray);
+      const metadataByIdentity = Object.fromEntries(
+        preparedEntries.map(entry => [getFileIdentity(entry.file), entry.emailMetadata ?? null])
+      );
+
+      const uploadResult = await uploadDecisionAttachments({
+        decisionId,
+        userId: user.id,
+        files: preparedEntries.map(entry => entry.file),
+        metadataByIdentity,
+      });
+
+      if (uploadResult.uploadedCount > 0) {
+        toast({
+          title: 'Dateien hochgeladen',
+          description: `${uploadResult.uploadedCount} Datei(en) wurden erfolgreich hochgeladen.`,
+        });
       }
 
-      if (failedFiles.length > 0 && failedFiles.length < filesArray.length) {
+      if (uploadResult.failed.length > 0) {
         toast({
-          title: 'Teilweise hochgeladen',
-          description: `${failedFiles.length} Datei(en) konnten nicht gespeichert werden.`,
+          title: 'Upload teilweise fehlgeschlagen',
+          description: uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | '),
           variant: 'destructive',
         });
       }
@@ -288,6 +233,33 @@ export function DecisionFileUpload({
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (!canUpload) return;
+
+    const clipboardFiles = Array.from(e.clipboardData.files || []);
+    const itemFiles = Array.from(e.clipboardData.items || [])
+      .filter(item => item.kind === 'file')
+      .map(item => item.getAsFile())
+      .filter((file): file is File => file !== null);
+
+    const filesByIdentity = new Map<string, File>();
+    [...clipboardFiles, ...itemFiles].forEach(file => {
+      filesByIdentity.set(getFileIdentity(file), file);
+    });
+
+    const pastedFiles = Array.from(filesByIdentity.values());
+    if (pastedFiles.length === 0) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (mode === 'creation') {
+      await addSelectedEntries(pastedFiles);
+    } else {
+      await uploadFiles(pastedFiles);
+    }
   };
 
   const removeSelectedFile = (index: number) => {
@@ -377,12 +349,24 @@ export function DecisionFileUpload({
     return decision?.created_by === user.id;
   };
 
+  const toFallbackEmailMetadata = (fileName: string): EmailMetadata => ({
+    subject: fileName,
+    from: 'Unbekannt',
+    to: [],
+    date: new Date().toISOString(),
+    hasHtmlBody: false,
+    attachmentCount: 0,
+  });
+
   const renderFileItem = (file: UploadedFile) => {
-    if (file.email_metadata) {
+    const fileLooksLikeEmail = file.file_name.toLowerCase().endsWith('.eml') || file.file_name.toLowerCase().endsWith('.msg');
+    const emailMetadata = file.email_metadata || (fileLooksLikeEmail ? toFallbackEmailMetadata(file.file_name) : null);
+
+    if (emailMetadata) {
       return (
         <EmailPreviewCard
           key={file.id}
-          metadata={file.email_metadata}
+          metadata={emailMetadata}
           fileName={file.file_name}
           fileSize={file.file_size}
           onPreviewOpen={() => setPreviewDialog({ open: true, filePath: file.file_path, fileName: file.file_name })}
@@ -450,6 +434,10 @@ export function DecisionFileUpload({
               : 'border-muted-foreground/25 hover:border-muted-foreground/50'
           }`}
           onClick={() => fileInputRef.current?.click()}
+          onPaste={handlePaste}
+          tabIndex={0}
+          role="button"
+          aria-label="Dateien per Drag-and-Drop, Klick oder Einfügen hochladen"
         >
           <input
             ref={fileInputRef}
@@ -460,10 +448,10 @@ export function DecisionFileUpload({
           />
           <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
           <p className="text-sm font-medium">
-            {uploading ? 'Wird hochgeladen...' : 'Dateien hierher ziehen oder klicken'}
+            {uploading ? 'Wird hochgeladen...' : 'Dateien hierher ziehen, klicken oder mit Strg+V einfügen'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Dokumente, Bilder oder E-Mails (.eml, .msg) aus Outlook
+            Dokumente, Bilder oder E-Mails (.eml, .msg) aus Outlook (inkl. Einfügen aus Zwischenablage)
           </p>
         </div>
       )}
@@ -475,10 +463,10 @@ export function DecisionFileUpload({
               <p className="text-sm font-medium">Ausgewählte Dateien ({selectedFiles.length})</p>
               <div className="max-h-[300px] overflow-y-auto space-y-2">
                 {selectedFiles.map((entry, index) => (
-                  entry.emailMetadata ? (
+                  (entry.emailMetadata || isEmailFile(entry.file)) ? (
                     <EmailPreviewCard
                       key={index}
-                      metadata={entry.emailMetadata}
+                      metadata={entry.emailMetadata ?? toFallbackEmailMetadata(entry.file.name)}
                       fileName={entry.file.name}
                       fileSize={entry.file.size}
                       onPreviewOpen={() => {}}
