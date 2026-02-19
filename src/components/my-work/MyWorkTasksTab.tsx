@@ -133,27 +133,28 @@ export function MyWorkTasksTab() {
     if (!user) return;
     
     try {
-      // Load tasks assigned to user
-      const { data: assigned, error: assignedError } = await supabase
-        .from("tasks")
-        .select("*")
-        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
-        .neq("status", "completed")
-        .is("parent_task_id", null)
-        .order("due_date", { ascending: true, nullsFirst: false });
+      const [assignedResult, createdResult] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select("*")
+          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
+          .neq("status", "completed")
+          .is("parent_task_id", null)
+          .order("due_date", { ascending: true, nullsFirst: false }),
+        supabase
+          .from("tasks")
+          .select("*")
+          .eq("user_id", user.id)
+          .neq("status", "completed")
+          .is("parent_task_id", null)
+          .order("due_date", { ascending: true, nullsFirst: false }),
+      ]);
 
-      if (assignedError) throw assignedError;
+      if (assignedResult.error) throw assignedResult.error;
+      if (createdResult.error) throw createdResult.error;
 
-      // Load tasks created by user
-      const { data: created, error: createdError } = await supabase
-        .from("tasks")
-        .select("*")
-        .eq("user_id", user.id)
-        .neq("status", "completed")
-        .is("parent_task_id", null)
-        .order("due_date", { ascending: true, nullsFirst: false });
-
-      if (createdError) throw createdError;
+      const assigned = assignedResult.data;
+      const created = createdResult.data;
 
       const allAssigned = assigned || [];
       const allCreated = created || [];

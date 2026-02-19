@@ -90,49 +90,48 @@ export function MyWorkDecisionsTab() {
     latestLoadRequestRef.current = requestId;
 
     try {
-      // Load participant decisions
-      const { data: participantData, error: participantError } = await supabase
-        .from("task_decision_participants")
-        .select(`
-          id,
-          decision_id,
-          task_decisions!inner (
+      const [participantResult, creatorResult, publicResult] = await Promise.all([
+        supabase
+          .from("task_decision_participants")
+          .select(`
+            id,
+            decision_id,
+            task_decisions!inner (
+              id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
+              task_decision_attachments (id, file_name, file_path)
+            ),
+            task_decision_responses (id, response_type)
+          `)
+          .eq("user_id", user.id)
+          .in("task_decisions.status", ["active", "open"]),
+        supabase
+          .from("task_decisions")
+          .select(`
             id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
+            task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
             task_decision_attachments (id, file_name, file_path)
-          ),
-          task_decision_responses (id, response_type)
-        `)
-        .eq("user_id", user.id)
-        .in("task_decisions.status", ["active", "open"]);
+          `)
+          .eq("created_by", user.id)
+          .in("status", ["active", "open"]),
+        supabase
+          .from("task_decisions")
+          .select(`
+            id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
+            task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
+            task_decision_attachments (id, file_name, file_path)
+          `)
+          .eq("visible_to_all", true)
+          .in("status", ["active", "open"])
+          .neq("created_by", user.id),
+      ]);
 
-      if (participantError) throw participantError;
+      if (participantResult.error) throw participantResult.error;
+      if (creatorResult.error) throw creatorResult.error;
+      if (publicResult.error) throw publicResult.error;
 
-      // Load creator decisions
-      const { data: creatorData, error: creatorError } = await supabase
-        .from("task_decisions")
-        .select(`
-          id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
-          task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
-          task_decision_attachments (id, file_name, file_path)
-        `)
-        .eq("created_by", user.id)
-        .in("status", ["active", "open"]);
-
-      if (creatorError) throw creatorError;
-
-      // Load public decisions
-      const { data: publicData, error: publicError } = await supabase
-        .from("task_decisions")
-        .select(`
-          id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
-          task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
-          task_decision_attachments (id, file_name, file_path)
-        `)
-        .eq("visible_to_all", true)
-        .in("status", ["active", "open"])
-        .neq("created_by", user.id);
-
-      if (publicError) throw publicError;
+      const participantData = participantResult.data || [];
+      const creatorData = creatorResult.data || [];
+      const publicData = publicResult.data || [];
 
       const isEmailFile = (name: string) => /\.(eml|msg)$/i.test(name);
 
@@ -149,7 +148,7 @@ export function MyWorkDecisionsTab() {
       };
 
       // Format participant decisions
-      const participantDecisions: MyWorkDecision[] = (participantData || []).map((item: any) => {
+      const participantDecisions: MyWorkDecision[] = participantData.map((item: any) => {
         const attInfo = computeAttachmentInfo(item.task_decisions.task_decision_attachments);
         return {
           id: item.task_decisions.id,
@@ -173,7 +172,7 @@ export function MyWorkDecisionsTab() {
       });
 
       // Format creator decisions
-      const creatorDecisions: MyWorkDecision[] = (creatorData || []).map((item: any) => {
+      const creatorDecisions: MyWorkDecision[] = creatorData.map((item: any) => {
         const participants = item.task_decision_participants || [];
         const pendingCount = participants.filter(
           (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0
@@ -202,7 +201,7 @@ export function MyWorkDecisionsTab() {
 
       // Format public decisions
       const participantDecisionIds = new Set(participantDecisions.map(d => d.id));
-      const publicDecisions: MyWorkDecision[] = (publicData || [])
+      const publicDecisions: MyWorkDecision[] = publicData
         .filter((item: any) => !participantDecisionIds.has(item.id))
         .map((item: any) => {
           const participants = item.task_decision_participants || [];
@@ -254,19 +253,25 @@ export function MyWorkDecisionsTab() {
 
       if (allDecisionIds.length > 0) {
         // Load participants with profiles and responses
-        const { data: participantsWithProfiles } = await supabase
-          .from('task_decision_participants')
-          .select(`
-            id, user_id, decision_id,
-            task_decision_responses (id, response_type, comment, creator_response, parent_response_id, created_at, updated_at)
-          `)
-          .in('decision_id', allDecisionIds);
+        const [participantsResult, topicsResult] = await Promise.all([
+          supabase
+            .from('task_decision_participants')
+            .select(`
+              id, user_id, decision_id,
+              task_decision_responses (id, response_type, comment, creator_response, parent_response_id, created_at, updated_at)
+            `)
+            .in('decision_id', allDecisionIds),
+          supabase
+            .from('task_decision_topics')
+            .select('decision_id, topic_id')
+            .in('decision_id', allDecisionIds),
+        ]);
 
-        // Load topics
-        const { data: topicsData } = await supabase
-          .from('task_decision_topics')
-          .select('decision_id, topic_id')
-          .in('decision_id', allDecisionIds);
+        if (participantsResult.error) throw participantsResult.error;
+        if (topicsResult.error) throw topicsResult.error;
+
+        const participantsWithProfiles = participantsResult.data || [];
+        const topicsData = topicsResult.data || [];
 
         // Load all user profiles
         const allUserIds = [...new Set([
@@ -274,10 +279,14 @@ export function MyWorkDecisionsTab() {
           ...allDecisionsList.map(d => d.created_by),
         ])];
 
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, badge_color, avatar_url')
-          .in('user_id', allUserIds);
+        const { data: profiles, error: profilesError } = allUserIds.length > 0
+          ? await supabase
+            .from('profiles')
+            .select('user_id, display_name, badge_color, avatar_url')
+            .in('user_id', allUserIds)
+          : { data: [], error: null as any };
+
+        if (profilesError) throw profilesError;
 
         const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
