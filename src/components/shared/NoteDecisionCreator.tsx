@@ -15,7 +15,15 @@ import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { Vote, Loader2, Mail, MessageSquare, Globe, Paperclip, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
+import {
+  getUploadContentType,
+  getUploadContentTypeCandidates,
+  isEmlFile,
+  isMsgFile,
+  parseEmlFile,
+  parseMsgFile,
+  type EmailMetadata,
+} from "@/utils/emlParser";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
@@ -305,14 +313,32 @@ export function NoteDecisionCreator({
 
       // Upload files
       if (selectedFiles.length > 0) {
+        const failedFiles: string[] = [];
+
         for (const file of selectedFiles) {
-          const fileName = `${user.id}/decisions/${decision.id}/${Date.now()}-${file.name}`;
-          
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('decision-attachments')
-            .upload(fileName, file);
-          
-          if (!uploadError && uploadData) {
+          try {
+            const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            const fileName = `${user.id}/decisions/${decision.id}/${uniqueSuffix}-${file.name}`;
+
+            let uploadData: { path: string } | null = null;
+            let uploadError: unknown = null;
+
+            for (const contentType of getUploadContentTypeCandidates(file)) {
+              const result = await supabase.storage
+                .from('decision-attachments')
+                .upload(fileName, file, { contentType });
+
+              if (!result.error && result.data) {
+                uploadData = result.data;
+                uploadError = null;
+                break;
+              }
+
+              uploadError = result.error;
+            }
+
+            if (!uploadData) throw uploadError ?? new Error("Upload failed");
+
             // Extract email metadata if applicable
             let emailMeta: EmailMetadata | null = null;
             if (isEmlFile(file)) {
@@ -326,17 +352,31 @@ export function NoteDecisionCreator({
               file_path: uploadData.path,
               file_name: file.name,
               file_size: file.size,
-              file_type: file.type,
+              file_type: getUploadContentType(file),
               uploaded_by: user.id,
             };
             if (emailMeta) {
               insertData.email_metadata = emailMeta;
             }
 
-            await supabase
+            const { error: attachmentError } = await supabase
               .from('task_decision_attachments')
               .insert(insertData as any);
+
+            if (attachmentError) {
+              await supabase.storage.from('decision-attachments').remove([uploadData.path]);
+              throw attachmentError;
+            }
+          } catch (fileError) {
+            failedFiles.push(file.name);
+            console.error('File upload error in NoteDecisionCreator:', fileError);
           }
+        }
+
+        if (failedFiles.length > 0) {
+          toast.error("Einige Anhänge konnten nicht gespeichert werden", {
+            description: failedFiles.join(', '),
+          });
         }
       }
 

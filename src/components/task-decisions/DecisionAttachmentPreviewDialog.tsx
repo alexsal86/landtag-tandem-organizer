@@ -16,12 +16,21 @@ const getFileExtension = (fileName: string) => fileName.split('.').pop()?.toLowe
 
 const isHttpUrl = (value: string) => /^https?:\/\//i.test(value);
 
+const safeDecode = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
 const normalizeStoragePath = (rawPath: string) => {
   const trimmed = rawPath.trim();
   if (!trimmed) return '';
 
   const stripBucketPrefix = (value: string) =>
-    decodeURIComponent(value)
+    safeDecode(value)
+      .split(/[?#]/, 1)[0]
       .replace(/^\/+/, '')
       .replace(/^decision-attachments\//, '');
 
