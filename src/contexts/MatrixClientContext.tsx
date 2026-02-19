@@ -789,7 +789,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         try {
           let hasMore = true;
           while (hasMore && room.getLiveTimeline().getEvents().length < limit) {
-            hasMore = await mc.scrollback(room, limit);
+            hasMore = (await mc.scrollback(room, limit)) as unknown as boolean;
           }
         } catch (error) {
           console.warn('Matrix scrollback failed:', error);
