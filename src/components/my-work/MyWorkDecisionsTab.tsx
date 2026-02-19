@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,8 @@ export function MyWorkDecisionsTab() {
   const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
   const [commentsDecisionTitle, setCommentsDecisionTitle] = useState("");
   const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
+  const latestLoadRequestRef = useRef(0);
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Comment counts
   const decisionIds = useMemo(() => decisions.map(d => d.id), [decisions]);
@@ -61,9 +63,32 @@ export function MyWorkDecisionsTab() {
     if (user) loadDecisions();
   }, [user]);
 
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
+
+
+  const scheduleDecisionsRefresh = (debounceMs = 150) => {
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+
+    refreshTimeoutRef.current = setTimeout(() => {
+      refreshTimeoutRef.current = null;
+      void loadDecisions();
+    }, debounceMs);
+  };
+
   const loadDecisions = async () => {
     if (!user) return;
-    
+
+    const requestId = latestLoadRequestRef.current + 1;
+    latestLoadRequestRef.current = requestId;
+
     try {
       // Load participant decisions
       const { data: participantData, error: participantError } = await supabase
@@ -320,11 +345,15 @@ export function MyWorkDecisionsTab() {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
-      setDecisions(allDecisionsList);
+      if (latestLoadRequestRef.current === requestId) {
+        setDecisions(allDecisionsList);
+      }
     } catch (error) {
       console.error("Error loading decisions:", error);
     } finally {
-      setLoading(false);
+      if (latestLoadRequestRef.current === requestId) {
+        setLoading(false);
+      }
     }
   };
 
@@ -569,7 +598,7 @@ export function MyWorkDecisionsTab() {
         ? "Antwort wurde gesendet."
         : "Deine Rückfrage wurde gesendet.",
     });
-    loadDecisions();
+    scheduleDecisionsRefresh();
   };
 
   // Actions
@@ -587,7 +616,7 @@ export function MyWorkDecisionsTab() {
         .eq('id', decisionId);
       if (error) throw error;
       toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
-      loadDecisions();
+      scheduleDecisionsRefresh();
     } catch (error) {
       console.error('Error archiving:', error);
       toast({ title: "Fehler", description: "Archivierung fehlgeschlagen.", variant: "destructive" });
@@ -601,7 +630,7 @@ export function MyWorkDecisionsTab() {
       if (error) throw error;
       toast({ title: "Gelöscht", description: "Entscheidung wurde gelöscht." });
       setDeletingDecisionId(null);
-      loadDecisions();
+      scheduleDecisionsRefresh();
     } catch (error) {
       console.error('Error deleting:', error);
       toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
@@ -673,7 +702,7 @@ export function MyWorkDecisionsTab() {
           <StandaloneDecisionCreator 
             isOpen={isCreateOpen}
             onOpenChange={setIsCreateOpen}
-            onDecisionCreated={loadDecisions}
+            onDecisionCreated={() => scheduleDecisionsRefresh(0)}
           />
           <Button
             variant="ghost"
@@ -727,7 +756,7 @@ export function MyWorkDecisionsTab() {
                         onArchive={archiveDecision}
                         onDelete={setDeletingDecisionId}
                         onCreateTask={createTaskFromDecision}
-                        onResponseSubmitted={loadDecisions}
+                        onResponseSubmitted={() => scheduleDecisionsRefresh(0)}
                         onOpenComments={(id, title) => { setCommentsDecisionId(id); setCommentsDecisionTitle(title); }}
                         onReply={sendActivityReply}
                         commentCount={getCommentCount(decision.id)}
@@ -747,7 +776,7 @@ export function MyWorkDecisionsTab() {
                 recentActivities={sidebarData.recentActivities}
                 onQuestionClick={handleOpenDetails}
                 onCommentClick={handleOpenDetails}
-                onResponseSent={loadDecisions}
+                onResponseSent={() => scheduleDecisionsRefresh(0)}
               />
             </div>
           </TabsContent>
@@ -760,7 +789,7 @@ export function MyWorkDecisionsTab() {
           decisionId={selectedDecisionId}
           isOpen={isDetailsOpen}
           onClose={() => { setIsDetailsOpen(false); setSelectedDecisionId(null); }}
-          onArchived={loadDecisions}
+          onArchived={() => scheduleDecisionsRefresh(0)}
         />
       )}
 
@@ -769,7 +798,7 @@ export function MyWorkDecisionsTab() {
           decisionId={editingDecisionId}
           isOpen={true}
           onClose={() => setEditingDecisionId(null)}
-          onUpdated={() => { setEditingDecisionId(null); loadDecisions(); }}
+          onUpdated={() => { setEditingDecisionId(null); scheduleDecisionsRefresh(0); }}
         />
       )}
 
@@ -779,7 +808,7 @@ export function MyWorkDecisionsTab() {
           decisionTitle={commentsDecisionTitle}
           isOpen={!!commentsDecisionId}
           onClose={() => setCommentsDecisionId(null)}
-          onCommentAdded={() => { refreshCommentCounts(); loadDecisions(); }}
+          onCommentAdded={() => { refreshCommentCounts(); scheduleDecisionsRefresh(0); }}
         />
       )}
 
