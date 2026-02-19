@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useViewPreference, ViewType } from "@/hooks/useViewPreference";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskListRow } from "@/components/tasks/TaskListRow";
 import { TaskDecisionCreator } from "@/components/task-decisions/TaskDecisionCreator";
@@ -60,7 +61,7 @@ export function MyWorkTasksTab() {
   const [createdTasks, setCreatedTasks] = useState<Task[]>([]);
   const [subtasks, setSubtasks] = useState<Record<string, Task[]>>({});
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = usePersistentState<string>('mywork-tasks-status-filter', 'all');
   const [taskStatuses, setTaskStatuses] = useState<{name: string, label: string}[]>([]);
   const [taskSnoozes, setTaskSnoozes] = useState<Record<string, string>>({});
   const [taskCommentCounts, setTaskCommentCounts] = useState<Record<string, number>>({});

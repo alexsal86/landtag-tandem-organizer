@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { useDecisionComments } from "@/hooks/useDecisionComments";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { DecisionEditDialog } from "@/components/task-decisions/DecisionEditDialog";
@@ -29,7 +30,7 @@ export function MyWorkDecisionsTab() {
   
   const [decisions, setDecisions] = useState<MyWorkDecision[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("for-me");
+  const [activeTab, setActiveTab] = usePersistentState<"for-me" | "answered" | "my-decisions" | "public">("mywork-decisions-active-tab", "for-me");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Dialog states
