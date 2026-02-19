@@ -49,6 +49,7 @@ export function DecisionFileUpload({
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<SelectedFileEntry[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isPasteZoneArmed, setIsPasteZoneArmed] = useState(false);
   const [previewDialog, setPreviewDialog] = useState<{ open: boolean; filePath: string; fileName: string }>({
     open: false, filePath: '', fileName: ''
   });
@@ -73,6 +74,20 @@ export function DecisionFileUpload({
       onFilesPrepared?.({ files, metadataByIdentity });
     }
   }, [mode, onFilesPrepared, onFilesSelected, selectedFiles]);
+
+
+  useEffect(() => {
+    if (!canUpload || !isPasteZoneArmed) return;
+
+    const onWindowPaste = async (event: ClipboardEvent) => {
+      if (!isPasteZoneArmed) return;
+      if (isTypingIntoInput(document.activeElement)) return;
+      await handlePastedFiles(event.clipboardData, event);
+    };
+
+    window.addEventListener('paste', onWindowPaste);
+    return () => window.removeEventListener('paste', onWindowPaste);
+  }, [canUpload, isPasteZoneArmed, mode, decisionId]);
 
   const loadExistingFiles = async () => {
     try {
@@ -235,11 +250,11 @@ export function DecisionFileUpload({
     setIsDragOver(false);
   };
 
-  const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
-    if (!canUpload) return;
+  const extractFilesFromClipboard = (clipboardData: DataTransfer | null) => {
+    if (!clipboardData) return [] as File[];
 
-    const clipboardFiles = Array.from(e.clipboardData.files || []);
-    const itemFiles = Array.from(e.clipboardData.items || [])
+    const clipboardFiles = Array.from(clipboardData.files || []);
+    const itemFiles = Array.from(clipboardData.items || [])
       .filter(item => item.kind === 'file')
       .map(item => item.getAsFile())
       .filter((file): file is File => file !== null);
@@ -249,17 +264,33 @@ export function DecisionFileUpload({
       filesByIdentity.set(getFileIdentity(file), file);
     });
 
-    const pastedFiles = Array.from(filesByIdentity.values());
+    return Array.from(filesByIdentity.values());
+  };
+
+  const isTypingIntoInput = (activeElement: Element | null) => {
+    if (!(activeElement instanceof HTMLElement)) return false;
+    const tagName = activeElement.tagName.toLowerCase();
+    return tagName === 'input' || tagName === 'textarea' || activeElement.isContentEditable;
+  };
+
+  const handlePastedFiles = async (clipboardData: DataTransfer | null, event?: Pick<Event, 'preventDefault' | 'stopPropagation'>) => {
+    if (!canUpload) return;
+
+    const pastedFiles = extractFilesFromClipboard(clipboardData);
     if (pastedFiles.length === 0) return;
 
-    e.preventDefault();
-    e.stopPropagation();
+    event?.preventDefault();
+    event?.stopPropagation();
 
     if (mode === 'creation') {
       await addSelectedEntries(pastedFiles);
     } else {
       await uploadFiles(pastedFiles);
     }
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    await handlePastedFiles(e.clipboardData, e);
   };
 
   const removeSelectedFile = (index: number) => {
@@ -434,6 +465,10 @@ export function DecisionFileUpload({
               : 'border-muted-foreground/25 hover:border-muted-foreground/50'
           }`}
           onClick={() => fileInputRef.current?.click()}
+          onMouseEnter={() => setIsPasteZoneArmed(true)}
+          onMouseLeave={() => setIsPasteZoneArmed(false)}
+          onFocus={() => setIsPasteZoneArmed(true)}
+          onBlur={() => setIsPasteZoneArmed(false)}
           onPaste={handlePaste}
           tabIndex={0}
           role="button"
@@ -452,6 +487,9 @@ export function DecisionFileUpload({
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Dokumente, Bilder oder E-Mails (.eml, .msg) aus Outlook (inkl. Einfügen aus Zwischenablage)
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Tipp: Maus über diesem Feld lassen, dann Strg+V drücken (ohne vorherigen Klick/Fokus).
           </p>
         </div>
       )}
