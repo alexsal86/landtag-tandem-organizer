@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid, Ruler, Crosshair, Undo2, Redo2 } from 'lucide-react';
+import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid, Ruler, Crosshair, Undo2, Redo2, Keyboard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -119,6 +119,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [showRuler, setShowRuler] = useState(false);
   const [showCenterGuides, setShowCenterGuides] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -130,7 +131,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const horizontalRulerRef = useRef<HTMLCanvasElement | null>(null);
   const verticalRulerRef = useRef<HTMLCanvasElement | null>(null);
-  const lastReportedRef = useRef<string>(JSON.stringify(initialElements));
+  const lastReportedRef = useRef<HeaderElement[]>(initialElements);
+  const clipboardRef = useRef<HeaderElement | null>(null);
 
   // Resize state
   const [resizingId, setResizingId] = useState<string | null>(null);
@@ -348,9 +350,11 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   useEffect(() => {
-    const key = JSON.stringify(elements);
-    if (key !== lastReportedRef.current) { lastReportedRef.current = key; onElementsChange(elements); }
-  }, [elements]);
+    if (elements !== lastReportedRef.current) {
+      lastReportedRef.current = elements;
+      onElementsChange(elements);
+    }
+  }, [elements, onElementsChange]);
 
   const uploadImage = async (file: File): Promise<{ publicUrl: string; storagePath: string; blobUrl: string } | null> => {
     try {
@@ -576,12 +580,27 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   const onPreviewMouseUp = () => {
-    if (dragInitialElementsRef.current && dragInitialElementsRef.current !== elements) {
-      pushHistorySnapshot(dragInitialElementsRef.current);
+    const dragInitialSnapshot = dragInitialElementsRef.current;
+    const resizeInitialSnapshot = resizeInitialElementsRef.current;
+
+    if (dragInitialSnapshot) {
+      setElements((current) => {
+        if (dragInitialSnapshot !== current) {
+          pushHistorySnapshot(dragInitialSnapshot);
+        }
+        return current;
+      });
     }
-    if (resizeInitialElementsRef.current && resizeInitialElementsRef.current !== elements) {
-      pushHistorySnapshot(resizeInitialElementsRef.current);
+
+    if (resizeInitialSnapshot) {
+      setElements((current) => {
+        if (resizeInitialSnapshot !== current) {
+          pushHistorySnapshot(resizeInitialSnapshot);
+        }
+        return current;
+      });
     }
+
     dragInitialElementsRef.current = null;
     resizeInitialElementsRef.current = null;
     setDragId(null);
@@ -596,6 +615,40 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const startIndex = currentIndex < 0 ? 0 : currentIndex;
     const nextIndex = (startIndex + direction + elements.length) % elements.length;
     setSelectedElementId(elements[nextIndex].id);
+  };
+
+  const moveElementLayer = (id: string, direction: 1 | -1) => {
+    applyElements((prev) => {
+      const index = prev.findIndex((el) => el.id === id);
+      if (index < 0) return prev;
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  };
+
+  const copySelectedElement = () => {
+    if (!selectedElement) return;
+    clipboardRef.current = { ...selectedElement };
+  };
+
+  const pasteClipboardElement = () => {
+    if (!clipboardRef.current) return;
+    const source = clipboardRef.current;
+    const nextX = Math.max(0, Math.min(headerMaxWidth, source.x + 10));
+    const nextY = Math.max(0, Math.min(headerMaxHeight, source.y + 10));
+    const pasted: HeaderElement = { ...source, id: createElementId(), x: nextX, y: nextY };
+    applyElements((prev) => [...prev, pasted]);
+    setSelectedElementId(pasted.id);
+    clipboardRef.current = pasted;
+  };
+
+  const duplicateSelectedElement = () => {
+    copySelectedElement();
+    pasteClipboardElement();
   };
 
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -614,6 +667,46 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     if (isRedo) {
       event.preventDefault();
       redo();
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === '?') {
+      event.preventDefault();
+      setShowShortcutsHelp((previous) => !previous);
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c') {
+      event.preventDefault();
+      copySelectedElement();
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v') {
+      event.preventDefault();
+      pasteClipboardElement();
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') {
+      event.preventDefault();
+      duplicateSelectedElement();
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key === ']') {
+      if (selectedElement) {
+        event.preventDefault();
+        moveElementLayer(selectedElement.id, 1);
+      }
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key === '[') {
+      if (selectedElement) {
+        event.preventDefault();
+        moveElementLayer(selectedElement.id, -1);
+      }
       return;
     }
 
@@ -733,7 +826,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   // Render shape on canvas
-  const renderShapeCanvas = (element: HeaderElement, scaleX: number, scaleY: number) => {
+  const renderShapeCanvas = (element: ShapeElement, scaleX: number, scaleY: number) => {
     const w = (element.width || 20) * scaleX;
     const h = (element.height || 20) * scaleY;
     const isSelected = selectedElementId === element.id;
@@ -1045,13 +1138,16 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               <Button variant={showCenterGuides ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowCenterGuides(v => !v)}>
                 <Crosshair className="h-3.5 w-3.5 mr-1" />Achsen
               </Button>
+              <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}>
+                <Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts
+              </Button>
             </div>
 
             <div
               ref={previewRef}
               tabIndex={0}
               role="application"
-              aria-label="Header-Vorschau. Mit Tab durch Elemente wechseln, mit Pfeiltasten bewegen, Entf löscht, Strg+Z rückgängig."
+              aria-label="Header-Vorschau. Mit Tab durch Elemente wechseln, mit Pfeiltasten bewegen, Entf löscht, Strg+Z rückgängig, Strg+C/V kopiert und fügt ein, Strg+] bzw. Strg+[ ändert die Ebene, Strg+Shift+? öffnet die Shortcut-Hilfe."
               onKeyDown={onPreviewKeyDown}
               onDragOver={(e) => e.preventDefault()}
               onDrop={onPreviewDrop}
@@ -1066,6 +1162,21 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   <div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-red-500/80 pointer-events-none" />
                   <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none" />
                 </>
+              )}
+
+              {showShortcutsHelp && (
+                <div className="absolute right-3 top-3 z-20 w-72 rounded-md border bg-background/95 p-3 text-xs shadow-lg backdrop-blur">
+                  <div className="mb-2 font-semibold">Tastatur-Shortcuts</div>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li><span className="font-medium text-foreground">Tab / Shift+Tab</span> Auswahl wechseln</li>
+                    <li><span className="font-medium text-foreground">Pfeiltasten</span> Element bewegen</li>
+                    <li><span className="font-medium text-foreground">Entf / Backspace</span> Element löschen</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + C / V</span> Kopieren / Einfügen</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + D</span> Duplizieren</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + ] / [</span> Ebene vor / zurück</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + Shift + ?</span> Hilfe ein/aus</li>
+                  </ul>
+                </div>
               )}
 
               {elements.map((element) => {
