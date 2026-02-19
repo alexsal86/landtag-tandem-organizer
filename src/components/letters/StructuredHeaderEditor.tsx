@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid } from 'lucide-react';
+import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid, Ruler, Crosshair } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -28,6 +28,7 @@ interface HeaderElement {
   fontStyle?: string;
   textDecoration?: string;
   color?: string;
+  textLineHeight?: number;
   imageUrl?: string;
   blobUrl?: string;
   storagePath?: string;
@@ -99,6 +100,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [showRuler, setShowRuler] = useState(false);
   const [showCenterGuides, setShowCenterGuides] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; ox: number; oy: number } | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const lastReportedRef = useRef<string>(JSON.stringify(initialElements));
@@ -261,7 +264,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   const addTextElement = (x = 20, y = 12, content = 'Lorem ipsum dolor sit amet') => {
-    const el: HeaderElement = { id: Date.now().toString(), type: 'text', x, y, content, fontSize: 12, fontFamily: 'Arial', fontWeight: 'normal', color: '#000000', width: 70, height: 8 };
+    const el: HeaderElement = { id: Date.now().toString(), type: 'text', x, y, content, fontSize: 12, fontFamily: 'Arial', fontWeight: 'normal', color: '#000000', textLineHeight: 1.2, width: 70, height: 8 };
     setElements(prev => [...prev, el]);
     setSelectedElementId(el.id);
   };
@@ -315,6 +318,25 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const onToolDragStart = (event: React.DragEvent, tool: string) => {
     event.dataTransfer.setData('application/x-header-tool', tool);
     event.dataTransfer.effectAllowed = 'copy';
+    const dragPreview = document.createElement('div');
+    dragPreview.style.position = 'absolute';
+    dragPreview.style.top = '-9999px';
+    dragPreview.style.left = '-9999px';
+    dragPreview.style.padding = '8px 10px';
+    dragPreview.style.border = '1px solid #16a34a';
+    dragPreview.style.borderRadius = '6px';
+    dragPreview.style.background = '#ffffff';
+    dragPreview.style.fontFamily = 'Arial, sans-serif';
+    dragPreview.style.fontSize = '13px';
+    dragPreview.style.color = '#111827';
+    dragPreview.style.maxWidth = '240px';
+    dragPreview.style.pointerEvents = 'none';
+    dragPreview.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    dragPreview.textContent = tool === 'text' ? 'Lorem ipsum dolor sit amet' : 'Block\nDirekt auf der Canvas bearbeiten';
+    dragPreview.style.whiteSpace = 'pre-line';
+    document.body.appendChild(dragPreview);
+    event.dataTransfer.setDragImage(dragPreview, 12, 12);
+    requestAnimationFrame(() => dragPreview.remove());
   };
 
   const onGalleryDragStart = (event: React.DragEvent, galleryImg: GalleryImage) => {
@@ -483,7 +505,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const w = (element.width || 45) * scaleX;
     const h = (element.height || 18) * scaleY;
     const isSelected = selectedElementId === element.id;
-    const fontSize = (element.blockFontSize || 9) * Math.min(scaleX, scaleY) * 0.3;
+    const fontSize = (element.blockFontSize || 9) * (96 / 72);
+    const hasContent = Boolean((element.blockContent || '').trim());
+    const isEditing = editingBlockId === element.id;
 
     return (
       <div
@@ -491,9 +515,25 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         className={`absolute cursor-move border overflow-hidden ${isSelected ? 'border-primary border-dashed border-2 bg-primary/5' : 'border-gray-300 bg-gray-50/50'}`}
         style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${w}px`, height: `${h}px`, fontSize: `${fontSize}px`, fontFamily: element.blockFontFamily || 'Arial', fontWeight: element.blockFontWeight || 'normal', color: element.blockColor || '#000', lineHeight: `${element.blockLineHeight || 1}` }}
         onMouseDown={(e) => onElementMouseDown(e, element)}
+        onDoubleClick={(e) => { e.stopPropagation(); setEditingBlockId(element.id); }}
       >
-        <div className="font-bold text-[10px] px-1 pt-0.5 opacity-70">{element.blockTitle || 'Block'}</div>
-        <div className="px-1 line-clamp-3 whitespace-pre-line">{element.blockContent || ''}</div>
+        {!hasContent && <div className="font-bold text-[10px] px-1 pt-0.5 opacity-70">{element.blockTitle || 'Block'}</div>}
+        <div
+          className="px-1 whitespace-pre-line h-full outline-none"
+          contentEditable={isEditing}
+          suppressContentEditableWarning
+          onBlur={(e) => {
+            updateElement(element.id, { blockContent: e.currentTarget.textContent || '' });
+            setEditingBlockId(null);
+          }}
+          onMouseDown={(e) => {
+            if (isEditing) {
+              e.stopPropagation();
+            }
+          }}
+        >
+          {element.blockContent || ''}
+        </div>
         {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} />}
       </div>
     );
@@ -530,10 +570,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => addShapeElement('rectangle')} title="Rechteck"><Square className="h-3.5 w-3.5" /></Button>
               <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => addShapeElement('sunflower')} title="Sonnenblume"><Flower2 className="h-3.5 w-3.5" /></Button>
             </div>
-            <div className="flex gap-2">
-              <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setShowRuler(v => !v)}>Lineal</Button>
-              <Button variant={showCenterGuides ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setShowCenterGuides(v => !v)}>Achsen</Button>
-            </div>
+
           </CardContent>
         </Card>
 
@@ -591,11 +628,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                       </div>
                       {element.type === 'text' && (
                         <>
+                          <Label className="text-xs">Text</Label>
                           <Input value={element.content || ''} onChange={(e) => updateElement(element.id, { content: e.target.value })} placeholder="Text" className="h-7 text-xs" />
                           <div className="grid grid-cols-2 gap-2">
-                            <Input type="number" value={element.fontSize || 12} onChange={(e) => updateElement(element.id, { fontSize: parseFloat(e.target.value) || 12 })} className="h-7 text-xs" />
-                            <Input type="color" value={element.color || '#000000'} onChange={(e) => updateElement(element.id, { color: e.target.value })} className="h-7" />
+                            <div><Label className="text-xs">Schriftgröße</Label><Input type="number" value={element.fontSize || 12} onChange={(e) => updateElement(element.id, { fontSize: parseFloat(e.target.value) || 12 })} className="h-7 text-xs" /></div>
+                            <div><Label className="text-xs">Farbe</Label><Input type="color" value={element.color || '#000000'} onChange={(e) => updateElement(element.id, { color: e.target.value })} className="h-8 w-full p-1" style={{ backgroundColor: element.color || '#000000' }} /></div>
                           </div>
+                          <div><Label className="text-xs">Schriftart</Label>
                           <Select value={element.fontFamily || 'Arial'} onValueChange={(value) => updateElement(element.id, { fontFamily: value })}>
                             <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -605,11 +644,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                               <SelectItem value="Verdana">Verdana</SelectItem>
                             </SelectContent>
                           </Select>
+                          </div>
+                          <div><Label className="text-xs">Formatierung</Label>
                           <div className="grid grid-cols-3 gap-1">
                             <Button type="button" size="sm" className="h-6 text-xs" variant={element.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })}>B</Button>
                             <Button type="button" size="sm" className="h-6 text-xs" variant={element.fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })}>I</Button>
                             <Button type="button" size="sm" className="h-6 text-xs" variant={element.textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textDecoration: element.textDecoration === 'underline' ? 'none' : 'underline' })}>U</Button>
                           </div>
+                          </div>
+                          <div><Label className="text-xs">Zeilenabstand</Label><Input type="number" step="0.1" min="0.8" value={element.textLineHeight || 1.2} onChange={(e) => updateElement(element.id, { textLineHeight: parseFloat(e.target.value) || 1.2 })} className="h-7 text-xs" /></div>
                         </>
                       )}
                       {element.type === 'image' && (
@@ -659,6 +702,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                             <div><Label className="text-xs">Schriftgröße</Label><Input type="number" value={element.blockFontSize || 9} onChange={(e) => updateElement(element.id, { blockFontSize: parseInt(e.target.value) || 9 })} className="h-7 text-xs" /></div>
                             <div><Label className="text-xs">Farbe</Label><Input type="color" value={element.blockColor || '#000000'} onChange={(e) => updateElement(element.id, { blockColor: e.target.value })} className="h-7" /></div>
                           </div>
+                          <div><Label className="text-xs">Zeilenabstand</Label><Input type="number" step="0.1" min="0.8" value={element.blockLineHeight || 1} onChange={(e) => updateElement(element.id, { blockLineHeight: parseFloat(e.target.value) || 1 })} className="h-7 text-xs" /></div>
                         </>
                       )}
                     </div>
@@ -680,14 +724,33 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           <div className="relative pl-8 pt-8">
             {showRuler && (
               <>
-                <div className="absolute top-0 left-8 right-0 h-7 border rounded bg-muted/40 text-[10px] text-muted-foreground pointer-events-none">
-                  {Array.from({ length: 22 }).map((_, i) => (<span key={i} className="absolute" style={{ left: `${(i * previewWidth) / 21}px` }}>{i * 10}</span>))}
+                <div className="absolute top-0 left-8 right-0 h-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
+                  {Array.from({ length: 211 }).map((_, i) => {
+                    const x = (i * previewWidth) / 210;
+                    const tickHeight = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
+                    return <div key={i} className="absolute bottom-0 border-l border-slate-500/70" style={{ left: `${x}px`, height: `${tickHeight}px` }} />;
+                  })}
+                  {Array.from({ length: 22 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * previewWidth) / 21}px` }}>{i * 10}</span>))}
                 </div>
-                <div className="absolute top-8 left-0 bottom-0 w-7 border rounded bg-muted/40 text-[10px] text-muted-foreground pointer-events-none">
-                  {Array.from({ length: 6 }).map((_, i) => (<span key={i} className="absolute" style={{ top: `${(i * previewHeight) / 5}px` }}>{i * 10}</span>))}
+                <div className="absolute top-8 left-0 bottom-0 w-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
+                  {Array.from({ length: 46 }).map((_, i) => {
+                    const y = (i * previewHeight) / 45;
+                    const tickWidth = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
+                    return <div key={`tick-y-${i}`} className="absolute right-0 border-t border-slate-500/70" style={{ top: `${y}px`, width: `${tickWidth}px` }} />;
+                  })}
+                  {Array.from({ length: 5 }).map((_, i) => (<span key={`label-y-${i}`} className="absolute left-0" style={{ top: `${(i * previewHeight) / 4}px` }}>{i * 10}</span>))}
                 </div>
               </>
             )}
+
+            <div className="absolute top-10 right-2 z-20 flex gap-2">
+              <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowRuler(v => !v)}>
+                <Ruler className="h-3.5 w-3.5 mr-1" />Lineal
+              </Button>
+              <Button variant={showCenterGuides ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowCenterGuides(v => !v)}>
+                <Crosshair className="h-3.5 w-3.5 mr-1" />Achsen
+              </Button>
+            </div>
 
             <div ref={previewRef} tabIndex={0} onKeyDown={onPreviewKeyDown} onDragOver={(e) => e.preventDefault()} onDrop={onPreviewDrop} onMouseMove={onPreviewMouseMove} onMouseUp={onPreviewMouseUp} onMouseLeave={onPreviewMouseUp} onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
@@ -704,10 +767,18 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 const scaleY = previewHeight / headerMaxHeight;
 
                 if (element.type === 'text') {
+                  const isEditing = editingTextId === element.id;
                   return (
                     <div key={element.id} className={`absolute cursor-move border ${selectedElementId === element.id ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'}`}
-                      style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, fontSize: `${(element.fontSize || 12) * Math.min(scaleX, scaleY) * 0.7}px`, fontFamily: element.fontFamily || 'Arial', fontWeight: element.fontWeight || 'normal', fontStyle: element.fontStyle || 'normal', textDecoration: element.textDecoration || 'none', color: element.color || '#000000', lineHeight: '1.2' }}
-                      onMouseDown={(e) => onElementMouseDown(e, element)}>
+                      style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, fontSize: `${(element.fontSize || 12) * (96 / 72)}px`, fontFamily: element.fontFamily || 'Arial', fontWeight: element.fontWeight || 'normal', fontStyle: element.fontStyle || 'normal', textDecoration: element.textDecoration || 'none', color: element.color || '#000000', lineHeight: `${element.textLineHeight || 1.2}` }}
+                      onMouseDown={(e) => onElementMouseDown(e, element)}
+                      onDoubleClick={(e) => { e.stopPropagation(); setEditingTextId(element.id); }}
+                      contentEditable={isEditing}
+                      suppressContentEditableWarning
+                      onBlur={(e) => {
+                        updateElement(element.id, { content: e.currentTarget.textContent || '' });
+                        setEditingTextId(null);
+                      }}>
                       {element.content || 'Text'}
                     </div>
                   );
