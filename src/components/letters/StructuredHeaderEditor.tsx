@@ -951,6 +951,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }));
   };
 
+  
+
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
     if (target?.isContentEditable || editingTextId || editingBlockId) {
