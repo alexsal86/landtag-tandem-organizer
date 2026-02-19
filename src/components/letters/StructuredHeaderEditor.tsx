@@ -104,6 +104,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; ox: number; oy: number } | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
+  const horizontalRulerRef = useRef<HTMLCanvasElement | null>(null);
+  const verticalRulerRef = useRef<HTMLCanvasElement | null>(null);
   const lastReportedRef = useRef<string>(JSON.stringify(initialElements));
 
   // Resize state
@@ -119,13 +122,61 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const headerMaxWidth = 210;
   const headerMaxHeight = 45;
-  const previewWidth = 780;
-  const previewHeight = 300;
+  const [previewWidth, setPreviewWidth] = useState(780);
+  const previewHeight = Math.round((previewWidth * headerMaxHeight) / headerMaxWidth);
   const previewScaleX = previewWidth / headerMaxWidth;
   const previewScaleY = previewHeight / headerMaxHeight;
   const SNAP_MM = 1.5;
 
   const createElementId = () => crypto.randomUUID();
+
+  useEffect(() => {
+    if (!previewContainerRef.current) return;
+    const updatePreviewSize = () => {
+      if (!previewContainerRef.current) return;
+      const nextWidth = Math.min(780, Math.max(360, Math.floor(previewContainerRef.current.clientWidth - 16)));
+      setPreviewWidth(nextWidth);
+    };
+
+    updatePreviewSize();
+    const observer = new ResizeObserver(updatePreviewSize);
+    observer.observe(previewContainerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!showRuler) return;
+
+    const hCanvas = horizontalRulerRef.current;
+    const vCanvas = verticalRulerRef.current;
+    if (!hCanvas || !vCanvas) return;
+
+    const hCtx = hCanvas.getContext('2d');
+    const vCtx = vCanvas.getContext('2d');
+    if (!hCtx || !vCtx) return;
+
+    hCtx.clearRect(0, 0, hCanvas.width, hCanvas.height);
+    hCtx.strokeStyle = 'rgba(100, 116, 139, 0.8)';
+    for (let i = 0; i <= 210; i += 1) {
+      const x = (i * previewWidth) / 210;
+      const tickHeight = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
+      hCtx.beginPath();
+      hCtx.moveTo(x, hCanvas.height);
+      hCtx.lineTo(x, hCanvas.height - tickHeight);
+      hCtx.stroke();
+    }
+
+    vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
+    vCtx.strokeStyle = 'rgba(100, 116, 139, 0.8)';
+    for (let i = 0; i <= 45; i += 1) {
+      const y = (i * previewHeight) / 45;
+      const tickWidth = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
+      vCtx.beginPath();
+      vCtx.moveTo(vCanvas.width, y);
+      vCtx.lineTo(vCanvas.width - tickWidth, y);
+      vCtx.stroke();
+    }
+  }, [previewHeight, previewWidth, showRuler]);
 
   // Resolve blob URL
   const resolveBlobUrl = useCallback(async (storagePath: string): Promise<string | null> => {
@@ -466,6 +517,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const validatePosition = (value: number, max: number) => Math.max(0, Math.min(value, max));
 
+  const handlePlainTextPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const text = event.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+  };
+
   const renderColorInput = (label: string, value: string, onChange: (color: string) => void) => (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
@@ -585,6 +642,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           className="px-1 whitespace-pre-line h-full outline-none"
           contentEditable={isEditing}
           suppressContentEditableWarning
+          onPaste={handlePlainTextPaste}
           onBlur={(e) => {
             updateElement(element.id, { blockContent: e.currentTarget.textContent || '' });
             setEditingBlockId(null);
@@ -783,24 +841,16 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht. Resize + Ctrl = Seitenverhältnis.</p>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="flex items-center justify-center min-h-[340px]">
+          <div ref={previewContainerRef} className="flex items-center justify-center min-h-[340px] w-full">
           <div className="relative pl-12 pt-12">
             {showRuler && (
               <>
                 <div className="absolute top-2 left-12 right-0 h-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
-                  {Array.from({ length: 211 }).map((_, i) => {
-                    const x = (i * previewWidth) / 210;
-                    const tickHeight = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
-                    return <div key={i} className="absolute bottom-0 border-l border-slate-500/70" style={{ left: `${x}px`, height: `${tickHeight}px` }} />;
-                  })}
+                  <canvas ref={horizontalRulerRef} width={previewWidth} height={28} className="absolute inset-0 h-full w-full" />
                   {Array.from({ length: 22 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * previewWidth) / 21}px` }}>{i * 10}</span>))}
                 </div>
                 <div className="absolute top-12 left-2 bottom-0 w-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
-                  {Array.from({ length: 46 }).map((_, i) => {
-                    const y = (i * previewHeight) / 45;
-                    const tickWidth = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
-                    return <div key={`tick-y-${i}`} className="absolute right-0 border-t border-slate-500/70" style={{ top: `${y}px`, width: `${tickWidth}px` }} />;
-                  })}
+                  <canvas ref={verticalRulerRef} width={28} height={previewHeight} className="absolute inset-0 h-full w-full" />
                   {Array.from({ length: 5 }).map((_, i) => (<span key={`label-y-${i}`} className="absolute left-0" style={{ top: `${(i * previewHeight) / 4}px` }}>{i * 10}</span>))}
                 </div>
               </>
@@ -844,6 +894,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                       onDoubleClick={(e) => { e.stopPropagation(); setEditingTextId(element.id); }}
                       contentEditable={isEditing}
                       suppressContentEditableWarning
+                      onPaste={handlePlainTextPaste}
                       onBlur={(e) => {
                         updateElement(element.id, { content: e.currentTarget.textContent || '' });
                         setEditingTextId(null);
