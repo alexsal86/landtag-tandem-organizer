@@ -20,12 +20,25 @@ export function useMyWorkDecisionsData(userId?: string) {
   const [decisions, setDecisions] = useState<MyWorkDecision[]>([]);
   const [loading, setLoading] = useState(true);
   const latestLoadRequestRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      latestLoadRequestRef.current += 1;
+    };
+  }, []);
 
   const loadDecisions = useCallback(async () => {
     if (!userId) return;
 
     const requestId = latestLoadRequestRef.current + 1;
     latestLoadRequestRef.current = requestId;
+
+    const isCurrentRequest = () => mountedRef.current && latestLoadRequestRef.current === requestId;
+
+    setLoading(true);
 
     try {
       const [participantResult, creatorResult, publicResult] = await Promise.all([
@@ -63,6 +76,8 @@ export function useMyWorkDecisionsData(userId?: string) {
           .neq("created_by", userId),
       ]);
 
+      if (!isCurrentRequest()) return;
+
       if (participantResult.error) throw participantResult.error;
       if (creatorResult.error) throw creatorResult.error;
       if (publicResult.error) throw publicResult.error;
@@ -96,9 +111,7 @@ export function useMyWorkDecisionsData(userId?: string) {
 
       const creatorDecisions: MyWorkDecision[] = creatorData.map((item: any) => {
         const participants = item.task_decision_participants || [];
-        const pendingCount = participants.filter(
-          (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0,
-        ).length;
+        const pendingCount = participants.filter((p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
         const attInfo = computeAttachmentInfo(item.task_decision_attachments);
 
         return {
@@ -127,9 +140,7 @@ export function useMyWorkDecisionsData(userId?: string) {
         .map((item: any) => {
           const participants = item.task_decision_participants || [];
           const userParticipant = participants.find((p: any) => p.user_id === userId);
-          const pendingCount = participants.filter(
-            (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0,
-          ).length;
+          const pendingCount = participants.filter((p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
           const attInfo = computeAttachmentInfo(item.task_decision_attachments);
 
           return {
@@ -180,11 +191,10 @@ export function useMyWorkDecisionsData(userId?: string) {
               task_decision_responses (id, response_type, comment, creator_response, parent_response_id, created_at, updated_at)
             `)
             .in("decision_id", allDecisionIds),
-          supabase
-            .from("task_decision_topics")
-            .select("decision_id, topic_id")
-            .in("decision_id", allDecisionIds),
+          supabase.from("task_decision_topics").select("decision_id, topic_id").in("decision_id", allDecisionIds),
         ]);
+
+        if (!isCurrentRequest()) return;
 
         if (participantsResult.error) throw participantsResult.error;
         if (topicsResult.error) throw topicsResult.error;
@@ -192,20 +202,14 @@ export function useMyWorkDecisionsData(userId?: string) {
         const participantsWithProfiles = participantsResult.data || [];
         const topicsData = topicsResult.data || [];
 
-        const allUserIds = [
-          ...new Set([
-            ...participantsWithProfiles.map((p) => p.user_id),
-            ...allDecisionsList.map((d) => d.created_by),
-          ]),
-        ];
+        const allUserIds = [...new Set([...participantsWithProfiles.map((p) => p.user_id), ...allDecisionsList.map((d) => d.created_by)])];
 
         const { data: profiles, error: profilesError } =
           allUserIds.length > 0
-            ? await supabase
-                .from("profiles")
-                .select("user_id, display_name, badge_color, avatar_url")
-                .in("user_id", allUserIds)
+            ? await supabase.from("profiles").select("user_id, display_name, badge_color, avatar_url").in("user_id", allUserIds)
             : { data: [], error: null as any };
+
+        if (!isCurrentRequest()) return;
 
         if (profilesError) throw profilesError;
 
@@ -270,20 +274,23 @@ export function useMyWorkDecisionsData(userId?: string) {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
-      if (latestLoadRequestRef.current === requestId) {
+      if (isCurrentRequest()) {
         setDecisions(allDecisionsList);
       }
     } catch (error) {
-      console.error("Error loading decisions:", error);
+      if (isCurrentRequest()) {
+        console.error("Error loading decisions:", error);
+      }
     } finally {
-      if (latestLoadRequestRef.current === requestId) {
+      if (isCurrentRequest()) {
         setLoading(false);
       }
     }
   }, [userId]);
 
   useEffect(() => {
-    if (userId) void loadDecisions();
+    if (!userId) return;
+    void loadDecisions();
   }, [userId, loadDecisions]);
 
   return {
