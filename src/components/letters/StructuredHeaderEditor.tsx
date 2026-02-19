@@ -559,6 +559,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const selectedElement = elements.find(el => el.id === selectedElementId);
   const isElementSelected = (id: string) => selectedElementIds.includes(id);
+  const selectedCount = selectedElementIds.length;
+  const isToggleModifierPressed = (event: { shiftKey?: boolean; metaKey?: boolean; ctrlKey?: boolean }) => Boolean(event.shiftKey || event.metaKey || event.ctrlKey);
 
   const onElementMouseDown = (event: React.MouseEvent, element: HeaderElement) => {
     if (editingTextId === element.id || editingBlockId === element.id) {
@@ -566,7 +568,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }
     event.stopPropagation();
 
-    if (event.shiftKey) {
+    if (isToggleModifierPressed(event)) {
       setSelectedElementId(element.id);
       setSelectedElementIds((previous) => previous.includes(element.id)
         ? previous.filter((id) => id !== element.id)
@@ -613,8 +615,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const startX = Math.max(0, Math.min(previewWidth, event.clientX - rect.left));
     const startY = Math.max(0, Math.min(previewHeight, event.clientY - rect.top));
 
-    selectionInitialIdsRef.current = event.shiftKey ? selectedElementIds : [];
-    if (!event.shiftKey) {
+    const appendSelection = isToggleModifierPressed(event);
+    selectionInitialIdsRef.current = appendSelection ? selectedElementIds : [];
+    if (!appendSelection) {
       setSelectedElementId(null);
       setSelectedElementIds([]);
     }
@@ -641,6 +644,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           const elementRight = element.x + width;
           const elementTop = element.y;
           const elementBottom = element.y + height;
+          if (event.altKey) {
+            return elementLeft >= left && elementRight <= right && elementTop >= top && elementBottom <= bottom;
+          }
           return !(elementRight < left || elementLeft > right || elementBottom < top || elementTop > bottom);
         })
         .map((element) => element.id);
@@ -771,6 +777,107 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     applyElements((prev) => [...prev, pasted]);
     setSelectedElementId(pasted.id);
     setSelectedElementIds([pasted.id]);
+  };
+
+  const canPasteFromClipboard = Boolean(clipboardElement);
+  const selectedIndex = selectedElement ? elements.findIndex((el) => el.id === selectedElement.id) : -1;
+  const canMoveLayerBackward = selectedIndex > 0;
+  const canMoveLayerForward = selectedIndex >= 0 && selectedIndex < elements.length - 1;
+  const canAlignSelection = selectedElementIds.length > 1;
+  const canDistributeSelection = selectedElementIds.length > 2;
+
+  const flashSnapLines = (guides: { x?: number; y?: number }) => {
+    if (!guides.x && !guides.y) {
+      return;
+    }
+    setSnapLines(guides);
+    if (snapLinesTimeoutRef.current) {
+      window.clearTimeout(snapLinesTimeoutRef.current);
+    }
+    snapLinesTimeoutRef.current = window.setTimeout(() => {
+      setSnapLines({});
+      snapLinesTimeoutRef.current = null;
+    }, 600);
+  };
+
+  const getElementDimensions = (element: HeaderElement) => ({
+    width: Math.max(1, element.width || (element.type === 'text' ? 70 : element.type === 'block' ? 45 : 50)),
+    height: Math.max(1, element.height || (element.type === 'text' ? 8 : element.type === 'block' ? 18 : 10)),
+  });
+
+  const alignSelection = (axis: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
+    if (selectedElementIds.length < 2) return;
+    const selected = elements.filter((el) => selectedElementIds.includes(el.id));
+    if (selected.length < 2) return;
+
+    const bounds = selected.reduce((acc, element) => {
+      const { width, height } = getElementDimensions(element);
+      return {
+        left: Math.min(acc.left, element.x),
+        top: Math.min(acc.top, element.y),
+        right: Math.max(acc.right, element.x + width),
+        bottom: Math.max(acc.bottom, element.y + height),
+      };
+    }, { left: Number.POSITIVE_INFINITY, top: Number.POSITIVE_INFINITY, right: Number.NEGATIVE_INFINITY, bottom: Number.NEGATIVE_INFINITY });
+
+    const centerX = (bounds.left + bounds.right) / 2;
+    const middleY = (bounds.top + bounds.bottom) / 2;
+
+    applyElements((prev) => prev.map((element) => {
+      if (!selectedElementIds.includes(element.id)) return element;
+      const { width, height } = getElementDimensions(element);
+      let x = element.x;
+      let y = element.y;
+
+      if (axis === 'left') x = bounds.left;
+      if (axis === 'center') x = centerX - width / 2;
+      if (axis === 'right') x = bounds.right - width;
+      if (axis === 'top') y = bounds.top;
+      if (axis === 'middle') y = middleY - height / 2;
+      if (axis === 'bottom') y = bounds.bottom - height;
+
+      return {
+        ...element,
+        x: Math.max(0, Math.min(headerMaxWidth, Math.round(x))),
+        y: Math.max(0, Math.min(headerMaxHeight, Math.round(y))),
+      };
+    }));
+  };
+
+  const distributeSelection = (axis: 'horizontal' | 'vertical') => {
+    if (selectedElementIds.length < 3) return;
+    const selected = elements
+      .filter((el) => selectedElementIds.includes(el.id))
+      .map((element) => ({ ...element, ...getElementDimensions(element) }));
+    if (selected.length < 3) return;
+
+    const sorted = [...selected].sort((a, b) => (axis === 'horizontal' ? a.x - b.x : a.y - b.y));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const startPos = axis === 'horizontal' ? first.x : first.y;
+    const endPos = axis === 'horizontal' ? last.x + last.width : last.y + last.height;
+    const totalSize = sorted.reduce((sum, item) => sum + (axis === 'horizontal' ? item.width : item.height), 0);
+    const totalGap = endPos - startPos - totalSize;
+    if (totalGap <= 0) return;
+
+    const gap = totalGap / (sorted.length - 1);
+    let cursor = startPos;
+    const positions = new Map<string, number>();
+
+    sorted.forEach((item) => {
+      positions.set(item.id, cursor);
+      cursor += (axis === 'horizontal' ? item.width : item.height) + gap;
+    });
+
+    applyElements((prev) => prev.map((element) => {
+      const nextPos = positions.get(element.id);
+      if (nextPos == null) return element;
+      return {
+        ...element,
+        x: axis === 'horizontal' ? Math.max(0, Math.min(headerMaxWidth, Math.round(nextPos))) : element.x,
+        y: axis === 'vertical' ? Math.max(0, Math.min(headerMaxHeight, Math.round(nextPos))) : element.y,
+      };
+    }));
   };
 
   const canPasteFromClipboard = Boolean(clipboardElement);
@@ -1245,7 +1352,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   aria-label={`Element auswählen: ${getElementLabel(element)}`}
                   className={`group p-2 border rounded cursor-pointer transition-colors text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isElementSelected(element.id) ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
                   onClick={(event) => {
-                    if (event.shiftKey) {
+                    if (isToggleModifierPressed(event)) {
                       setSelectedElementIds((previous) => previous.includes(element.id) ? previous.filter((id) => id !== element.id) : [...previous, element.id]);
                       setSelectedElementId(element.id);
                       return;
@@ -1416,6 +1523,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}>
                 <Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts
               </Button>
+              <div className="h-7 px-2 text-xs rounded border bg-background/90 flex items-center text-muted-foreground">
+                Auswahl: <span className="ml-1 font-semibold text-foreground">{selectedCount}</span>
+              </div>
             </div>
 
             {canAlignSelection && (
@@ -1435,7 +1545,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               ref={previewRef}
               tabIndex={0}
               role="application"
-              aria-label="Header-Vorschau. Mit Shift+Klick mehrfach auswählen, mit Tab durch Elemente wechseln, mit Pfeiltasten Auswahl bewegen, Entf löscht, Strg+Z rückgängig, Strg+C/V kopiert und fügt ein, Strg+] bzw. Strg+[ ändert die Ebene, Strg+Shift+? öffnet die Shortcut-Hilfe."
+              aria-label="Header-Vorschau. Mit Shift- oder Cmd/Ctrl-Klick mehrfach auswählen, leere Fläche ziehen erstellt Auswahlrechteck, Alt beim Ziehen wählt nur vollständig enthaltene Elemente, mit Tab durch Elemente wechseln, mit Pfeiltasten Auswahl bewegen, Entf löscht, Strg+Z rückgängig, Strg+C/V kopiert und fügt ein, Strg+] bzw. Strg+[ ändert die Ebene, Strg+Shift+? öffnet die Shortcut-Hilfe."
               onKeyDown={onPreviewKeyDown}
               onDragOver={(e) => e.preventDefault()}
               onMouseDown={onPreviewMouseDown}
@@ -1482,8 +1592,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 <div className="absolute right-3 top-3 z-20 w-72 rounded-md border bg-background/95 p-3 text-xs shadow-lg backdrop-blur">
                   <div className="mb-2 font-semibold">Tastatur-Shortcuts</div>
                   <ul className="space-y-1 text-muted-foreground">
-                    <li><span className="font-medium text-foreground">Shift + Klick</span> Mehrfachauswahl</li>
+                    <li><span className="font-medium text-foreground">Shift/Cmd/Ctrl + Klick</span> Mehrfachauswahl</li>
                     <li><span className="font-medium text-foreground">Leere Fläche ziehen</span> Auswahlrechteck</li>
+                    <li><span className="font-medium text-foreground">Alt + Ziehen</span> Nur vollständig enthaltene Elemente</li>
                     <li><span className="font-medium text-foreground">Ausrichten-Leiste</span> Bei Mehrfachauswahl sichtbar</li>
                     <li><span className="font-medium text-foreground">Verteilen</span> Ab 3 selektierten Elementen</li>
                     <li><span className="font-medium text-foreground">Snap-Linien</span> Blitzen beim Einrasten kurz auf</li>
