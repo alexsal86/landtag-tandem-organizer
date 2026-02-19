@@ -125,6 +125,83 @@ export async function parseMsgFile(file: File): Promise<ParsedEmail> {
   return parseMsgFromArrayBuffer(arrayBuffer);
 }
 
+/**
+ * Build a synthetic .eml File from Outlook HTML clipboard content.
+ * Returns null if the HTML doesn't look like an Outlook email.
+ */
+export function buildEmlFromOutlookHtml(html: string): File | null {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // Try to detect Outlook-specific patterns
+    const bodyText = doc.body?.textContent?.trim() || '';
+    if (!bodyText || bodyText.length < 20) return null;
+
+    // Extract subject from <title> or first heading
+    let subject = doc.title?.trim() || '';
+    if (!subject) {
+      const h1 = doc.querySelector('h1, h2, h3');
+      if (h1) subject = h1.textContent?.trim() || '';
+    }
+
+    // Try to extract From/To/Date from Outlook header tables or patterns
+    let from = '';
+    let to = '';
+    let date = '';
+
+    // Outlook often renders headers in a table or with specific patterns
+    const allText = doc.body?.innerHTML || '';
+
+    // Pattern: "Von:" or "From:" in text
+    const vonMatch = allText.match(/(?:Von|From)\s*:\s*(?:<[^>]*>)*\s*([^<\n]+)/i);
+    if (vonMatch) from = vonMatch[1].trim();
+
+    const anMatch = allText.match(/(?:An|To)\s*:\s*(?:<[^>]*>)*\s*([^<\n]+)/i);
+    if (anMatch) to = anMatch[1].trim();
+
+    const datumMatch = allText.match(/(?:Gesendet|Sent|Datum|Date)\s*:\s*(?:<[^>]*>)*\s*([^<\n]+)/i);
+    if (datumMatch) date = datumMatch[1].trim();
+
+    // If we couldn't extract meaningful email data, check if it at least looks like an email
+    // (has Von/From pattern or Betreff/Subject pattern)
+    const looksLikeEmail = vonMatch || anMatch ||
+      /(?:Betreff|Subject)\s*:/i.test(allText) ||
+      /(?:outlook|office|microsoft)/i.test(allText);
+
+    if (!looksLikeEmail && !subject) return null;
+
+    // Extract subject from Betreff/Subject line if not found yet
+    if (!subject) {
+      const betreffMatch = allText.match(/(?:Betreff|Subject)\s*:\s*(?:<[^>]*>)*\s*([^<\n]+)/i);
+      if (betreffMatch) subject = betreffMatch[1].trim();
+    }
+
+    if (!subject) subject = 'Eingefügte E-Mail';
+    if (!from) from = 'Unbekannt';
+    if (!date) date = new Date().toUTCString();
+
+    // Build RFC822 .eml content
+    const emlContent = [
+      `From: ${from}`,
+      to ? `To: ${to}` : '',
+      `Subject: ${subject}`,
+      `Date: ${date}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=utf-8',
+      '',
+      html,
+    ].filter(Boolean).join('\r\n');
+
+    const blob = new Blob([emlContent], { type: 'message/rfc822' });
+    const safeName = subject.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g, '').slice(0, 80) || 'email';
+    return new File([blob], `${safeName}.eml`, { type: 'message/rfc822', lastModified: Date.now() });
+  } catch (e) {
+    console.error('buildEmlFromOutlookHtml error:', e);
+    return null;
+  }
+}
+
 export async function parseMsgFromArrayBuffer(buffer: ArrayBuffer): Promise<ParsedEmail> {
   const { default: MsgReader } = await import('@kenjiuno/msgreader');
   const msgReader = new MsgReader(buffer);
