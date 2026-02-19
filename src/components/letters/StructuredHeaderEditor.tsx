@@ -200,6 +200,20 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       if (Math.abs(sy + h - t.y) <= SNAP_MM) sy = t.y - h;
       if (Math.abs(sy + h / 2 - t.y) <= SNAP_MM) sy = t.y - h / 2;
     }
+    const centerX = headerMaxWidth / 2;
+    const centerY = headerMaxHeight / 2;
+    const axisTargetsX = [0, centerX, headerMaxWidth];
+    const axisTargetsY = [0, centerY, headerMaxHeight];
+    for (const tx of axisTargetsX) {
+      if (Math.abs(sx - tx) <= SNAP_MM) sx = tx;
+      if (Math.abs(sx + w - tx) <= SNAP_MM) sx = tx - w;
+      if (Math.abs(sx + w / 2 - tx) <= SNAP_MM) sx = tx - w / 2;
+    }
+    for (const ty of axisTargetsY) {
+      if (Math.abs(sy - ty) <= SNAP_MM) sy = ty;
+      if (Math.abs(sy + h - ty) <= SNAP_MM) sy = ty - h;
+      if (Math.abs(sy + h / 2 - ty) <= SNAP_MM) sy = ty - h / 2;
+    }
     return { x: Math.round(sx), y: Math.round(sy) };
   };
 
@@ -383,6 +397,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const selectedElement = elements.find(el => el.id === selectedElementId);
 
   const onElementMouseDown = (event: React.MouseEvent, element: HeaderElement) => {
+    if (editingTextId === element.id || editingBlockId === element.id) {
+      return;
+    }
     event.stopPropagation();
     setSelectedElementId(element.id);
     setDragId(element.id);
@@ -399,11 +416,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const scaleX = previewWidth / headerMaxWidth;
     const scaleY = previewHeight / headerMaxHeight;
     if (resizingId && resizeStart) {
+      const resizingElement = elements.find((el) => el.id === resizingId);
       const dx = (event.clientX - resizeStart.x) / scaleX;
       const dy = (event.clientY - resizeStart.y) / scaleY;
       let newW = Math.max(5, resizeStart.ow + dx);
       let newH = Math.max(5, resizeStart.oh + dy);
-      if (event.ctrlKey && resizeStart.ow > 0 && resizeStart.oh > 0) {
+      const preserveAspect = Boolean(event.ctrlKey || (resizingElement?.type === 'image' && resizingElement.preserveAspectRatio));
+      if (preserveAspect && resizeStart.ow > 0 && resizeStart.oh > 0) {
         newH = newW / (resizeStart.ow / resizeStart.oh);
       }
       updateElement(resizingId, { width: Math.round(newW), height: Math.round(newH) });
@@ -421,6 +440,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const onPreviewMouseUp = () => { setDragId(null); setDragStart(null); setResizingId(null); setResizeStart(null); };
 
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (target?.isContentEditable || editingTextId || editingBlockId) {
+      return;
+    }
     if (!selectedElement) return;
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); removeElement(selectedElement.id); return; }
     let dx = 0, dy = 0;
@@ -434,6 +457,38 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   const validatePosition = (value: number, max: number) => Math.max(0, Math.min(value, max));
+
+  const renderColorInput = (label: string, value: string, onChange: (color: string) => void) => (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex h-8 items-center gap-2 rounded-md border bg-background px-2">
+        <span className="h-4 w-4 shrink-0 rounded border" style={{ backgroundColor: value }} />
+        <Input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-6 w-10 border-0 bg-transparent p-0 shadow-none"
+        />
+        <span className="text-[11px] font-mono text-muted-foreground">{value.toUpperCase()}</span>
+      </div>
+    </div>
+  );
+
+  const updateImageSize = (element: HeaderElement, next: { width?: number; height?: number }) => {
+    const baseW = Math.max(1, element.width || 1);
+    const baseH = Math.max(1, element.height || 1);
+    if (!element.preserveAspectRatio) {
+      updateElement(element.id, next);
+      return;
+    }
+    if (next.width != null) {
+      updateElement(element.id, { width: next.width, height: Math.max(1, Math.round(next.width * (baseH / baseW))) });
+      return;
+    }
+    if (next.height != null) {
+      updateElement(element.id, { height: next.height, width: Math.max(1, Math.round(next.height * (baseW / baseH))) });
+    }
+  };
 
   const getElementLabel = (el: HeaderElement) => {
     if (el.type === 'text') return (el.content || 'Text').slice(0, 25);
@@ -541,7 +596,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-      <div className="space-y-4 overflow-y-auto max-h-[75vh]">
+      <div className="space-y-4">
         {/* Tools */}
         <Card>
           <CardHeader className="py-3 px-4">
@@ -610,13 +665,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               <p className="text-xs text-muted-foreground">Keine Elemente vorhanden</p>
             ) : (
               elements.map((element) => (
-                <div key={element.id} className={`p-2 border rounded cursor-pointer transition-colors text-xs ${selectedElementId === element.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`} onClick={() => setSelectedElementId(element.id)}>
+                <div key={element.id} className={`group p-2 border rounded cursor-pointer transition-colors text-xs ${selectedElementId === element.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`} onClick={() => setSelectedElementId(element.id)}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 min-w-0">
                       {getElementIcon(element)}
                       <span className="font-medium truncate">{getElementLabel(element)}</span>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0" onClick={(e) => { e.stopPropagation(); removeElement(element.id); }}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100" onClick={(e) => { e.stopPropagation(); removeElement(element.id); }}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                   </div>
                   <p className="text-muted-foreground">x: {element.x}mm, y: {element.y}mm</p>
 
@@ -632,7 +687,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                           <Input value={element.content || ''} onChange={(e) => updateElement(element.id, { content: e.target.value })} placeholder="Text" className="h-7 text-xs" />
                           <div className="grid grid-cols-2 gap-2">
                             <div><Label className="text-xs">Schriftgröße</Label><Input type="number" value={element.fontSize || 12} onChange={(e) => updateElement(element.id, { fontSize: parseFloat(e.target.value) || 12 })} className="h-7 text-xs" /></div>
-                            <div><Label className="text-xs">Farbe</Label><Input type="color" value={element.color || '#000000'} onChange={(e) => updateElement(element.id, { color: e.target.value })} className="h-8 w-full p-1" style={{ backgroundColor: element.color || '#000000' }} /></div>
+                            {renderColorInput('Farbe', element.color || '#000000', (color) => updateElement(element.id, { color }))}
                           </div>
                           <div><Label className="text-xs">Schriftart</Label>
                           <Select value={element.fontFamily || 'Arial'} onValueChange={(value) => updateElement(element.id, { fontFamily: value })}>
@@ -658,8 +713,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                       {element.type === 'image' && (
                         <>
                           <div className="grid grid-cols-2 gap-2">
-                            <div><Label className="text-xs">Breite (mm)</Label><Input type="number" value={element.width || 50} onChange={(e) => updateElement(element.id, { width: parseFloat(e.target.value) || 50 })} className="h-7 text-xs" /></div>
-                            <div><Label className="text-xs">Höhe (mm)</Label><Input type="number" value={element.height || 30} onChange={(e) => updateElement(element.id, { height: parseFloat(e.target.value) || 30 })} className="h-7 text-xs" /></div>
+                            <div><Label className="text-xs">Breite (mm)</Label><Input type="number" value={element.width || 50} onChange={(e) => updateImageSize(element, { width: parseFloat(e.target.value) || 50 })} className="h-7 text-xs" /></div>
+                            <div><Label className="text-xs">Höhe (mm)</Label><Input type="number" value={element.height || 30} onChange={(e) => updateImageSize(element, { height: parseFloat(e.target.value) || 30 })} className="h-7 text-xs" /></div>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Checkbox id={`preserve-${element.id}`} checked={element.preserveAspectRatio || false} onCheckedChange={(checked) => updateElement(element.id, { preserveAspectRatio: checked as boolean })} />
@@ -676,8 +731,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                           {element.shapeType !== 'sunflower' && (
                             <>
                               <div className="grid grid-cols-2 gap-2">
-                                <div><Label className="text-xs">Füllfarbe</Label><Input type="color" value={getShapeFillColor(element)} onChange={(e) => updateElement(element.id, { fillColor: e.target.value })} className="h-7" /></div>
-                                <div><Label className="text-xs">Randfarbe</Label><Input type="color" value={getShapeStrokeColor(element)} onChange={(e) => updateElement(element.id, { strokeColor: e.target.value })} className="h-7" /></div>
+                                {renderColorInput('Füllfarbe', getShapeFillColor(element), (fillColor) => updateElement(element.id, { fillColor }))}
+                                {renderColorInput('Randfarbe', getShapeStrokeColor(element), (strokeColor) => updateElement(element.id, { strokeColor }))}
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div><Label className="text-xs">Strichstärke</Label><Input type="number" value={element.strokeWidth || 1} onChange={(e) => updateElement(element.id, { strokeWidth: parseFloat(e.target.value) || 1 })} className="h-7 text-xs" min={0} max={10} /></div>
@@ -700,7 +755,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div><Label className="text-xs">Schriftgröße</Label><Input type="number" value={element.blockFontSize || 9} onChange={(e) => updateElement(element.id, { blockFontSize: parseInt(e.target.value) || 9 })} className="h-7 text-xs" /></div>
-                            <div><Label className="text-xs">Farbe</Label><Input type="color" value={element.blockColor || '#000000'} onChange={(e) => updateElement(element.id, { blockColor: e.target.value })} className="h-7" /></div>
+                            {renderColorInput('Farbe', element.blockColor || '#000000', (blockColor) => updateElement(element.id, { blockColor }))}
                           </div>
                           <div><Label className="text-xs">Zeilenabstand</Label><Input type="number" step="0.1" min="0.8" value={element.blockLineHeight || 1} onChange={(e) => updateElement(element.id, { blockLineHeight: parseFloat(e.target.value) || 1 })} className="h-7 text-xs" /></div>
                         </>
@@ -721,10 +776,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </CardHeader>
         <CardContent className="p-6">
           <div className="flex items-center justify-center min-h-[340px]">
-          <div className="relative pl-8 pt-8">
+          <div className="relative pl-12 pt-12">
             {showRuler && (
               <>
-                <div className="absolute top-0 left-8 right-0 h-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
+                <div className="absolute top-2 left-12 right-0 h-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
                   {Array.from({ length: 211 }).map((_, i) => {
                     const x = (i * previewWidth) / 210;
                     const tickHeight = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
@@ -732,7 +787,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   })}
                   {Array.from({ length: 22 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * previewWidth) / 21}px` }}>{i * 10}</span>))}
                 </div>
-                <div className="absolute top-8 left-0 bottom-0 w-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
+                <div className="absolute top-12 left-2 bottom-0 w-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
                   {Array.from({ length: 46 }).map((_, i) => {
                     const y = (i * previewHeight) / 45;
                     const tickWidth = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
@@ -743,7 +798,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </>
             )}
 
-            <div className="absolute top-10 right-2 z-20 flex gap-2">
+            <div className="absolute top-2 right-2 z-20 flex gap-2">
               <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowRuler(v => !v)}>
                 <Ruler className="h-3.5 w-3.5 mr-1" />Lineal
               </Button>
@@ -754,7 +809,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
             <div ref={previewRef} tabIndex={0} onKeyDown={onPreviewKeyDown} onDragOver={(e) => e.preventDefault()} onDrop={onPreviewDrop} onMouseMove={onPreviewMouseMove} onMouseUp={onPreviewMouseUp} onMouseLeave={onPreviewMouseUp} onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
-              style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
+              style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, marginLeft: '8px', marginTop: '8px', backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
               {showCenterGuides && (
                 <>
                   <div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-red-500/80 pointer-events-none" />
@@ -769,9 +824,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 if (element.type === 'text') {
                   const isEditing = editingTextId === element.id;
                   return (
-                    <div key={element.id} className={`absolute cursor-move border ${selectedElementId === element.id ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'}`}
+                    <div key={element.id} className={`absolute border ${selectedElementId === element.id ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
                       style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, fontSize: `${(element.fontSize || 12) * (96 / 72)}px`, fontFamily: element.fontFamily || 'Arial', fontWeight: element.fontWeight || 'normal', fontStyle: element.fontStyle || 'normal', textDecoration: element.textDecoration || 'none', color: element.color || '#000000', lineHeight: `${element.textLineHeight || 1.2}` }}
-                      onMouseDown={(e) => onElementMouseDown(e, element)}
+                      onMouseDown={(e) => {
+                        if (isEditing) {
+                          e.stopPropagation();
+                          return;
+                        }
+                        onElementMouseDown(e, element);
+                      }}
                       onDoubleClick={(e) => { e.stopPropagation(); setEditingTextId(element.id); }}
                       contentEditable={isEditing}
                       suppressContentEditableWarning
@@ -791,7 +852,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   return (
                     <div key={element.id} className="absolute" style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${elW}px`, height: `${elH}px` }}>
                       <img src={imgSrc} alt="Header Image" className={`w-full h-full object-contain cursor-move border ${selectedElementId === element.id ? 'border-primary border-dashed border-2' : 'border-transparent'}`} onMouseDown={(e) => onElementMouseDown(e, element)} draggable={false} />
-                      {selectedElementId === element.id && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} title="Ziehen zum Skalieren (Ctrl = Seitenverhältnis)" />}
+                      {selectedElementId === element.id && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} title="Ziehen zum Skalieren (fixes Seitenverhältnis aktiv, Ctrl ebenfalls möglich)" />}
                     </div>
                   );
                 }
