@@ -17,6 +17,7 @@ import { useCanvasHistory } from '@/components/canvas-engine/hooks/useCanvasHist
 import { useCanvasSelection } from '@/components/canvas-engine/hooks/useCanvasSelection';
 import { useCanvasViewport } from '@/components/canvas-engine/hooks/useCanvasViewport';
 import { getElementIconFromRegistry, getElementLabelFromRegistry } from '@/components/letters/elements/registry';
+import { ImageCanvasElement, TextCanvasElement } from '@/components/letters/elements/canvasElements';
 
 interface GalleryImage {
   name: string;
@@ -1586,57 +1587,40 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 const scaleY = previewScaleY;
 
                 if (element.type === 'text') {
-                  const item = element;
-                  const isEditing = editingTextId === item.id;
                   return (
-                    <div
-                      key={item.id}
-                      aria-label={getElementAriaLabel(item)}
-                      className={`absolute border ${isElementSelected(item.id) ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
-                      style={{ left: `${item.x * scaleX}px`, top: `${item.y * scaleY}px`, fontSize: `${(item.fontSize || 12) * (96 / 72)}px`, fontFamily: item.fontFamily || 'Arial', fontWeight: item.fontWeight || 'normal', fontStyle: item.fontStyle || 'normal', textDecoration: item.textDecoration || 'none', color: item.color || '#000000', lineHeight: `${item.textLineHeight || 1.2}` }}
-                      onMouseDown={(e) => {
-                        if (isEditing) {
-                          e.stopPropagation();
-                          return;
-                        }
-                        onElementMouseDown(e, item);
+                    <TextCanvasElement
+                      key={element.id}
+                      element={element}
+                      scaleX={scaleX}
+                      scaleY={scaleY}
+                      isSelected={isElementSelected(element.id)}
+                      isEditing={editingTextId === element.id}
+                      draftValue={editorDrafts[element.id] || ''}
+                      onMouseDown={onElementMouseDown}
+                      onDoubleClick={(event, item) => {
+                        event.stopPropagation();
+                        startEditingText(item);
                       }}
-                      onDoubleClick={(e) => { e.stopPropagation(); startEditingText(item); }}>
-                      {isEditing ? (
-                        <textarea
-                          className="w-full min-w-[120px] resize-none border-0 bg-transparent p-0 outline-none"
-                          value={editorDrafts[item.id] || ''}
-                          autoFocus
-                          onChange={(e) => setEditorDrafts((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                          onBlur={() => commitTextEditing(item.id)}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Escape') {
-                              e.preventDefault();
-                              cancelEditing(item.id);
-                            }
-                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                              e.preventDefault();
-                              commitTextEditing(item.id);
-                            }
-                          }}
-                        />
-                      ) : (item.content || 'Text')}
-                    </div>
+                      onDraftChange={(id, value) => setEditorDrafts((prev) => ({ ...prev, [id]: value }))}
+                      onCommitEdit={commitTextEditing}
+                      onCancelEdit={cancelEditing}
+                      ariaLabel={getElementAriaLabel(element)}
+                    />
                   );
                 }
 
                 if (element.type === 'image') {
-                  const item = element;
-                  const imgSrc = item.imageUrl || item.blobUrl;
-                  if (!imgSrc) return null;
-                  const elW = (item.width || 50) * scaleX;
-                  const elH = (item.height || 30) * scaleY;
                   return (
-                    <div key={item.id} className="absolute" aria-label={getElementAriaLabel(item)} style={{ left: `${item.x * scaleX}px`, top: `${item.y * scaleY}px`, width: `${elW}px`, height: `${elH}px` }}>
-                      <img src={imgSrc} alt="Header Image" className={`w-full h-full object-contain cursor-move border ${isElementSelected(item.id) ? 'border-primary border-dashed border-2' : 'border-transparent'}`} onMouseDown={(e) => onElementMouseDown(e, item)} draggable={false} />
-                      {renderResizeHandles(item)}
-                    </div>
+                    <ImageCanvasElement
+                      key={element.id}
+                      element={element}
+                      scaleX={scaleX}
+                      scaleY={scaleY}
+                      isSelected={isElementSelected(element.id)}
+                      ariaLabel={getElementAriaLabel(element)}
+                      onMouseDown={onElementMouseDown}
+                      renderResizeHandles={renderResizeHandles}
+                    />
                   );
                 }
 
