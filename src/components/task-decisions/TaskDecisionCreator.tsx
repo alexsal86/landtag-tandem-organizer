@@ -6,11 +6,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
-import { Vote, Mail, MessageSquare, Globe, Star } from "lucide-react";
+import { Vote, Mail, MessageSquare, Globe, Star, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
-import { getUploadContentType, getUploadContentTypeCandidates, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
+import { useDecisionAttachmentUpload } from "@/hooks/useDecisionAttachmentUpload";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { ResponseOptionsEditor } from "./ResponseOptionsEditor";
@@ -46,6 +46,7 @@ export const TaskDecisionCreator = ({
   const isOpen = isControlled ? externalOpen : internalOpen;
   
   const handleOpenChange = (open: boolean) => {
+    if (!open && isLoading) return;
     if (isControlled && externalOnOpenChange) {
       externalOnOpenChange(open);
     } else {
@@ -68,6 +69,7 @@ export const TaskDecisionCreator = ({
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [sendByEmail, setSendByEmail] = useState(true);
   const [sendViaMatrix, setSendViaMatrix] = useState(true);
   const [visibleToAll, setVisibleToAll] = useState(true);
@@ -83,6 +85,7 @@ export const TaskDecisionCreator = ({
     ]
   );
   const { toast } = useToast();
+  const { uploadDecisionAttachments } = useDecisionAttachmentUpload();
   
   // Load profiles when controlled dialog opens; reset when closing
   useEffect(() => {
@@ -202,6 +205,7 @@ export const TaskDecisionCreator = ({
       
       setProfilesLoaded(true);
     } catch (error) {
+      setUploadStatus(null);
       console.error('Error loading profiles:', error);
       setProfilesLoaded(true);
     }
@@ -314,69 +318,19 @@ export const TaskDecisionCreator = ({
 
       // Upload files if any were selected
       if (selectedFiles.length > 0) {
-        for (const file of selectedFiles) {
-          try {
-            const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-            const fileName = `${userData.user.id}/decisions/${decision.id}/${uniqueSuffix}-${file.name}`;
+        const uploadResult = await uploadDecisionAttachments({
+          decisionId: decision.id,
+          userId: userData.user.id,
+          files: selectedFiles,
+          rollbackOnAnyFailure: true,
+          onFileStart: (file, index, total) => {
+            setUploadStatus(`Lade Anhang ${index + 1}/${total}: ${file.name}`);
+          },
+        });
 
-            // Upload to storage
-            const uploadContentTypes = getUploadContentTypeCandidates(file);
-            let uploadData: { path: string } | null = null;
-            let uploadError: unknown = null;
-
-            for (const contentType of uploadContentTypes) {
-              const result = await supabase.storage
-                .from('decision-attachments')
-                .upload(fileName, file, { contentType });
-
-              if (!result.error && result.data) {
-                uploadData = result.data;
-                uploadError = null;
-                break;
-              }
-
-              uploadError = result.error;
-            }
-
-            if (!uploadData) throw uploadError ?? new Error("Upload failed");
-
-            // Extract email metadata if applicable
-            let emailMeta: EmailMetadata | null = null;
-            if (isEmlFile(file)) {
-              try { emailMeta = (await parseEmlFile(file)).metadata; } catch (e) { console.error('EML parse error:', e); }
-            } else if (isMsgFile(file)) {
-              try { emailMeta = (await parseMsgFile(file)).metadata; } catch (e) { console.error('MSG parse error:', e); }
-            }
-
-            // Save to database
-            const insertFileData: Record<string, unknown> = {
-              decision_id: decision.id,
-              file_path: uploadData.path,
-              file_name: file.name,
-              file_size: file.size,
-              file_type: getUploadContentType(file),
-              uploaded_by: userData.user.id,
-            };
-            if (emailMeta) {
-              insertFileData.email_metadata = emailMeta;
-            }
-
-            const { error: dbError } = await supabase
-              .from('task_decision_attachments')
-              .insert(insertFileData as any);
-
-            if (dbError) {
-              await supabase.storage.from('decision-attachments').remove([uploadData.path]);
-              throw dbError;
-            }
-          } catch (fileError) {
-            console.error('File upload error:', fileError);
-            toast({
-              title: "Datei-Upload-Fehler",
-              description: `${file.name} konnte nicht hochgeladen werden.`,
-              variant: "destructive",
-            });
-          }
+        if (uploadResult.failed.length > 0) {
+          await supabase.from('task_decisions').delete().eq('id', decision.id);
+          throw new Error(`Anhänge konnten nicht gespeichert werden: ${uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | ')}`);
         }
       }
 
@@ -553,7 +507,9 @@ export const TaskDecisionCreator = ({
       setProfilesLoaded(false); // Reset so defaults reload on next open
       handleOpenChange(false);
       onDecisionCreated();
+      setUploadStatus(null);
     } catch (error) {
+      setUploadStatus(null);
       console.error('Error creating decision:', error);
       toast({
         title: "Fehler",
@@ -562,6 +518,7 @@ export const TaskDecisionCreator = ({
       });
     } finally {
       setIsLoading(false);
+      setUploadStatus(null);
     }
   };
 
@@ -770,7 +727,12 @@ export const TaskDecisionCreator = ({
             onClick={handleSubmit}
             disabled={isLoading}
           >
-            {isLoading ? "Erstelle..." : "Erstellen"}
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {uploadStatus ?? "Erstelle..."}
+              </>
+            ) : "Erstellen"}
           </Button>
         </div>
       </DialogContent>

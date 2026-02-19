@@ -4,7 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getUploadContentType, getUploadContentTypeCandidates, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
+import { isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
+import { useDecisionAttachmentUpload } from '@/hooks/useDecisionAttachmentUpload';
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
 
@@ -51,6 +52,7 @@ export function DecisionFileUpload({
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { uploadDecisionAttachments } = useDecisionAttachmentUpload();
 
   useEffect(() => {
     if (decisionId && mode === 'view') {
@@ -137,73 +139,8 @@ export function DecisionFileUpload({
 
     toast({
       title: 'Dateien ausgewählt',
-      description: `${incomingFiles.length} Datei(en) ausgewählt und werden nach Erstellung hochgeladen.`,
+      description: 'Ausgewählte Dateien werden nach Erstellung hochgeladen.',
     });
-  };
-
-  const uploadSingleFile = async (file: File, decisionIdParam: string, userId: string) => {
-    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const filePath = `${userId}/decisions/${decisionIdParam}/${uniqueSuffix}-${file.name}`;
-
-    const uploadContentTypes = getUploadContentTypeCandidates(file);
-
-    let uploadData: { path: string } | null = null;
-    let uploadError: unknown = null;
-
-    for (const contentType of uploadContentTypes) {
-      const result = await supabase.storage
-        .from('decision-attachments')
-        .upload(filePath, file, { contentType });
-
-      if (!result.error && result.data) {
-        uploadData = result.data;
-        uploadError = null;
-        break;
-      }
-
-      uploadError = result.error;
-    }
-
-    if (!uploadData) throw uploadError ?? new Error("Upload failed");
-
-    let emailMeta: EmailMetadata | null = null;
-    if (isEmlFile(file)) {
-      try {
-        const parsed = await parseEmlFile(file);
-        emailMeta = parsed.metadata;
-      } catch (e) {
-        console.error('EML parse error during upload:', e);
-      }
-    } else if (isMsgFile(file)) {
-      try {
-        const parsed = await parseMsgFile(file);
-        emailMeta = parsed.metadata;
-      } catch (e) {
-        console.error('MSG parse error during upload:', e);
-      }
-    }
-
-    const insertData: Record<string, unknown> = {
-      decision_id: decisionIdParam,
-      file_path: uploadData.path,
-      file_name: file.name,
-      file_size: file.size,
-      file_type: getUploadContentType(file),
-      uploaded_by: userId,
-    };
-
-    if (emailMeta) {
-      insertData.email_metadata = emailMeta;
-    }
-
-    const { error: dbError } = await supabase
-      .from('task_decision_attachments')
-      .insert(insertData as never);
-
-    if (dbError) {
-      await supabase.storage.from('decision-attachments').remove([uploadData.path]);
-      throw dbError;
-    }
   };
 
   const handleFileSelect = async (fileList: FileList | null) => {
@@ -229,29 +166,23 @@ export function DecisionFileUpload({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const failedFiles: string[] = [];
-      for (const file of filesArray) {
-        try {
-          await uploadSingleFile(file, decisionId, user.id);
-          toast({
-            title: 'Datei hochgeladen',
-            description: `${file.name} wurde erfolgreich hochgeladen.`,
-          });
-        } catch (error) {
-          console.error('Upload error:', error);
-          failedFiles.push(file.name);
-          toast({
-            title: 'Upload fehlgeschlagen',
-            description: `${file.name} konnte nicht hochgeladen werden.`,
-            variant: 'destructive',
-          });
-        }
+      const uploadResult = await uploadDecisionAttachments({
+        decisionId,
+        userId: user.id,
+        files: filesArray,
+      });
+
+      if (uploadResult.uploadedCount > 0) {
+        toast({
+          title: 'Dateien hochgeladen',
+          description: `${uploadResult.uploadedCount} Datei(en) wurden erfolgreich hochgeladen.`,
+        });
       }
 
-      if (failedFiles.length > 0 && failedFiles.length < filesArray.length) {
+      if (uploadResult.failed.length > 0) {
         toast({
-          title: 'Teilweise hochgeladen',
-          description: `${failedFiles.length} Datei(en) konnten nicht gespeichert werden.`,
+          title: 'Upload teilweise fehlgeschlagen',
+          description: uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | '),
           variant: 'destructive',
         });
       }
