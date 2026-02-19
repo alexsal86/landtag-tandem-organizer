@@ -697,8 +697,18 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   const duplicateSelectedElement = () => {
-    copySelectedElement();
-    pasteClipboardElement();
+    if (!selectedElement) return;
+    const source = selectedElement;
+    const pasted: HeaderElement = {
+      ...source,
+      id: createElementId(),
+      x: Math.max(0, Math.min(headerMaxWidth, source.x + 10)),
+      y: Math.max(0, Math.min(headerMaxHeight, source.y + 10)),
+    };
+    setClipboardElement({ ...source });
+    applyElements((prev) => [...prev, pasted]);
+    setSelectedElementId(pasted.id);
+    setSelectedElementIds([pasted.id]);
   };
 
   const canPasteFromClipboard = Boolean(clipboardElement);
@@ -780,7 +790,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     if (event.key === 'ArrowDown') dy = 1;
     if (!dx && !dy) return;
     event.preventDefault();
-    updateElement(selectedElement.id, { x: Math.max(0, Math.min(headerMaxWidth, selectedElement.x + dx)), y: Math.max(0, Math.min(headerMaxHeight, selectedElement.y + dy)) });
+
+    applyElements((prev) => prev.map((el) => {
+      if (!selectedElementIds.includes(el.id)) return el;
+      return {
+        ...el,
+        x: Math.max(0, Math.min(headerMaxWidth, el.x + dx)),
+        y: Math.max(0, Math.min(headerMaxHeight, el.y + dy)),
+      };
+    }));
   };
 
   const validatePosition = (value: number, max: number) => Math.max(0, Math.min(value, max));
@@ -1189,7 +1207,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </>
             )}
 
-            <div className="absolute top-2 right-2 z-20 flex gap-2">
+            <div className="absolute top-2 right-2 z-20 flex flex-wrap justify-end gap-2 max-w-[calc(100%-1rem)]">
               <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={undo} disabled={!canUndo}>
                 <Undo2 className="h-3.5 w-3.5 mr-1" />Undo
               </Button>
@@ -1226,7 +1244,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               ref={previewRef}
               tabIndex={0}
               role="application"
-              aria-label="Header-Vorschau. Mit Tab durch Elemente wechseln, mit Pfeiltasten bewegen, Entf löscht, Strg+Z rückgängig, Strg+C/V kopiert und fügt ein, Strg+] bzw. Strg+[ ändert die Ebene, Strg+Shift+? öffnet die Shortcut-Hilfe."
+              aria-label="Header-Vorschau. Mit Shift+Klick mehrfach auswählen, mit Tab durch Elemente wechseln, mit Pfeiltasten Auswahl bewegen, Entf löscht, Strg+Z rückgängig, Strg+C/V kopiert und fügt ein, Strg+] bzw. Strg+[ ändert die Ebene, Strg+Shift+? öffnet die Shortcut-Hilfe."
               onKeyDown={onPreviewKeyDown}
               onDragOver={(e) => e.preventDefault()}
               onDrop={onPreviewDrop}
@@ -1249,7 +1267,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   <ul className="space-y-1 text-muted-foreground">
                     <li><span className="font-medium text-foreground">Shift + Klick</span> Mehrfachauswahl</li>
                     <li><span className="font-medium text-foreground">Tab / Shift+Tab</span> Auswahl wechseln</li>
-                    <li><span className="font-medium text-foreground">Pfeiltasten</span> Element bewegen</li>
+                    <li><span className="font-medium text-foreground">Pfeiltasten</span> Auswahl bewegen</li>
                     <li><span className="font-medium text-foreground">Entf / Backspace</span> Element löschen</li>
                     <li><span className="font-medium text-foreground">Strg/Cmd + C / V</span> Kopieren / Einfügen</li>
                     <li><span className="font-medium text-foreground">Strg/Cmd + D</span> Duplizieren</li>
