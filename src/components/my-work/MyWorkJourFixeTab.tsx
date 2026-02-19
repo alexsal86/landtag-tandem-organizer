@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,53 +9,11 @@ import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyN
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useMyWorkJourFixeMeetings, Meeting } from "@/hooks/useMyWorkJourFixeMeetings";
+import { AgendaItem, useMyWorkJourFixeSystemData } from "@/hooks/useMyWorkJourFixeSystemData";
 import { cn } from "@/lib/utils";
-import { addDays, format, isToday, isPast, parseISO } from "date-fns";
+import { format, isToday, isPast } from "date-fns";
 import { de } from "date-fns/locale";
-
-interface MeetingParticipant {
-  user_id: string;
-  display_name: string | null;
-  avatar_url: string | null;
-}
-
-interface Meeting {
-  id: string;
-  title: string;
-  meeting_date: string;
-  meeting_time?: string | null;
-  status: string;
-  description?: string | null;
-  is_public?: boolean;
-  user_id?: string;
-}
-
-interface AgendaItem {
-  id: string;
-  title: string;
-  parent_id: string | null;
-  order_index: number;
-  system_type?: string | null;
-}
-
-interface SystemItemData {
-  id: string;
-  title: string;
-  user_id?: string;
-}
-
-interface UserProfileData {
-  user_id: string;
-  display_name: string | null;
-}
-
-interface BirthdayItemData {
-  id: string;
-  name: string;
-  birthDate: Date;
-  nextBirthday: Date;
-  age: number;
-}
 
 export function MyWorkJourFixeTab() {
   const { user } = useAuth();
@@ -63,9 +21,7 @@ export function MyWorkJourFixeTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [upcomingMeetings, setUpcomingMeetings] = useState<Meeting[]>([]);
-  const [pastMeetings, setPastMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { upcomingMeetings, pastMeetings, meetingParticipants, loading } = useMyWorkJourFixeMeetings(user?.id);
   const [upcomingOpen, setUpcomingOpen] = useState(true);
   const [pastOpen, setPastOpen] = useState(false);
   
@@ -73,16 +29,27 @@ export function MyWorkJourFixeTab() {
   const [expandedMeetingId, setExpandedMeetingId] = useState<string | null>(null);
   const [agendaItems, setAgendaItems] = useState<Record<string, AgendaItem[]>>({});
   const [loadingAgenda, setLoadingAgenda] = useState<string | null>(null);
-  
-  // State for meeting participants
-  const [meetingParticipants, setMeetingParticipants] = useState<Record<string, MeetingParticipant[]>>({});
 
   // State for system item data (notes and tasks per meeting)
-  const [meetingQuickNotes, setMeetingQuickNotes] = useState<Record<string, SystemItemData[]>>({});
-  const [meetingTasks, setMeetingTasks] = useState<Record<string, SystemItemData[]>>({});
-  const [meetingDecisions, setMeetingDecisions] = useState<Record<string, SystemItemData[]>>({});
-  const [meetingBirthdays, setMeetingBirthdays] = useState<Record<string, BirthdayItemData[]>>({});
-  const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
+  const {
+    meetingQuickNotes,
+    meetingTasks,
+    meetingDecisions,
+    meetingBirthdays,
+    userProfiles,
+    loadMeetingSystemData,
+    setMounted,
+  } = useMyWorkJourFixeSystemData(user?.id, currentTenant?.id);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    setMounted(true);
+    return () => {
+      isMountedRef.current = false;
+      setMounted(false);
+    };
+  }, [setMounted]);
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -94,156 +61,11 @@ export function MyWorkJourFixeTab() {
     }
   }, [searchParams, setSearchParams, navigate]);
 
-  useEffect(() => {
-    if (user) {
-      loadMeetings();
-    }
-  }, [user]);
-
-  // Load participants when meetings are loaded
-  useEffect(() => {
-    const allMeetingIds = [...upcomingMeetings, ...pastMeetings].map(m => m.id);
-    if (allMeetingIds.length > 0) {
-      loadParticipantsForMeetings(allMeetingIds);
-    }
-  }, [upcomingMeetings, pastMeetings]);
-
-  const loadMeetings = async () => {
-    if (!user) return;
-    
-    try {
-      const now = new Date().toISOString();
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const selectFields = "id, title, meeting_date, meeting_time, status, description, is_public, user_id";
-      
-      // 1. Own meetings (creator) - upcoming
-      const { data: ownUpcoming } = await supabase
-        .from("meetings")
-        .select(selectFields)
-        .eq("user_id", user.id)
-        .neq("status", "archived")
-        .gte("meeting_date", now)
-        .order("meeting_date", { ascending: true })
-        .limit(20);
-
-      // 2. Own meetings (creator) - past
-      const { data: ownPast } = await supabase
-        .from("meetings")
-        .select(selectFields)
-        .eq("user_id", user.id)
-        .neq("status", "archived")
-        .lt("meeting_date", now)
-        .gte("meeting_date", thirtyDaysAgo.toISOString())
-        .order("meeting_date", { ascending: false })
-        .limit(10);
-
-      // 3. Participant meetings (where user is added as participant)
-      const { data: participantData } = await supabase
-        .from("meeting_participants")
-        .select(`meeting_id, meetings(${selectFields})`)
-        .eq("user_id", user.id);
-
-      // 4. Public meetings in tenant
-      const { data: publicMeetings } = await supabase
-        .from("meetings")
-        .select(selectFields)
-        .eq("is_public", true)
-        .neq("status", "archived")
-        .gte("meeting_date", thirtyDaysAgo.toISOString());
-
-      // Combine and deduplicate
-      const ownIds = new Set([
-        ...(ownUpcoming || []).map(m => m.id),
-        ...(ownPast || []).map(m => m.id)
-      ]);
-      
-      const participantMeetings = (participantData || [])
-        .filter((p: any) => p.meetings && !ownIds.has(p.meetings.id) && p.meetings.status !== 'archived')
-        .map((p: any) => p.meetings as Meeting);
-      
-      const allIds = new Set([...ownIds, ...participantMeetings.map(m => m.id)]);
-      const publicExtra = (publicMeetings || []).filter(m => !allIds.has(m.id));
-      
-      const allMeetings: Meeting[] = [
-        ...(ownUpcoming || []),
-        ...(ownPast || []),
-        ...participantMeetings,
-        ...publicExtra
-      ];
-
-      // Split into upcoming/past and deduplicate by id
-      const seenIds = new Set<string>();
-      const deduped = allMeetings.filter(m => {
-        if (seenIds.has(m.id)) return false;
-        seenIds.add(m.id);
-        return true;
-      });
-
-      const upcoming = deduped
-        .filter(m => new Date(m.meeting_date) >= new Date(now))
-        .sort((a, b) => new Date(a.meeting_date).getTime() - new Date(b.meeting_date).getTime())
-        .slice(0, 20);
-
-      const past = deduped
-        .filter(m => new Date(m.meeting_date) < new Date(now))
-        .sort((a, b) => new Date(b.meeting_date).getTime() - new Date(a.meeting_date).getTime())
-        .slice(0, 10);
-
-      setUpcomingMeetings(upcoming);
-      setPastMeetings(past);
-    } catch (error) {
-      console.error("Error loading meetings:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadParticipantsForMeetings = async (meetingIds: string[]) => {
-    if (meetingIds.length === 0) return;
-    
-    try {
-      const { data: participants, error: participantsError } = await supabase
-        .from('meeting_participants')
-        .select('meeting_id, user_id')
-        .in('meeting_id', meetingIds);
-      
-      if (participantsError || !participants || participants.length === 0) return;
-      
-      const userIds = [...new Set(participants.map(p => p.user_id))];
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, avatar_url')
-        .in('user_id', userIds);
-      
-      if (profilesError) return;
-      
-      // Group participants by meeting with profile data
-      const participantsByMeeting: Record<string, MeetingParticipant[]> = {};
-      participants.forEach(p => {
-        const profile = profiles?.find(prof => prof.user_id === p.user_id);
-        if (!participantsByMeeting[p.meeting_id]) {
-          participantsByMeeting[p.meeting_id] = [];
-        }
-        participantsByMeeting[p.meeting_id].push({
-          user_id: p.user_id,
-          display_name: profile?.display_name || null,
-          avatar_url: profile?.avatar_url || null
-        });
-      });
-      
-      setMeetingParticipants(participantsByMeeting);
-    } catch (error) {
-      console.error('Error loading participants:', error);
-    }
-  };
-
   const loadAgendaForMeeting = async (meetingId: string, meetingDate?: string) => {
     // Already loaded
     if (agendaItems[meetingId]) return;
     
-    setLoadingAgenda(meetingId);
+    if (isMountedRef.current) setLoadingAgenda(meetingId);
     try {
       const { data, error } = await supabase
         .from('meeting_agenda_items')
@@ -254,163 +76,14 @@ export function MyWorkJourFixeTab() {
       if (error) throw error;
       
       const items = data || [];
-      setAgendaItems(prev => ({ ...prev, [meetingId]: items }));
+      if (isMountedRef.current) setAgendaItems(prev => ({ ...prev, [meetingId]: items }));
       
       // Load system item data if needed
-      await loadMeetingSystemData(meetingId, items, meetingDate);
+      await loadMeetingSystemData({ meetingId, items, meetingDate });
     } catch (error) {
       console.error('Error loading agenda:', error);
     } finally {
-      setLoadingAgenda(null);
-    }
-  };
-
-  const loadMeetingSystemData = async (meetingId: string, items: AgendaItem[], meetingDate?: string) => {
-    const hasNotes = items.some(i => i.system_type === 'quick_notes');
-    const hasTasks = items.some(i => i.system_type === 'tasks');
-    const hasDecisions = items.some(i => i.system_type === 'decisions');
-    const hasBirthdays = items.some(i => i.system_type === 'birthdays');
-    const encounteredUserIds = new Set<string>();
-    
-    if (hasNotes) {
-      try {
-        const { data } = await supabase
-          .from('quick_notes')
-          .select('id, title, user_id')
-          .eq('meeting_id', meetingId)
-          .is('deleted_at', null);
-        (data || []).forEach(note => note.user_id && encounteredUserIds.add(note.user_id));
-        setMeetingQuickNotes(prev => ({ ...prev, [meetingId]: data || [] }));
-      } catch { /* ignore */ }
-    }
-    
-    if (hasTasks) {
-      try {
-        const { data } = await supabase
-          .from('tasks')
-          .select('id, title, user_id')
-          .eq('meeting_id', meetingId);
-        (data || []).forEach(task => task.user_id && encounteredUserIds.add(task.user_id));
-        setMeetingTasks(prev => ({ ...prev, [meetingId]: data || [] }));
-      } catch { /* ignore */ }
-    }
-
-    if (hasDecisions && currentTenant?.id && user?.id) {
-      try {
-        const nowDate = new Date();
-        const now = nowDate.toISOString();
-        const in7Days = addDays(nowDate, 7).toISOString();
-        const { data: decisions } = await supabase
-          .from('task_decisions')
-          .select('id, title, created_by, status, response_deadline, priority')
-          .eq('tenant_id', currentTenant.id)
-          .eq('status', 'active')
-          .or(`priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})`)
-          .order('priority', { ascending: false, nullsFirst: false })
-          .order('response_deadline', { ascending: true, nullsFirst: false });
-
-        const decisionIds = (decisions || []).map(decision => decision.id);
-        let participantRows: Array<{ decision_id: string; user_id: string }> = [];
-
-        if (decisionIds.length > 0) {
-          const { data: participants } = await supabase
-            .from('task_decision_participants')
-            .select('decision_id, user_id')
-            .in('decision_id', decisionIds);
-          participantRows = participants || [];
-        }
-
-        const relevantDecisions = (decisions || [])
-          .filter((decision) =>
-            decision.created_by === user.id ||
-            participantRows.some(
-              (participant) => participant.decision_id === decision.id && participant.user_id === user.id
-            )
-          )
-          .map((decision) => ({
-            id: decision.id,
-            title: decision.title,
-            user_id: decision.created_by,
-          }));
-
-        relevantDecisions.forEach(decision => decision.user_id && encounteredUserIds.add(decision.user_id));
-        setMeetingDecisions(prev => ({ ...prev, [meetingId]: relevantDecisions }));
-      } catch {
-        setMeetingDecisions(prev => ({ ...prev, [meetingId]: [] }));
-      }
-    }
-
-    if (hasBirthdays && currentTenant?.id) {
-      try {
-        const referenceDate = meetingDate ? new Date(meetingDate) : new Date();
-        const endDate = addDays(referenceDate, 14);
-
-        const { data: contacts } = await supabase
-          .from('contacts')
-          .select('id, name, birthday')
-          .eq('tenant_id', currentTenant.id)
-          .not('birthday', 'is', null);
-
-        if (!contacts || contacts.length === 0) {
-          setMeetingBirthdays(prev => ({ ...prev, [meetingId]: [] }));
-          return;
-        }
-
-        const birthdays: BirthdayItemData[] = [];
-        const referenceYear = referenceDate.getFullYear();
-
-        for (const contact of contacts) {
-          if (!contact.birthday) continue;
-
-          const originalBirthday = parseISO(contact.birthday);
-          if (Number.isNaN(originalBirthday.getTime())) continue;
-          const month = originalBirthday.getMonth();
-          const day = originalBirthday.getDate();
-
-          for (const year of [referenceYear, referenceYear + 1]) {
-            const nextBirthday = new Date(year, month, day);
-            if (nextBirthday >= referenceDate && nextBirthday <= endDate) {
-              birthdays.push({
-                id: contact.id,
-                name: contact.name,
-                birthDate: originalBirthday,
-                nextBirthday,
-                age: year - originalBirthday.getFullYear(),
-              });
-              break;
-            }
-          }
-        }
-
-        birthdays.sort((a, b) => a.nextBirthday.getTime() - b.nextBirthday.getTime());
-        setMeetingBirthdays(prev => ({ ...prev, [meetingId]: birthdays }));
-      } catch {
-        setMeetingBirthdays(prev => ({ ...prev, [meetingId]: [] }));
-      }
-    }
-
-    if (encounteredUserIds.size > 0) {
-      try {
-        const missingUserIds = Array.from(encounteredUserIds).filter(userId => !userProfiles[userId]);
-        if (missingUserIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('user_id, display_name')
-            .in('user_id', missingUserIds);
-
-          if (profiles && profiles.length > 0) {
-            setUserProfiles(prev => {
-              const next = { ...prev };
-              profiles.forEach((profile) => {
-                next[profile.user_id] = profile;
-              });
-              return next;
-            });
-          }
-        }
-      } catch {
-        // ignore profile lookup errors
-      }
+      if (isMountedRef.current) setLoadingAgenda(null);
     }
   };
 

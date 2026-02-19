@@ -11,6 +11,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { useDecisionComments } from "@/hooks/useDecisionComments";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { useDecisionRefreshScheduler } from "@/hooks/useDecisionRefreshScheduler";
+import { useMyWorkDecisionsData } from "@/hooks/useMyWorkDecisionsData";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { DecisionEditDialog } from "@/components/task-decisions/DecisionEditDialog";
@@ -27,9 +30,7 @@ export function MyWorkDecisionsTab() {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [decisions, setDecisions] = useState<MyWorkDecision[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("for-me");
+  const [activeTab, setActiveTab] = usePersistentState<"for-me" | "answered" | "my-decisions" | "public">("mywork-decisions-active-tab", "for-me");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Dialog states
@@ -38,10 +39,13 @@ export function MyWorkDecisionsTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
   const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
+  const [archivingDecisionId, setArchivingDecisionId] = useState<string | null>(null);
   const [creatingTaskId, setCreatingTaskId] = useState<string | null>(null);
   const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
   const [commentsDecisionTitle, setCommentsDecisionTitle] = useState("");
   const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
+
+  const { decisions, setDecisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
 
   // Comment counts
   const decisionIds = useMemo(() => decisions.map(d => d.id), [decisions]);
@@ -57,276 +61,7 @@ export function MyWorkDecisionsTab() {
     }
   }, [searchParams, setSearchParams]);
 
-  useEffect(() => {
-    if (user) loadDecisions();
-  }, [user]);
-
-  const loadDecisions = async () => {
-    if (!user) return;
-    
-    try {
-      // Load participant decisions
-      const { data: participantData, error: participantError } = await supabase
-        .from("task_decision_participants")
-        .select(`
-          id,
-          decision_id,
-          task_decisions!inner (
-            id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
-            task_decision_attachments (id, file_name, file_path)
-          ),
-          task_decision_responses (id, response_type)
-        `)
-        .eq("user_id", user.id)
-        .in("task_decisions.status", ["active", "open"]);
-
-      if (participantError) throw participantError;
-
-      // Load creator decisions
-      const { data: creatorData, error: creatorError } = await supabase
-        .from("task_decisions")
-        .select(`
-          id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
-          task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
-          task_decision_attachments (id, file_name, file_path)
-        `)
-        .eq("created_by", user.id)
-        .in("status", ["active", "open"]);
-
-      if (creatorError) throw creatorError;
-
-      // Load public decisions
-      const { data: publicData, error: publicError } = await supabase
-        .from("task_decisions")
-        .select(`
-          id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
-          task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
-          task_decision_attachments (id, file_name, file_path)
-        `)
-        .eq("visible_to_all", true)
-        .in("status", ["active", "open"])
-        .neq("created_by", user.id);
-
-      if (publicError) throw publicError;
-
-      const isEmailFile = (name: string) => /\.(eml|msg)$/i.test(name);
-
-      const computeAttachmentInfo = (attachments: any[]) => {
-        const all = attachments || [];
-        const emails = all.filter((a: any) => isEmailFile(a.file_name));
-        const files = all.filter((a: any) => !isEmailFile(a.file_name));
-        return {
-          attachmentCount: all.length,
-          emailAttachmentCount: emails.length,
-          emailAttachments: emails.map((a: any) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
-          fileAttachments: files.map((a: any) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
-        };
-      };
-
-      // Format participant decisions
-      const participantDecisions: MyWorkDecision[] = (participantData || []).map((item: any) => {
-        const attInfo = computeAttachmentInfo(item.task_decisions.task_decision_attachments);
-        return {
-          id: item.task_decisions.id,
-          title: item.task_decisions.title,
-          description: item.task_decisions.description,
-          response_deadline: item.task_decisions.response_deadline,
-          status: item.task_decisions.status,
-          created_at: item.task_decisions.created_at,
-          created_by: item.task_decisions.created_by,
-          participant_id: item.id,
-          hasResponded: item.task_decision_responses.length > 0,
-          isCreator: item.task_decisions.created_by === user.id,
-          isParticipant: true,
-          pendingCount: 0,
-          responseType: item.task_decision_responses[0]?.response_type || null,
-          visible_to_all: item.task_decisions.visible_to_all,
-          priority: item.task_decisions.priority ?? 0,
-          ...attInfo,
-          response_options: Array.isArray(item.task_decisions.response_options) ? item.task_decisions.response_options : undefined,
-        };
-      });
-
-      // Format creator decisions
-      const creatorDecisions: MyWorkDecision[] = (creatorData || []).map((item: any) => {
-        const participants = item.task_decision_participants || [];
-        const pendingCount = participants.filter(
-          (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0
-        ).length;
-        const attInfo = computeAttachmentInfo(item.task_decision_attachments);
-
-        return {
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          response_deadline: item.response_deadline,
-          status: item.status,
-          created_at: item.created_at,
-          created_by: item.created_by,
-          participant_id: null,
-          hasResponded: true,
-          isCreator: true,
-          isParticipant: false,
-          pendingCount,
-          visible_to_all: item.visible_to_all,
-          priority: item.priority ?? 0,
-          ...attInfo,
-          response_options: Array.isArray(item.response_options) ? item.response_options : undefined,
-        };
-      });
-
-      // Format public decisions
-      const participantDecisionIds = new Set(participantDecisions.map(d => d.id));
-      const publicDecisions: MyWorkDecision[] = (publicData || [])
-        .filter((item: any) => !participantDecisionIds.has(item.id))
-        .map((item: any) => {
-          const participants = item.task_decision_participants || [];
-          const userParticipant = participants.find((p: any) => p.user_id === user.id);
-          const pendingCount = participants.filter(
-            (p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0
-          ).length;
-          const attInfo = computeAttachmentInfo(item.task_decision_attachments);
-
-          return {
-            id: item.id,
-            title: item.title,
-            description: item.description,
-            response_deadline: item.response_deadline,
-            status: item.status,
-            created_at: item.created_at,
-            created_by: item.created_by,
-            participant_id: userParticipant?.id || null,
-            hasResponded: userParticipant ? userParticipant.task_decision_responses.length > 0 : true,
-            isCreator: false,
-            isParticipant: !!userParticipant,
-            pendingCount,
-            isPublic: true,
-            visible_to_all: true,
-            priority: item.priority ?? 0,
-            ...attInfo,
-            response_options: Array.isArray(item.response_options) ? item.response_options : undefined,
-          };
-        });
-
-      // Merge and deduplicate
-      const allDecisionsMap = new Map<string, MyWorkDecision>();
-      participantDecisions.forEach(d => allDecisionsMap.set(d.id, d));
-      creatorDecisions.forEach(d => {
-        if (!allDecisionsMap.has(d.id)) {
-          allDecisionsMap.set(d.id, d);
-        } else {
-          const existing = allDecisionsMap.get(d.id)!;
-          existing.pendingCount = d.pendingCount;
-          existing.isCreator = true;
-        }
-      });
-      publicDecisions.forEach(d => {
-        if (!allDecisionsMap.has(d.id)) allDecisionsMap.set(d.id, d);
-      });
-
-      const allDecisionsList = Array.from(allDecisionsMap.values());
-      const allDecisionIds = allDecisionsList.map(d => d.id);
-
-      if (allDecisionIds.length > 0) {
-        // Load participants with profiles and responses
-        const { data: participantsWithProfiles } = await supabase
-          .from('task_decision_participants')
-          .select(`
-            id, user_id, decision_id,
-            task_decision_responses (id, response_type, comment, creator_response, parent_response_id, created_at, updated_at)
-          `)
-          .in('decision_id', allDecisionIds);
-
-        // Load topics
-        const { data: topicsData } = await supabase
-          .from('task_decision_topics')
-          .select('decision_id, topic_id')
-          .in('decision_id', allDecisionIds);
-
-        // Load all user profiles
-        const allUserIds = [...new Set([
-          ...(participantsWithProfiles || []).map(p => p.user_id),
-          ...allDecisionsList.map(d => d.created_by),
-        ])];
-
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, badge_color, avatar_url')
-          .in('user_id', allUserIds);
-
-        const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
-
-        // Build topics map
-        const topicsByDecision = new Map<string, string[]>();
-        topicsData?.forEach(t => {
-          if (!topicsByDecision.has(t.decision_id)) topicsByDecision.set(t.decision_id, []);
-          topicsByDecision.get(t.decision_id)!.push(t.topic_id);
-        });
-
-        // Build participants map
-        const participantsByDecision = new Map<string, any[]>();
-        participantsWithProfiles?.forEach(p => {
-          if (!participantsByDecision.has(p.decision_id)) participantsByDecision.set(p.decision_id, []);
-          participantsByDecision.get(p.decision_id)!.push({
-            id: p.id,
-            user_id: p.user_id,
-            profile: {
-              display_name: profileMap.get(p.user_id)?.display_name || null,
-              badge_color: profileMap.get(p.user_id)?.badge_color || null,
-              avatar_url: profileMap.get(p.user_id)?.avatar_url || null,
-            },
-            responses: (p.task_decision_responses || [])
-              .sort((a: any, b: any) => {
-                const aIsChild = !!a.parent_response_id;
-                const bIsChild = !!b.parent_response_id;
-                if (aIsChild !== bIsChild) return aIsChild ? 1 : -1;
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-              })
-              .map((r: any) => ({ ...r, response_type: r.response_type as string })),
-          });
-        });
-
-        // Enrich decisions
-        allDecisionsList.forEach(d => {
-          d.participants = participantsByDecision.get(d.id) || [];
-          d.topicIds = topicsByDecision.get(d.id) || [];
-          const cp = profileMap.get(d.created_by);
-          d.creator = {
-            user_id: d.created_by,
-            display_name: cp?.display_name || null,
-            badge_color: cp?.badge_color || null,
-            avatar_url: cp?.avatar_url || null,
-          };
-        });
-      }
-
-      // Sort: unanswered first, then questions, then by date
-      allDecisionsList.sort((a, b) => {
-        // Priority first
-        const priorityA = a.priority ?? 0;
-        const priorityB = b.priority ?? 0;
-        if (priorityA !== priorityB) return priorityB - priorityA;
-
-        const aUnanswered = a.isParticipant && !a.hasResponded;
-        const bUnanswered = b.isParticipant && !b.hasResponded;
-        if (aUnanswered && !bUnanswered) return -1;
-        if (!aUnanswered && bUnanswered) return 1;
-
-        const summA = getResponseSummary(a.participants);
-        const summB = getResponseSummary(b.participants);
-        if (summA.questionCount > 0 && summB.questionCount === 0) return -1;
-        if (summA.questionCount === 0 && summB.questionCount > 0) return 1;
-
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-
-      setDecisions(allDecisionsList);
-    } catch (error) {
-      console.error("Error loading decisions:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { scheduleRefresh: scheduleDecisionsRefresh } = useDecisionRefreshScheduler(loadDecisions);
 
   // Tab counts
   const tabCounts = useMemo(() => {
@@ -569,7 +304,7 @@ export function MyWorkDecisionsTab() {
         ? "Antwort wurde gesendet."
         : "Deine Rückfrage wurde gesendet.",
     });
-    loadDecisions();
+    scheduleDecisionsRefresh();
   };
 
   // Actions
@@ -580,6 +315,7 @@ export function MyWorkDecisionsTab() {
 
   const archiveDecision = async (decisionId: string) => {
     if (!user) return;
+    setArchivingDecisionId(decisionId);
     try {
       const { error } = await supabase
         .from('task_decisions')
@@ -587,10 +323,12 @@ export function MyWorkDecisionsTab() {
         .eq('id', decisionId);
       if (error) throw error;
       toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
-      loadDecisions();
+      scheduleDecisionsRefresh();
     } catch (error) {
       console.error('Error archiving:', error);
       toast({ title: "Fehler", description: "Archivierung fehlgeschlagen.", variant: "destructive" });
+    } finally {
+      setArchivingDecisionId(null);
     }
   };
 
@@ -601,7 +339,7 @@ export function MyWorkDecisionsTab() {
       if (error) throw error;
       toast({ title: "Gelöscht", description: "Entscheidung wurde gelöscht." });
       setDeletingDecisionId(null);
-      loadDecisions();
+      scheduleDecisionsRefresh();
     } catch (error) {
       console.error('Error deleting:', error);
       toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
@@ -673,7 +411,7 @@ export function MyWorkDecisionsTab() {
           <StandaloneDecisionCreator 
             isOpen={isCreateOpen}
             onOpenChange={setIsCreateOpen}
-            onDecisionCreated={loadDecisions}
+            onDecisionCreated={() => scheduleDecisionsRefresh(0)}
           />
           <Button
             variant="ghost"
@@ -727,11 +465,13 @@ export function MyWorkDecisionsTab() {
                         onArchive={archiveDecision}
                         onDelete={setDeletingDecisionId}
                         onCreateTask={createTaskFromDecision}
-                        onResponseSubmitted={loadDecisions}
+                        onResponseSubmitted={() => scheduleDecisionsRefresh(0)}
                         onOpenComments={(id, title) => { setCommentsDecisionId(id); setCommentsDecisionTitle(title); }}
                         onReply={sendActivityReply}
                         commentCount={getCommentCount(decision.id)}
                         creatingTaskId={creatingTaskId}
+                        archivingDecisionId={archivingDecisionId}
+                        deletingDecisionId={deletingDecisionId}
                         currentUserId={user?.id || ""}
                       />
                     ))}
@@ -747,7 +487,7 @@ export function MyWorkDecisionsTab() {
                 recentActivities={sidebarData.recentActivities}
                 onQuestionClick={handleOpenDetails}
                 onCommentClick={handleOpenDetails}
-                onResponseSent={loadDecisions}
+                onResponseSent={() => scheduleDecisionsRefresh(0)}
               />
             </div>
           </TabsContent>
@@ -760,7 +500,7 @@ export function MyWorkDecisionsTab() {
           decisionId={selectedDecisionId}
           isOpen={isDetailsOpen}
           onClose={() => { setIsDetailsOpen(false); setSelectedDecisionId(null); }}
-          onArchived={loadDecisions}
+          onArchived={() => scheduleDecisionsRefresh(0)}
         />
       )}
 
@@ -769,7 +509,7 @@ export function MyWorkDecisionsTab() {
           decisionId={editingDecisionId}
           isOpen={true}
           onClose={() => setEditingDecisionId(null)}
-          onUpdated={() => { setEditingDecisionId(null); loadDecisions(); }}
+          onUpdated={() => { setEditingDecisionId(null); scheduleDecisionsRefresh(0); }}
         />
       )}
 
@@ -779,7 +519,7 @@ export function MyWorkDecisionsTab() {
           decisionTitle={commentsDecisionTitle}
           isOpen={!!commentsDecisionId}
           onClose={() => setCommentsDecisionId(null)}
-          onCommentAdded={() => { refreshCommentCounts(); loadDecisions(); }}
+          onCommentAdded={() => { refreshCommentCounts(); scheduleDecisionsRefresh(0); }}
         />
       )}
 
