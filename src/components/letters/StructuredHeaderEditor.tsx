@@ -14,13 +14,17 @@ import { useTenant } from '@/hooks/useTenant';
 type ElementType = 'text' | 'image' | 'shape' | 'block';
 type ShapeType = 'line' | 'circle' | 'rectangle' | 'sunflower';
 
-interface HeaderElement {
+interface BaseElement {
   id: string;
   type: ElementType;
   x: number;
   y: number;
   width?: number;
   height?: number;
+}
+
+interface TextElement extends BaseElement {
+  type: 'text';
   content?: string;
   fontSize?: number;
   fontFamily?: string;
@@ -29,19 +33,30 @@ interface HeaderElement {
   textDecoration?: string;
   color?: string;
   textLineHeight?: number;
+}
+
+interface ImageElement extends BaseElement {
+  type: 'image';
   imageUrl?: string;
   blobUrl?: string;
   storagePath?: string;
   preserveAspectRatio?: boolean;
-  blockId?: string;
-  // Shape properties
+}
+
+interface ShapeElement extends BaseElement {
+  type: 'shape';
   shapeType?: ShapeType;
   fillColor?: string;
   strokeColor?: string;
   strokeWidth?: number;
   borderRadius?: number;
   rotation?: number;
-  // Block properties (when type === 'block')
+  color?: string;
+}
+
+interface BlockElement extends BaseElement {
+  type: 'block';
+  blockId?: string;
   blockTitle?: string;
   blockContent?: string;
   blockFontSize?: number;
@@ -50,6 +65,8 @@ interface HeaderElement {
   blockColor?: string;
   blockLineHeight?: number;
 }
+
+type HeaderElement = TextElement | ImageElement | ShapeElement | BlockElement;
 
 interface GalleryImage {
   name: string;
@@ -63,10 +80,10 @@ interface StructuredHeaderEditorProps {
 }
 
 const getShapeFillColor = (element: HeaderElement, fallback = '#000000') =>
-  element.fillColor ?? element.color ?? fallback;
+  element.type === 'shape' ? (element.fillColor ?? element.color ?? fallback) : fallback;
 
 const getShapeStrokeColor = (element: HeaderElement, fallback = '#000000') =>
-  element.strokeColor ?? element.color ?? fallback;
+  element.type === 'shape' ? (element.strokeColor ?? element.color ?? fallback) : fallback;
 
 // Sunflower SVG inline component
 const SunflowerSVG: React.FC<{ width: number; height: number; className?: string }> = ({ width, height, className }) => (
