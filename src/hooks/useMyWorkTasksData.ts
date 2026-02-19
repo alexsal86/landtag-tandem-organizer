@@ -95,32 +95,43 @@ export function useMyWorkTasksData(userId?: string) {
       if (snoozesError) throw snoozesError;
 
       const grouped: Record<string, MyWorkTask[]> = {};
-      const visitedParentIds = new Set<string>();
-      let parentIdsToLoad = [...allTaskIds];
+      const tenantIds = [...new Set([...createdByMe, ...assignedByOthers].map((task) => task.tenant_id).filter(Boolean))] as string[];
 
-      while (parentIdsToLoad.length > 0) {
-        const currentBatch = parentIdsToLoad.filter((id) => !visitedParentIds.has(id));
-        if (currentBatch.length === 0) break;
+      const subtasksQuery = supabase
+        .from("tasks")
+        .select("*")
+        .neq("status", "completed")
+        .not("parent_task_id", "is", null)
+        .order("due_date", { ascending: true, nullsFirst: false });
 
-        currentBatch.forEach((id) => visitedParentIds.add(id));
+      const { data: allSubtasksData, error: allSubtasksError } = tenantIds.length > 0
+        ? await subtasksQuery.in("tenant_id", tenantIds)
+        : await subtasksQuery;
 
-        const { data: childTasksData, error: childTasksError } = await supabase
-          .from("tasks")
-          .select("*")
-          .in("parent_task_id", currentBatch)
-          .neq("status", "completed")
-          .order("due_date", { ascending: true, nullsFirst: false });
+      if (allSubtasksError) throw allSubtasksError;
 
-        if (childTasksError) throw childTasksError;
+      const childrenByParent = new Map<string, MyWorkTask[]>();
+      (allSubtasksData || []).forEach((task) => {
+        if (!task.parent_task_id) return;
+        const siblings = childrenByParent.get(task.parent_task_id) || [];
+        siblings.push(task);
+        childrenByParent.set(task.parent_task_id, siblings);
+      });
 
-        const children = childTasksData || [];
-        children.forEach((childTask) => {
-          if (!childTask.parent_task_id) return;
-          if (!grouped[childTask.parent_task_id]) grouped[childTask.parent_task_id] = [];
-          grouped[childTask.parent_task_id].push(childTask);
-        });
+      const queue = [...allTaskIds];
+      const visited = new Set<string>();
+      while (queue.length > 0) {
+        const parentId = queue.shift();
+        if (!parentId || visited.has(parentId)) continue;
+        visited.add(parentId);
 
-        parentIdsToLoad = children.map((childTask) => childTask.id);
+        const children = childrenByParent.get(parentId) || [];
+        if (children.length > 0) {
+          grouped[parentId] = children;
+          children.forEach((childTask) => {
+            if (!visited.has(childTask.id)) queue.push(childTask.id);
+          });
+        }
       }
 
       setSubtasks(grouped);
