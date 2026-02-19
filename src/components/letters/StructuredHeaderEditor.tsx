@@ -1014,42 +1014,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }));
   };
 
-  const distributeSelection = (axis: 'horizontal' | 'vertical') => {
-    if (selectedElementIds.length < 3) return;
-    const selected = elements
-      .filter((el) => selectedElementIds.includes(el.id))
-      .map((element) => ({ ...element, ...getElementDimensions(element) }));
-    if (selected.length < 3) return;
-
-    const sorted = [...selected].sort((a, b) => (axis === 'horizontal' ? a.x - b.x : a.y - b.y));
-    const first = sorted[0];
-    const last = sorted[sorted.length - 1];
-    const startPos = axis === 'horizontal' ? first.x : first.y;
-    const endPos = axis === 'horizontal' ? last.x + last.width : last.y + last.height;
-    const totalSize = sorted.reduce((sum, item) => sum + (axis === 'horizontal' ? item.width : item.height), 0);
-    const totalGap = endPos - startPos - totalSize;
-    if (totalGap <= 0) return;
-
-    const gap = totalGap / (sorted.length - 1);
-    let cursor = startPos;
-    const positions = new Map<string, number>();
-
-    sorted.forEach((item) => {
-      positions.set(item.id, cursor);
-      cursor += (axis === 'horizontal' ? item.width : item.height) + gap;
-    });
-
-    applyElements((prev) => prev.map((element) => {
-      const nextPos = positions.get(element.id);
-      if (nextPos == null) return element;
-      return {
-        ...element,
-        x: axis === 'horizontal' ? Math.max(0, Math.min(headerMaxWidth, Math.round(nextPos))) : element.x,
-        y: axis === 'vertical' ? Math.max(0, Math.min(headerMaxHeight, Math.round(nextPos))) : element.y,
-      };
-    }));
-  };
-
   
 
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
