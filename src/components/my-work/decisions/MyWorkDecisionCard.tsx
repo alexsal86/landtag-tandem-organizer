@@ -37,6 +37,8 @@ interface MyWorkDecisionCardProps {
   }) => Promise<void>;
   commentCount: number;
   creatingTaskId: string | null;
+  archivingDecisionId?: string | null;
+  deletingDecisionId?: string | null;
   currentUserId: string;
 }
 
@@ -86,6 +88,8 @@ const MyWorkDecisionCardInner = ({
   onReply,
   commentCount,
   creatingTaskId,
+  archivingDecisionId,
+  deletingDecisionId,
   currentUserId,
 }: MyWorkDecisionCardProps) => {
   const [previewEmail, setPreviewEmail] = useState<{ file_path: string; file_name: string } | null>(null);
@@ -94,6 +98,9 @@ const MyWorkDecisionCardInner = ({
   const isCustomTemplate = decision.response_options && decision.response_options.length > 0 &&
     !(['yes','no','question'].every(k => decision.response_options!.some(o => o.key === k)) && decision.response_options!.length <= 3);
   const customSummary = isCustomTemplate ? getCustomResponseSummary(decision.participants, decision.response_options!) : null;
+  const isArchiving = archivingDecisionId === decision.id;
+  const isDeleting = deletingDecisionId === decision.id;
+  const isBusy = isArchiving || isDeleting;
 
   const avatarParticipants = (decision.participants || []).map(p => ({
     user_id: p.user_id,
@@ -171,15 +178,15 @@ const MyWorkDecisionCardInner = ({
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(decision.id); }}>
                   <Edit className="h-4 w-4 mr-2" />Bearbeiten
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(decision.id); }}>
-                  <Archive className="h-4 w-4 mr-2" />Archivieren
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(decision.id); }} disabled={isBusy}>
+                  <Archive className="h-4 w-4 mr-2" />{isArchiving ? 'Archiviere...' : 'Archivieren'}
                 </DropdownMenuItem>
                 {summary.pending === 0 && decision.participants && decision.participants.length > 0 && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
                       onClick={(e) => { e.stopPropagation(); onCreateTask(decision); }}
-                      disabled={creatingTaskId === decision.id}
+                      disabled={creatingTaskId === decision.id || isBusy}
                     >
                       <ClipboardList className="h-4 w-4 mr-2" />
                       {creatingTaskId === decision.id ? 'Erstelle...' : 'Aufgabe erstellen'}
@@ -189,9 +196,10 @@ const MyWorkDecisionCardInner = ({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={(e) => { e.stopPropagation(); onDelete(decision.id); }}
+                  disabled={isBusy}
                   className="text-destructive"
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />Löschen
+                  <Trash2 className="h-4 w-4 mr-2" />{isDeleting ? 'Lösche...' : 'Löschen'}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
