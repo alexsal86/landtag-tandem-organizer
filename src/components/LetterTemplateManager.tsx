@@ -789,6 +789,16 @@ const LetterTemplateManager: React.FC = () => {
           onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
           onJumpToTab={setActiveTab as any}
           headerElements={formData.header_elements}
+          actionButtons={
+            <>
+              <Button variant="outline" onClick={editingTemplate ? cancelEditing : () => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>
+                <X className="h-4 w-4 mr-2" />Abbrechen
+              </Button>
+              <Button onClick={editingTemplate ? handleUpdateTemplate : handleCreateTemplate}>
+                <Save className="h-4 w-4 mr-2" />Speichern
+              </Button>
+            </>
+          }
         />
       </TabsContent>
 
