@@ -171,7 +171,7 @@ serve(async (req) => {
         const personalizedSubject = replaceVariables(subject, recipient.contact_data);
         const personalizedBody = replaceVariables(body_html, recipient.contact_data);
 
-        const emailResponse = await resend.emails.send({
+        const emailPayload: Record<string, unknown> = {
           from: `${fromName} <${fromEmail}>`,
           to: [recipient.email],
           reply_to: reply_to || undefined,
@@ -179,8 +179,12 @@ serve(async (req) => {
           bcc: bcc.length > 0 ? bcc : undefined,
           subject: personalizedSubject,
           html: personalizedBody,
-          scheduledAt: scheduled_at || undefined,
-        });
+        };
+        if (scheduled_at) {
+          emailPayload.scheduledAt = scheduled_at;
+        }
+
+        const emailResponse = await resend.emails.send(emailPayload as any);
 
         if (emailResponse.error) {
           throw emailResponse.error;

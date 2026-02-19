@@ -874,6 +874,26 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }));
   };
 
+  const duplicateSelectedElement = () => {
+    if (!selectedElement) return;
+    const source = selectedElement;
+    const pasted: HeaderElement = {
+      ...source,
+      id: createElementId(),
+      x: Math.max(0, Math.min(headerMaxWidth, source.x + 10)),
+      y: Math.max(0, Math.min(headerMaxHeight, source.y + 10)),
+    };
+    setClipboardElement({ ...source });
+    applyElements((prev) => [...prev, pasted]);
+    setSelectedElementId(pasted.id);
+    setSelectedElementIds([pasted.id]);
+  };
+
+  const canPasteFromClipboard = Boolean(clipboardElement);
+  const selectedIndex = selectedElement ? elements.findIndex((el) => el.id === selectedElement.id) : -1;
+  const canMoveLayerBackward = selectedIndex > 0;
+  const canMoveLayerForward = selectedIndex >= 0 && selectedIndex < elements.length - 1;
+
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
     if (target?.isContentEditable || editingTextId || editingBlockId) {
