@@ -121,7 +121,11 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const headerMaxHeight = 45;
   const previewWidth = 780;
   const previewHeight = 300;
+  const previewScaleX = previewWidth / headerMaxWidth;
+  const previewScaleY = previewHeight / headerMaxHeight;
   const SNAP_MM = 1.5;
+
+  const createElementId = () => crypto.randomUUID();
 
   // Resolve blob URL
   const resolveBlobUrl = useCallback(async (storagePath: string): Promise<string | null> => {
@@ -137,15 +141,14 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   useEffect(() => {
     const resolveAll = async () => {
-      const updated = [...elements];
-      let changed = false;
-      for (const el of updated) {
-        if (el.type === 'image' && el.storagePath && !el.blobUrl) {
-          const blobUrl = await resolveBlobUrl(el.storagePath);
-          if (blobUrl) { el.blobUrl = blobUrl; changed = true; }
-        }
-      }
-      if (changed) setElements([...updated]);
+      const updated = await Promise.all(elements.map(async (el) => {
+        if (el.type !== 'image' || !el.storagePath || el.blobUrl) return el;
+        const blobUrl = await resolveBlobUrl(el.storagePath);
+        if (!blobUrl) return el;
+        return { ...el, blobUrl };
+      }));
+      const changed = updated.some((el, idx) => el !== elements[idx]);
+      if (changed) setElements(updated);
     };
     resolveAll();
   }, []);
@@ -156,7 +159,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     try {
       const folderPath = `${currentTenant.id}/header-images`;
       const { data: files, error } = await supabase.storage.from('letter-assets').list(folderPath);
-      if (error) { setGalleryLoading(false); return; }
+      if (error) return;
       const imageFiles = (files || []).filter(f => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name));
       galleryImages.forEach(img => URL.revokeObjectURL(img.blobUrl));
       const loaded: GalleryImage[] = [];
@@ -183,12 +186,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     };
   }, [currentTenant?.id]);
 
-  const snapToOtherElements = (id: string, x: number, y: number) => {
-    const current = elements.find((el) => el.id === id);
+  const snapToOtherElements = (id: string, x: number, y: number, allElements: HeaderElement[]) => {
+    const current = allElements.find((el) => el.id === id);
     if (!current) return { x, y };
     let sx = x, sy = y;
     const w = current.width || 50, h = current.height || 10;
-    const edgeTargets = elements.filter((el) => el.id !== id).flatMap((el) => {
+    const edgeTargets = allElements.filter((el) => el.id !== id).flatMap((el) => {
       const tw = el.width || 50, th = el.height || 10;
       return [{ x: el.x, y: el.y }, { x: el.x + tw, y: el.y + th }, { x: el.x + tw / 2, y: el.y + th / 2 }];
     });
@@ -257,7 +260,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const addImageFromGallery = (galleryImg: GalleryImage) => {
     const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(galleryImg.path);
     const newElement: HeaderElement = {
-      id: Date.now().toString(), type: 'image', x: 20, y: 10, width: 40, height: 20,
+      id: createElementId(), type: 'image', x: 20, y: 10, width: 40, height: 20,
       imageUrl: publicUrl, blobUrl: galleryImg.blobUrl, storagePath: galleryImg.path, preserveAspectRatio: true,
     };
     setElements(prev => [...prev, newElement]);
@@ -278,7 +281,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   const addTextElement = (x = 20, y = 12, content = 'Lorem ipsum dolor sit amet') => {
-    const el: HeaderElement = { id: Date.now().toString(), type: 'text', x, y, content, fontSize: 12, fontFamily: 'Arial', fontWeight: 'normal', color: '#000000', textLineHeight: 1.2, width: 70, height: 8 };
+    const el: HeaderElement = { id: createElementId(), type: 'text', x, y, content, fontSize: 12, fontFamily: 'Arial', fontWeight: 'normal', color: '#000000', textLineHeight: 1.2, width: 70, height: 8 };
     setElements(prev => [...prev, el]);
     setSelectedElementId(el.id);
   };
@@ -291,7 +294,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       if (!file) return;
       const result = await uploadImage(file);
       if (!result) return;
-      const el: HeaderElement = { id: Date.now().toString(), type: 'image', x: 20, y: 10, width: 40, height: 20, imageUrl: result.publicUrl, blobUrl: result.blobUrl, storagePath: result.storagePath, preserveAspectRatio: true };
+      const el: HeaderElement = { id: createElementId(), type: 'image', x: 20, y: 10, width: 40, height: 20, imageUrl: result.publicUrl, blobUrl: result.blobUrl, storagePath: result.storagePath, preserveAspectRatio: true };
       setElements(prev => [...prev, el]);
       setSelectedElementId(el.id);
     };
@@ -305,17 +308,23 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       rectangle: { width: 40, height: 20, fillColor: '#3b82f6', strokeColor: '#1e40af', strokeWidth: 1, borderRadius: 0 },
       sunflower: { width: 25, height: 25, fillColor: '#22c55e', strokeColor: '#15803d', strokeWidth: 0 },
     }[shapeType];
-    const el: HeaderElement = { id: Date.now().toString(), type: 'shape', shapeType, x: 20, y: 10, rotation: 0, ...defaults };
+    const el: HeaderElement = { id: createElementId(), type: 'shape', shapeType, x: 20, y: 10, rotation: 0, ...defaults };
     setElements(prev => [...prev, el]);
     setSelectedElementId(el.id);
   };
 
-  const addBlockElement = () => {
+  const createBlockElement = (x = 10, y = 25) => {
+    const blockNumber = elements.filter((el) => el.type === 'block').length + 1;
     const el: HeaderElement = {
-      id: Date.now().toString(), type: 'block', x: 10, y: 25, width: 45, height: 18,
-      blockTitle: `Block ${elements.filter(e => e.type === 'block').length + 1}`,
+      id: createElementId(), type: 'block', x, y, width: 45, height: 18,
+      blockTitle: `Block ${blockNumber}`,
       blockContent: '', blockFontSize: 9, blockFontFamily: 'Arial', blockFontWeight: 'normal', blockColor: '#000000', blockLineHeight: 1,
     };
+    return el;
+  };
+
+  const addBlockElement = () => {
+    const el = createBlockElement();
     setElements(prev => [...prev, el]);
     setSelectedElementId(el.id);
   };
@@ -364,19 +373,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     event.preventDefault();
     if (!previewRef.current) return;
     const rect = previewRef.current.getBoundingClientRect();
-    const scaleX = previewWidth / headerMaxWidth;
-    const scaleY = previewHeight / headerMaxHeight;
-    const x = Math.max(0, Math.min(headerMaxWidth, (event.clientX - rect.left) / scaleX));
-    const y = Math.max(0, Math.min(headerMaxHeight, (event.clientY - rect.top) / scaleY));
+    const x = Math.max(0, Math.min(headerMaxWidth, (event.clientX - rect.left) / previewScaleX));
+    const y = Math.max(0, Math.min(headerMaxHeight, (event.clientY - rect.top) / previewScaleY));
 
     const tool = event.dataTransfer.getData('application/x-header-tool');
     if (tool === 'text') { addTextElement(Math.round(x), Math.round(y)); return; }
     if (tool === 'block') {
-      const el: HeaderElement = {
-        id: Date.now().toString(), type: 'block', x: Math.round(x), y: Math.round(y), width: 45, height: 18,
-        blockTitle: `Block ${elements.filter(e => e.type === 'block').length + 1}`,
-        blockContent: '', blockFontSize: 9, blockFontFamily: 'Arial', blockFontWeight: 'normal', blockColor: '#000000', blockLineHeight: 1,
-      };
+      const el = createBlockElement(Math.round(x), Math.round(y));
       setElements(prev => [...prev, el]);
       setSelectedElementId(el.id);
       return;
@@ -387,7 +390,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       try {
         const { path, blobUrl } = JSON.parse(galleryData);
         const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(path);
-        const el: HeaderElement = { id: Date.now().toString(), type: 'image', x: Math.round(x), y: Math.round(y), width: 40, height: 20, imageUrl: publicUrl, blobUrl, storagePath: path, preserveAspectRatio: true };
+        const el: HeaderElement = { id: createElementId(), type: 'image', x: Math.round(x), y: Math.round(y), width: 40, height: 20, imageUrl: publicUrl, blobUrl, storagePath: path, preserveAspectRatio: true };
         setElements(prev => [...prev, el]);
         setSelectedElementId(el.id);
       } catch (e) { console.error('Error parsing gallery drop data:', e); }
@@ -412,13 +415,18 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     setResizeStart({ x: event.clientX, y: event.clientY, ow: element.width || 50, oh: element.height || 30 });
   };
 
+  useEffect(() => {
+    if (!dragId && !resizingId) return;
+    const handler = () => onPreviewMouseUp();
+    window.addEventListener('mouseup', handler);
+    return () => window.removeEventListener('mouseup', handler);
+  }, [dragId, resizingId]);
+
   const onPreviewMouseMove = (event: React.MouseEvent) => {
-    const scaleX = previewWidth / headerMaxWidth;
-    const scaleY = previewHeight / headerMaxHeight;
     if (resizingId && resizeStart) {
       const resizingElement = elements.find((el) => el.id === resizingId);
-      const dx = (event.clientX - resizeStart.x) / scaleX;
-      const dy = (event.clientY - resizeStart.y) / scaleY;
+      const dx = (event.clientX - resizeStart.x) / previewScaleX;
+      const dy = (event.clientY - resizeStart.y) / previewScaleY;
       let newW = Math.max(5, resizeStart.ow + dx);
       let newH = Math.max(5, resizeStart.oh + dy);
       const preserveAspect = Boolean(event.ctrlKey || (resizingElement?.type === 'image' && resizingElement.preserveAspectRatio));
@@ -429,11 +437,11 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       return;
     }
     if (!dragId || !dragStart) return;
-    const dx = (event.clientX - dragStart.x) / scaleX;
-    const dy = (event.clientY - dragStart.y) / scaleY;
+    const dx = (event.clientX - dragStart.x) / previewScaleX;
+    const dy = (event.clientY - dragStart.y) / previewScaleY;
     const nx = Math.max(0, Math.min(headerMaxWidth, dragStart.ox + dx));
     const ny = Math.max(0, Math.min(headerMaxHeight, dragStart.oy + dy));
-    const snapped = snapToOtherElements(dragId, nx, ny);
+    const snapped = snapToOtherElements(dragId, nx, ny, elements);
     updateElement(dragId, { x: snapped.x, y: snapped.y });
   };
 
@@ -807,7 +815,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </Button>
             </div>
 
-            <div ref={previewRef} tabIndex={0} onKeyDown={onPreviewKeyDown} onDragOver={(e) => e.preventDefault()} onDrop={onPreviewDrop} onMouseMove={onPreviewMouseMove} onMouseUp={onPreviewMouseUp} onMouseLeave={onPreviewMouseUp} onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
+            <div ref={previewRef} tabIndex={0} onKeyDown={onPreviewKeyDown} onDragOver={(e) => e.preventDefault()} onDrop={onPreviewDrop} onMouseMove={onPreviewMouseMove} onMouseUp={onPreviewMouseUp} onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
               style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, marginLeft: '8px', marginTop: '8px', backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
               {showCenterGuides && (
@@ -818,8 +826,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               )}
 
               {elements.map((element) => {
-                const scaleX = previewWidth / headerMaxWidth;
-                const scaleY = previewHeight / headerMaxHeight;
+                const scaleX = previewScaleX;
+                const scaleY = previewScaleY;
 
                 if (element.type === 'text') {
                   const isEditing = editingTextId === element.id;
