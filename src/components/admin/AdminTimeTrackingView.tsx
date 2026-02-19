@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { useYearlyBalance } from "@/hooks/useYearlyBalance";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -113,16 +115,7 @@ export function AdminTimeTrackingView() {
   const [newEntryType, setNewEntryType] = useState<EntryType>("work");
   const [newEntryReason, setNewEntryReason] = useState("");
   
-  // Yearly balance state with monthly breakdown
-  const [yearlyBalance, setYearlyBalance] = useState<number>(0);
-  const [yearlyBreakdown, setYearlyBreakdown] = useState<{
-    month: Date;
-    workedMinutes: number;
-    creditMinutes: number;
-    targetMinutes: number;
-    balance: number;
-  }[]>([]);
-  const [loadingYearlyBalance, setLoadingYearlyBalance] = useState(false);
+  // Yearly balance – shared hook with AbortController (race condition safe)
   const [showBreakdownDialog, setShowBreakdownDialog] = useState(false);
 
   const monthStart = startOfMonth(currentMonth);
@@ -277,146 +270,17 @@ export function AdminTimeTrackingView() {
     return labels[type] || type;
   };
 
-  // Load yearly balance for the selected employee with monthly breakdown
-  const loadYearlyBalance = async () => {
-    if (!selectedUserId || !selectedEmployee) return;
-    setLoadingYearlyBalance(true);
-    
-    try {
-      const currentYear = getYear(currentMonth);
-      const yearStart = new Date(currentYear, 0, 1);
-      const yearEnd = new Date(currentYear, 11, 31);
-      const today = new Date();
-      const effectiveEnd = today < yearEnd ? today : yearEnd;
-      
-      // Load all time entries for the year
-      const { data: yearEntries } = await supabase
-        .from("time_entries")
-        .select("minutes, work_date")
-        .eq("user_id", selectedUserId)
-        .gte("work_date", format(yearStart, "yyyy-MM-dd"))
-        .lte("work_date", format(effectiveEnd, "yyyy-MM-dd"));
-      
-      // Load all approved absences for the year
-      const { data: yearLeaves } = await supabase
-        .from("leave_requests")
-        .select("type, start_date, end_date, status")
-        .eq("user_id", selectedUserId)
-        .eq("status", "approved")
-        .gte("start_date", format(yearStart, "yyyy-MM-dd"))
-        .lte("end_date", format(effectiveEnd, "yyyy-MM-dd"));
-      
-      // Load all holidays for the year
-      const { data: yearHolidays } = await supabase
-        .from("public_holidays")
-        .select("holiday_date")
-        .gte("holiday_date", format(yearStart, "yyyy-MM-dd"))
-        .lte("holiday_date", format(effectiveEnd, "yyyy-MM-dd"));
-      
-      // Load all corrections
-      const { data: yearCorrections } = await supabase
-        .from("time_entry_corrections")
-        .select("correction_minutes")
-        .eq("user_id", selectedUserId);
-      
-      // Calculate per-month breakdown with safe fallbacks
-      const hpw = selectedEmployee.hours_per_week || 39.5;
-      const dpw = selectedEmployee.days_per_week || 5;
-      const dailyMin = Math.round((hpw / dpw) * 60);
-      const holidayDates = new Set((yearHolidays || []).map(h => h.holiday_date));
-      
-      // Build per-month data
-      const monthlyBreakdown: {
-        month: Date;
-        workedMinutes: number;
-        creditMinutes: number;
-        targetMinutes: number;
-        balance: number;
-      }[] = [];
-      
-      const currentMonthIndex = effectiveEnd.getMonth();
-      
-      for (let m = 0; m <= currentMonthIndex; m++) {
-        const mStart = new Date(currentYear, m, 1);
-        const mEnd = endOfMonth(mStart);
-        const mEffectiveEnd = mEnd > effectiveEnd ? effectiveEnd : mEnd;
-        
-        // Work days in this month
-        const monthDays = eachDayOfInterval({ start: mStart, end: mEffectiveEnd });
-        const monthWorkDays = monthDays.filter(d => 
-          d.getDay() !== 0 && d.getDay() !== 6 && !holidayDates.has(format(d, "yyyy-MM-dd"))
-        );
-        const monthTarget = monthWorkDays.length * dailyMin;
-        
-        // Calculate absence dates for this month FIRST (needed for worked filter)
-        const monthAbsenceDates = new Set<string>();
-        (yearLeaves || []).forEach(leave => {
-          if (['sick', 'vacation', 'overtime_reduction', 'medical'].includes(leave.type)) {
-            try {
-              eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
-                .filter(d => d.getMonth() === m && d.getFullYear() === currentYear && d <= mEffectiveEnd)
-                .forEach(d => monthAbsenceDates.add(format(d, 'yyyy-MM-dd')));
-            } catch {}
-          }
-        });
-        
-        // Worked minutes in this month - EXCLUDE holidays and absence days
-        const monthWorked = (yearEntries || [])
-          .filter(e => {
-            const d = parseISO(e.work_date);
-            const dateStr = format(d, 'yyyy-MM-dd');
-            // Exclude: other months, holidays, and absence days (to avoid double counting with credits)
-            return d.getMonth() === m && 
-                   d.getFullYear() === currentYear &&
-                   !holidayDates.has(dateStr) &&
-                   !monthAbsenceDates.has(dateStr);
-          })
-          .reduce((sum, e) => sum + (e.minutes || 0), 0);
-        
-        // monthAbsenceDates already calculated above (before worked calculation)
-        
-        // Credit minutes for this month
-        const monthCredit = [...monthAbsenceDates]
-          .filter(d => !holidayDates.has(d))
-          .filter(d => {
-            const date = parseISO(d);
-            return date.getDay() !== 0 && date.getDay() !== 6;
-          })
-          .length * dailyMin;
-        
-        const monthBalance = monthWorked + monthCredit - monthTarget;
-        
-        monthlyBreakdown.push({
-          month: mStart,
-          workedMinutes: monthWorked,
-          creditMinutes: monthCredit,
-          targetMinutes: monthTarget,
-          balance: monthBalance,
-        });
-      }
-      
-      setYearlyBreakdown(monthlyBreakdown);
-      
-      // Corrections total (applied to total)
-      const correctionsTotal = (yearCorrections || []).reduce((sum, c) => sum + c.correction_minutes, 0);
-      
-      // Total balance = sum of monthly balances + corrections
-      const totalBalance = monthlyBreakdown.reduce((sum, mb) => sum + mb.balance, 0) + correctionsTotal;
-      setYearlyBalance(totalBalance);
-      
-    } catch (error) {
-      console.error("Error loading yearly balance:", error);
-    } finally {
-      setLoadingYearlyBalance(false);
-    }
-  };
-
-  // Load yearly balance when employee or month changes
-  useEffect(() => {
-    if (selectedUserId && selectedEmployee) {
-      loadYearlyBalance();
-    }
-  }, [selectedUserId, currentMonth, selectedEmployee]);
+  // useYearlyBalance hook – replaces inline loadYearlyBalance (race-condition safe)
+  const {
+    yearlyBalance,
+    yearlyBreakdown,
+    loading: loadingYearlyBalance,
+    refetch: refetchYearlyBalance,
+  } = useYearlyBalance(
+    selectedUserId || null,
+    getYear(currentMonth),
+    selectedEmployee ?? null
+  );
 
   // Create new entry (work or absence)
   const handleCreateEntry = async () => {
@@ -472,7 +336,7 @@ export function AdminTimeTrackingView() {
       setCreateEntryDialogOpen(false);
       resetNewEntryForm();
       loadMonthData();
-      loadYearlyBalance();
+      refetchYearlyBalance();
     } catch (error: any) {
       toast.error(error.message || "Fehler beim Erstellen");
     } finally {
@@ -795,7 +659,9 @@ export function AdminTimeTrackingView() {
   }
 
   const totalActual = workedMinutes + creditMinutes;
-  const balanceMinutes = totalActual - monthlyTargetMinutes + totalCorrectionMinutes;
+  // BUG FIX: Corrections are yearly, not monthly – they must NOT be added to monthly balance.
+  // They are already included in yearlyBalance from useYearlyBalance hook.
+  const balanceMinutes = totalActual - monthlyTargetMinutes;
 
   return (
     <div className="space-y-6">
@@ -870,6 +736,12 @@ export function AdminTimeTrackingView() {
           </div>
         </CardHeader>
         <CardContent>
+          {loadingYearlyBalance ? (
+            <div className="space-y-2">
+              <div className="h-8 w-32 bg-muted animate-pulse rounded" />
+              <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+            </div>
+          ) : (
           <div className="flex items-baseline gap-4">
             <div className={`text-3xl font-bold ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
               {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
@@ -880,6 +752,7 @@ export function AdminTimeTrackingView() {
               </span>
             )}
           </div>
+          )}
           <p className="text-xs text-muted-foreground mt-1">
             Summe aller Monate bis heute
           </p>
@@ -1549,3 +1422,4 @@ export function AdminTimeTrackingView() {
     </div>
   );
 }
+
