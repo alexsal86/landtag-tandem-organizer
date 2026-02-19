@@ -330,11 +330,27 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       // 1. Resolve device ID from localStorage (no whoAmI call)
       const localDeviceId = creds.deviceId || localStorage.getItem(`matrix_device_id:${creds.userId}`) || undefined;
 
-      // 2. Create client (canonical: no verificationMethods, no cryptoCallbacks on createClient)
-      const matrixClient = sdk.createClient({
+      // 2. Create client with Secret Storage callback for recovery-key based key retrieval
+      let matrixClient = sdk.createClient({
         baseUrl: creds.homeserverUrl,
         accessToken: creds.accessToken,
         userId: creds.userId,
+        cryptoCallbacks: {
+          getSecretStorageKey: async ({ keys }) => {
+            const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`)?.trim();
+            if (!recoveryKey) return null;
+
+            const keyId = Object.keys(keys)[0];
+            if (!keyId) return null;
+
+            try {
+              const privateKey = (matrixClient as any).keyBackupKeyFromRecoveryKey(recoveryKey) as Uint8Array;
+              return [keyId, privateKey];
+            } catch {
+              return null;
+            }
+          },
+        },
         ...(localDeviceId ? { deviceId: localDeviceId } : {}),
       });
 
@@ -351,12 +367,28 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             console.warn('Stored device no longer exists on server, creating new device');
             localStorage.removeItem(`matrix_device_id:${creds.userId}`);
             // Recreate client without stale deviceId
-            const freshClient = sdk.createClient({
+            matrixClient = sdk.createClient({
               baseUrl: creds.homeserverUrl,
               accessToken: creds.accessToken,
               userId: creds.userId,
+              cryptoCallbacks: {
+                getSecretStorageKey: async ({ keys }) => {
+                  const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`)?.trim();
+                  if (!recoveryKey) return null;
+
+                  const keyId = Object.keys(keys)[0];
+                  if (!keyId) return null;
+
+                  try {
+                    const privateKey = (matrixClient as any).keyBackupKeyFromRecoveryKey(recoveryKey) as Uint8Array;
+                    return [keyId, privateKey];
+                  } catch {
+                    return null;
+                  }
+                },
+              },
             });
-            clientRef.current = freshClient;
+            clientRef.current = matrixClient;
           }
         } catch {}
       }
