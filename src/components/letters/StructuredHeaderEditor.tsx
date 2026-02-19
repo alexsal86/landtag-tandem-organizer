@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid, Ruler, Crosshair } from 'lucide-react';
+import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid, Ruler, Crosshair, Undo2, Redo2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -14,13 +14,17 @@ import { useTenant } from '@/hooks/useTenant';
 type ElementType = 'text' | 'image' | 'shape' | 'block';
 type ShapeType = 'line' | 'circle' | 'rectangle' | 'sunflower';
 
-interface HeaderElement {
+interface BaseElement {
   id: string;
   type: ElementType;
   x: number;
   y: number;
   width?: number;
   height?: number;
+}
+
+interface TextElement extends BaseElement {
+  type: 'text';
   content?: string;
   fontSize?: number;
   fontFamily?: string;
@@ -29,19 +33,30 @@ interface HeaderElement {
   textDecoration?: string;
   color?: string;
   textLineHeight?: number;
+}
+
+interface ImageElement extends BaseElement {
+  type: 'image';
   imageUrl?: string;
   blobUrl?: string;
   storagePath?: string;
   preserveAspectRatio?: boolean;
-  blockId?: string;
-  // Shape properties
+}
+
+interface ShapeElement extends BaseElement {
+  type: 'shape';
   shapeType?: ShapeType;
   fillColor?: string;
   strokeColor?: string;
   strokeWidth?: number;
   borderRadius?: number;
   rotation?: number;
-  // Block properties (when type === 'block')
+  color?: string;
+}
+
+interface BlockElement extends BaseElement {
+  type: 'block';
+  blockId?: string;
   blockTitle?: string;
   blockContent?: string;
   blockFontSize?: number;
@@ -50,6 +65,8 @@ interface HeaderElement {
   blockColor?: string;
   blockLineHeight?: number;
 }
+
+type HeaderElement = TextElement | ImageElement | ShapeElement | BlockElement;
 
 interface GalleryImage {
   name: string;
@@ -63,10 +80,10 @@ interface StructuredHeaderEditorProps {
 }
 
 const getShapeFillColor = (element: HeaderElement, fallback = '#000000') =>
-  element.fillColor ?? element.color ?? fallback;
+  element.type === 'shape' ? (element.fillColor ?? element.color ?? fallback) : fallback;
 
 const getShapeStrokeColor = (element: HeaderElement, fallback = '#000000') =>
-  element.strokeColor ?? element.color ?? fallback;
+  element.type === 'shape' ? (element.strokeColor ?? element.color ?? fallback) : fallback;
 
 // Sunflower SVG inline component
 const SunflowerSVG: React.FC<{ width: number; height: number; className?: string }> = ({ width, height, className }) => (
@@ -96,6 +113,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const { toast } = useToast();
   const { currentTenant } = useTenant();
   const [elements, setElements] = useState<HeaderElement[]>(initialElements);
+  const historyPastRef = useRef<HeaderElement[][]>([]);
+  const historyFutureRef = useRef<HeaderElement[][]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [showRuler, setShowRuler] = useState(false);
   const [showCenterGuides, setShowCenterGuides] = useState(false);
@@ -104,6 +123,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; ox: number; oy: number } | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
+  const horizontalRulerRef = useRef<HTMLCanvasElement | null>(null);
+  const verticalRulerRef = useRef<HTMLCanvasElement | null>(null);
   const lastReportedRef = useRef<string>(JSON.stringify(initialElements));
 
   // Resize state
@@ -119,9 +141,94 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const headerMaxWidth = 210;
   const headerMaxHeight = 45;
-  const previewWidth = 780;
-  const previewHeight = 300;
+  const [previewWidth, setPreviewWidth] = useState(780);
+  const previewHeight = Math.round((previewWidth * headerMaxHeight) / headerMaxWidth);
+  const previewScaleX = previewWidth / headerMaxWidth;
+  const previewScaleY = previewHeight / headerMaxHeight;
   const SNAP_MM = 1.5;
+
+  const createElementId = () => crypto.randomUUID();
+
+  const applyElements = (updater: (prev: HeaderElement[]) => HeaderElement[]) => {
+    setElements((prev) => {
+      const next = updater(prev);
+      const changed = JSON.stringify(prev) !== JSON.stringify(next);
+      if (!changed) return prev;
+      historyPastRef.current.push(prev);
+      if (historyPastRef.current.length > 100) historyPastRef.current.shift();
+      historyFutureRef.current = [];
+      return next;
+    });
+  };
+
+  const undo = () => {
+    setElements((prev) => {
+      const previous = historyPastRef.current.pop();
+      if (!previous) return prev;
+      historyFutureRef.current.unshift(prev);
+      return previous;
+    });
+  };
+
+  const redo = () => {
+    setElements((prev) => {
+      const next = historyFutureRef.current.shift();
+      if (!next) return prev;
+      historyPastRef.current.push(prev);
+      return next;
+    });
+  };
+
+  const canUndo = historyPastRef.current.length > 0;
+  const canRedo = historyFutureRef.current.length > 0;
+
+  useEffect(() => {
+    if (!previewContainerRef.current) return;
+    const updatePreviewSize = () => {
+      if (!previewContainerRef.current) return;
+      const nextWidth = Math.min(780, Math.max(360, Math.floor(previewContainerRef.current.clientWidth - 16)));
+      setPreviewWidth(nextWidth);
+    };
+
+    updatePreviewSize();
+    const observer = new ResizeObserver(updatePreviewSize);
+    observer.observe(previewContainerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!showRuler) return;
+
+    const hCanvas = horizontalRulerRef.current;
+    const vCanvas = verticalRulerRef.current;
+    if (!hCanvas || !vCanvas) return;
+
+    const hCtx = hCanvas.getContext('2d');
+    const vCtx = vCanvas.getContext('2d');
+    if (!hCtx || !vCtx) return;
+
+    hCtx.clearRect(0, 0, hCanvas.width, hCanvas.height);
+    hCtx.strokeStyle = 'rgba(100, 116, 139, 0.8)';
+    for (let i = 0; i <= 210; i += 1) {
+      const x = (i * previewWidth) / 210;
+      const tickHeight = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
+      hCtx.beginPath();
+      hCtx.moveTo(x, hCanvas.height);
+      hCtx.lineTo(x, hCanvas.height - tickHeight);
+      hCtx.stroke();
+    }
+
+    vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
+    vCtx.strokeStyle = 'rgba(100, 116, 139, 0.8)';
+    for (let i = 0; i <= 45; i += 1) {
+      const y = (i * previewHeight) / 45;
+      const tickWidth = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
+      vCtx.beginPath();
+      vCtx.moveTo(vCanvas.width, y);
+      vCtx.lineTo(vCanvas.width - tickWidth, y);
+      vCtx.stroke();
+    }
+  }, [previewHeight, previewWidth, showRuler]);
 
   // Resolve blob URL
   const resolveBlobUrl = useCallback(async (storagePath: string): Promise<string | null> => {
@@ -137,15 +244,14 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   useEffect(() => {
     const resolveAll = async () => {
-      const updated = [...elements];
-      let changed = false;
-      for (const el of updated) {
-        if (el.type === 'image' && el.storagePath && !el.blobUrl) {
-          const blobUrl = await resolveBlobUrl(el.storagePath);
-          if (blobUrl) { el.blobUrl = blobUrl; changed = true; }
-        }
-      }
-      if (changed) setElements([...updated]);
+      const updated = await Promise.all(elements.map(async (el) => {
+        if (el.type !== 'image' || !el.storagePath || el.blobUrl) return el;
+        const blobUrl = await resolveBlobUrl(el.storagePath);
+        if (!blobUrl) return el;
+        return { ...el, blobUrl };
+      }));
+      const changed = updated.some((el, idx) => el !== elements[idx]);
+      if (changed) setElements(updated);
     };
     resolveAll();
   }, []);
@@ -156,7 +262,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     try {
       const folderPath = `${currentTenant.id}/header-images`;
       const { data: files, error } = await supabase.storage.from('letter-assets').list(folderPath);
-      if (error) { setGalleryLoading(false); return; }
+      if (error) return;
       const imageFiles = (files || []).filter(f => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name));
       galleryImages.forEach(img => URL.revokeObjectURL(img.blobUrl));
       const loaded: GalleryImage[] = [];
@@ -183,12 +289,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     };
   }, [currentTenant?.id]);
 
-  const snapToOtherElements = (id: string, x: number, y: number) => {
-    const current = elements.find((el) => el.id === id);
+  const snapToOtherElements = (id: string, x: number, y: number, allElements: HeaderElement[]) => {
+    const current = allElements.find((el) => el.id === id);
     if (!current) return { x, y };
     let sx = x, sy = y;
     const w = current.width || 50, h = current.height || 10;
-    const edgeTargets = elements.filter((el) => el.id !== id).flatMap((el) => {
+    const edgeTargets = allElements.filter((el) => el.id !== id).flatMap((el) => {
       const tw = el.width || 50, th = el.height || 10;
       return [{ x: el.x, y: el.y }, { x: el.x + tw, y: el.y + th }, { x: el.x + tw / 2, y: el.y + th / 2 }];
     });
@@ -257,10 +363,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const addImageFromGallery = (galleryImg: GalleryImage) => {
     const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(galleryImg.path);
     const newElement: HeaderElement = {
-      id: Date.now().toString(), type: 'image', x: 20, y: 10, width: 40, height: 20,
+      id: createElementId(), type: 'image', x: 20, y: 10, width: 40, height: 20,
       imageUrl: publicUrl, blobUrl: galleryImg.blobUrl, storagePath: galleryImg.path, preserveAspectRatio: true,
     };
-    setElements(prev => [...prev, newElement]);
+    applyElements(prev => [...prev, newElement]);
     setSelectedElementId(newElement.id);
   };
 
@@ -278,8 +384,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   const addTextElement = (x = 20, y = 12, content = 'Lorem ipsum dolor sit amet') => {
-    const el: HeaderElement = { id: Date.now().toString(), type: 'text', x, y, content, fontSize: 12, fontFamily: 'Arial', fontWeight: 'normal', color: '#000000', textLineHeight: 1.2, width: 70, height: 8 };
-    setElements(prev => [...prev, el]);
+    const el: HeaderElement = { id: createElementId(), type: 'text', x, y, content, fontSize: 12, fontFamily: 'Arial', fontWeight: 'normal', color: '#000000', textLineHeight: 1.2, width: 70, height: 8 };
+    applyElements(prev => [...prev, el]);
     setSelectedElementId(el.id);
   };
 
@@ -291,8 +397,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       if (!file) return;
       const result = await uploadImage(file);
       if (!result) return;
-      const el: HeaderElement = { id: Date.now().toString(), type: 'image', x: 20, y: 10, width: 40, height: 20, imageUrl: result.publicUrl, blobUrl: result.blobUrl, storagePath: result.storagePath, preserveAspectRatio: true };
-      setElements(prev => [...prev, el]);
+      const el: HeaderElement = { id: createElementId(), type: 'image', x: 20, y: 10, width: 40, height: 20, imageUrl: result.publicUrl, blobUrl: result.blobUrl, storagePath: result.storagePath, preserveAspectRatio: true };
+      applyElements(prev => [...prev, el]);
       setSelectedElementId(el.id);
     };
     input.click();
@@ -305,27 +411,33 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       rectangle: { width: 40, height: 20, fillColor: '#3b82f6', strokeColor: '#1e40af', strokeWidth: 1, borderRadius: 0 },
       sunflower: { width: 25, height: 25, fillColor: '#22c55e', strokeColor: '#15803d', strokeWidth: 0 },
     }[shapeType];
-    const el: HeaderElement = { id: Date.now().toString(), type: 'shape', shapeType, x: 20, y: 10, rotation: 0, ...defaults };
-    setElements(prev => [...prev, el]);
+    const el: HeaderElement = { id: createElementId(), type: 'shape', shapeType, x: 20, y: 10, rotation: 0, ...defaults };
+    applyElements(prev => [...prev, el]);
     setSelectedElementId(el.id);
   };
 
-  const addBlockElement = () => {
+  const createBlockElement = (x = 10, y = 25) => {
+    const blockNumber = elements.filter((el) => el.type === 'block').length + 1;
     const el: HeaderElement = {
-      id: Date.now().toString(), type: 'block', x: 10, y: 25, width: 45, height: 18,
-      blockTitle: `Block ${elements.filter(e => e.type === 'block').length + 1}`,
+      id: createElementId(), type: 'block', x, y, width: 45, height: 18,
+      blockTitle: `Block ${blockNumber}`,
       blockContent: '', blockFontSize: 9, blockFontFamily: 'Arial', blockFontWeight: 'normal', blockColor: '#000000', blockLineHeight: 1,
     };
-    setElements(prev => [...prev, el]);
+    return el;
+  };
+
+  const addBlockElement = () => {
+    const el = createBlockElement();
+    applyElements(prev => [...prev, el]);
     setSelectedElementId(el.id);
   };
 
   const updateElement = (id: string, updates: Partial<HeaderElement>) => {
-    setElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el));
+    applyElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el));
   };
 
   const removeElement = (id: string) => {
-    setElements(prev => prev.filter(el => el.id !== id));
+    applyElements(prev => prev.filter(el => el.id !== id));
     if (selectedElementId === id) setSelectedElementId(null);
   };
 
@@ -364,20 +476,14 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     event.preventDefault();
     if (!previewRef.current) return;
     const rect = previewRef.current.getBoundingClientRect();
-    const scaleX = previewWidth / headerMaxWidth;
-    const scaleY = previewHeight / headerMaxHeight;
-    const x = Math.max(0, Math.min(headerMaxWidth, (event.clientX - rect.left) / scaleX));
-    const y = Math.max(0, Math.min(headerMaxHeight, (event.clientY - rect.top) / scaleY));
+    const x = Math.max(0, Math.min(headerMaxWidth, (event.clientX - rect.left) / previewScaleX));
+    const y = Math.max(0, Math.min(headerMaxHeight, (event.clientY - rect.top) / previewScaleY));
 
     const tool = event.dataTransfer.getData('application/x-header-tool');
     if (tool === 'text') { addTextElement(Math.round(x), Math.round(y)); return; }
     if (tool === 'block') {
-      const el: HeaderElement = {
-        id: Date.now().toString(), type: 'block', x: Math.round(x), y: Math.round(y), width: 45, height: 18,
-        blockTitle: `Block ${elements.filter(e => e.type === 'block').length + 1}`,
-        blockContent: '', blockFontSize: 9, blockFontFamily: 'Arial', blockFontWeight: 'normal', blockColor: '#000000', blockLineHeight: 1,
-      };
-      setElements(prev => [...prev, el]);
+      const el = createBlockElement(Math.round(x), Math.round(y));
+      applyElements(prev => [...prev, el]);
       setSelectedElementId(el.id);
       return;
     }
@@ -387,8 +493,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       try {
         const { path, blobUrl } = JSON.parse(galleryData);
         const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(path);
-        const el: HeaderElement = { id: Date.now().toString(), type: 'image', x: Math.round(x), y: Math.round(y), width: 40, height: 20, imageUrl: publicUrl, blobUrl, storagePath: path, preserveAspectRatio: true };
-        setElements(prev => [...prev, el]);
+        const el: HeaderElement = { id: createElementId(), type: 'image', x: Math.round(x), y: Math.round(y), width: 40, height: 20, imageUrl: publicUrl, blobUrl, storagePath: path, preserveAspectRatio: true };
+        applyElements(prev => [...prev, el]);
         setSelectedElementId(el.id);
       } catch (e) { console.error('Error parsing gallery drop data:', e); }
     }
@@ -412,13 +518,18 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     setResizeStart({ x: event.clientX, y: event.clientY, ow: element.width || 50, oh: element.height || 30 });
   };
 
+  useEffect(() => {
+    if (!dragId && !resizingId) return;
+    const handler = () => onPreviewMouseUp();
+    window.addEventListener('mouseup', handler);
+    return () => window.removeEventListener('mouseup', handler);
+  }, [dragId, resizingId]);
+
   const onPreviewMouseMove = (event: React.MouseEvent) => {
-    const scaleX = previewWidth / headerMaxWidth;
-    const scaleY = previewHeight / headerMaxHeight;
     if (resizingId && resizeStart) {
       const resizingElement = elements.find((el) => el.id === resizingId);
-      const dx = (event.clientX - resizeStart.x) / scaleX;
-      const dy = (event.clientY - resizeStart.y) / scaleY;
+      const dx = (event.clientX - resizeStart.x) / previewScaleX;
+      const dy = (event.clientY - resizeStart.y) / previewScaleY;
       let newW = Math.max(5, resizeStart.ow + dx);
       let newH = Math.max(5, resizeStart.oh + dy);
       const preserveAspect = Boolean(event.ctrlKey || (resizingElement?.type === 'image' && resizingElement.preserveAspectRatio));
@@ -429,11 +540,11 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       return;
     }
     if (!dragId || !dragStart) return;
-    const dx = (event.clientX - dragStart.x) / scaleX;
-    const dy = (event.clientY - dragStart.y) / scaleY;
+    const dx = (event.clientX - dragStart.x) / previewScaleX;
+    const dy = (event.clientY - dragStart.y) / previewScaleY;
     const nx = Math.max(0, Math.min(headerMaxWidth, dragStart.ox + dx));
     const ny = Math.max(0, Math.min(headerMaxHeight, dragStart.oy + dy));
-    const snapped = snapToOtherElements(dragId, nx, ny);
+    const snapped = snapToOtherElements(dragId, nx, ny, elements);
     updateElement(dragId, { x: snapped.x, y: snapped.y });
   };
 
@@ -444,6 +555,20 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     if (target?.isContentEditable || editingTextId || editingBlockId) {
       return;
     }
+
+    const isUndo = (event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === 'z';
+    const isRedo = (event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z'));
+    if (isUndo) {
+      event.preventDefault();
+      undo();
+      return;
+    }
+    if (isRedo) {
+      event.preventDefault();
+      redo();
+      return;
+    }
+
     if (!selectedElement) return;
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); removeElement(selectedElement.id); return; }
     let dx = 0, dy = 0;
@@ -457,6 +582,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   const validatePosition = (value: number, max: number) => Math.max(0, Math.min(value, max));
+
+  const handlePlainTextPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const text = event.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+  };
 
   const renderColorInput = (label: string, value: string, onChange: (color: string) => void) => (
     <div className="space-y-1">
@@ -577,6 +708,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           className="px-1 whitespace-pre-line h-full outline-none"
           contentEditable={isEditing}
           suppressContentEditableWarning
+          onPaste={handlePlainTextPaste}
           onBlur={(e) => {
             updateElement(element.id, { blockContent: e.currentTarget.textContent || '' });
             setEditingBlockId(null);
@@ -775,30 +907,28 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht. Resize + Ctrl = Seitenverhältnis.</p>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="flex items-center justify-center min-h-[340px]">
+          <div ref={previewContainerRef} className="flex items-center justify-center min-h-[340px] w-full">
           <div className="relative pl-12 pt-12">
             {showRuler && (
               <>
                 <div className="absolute top-2 left-12 right-0 h-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
-                  {Array.from({ length: 211 }).map((_, i) => {
-                    const x = (i * previewWidth) / 210;
-                    const tickHeight = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
-                    return <div key={i} className="absolute bottom-0 border-l border-slate-500/70" style={{ left: `${x}px`, height: `${tickHeight}px` }} />;
-                  })}
+                  <canvas ref={horizontalRulerRef} width={previewWidth} height={28} className="absolute inset-0 h-full w-full" />
                   {Array.from({ length: 22 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * previewWidth) / 21}px` }}>{i * 10}</span>))}
                 </div>
                 <div className="absolute top-12 left-2 bottom-0 w-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
-                  {Array.from({ length: 46 }).map((_, i) => {
-                    const y = (i * previewHeight) / 45;
-                    const tickWidth = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
-                    return <div key={`tick-y-${i}`} className="absolute right-0 border-t border-slate-500/70" style={{ top: `${y}px`, width: `${tickWidth}px` }} />;
-                  })}
+                  <canvas ref={verticalRulerRef} width={28} height={previewHeight} className="absolute inset-0 h-full w-full" />
                   {Array.from({ length: 5 }).map((_, i) => (<span key={`label-y-${i}`} className="absolute left-0" style={{ top: `${(i * previewHeight) / 4}px` }}>{i * 10}</span>))}
                 </div>
               </>
             )}
 
             <div className="absolute top-2 right-2 z-20 flex gap-2">
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={undo} disabled={!canUndo}>
+                <Undo2 className="h-3.5 w-3.5 mr-1" />Undo
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={redo} disabled={!canRedo}>
+                <Redo2 className="h-3.5 w-3.5 mr-1" />Redo
+              </Button>
               <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowRuler(v => !v)}>
                 <Ruler className="h-3.5 w-3.5 mr-1" />Lineal
               </Button>
@@ -807,7 +937,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </Button>
             </div>
 
-            <div ref={previewRef} tabIndex={0} onKeyDown={onPreviewKeyDown} onDragOver={(e) => e.preventDefault()} onDrop={onPreviewDrop} onMouseMove={onPreviewMouseMove} onMouseUp={onPreviewMouseUp} onMouseLeave={onPreviewMouseUp} onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
+            <div ref={previewRef} tabIndex={0} onKeyDown={onPreviewKeyDown} onDragOver={(e) => e.preventDefault()} onDrop={onPreviewDrop} onMouseMove={onPreviewMouseMove} onMouseUp={onPreviewMouseUp} onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
               style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, marginLeft: '8px', marginTop: '8px', backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
               {showCenterGuides && (
@@ -818,8 +948,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               )}
 
               {elements.map((element) => {
-                const scaleX = previewWidth / headerMaxWidth;
-                const scaleY = previewHeight / headerMaxHeight;
+                const scaleX = previewScaleX;
+                const scaleY = previewScaleY;
 
                 if (element.type === 'text') {
                   const isEditing = editingTextId === element.id;
@@ -836,6 +966,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                       onDoubleClick={(e) => { e.stopPropagation(); setEditingTextId(element.id); }}
                       contentEditable={isEditing}
                       suppressContentEditableWarning
+                      onPaste={handlePlainTextPaste}
                       onBlur={(e) => {
                         updateElement(element.id, { content: e.currentTarget.textContent || '' });
                         setEditingTextId(null);
