@@ -788,6 +788,125 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }));
   };
 
+  const copySelectedElement = () => {
+    if (!selectedElement) return;
+    setClipboardElement({ ...selectedElement });
+  };
+
+  const pasteClipboardElement = () => {
+    if (!clipboardElement) return;
+    const source = clipboardElement;
+    const nextX = Math.max(0, Math.min(headerMaxWidth, source.x + 10));
+    const nextY = Math.max(0, Math.min(headerMaxHeight, source.y + 10));
+    const pasted: HeaderElement = { ...source, id: createElementId(), x: nextX, y: nextY };
+    applyElements((prev) => [...prev, pasted]);
+    setSelectedElementId(pasted.id);
+    setSelectedElementIds([pasted.id]);
+    setClipboardElement(pasted);
+  };
+
+  const duplicateSelectedElement = () => {
+    if (!selectedElement) return;
+    const source = selectedElement;
+    const pasted: HeaderElement = {
+      ...source,
+      id: createElementId(),
+      x: Math.max(0, Math.min(headerMaxWidth, source.x + 10)),
+      y: Math.max(0, Math.min(headerMaxHeight, source.y + 10)),
+    };
+    setClipboardElement({ ...source });
+    applyElements((prev) => [...prev, pasted]);
+    setSelectedElementId(pasted.id);
+    setSelectedElementIds([pasted.id]);
+  };
+
+  const canPasteFromClipboard = Boolean(clipboardElement);
+  const selectedIndex = selectedElement ? elements.findIndex((el) => el.id === selectedElement.id) : -1;
+  const canMoveLayerBackward = selectedIndex > 0;
+  const canMoveLayerForward = selectedIndex >= 0 && selectedIndex < elements.length - 1;
+  const canAlignSelection = selectedElementIds.length > 1;
+
+  const getElementDimensions = (element: HeaderElement) => ({
+    width: Math.max(1, element.width || (element.type === 'text' ? 70 : element.type === 'block' ? 45 : 50)),
+    height: Math.max(1, element.height || (element.type === 'text' ? 8 : element.type === 'block' ? 18 : 10)),
+  });
+
+  const alignSelection = (axis: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
+    if (selectedElementIds.length < 2) return;
+    const selected = elements.filter((el) => selectedElementIds.includes(el.id));
+    if (selected.length < 2) return;
+
+    const bounds = selected.reduce((acc, element) => {
+      const { width, height } = getElementDimensions(element);
+      return {
+        left: Math.min(acc.left, element.x),
+        top: Math.min(acc.top, element.y),
+        right: Math.max(acc.right, element.x + width),
+        bottom: Math.max(acc.bottom, element.y + height),
+      };
+    }, { left: Number.POSITIVE_INFINITY, top: Number.POSITIVE_INFINITY, right: Number.NEGATIVE_INFINITY, bottom: Number.NEGATIVE_INFINITY });
+
+    const centerX = (bounds.left + bounds.right) / 2;
+    const middleY = (bounds.top + bounds.bottom) / 2;
+
+    applyElements((prev) => prev.map((element) => {
+      if (!selectedElementIds.includes(element.id)) return element;
+      const { width, height } = getElementDimensions(element);
+      let x = element.x;
+      let y = element.y;
+
+      if (axis === 'left') x = bounds.left;
+      if (axis === 'center') x = centerX - width / 2;
+      if (axis === 'right') x = bounds.right - width;
+      if (axis === 'top') y = bounds.top;
+      if (axis === 'middle') y = middleY - height / 2;
+      if (axis === 'bottom') y = bounds.bottom - height;
+
+      return {
+        ...element,
+        x: Math.max(0, Math.min(headerMaxWidth, Math.round(x))),
+        y: Math.max(0, Math.min(headerMaxHeight, Math.round(y))),
+      };
+    }));
+  };
+
+  const copySelectedElement = () => {
+    if (!selectedElement) return;
+    setClipboardElement({ ...selectedElement });
+  };
+
+  const pasteClipboardElement = () => {
+    if (!clipboardElement) return;
+    const source = clipboardElement;
+    const nextX = Math.max(0, Math.min(headerMaxWidth, source.x + 10));
+    const nextY = Math.max(0, Math.min(headerMaxHeight, source.y + 10));
+    const pasted: HeaderElement = { ...source, id: createElementId(), x: nextX, y: nextY };
+    applyElements((prev) => [...prev, pasted]);
+    setSelectedElementId(pasted.id);
+    setSelectedElementIds([pasted.id]);
+    setClipboardElement(pasted);
+  };
+
+  const duplicateSelectedElement = () => {
+    if (!selectedElement) return;
+    const source = selectedElement;
+    const pasted: HeaderElement = {
+      ...source,
+      id: createElementId(),
+      x: Math.max(0, Math.min(headerMaxWidth, source.x + 10)),
+      y: Math.max(0, Math.min(headerMaxHeight, source.y + 10)),
+    };
+    setClipboardElement({ ...source });
+    applyElements((prev) => [...prev, pasted]);
+    setSelectedElementId(pasted.id);
+    setSelectedElementIds([pasted.id]);
+  };
+
+  const canPasteFromClipboard = Boolean(clipboardElement);
+  const selectedIndex = selectedElement ? elements.findIndex((el) => el.id === selectedElement.id) : -1;
+  const canMoveLayerBackward = selectedIndex > 0;
+  const canMoveLayerForward = selectedIndex >= 0 && selectedIndex < elements.length - 1;
+
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
     if (target?.isContentEditable || editingTextId || editingBlockId) {
