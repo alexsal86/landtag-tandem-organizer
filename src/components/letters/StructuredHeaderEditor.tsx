@@ -10,12 +10,13 @@ import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpe
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
-import type { HeaderElement, ResizeHandle, ShapeType } from '@/components/canvas-engine/types';
+import type { BlockElement, HeaderElement, ImageElement, ResizeHandle, ShapeType, TextElement } from '@/components/canvas-engine/types';
 import { getElementDimensions } from '@/components/canvas-engine/utils/geometry';
 import { alignElements, distributeElements, type AlignAxis, type DistributeAxis } from '@/components/canvas-engine/utils/align';
 import { useCanvasHistory } from '@/components/canvas-engine/hooks/useCanvasHistory';
 import { useCanvasSelection } from '@/components/canvas-engine/hooks/useCanvasSelection';
 import { useCanvasViewport } from '@/components/canvas-engine/hooks/useCanvasViewport';
+import { getElementIconFromRegistry, getElementLabelFromRegistry } from '@/components/letters/elements/registry';
 
 interface GalleryImage {
   name: string;
@@ -1087,13 +1088,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }
   };
 
-  const getElementLabel = (el: HeaderElement) => {
-    if (el.type === 'text') return (el.content || 'Text').slice(0, 25);
-    if (el.type === 'image') return 'Bild';
-    if (el.type === 'block') return `Block: ${el.blockTitle || 'Block'}`;
-    if (el.type === 'shape') return `Form: ${el.shapeType || 'shape'}`;
-    return 'Element';
-  };
+  const getElementLabel = (el: HeaderElement) => getElementLabelFromRegistry(el);
 
   const getElementAriaLabel = (el: HeaderElement) => `${getElementLabel(el)} bei x ${el.x} Millimeter, y ${el.y} Millimeter`;
 
@@ -1107,18 +1102,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     setAriaAnnouncement(`Ausgewählt: ${getElementAriaLabel(selected)}`);
   }, [elements, selectedElementId]);
 
-  const getElementIcon = (el: HeaderElement) => {
-    if (el.type === 'text') return <Type className="h-3.5 w-3.5 shrink-0" />;
-    if (el.type === 'image') return <ImageIcon className="h-3.5 w-3.5 shrink-0" />;
-    if (el.type === 'block') return <LayoutGrid className="h-3.5 w-3.5 shrink-0" />;
-    if (el.type === 'shape') {
-      if (el.shapeType === 'circle') return <Circle className="h-3.5 w-3.5 shrink-0" />;
-      if (el.shapeType === 'line') return <Minus className="h-3.5 w-3.5 shrink-0" />;
-      if (el.shapeType === 'sunflower') return <Flower2 className="h-3.5 w-3.5 shrink-0" />;
-      return <Square className="h-3.5 w-3.5 shrink-0" />;
-    }
-    return <Square className="h-3.5 w-3.5 shrink-0" />;
-  };
+  const getElementIcon = (el: HeaderElement) => getElementIconFromRegistry(el);
 
 
   const renderResizeHandles = (element: HeaderElement) => {
@@ -1613,64 +1597,63 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 const scaleX = previewScaleX;
                 const scaleY = previewScaleY;
 
-                if (element.type === 'text') {
-                  const isEditing = editingTextId === element.id;
-                  return (
-                    <div
-                      key={element.id}
-                      aria-label={getElementAriaLabel(element)}
-                      className={`absolute border ${isElementSelected(element.id) ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
-                      style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, fontSize: `${(element.fontSize || 12) * (96 / 72)}px`, fontFamily: element.fontFamily || 'Arial', fontWeight: element.fontWeight || 'normal', fontStyle: element.fontStyle || 'normal', textDecoration: element.textDecoration || 'none', color: element.color || '#000000', lineHeight: `${element.textLineHeight || 1.2}` }}
-                      onMouseDown={(e) => {
-                        if (isEditing) {
-                          e.stopPropagation();
-                          return;
-                        }
-                        onElementMouseDown(e, element);
-                      }}
-                      onDoubleClick={(e) => { e.stopPropagation(); startEditingText(element); }}>
-                      {isEditing ? (
-                        <textarea
-                          className="w-full min-w-[120px] resize-none border-0 bg-transparent p-0 outline-none"
-                          value={editorDrafts[element.id] || ''}
-                          autoFocus
-                          onChange={(e) => setEditorDrafts((prev) => ({ ...prev, [element.id]: e.target.value }))}
-                          onBlur={() => commitTextEditing(element.id)}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Escape') {
-                              e.preventDefault();
-                              cancelEditing(element.id);
-                            }
-                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                              e.preventDefault();
-                              commitTextEditing(element.id);
-                            }
-                          }}
-                        />
-                      ) : (element.content || 'Text')}
-                    </div>
-                  );
-                }
-                if (element.type === 'image') {
-                  const imgSrc = element.imageUrl || element.blobUrl;
-                  if (!imgSrc) return null;
-                  const elW = (element.width || 50) * scaleX;
-                  const elH = (element.height || 30) * scaleY;
-                  return (
-                    <div key={element.id} className="absolute" aria-label={getElementAriaLabel(element)} style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${elW}px`, height: `${elH}px` }}>
-                      <img src={imgSrc} alt="Header Image" className={`w-full h-full object-contain cursor-move border ${isElementSelected(element.id) ? 'border-primary border-dashed border-2' : 'border-transparent'}`} onMouseDown={(e) => onElementMouseDown(e, element)} draggable={false} />
-                      {renderResizeHandles(element)}
-                    </div>
-                  );
-                }
-                if (element.type === 'shape') {
-                  return renderShapeCanvas(element, scaleX, scaleY);
-                }
-                if (element.type === 'block') {
-                  return renderBlockCanvas(element, scaleX, scaleY);
-                }
-                return null;
+                const renderers = {
+                  text: (item: TextElement) => {
+                    const isEditing = editingTextId === item.id;
+                    return (
+                      <div
+                        key={item.id}
+                        aria-label={getElementAriaLabel(item)}
+                        className={`absolute border ${isElementSelected(item.id) ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
+                        style={{ left: `${item.x * scaleX}px`, top: `${item.y * scaleY}px`, fontSize: `${(item.fontSize || 12) * (96 / 72)}px`, fontFamily: item.fontFamily || 'Arial', fontWeight: item.fontWeight || 'normal', fontStyle: item.fontStyle || 'normal', textDecoration: item.textDecoration || 'none', color: item.color || '#000000', lineHeight: `${item.textLineHeight || 1.2}` }}
+                        onMouseDown={(e) => {
+                          if (isEditing) {
+                            e.stopPropagation();
+                            return;
+                          }
+                          onElementMouseDown(e, item);
+                        }}
+                        onDoubleClick={(e) => { e.stopPropagation(); startEditingText(item); }}>
+                        {isEditing ? (
+                          <textarea
+                            className="w-full min-w-[120px] resize-none border-0 bg-transparent p-0 outline-none"
+                            value={editorDrafts[item.id] || ''}
+                            autoFocus
+                            onChange={(e) => setEditorDrafts((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                            onBlur={() => commitTextEditing(item.id)}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') {
+                                e.preventDefault();
+                                cancelEditing(item.id);
+                              }
+                              if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                e.preventDefault();
+                                commitTextEditing(item.id);
+                              }
+                            }}
+                          />
+                        ) : (item.content || 'Text')}
+                      </div>
+                    );
+                  },
+                  image: (item: ImageElement) => {
+                    const imgSrc = item.imageUrl || item.blobUrl;
+                    if (!imgSrc) return null;
+                    const elW = (item.width || 50) * scaleX;
+                    const elH = (item.height || 30) * scaleY;
+                    return (
+                      <div key={item.id} className="absolute" aria-label={getElementAriaLabel(item)} style={{ left: `${item.x * scaleX}px`, top: `${item.y * scaleY}px`, width: `${elW}px`, height: `${elH}px` }}>
+                        <img src={imgSrc} alt="Header Image" className={`w-full h-full object-contain cursor-move border ${isElementSelected(item.id) ? 'border-primary border-dashed border-2' : 'border-transparent'}`} onMouseDown={(e) => onElementMouseDown(e, item)} draggable={false} />
+                        {renderResizeHandles(item)}
+                      </div>
+                    );
+                  },
+                  shape: () => renderShapeCanvas(element, scaleX, scaleY),
+                  block: () => renderBlockCanvas(element, scaleX, scaleY),
+                } as const;
+
+                return renderers[element.type](element as never);
               })}
             </div>
           </div>
