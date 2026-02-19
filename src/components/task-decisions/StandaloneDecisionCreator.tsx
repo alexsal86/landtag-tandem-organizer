@@ -6,11 +6,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Vote, Mail, Plus, MessageSquare, Globe, Star } from "lucide-react";
+import { Vote, Mail, Plus, MessageSquare, Globe, Star, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
-import { getUploadContentType, getUploadContentTypeCandidates, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from "@/utils/emlParser";
+import { useDecisionAttachmentUpload } from "@/hooks/useDecisionAttachmentUpload";
+import type { EmailMetadata } from "@/utils/emlParser";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { ResponseOptionsEditor } from "./ResponseOptionsEditor";
@@ -39,6 +40,7 @@ export const StandaloneDecisionCreator = ({
   // Use external state if provided, otherwise use internal state
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
   const setIsOpen = (open: boolean) => {
+    if (!open && isLoading) return;
     if (onOpenChange) {
       onOpenChange(open);
     } else {
@@ -52,10 +54,12 @@ export const StandaloneDecisionCreator = ({
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [sendByEmail, setSendByEmail] = useState(true);
   const [sendViaMatrix, setSendViaMatrix] = useState(true);
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFileMetadata, setSelectedFileMetadata] = useState<Record<string, EmailMetadata | null>>({});
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
   const [priority, setPriority] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState(DEFAULT_TEMPLATE_ID);
@@ -67,6 +71,7 @@ export const StandaloneDecisionCreator = ({
     ]
   );
   const { toast } = useToast();
+  const { uploadDecisionAttachments } = useDecisionAttachmentUpload();
 
   const currentOptions = useMemo(() => {
     return customOptions;
@@ -180,6 +185,7 @@ export const StandaloneDecisionCreator = ({
       
       setProfilesLoaded(true);
     } catch (error) {
+      setUploadStatus(null);
       console.error('Error loading profiles:', error);
       setProfilesLoaded(true);
     }
@@ -283,69 +289,20 @@ export const StandaloneDecisionCreator = ({
 
       // Upload files if any were selected
       if (selectedFiles.length > 0) {
-        for (const file of selectedFiles) {
-          try {
-            const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-            const fileName = `${userData.user.id}/decisions/${decision.id}/${uniqueSuffix}-${file.name}`;
+        const uploadResult = await uploadDecisionAttachments({
+          decisionId: decision.id,
+          userId: userData.user.id,
+          files: selectedFiles,
+          metadataByIdentity: selectedFileMetadata,
+          rollbackOnAnyFailure: true,
+          onFileStart: (file, index, total) => {
+            setUploadStatus(`Lade Anhang ${index + 1}/${total}: ${file.name}`);
+          },
+        });
 
-            // Upload to storage
-            const uploadContentTypes = getUploadContentTypeCandidates(file);
-            let uploadData: { path: string } | null = null;
-            let uploadError: unknown = null;
-
-            for (const contentType of uploadContentTypes) {
-              const result = await supabase.storage
-                .from('decision-attachments')
-                .upload(fileName, file, { contentType });
-
-              if (!result.error && result.data) {
-                uploadData = result.data;
-                uploadError = null;
-                break;
-              }
-
-              uploadError = result.error;
-            }
-
-            if (!uploadData) throw uploadError ?? new Error("Upload failed");
-
-            // Extract email metadata if applicable
-            let emailMeta: EmailMetadata | null = null;
-            if (isEmlFile(file)) {
-              try { emailMeta = (await parseEmlFile(file)).metadata; } catch (e) { console.error('EML parse error:', e); }
-            } else if (isMsgFile(file)) {
-              try { emailMeta = (await parseMsgFile(file)).metadata; } catch (e) { console.error('MSG parse error:', e); }
-            }
-
-            // Save to database
-            const insertData: Record<string, unknown> = {
-              decision_id: decision.id,
-              file_path: uploadData.path,
-              file_name: file.name,
-              file_size: file.size,
-              file_type: getUploadContentType(file),
-              uploaded_by: userData.user.id,
-            };
-            if (emailMeta) {
-              insertData.email_metadata = emailMeta;
-            }
-
-            const { error: dbError } = await supabase
-              .from('task_decision_attachments')
-              .insert(insertData as any);
-
-            if (dbError) {
-              await supabase.storage.from('decision-attachments').remove([uploadData.path]);
-              throw dbError;
-            }
-          } catch (fileError) {
-            console.error('File upload error:', fileError);
-            toast({
-              title: "Datei-Upload-Fehler",
-              description: `${file.name} konnte nicht hochgeladen werden.`,
-              variant: "destructive",
-            });
-          }
+        if (uploadResult.failed.length > 0) {
+          await supabase.from('task_decisions').delete().eq('id', decision.id);
+          throw new Error(`Anhänge konnten nicht gespeichert werden: ${uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | ')}`);
         }
       }
 
@@ -511,6 +468,7 @@ export const StandaloneDecisionCreator = ({
       setResponseDeadline("");
       setSelectedUsers([]);
       setSelectedFiles([]);
+      setSelectedFileMetadata({});
       setSelectedTopicIds([]);
       setSelectedTemplateId(DEFAULT_TEMPLATE_ID);
       const resetTpl = getTemplateById(DEFAULT_TEMPLATE_ID);
@@ -522,14 +480,16 @@ export const StandaloneDecisionCreator = ({
       setIsOpen(false);
       onDecisionCreated();
     } catch (error) {
+      setUploadStatus(null);
       console.error('Error creating decision:', error);
       toast({
         title: "Fehler",
-        description: "Entscheidungsanfrage konnte nicht erstellt werden.",
+        description: error instanceof Error ? error.message : "Entscheidungsanfrage konnte nicht erstellt werden.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
+      setUploadStatus(null);
     }
   };
 
@@ -717,6 +677,7 @@ export const StandaloneDecisionCreator = ({
               <DecisionFileUpload
                 mode="creation"
                 onFilesSelected={setSelectedFiles}
+                onFilesPrepared={({ metadataByIdentity }) => setSelectedFileMetadata(metadataByIdentity)}
                 canUpload={true}
               />
             </div>
@@ -744,7 +705,12 @@ export const StandaloneDecisionCreator = ({
             onClick={handleSubmit}
             disabled={isLoading}
           >
-            {isLoading ? "Erstelle..." : "Erstellen"}
+            {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {uploadStatus ?? "Erstelle..."}
+                </>
+              ) : "Erstellen"}
           </Button>
         </div>
       </DialogContent>

@@ -11,19 +11,12 @@ import { ResponseOptionsEditor } from "@/components/task-decisions/ResponseOptio
 import { ResponseOption, DECISION_TEMPLATES, DEFAULT_TEMPLATE_ID, getTemplateById } from "@/lib/decisionTemplates";
 import { ResponseOptionsPreview } from "@/components/task-decisions/ResponseOptionsPreview";
 import { DecisionFileUpload } from "@/components/task-decisions/DecisionFileUpload";
+import { useDecisionAttachmentUpload } from "@/hooks/useDecisionAttachmentUpload";
+import type { EmailMetadata } from "@/utils/emlParser";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { Vote, Loader2, Mail, MessageSquare, Globe, Paperclip, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  getUploadContentType,
-  getUploadContentTypeCandidates,
-  isEmlFile,
-  isMsgFile,
-  parseEmlFile,
-  parseMsgFile,
-  type EmailMetadata,
-} from "@/utils/emlParser";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
@@ -57,6 +50,7 @@ export function NoteDecisionCreator({
   const [responseDeadline, setResponseDeadline] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [sendByEmail, setSendByEmail] = useState(true);
   const [sendViaMatrix, setSendViaMatrix] = useState(true);
@@ -68,8 +62,10 @@ export function NoteDecisionCreator({
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [priority, setPriority] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFileMetadata, setSelectedFileMetadata] = useState<Record<string, EmailMetadata | null>>({});
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
   const hasInitializedRef = useRef(false);
+  const { uploadDecisionAttachments } = useDecisionAttachmentUpload();
 
   // Initialize from note content
   useEffect(() => {
@@ -244,6 +240,25 @@ export function NoteDecisionCreator({
 
       if (decisionError) throw decisionError;
 
+      // Upload files (atomic: rollback decision on any upload failure)
+      if (selectedFiles.length > 0) {
+        const uploadResult = await uploadDecisionAttachments({
+          decisionId: decision.id,
+          userId: user.id,
+          files: selectedFiles,
+          metadataByIdentity: selectedFileMetadata,
+          rollbackOnAnyFailure: true,
+          onFileStart: (file, index, total) => {
+            setUploadStatus(`Lade Anhang ${index + 1}/${total}: ${file.name}`);
+          },
+        });
+
+        if (uploadResult.failed.length > 0) {
+          await supabase.from('task_decisions').delete().eq('id', decision.id);
+          throw new Error(`Anhänge konnten nicht gespeichert werden: ${uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | ')}`);
+        }
+      }
+
       // Link to note
       const { error: noteError } = await supabase
         .from("quick_notes")
@@ -311,75 +326,6 @@ export function NoteDecisionCreator({
         }
       }
 
-      // Upload files
-      if (selectedFiles.length > 0) {
-        const failedFiles: string[] = [];
-
-        for (const file of selectedFiles) {
-          try {
-            const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-            const fileName = `${user.id}/decisions/${decision.id}/${uniqueSuffix}-${file.name}`;
-
-            let uploadData: { path: string } | null = null;
-            let uploadError: unknown = null;
-
-            for (const contentType of getUploadContentTypeCandidates(file)) {
-              const result = await supabase.storage
-                .from('decision-attachments')
-                .upload(fileName, file, { contentType });
-
-              if (!result.error && result.data) {
-                uploadData = result.data;
-                uploadError = null;
-                break;
-              }
-
-              uploadError = result.error;
-            }
-
-            if (!uploadData) throw uploadError ?? new Error("Upload failed");
-
-            // Extract email metadata if applicable
-            let emailMeta: EmailMetadata | null = null;
-            if (isEmlFile(file)) {
-              try { emailMeta = (await parseEmlFile(file)).metadata; } catch (e) { console.error('EML parse error:', e); }
-            } else if (isMsgFile(file)) {
-              try { emailMeta = (await parseMsgFile(file)).metadata; } catch (e) { console.error('MSG parse error:', e); }
-            }
-
-            const insertData: Record<string, unknown> = {
-              decision_id: decision.id,
-              file_path: uploadData.path,
-              file_name: file.name,
-              file_size: file.size,
-              file_type: getUploadContentType(file),
-              uploaded_by: user.id,
-            };
-            if (emailMeta) {
-              insertData.email_metadata = emailMeta;
-            }
-
-            const { error: attachmentError } = await supabase
-              .from('task_decision_attachments')
-              .insert(insertData as any);
-
-            if (attachmentError) {
-              await supabase.storage.from('decision-attachments').remove([uploadData.path]);
-              throw attachmentError;
-            }
-          } catch (fileError) {
-            failedFiles.push(file.name);
-            console.error('File upload error in NoteDecisionCreator:', fileError);
-          }
-        }
-
-        if (failedFiles.length > 0) {
-          toast.error("Einige Anhänge konnten nicht gespeichert werden", {
-            description: failedFiles.join(', '),
-          });
-        }
-      }
-
       // Save topics
       if (selectedTopicIds.length > 0) {
         await saveDecisionTopics(decision.id, selectedTopicIds);
@@ -399,17 +345,24 @@ export function NoteDecisionCreator({
       setVisibleToAll(true);
       setPriority(false);
       setSelectedFiles([]);
+      setSelectedFileMetadata({});
       setSelectedTopicIds([]);
+      setUploadStatus(null);
     } catch (error) {
+      setUploadStatus(null);
       console.error('Error creating decision:', error);
-      toast.error("Fehler beim Erstellen der Entscheidungsanfrage");
+      toast.error(error instanceof Error ? error.message : "Fehler beim Erstellen der Entscheidungsanfrage");
     } finally {
       setLoading(false);
+      setUploadStatus(null);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen && loading) return;
+      onOpenChange(nextOpen);
+    }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -540,7 +493,8 @@ export function NoteDecisionCreator({
             </Label>
             <DecisionFileUpload
               mode="creation"
-              onFilesSelected={(files) => setSelectedFiles(prev => [...prev, ...files])}
+              onFilesSelected={setSelectedFiles}
+              onFilesPrepared={({ metadataByIdentity }) => setSelectedFileMetadata(metadataByIdentity)}
               canUpload={true}
             />
           </div>
@@ -580,7 +534,7 @@ export function NoteDecisionCreator({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Erstellen...
+                {uploadStatus ?? "Erstellen..."}
               </>
             ) : (
               <>
