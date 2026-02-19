@@ -289,7 +289,9 @@ export function MyWorkJourFixeTab() {
           .is('deleted_at', null);
         (data || []).forEach(note => note.user_id && encounteredUserIds.add(note.user_id));
         if (isMountedRef.current) setMeetingQuickNotes(prev => ({ ...prev, [meetingId]: data || [] }));
-      } catch { /* ignore */ }
+      } catch (error) {
+        console.error('Error loading quick notes for meeting:', { meetingId, error });
+      }
     }
     
     if (hasTasks) {
@@ -300,7 +302,9 @@ export function MyWorkJourFixeTab() {
           .eq('meeting_id', meetingId);
         (data || []).forEach(task => task.user_id && encounteredUserIds.add(task.user_id));
         if (isMountedRef.current) setMeetingTasks(prev => ({ ...prev, [meetingId]: data || [] }));
-      } catch { /* ignore */ }
+      } catch (error) {
+        console.error('Error loading tasks for meeting:', { meetingId, error });
+      }
     }
 
     if (hasDecisions && currentTenant?.id && user?.id) {
