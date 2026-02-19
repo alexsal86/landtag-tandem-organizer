@@ -129,6 +129,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [editorDrafts, setEditorDrafts] = useState<Record<string, string>>({});
   const [ariaAnnouncement, setAriaAnnouncement] = useState('');
   const [dragStart, setDragStart] = useState<{ x: number; y: number; origins: Record<string, { x: number; y: number }> } | null>(null);
+  const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
   const dragInitialElementsRef = useRef<HeaderElement[] | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
@@ -136,6 +137,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const verticalRulerRef = useRef<HTMLCanvasElement | null>(null);
   const snapLinesTimeoutRef = useRef<number | null>(null);
   const lastReportedRef = useRef<HeaderElement[]>(initialElements);
+  const selectionInitialIdsRef = useRef<string[]>([]);
 
   // Resize state
   const [resizingId, setResizingId] = useState<string | null>(null);
@@ -602,7 +604,53 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return () => window.removeEventListener('mouseup', handler);
   }, [dragId, resizingId]);
 
+  const onPreviewMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    if (!previewRef.current) return;
+    if (event.target !== event.currentTarget) return;
+
+    const rect = previewRef.current.getBoundingClientRect();
+    const startX = Math.max(0, Math.min(previewWidth, event.clientX - rect.left));
+    const startY = Math.max(0, Math.min(previewHeight, event.clientY - rect.top));
+
+    selectionInitialIdsRef.current = event.shiftKey ? selectedElementIds : [];
+    if (!event.shiftKey) {
+      setSelectedElementId(null);
+      setSelectedElementIds([]);
+    }
+    setSelectionBox({ startX, startY, currentX: startX, currentY: startY });
+  };
+
   const onPreviewMouseMove = (event: React.MouseEvent) => {
+    if (selectionBox && previewRef.current) {
+      const rect = previewRef.current.getBoundingClientRect();
+      const currentX = Math.max(0, Math.min(previewWidth, event.clientX - rect.left));
+      const currentY = Math.max(0, Math.min(previewHeight, event.clientY - rect.top));
+      const nextSelection = { ...selectionBox, currentX, currentY };
+      setSelectionBox(nextSelection);
+
+      const left = Math.min(nextSelection.startX, nextSelection.currentX) / previewScaleX;
+      const right = Math.max(nextSelection.startX, nextSelection.currentX) / previewScaleX;
+      const top = Math.min(nextSelection.startY, nextSelection.currentY) / previewScaleY;
+      const bottom = Math.max(nextSelection.startY, nextSelection.currentY) / previewScaleY;
+
+      const hits = elements
+        .filter((element) => {
+          const { width, height } = getElementDimensions(element);
+          const elementLeft = element.x;
+          const elementRight = element.x + width;
+          const elementTop = element.y;
+          const elementBottom = element.y + height;
+          return !(elementRight < left || elementLeft > right || elementBottom < top || elementTop > bottom);
+        })
+        .map((element) => element.id);
+
+      const mergedSelection = Array.from(new Set([...selectionInitialIdsRef.current, ...hits]));
+      setSelectedElementIds(mergedSelection);
+      setSelectedElementId(mergedSelection.length ? mergedSelection[mergedSelection.length - 1] : null);
+      return;
+    }
+
     if (resizingId && resizeStart) {
       const resizingElement = elements.find((el) => el.id === resizingId);
       const dx = (event.clientX - resizeStart.x) / previewScaleX;
@@ -668,6 +716,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     setResizingId(null);
     setResizeStart(null);
     setSnapLines({});
+    setSelectionBox(null);
   };
 
   const cycleSelection = (direction: 1 | -1) => {
@@ -823,18 +872,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         y: axis === 'vertical' ? Math.max(0, Math.min(headerMaxHeight, Math.round(nextPos))) : element.y,
       };
     }));
-  };
-
-  const pasteClipboardElement = () => {
-    if (!clipboardElement) return;
-    const source = clipboardElement;
-    const nextX = Math.max(0, Math.min(headerMaxWidth, source.x + 10));
-    const nextY = Math.max(0, Math.min(headerMaxHeight, source.y + 10));
-    const pasted: HeaderElement = { ...source, id: createElementId(), x: nextX, y: nextY };
-    applyElements((prev) => [...prev, pasted]);
-    setSelectedElementId(pasted.id);
-    setSelectedElementIds([pasted.id]);
-    setClipboardElement(pasted);
   };
 
   const duplicateSelectedElement = () => {
@@ -1401,6 +1438,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               aria-label="Header-Vorschau. Mit Shift+Klick mehrfach auswählen, mit Tab durch Elemente wechseln, mit Pfeiltasten Auswahl bewegen, Entf löscht, Strg+Z rückgängig, Strg+C/V kopiert und fügt ein, Strg+] bzw. Strg+[ ändert die Ebene, Strg+Shift+? öffnet die Shortcut-Hilfe."
               onKeyDown={onPreviewKeyDown}
               onDragOver={(e) => e.preventDefault()}
+              onMouseDown={onPreviewMouseDown}
               onDrop={onPreviewDrop}
               onMouseMove={onPreviewMouseMove}
               onMouseUp={onPreviewMouseUp}
@@ -1428,11 +1466,24 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 />
               )}
 
+              {selectionBox && (
+                <div
+                  className="absolute border border-primary/80 bg-primary/10 pointer-events-none"
+                  style={{
+                    left: `${Math.min(selectionBox.startX, selectionBox.currentX)}px`,
+                    top: `${Math.min(selectionBox.startY, selectionBox.currentY)}px`,
+                    width: `${Math.abs(selectionBox.currentX - selectionBox.startX)}px`,
+                    height: `${Math.abs(selectionBox.currentY - selectionBox.startY)}px`,
+                  }}
+                />
+              )}
+
               {showShortcutsHelp && (
                 <div className="absolute right-3 top-3 z-20 w-72 rounded-md border bg-background/95 p-3 text-xs shadow-lg backdrop-blur">
                   <div className="mb-2 font-semibold">Tastatur-Shortcuts</div>
                   <ul className="space-y-1 text-muted-foreground">
                     <li><span className="font-medium text-foreground">Shift + Klick</span> Mehrfachauswahl</li>
+                    <li><span className="font-medium text-foreground">Leere Fläche ziehen</span> Auswahlrechteck</li>
                     <li><span className="font-medium text-foreground">Ausrichten-Leiste</span> Bei Mehrfachauswahl sichtbar</li>
                     <li><span className="font-medium text-foreground">Verteilen</span> Ab 3 selektierten Elementen</li>
                     <li><span className="font-medium text-foreground">Snap-Linien</span> Blitzen beim Einrasten kurz auf</li>
