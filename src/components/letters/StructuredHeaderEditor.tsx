@@ -551,6 +551,14 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const onPreviewMouseUp = () => { setDragId(null); setDragStart(null); setResizingId(null); setResizeStart(null); };
 
+  const cycleSelection = (direction: 1 | -1) => {
+    if (elements.length === 0) return;
+    const currentIndex = elements.findIndex((el) => el.id === selectedElementId);
+    const startIndex = currentIndex < 0 ? 0 : currentIndex;
+    const nextIndex = (startIndex + direction + elements.length) % elements.length;
+    setSelectedElementId(elements[nextIndex].id);
+  };
+
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
     if (target?.isContentEditable || editingTextId || editingBlockId) {
@@ -567,6 +575,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     if (isRedo) {
       event.preventDefault();
       redo();
+      return;
+    }
+
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      cycleSelection(event.shiftKey ? -1 : 1);
       return;
     }
 
@@ -827,7 +841,21 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               <p className="text-xs text-muted-foreground">Keine Elemente vorhanden</p>
             ) : (
               elements.map((element) => (
-                <div key={element.id} className={`group p-2 border rounded cursor-pointer transition-colors text-xs ${selectedElementId === element.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`} onClick={() => setSelectedElementId(element.id)}>
+                <div
+                  key={element.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selectedElementId === element.id}
+                  aria-label={`Element auswählen: ${getElementLabel(element)}`}
+                  className={`group p-2 border rounded cursor-pointer transition-colors text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selectedElementId === element.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                  onClick={() => setSelectedElementId(element.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedElementId(element.id);
+                    }
+                  }}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 min-w-0">
                       {getElementIcon(element)}
@@ -967,7 +995,17 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </Button>
             </div>
 
-            <div ref={previewRef} tabIndex={0} onKeyDown={onPreviewKeyDown} onDragOver={(e) => e.preventDefault()} onDrop={onPreviewDrop} onMouseMove={onPreviewMouseMove} onMouseUp={onPreviewMouseUp} onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
+            <div
+              ref={previewRef}
+              tabIndex={0}
+              role="application"
+              aria-label="Header-Vorschau. Mit Tab durch Elemente wechseln, mit Pfeiltasten bewegen, Entf löscht, Strg+Z rückgängig."
+              onKeyDown={onPreviewKeyDown}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={onPreviewDrop}
+              onMouseMove={onPreviewMouseMove}
+              onMouseUp={onPreviewMouseUp}
+              onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
               style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, marginLeft: '8px', marginTop: '8px', backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
               {showCenterGuides && (
