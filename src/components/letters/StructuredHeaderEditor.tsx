@@ -10,64 +10,12 @@ import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpe
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
-
-type ElementType = 'text' | 'image' | 'shape' | 'block';
-type ShapeType = 'line' | 'circle' | 'rectangle' | 'sunflower';
-type ResizeHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
-
-interface BaseElement {
-  id: string;
-  type: ElementType;
-  x: number;
-  y: number;
-  width?: number;
-  height?: number;
-}
-
-interface TextElement extends BaseElement {
-  type: 'text';
-  content?: string;
-  fontSize?: number;
-  fontFamily?: string;
-  fontWeight?: string;
-  fontStyle?: string;
-  textDecoration?: string;
-  color?: string;
-  textLineHeight?: number;
-}
-
-interface ImageElement extends BaseElement {
-  type: 'image';
-  imageUrl?: string;
-  blobUrl?: string;
-  storagePath?: string;
-  preserveAspectRatio?: boolean;
-}
-
-interface ShapeElement extends BaseElement {
-  type: 'shape';
-  shapeType?: ShapeType;
-  fillColor?: string;
-  strokeColor?: string;
-  strokeWidth?: number;
-  borderRadius?: number;
-  rotation?: number;
-  color?: string;
-}
-
-interface BlockElement extends BaseElement {
-  type: 'block';
-  blockId?: string;
-  blockTitle?: string;
-  blockContent?: string;
-  blockFontSize?: number;
-  blockFontFamily?: string;
-  blockFontWeight?: string;
-  blockColor?: string;
-  blockLineHeight?: number;
-}
-
-type HeaderElement = TextElement | ImageElement | ShapeElement | BlockElement;
+import type { HeaderElement, ResizeHandle, ShapeType } from '@/components/canvas-engine/types';
+import { getElementDimensions } from '@/components/canvas-engine/utils/geometry';
+import { alignElements, distributeElements, type AlignAxis, type DistributeAxis } from '@/components/canvas-engine/utils/align';
+import { useCanvasHistory } from '@/components/canvas-engine/hooks/useCanvasHistory';
+import { useCanvasSelection } from '@/components/canvas-engine/hooks/useCanvasSelection';
+import { useCanvasViewport } from '@/components/canvas-engine/hooks/useCanvasViewport';
 
 interface GalleryImage {
   name: string;
@@ -78,6 +26,7 @@ interface GalleryImage {
 interface StructuredHeaderEditorProps {
   initialElements?: HeaderElement[];
   onElementsChange: (elements: HeaderElement[]) => void;
+  actionButtons?: React.ReactNode;
 }
 
 const getShapeFillColor = (element: HeaderElement, fallback = '#000000') =>
@@ -110,15 +59,25 @@ const SunflowerSVG: React.FC<{ width: number; height: number; className?: string
   </svg>
 );
 
-export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ initialElements = [], onElementsChange }) => {
+export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ initialElements = [], onElementsChange, actionButtons }) => {
   const { toast } = useToast();
   const { currentTenant } = useTenant();
-  const [elements, setElements] = useState<HeaderElement[]>(initialElements);
-  const historyPastRef = useRef<HeaderElement[][]>([]);
-  const historyFutureRef = useRef<HeaderElement[][]>([]);
-  const [, setHistoryVersion] = useState(0);
-  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
-  const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
+  const {
+    elements,
+    setElements,
+    applyElements,
+    pushHistorySnapshot,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useCanvasHistory<HeaderElement>(initialElements);
+  const {
+    selectedElementId,
+    setSelectedElementId,
+    selectedElementIds,
+    setSelectedElementIds,
+  } = useCanvasSelection();
   const [showRuler, setShowRuler] = useState(false);
   const [showCenterGuides, setShowCenterGuides] = useState(false);
   const [snapLines, setSnapLines] = useState<{ x?: number; y?: number }>({});
@@ -132,8 +91,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [ariaAnnouncement, setAriaAnnouncement] = useState('');
   const [dragStart, setDragStart] = useState<{ x: number; y: number; origins: Record<string, { x: number; y: number }> } | null>(null);
   const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const dragInitialElementsRef = useRef<HeaderElement[] | null>(null);
@@ -181,80 +138,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const previewScaleY = previewHeight / headerMaxHeight;
   const SNAP_MM = 1.5;
 
-  const getCanvasPoint = (clientX: number, clientY: number) => {
-    if (!previewRef.current) return { x: 0, y: 0 };
-    const rect = previewRef.current.getBoundingClientRect();
-    const x = (clientX - rect.left - pan.x) / zoom;
-    const y = (clientY - rect.top - pan.y) / zoom;
-    return {
-      x: Math.max(0, Math.min(previewWidth, x)),
-      y: Math.max(0, Math.min(previewHeight, y)),
-    };
-  };
-
-  const zoomAtPoint = (clientX: number, clientY: number, nextZoom: number) => {
-    if (!previewRef.current) return;
-    const clampedZoom = Math.max(0.5, Math.min(3, nextZoom));
-    const rect = previewRef.current.getBoundingClientRect();
-    const cursorX = clientX - rect.left;
-    const cursorY = clientY - rect.top;
-    const baseX = (cursorX - pan.x) / zoom;
-    const baseY = (cursorY - pan.y) / zoom;
-    setZoom(clampedZoom);
-    setPan({
-      x: cursorX - baseX * clampedZoom,
-      y: cursorY - baseY * clampedZoom,
-    });
-  };
-
-  const createElementId = () => crypto.randomUUID();
-
-  const bumpHistoryVersion = () => setHistoryVersion((version) => version + 1);
-
-  const pushHistorySnapshot = (snapshot: HeaderElement[]) => {
-    historyPastRef.current.push(snapshot);
-    if (historyPastRef.current.length > 100) historyPastRef.current.shift();
-    historyFutureRef.current = [];
-    bumpHistoryVersion();
-  };
-
-  const applyElements = (
-    updater: (prev: HeaderElement[]) => HeaderElement[],
-    options: { recordHistory?: boolean } = {},
-  ) => {
-    const { recordHistory = true } = options;
-    setElements((prev) => {
-      const next = updater(prev);
-      if (next === prev) return prev;
-      if (recordHistory) {
-        pushHistorySnapshot(prev);
-      }
-      return next;
-    });
-  };
-
-  const undo = () => {
-    setElements((prev) => {
-      const previous = historyPastRef.current.pop();
-      if (!previous) return prev;
-      historyFutureRef.current.unshift(prev);
-      bumpHistoryVersion();
-      return previous;
-    });
-  };
-
-  const redo = () => {
-    setElements((prev) => {
-      const next = historyFutureRef.current.shift();
-      if (!next) return prev;
-      historyPastRef.current.push(prev);
-      bumpHistoryVersion();
-      return next;
-    });
-  };
-
-  const canUndo = historyPastRef.current.length > 0;
-  const canRedo = historyFutureRef.current.length > 0;
+  const {
+    zoom,
+    setZoom,
+    pan,
+    setPan,
+    getCanvasPoint,
+    getViewportPoint,
+    zoomAtPoint,
+  } = useCanvasViewport({ previewWidth, previewHeight });
 
   useEffect(() => {
     if (!previewContainerRef.current) return;
@@ -594,7 +486,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const onPreviewDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     if (!previewRef.current) return;
-    const point = getCanvasPoint(event.clientX, event.clientY);
+    const point = getCanvasPoint(previewRef.current, event.clientX, event.clientY);
     const x = Math.max(0, Math.min(headerMaxWidth, point.x / previewScaleX));
     const y = Math.max(0, Math.min(headerMaxHeight, point.y / previewScaleY));
 
@@ -719,7 +611,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     if (event.button !== 0) return;
     if (event.target !== event.currentTarget) return;
 
-    const startPoint = getCanvasPoint(event.clientX, event.clientY);
+    const startPoint = getViewportPoint(previewRef.current, event.clientX, event.clientY);
     const startX = startPoint.x;
     const startY = startPoint.y;
 
@@ -741,16 +633,21 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }
 
     if (selectionBox && previewRef.current) {
-      const currentPoint = getCanvasPoint(event.clientX, event.clientY);
+      const currentPoint = getViewportPoint(previewRef.current, event.clientX, event.clientY);
       const currentX = currentPoint.x;
       const currentY = currentPoint.y;
       const nextSelection = { ...selectionBox, currentX, currentY };
       setSelectionBox(nextSelection);
 
-      const left = Math.min(nextSelection.startX, nextSelection.currentX) / previewScaleX;
-      const right = Math.max(nextSelection.startX, nextSelection.currentX) / previewScaleX;
-      const top = Math.min(nextSelection.startY, nextSelection.currentY) / previewScaleY;
-      const bottom = Math.max(nextSelection.startY, nextSelection.currentY) / previewScaleY;
+      const leftPx = Math.min(nextSelection.startX, nextSelection.currentX);
+      const rightPx = Math.max(nextSelection.startX, nextSelection.currentX);
+      const topPx = Math.min(nextSelection.startY, nextSelection.currentY);
+      const bottomPx = Math.max(nextSelection.startY, nextSelection.currentY);
+
+      const left = Math.max(0, Math.min(headerMaxWidth, ((leftPx - pan.x) / zoom) / previewScaleX));
+      const right = Math.max(0, Math.min(headerMaxWidth, ((rightPx - pan.x) / zoom) / previewScaleX));
+      const top = Math.max(0, Math.min(headerMaxHeight, ((topPx - pan.y) / zoom) / previewScaleY));
+      const bottom = Math.max(0, Math.min(headerMaxHeight, ((bottomPx - pan.y) / zoom) / previewScaleY));
 
       const hits = elements
         .filter((element) => {
@@ -1017,86 +914,21 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
 
 
-  const getElementDimensions = (element: HeaderElement) => ({
-    width: Math.max(1, element.width || (element.type === 'text' ? 70 : element.type === 'block' ? 45 : 50)),
-    height: Math.max(1, element.height || (element.type === 'text' ? 8 : element.type === 'block' ? 18 : 10)),
-  });
-
-  const alignSelection = (axis: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
-    if (selectedElementIds.length < 2) return;
-    const selected = elements.filter((el) => selectedElementIds.includes(el.id));
-    if (selected.length < 2) return;
-
-    const bounds = selected.reduce((acc, element) => {
-      const { width, height } = getElementDimensions(element);
-      return {
-        left: Math.min(acc.left, element.x),
-        top: Math.min(acc.top, element.y),
-        right: Math.max(acc.right, element.x + width),
-        bottom: Math.max(acc.bottom, element.y + height),
-      };
-    }, { left: Number.POSITIVE_INFINITY, top: Number.POSITIVE_INFINITY, right: Number.NEGATIVE_INFINITY, bottom: Number.NEGATIVE_INFINITY });
-
-    const centerX = (bounds.left + bounds.right) / 2;
-    const middleY = (bounds.top + bounds.bottom) / 2;
-
-    applyElements((prev) => prev.map((element) => {
-      if (!selectedElementIds.includes(element.id)) return element;
-      const { width, height } = getElementDimensions(element);
-      let x = element.x;
-      let y = element.y;
-
-      if (axis === 'left') x = bounds.left;
-      if (axis === 'center') x = centerX - width / 2;
-      if (axis === 'right') x = bounds.right - width;
-      if (axis === 'top') y = bounds.top;
-      if (axis === 'middle') y = middleY - height / 2;
-      if (axis === 'bottom') y = bounds.bottom - height;
-
-      return {
-        ...element,
-        x: Math.max(0, Math.min(headerMaxWidth, Math.round(x))),
-        y: Math.max(0, Math.min(headerMaxHeight, Math.round(y))),
-      };
+  const alignSelection = (axis: AlignAxis) => {
+    applyElements((prev) => alignElements(prev, axis, {
+      selectedElementIds,
+      headerMaxWidth,
+      headerMaxHeight,
     }));
   };
 
-  const distributeSelection = (axis: 'horizontal' | 'vertical') => {
-    if (selectedElementIds.length < 3) return;
-    const selected = elements
-      .filter((el) => selectedElementIds.includes(el.id))
-      .map((element) => ({ ...element, ...getElementDimensions(element) }));
-    if (selected.length < 3) return;
-
-    const sorted = [...selected].sort((a, b) => (axis === 'horizontal' ? a.x - b.x : a.y - b.y));
-    const first = sorted[0];
-    const last = sorted[sorted.length - 1];
-    const startPos = axis === 'horizontal' ? first.x : first.y;
-    const endPos = axis === 'horizontal' ? last.x + last.width : last.y + last.height;
-    const totalSize = sorted.reduce((sum, item) => sum + (axis === 'horizontal' ? item.width : item.height), 0);
-    const totalGap = endPos - startPos - totalSize;
-    if (totalGap <= 0) return;
-
-    const gap = totalGap / (sorted.length - 1);
-    let cursor = startPos;
-    const positions = new Map<string, number>();
-
-    sorted.forEach((item) => {
-      positions.set(item.id, cursor);
-      cursor += (axis === 'horizontal' ? item.width : item.height) + gap;
-    });
-
-    applyElements((prev) => prev.map((element) => {
-      const nextPos = positions.get(element.id);
-      if (nextPos == null) return element;
-      return {
-        ...element,
-        x: axis === 'horizontal' ? Math.max(0, Math.min(headerMaxWidth, Math.round(nextPos))) : element.x,
-        y: axis === 'vertical' ? Math.max(0, Math.min(headerMaxHeight, Math.round(nextPos))) : element.y,
-      };
+  const distributeSelection = (axis: DistributeAxis) => {
+    applyElements((prev) => distributeElements(prev, axis, {
+      selectedElementIds,
+      headerMaxWidth,
+      headerMaxHeight,
     }));
   };
-
 
 
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -1188,7 +1020,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     if (!event.ctrlKey && !event.metaKey) return;
     event.preventDefault();
     const delta = event.deltaY > 0 ? -0.1 : 0.1;
-    zoomAtPoint(event.clientX, event.clientY, zoom + delta);
+    zoomAtPoint(previewRef.current, event.clientX, event.clientY, zoom + delta);
   };
 
   const validatePosition = (value: number, max: number) => Math.max(0, Math.min(value, max));
@@ -1405,6 +1237,17 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
       <div className="space-y-4">
+        {actionButtons && (
+          <Card>
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm">Bearbeitung</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-2">
+              {actionButtons}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Tools */}
         <Card>
           <CardHeader className="py-3 px-4">
@@ -1606,15 +1449,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht. Resize + Ctrl = Seitenverhältnis. Bei Mehrfachauswahl skaliert der Handle die ganze Gruppe.</p>
         </CardHeader>
         <CardContent className="p-6">
-          <div ref={previewContainerRef} className="flex items-center justify-center min-h-[340px] w-full">
-          <div className="relative pl-12 pt-12">
+          <div ref={previewContainerRef} className="flex items-center justify-center min-h-[340px] w-full mt-4">
+          <div className="relative" style={{ paddingLeft: showRuler ? 28 : 0, paddingTop: showRuler ? 28 : 0 }}>
             {showRuler && (
               <>
-                <div className="absolute top-2 left-12 right-0 h-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
+                <div className="absolute top-0 left-7 right-0 h-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
                   <canvas ref={horizontalRulerRef} width={previewWidth} height={28} className="absolute inset-0 h-full w-full" />
                   {Array.from({ length: 22 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * previewWidth) / 21}px` }}>{i * 10}</span>))}
                 </div>
-                <div className="absolute top-12 left-2 bottom-0 w-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
+                <div className="absolute top-7 left-0 bottom-0 w-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
                   <canvas ref={verticalRulerRef} width={28} height={previewHeight} className="absolute inset-0 h-full w-full" />
                   {Array.from({ length: 5 }).map((_, i) => (<span key={`label-y-${i}`} className="absolute left-0" style={{ top: `${(i * previewHeight) / 4}px` }}>{i * 10}</span>))}
                 </div>
@@ -1687,7 +1530,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               onMouseUp={onPreviewMouseUp}
               onClick={(e) => { if (e.target === e.currentTarget) { setSelectedElementId(null); setSelectedElementIds([]); } }}
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
-              style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, marginLeft: '8px', marginTop: '8px', cursor: isPanning || isSpacePressed ? 'grab' : undefined, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
+              style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, cursor: isPanning || isSpacePressed ? 'grab' : undefined, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
               <span className="sr-only" aria-live="polite">{ariaAnnouncement}</span>
               <div className="absolute inset-0" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: 'top left' }}>
               {showCenterGuides && (
@@ -1727,6 +1570,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 </div>
               )}
 
+              </div>
+
               {selectionBox && (
                 <div
                   className="absolute border border-primary/80 bg-primary/10 pointer-events-none"
@@ -1738,8 +1583,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   }}
                 />
               )}
-
-              </div>
 
               {showShortcutsHelp && (
                 <div className="absolute right-3 top-3 z-20 w-72 rounded-md border bg-background/95 p-3 text-xs shadow-lg backdrop-blur">
