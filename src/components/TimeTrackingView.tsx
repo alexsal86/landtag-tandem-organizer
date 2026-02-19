@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCombinedTimeEntries, CombinedTimeEntry } from "@/hooks/useCombinedTimeEntries";
+import { useYearlyBalance } from "@/hooks/useYearlyBalance";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -124,17 +126,15 @@ export function TimeTrackingView() {
   const [overtimeEndDate, setOvertimeEndDate] = useState("");
   const [overtimeReason, setOvertimeReason] = useState("");
   
-  // Yearly balance state with monthly breakdown
-  const [yearlyBalance, setYearlyBalance] = useState<number>(0);
-  const [yearlyBreakdown, setYearlyBreakdown] = useState<{
-    month: Date;
-    workedMinutes: number;
-    creditMinutes: number;
-    targetMinutes: number;
-    balance: number;
-  }[]>([]);
-  const [loadingYearlyBalance, setLoadingYearlyBalance] = useState(false);
   const [showBreakdownDialog, setShowBreakdownDialog] = useState(false);
+
+  // Confirm dialog state (replaces window.confirm)
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
   const monthStart = startOfMonth(selectedMonth);
   const monthEnd = endOfMonth(selectedMonth);
@@ -171,115 +171,17 @@ export function TimeTrackingView() {
     } catch (error: any) { toast.error("Fehler: " + error.message); } finally { setLoading(false); }
   };
 
-  // Load yearly balance with monthly breakdown
-  const loadYearlyBalance = async () => {
-    if (!user || !employeeSettings) return;
-    setLoadingYearlyBalance(true);
-    try {
-      const currentYear = getYear(selectedMonth);
-      const yearStart = new Date(currentYear, 0, 1);
-      const today = new Date();
-      
-      const [entriesRes, leavesRes, holidaysRes, correctionsRes] = await Promise.all([
-        supabase.from("time_entries").select("minutes, work_date").eq("user_id", user.id).gte("work_date", format(yearStart, "yyyy-MM-dd")).lte("work_date", format(today, "yyyy-MM-dd")),
-        supabase.from("leave_requests").select("type, start_date, end_date").eq("user_id", user.id).eq("status", "approved").gte("start_date", format(yearStart, "yyyy-MM-dd")).lte("end_date", format(today, "yyyy-MM-dd")),
-        supabase.from("public_holidays").select("holiday_date").gte("holiday_date", format(yearStart, "yyyy-MM-dd")).lte("holiday_date", format(today, "yyyy-MM-dd")),
-        supabase.from("time_entry_corrections").select("correction_minutes").eq("user_id", user.id),
-      ]);
-      
-      // Safe calculation with fallback to prevent NaN
-      const hoursPerWeek = employeeSettings.hours_per_week || 39.5;
-      const daysPerWeek = employeeSettings.days_per_week || 5;
-      const dailyMin = Math.round((hoursPerWeek / daysPerWeek) * 60);
-      const holidayDates = new Set((holidaysRes.data || []).map(h => h.holiday_date));
-      
-      // Build per-month data
-      const monthlyBreakdown: {
-        month: Date;
-        workedMinutes: number;
-        creditMinutes: number;
-        targetMinutes: number;
-        balance: number;
-      }[] = [];
-      
-      const currentMonthIndex = today.getMonth();
-      
-      for (let m = 0; m <= currentMonthIndex; m++) {
-        const mStart = new Date(currentYear, m, 1);
-        const mEnd = endOfMonth(mStart);
-        const mEffectiveEnd = mEnd > today ? today : mEnd;
-        
-        // Work days in this month
-        const monthDays = eachDayOfInterval({ start: mStart, end: mEffectiveEnd });
-        const monthWorkDays = monthDays.filter(d => 
-          d.getDay() !== 0 && d.getDay() !== 6 && !holidayDates.has(format(d, "yyyy-MM-dd"))
-        );
-        const monthTarget = monthWorkDays.length * dailyMin;
-        
-        // Calculate absence dates for this month FIRST (needed for worked filter)
-        const monthAbsenceDates = new Set<string>();
-        (leavesRes.data || []).forEach(leave => {
-          if (['sick', 'vacation', 'overtime_reduction', 'medical'].includes(leave.type)) {
-            try {
-              eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
-                .filter(d => d.getMonth() === m && d.getFullYear() === currentYear && d <= mEffectiveEnd)
-                .forEach(d => monthAbsenceDates.add(format(d, 'yyyy-MM-dd')));
-            } catch {}
-          }
-        });
-        
-        // Worked minutes in this month - EXCLUDE holidays and absence days
-        const monthWorked = (entriesRes.data || [])
-          .filter(e => {
-            const d = parseISO(e.work_date);
-            const dateStr = format(d, 'yyyy-MM-dd');
-            // Exclude: other months, holidays, and absence days (to avoid double counting with credits)
-            return d.getMonth() === m && 
-                   d.getFullYear() === currentYear &&
-                   !holidayDates.has(dateStr) &&
-                   !monthAbsenceDates.has(dateStr);
-          })
-          .reduce((sum, e) => sum + (e.minutes || 0), 0);
-        
-        // monthAbsenceDates already calculated above (before worked calculation)
-        
-        // Credit minutes for this month
-        const monthCredit = [...monthAbsenceDates]
-          .filter(d => !holidayDates.has(d))
-          .filter(d => {
-            const date = parseISO(d);
-            return date.getDay() !== 0 && date.getDay() !== 6;
-          })
-          .length * dailyMin;
-        
-        const monthBalance = monthWorked + monthCredit - monthTarget;
-        
-        monthlyBreakdown.push({
-          month: mStart,
-          workedMinutes: monthWorked,
-          creditMinutes: monthCredit,
-          targetMinutes: monthTarget,
-          balance: monthBalance,
-        });
-      }
-      
-      setYearlyBreakdown(monthlyBreakdown);
-      
-      // Corrections total
-      const correctionsTotal = (correctionsRes.data || []).reduce((sum, c) => sum + c.correction_minutes, 0);
-      
-      // Total balance = sum of monthly balances + corrections
-      const totalBalance = monthlyBreakdown.reduce((sum, mb) => sum + mb.balance, 0) + correctionsTotal;
-      setYearlyBalance(totalBalance);
-      
-    } catch (error) {
-      console.error("Error loading yearly balance:", error);
-    } finally {
-      setLoadingYearlyBalance(false);
-    }
-  };
-
-  useEffect(() => { if (user && employeeSettings) loadYearlyBalance(); }, [user, employeeSettings, selectedMonth]);
+  // useYearlyBalance hook – replaces inline loadYearlyBalance (race-condition safe via AbortController)
+  const {
+    yearlyBalance,
+    yearlyBreakdown,
+    loading: loadingYearlyBalance,
+    refetch: refetchYearlyBalance,
+  } = useYearlyBalance(
+    user?.id ?? null,
+    getYear(selectedMonth),
+    employeeSettings
+  );
 
   // Tägliche Arbeitszeit = Wochenstunden / Arbeitstage pro Woche
   // z.B. 39,5h / 5 Tage = 7,9h (7 Std. 54 Min.) pro Tag
@@ -662,7 +564,15 @@ export function TimeTrackingView() {
   };
 
   const handleDeleteEntry = async (entryId: string) => {
-    if (!confirm("Eintrag wirklich löschen?")) return;
+    setConfirmState({
+      open: true,
+      title: "Eintrag löschen",
+      description: "Möchten Sie diesen Zeiteintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      onConfirm: () => performDeleteEntry(entryId),
+    });
+  };
+
+  const performDeleteEntry = async (entryId: string) => {
 
     try {
       const { data, error } = await supabase
@@ -733,7 +643,15 @@ export function TimeTrackingView() {
   };
 
   const handleCancelVacationRequest = async (leaveId: string) => {
-    if (!window.confirm('Möchten Sie diesen Urlaubsantrag wirklich stornieren?')) return;
+    setConfirmState({
+      open: true,
+      title: "Urlaubsantrag stornieren",
+      description: "Möchten Sie diesen Urlaubsantrag wirklich stornieren? Bei genehmigten Anträgen wird eine Stornierungsanfrage an den Admin gesendet.",
+      onConfirm: () => performCancelVacation(leaveId),
+    });
+  };
+
+  const performCancelVacation = async (leaveId: string) => {
     
     try {
       const leave = vacationLeaves.find(v => v.id === leaveId);
@@ -778,8 +696,15 @@ export function TimeTrackingView() {
 
   // Arzttermin stornieren
   const handleCancelMedicalRequest = async (leaveId: string) => {
-    if (!window.confirm('Möchten Sie diesen Arzttermin wirklich stornieren?')) return;
-    
+    setConfirmState({
+      open: true,
+      title: "Arzttermin stornieren",
+      description: "Möchten Sie diesen Arzttermin wirklich stornieren?",
+      onConfirm: () => performCancelMedical(leaveId),
+    });
+  };
+
+  const performCancelMedical = async (leaveId: string) => {
     try {
       const leave = medicalLeaves.find(m => m.id === leaveId);
       if (!leave) {
@@ -815,7 +740,15 @@ export function TimeTrackingView() {
 
   // Überstundenabbau stornieren
   const handleCancelOvertimeRequest = async (leaveId: string) => {
-    if (!window.confirm('Möchten Sie diesen Überstundenabbau wirklich stornieren?')) return;
+    setConfirmState({
+      open: true,
+      title: "Überstundenabbau stornieren",
+      description: "Möchten Sie diesen Überstundenabbau-Antrag wirklich stornieren?",
+      onConfirm: () => performCancelOvertime(leaveId),
+    });
+  };
+
+  const performCancelOvertime = async (leaveId: string) => {
     
     try {
       const leave = overtimeLeaves.find(o => o.id === leaveId);
@@ -1362,7 +1295,9 @@ export function TimeTrackingView() {
                       </Badge>
                     </div>
                     <p className="text-xs text-amber-700 mt-1">
-                      ⚠️ Verfällt am 31.03.{selectedMonth.getFullYear()} – Wird zuerst verbraucht!
+                      ⚠️ Verfällt am {employeeSettings?.carry_over_expires_at 
+                        ? format(new Date(employeeSettings.carry_over_expires_at), "dd.MM.yyyy")
+                        : `31.03.${selectedMonth.getFullYear()}`} – Wird zuerst verbraucht!
                     </p>
                   </div>
                 )}
@@ -1845,6 +1780,22 @@ export function TimeTrackingView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Accessible Confirmation Dialog – replaces window.confirm */}
+      <ConfirmDialog
+        open={confirmState.open}
+        onOpenChange={(open) => setConfirmState((s) => ({ ...s, open }))}
+        title={confirmState.title}
+        description={confirmState.description}
+        onConfirm={() => {
+          setConfirmState((s) => ({ ...s, open: false }));
+          confirmState.onConfirm();
+        }}
+        confirmLabel="Ja, fortfahren"
+        cancelLabel="Abbrechen"
+        destructive
+      />
     </div>
   );
 }
+

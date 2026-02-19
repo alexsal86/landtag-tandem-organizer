@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,9 @@ export function MyWorkDecisionsTab() {
   const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
   const [commentsDecisionTitle, setCommentsDecisionTitle] = useState("");
   const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
+  const latestLoadRequestRef = useRef(0);
+
+  const { decisions, setDecisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
 
   const { decisions, setDecisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
 
