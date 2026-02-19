@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid, Ruler, Crosshair, Undo2, Redo2, Keyboard, Copy, ClipboardPaste, CopyPlus } from 'lucide-react';
+import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid, Ruler, Crosshair, Undo2, Redo2, Keyboard, Copy, ClipboardPaste, CopyPlus, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -120,7 +120,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [showRuler, setShowRuler] = useState(false);
   const [showCenterGuides, setShowCenterGuides] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
-  const [, setClipboardVersion] = useState(0);
+  const [clipboardElement, setClipboardElement] = useState<HeaderElement | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -133,7 +133,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const horizontalRulerRef = useRef<HTMLCanvasElement | null>(null);
   const verticalRulerRef = useRef<HTMLCanvasElement | null>(null);
   const lastReportedRef = useRef<HeaderElement[]>(initialElements);
-  const clipboardRef = useRef<HeaderElement | null>(null);
 
   // Resize state
   const [resizingId, setResizingId] = useState<string | null>(null);
@@ -633,20 +632,18 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const copySelectedElement = () => {
     if (!selectedElement) return;
-    clipboardRef.current = { ...selectedElement };
-    setClipboardVersion((version) => version + 1);
+    setClipboardElement({ ...selectedElement });
   };
 
   const pasteClipboardElement = () => {
-    if (!clipboardRef.current) return;
-    const source = clipboardRef.current;
+    if (!clipboardElement) return;
+    const source = clipboardElement;
     const nextX = Math.max(0, Math.min(headerMaxWidth, source.x + 10));
     const nextY = Math.max(0, Math.min(headerMaxHeight, source.y + 10));
     const pasted: HeaderElement = { ...source, id: createElementId(), x: nextX, y: nextY };
     applyElements((prev) => [...prev, pasted]);
     setSelectedElementId(pasted.id);
-    clipboardRef.current = pasted;
-    setClipboardVersion((version) => version + 1);
+    setClipboardElement(pasted);
   };
 
   const duplicateSelectedElement = () => {
@@ -654,7 +651,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     pasteClipboardElement();
   };
 
-  const canPasteFromClipboard = Boolean(clipboardRef.current);
+  const canPasteFromClipboard = Boolean(clipboardElement);
+  const selectedIndex = selectedElement ? elements.findIndex((el) => el.id === selectedElement.id) : -1;
+  const canMoveLayerBackward = selectedIndex > 0;
+  const canMoveLayerForward = selectedIndex >= 0 && selectedIndex < elements.length - 1;
 
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
@@ -1151,6 +1151,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </Button>
               <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={duplicateSelectedElement} disabled={!selectedElement}>
                 <CopyPlus className="h-3.5 w-3.5 mr-1" />Duplizieren
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, -1)} disabled={!canMoveLayerBackward}>
+                <ArrowDown className="h-3.5 w-3.5 mr-1" />Ebene runter
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, 1)} disabled={!canMoveLayerForward}>
+                <ArrowUp className="h-3.5 w-3.5 mr-1" />Ebene hoch
               </Button>
               <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}>
                 <Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts
