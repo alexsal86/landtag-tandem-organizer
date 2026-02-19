@@ -121,6 +121,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [dragId, setDragId] = useState<string | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+  const [editorDrafts, setEditorDrafts] = useState<Record<string, string>>({});
+  const [ariaAnnouncement, setAriaAnnouncement] = useState('');
   const [dragStart, setDragStart] = useState<{ x: number; y: number; ox: number; oy: number } | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
@@ -550,6 +552,14 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const onPreviewMouseUp = () => { setDragId(null); setDragStart(null); setResizingId(null); setResizeStart(null); };
 
+  const cycleSelection = (direction: 1 | -1) => {
+    if (elements.length === 0) return;
+    const currentIndex = elements.findIndex((el) => el.id === selectedElementId);
+    const startIndex = currentIndex < 0 ? 0 : currentIndex;
+    const nextIndex = (startIndex + direction + elements.length) % elements.length;
+    setSelectedElementId(elements[nextIndex].id);
+  };
+
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
     if (target?.isContentEditable || editingTextId || editingBlockId) {
@@ -569,6 +579,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       return;
     }
 
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      cycleSelection(event.shiftKey ? -1 : 1);
+      return;
+    }
+
     if (!selectedElement) return;
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); removeElement(selectedElement.id); return; }
     let dx = 0, dy = 0;
@@ -583,10 +599,34 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const validatePosition = (value: number, max: number) => Math.max(0, Math.min(value, max));
 
-  const handlePlainTextPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const text = event.clipboardData.getData('text/plain');
-    document.execCommand('insertText', false, text);
+  const startEditingText = (element: TextElement) => {
+    setEditorDrafts((prev) => ({ ...prev, [element.id]: element.content || '' }));
+    setEditingTextId(element.id);
+  };
+
+  const startEditingBlock = (element: BlockElement) => {
+    setEditorDrafts((prev) => ({ ...prev, [element.id]: element.blockContent || '' }));
+    setEditingBlockId(element.id);
+  };
+
+  const cancelEditing = (id: string) => {
+    setEditorDrafts((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (editingTextId === id) setEditingTextId(null);
+    if (editingBlockId === id) setEditingBlockId(null);
+  };
+
+  const commitTextEditing = (id: string) => {
+    updateElement(id, { content: editorDrafts[id] || '' });
+    cancelEditing(id);
+  };
+
+  const commitBlockEditing = (id: string) => {
+    updateElement(id, { blockContent: editorDrafts[id] || '' });
+    cancelEditing(id);
   };
 
   const renderColorInput = (label: string, value: string, onChange: (color: string) => void) => (
@@ -629,6 +669,18 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return 'Element';
   };
 
+  const getElementAriaLabel = (el: HeaderElement) => `${getElementLabel(el)} bei x ${el.x} Millimeter, y ${el.y} Millimeter`;
+
+  useEffect(() => {
+    if (!selectedElementId) {
+      setAriaAnnouncement('Keine Auswahl');
+      return;
+    }
+    const selected = elements.find((el) => el.id === selectedElementId);
+    if (!selected) return;
+    setAriaAnnouncement(`Ausgewählt: ${getElementAriaLabel(selected)}`);
+  }, [elements, selectedElementId]);
+
   const getElementIcon = (el: HeaderElement) => {
     if (el.type === 'text') return <Type className="h-3.5 w-3.5 shrink-0" />;
     if (el.type === 'image') return <ImageIcon className="h-3.5 w-3.5 shrink-0" />;
@@ -661,7 +713,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
     if (element.shapeType === 'sunflower') {
       return (
-        <div key={element.id} style={wrapperStyle} onMouseDown={(e) => onElementMouseDown(e, element)} className={`border ${isSelected ? 'border-primary border-dashed border-2' : 'border-transparent'}`}>
+        <div key={element.id} aria-label={getElementAriaLabel(element)} style={wrapperStyle} onMouseDown={(e) => onElementMouseDown(e, element)} className={`border ${isSelected ? 'border-primary border-dashed border-2' : 'border-transparent'}`}>
           <SunflowerSVG width={w} height={h} />
           {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} />}
         </div>
@@ -669,7 +721,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }
 
     return (
-      <div key={element.id} style={wrapperStyle} onMouseDown={(e) => onElementMouseDown(e, element)} className={`${isSelected ? 'ring-2 ring-primary ring-dashed' : ''}`}>
+      <div key={element.id} aria-label={getElementAriaLabel(element)} style={wrapperStyle} onMouseDown={(e) => onElementMouseDown(e, element)} className={`${isSelected ? 'ring-2 ring-primary ring-dashed' : ''}`}>
         <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
           {element.shapeType === 'line' && (
             <line x1="0" y1={h / 2} x2={w} y2={h / 2} stroke={getShapeStrokeColor(element, '#000000')} strokeWidth={element.strokeWidth ?? 2} />
@@ -687,7 +739,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   // Render block element on canvas
-  const renderBlockCanvas = (element: HeaderElement, scaleX: number, scaleY: number) => {
+  const renderBlockCanvas = (element: BlockElement, scaleX: number, scaleY: number) => {
     const w = (element.width || 45) * scaleX;
     const h = (element.height || 18) * scaleY;
     const isSelected = selectedElementId === element.id;
@@ -698,29 +750,35 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return (
       <div
         key={element.id}
+        aria-label={getElementAriaLabel(element)}
         className={`absolute cursor-move border overflow-hidden ${isSelected ? 'border-primary border-dashed border-2 bg-primary/5' : 'border-gray-300 bg-gray-50/50'}`}
         style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${w}px`, height: `${h}px`, fontSize: `${fontSize}px`, fontFamily: element.blockFontFamily || 'Arial', fontWeight: element.blockFontWeight || 'normal', color: element.blockColor || '#000', lineHeight: `${element.blockLineHeight || 1}` }}
         onMouseDown={(e) => onElementMouseDown(e, element)}
-        onDoubleClick={(e) => { e.stopPropagation(); setEditingBlockId(element.id); }}
+        onDoubleClick={(e) => { e.stopPropagation(); startEditingBlock(element); }}
       >
         {!hasContent && <div className="font-bold text-[10px] px-1 pt-0.5 opacity-70">{element.blockTitle || 'Block'}</div>}
-        <div
-          className="px-1 whitespace-pre-line h-full outline-none"
-          contentEditable={isEditing}
-          suppressContentEditableWarning
-          onPaste={handlePlainTextPaste}
-          onBlur={(e) => {
-            updateElement(element.id, { blockContent: e.currentTarget.textContent || '' });
-            setEditingBlockId(null);
-          }}
-          onMouseDown={(e) => {
-            if (isEditing) {
-              e.stopPropagation();
-            }
-          }}
-        >
-          {element.blockContent || ''}
-        </div>
+        {isEditing ? (
+          <textarea
+            className="px-1 h-full w-full resize-none border-0 bg-transparent outline-none"
+            value={editorDrafts[element.id] || ''}
+            autoFocus
+            onChange={(e) => setEditorDrafts((prev) => ({ ...prev, [element.id]: e.target.value }))}
+            onBlur={() => commitBlockEditing(element.id)}
+            onMouseDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelEditing(element.id);
+              }
+              if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                commitBlockEditing(element.id);
+              }
+            }}
+          />
+        ) : (
+          <div className="px-1 whitespace-pre-line h-full">{element.blockContent || ''}</div>
+        )}
         {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} />}
       </div>
     );
@@ -797,7 +855,21 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               <p className="text-xs text-muted-foreground">Keine Elemente vorhanden</p>
             ) : (
               elements.map((element) => (
-                <div key={element.id} className={`group p-2 border rounded cursor-pointer transition-colors text-xs ${selectedElementId === element.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`} onClick={() => setSelectedElementId(element.id)}>
+                <div
+                  key={element.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selectedElementId === element.id}
+                  aria-label={`Element auswählen: ${getElementLabel(element)}`}
+                  className={`group p-2 border rounded cursor-pointer transition-colors text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selectedElementId === element.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                  onClick={() => setSelectedElementId(element.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedElementId(element.id);
+                    }
+                  }}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 min-w-0">
                       {getElementIcon(element)}
@@ -937,9 +1009,20 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </Button>
             </div>
 
-            <div ref={previewRef} tabIndex={0} onKeyDown={onPreviewKeyDown} onDragOver={(e) => e.preventDefault()} onDrop={onPreviewDrop} onMouseMove={onPreviewMouseMove} onMouseUp={onPreviewMouseUp} onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
+            <div
+              ref={previewRef}
+              tabIndex={0}
+              role="application"
+              aria-label="Header-Vorschau. Mit Tab durch Elemente wechseln, mit Pfeiltasten bewegen, Entf löscht, Strg+Z rückgängig."
+              onKeyDown={onPreviewKeyDown}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={onPreviewDrop}
+              onMouseMove={onPreviewMouseMove}
+              onMouseUp={onPreviewMouseUp}
+              onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
               style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, marginLeft: '8px', marginTop: '8px', backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
+              <span className="sr-only" aria-live="polite">{ariaAnnouncement}</span>
               {showCenterGuides && (
                 <>
                   <div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-red-500/80 pointer-events-none" />
@@ -954,7 +1037,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 if (element.type === 'text') {
                   const isEditing = editingTextId === element.id;
                   return (
-                    <div key={element.id} className={`absolute border ${selectedElementId === element.id ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
+                    <div
+                      key={element.id}
+                      aria-label={getElementAriaLabel(element)}
+                      className={`absolute border ${selectedElementId === element.id ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
                       style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, fontSize: `${(element.fontSize || 12) * (96 / 72)}px`, fontFamily: element.fontFamily || 'Arial', fontWeight: element.fontWeight || 'normal', fontStyle: element.fontStyle || 'normal', textDecoration: element.textDecoration || 'none', color: element.color || '#000000', lineHeight: `${element.textLineHeight || 1.2}` }}
                       onMouseDown={(e) => {
                         if (isEditing) {
@@ -963,15 +1049,27 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                         }
                         onElementMouseDown(e, element);
                       }}
-                      onDoubleClick={(e) => { e.stopPropagation(); setEditingTextId(element.id); }}
-                      contentEditable={isEditing}
-                      suppressContentEditableWarning
-                      onPaste={handlePlainTextPaste}
-                      onBlur={(e) => {
-                        updateElement(element.id, { content: e.currentTarget.textContent || '' });
-                        setEditingTextId(null);
-                      }}>
-                      {element.content || 'Text'}
+                      onDoubleClick={(e) => { e.stopPropagation(); startEditingText(element); }}>
+                      {isEditing ? (
+                        <textarea
+                          className="w-full min-w-[120px] resize-none border-0 bg-transparent p-0 outline-none"
+                          value={editorDrafts[element.id] || ''}
+                          autoFocus
+                          onChange={(e) => setEditorDrafts((prev) => ({ ...prev, [element.id]: e.target.value }))}
+                          onBlur={() => commitTextEditing(element.id)}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                              e.preventDefault();
+                              cancelEditing(element.id);
+                            }
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                              e.preventDefault();
+                              commitTextEditing(element.id);
+                            }
+                          }}
+                        />
+                      ) : (element.content || 'Text')}
                     </div>
                   );
                 }
@@ -981,7 +1079,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   const elW = (element.width || 50) * scaleX;
                   const elH = (element.height || 30) * scaleY;
                   return (
-                    <div key={element.id} className="absolute" style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${elW}px`, height: `${elH}px` }}>
+                    <div key={element.id} className="absolute" aria-label={getElementAriaLabel(element)} style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${elW}px`, height: `${elH}px` }}>
                       <img src={imgSrc} alt="Header Image" className={`w-full h-full object-contain cursor-move border ${selectedElementId === element.id ? 'border-primary border-dashed border-2' : 'border-transparent'}`} onMouseDown={(e) => onElementMouseDown(e, element)} draggable={false} />
                       {selectedElementId === element.id && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} title="Ziehen zum Skalieren (fixes Seitenverhältnis aktiv, Ctrl ebenfalls möglich)" />}
                     </div>
