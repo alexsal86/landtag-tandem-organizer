@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import * as sdk from 'matrix-js-sdk';
 import { CryptoEvent } from 'matrix-js-sdk';
 import { VerifierEvent, VerificationPhase, type Verifier } from 'matrix-js-sdk/lib/crypto-api/verification';
+import { decodeRecoveryKey } from 'matrix-js-sdk/lib/crypto-api/recovery-key';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
@@ -86,8 +87,7 @@ const MAX_CACHED_MESSAGES = 200;
 
 const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): MatrixMessage | null => {
   const eventType = event.getType();
-  const clearType = (event as any).getClearType?.();
-  const isMessageEvent = eventType === 'm.room.message' || clearType === 'm.room.message' || eventType === 'm.room.encrypted';
+  const isMessageEvent = eventType === 'm.room.message' || eventType === 'm.room.encrypted';
 
   if (!isMessageEvent) return null;
 
@@ -144,10 +144,10 @@ function setupVerifierListeners(
   setActiveSasVerification: React.Dispatch<React.SetStateAction<MatrixSasVerificationState | null>>,
   setLastVerificationError: React.Dispatch<React.SetStateAction<string | null>>,
   describeError?: (error: unknown) => string,
-) {
+): () => void {
   const formatError = describeError ?? ((e: unknown) => (e instanceof Error ? e.message : 'Verifizierung abgebrochen'));
 
-  verifier.on(VerifierEvent.ShowSas, (sas) => {
+  const onShowSas = (sas: any) => {
     const emojis = (sas.sas.emoji || []).map(([symbol, description]: [string, string]) => ({ symbol, description }));
     setActiveSasVerification({
       transactionId: verificationRequest.transactionId,
@@ -175,12 +175,20 @@ function setupVerifierListeners(
         setLastVerificationError('Verifizierung wurde abgebrochen.');
       },
     });
-  });
+  };
 
-  verifier.on(VerifierEvent.Cancel, (error) => {
+  const onCancel = (error: unknown) => {
     setLastVerificationError(formatError(error));
     setActiveSasVerification(null);
-  });
+  };
+
+  verifier.on(VerifierEvent.ShowSas, onShowSas);
+  verifier.on(VerifierEvent.Cancel, onCancel);
+
+  return () => {
+    verifier.off(VerifierEvent.ShowSas, onShowSas);
+    verifier.off(VerifierEvent.Cancel, onCancel);
+  };
 }
 
 // ─── Context type ────────────────────────────────────────────────────────────
@@ -250,6 +258,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const isConnectingRef = useRef(false);
   const connectCalledRef = useRef(false);
   const isConnectedRef = useRef(false);
+  const authPasswordRef = useRef<string | undefined>(undefined);
   const clientRef = useRef<sdk.MatrixClient | null>(null);
   const listenersRef = useRef<Array<{ event: string; handler: (...args: any[]) => void }>>([]);
 
@@ -329,12 +338,28 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     try {
       // 1. Resolve device ID from localStorage (no whoAmI call)
       const localDeviceId = creds.deviceId || localStorage.getItem(`matrix_device_id:${creds.userId}`) || undefined;
+      authPasswordRef.current = creds.password;
 
-      // 2. Create client (canonical: no verificationMethods, no cryptoCallbacks on createClient)
-      const matrixClient = sdk.createClient({
+      const getSecretStorageKey = async ({ keys }: { keys: Record<string, unknown> }) => {
+        const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`)?.trim();
+        if (!recoveryKey) return null;
+
+        const keyId = Object.keys(keys)[0];
+        if (!keyId) return null;
+
+        try {
+          return [keyId, decodeRecoveryKey(recoveryKey)] as [string, Uint8Array];
+        } catch {
+          return null;
+        }
+      };
+
+      // 2. Create client with Secret Storage callback for recovery-key based key retrieval
+      let matrixClient = sdk.createClient({
         baseUrl: creds.homeserverUrl,
         accessToken: creds.accessToken,
         userId: creds.userId,
+        cryptoCallbacks: { getSecretStorageKey },
         ...(localDeviceId ? { deviceId: localDeviceId } : {}),
       });
 
@@ -351,12 +376,13 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             console.warn('Stored device no longer exists on server, creating new device');
             localStorage.removeItem(`matrix_device_id:${creds.userId}`);
             // Recreate client without stale deviceId
-            const freshClient = sdk.createClient({
+            matrixClient = sdk.createClient({
               baseUrl: creds.homeserverUrl,
               accessToken: creds.accessToken,
               userId: creds.userId,
+              cryptoCallbacks: { getSecretStorageKey },
             });
-            clientRef.current = freshClient;
+            clientRef.current = matrixClient;
           }
         } catch {}
       }
@@ -411,7 +437,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
               await crypto.bootstrapSecretStorage({
                 createSecretStorageKey: async () => {
                   try {
-                    const privateKey = (matrixClient as any).keyBackupKeyFromRecoveryKey(recoveryKey.trim()) as Uint8Array;
+                    const privateKey = decodeRecoveryKey(recoveryKey.trim());
                     return { privateKey, encodedPrivateKey: recoveryKey.trim() } as any;
                   } catch {
                     return {} as any;
@@ -429,27 +455,25 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           console.warn('isSecretStorageReady check failed:', e);
         }
 
-        // 5. Bootstrap Cross-Signing with UIA (password if available)
-        try {
-          const localpart = creds.userId.split(':')[0].substring(1);
-          await crypto.bootstrapCrossSigning({
-            authUploadDeviceSigningKeys: async (makeRequest) => {
-              if (creds.password) {
-                // Use password-based UIA for proper cross-signing setup
+        // 5. Bootstrap Cross-Signing with UIA (password only)
+        if (creds.password) {
+          try {
+            const localpart = creds.userId.split(':')[0].substring(1);
+            await crypto.bootstrapCrossSigning({
+              authUploadDeviceSigningKeys: async (makeRequest) => {
                 await (makeRequest as any)({
                   type: 'm.login.password',
                   identifier: { type: 'm.id.user', user: localpart },
                   password: creds.password,
                 });
-              } else {
-                // Fallback: empty dict (may fail with 401, non-critical for token-based reconnect)
-                await (makeRequest as any)({});
-              }
-            },
-          } as any);
-          console.log('Cross-Signing bootstrapped' + (creds.password ? ' (with UIA password)' : ' (empty auth)'));
-        } catch (e) {
-          console.warn('bootstrapCrossSigning failed' + (creds.password ? '' : ' (no password, expected)') + ':', e);
+              },
+            } as any);
+            console.log('Cross-Signing bootstrapped (with UIA password)');
+          } catch (e) {
+            console.warn('bootstrapCrossSigning failed:', e);
+          }
+        } else {
+          console.info('Skipping bootstrapCrossSigning: no password available for UIA');
         }
 
         // 6. Check & enable key backup
@@ -466,11 +490,13 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       const onSync = (state: string) => {
         if (state === 'PREPARED') {
+          isConnectedRef.current = true;
           setIsConnected(true);
           setIsConnecting(false);
           setCryptoEnabled(Boolean(matrixClient.getCrypto()));
           updateRoomList(matrixClient);
         } else if (state === 'ERROR') {
+          isConnectedRef.current = false;
           setConnectionError('Sync-Fehler aufgetreten');
           setIsConnecting(false);
         }
@@ -542,9 +568,6 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       const onDecrypted = (event: sdk.MatrixEvent) => {
         const roomId = event.getRoomId();
         if (!roomId) return;
-
-        const clearType = (event as any).getClearType?.();
-        if (clearType && clearType !== 'm.room.message') return;
 
         const content = event.getContent();
         if (!content?.msgtype) return;
@@ -633,17 +656,19 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
         try {
           const verifier = await verificationRequest.startVerification('m.sas.v1');
-          setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError);
+          const cleanupVerifierListeners = setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError);
           verifier.verify()
             .then(() => {
               console.log('[Matrix] Incoming SAS verification succeeded');
               setLastVerificationError(null);
               setActiveSasVerification(null);
+              cleanupVerifierListeners();
             })
             .catch((err: unknown) => {
               console.error('[Matrix] Incoming SAS verification failed:', err);
               setLastVerificationError(err instanceof Error ? err.message : 'Verifizierung fehlgeschlagen');
               setActiveSasVerification(null);
+              cleanupVerifierListeners();
             });
           console.log('[Matrix] Incoming verification SAS started');
         } catch (err) {
@@ -701,7 +726,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       }
 
       setClient(matrixClient);
-      setCredentials({ ...creds, deviceId: finalDeviceId || undefined });
+      const { password: _password, ...safeCreds } = creds;
+      setCredentials({ ...safeCreds, deviceId: finalDeviceId || undefined });
     } catch (error) {
       console.error('Error connecting to Matrix:', error);
       setConnectionError(error instanceof Error ? error.message : 'Verbindungsfehler');
@@ -709,7 +735,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     } finally {
       isConnectingRef.current = false;
     }
-  }, []); // No dependencies — guards via isConnectingRef
+  }, [updateRoomList]);
 
   // ─── disconnect (with listener cleanup) ──────────────────────────────────
 
@@ -725,6 +751,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       clientRef.current = null;
       setClient(null);
     }
+    isConnectedRef.current = false;
+    authPasswordRef.current = undefined;
     setIsConnected(false);
     setCryptoEnabled(false);
     setE2eeDiagnostics({
@@ -755,6 +783,19 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     if (!room) return;
 
     const timeline = room.getLiveTimeline().getEvents();
+
+    if (timeline.length < limit) {
+      void (async () => {
+        try {
+          let hasMore = true;
+          while (hasMore && room.getLiveTimeline().getEvents().length < limit) {
+            hasMore = await mc.scrollback(room, limit);
+          }
+        } catch (error) {
+          console.warn('Matrix scrollback failed:', error);
+        }
+      })();
+    }
 
     // Trigger decryption for encrypted events
     timeline.forEach(event => {
@@ -967,17 +1008,19 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     }
 
     // Use the shared helper — no duplicated listener code
-    setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError, describeError);
+    const cleanupVerifierListeners = setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError, describeError);
 
     void verifier.verify()
       .then(() => {
         setLastVerificationError(null);
         setActiveSasVerification(null);
+        cleanupVerifierListeners();
       })
       .catch((error) => {
         console.error('Matrix SAS verification failed:', error);
         setLastVerificationError(describeError(error));
         setActiveSasVerification(null);
+        cleanupVerifierListeners();
       });
   }, []);
 
@@ -1004,10 +1047,10 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         const deviceId = mc.getDeviceId();
         if (deviceId) {
           const localpart = credentials?.userId?.split(':')[0].substring(1);
-          await mc.deleteDevice(deviceId, credentials?.password ? {
+          await mc.deleteDevice(deviceId, authPasswordRef.current ? {
             type: 'm.login.password',
             identifier: { type: 'm.id.user', user: localpart },
-            password: credentials.password,
+            password: authPasswordRef.current,
           } : {});
           console.log('Device deleted from server:', deviceId);
         }
@@ -1071,6 +1114,12 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       connect(credentials);
     }
   }, [credentials, connect]);
+
+  useEffect(() => {
+    return () => {
+      disconnect();
+    };
+  }, [disconnect]);
 
   // ─── Context value ───────────────────────────────────────────────────────
 
