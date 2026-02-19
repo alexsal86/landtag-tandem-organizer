@@ -6,13 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid, Ruler, Crosshair, Undo2, Redo2 } from 'lucide-react';
+import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid, Ruler, Crosshair, Undo2, Redo2, Keyboard, Copy, ClipboardPaste, CopyPlus, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 
 type ElementType = 'text' | 'image' | 'shape' | 'block';
 type ShapeType = 'line' | 'circle' | 'rectangle' | 'sunflower';
+type ResizeHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
 
 interface BaseElement {
   id: string;
@@ -117,24 +118,52 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const historyFutureRef = useRef<HeaderElement[][]>([]);
   const [, setHistoryVersion] = useState(0);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
   const [showRuler, setShowRuler] = useState(false);
   const [showCenterGuides, setShowCenterGuides] = useState(false);
+  const [snapLines, setSnapLines] = useState<{ x?: number; y?: number }>({});
+  const [smartGuideDistance, setSmartGuideDistance] = useState<{ horizontal?: number; vertical?: number }>({});
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [clipboardElement, setClipboardElement] = useState<HeaderElement | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [editorDrafts, setEditorDrafts] = useState<Record<string, string>>({});
   const [ariaAnnouncement, setAriaAnnouncement] = useState('');
-  const [dragStart, setDragStart] = useState<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number; origins: Record<string, { x: number; y: number }> } | null>(null);
+  const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
   const dragInitialElementsRef = useRef<HeaderElement[] | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const horizontalRulerRef = useRef<HTMLCanvasElement | null>(null);
   const verticalRulerRef = useRef<HTMLCanvasElement | null>(null);
-  const lastReportedRef = useRef<string>(JSON.stringify(initialElements));
+  const snapLinesTimeoutRef = useRef<number | null>(null);
+  const lastReportedRef = useRef<HeaderElement[]>(initialElements);
+  const selectionInitialIdsRef = useRef<string[]>([]);
+  const panStartRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number } | null>(null);
 
   // Resize state
   const [resizingId, setResizingId] = useState<string | null>(null);
-  const [resizeStart, setResizeStart] = useState<{ x: number; y: number; ow: number; oh: number } | null>(null);
+  const [resizeStart, setResizeStart] = useState<{
+    x: number;
+    y: number;
+    ow: number;
+    oh: number;
+    handle: ResizeHandle;
+    group?: {
+      baseWidth: number;
+      baseHeight: number;
+      left: number;
+      top: number;
+      right: number;
+      bottom: number;
+      items: Record<string, { x: number; y: number; width: number; height: number }>;
+    };
+  } | null>(null);
   const resizeInitialElementsRef = useRef<HeaderElement[] | null>(null);
 
   // Image gallery state
@@ -151,6 +180,32 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const previewScaleX = previewWidth / headerMaxWidth;
   const previewScaleY = previewHeight / headerMaxHeight;
   const SNAP_MM = 1.5;
+
+  const getCanvasPoint = (clientX: number, clientY: number) => {
+    if (!previewRef.current) return { x: 0, y: 0 };
+    const rect = previewRef.current.getBoundingClientRect();
+    const x = (clientX - rect.left - pan.x) / zoom;
+    const y = (clientY - rect.top - pan.y) / zoom;
+    return {
+      x: Math.max(0, Math.min(previewWidth, x)),
+      y: Math.max(0, Math.min(previewHeight, y)),
+    };
+  };
+
+  const zoomAtPoint = (clientX: number, clientY: number, nextZoom: number) => {
+    if (!previewRef.current) return;
+    const clampedZoom = Math.max(0.5, Math.min(3, nextZoom));
+    const rect = previewRef.current.getBoundingClientRect();
+    const cursorX = clientX - rect.left;
+    const cursorY = clientY - rect.top;
+    const baseX = (cursorX - pan.x) / zoom;
+    const baseY = (cursorY - pan.y) / zoom;
+    setZoom(clampedZoom);
+    setPan({
+      x: cursorX - baseX * clampedZoom,
+      y: cursorY - baseY * clampedZoom,
+    });
+  };
 
   const createElementId = () => crypto.randomUUID();
 
@@ -315,42 +370,68 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const snapToOtherElements = (id: string, x: number, y: number, allElements: HeaderElement[]) => {
     const current = allElements.find((el) => el.id === id);
-    if (!current) return { x, y };
+    if (!current) return { x, y, guides: {} as { x?: number; y?: number } };
     let sx = x, sy = y;
     const w = current.width || 50, h = current.height || 10;
+    const guides: { x?: number; y?: number } = {};
     const edgeTargets = allElements.filter((el) => el.id !== id).flatMap((el) => {
       const tw = el.width || 50, th = el.height || 10;
       return [{ x: el.x, y: el.y }, { x: el.x + tw, y: el.y + th }, { x: el.x + tw / 2, y: el.y + th / 2 }];
     });
     for (const t of edgeTargets) {
-      if (Math.abs(sx - t.x) <= SNAP_MM) sx = t.x;
-      if (Math.abs(sx + w - t.x) <= SNAP_MM) sx = t.x - w;
-      if (Math.abs(sx + w / 2 - t.x) <= SNAP_MM) sx = t.x - w / 2;
-      if (Math.abs(sy - t.y) <= SNAP_MM) sy = t.y;
-      if (Math.abs(sy + h - t.y) <= SNAP_MM) sy = t.y - h;
-      if (Math.abs(sy + h / 2 - t.y) <= SNAP_MM) sy = t.y - h / 2;
+      if (Math.abs(sx - t.x) <= SNAP_MM) { sx = t.x; guides.x = t.x; }
+      if (Math.abs(sx + w - t.x) <= SNAP_MM) { sx = t.x - w; guides.x = t.x; }
+      if (Math.abs(sx + w / 2 - t.x) <= SNAP_MM) { sx = t.x - w / 2; guides.x = t.x; }
+      if (Math.abs(sy - t.y) <= SNAP_MM) { sy = t.y; guides.y = t.y; }
+      if (Math.abs(sy + h - t.y) <= SNAP_MM) { sy = t.y - h; guides.y = t.y; }
+      if (Math.abs(sy + h / 2 - t.y) <= SNAP_MM) { sy = t.y - h / 2; guides.y = t.y; }
     }
     const centerX = headerMaxWidth / 2;
     const centerY = headerMaxHeight / 2;
     const axisTargetsX = [0, centerX, headerMaxWidth];
     const axisTargetsY = [0, centerY, headerMaxHeight];
     for (const tx of axisTargetsX) {
-      if (Math.abs(sx - tx) <= SNAP_MM) sx = tx;
-      if (Math.abs(sx + w - tx) <= SNAP_MM) sx = tx - w;
-      if (Math.abs(sx + w / 2 - tx) <= SNAP_MM) sx = tx - w / 2;
+      if (Math.abs(sx - tx) <= SNAP_MM) { sx = tx; guides.x = tx; }
+      if (Math.abs(sx + w - tx) <= SNAP_MM) { sx = tx - w; guides.x = tx; }
+      if (Math.abs(sx + w / 2 - tx) <= SNAP_MM) { sx = tx - w / 2; guides.x = tx; }
     }
     for (const ty of axisTargetsY) {
-      if (Math.abs(sy - ty) <= SNAP_MM) sy = ty;
-      if (Math.abs(sy + h - ty) <= SNAP_MM) sy = ty - h;
-      if (Math.abs(sy + h / 2 - ty) <= SNAP_MM) sy = ty - h / 2;
+      if (Math.abs(sy - ty) <= SNAP_MM) { sy = ty; guides.y = ty; }
+      if (Math.abs(sy + h - ty) <= SNAP_MM) { sy = ty - h; guides.y = ty; }
+      if (Math.abs(sy + h / 2 - ty) <= SNAP_MM) { sy = ty - h / 2; guides.y = ty; }
     }
-    return { x: Math.round(sx), y: Math.round(sy) };
+    return { x: Math.round(sx), y: Math.round(sy), guides };
   };
 
   useEffect(() => {
-    const key = JSON.stringify(elements);
-    if (key !== lastReportedRef.current) { lastReportedRef.current = key; onElementsChange(elements); }
-  }, [elements]);
+    return () => {
+      if (snapLinesTimeoutRef.current) {
+        window.clearTimeout(snapLinesTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'Space') setIsSpacePressed(true);
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.code === 'Space') setIsSpacePressed(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (elements !== lastReportedRef.current) {
+      lastReportedRef.current = elements;
+      onElementsChange(elements);
+    }
+  }, [elements, onElementsChange]);
 
   const uploadImage = async (file: File): Promise<{ publicUrl: string; storagePath: string; blobUrl: string } | null> => {
     try {
@@ -392,6 +473,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     };
     applyElements(prev => [...prev, newElement]);
     setSelectedElementId(newElement.id);
+    setSelectedElementIds([newElement.id]);
   };
 
   const deleteGalleryImage = async (galleryImg: GalleryImage) => {
@@ -411,6 +493,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const el: HeaderElement = { id: createElementId(), type: 'text', x, y, content, fontSize: 12, fontFamily: 'Arial', fontWeight: 'normal', color: '#000000', textLineHeight: 1.2, width: 70, height: 8 };
     applyElements(prev => [...prev, el]);
     setSelectedElementId(el.id);
+    setSelectedElementIds([el.id]);
   };
 
   const addImageElement = () => {
@@ -424,6 +507,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       const el: HeaderElement = { id: createElementId(), type: 'image', x: 20, y: 10, width: 40, height: 20, imageUrl: result.publicUrl, blobUrl: result.blobUrl, storagePath: result.storagePath, preserveAspectRatio: true };
       applyElements(prev => [...prev, el]);
       setSelectedElementId(el.id);
+      setSelectedElementIds([el.id]);
     };
     input.click();
   };
@@ -439,6 +523,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const el: HeaderElement = { id: createElementId(), type: 'shape', shapeType, x: 20, y: 10, rotation: 0, ...defaults };
     applyElements(prev => [...prev, el]);
     setSelectedElementId(el.id);
+    setSelectedElementIds([el.id]);
   };
 
   const createBlockElement = (x = 10, y = 25) => {
@@ -455,6 +540,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const el = createBlockElement();
     applyElements(prev => [...prev, el]);
     setSelectedElementId(el.id);
+    setSelectedElementIds([el.id]);
   };
 
   const updateElement = (id: string, updates: Partial<HeaderElement>, options?: { recordHistory?: boolean }) => {
@@ -463,7 +549,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const removeElement = (id: string) => {
     applyElements(prev => prev.filter(el => el.id !== id));
+    setSelectedElementIds((previous) => previous.filter((selectedId) => selectedId !== id));
     if (selectedElementId === id) setSelectedElementId(null);
+  };
+
+  const removeSelectedElements = () => {
+    if (selectedElementIds.length === 0) return;
+    applyElements((prev) => prev.filter((el) => !selectedElementIds.includes(el.id)));
+    setSelectedElementId(null);
+    setSelectedElementIds([]);
   };
 
   const onToolDragStart = (event: React.DragEvent, tool: string) => {
@@ -500,9 +594,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const onPreviewDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     if (!previewRef.current) return;
-    const rect = previewRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(headerMaxWidth, (event.clientX - rect.left) / previewScaleX));
-    const y = Math.max(0, Math.min(headerMaxHeight, (event.clientY - rect.top) / previewScaleY));
+    const point = getCanvasPoint(event.clientX, event.clientY);
+    const x = Math.max(0, Math.min(headerMaxWidth, point.x / previewScaleX));
+    const y = Math.max(0, Math.min(headerMaxHeight, point.y / previewScaleY));
 
     const tool = event.dataTransfer.getData('application/x-header-tool');
     if (tool === 'text') { addTextElement(Math.round(x), Math.round(y)); return; }
@@ -521,28 +615,88 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         const el: HeaderElement = { id: createElementId(), type: 'image', x: Math.round(x), y: Math.round(y), width: 40, height: 20, imageUrl: publicUrl, blobUrl, storagePath: path, preserveAspectRatio: true };
         applyElements(prev => [...prev, el]);
         setSelectedElementId(el.id);
+        setSelectedElementIds([el.id]);
       } catch (e) { console.error('Error parsing gallery drop data:', e); }
     }
   };
 
   const selectedElement = elements.find(el => el.id === selectedElementId);
+  const isElementSelected = (id: string) => selectedElementIds.includes(id);
+  const selectedCount = selectedElementIds.length;
+  const isToggleModifierPressed = (event: { shiftKey?: boolean; metaKey?: boolean; ctrlKey?: boolean }) => Boolean(event.shiftKey || event.metaKey || event.ctrlKey);
 
   const onElementMouseDown = (event: React.MouseEvent, element: HeaderElement) => {
     if (editingTextId === element.id || editingBlockId === element.id) {
       return;
     }
     event.stopPropagation();
+
+    if (isToggleModifierPressed(event)) {
+      setSelectedElementId(element.id);
+      setSelectedElementIds((previous) => previous.includes(element.id)
+        ? previous.filter((id) => id !== element.id)
+        : [...previous, element.id]);
+      return;
+    }
+
+    const activeSelection = selectedElementIds.includes(element.id)
+      ? selectedElementIds
+      : [element.id];
+    const origins = activeSelection.reduce<Record<string, { x: number; y: number }>>((acc, id) => {
+      const current = elements.find((el) => el.id === id);
+      if (current) acc[id] = { x: current.x, y: current.y };
+      return acc;
+    }, {});
+
     setSelectedElementId(element.id);
+    setSelectedElementIds(activeSelection);
     setDragId(element.id);
     dragInitialElementsRef.current = elements;
-    setDragStart({ x: event.clientX, y: event.clientY, ox: element.x, oy: element.y });
+    setDragStart({ x: event.clientX, y: event.clientY, origins });
   };
 
-  const onResizeMouseDown = (event: React.MouseEvent, element: HeaderElement) => {
+  const onResizeMouseDown = (event: React.MouseEvent, element: HeaderElement, handle: ResizeHandle = 'se') => {
     event.stopPropagation(); event.preventDefault();
     setResizingId(element.id);
     resizeInitialElementsRef.current = elements;
-    setResizeStart({ x: event.clientX, y: event.clientY, ow: element.width || 50, oh: element.height || 30 });
+
+    const activeIds = selectedElementIds.includes(element.id) ? selectedElementIds : [element.id];
+    if (activeIds.length > 1) {
+      const selected = elements
+        .filter((el) => activeIds.includes(el.id))
+        .map((el) => {
+          const { width, height } = getElementDimensions(el);
+          return { ...el, width, height };
+        });
+      const left = Math.min(...selected.map((el) => el.x));
+      const top = Math.min(...selected.map((el) => el.y));
+      const right = Math.max(...selected.map((el) => el.x + el.width));
+      const bottom = Math.max(...selected.map((el) => el.y + el.height));
+      const items = selected.reduce<Record<string, { x: number; y: number; width: number; height: number }>>((acc, item) => {
+        acc[item.id] = { x: item.x, y: item.y, width: item.width, height: item.height };
+        return acc;
+      }, {});
+
+      setResizeStart({
+        x: event.clientX,
+        y: event.clientY,
+        ow: element.width || 50,
+        oh: element.height || 30,
+        handle,
+        group: {
+          baseWidth: Math.max(1, right - left),
+          baseHeight: Math.max(1, bottom - top),
+          left,
+          top,
+          right,
+          bottom,
+          items,
+        },
+      });
+      return;
+    }
+
+    setResizeStart({ x: event.clientX, y: event.clientY, ow: element.width || 50, oh: element.height || 30, handle });
   };
 
   useEffect(() => {
@@ -552,42 +706,209 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return () => window.removeEventListener('mouseup', handler);
   }, [dragId, resizingId]);
 
+  const onPreviewMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!previewRef.current) return;
+
+    if (event.button === 1 || (event.button === 0 && isSpacePressed)) {
+      event.preventDefault();
+      setIsPanning(true);
+      panStartRef.current = { clientX: event.clientX, clientY: event.clientY, panX: pan.x, panY: pan.y };
+      return;
+    }
+
+    if (event.button !== 0) return;
+    if (event.target !== event.currentTarget) return;
+
+    const startPoint = getCanvasPoint(event.clientX, event.clientY);
+    const startX = startPoint.x;
+    const startY = startPoint.y;
+
+    const appendSelection = isToggleModifierPressed(event);
+    selectionInitialIdsRef.current = appendSelection ? selectedElementIds : [];
+    if (!appendSelection) {
+      setSelectedElementId(null);
+      setSelectedElementIds([]);
+    }
+    setSelectionBox({ startX, startY, currentX: startX, currentY: startY });
+  };
+
   const onPreviewMouseMove = (event: React.MouseEvent) => {
+    if (isPanning && panStartRef.current) {
+      const dx = event.clientX - panStartRef.current.clientX;
+      const dy = event.clientY - panStartRef.current.clientY;
+      setPan({ x: panStartRef.current.panX + dx, y: panStartRef.current.panY + dy });
+      return;
+    }
+
+    if (selectionBox && previewRef.current) {
+      const currentPoint = getCanvasPoint(event.clientX, event.clientY);
+      const currentX = currentPoint.x;
+      const currentY = currentPoint.y;
+      const nextSelection = { ...selectionBox, currentX, currentY };
+      setSelectionBox(nextSelection);
+
+      const left = Math.min(nextSelection.startX, nextSelection.currentX) / previewScaleX;
+      const right = Math.max(nextSelection.startX, nextSelection.currentX) / previewScaleX;
+      const top = Math.min(nextSelection.startY, nextSelection.currentY) / previewScaleY;
+      const bottom = Math.max(nextSelection.startY, nextSelection.currentY) / previewScaleY;
+
+      const hits = elements
+        .filter((element) => {
+          const { width, height } = getElementDimensions(element);
+          const elementLeft = element.x;
+          const elementRight = element.x + width;
+          const elementTop = element.y;
+          const elementBottom = element.y + height;
+          if (event.altKey) {
+            return elementLeft >= left && elementRight <= right && elementTop >= top && elementBottom <= bottom;
+          }
+          return !(elementRight < left || elementLeft > right || elementBottom < top || elementTop > bottom);
+        })
+        .map((element) => element.id);
+
+      const mergedSelection = Array.from(new Set([...selectionInitialIdsRef.current, ...hits]));
+      setSelectedElementIds(mergedSelection);
+      setSelectedElementId(mergedSelection.length ? mergedSelection[mergedSelection.length - 1] : null);
+      return;
+    }
+
     if (resizingId && resizeStart) {
       const resizingElement = elements.find((el) => el.id === resizingId);
-      const dx = (event.clientX - resizeStart.x) / previewScaleX;
-      const dy = (event.clientY - resizeStart.y) / previewScaleY;
+      const dx = (event.clientX - resizeStart.x) / (previewScaleX * zoom);
+      const dy = (event.clientY - resizeStart.y) / (previewScaleY * zoom);
       let newW = Math.max(5, resizeStart.ow + dx);
       let newH = Math.max(5, resizeStart.oh + dy);
+      let shiftX = 0;
+      let shiftY = 0;
+
+      if (resizeStart.handle.includes('w')) {
+        newW = Math.max(5, resizeStart.ow - dx);
+        shiftX = resizeStart.ow - newW;
+      }
+      if (resizeStart.handle.includes('n')) {
+        newH = Math.max(5, resizeStart.oh - dy);
+        shiftY = resizeStart.oh - newH;
+      }
+      if (resizeStart.handle === 'n' || resizeStart.handle === 's') {
+        newW = resizeStart.ow;
+      }
+      if (resizeStart.handle === 'e' || resizeStart.handle === 'w') {
+        newH = resizeStart.oh;
+      }
+
       const preserveAspect = Boolean(event.ctrlKey || (resizingElement?.type === 'image' && resizingElement.preserveAspectRatio));
       if (preserveAspect && resizeStart.ow > 0 && resizeStart.oh > 0) {
-        newH = newW / (resizeStart.ow / resizeStart.oh);
+        const ratio = resizeStart.ow / resizeStart.oh;
+        if (resizeStart.handle === 'n' || resizeStart.handle === 's') {
+          newW = newH * ratio;
+        } else {
+          newH = newW / ratio;
+        }
       }
-      updateElement(resizingId, { width: Math.round(newW), height: Math.round(newH) }, { recordHistory: false });
+
+      if (resizeStart.group) {
+        const nextLeft = resizeStart.handle.includes('w') ? resizeStart.group.left + dx : resizeStart.group.left;
+        const nextTop = resizeStart.handle.includes('n') ? resizeStart.group.top + dy : resizeStart.group.top;
+        const nextRight = resizeStart.handle.includes('e') ? resizeStart.group.right + dx : resizeStart.group.right;
+        const nextBottom = resizeStart.handle.includes('s') ? resizeStart.group.bottom + dy : resizeStart.group.bottom;
+
+        let groupWidth = Math.max(5, nextRight - nextLeft);
+        let groupHeight = Math.max(5, nextBottom - nextTop);
+        if (preserveAspect) {
+          const groupRatio = resizeStart.group.baseWidth / resizeStart.group.baseHeight;
+          if (resizeStart.handle === 'n' || resizeStart.handle === 's') {
+            groupWidth = groupHeight * groupRatio;
+          } else {
+            groupHeight = groupWidth / groupRatio;
+          }
+        }
+
+        const scaleX = groupWidth / resizeStart.group.baseWidth;
+        const scaleY = groupHeight / resizeStart.group.baseHeight;
+        const originX = resizeStart.handle.includes('w') ? resizeStart.group.right - groupWidth : resizeStart.group.left;
+        const originY = resizeStart.handle.includes('n') ? resizeStart.group.bottom - groupHeight : resizeStart.group.top;
+
+        applyElements((prev) => prev.map((el) => {
+          const source = resizeStart.group?.items[el.id];
+          if (!source) return el;
+          const relativeX = source.x - resizeStart.group!.left;
+          const relativeY = source.y - resizeStart.group!.top;
+          return {
+            ...el,
+            x: Math.max(0, Math.min(headerMaxWidth, Math.round(originX + relativeX * scaleX))),
+            y: Math.max(0, Math.min(headerMaxHeight, Math.round(originY + relativeY * scaleY))),
+            width: Math.max(5, Math.round(source.width * scaleX)),
+            height: Math.max(5, Math.round(source.height * scaleY)),
+          };
+        }), { recordHistory: false });
+        return;
+      }
+
+      updateElement(resizingId, {
+        x: resizingElement ? Math.max(0, Math.min(headerMaxWidth, Math.round(resizingElement.x + shiftX))) : undefined,
+        y: resizingElement ? Math.max(0, Math.min(headerMaxHeight, Math.round(resizingElement.y + shiftY))) : undefined,
+        width: Math.round(newW),
+        height: Math.round(newH),
+      }, { recordHistory: false });
       return;
     }
     if (!dragId || !dragStart) return;
-    const dx = (event.clientX - dragStart.x) / previewScaleX;
-    const dy = (event.clientY - dragStart.y) / previewScaleY;
-    const nx = Math.max(0, Math.min(headerMaxWidth, dragStart.ox + dx));
-    const ny = Math.max(0, Math.min(headerMaxHeight, dragStart.oy + dy));
+    const dx = (event.clientX - dragStart.x) / (previewScaleX * zoom);
+    const dy = (event.clientY - dragStart.y) / (previewScaleY * zoom);
+    const origin = dragStart.origins[dragId];
+    if (!origin) return;
+    const nx = Math.max(0, Math.min(headerMaxWidth, origin.x + dx));
+    const ny = Math.max(0, Math.min(headerMaxHeight, origin.y + dy));
     const snapped = snapToOtherElements(dragId, nx, ny, elements);
-    updateElement(dragId, { x: snapped.x, y: snapped.y }, { recordHistory: false });
+    flashSnapLines(snapped.guides);
+    calculateSmartGuideDistances(dragId, snapped.x, snapped.y, elements);
+    const offsetX = snapped.x - origin.x;
+    const offsetY = snapped.y - origin.y;
+
+    applyElements((prev) => prev.map((el) => {
+      const selectedOrigin = dragStart.origins[el.id];
+      if (!selectedOrigin) return el;
+      return {
+        ...el,
+        x: Math.max(0, Math.min(headerMaxWidth, Math.round(selectedOrigin.x + offsetX))),
+        y: Math.max(0, Math.min(headerMaxHeight, Math.round(selectedOrigin.y + offsetY))),
+      };
+    }), { recordHistory: false });
   };
 
   const onPreviewMouseUp = () => {
-    if (dragInitialElementsRef.current && dragInitialElementsRef.current !== elements) {
-      pushHistorySnapshot(dragInitialElementsRef.current);
+    const dragInitialSnapshot = dragInitialElementsRef.current;
+    const resizeInitialSnapshot = resizeInitialElementsRef.current;
+
+    if (dragInitialSnapshot) {
+      setElements((current) => {
+        if (dragInitialSnapshot !== current) {
+          pushHistorySnapshot(dragInitialSnapshot);
+        }
+        return current;
+      });
     }
-    if (resizeInitialElementsRef.current && resizeInitialElementsRef.current !== elements) {
-      pushHistorySnapshot(resizeInitialElementsRef.current);
+
+    if (resizeInitialSnapshot) {
+      setElements((current) => {
+        if (resizeInitialSnapshot !== current) {
+          pushHistorySnapshot(resizeInitialSnapshot);
+        }
+        return current;
+      });
     }
+
     dragInitialElementsRef.current = null;
     resizeInitialElementsRef.current = null;
     setDragId(null);
     setDragStart(null);
     setResizingId(null);
     setResizeStart(null);
+    setSnapLines({});
+    setSmartGuideDistance({});
+    setSelectionBox(null);
+    setIsPanning(false);
+    panStartRef.current = null;
   };
 
   const cycleSelection = (direction: 1 | -1) => {
@@ -596,6 +917,184 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const startIndex = currentIndex < 0 ? 0 : currentIndex;
     const nextIndex = (startIndex + direction + elements.length) % elements.length;
     setSelectedElementId(elements[nextIndex].id);
+    setSelectedElementIds([elements[nextIndex].id]);
+  };
+
+  const moveElementLayer = (id: string, direction: 1 | -1) => {
+    applyElements((prev) => {
+      const index = prev.findIndex((el) => el.id === id);
+      if (index < 0) return prev;
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  };
+
+  const copySelectedElement = () => {
+    if (!selectedElement) return;
+    setClipboardElement({ ...selectedElement });
+  };
+
+  const pasteClipboardElement = () => {
+    if (!clipboardElement) return;
+    const source = clipboardElement;
+    const nextX = Math.max(0, Math.min(headerMaxWidth, source.x + 10));
+    const nextY = Math.max(0, Math.min(headerMaxHeight, source.y + 10));
+    const pasted: HeaderElement = { ...source, id: createElementId(), x: nextX, y: nextY };
+    applyElements((prev) => [...prev, pasted]);
+    setSelectedElementId(pasted.id);
+    setSelectedElementIds([pasted.id]);
+    setClipboardElement(pasted);
+  };
+
+  const duplicateSelectedElement = () => {
+    if (!selectedElement) return;
+    const source = selectedElement;
+    const pasted: HeaderElement = {
+      ...source,
+      id: createElementId(),
+      x: Math.max(0, Math.min(headerMaxWidth, source.x + 10)),
+      y: Math.max(0, Math.min(headerMaxHeight, source.y + 10)),
+    };
+    setClipboardElement({ ...source });
+    applyElements((prev) => [...prev, pasted]);
+    setSelectedElementId(pasted.id);
+    setSelectedElementIds([pasted.id]);
+  };
+
+  const canPasteFromClipboard = Boolean(clipboardElement);
+  const selectedIndex = selectedElement ? elements.findIndex((el) => el.id === selectedElement.id) : -1;
+  const canMoveLayerBackward = selectedIndex > 0;
+  const canMoveLayerForward = selectedIndex >= 0 && selectedIndex < elements.length - 1;
+  const canAlignSelection = selectedElementIds.length > 1;
+  const canDistributeSelection = selectedElementIds.length > 2;
+
+  const flashSnapLines = (guides: { x?: number; y?: number }) => {
+    if (!guides.x && !guides.y) {
+      return;
+    }
+    setSnapLines(guides);
+    if (snapLinesTimeoutRef.current) {
+      window.clearTimeout(snapLinesTimeoutRef.current);
+    }
+    snapLinesTimeoutRef.current = window.setTimeout(() => {
+      setSnapLines({});
+      snapLinesTimeoutRef.current = null;
+    }, 600);
+  };
+  const calculateSmartGuideDistances = (movingId: string, x: number, y: number, allElements: HeaderElement[]) => {
+    const moving = allElements.find((el) => el.id === movingId);
+    if (!moving) {
+      setSmartGuideDistance({});
+      return;
+    }
+    const { width, height } = getElementDimensions(moving);
+    const movingCenterX = x + width / 2;
+    const movingCenterY = y + height / 2;
+
+    let nearestHorizontal: number | undefined;
+    let nearestVertical: number | undefined;
+
+    allElements.forEach((el) => {
+      if (el.id === movingId) return;
+      const { width: w, height: h } = getElementDimensions(el);
+      const centerX = el.x + w / 2;
+      const centerY = el.y + h / 2;
+      const dx = Math.abs(movingCenterX - centerX);
+      const dy = Math.abs(movingCenterY - centerY);
+      if (nearestHorizontal == null || dx < nearestHorizontal) nearestHorizontal = dx;
+      if (nearestVertical == null || dy < nearestVertical) nearestVertical = dy;
+    });
+
+    setSmartGuideDistance({
+      horizontal: nearestHorizontal != null ? Math.round(nearestHorizontal) : undefined,
+      vertical: nearestVertical != null ? Math.round(nearestVertical) : undefined,
+    });
+  };
+
+
+
+  const getElementDimensions = (element: HeaderElement) => ({
+    width: Math.max(1, element.width || (element.type === 'text' ? 70 : element.type === 'block' ? 45 : 50)),
+    height: Math.max(1, element.height || (element.type === 'text' ? 8 : element.type === 'block' ? 18 : 10)),
+  });
+
+  const alignSelection = (axis: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
+    if (selectedElementIds.length < 2) return;
+    const selected = elements.filter((el) => selectedElementIds.includes(el.id));
+    if (selected.length < 2) return;
+
+    const bounds = selected.reduce((acc, element) => {
+      const { width, height } = getElementDimensions(element);
+      return {
+        left: Math.min(acc.left, element.x),
+        top: Math.min(acc.top, element.y),
+        right: Math.max(acc.right, element.x + width),
+        bottom: Math.max(acc.bottom, element.y + height),
+      };
+    }, { left: Number.POSITIVE_INFINITY, top: Number.POSITIVE_INFINITY, right: Number.NEGATIVE_INFINITY, bottom: Number.NEGATIVE_INFINITY });
+
+    const centerX = (bounds.left + bounds.right) / 2;
+    const middleY = (bounds.top + bounds.bottom) / 2;
+
+    applyElements((prev) => prev.map((element) => {
+      if (!selectedElementIds.includes(element.id)) return element;
+      const { width, height } = getElementDimensions(element);
+      let x = element.x;
+      let y = element.y;
+
+      if (axis === 'left') x = bounds.left;
+      if (axis === 'center') x = centerX - width / 2;
+      if (axis === 'right') x = bounds.right - width;
+      if (axis === 'top') y = bounds.top;
+      if (axis === 'middle') y = middleY - height / 2;
+      if (axis === 'bottom') y = bounds.bottom - height;
+
+      return {
+        ...element,
+        x: Math.max(0, Math.min(headerMaxWidth, Math.round(x))),
+        y: Math.max(0, Math.min(headerMaxHeight, Math.round(y))),
+      };
+    }));
+  };
+
+  const distributeSelection = (axis: 'horizontal' | 'vertical') => {
+    if (selectedElementIds.length < 3) return;
+    const selected = elements
+      .filter((el) => selectedElementIds.includes(el.id))
+      .map((element) => ({ ...element, ...getElementDimensions(element) }));
+    if (selected.length < 3) return;
+
+    const sorted = [...selected].sort((a, b) => (axis === 'horizontal' ? a.x - b.x : a.y - b.y));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const startPos = axis === 'horizontal' ? first.x : first.y;
+    const endPos = axis === 'horizontal' ? last.x + last.width : last.y + last.height;
+    const totalSize = sorted.reduce((sum, item) => sum + (axis === 'horizontal' ? item.width : item.height), 0);
+    const totalGap = endPos - startPos - totalSize;
+    if (totalGap <= 0) return;
+
+    const gap = totalGap / (sorted.length - 1);
+    let cursor = startPos;
+    const positions = new Map<string, number>();
+
+    sorted.forEach((item) => {
+      positions.set(item.id, cursor);
+      cursor += (axis === 'horizontal' ? item.width : item.height) + gap;
+    });
+
+    applyElements((prev) => prev.map((element) => {
+      const nextPos = positions.get(element.id);
+      if (nextPos == null) return element;
+      return {
+        ...element,
+        x: axis === 'horizontal' ? Math.max(0, Math.min(headerMaxWidth, Math.round(nextPos))) : element.x,
+        y: axis === 'vertical' ? Math.max(0, Math.min(headerMaxHeight, Math.round(nextPos))) : element.y,
+      };
+    }));
   };
 
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -617,6 +1116,46 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       return;
     }
 
+    if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === '?') {
+      event.preventDefault();
+      setShowShortcutsHelp((previous) => !previous);
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c') {
+      event.preventDefault();
+      copySelectedElement();
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v') {
+      event.preventDefault();
+      pasteClipboardElement();
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') {
+      event.preventDefault();
+      duplicateSelectedElement();
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key === ']') {
+      if (selectedElement) {
+        event.preventDefault();
+        moveElementLayer(selectedElement.id, 1);
+      }
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key === '[') {
+      if (selectedElement) {
+        event.preventDefault();
+        moveElementLayer(selectedElement.id, -1);
+      }
+      return;
+    }
+
     if (event.key === 'Tab') {
       event.preventDefault();
       cycleSelection(event.shiftKey ? -1 : 1);
@@ -624,7 +1163,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }
 
     if (!selectedElement) return;
-    if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); removeElement(selectedElement.id); return; }
+    if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); removeSelectedElements(); return; }
     let dx = 0, dy = 0;
     if (event.key === 'ArrowLeft') dx = -1;
     if (event.key === 'ArrowRight') dx = 1;
@@ -632,7 +1171,22 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     if (event.key === 'ArrowDown') dy = 1;
     if (!dx && !dy) return;
     event.preventDefault();
-    updateElement(selectedElement.id, { x: Math.max(0, Math.min(headerMaxWidth, selectedElement.x + dx)), y: Math.max(0, Math.min(headerMaxHeight, selectedElement.y + dy)) });
+
+    applyElements((prev) => prev.map((el) => {
+      if (!selectedElementIds.includes(el.id)) return el;
+      return {
+        ...el,
+        x: Math.max(0, Math.min(headerMaxWidth, el.x + dx)),
+        y: Math.max(0, Math.min(headerMaxHeight, el.y + dy)),
+      };
+    }));
+  };
+
+  const onPreviewWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    const delta = event.deltaY > 0 ? -0.1 : 0.1;
+    zoomAtPoint(event.clientX, event.clientY, zoom + delta);
   };
 
   const validatePosition = (value: number, max: number) => Math.max(0, Math.min(value, max));
@@ -732,11 +1286,35 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return <Square className="h-3.5 w-3.5 shrink-0" />;
   };
 
+
+  const renderResizeHandles = (element: HeaderElement) => {
+    if (!isElementSelected(element.id)) return null;
+    const handles: Array<{ key: ResizeHandle; className: string; style: React.CSSProperties }> = [
+      { key: 'nw', className: 'cursor-nwse-resize', style: { left: 0, top: 0, transform: 'translate(-50%, -50%)' } },
+      { key: 'n', className: 'cursor-ns-resize', style: { left: '50%', top: 0, transform: 'translate(-50%, -50%)' } },
+      { key: 'ne', className: 'cursor-nesw-resize', style: { right: 0, top: 0, transform: 'translate(50%, -50%)' } },
+      { key: 'e', className: 'cursor-ew-resize', style: { right: 0, top: '50%', transform: 'translate(50%, -50%)' } },
+      { key: 'se', className: 'cursor-nwse-resize', style: { right: 0, bottom: 0, transform: 'translate(50%, 50%)' } },
+      { key: 's', className: 'cursor-ns-resize', style: { left: '50%', bottom: 0, transform: 'translate(-50%, 50%)' } },
+      { key: 'sw', className: 'cursor-nesw-resize', style: { left: 0, bottom: 0, transform: 'translate(-50%, 50%)' } },
+      { key: 'w', className: 'cursor-ew-resize', style: { left: 0, top: '50%', transform: 'translate(-50%, -50%)' } },
+    ];
+
+    return handles.map((handle) => (
+      <div
+        key={`${element.id}-${handle.key}`}
+        className={`absolute w-3 h-3 bg-primary border border-primary-foreground z-10 ${handle.className}`}
+        style={handle.style}
+        onMouseDown={(event) => onResizeMouseDown(event, element, handle.key)}
+      />
+    ));
+  };
+
   // Render shape on canvas
-  const renderShapeCanvas = (element: HeaderElement, scaleX: number, scaleY: number) => {
+  const renderShapeCanvas = (element: ShapeElement, scaleX: number, scaleY: number) => {
     const w = (element.width || 20) * scaleX;
     const h = (element.height || 20) * scaleY;
-    const isSelected = selectedElementId === element.id;
+    const isSelected = isElementSelected(element.id);
     const rotation = element.rotation || 0;
 
     const wrapperStyle: React.CSSProperties = {
@@ -753,7 +1331,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       return (
         <div key={element.id} aria-label={getElementAriaLabel(element)} style={wrapperStyle} onMouseDown={(e) => onElementMouseDown(e, element)} className={`border ${isSelected ? 'border-primary border-dashed border-2' : 'border-transparent'}`}>
           <SunflowerSVG width={w} height={h} />
-          {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} />}
+          {renderResizeHandles(element)}
         </div>
       );
     }
@@ -771,7 +1349,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             <rect x={(element.strokeWidth ?? 1) / 2} y={(element.strokeWidth ?? 1) / 2} width={w - (element.strokeWidth ?? 1)} height={h - (element.strokeWidth ?? 1)} rx={element.borderRadius ?? 0} fill={getShapeFillColor(element, '#3b82f6')} stroke={getShapeStrokeColor(element, '#1e40af')} strokeWidth={element.strokeWidth ?? 1} />
           )}
         </svg>
-        {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} />}
+        {renderResizeHandles(element)}
       </div>
     );
   };
@@ -780,7 +1358,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const renderBlockCanvas = (element: BlockElement, scaleX: number, scaleY: number) => {
     const w = (element.width || 45) * scaleX;
     const h = (element.height || 18) * scaleY;
-    const isSelected = selectedElementId === element.id;
+    const isSelected = isElementSelected(element.id);
     const fontSize = (element.blockFontSize || 9) * (96 / 72);
     const hasContent = Boolean((element.blockContent || '').trim());
     const isEditing = editingBlockId === element.id;
@@ -817,7 +1395,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         ) : (
           <div className="px-1 whitespace-pre-line h-full">{element.blockContent || ''}</div>
         )}
-        {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} />}
+        {renderResizeHandles(element)}
       </div>
     );
   };
@@ -897,14 +1475,23 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   key={element.id}
                   role="button"
                   tabIndex={0}
-                  aria-pressed={selectedElementId === element.id}
+                  aria-pressed={isElementSelected(element.id)}
                   aria-label={`Element auswählen: ${getElementLabel(element)}`}
-                  className={`group p-2 border rounded cursor-pointer transition-colors text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selectedElementId === element.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
-                  onClick={() => setSelectedElementId(element.id)}
+                  className={`group p-2 border rounded cursor-pointer transition-colors text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isElementSelected(element.id) ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                  onClick={(event) => {
+                    if (isToggleModifierPressed(event)) {
+                      setSelectedElementIds((previous) => previous.includes(element.id) ? previous.filter((id) => id !== element.id) : [...previous, element.id]);
+                      setSelectedElementId(element.id);
+                      return;
+                    }
+                    setSelectedElementId(element.id);
+                    setSelectedElementIds([element.id]);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       setSelectedElementId(element.id);
+                      setSelectedElementIds([element.id]);
                     }
                   }}
                 >
@@ -917,7 +1504,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   </div>
                   <p className="text-muted-foreground">x: {element.x}mm, y: {element.y}mm</p>
 
-                  {selectedElementId === element.id && (
+                  {isElementSelected(element.id) && (
                     <div className="mt-2 pt-2 border-t space-y-2">
                       <div className="grid grid-cols-2 gap-2">
                         <div><Label className="text-xs">X (mm)</Label><Input type="number" value={element.x} onChange={(e) => updateElement(element.id, { x: validatePosition(parseFloat(e.target.value) || 0, headerMaxWidth) })} className="h-7 text-xs" /></div>
@@ -1014,7 +1601,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       <Card>
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm">Vorschau</CardTitle>
-          <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht. Resize + Ctrl = Seitenverhältnis.</p>
+          <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht. Resize + Ctrl = Seitenverhältnis. Bei Mehrfachauswahl skaliert der Handle die ganze Gruppe.</p>
         </CardHeader>
         <CardContent className="p-6">
           <div ref={previewContainerRef} className="flex items-center justify-center min-h-[340px] w-full">
@@ -1032,7 +1619,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </>
             )}
 
-            <div className="absolute top-2 right-2 z-20 flex gap-2">
+            <div className="absolute top-2 right-2 z-20 flex flex-wrap justify-end gap-2 max-w-[calc(100%-1rem)]">
               <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={undo} disabled={!canUndo}>
                 <Undo2 className="h-3.5 w-3.5 mr-1" />Undo
               </Button>
@@ -1045,27 +1632,136 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               <Button variant={showCenterGuides ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowCenterGuides(v => !v)}>
                 <Crosshair className="h-3.5 w-3.5 mr-1" />Achsen
               </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={copySelectedElement} disabled={!selectedElement}>
+                <Copy className="h-3.5 w-3.5 mr-1" />Kopieren
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={pasteClipboardElement} disabled={!canPasteFromClipboard}>
+                <ClipboardPaste className="h-3.5 w-3.5 mr-1" />Einfügen
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={duplicateSelectedElement} disabled={!selectedElement}>
+                <CopyPlus className="h-3.5 w-3.5 mr-1" />Duplizieren
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, -1)} disabled={!canMoveLayerBackward}>
+                <ArrowDown className="h-3.5 w-3.5 mr-1" />Ebene runter
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, 1)} disabled={!canMoveLayerForward}>
+                <ArrowUp className="h-3.5 w-3.5 mr-1" />Ebene hoch
+              </Button>
+              <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}>
+                <Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoom((value) => Math.max(0.5, value - 0.1))}>−</Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>100%</Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoom((value) => Math.min(3, value + 0.1))}>+</Button>
+              <div className="h-7 px-2 text-xs rounded border bg-background/90 flex items-center text-muted-foreground">
+                Auswahl: <span className="ml-1 font-semibold text-foreground">{selectedCount}</span>
+              </div>
             </div>
+
+            {canAlignSelection && (
+              <div className="absolute top-12 right-2 z-20 flex flex-wrap justify-end gap-1 max-w-[calc(100%-1rem)] rounded-md border bg-background/95 p-1">
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('left')}>Links</Button>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('center')}>Zentrum</Button>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('right')}>Rechts</Button>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('top')}>Oben</Button>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('middle')}>Mitte</Button>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('bottom')}>Unten</Button>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => distributeSelection('horizontal')} disabled={!canDistributeSelection}>Horizontal verteilen</Button>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => distributeSelection('vertical')} disabled={!canDistributeSelection}>Vertikal verteilen</Button>
+              </div>
+            )}
 
             <div
               ref={previewRef}
               tabIndex={0}
               role="application"
-              aria-label="Header-Vorschau. Mit Tab durch Elemente wechseln, mit Pfeiltasten bewegen, Entf löscht, Strg+Z rückgängig."
+              aria-label="Header-Vorschau. Mit Shift- oder Cmd/Ctrl-Klick mehrfach auswählen, leere Fläche ziehen erstellt Auswahlrechteck, Alt beim Ziehen wählt nur vollständig enthaltene Elemente, mit Tab durch Elemente wechseln, mit Pfeiltasten Auswahl bewegen, Entf löscht, Strg+Z rückgängig, Strg+C/V kopiert und fügt ein, Strg+] bzw. Strg+[ ändert die Ebene, Strg+Shift+? öffnet die Shortcut-Hilfe."
               onKeyDown={onPreviewKeyDown}
               onDragOver={(e) => e.preventDefault()}
+              onMouseDown={onPreviewMouseDown}
+              onWheel={onPreviewWheel}
               onDrop={onPreviewDrop}
               onMouseMove={onPreviewMouseMove}
               onMouseUp={onPreviewMouseUp}
-              onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
+              onClick={(e) => { if (e.target === e.currentTarget) { setSelectedElementId(null); setSelectedElementIds([]); } }}
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
-              style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, marginLeft: '8px', marginTop: '8px', backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
+              style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, marginLeft: '8px', marginTop: '8px', cursor: isPanning || isSpacePressed ? 'grab' : undefined, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
               <span className="sr-only" aria-live="polite">{ariaAnnouncement}</span>
+              <div className="absolute inset-0" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: 'top left' }}>
               {showCenterGuides && (
                 <>
                   <div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-red-500/80 pointer-events-none" />
                   <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none" />
                 </>
+              )}
+
+              {snapLines.x != null && (
+                <>
+                  <div
+                    className="absolute top-0 bottom-0 border-l-2 border-emerald-500/90 pointer-events-none animate-pulse"
+                    style={{ left: `${snapLines.x * previewScaleX}px` }}
+                  />
+                  <div className="absolute top-1 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white pointer-events-none" style={{ left: `${snapLines.x * previewScaleX + 2}px` }}>
+                    {Math.round(snapLines.x)}mm
+                  </div>
+                </>
+              )}
+              {snapLines.y != null && (
+                <>
+                  <div
+                    className="absolute left-0 right-0 border-t-2 border-emerald-500/90 pointer-events-none animate-pulse"
+                    style={{ top: `${snapLines.y * previewScaleY}px` }}
+                  />
+                  <div className="absolute left-1 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white pointer-events-none" style={{ top: `${snapLines.y * previewScaleY + 2}px` }}>
+                    {Math.round(snapLines.y)}mm
+                  </div>
+                </>
+              )}
+
+              {(smartGuideDistance.horizontal != null || smartGuideDistance.vertical != null) && (
+                <div className="absolute bottom-2 left-2 z-10 rounded bg-emerald-600/90 px-2 py-1 text-[10px] text-white pointer-events-none">
+                  {smartGuideDistance.horizontal != null && <span>ΔX {smartGuideDistance.horizontal}mm </span>}
+                  {smartGuideDistance.vertical != null && <span>ΔY {smartGuideDistance.vertical}mm</span>}
+                </div>
+              )}
+
+              {selectionBox && (
+                <div
+                  className="absolute border border-primary/80 bg-primary/10 pointer-events-none"
+                  style={{
+                    left: `${Math.min(selectionBox.startX, selectionBox.currentX)}px`,
+                    top: `${Math.min(selectionBox.startY, selectionBox.currentY)}px`,
+                    width: `${Math.abs(selectionBox.currentX - selectionBox.startX)}px`,
+                    height: `${Math.abs(selectionBox.currentY - selectionBox.startY)}px`,
+                  }}
+                />
+              )}
+
+              </div>
+
+              {showShortcutsHelp && (
+                <div className="absolute right-3 top-3 z-20 w-72 rounded-md border bg-background/95 p-3 text-xs shadow-lg backdrop-blur">
+                  <div className="mb-2 font-semibold">Tastatur-Shortcuts</div>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li><span className="font-medium text-foreground">Shift/Cmd/Ctrl + Klick</span> Mehrfachauswahl</li>
+                    <li><span className="font-medium text-foreground">Leere Fläche ziehen</span> Auswahlrechteck</li>
+                    <li><span className="font-medium text-foreground">Alt + Ziehen</span> Nur vollständig enthaltene Elemente</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + Mausrad</span> Zoom auf Cursor</li>
+                    <li><span className="font-medium text-foreground">Leertaste + Drag / Mittlere Maustaste</span> Canvas verschieben</li>
+                    <li><span className="font-medium text-foreground">Ausrichten-Leiste</span> Bei Mehrfachauswahl sichtbar</li>
+                    <li><span className="font-medium text-foreground">Verteilen</span> Ab 3 selektierten Elementen</li>
+                    <li><span className="font-medium text-foreground">Snap-Linien</span> Blitzen beim Einrasten kurz auf</li>
+                    <li><span className="font-medium text-foreground">Smart-Guide ΔX/ΔY</span> Zeigt nächste Abstände beim Drag</li>
+                    <li><span className="font-medium text-foreground">Tab / Shift+Tab</span> Auswahl wechseln</li>
+                    <li><span className="font-medium text-foreground">Pfeiltasten</span> Auswahl bewegen</li>
+                    <li><span className="font-medium text-foreground">Resize-Handle</span> Skaliert bei Mehrfachauswahl die Gruppe</li>
+                    <li><span className="font-medium text-foreground">Entf / Backspace</span> Element löschen</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + C / V</span> Kopieren / Einfügen</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + D</span> Duplizieren</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + ] / [</span> Ebene vor / zurück</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + Shift + ?</span> Hilfe ein/aus</li>
+                  </ul>
+                </div>
               )}
 
               {elements.map((element) => {
@@ -1078,7 +1774,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                     <div
                       key={element.id}
                       aria-label={getElementAriaLabel(element)}
-                      className={`absolute border ${selectedElementId === element.id ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
+                      className={`absolute border ${isElementSelected(element.id) ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
                       style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, fontSize: `${(element.fontSize || 12) * (96 / 72)}px`, fontFamily: element.fontFamily || 'Arial', fontWeight: element.fontWeight || 'normal', fontStyle: element.fontStyle || 'normal', textDecoration: element.textDecoration || 'none', color: element.color || '#000000', lineHeight: `${element.textLineHeight || 1.2}` }}
                       onMouseDown={(e) => {
                         if (isEditing) {
@@ -1118,8 +1814,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   const elH = (element.height || 30) * scaleY;
                   return (
                     <div key={element.id} className="absolute" aria-label={getElementAriaLabel(element)} style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${elW}px`, height: `${elH}px` }}>
-                      <img src={imgSrc} alt="Header Image" className={`w-full h-full object-contain cursor-move border ${selectedElementId === element.id ? 'border-primary border-dashed border-2' : 'border-transparent'}`} onMouseDown={(e) => onElementMouseDown(e, element)} draggable={false} />
-                      {selectedElementId === element.id && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} title="Ziehen zum Skalieren (fixes Seitenverhältnis aktiv, Ctrl ebenfalls möglich)" />}
+                      <img src={imgSrc} alt="Header Image" className={`w-full h-full object-contain cursor-move border ${isElementSelected(element.id) ? 'border-primary border-dashed border-2' : 'border-transparent'}`} onMouseDown={(e) => onElementMouseDown(e, element)} draggable={false} />
+                      {renderResizeHandles(element)}
                     </div>
                   );
                 }
