@@ -32,6 +32,7 @@ interface Props {
   onLayoutChange: (settings: LetterLayoutSettings) => void;
   onJumpToTab?: (tab: EditorTab) => void;
   headerElements?: Array<{ id: string; type: 'text' | 'image'; x: number; y: number; width?: number; height?: number; content?: string }>;
+  actionButtons?: React.ReactNode;
 }
 
 const DEFAULT_BLOCKS: BlockConfig[] = [
@@ -82,7 +83,7 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
 const getDisabled = (layout: LetterLayoutSettings): BlockKey[] => (layout.disabledBlocks || []) as BlockKey[];
 const getLocked = (layout: LetterLayoutSettings): BlockKey[] => (layout.lockedBlocks || []) as BlockKey[];
 
-export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJumpToTab, headerElements = [] }: Props) {
+export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJumpToTab, headerElements = [], actionButtons }: Props) {
   const [blocks, setBlocks] = useState<BlockConfig[]>(() => [...DEFAULT_BLOCKS]);
   const [selected, setSelected] = useState<BlockKey>('addressField');
   const [dragging, setDragging] = useState<{ key: BlockKey; startX: number; startY: number; orig: Rect; mode: 'move' | 'resize' } | null>(null);
@@ -295,7 +296,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr_260px] gap-4 mt-6">
         <div className="space-y-4">
           <div className="border rounded-lg p-3 space-y-2">
             <Label className="text-xs uppercase text-muted-foreground">Elemente</Label>
@@ -357,46 +358,18 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
             </div>
           </div>
 
-          {/* Selected element details */}
-          <div className="border rounded-lg p-3 space-y-2">
-            <Label className="text-xs uppercase text-muted-foreground">Ausgewählt: {selectedBlockConfig?.label}</Label>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div><Label>X (mm)</Label><Input value={selectedRect.x.toFixed(1)} readOnly /></div>
-              <div><Label>Y (mm)</Label><Input value={selectedRect.y.toFixed(1)} readOnly /></div>
-              <div><Label>Breite</Label><Input value={selectedRect.w.toFixed(1)} readOnly /></div>
-              <div><Label>Höhe</Label><Input value={selectedRect.h.toFixed(1)} readOnly /></div>
-            </div>
-            {selectedBlockConfig && (
-              <div>
-                <Label className="text-xs">Farbe</Label>
-                <Select value={selectedBlockConfig.color} onValueChange={(v) => updateBlockColor(selected, v)}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {COLOR_PRESETS.map(c => (
-                      <SelectItem key={c.value} value={c.value}>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded ${c.value.split(' ')[0]}`} />
-                          {c.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
         </div>
 
         <div ref={canvasWrapRef} tabIndex={0} onKeyDown={moveSelectedByKey} className="border rounded-lg p-4 bg-muted/20 overflow-auto outline-none" onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
-          <div className="relative mx-auto" style={{ width: pagePx.w + 24, height: pagePx.h + 24 }}>
+          <div className="relative mx-auto" style={{ width: pagePx.w + (showRuler ? 24 : 0), height: pagePx.h + (showRuler ? 24 : 0) }}>
             {showRuler && (
               <>
-                <div className="absolute top-0 left-6 right-0 h-6 border rounded bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(localLayout.pageWidth / 10) + 1 }).map((_, i) => <span key={`rx-${i}`} className="absolute" style={{ left: i * 10 * SCALE }}>{i * 10}</span>)}</div>
-                <div className="absolute top-6 left-0 bottom-0 w-6 border rounded bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(localLayout.pageHeight / 10) + 1 }).map((_, i) => <span key={`ry-${i}`} className="absolute" style={{ top: i * 10 * SCALE }}>{i * 10}</span>)}</div>
+                <div className="absolute top-0 left-6 right-0 h-6 border bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(localLayout.pageWidth / 10) + 1 }).map((_, i) => <span key={`rx-${i}`} className="absolute" style={{ left: i * 10 * SCALE }}>{i * 10}</span>)}</div>
+                <div className="absolute top-6 left-0 bottom-0 w-6 border bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(localLayout.pageHeight / 10) + 1 }).map((_, i) => <span key={`ry-${i}`} className="absolute" style={{ top: i * 10 * SCALE }}>{i * 10}</span>)}</div>
               </>
             )}
 
-            <div className="absolute left-6 top-6 bg-white shadow-xl relative select-none" style={{ width: pagePx.w, height: pagePx.h }}>
+            <div className="absolute bg-white shadow-xl relative select-none" style={{ left: showRuler ? 24 : 0, top: showRuler ? 24 : 0, width: pagePx.w, height: pagePx.h }}>
               <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />
 
               {headerElements.map((element) => (
@@ -433,6 +406,43 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               );
               })}
             </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {actionButtons && (
+            <div className="border rounded-lg p-3 space-y-2">
+              <Label className="text-xs uppercase text-muted-foreground">Bearbeitung</Label>
+              <div className="grid grid-cols-1 gap-2">{actionButtons}</div>
+            </div>
+          )}
+
+          <div className="border rounded-lg p-3 space-y-2">
+            <Label className="text-xs uppercase text-muted-foreground">Ausgewählt: {selectedBlockConfig?.label}</Label>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div><Label>X (mm)</Label><Input value={selectedRect.x.toFixed(1)} readOnly /></div>
+              <div><Label>Y (mm)</Label><Input value={selectedRect.y.toFixed(1)} readOnly /></div>
+              <div><Label>Breite</Label><Input value={selectedRect.w.toFixed(1)} readOnly /></div>
+              <div><Label>Höhe</Label><Input value={selectedRect.h.toFixed(1)} readOnly /></div>
+            </div>
+            {selectedBlockConfig && (
+              <div>
+                <Label className="text-xs">Farbe</Label>
+                <Select value={selectedBlockConfig.color} onValueChange={(v) => updateBlockColor(selected, v)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {COLOR_PRESETS.map(c => (
+                      <SelectItem key={c.value} value={c.value}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded ${c.value.split(' ')[0]}`} />
+                          {c.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
       </div>
