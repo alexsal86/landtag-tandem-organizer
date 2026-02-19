@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid, Ruler, Crosshair, Undo2, Redo2, Keyboard } from 'lucide-react';
+import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, Flower2, LayoutGrid, Ruler, Crosshair, Undo2, Redo2, Keyboard, Copy, ClipboardPaste, CopyPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -120,6 +120,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [showRuler, setShowRuler] = useState(false);
   const [showCenterGuides, setShowCenterGuides] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [, setClipboardVersion] = useState(0);
   const [dragId, setDragId] = useState<string | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -633,6 +634,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const copySelectedElement = () => {
     if (!selectedElement) return;
     clipboardRef.current = { ...selectedElement };
+    setClipboardVersion((version) => version + 1);
   };
 
   const pasteClipboardElement = () => {
@@ -644,12 +646,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     applyElements((prev) => [...prev, pasted]);
     setSelectedElementId(pasted.id);
     clipboardRef.current = pasted;
+    setClipboardVersion((version) => version + 1);
   };
 
   const duplicateSelectedElement = () => {
     copySelectedElement();
     pasteClipboardElement();
   };
+
+  const canPasteFromClipboard = Boolean(clipboardRef.current);
 
   const onPreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
@@ -1137,6 +1142,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </Button>
               <Button variant={showCenterGuides ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowCenterGuides(v => !v)}>
                 <Crosshair className="h-3.5 w-3.5 mr-1" />Achsen
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={copySelectedElement} disabled={!selectedElement}>
+                <Copy className="h-3.5 w-3.5 mr-1" />Kopieren
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={pasteClipboardElement} disabled={!canPasteFromClipboard}>
+                <ClipboardPaste className="h-3.5 w-3.5 mr-1" />Einfügen
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={duplicateSelectedElement} disabled={!selectedElement}>
+                <CopyPlus className="h-3.5 w-3.5 mr-1" />Duplizieren
               </Button>
               <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}>
                 <Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts
