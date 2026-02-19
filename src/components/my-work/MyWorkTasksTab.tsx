@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useViewPreference, ViewType } from "@/hooks/useViewPreference";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { useMyWorkTasksData, MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskListRow } from "@/components/tasks/TaskListRow";
 import { TaskDecisionCreator } from "@/components/task-decisions/TaskDecisionCreator";
@@ -27,23 +29,6 @@ import { Input } from "@/components/ui/input";
 import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 
-interface Task {
-  id: string;
-  title: string;
-  description: string | null;
-  priority: string;
-  status: string;
-  due_date: string | null;
-  assigned_to: string | null;
-  user_id: string;
-  created_at: string;
-  category?: string;
-  meeting_id?: string | null;
-  pending_for_jour_fixe?: boolean | null;
-  parent_task_id?: string | null;
-  tenant_id?: string;
-}
-
 interface Profile {
   user_id: string;
   display_name: string | null;
@@ -56,14 +41,22 @@ export function MyWorkTasksTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { viewType, setViewType } = useViewPreference({ key: "mywork-tasks", defaultView: "card" });
   
-  const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
-  const [createdTasks, setCreatedTasks] = useState<Task[]>([]);
-  const [subtasks, setSubtasks] = useState<Record<string, Task[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const {
+    assignedTasks,
+    setAssignedTasks,
+    createdTasks,
+    setCreatedTasks,
+    subtasks,
+    setSubtasks,
+    taskSnoozes,
+    setTaskSnoozes,
+    taskCommentCounts,
+    setTaskCommentCounts,
+    loading,
+    loadTasks,
+  } = useMyWorkTasksData(user?.id);
+  const [statusFilter, setStatusFilter] = usePersistentState<string>('mywork-tasks-status-filter', 'all');
   const [taskStatuses, setTaskStatuses] = useState<{name: string, label: string}[]>([]);
-  const [taskSnoozes, setTaskSnoozes] = useState<Record<string, string>>({});
-  const [taskCommentCounts, setTaskCommentCounts] = useState<Record<string, number>>({});
   const [dueFollowUpsExpanded, setDueFollowUpsExpanded] = useState(true);
   const [scheduledFollowUpsExpanded, setScheduledFollowUpsExpanded] = useState(false);
 
@@ -110,7 +103,6 @@ export function MyWorkTasksTab() {
 
   useEffect(() => {
     if (user) {
-      loadTasks();
       loadProfiles();
       loadTaskStatuses();
     }
@@ -126,125 +118,6 @@ export function MyWorkTasksTab() {
       setTaskStatuses(statuses || []);
     } catch (error) {
       console.error('Error loading task statuses:', error);
-    }
-  };
-
-  const loadTasks = async () => {
-    if (!user) return;
-    
-    try {
-      // Load tasks assigned to user
-      const { data: assigned, error: assignedError } = await supabase
-        .from("tasks")
-        .select("*")
-        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
-        .neq("status", "completed")
-        .is("parent_task_id", null)
-        .order("due_date", { ascending: true, nullsFirst: false });
-
-      if (assignedError) throw assignedError;
-
-      // Load tasks created by user
-      const { data: created, error: createdError } = await supabase
-        .from("tasks")
-        .select("*")
-        .eq("user_id", user.id)
-        .neq("status", "completed")
-        .is("parent_task_id", null)
-        .order("due_date", { ascending: true, nullsFirst: false });
-
-      if (createdError) throw createdError;
-
-      const allAssigned = assigned || [];
-      const allCreated = created || [];
-      
-      // Links: Selbst erstellte Aufgaben, ABER Meeting-Aufgaben ausschließen, die einem zugewiesen sind
-      const createdByMe = allCreated.filter(t => 
-        !(t.category === 'meeting' && normalizeAssignedTo(t.assigned_to).includes(user.id))
-      );
-      
-      // Rechts: Von ANDEREN erstellte + Meeting-Aufgaben, die mir zugewiesen sind
-      const meetingTasksAssignedToMe = allCreated.filter(t => 
-        t.category === 'meeting' && normalizeAssignedTo(t.assigned_to).includes(user.id)
-      );
-      const assignedByOthers = [
-        ...allAssigned.filter(t => t.user_id !== user.id),
-        ...meetingTasksAssignedToMe
-      ];
-      
-      setCreatedTasks(createdByMe);
-      setAssignedTasks(assignedByOthers);
-
-      // Load child-task tree + existing task snoozes
-      const allTaskIds = [...new Set([...createdByMe, ...assignedByOthers].map(t => t.id))];
-      if (allTaskIds.length > 0) {
-        const { data: snoozesData, error: snoozesError } = await supabase
-          .from("task_snoozes")
-          .select("task_id, snoozed_until")
-          .eq("user_id", user.id);
-
-        if (snoozesError) throw snoozesError;
-
-        const grouped: Record<string, Task[]> = {};
-        const visitedParentIds = new Set<string>();
-        let parentIdsToLoad = [...allTaskIds];
-
-        while (parentIdsToLoad.length > 0) {
-          const currentBatch = parentIdsToLoad.filter((id) => !visitedParentIds.has(id));
-          if (currentBatch.length === 0) break;
-
-          currentBatch.forEach((id) => visitedParentIds.add(id));
-
-          const { data: childTasksData, error: childTasksError } = await supabase
-            .from("tasks")
-            .select("*")
-            .in("parent_task_id", currentBatch)
-            .neq("status", "completed")
-            .order("due_date", { ascending: true, nullsFirst: false });
-
-          if (childTasksError) throw childTasksError;
-
-          const children = childTasksData || [];
-          children.forEach((childTask) => {
-            if (!childTask.parent_task_id) return;
-            if (!grouped[childTask.parent_task_id]) grouped[childTask.parent_task_id] = [];
-            grouped[childTask.parent_task_id].push(childTask);
-          });
-
-          parentIdsToLoad = children.map((childTask) => childTask.id);
-        }
-
-        setSubtasks(grouped);
-
-        const snoozeMap: Record<string, string> = {};
-        (snoozesData || []).forEach((snooze) => {
-          if (snooze.task_id) {
-            snoozeMap[snooze.task_id] = snooze.snoozed_until;
-          }
-        });
-        setTaskSnoozes(snoozeMap);
-
-        // Load comment counts for all tasks
-        const { data: commentsData } = await supabase
-          .from("task_comments")
-          .select("task_id")
-          .in("task_id", allTaskIds);
-
-        const commentCounts: Record<string, number> = {};
-        (commentsData || []).forEach((comment) => {
-          if (!comment.task_id) return;
-          commentCounts[comment.task_id] = (commentCounts[comment.task_id] || 0) + 1;
-        });
-        setTaskCommentCounts(commentCounts);
-      } else {
-        setSubtasks({});
-        setTaskSnoozes({});
-        setTaskCommentCounts({});
-      }
-    } catch (error) {
-      console.error("Error loading tasks:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -729,7 +602,7 @@ export function MyWorkTasksTab() {
   const splitTasksBySnooze = useMemo(() => {
     const now = startOfDay(new Date());
 
-    const split = (tasks: Task[]) => {
+    const split = (tasks: MyWorkTask[]) => {
       // Analog zu Quick Notes:
       // - fällige Wiedervorlagen separat anzeigen
       // - geplante Wiedervorlagen bis zum Datum ausblenden
@@ -756,7 +629,7 @@ export function MyWorkTasksTab() {
   }, [createdTasks, assignedTasks, taskSnoozes]);
 
   const renderTaskList = (
-    tasks: Task[],
+    tasks: MyWorkTask[],
     title: string,
     emptyMessage: string,
     options?: { scrollable?: boolean; compact?: boolean; allowQuickUnsnooze?: boolean; showFollowUpDateBadge?: boolean }
@@ -794,6 +667,7 @@ export function MyWorkTasksTab() {
             onDecision={handleDecision}
             onDocuments={handleDocuments}
             onAddToMeeting={handleAddToMeeting}
+            onCreateChildTask={handleCreateChildTask}
             onEdit={openTaskEditDialog}
             getChildTasks={getChildTasks}
             getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
@@ -829,6 +703,7 @@ export function MyWorkTasksTab() {
             onDecision={handleDecision}
             onDocuments={handleDocuments}
             onAddToMeeting={handleAddToMeeting}
+            onCreateChildTask={handleCreateChildTask}
             onEdit={openTaskEditDialog}
             getChildTasks={getChildTasks}
             getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
@@ -847,70 +722,11 @@ export function MyWorkTasksTab() {
           </div>
         </div>
         
-        <ScrollArea className="flex-1">
-          {tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
-          ) : viewType === "card" ? (
-            <div className="space-y-2 pr-2">
-              {tasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  subtasks={subtasks[task.id]}
-                  resolveAssigneeName={resolveAssigneeName}
-                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
-                  hasReminder={!!taskSnoozes[task.id]}
-                  onComplete={handleToggleComplete}
-                  onSubtaskComplete={handleToggleSubtaskComplete}
-                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-                  onUpdateTitle={handleUpdateTitle}
-                  onUpdateDescription={handleUpdateDescription}
-                  onUpdateDueDate={handleUpdateDueDate}
-                  onReminder={handleReminder}
-                  onAssign={handleAssign}
-                  onComment={handleComment}
-                  onDecision={handleDecision}
-                  onDocuments={handleDocuments}
-                  onAddToMeeting={handleAddToMeeting}
-                  onCreateChildTask={handleCreateChildTask}
-                  onEdit={openTaskEditDialog}
-                  getChildTasks={getChildTasks}
-                  getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
-                  showPersistentCommentIndicator
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="border rounded-lg overflow-hidden">
-              {tasks.map((task) => (
-                <TaskListRow
-                  key={task.id}
-                  task={task}
-                  subtasks={subtasks[task.id]}
-                  resolveAssigneeName={resolveAssigneeName}
-                  hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
-                  hasReminder={!!taskSnoozes[task.id]}
-                  onComplete={handleToggleComplete}
-                  onSubtaskComplete={handleToggleSubtaskComplete}
-                  onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-                  onUpdateTitle={handleUpdateTitle}
-                  onUpdateDueDate={handleUpdateDueDate}
-                  onReminder={handleReminder}
-                  onAssign={handleAssign}
-                  onComment={handleComment}
-                  onDecision={handleDecision}
-                  onDocuments={handleDocuments}
-                  onAddToMeeting={handleAddToMeeting}
-                  onCreateChildTask={handleCreateChildTask}
-                  onEdit={openTaskEditDialog}
-                  getChildTasks={getChildTasks}
-                  getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
-                  showPersistentCommentIndicator
-                />
-              ))}
-            </div>
-          )}
-        </ScrollArea>
+        {scrollable ? (
+          <ScrollArea className="flex-1">{listContent}</ScrollArea>
+        ) : (
+          listContent
+        )}
       </div>
     );
   };

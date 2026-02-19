@@ -28,6 +28,7 @@ interface GalleryImage {
 interface StructuredHeaderEditorProps {
   initialElements?: HeaderElement[];
   onElementsChange: (elements: HeaderElement[]) => void;
+  actionButtons?: React.ReactNode;
 }
 
 const getShapeFillColor = (element: HeaderElement, fallback = '#000000') =>
@@ -60,7 +61,7 @@ const SunflowerSVG: React.FC<{ width: number; height: number; className?: string
   </svg>
 );
 
-export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ initialElements = [], onElementsChange }) => {
+export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ initialElements = [], onElementsChange, actionButtons }) => {
   const { toast } = useToast();
   const { currentTenant } = useTenant();
   const {
@@ -1212,6 +1213,17 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
       <div className="space-y-4">
+        {actionButtons && (
+          <Card>
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm">Bearbeitung</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-2">
+              {actionButtons}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Tools */}
         <Card>
           <CardHeader className="py-3 px-4">
@@ -1410,15 +1422,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht. Resize + Ctrl = Seitenverhältnis. Bei Mehrfachauswahl skaliert der Handle die ganze Gruppe.</p>
         </CardHeader>
         <CardContent className="p-6">
-          <div ref={previewContainerRef} className="flex items-center justify-center min-h-[340px] w-full">
-          <div className="relative pl-12 pt-12">
+          <div ref={previewContainerRef} className="flex items-center justify-center min-h-[340px] w-full mt-4">
+          <div className="relative" style={{ paddingLeft: showRuler ? 28 : 0, paddingTop: showRuler ? 28 : 0 }}>
             {showRuler && (
               <>
-                <div className="absolute top-2 left-12 right-0 h-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
+                <div className="absolute top-0 left-7 right-0 h-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
                   <canvas ref={horizontalRulerRef} width={previewWidth} height={28} className="absolute inset-0 h-full w-full" />
                   {Array.from({ length: 22 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * previewWidth) / 21}px` }}>{i * 10}</span>))}
                 </div>
-                <div className="absolute top-12 left-2 bottom-0 w-7 border rounded bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
+                <div className="absolute top-7 left-0 bottom-0 w-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none">
                   <canvas ref={verticalRulerRef} width={28} height={previewHeight} className="absolute inset-0 h-full w-full" />
                   {Array.from({ length: 5 }).map((_, i) => (<span key={`label-y-${i}`} className="absolute left-0" style={{ top: `${(i * previewHeight) / 4}px` }}>{i * 10}</span>))}
                 </div>
@@ -1491,7 +1503,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               onMouseUp={onPreviewMouseUp}
               onClick={(e) => { if (e.target === e.currentTarget) { clearSelection(); } }}
               className="border border-gray-300 bg-white relative overflow-hidden outline-none"
-              style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, marginLeft: '8px', marginTop: '8px', cursor: isPanning || isSpacePressed ? 'grab' : undefined, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
+              style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, cursor: isPanning || isSpacePressed ? 'grab' : undefined, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '10px 10px' }}>
               <span className="sr-only" aria-live="polite">{ariaAnnouncement}</span>
               <div className="absolute inset-0" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: 'top left' }}>
               {showCenterGuides && (
@@ -1621,8 +1633,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 }
 
                 return null;
-              })}
-            </div>
+              })}            </div>
           </div>
           </div>
         </CardContent>
