@@ -13,6 +13,7 @@ import { useTenant } from '@/hooks/useTenant';
 
 type ElementType = 'text' | 'image' | 'shape' | 'block';
 type ShapeType = 'line' | 'circle' | 'rectangle' | 'sunflower';
+type ResizeHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
 
 interface BaseElement {
   id: string;
@@ -121,6 +122,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [showRuler, setShowRuler] = useState(false);
   const [showCenterGuides, setShowCenterGuides] = useState(false);
   const [snapLines, setSnapLines] = useState<{ x?: number; y?: number }>({});
+  const [smartGuideDistance, setSmartGuideDistance] = useState<{ horizontal?: number; vertical?: number }>({});
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [clipboardElement, setClipboardElement] = useState<HeaderElement | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -151,11 +153,14 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     y: number;
     ow: number;
     oh: number;
+    handle: ResizeHandle;
     group?: {
       baseWidth: number;
       baseHeight: number;
       left: number;
       top: number;
+      right: number;
+      bottom: number;
       items: Record<string, { x: number; y: number; width: number; height: number }>;
     };
   } | null>(null);
@@ -650,7 +655,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     setDragStart({ x: event.clientX, y: event.clientY, origins });
   };
 
-  const onResizeMouseDown = (event: React.MouseEvent, element: HeaderElement) => {
+  const onResizeMouseDown = (event: React.MouseEvent, element: HeaderElement, handle: ResizeHandle = 'se') => {
     event.stopPropagation(); event.preventDefault();
     setResizingId(element.id);
     resizeInitialElementsRef.current = elements;
@@ -677,18 +682,21 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         y: event.clientY,
         ow: element.width || 50,
         oh: element.height || 30,
+        handle,
         group: {
           baseWidth: Math.max(1, right - left),
           baseHeight: Math.max(1, bottom - top),
           left,
           top,
+          right,
+          bottom,
           items,
         },
       });
       return;
     }
 
-    setResizeStart({ x: event.clientX, y: event.clientY, ow: element.width || 50, oh: element.height || 30 });
+    setResizeStart({ x: event.clientX, y: event.clientY, ow: element.width || 50, oh: element.height || 30, handle });
   };
 
   useEffect(() => {
@@ -770,18 +778,55 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       const dy = (event.clientY - resizeStart.y) / (previewScaleY * zoom);
       let newW = Math.max(5, resizeStart.ow + dx);
       let newH = Math.max(5, resizeStart.oh + dy);
+      let shiftX = 0;
+      let shiftY = 0;
+
+      if (resizeStart.handle.includes('w')) {
+        newW = Math.max(5, resizeStart.ow - dx);
+        shiftX = resizeStart.ow - newW;
+      }
+      if (resizeStart.handle.includes('n')) {
+        newH = Math.max(5, resizeStart.oh - dy);
+        shiftY = resizeStart.oh - newH;
+      }
+      if (resizeStart.handle === 'n' || resizeStart.handle === 's') {
+        newW = resizeStart.ow;
+      }
+      if (resizeStart.handle === 'e' || resizeStart.handle === 'w') {
+        newH = resizeStart.oh;
+      }
+
       const preserveAspect = Boolean(event.ctrlKey || (resizingElement?.type === 'image' && resizingElement.preserveAspectRatio));
       if (preserveAspect && resizeStart.ow > 0 && resizeStart.oh > 0) {
-        newH = newW / (resizeStart.ow / resizeStart.oh);
+        const ratio = resizeStart.ow / resizeStart.oh;
+        if (resizeStart.handle === 'n' || resizeStart.handle === 's') {
+          newW = newH * ratio;
+        } else {
+          newH = newW / ratio;
+        }
       }
 
       if (resizeStart.group) {
-        const nextGroupWidth = Math.max(5, resizeStart.group.baseWidth + dx);
-        const nextGroupHeight = preserveAspect
-          ? nextGroupWidth / (resizeStart.group.baseWidth / resizeStart.group.baseHeight)
-          : Math.max(5, resizeStart.group.baseHeight + dy);
-        const scaleX = nextGroupWidth / resizeStart.group.baseWidth;
-        const scaleY = nextGroupHeight / resizeStart.group.baseHeight;
+        const nextLeft = resizeStart.handle.includes('w') ? resizeStart.group.left + dx : resizeStart.group.left;
+        const nextTop = resizeStart.handle.includes('n') ? resizeStart.group.top + dy : resizeStart.group.top;
+        const nextRight = resizeStart.handle.includes('e') ? resizeStart.group.right + dx : resizeStart.group.right;
+        const nextBottom = resizeStart.handle.includes('s') ? resizeStart.group.bottom + dy : resizeStart.group.bottom;
+
+        let groupWidth = Math.max(5, nextRight - nextLeft);
+        let groupHeight = Math.max(5, nextBottom - nextTop);
+        if (preserveAspect) {
+          const groupRatio = resizeStart.group.baseWidth / resizeStart.group.baseHeight;
+          if (resizeStart.handle === 'n' || resizeStart.handle === 's') {
+            groupWidth = groupHeight * groupRatio;
+          } else {
+            groupHeight = groupWidth / groupRatio;
+          }
+        }
+
+        const scaleX = groupWidth / resizeStart.group.baseWidth;
+        const scaleY = groupHeight / resizeStart.group.baseHeight;
+        const originX = resizeStart.handle.includes('w') ? resizeStart.group.right - groupWidth : resizeStart.group.left;
+        const originY = resizeStart.handle.includes('n') ? resizeStart.group.bottom - groupHeight : resizeStart.group.top;
 
         applyElements((prev) => prev.map((el) => {
           const source = resizeStart.group?.items[el.id];
@@ -790,8 +835,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           const relativeY = source.y - resizeStart.group!.top;
           return {
             ...el,
-            x: Math.max(0, Math.min(headerMaxWidth, Math.round(resizeStart.group!.left + relativeX * scaleX))),
-            y: Math.max(0, Math.min(headerMaxHeight, Math.round(resizeStart.group!.top + relativeY * scaleY))),
+            x: Math.max(0, Math.min(headerMaxWidth, Math.round(originX + relativeX * scaleX))),
+            y: Math.max(0, Math.min(headerMaxHeight, Math.round(originY + relativeY * scaleY))),
             width: Math.max(5, Math.round(source.width * scaleX)),
             height: Math.max(5, Math.round(source.height * scaleY)),
           };
@@ -799,7 +844,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         return;
       }
 
-      updateElement(resizingId, { width: Math.round(newW), height: Math.round(newH) }, { recordHistory: false });
+      updateElement(resizingId, {
+        x: resizingElement ? Math.max(0, Math.min(headerMaxWidth, Math.round(resizingElement.x + shiftX))) : undefined,
+        y: resizingElement ? Math.max(0, Math.min(headerMaxHeight, Math.round(resizingElement.y + shiftY))) : undefined,
+        width: Math.round(newW),
+        height: Math.round(newH),
+      }, { recordHistory: false });
       return;
     }
     if (!dragId || !dragStart) return;
@@ -811,6 +861,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const ny = Math.max(0, Math.min(headerMaxHeight, origin.y + dy));
     const snapped = snapToOtherElements(dragId, nx, ny, elements);
     flashSnapLines(snapped.guides);
+    calculateSmartGuideDistances(dragId, snapped.x, snapped.y, elements);
     const offsetX = snapped.x - origin.x;
     const offsetY = snapped.y - origin.y;
 
@@ -854,6 +905,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     setResizingId(null);
     setResizeStart(null);
     setSnapLines({});
+    setSmartGuideDistance({});
     setSelectionBox(null);
     setIsPanning(false);
     panStartRef.current = null;
@@ -932,6 +984,117 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       setSnapLines({});
       snapLinesTimeoutRef.current = null;
     }, 600);
+  };
+  const calculateSmartGuideDistances = (movingId: string, x: number, y: number, allElements: HeaderElement[]) => {
+    const moving = allElements.find((el) => el.id === movingId);
+    if (!moving) {
+      setSmartGuideDistance({});
+      return;
+    }
+    const { width, height } = getElementDimensions(moving);
+    const movingCenterX = x + width / 2;
+    const movingCenterY = y + height / 2;
+
+    let nearestHorizontal: number | undefined;
+    let nearestVertical: number | undefined;
+
+    allElements.forEach((el) => {
+      if (el.id === movingId) return;
+      const { width: w, height: h } = getElementDimensions(el);
+      const centerX = el.x + w / 2;
+      const centerY = el.y + h / 2;
+      const dx = Math.abs(movingCenterX - centerX);
+      const dy = Math.abs(movingCenterY - centerY);
+      if (nearestHorizontal == null || dx < nearestHorizontal) nearestHorizontal = dx;
+      if (nearestVertical == null || dy < nearestVertical) nearestVertical = dy;
+    });
+
+    setSmartGuideDistance({
+      horizontal: nearestHorizontal != null ? Math.round(nearestHorizontal) : undefined,
+      vertical: nearestVertical != null ? Math.round(nearestVertical) : undefined,
+    });
+  };
+
+
+
+  const getElementDimensions = (element: HeaderElement) => ({
+    width: Math.max(1, element.width || (element.type === 'text' ? 70 : element.type === 'block' ? 45 : 50)),
+    height: Math.max(1, element.height || (element.type === 'text' ? 8 : element.type === 'block' ? 18 : 10)),
+  });
+
+  const alignSelection = (axis: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
+    if (selectedElementIds.length < 2) return;
+    const selected = elements.filter((el) => selectedElementIds.includes(el.id));
+    if (selected.length < 2) return;
+
+    const bounds = selected.reduce((acc, element) => {
+      const { width, height } = getElementDimensions(element);
+      return {
+        left: Math.min(acc.left, element.x),
+        top: Math.min(acc.top, element.y),
+        right: Math.max(acc.right, element.x + width),
+        bottom: Math.max(acc.bottom, element.y + height),
+      };
+    }, { left: Number.POSITIVE_INFINITY, top: Number.POSITIVE_INFINITY, right: Number.NEGATIVE_INFINITY, bottom: Number.NEGATIVE_INFINITY });
+
+    const centerX = (bounds.left + bounds.right) / 2;
+    const middleY = (bounds.top + bounds.bottom) / 2;
+
+    applyElements((prev) => prev.map((element) => {
+      if (!selectedElementIds.includes(element.id)) return element;
+      const { width, height } = getElementDimensions(element);
+      let x = element.x;
+      let y = element.y;
+
+      if (axis === 'left') x = bounds.left;
+      if (axis === 'center') x = centerX - width / 2;
+      if (axis === 'right') x = bounds.right - width;
+      if (axis === 'top') y = bounds.top;
+      if (axis === 'middle') y = middleY - height / 2;
+      if (axis === 'bottom') y = bounds.bottom - height;
+
+      return {
+        ...element,
+        x: Math.max(0, Math.min(headerMaxWidth, Math.round(x))),
+        y: Math.max(0, Math.min(headerMaxHeight, Math.round(y))),
+      };
+    }));
+  };
+
+  const distributeSelection = (axis: 'horizontal' | 'vertical') => {
+    if (selectedElementIds.length < 3) return;
+    const selected = elements
+      .filter((el) => selectedElementIds.includes(el.id))
+      .map((element) => ({ ...element, ...getElementDimensions(element) }));
+    if (selected.length < 3) return;
+
+    const sorted = [...selected].sort((a, b) => (axis === 'horizontal' ? a.x - b.x : a.y - b.y));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const startPos = axis === 'horizontal' ? first.x : first.y;
+    const endPos = axis === 'horizontal' ? last.x + last.width : last.y + last.height;
+    const totalSize = sorted.reduce((sum, item) => sum + (axis === 'horizontal' ? item.width : item.height), 0);
+    const totalGap = endPos - startPos - totalSize;
+    if (totalGap <= 0) return;
+
+    const gap = totalGap / (sorted.length - 1);
+    let cursor = startPos;
+    const positions = new Map<string, number>();
+
+    sorted.forEach((item) => {
+      positions.set(item.id, cursor);
+      cursor += (axis === 'horizontal' ? item.width : item.height) + gap;
+    });
+
+    applyElements((prev) => prev.map((element) => {
+      const nextPos = positions.get(element.id);
+      if (nextPos == null) return element;
+      return {
+        ...element,
+        x: axis === 'horizontal' ? Math.max(0, Math.min(headerMaxWidth, Math.round(nextPos))) : element.x,
+        y: axis === 'vertical' ? Math.max(0, Math.min(headerMaxHeight, Math.round(nextPos))) : element.y,
+      };
+    }));
   };
 
   const getElementDimensions = (element: HeaderElement) => ({
@@ -1205,6 +1368,30 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return <Square className="h-3.5 w-3.5 shrink-0" />;
   };
 
+
+  const renderResizeHandles = (element: HeaderElement) => {
+    if (!isElementSelected(element.id)) return null;
+    const handles: Array<{ key: ResizeHandle; className: string; style: React.CSSProperties }> = [
+      { key: 'nw', className: 'cursor-nwse-resize', style: { left: 0, top: 0, transform: 'translate(-50%, -50%)' } },
+      { key: 'n', className: 'cursor-ns-resize', style: { left: '50%', top: 0, transform: 'translate(-50%, -50%)' } },
+      { key: 'ne', className: 'cursor-nesw-resize', style: { right: 0, top: 0, transform: 'translate(50%, -50%)' } },
+      { key: 'e', className: 'cursor-ew-resize', style: { right: 0, top: '50%', transform: 'translate(50%, -50%)' } },
+      { key: 'se', className: 'cursor-nwse-resize', style: { right: 0, bottom: 0, transform: 'translate(50%, 50%)' } },
+      { key: 's', className: 'cursor-ns-resize', style: { left: '50%', bottom: 0, transform: 'translate(-50%, 50%)' } },
+      { key: 'sw', className: 'cursor-nesw-resize', style: { left: 0, bottom: 0, transform: 'translate(-50%, 50%)' } },
+      { key: 'w', className: 'cursor-ew-resize', style: { left: 0, top: '50%', transform: 'translate(-50%, -50%)' } },
+    ];
+
+    return handles.map((handle) => (
+      <div
+        key={`${element.id}-${handle.key}`}
+        className={`absolute w-3 h-3 bg-primary border border-primary-foreground z-10 ${handle.className}`}
+        style={handle.style}
+        onMouseDown={(event) => onResizeMouseDown(event, element, handle.key)}
+      />
+    ));
+  };
+
   // Render shape on canvas
   const renderShapeCanvas = (element: ShapeElement, scaleX: number, scaleY: number) => {
     const w = (element.width || 20) * scaleX;
@@ -1226,7 +1413,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       return (
         <div key={element.id} aria-label={getElementAriaLabel(element)} style={wrapperStyle} onMouseDown={(e) => onElementMouseDown(e, element)} className={`border ${isSelected ? 'border-primary border-dashed border-2' : 'border-transparent'}`}>
           <SunflowerSVG width={w} height={h} />
-          {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} />}
+          {renderResizeHandles(element)}
         </div>
       );
     }
@@ -1244,7 +1431,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             <rect x={(element.strokeWidth ?? 1) / 2} y={(element.strokeWidth ?? 1) / 2} width={w - (element.strokeWidth ?? 1)} height={h - (element.strokeWidth ?? 1)} rx={element.borderRadius ?? 0} fill={getShapeFillColor(element, '#3b82f6')} stroke={getShapeStrokeColor(element, '#1e40af')} strokeWidth={element.strokeWidth ?? 1} />
           )}
         </svg>
-        {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} />}
+        {renderResizeHandles(element)}
       </div>
     );
   };
@@ -1290,7 +1477,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         ) : (
           <div className="px-1 whitespace-pre-line h-full">{element.blockContent || ''}</div>
         )}
-        {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} />}
+        {renderResizeHandles(element)}
       </div>
     );
   };
@@ -1613,6 +1800,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 </>
               )}
 
+              {(smartGuideDistance.horizontal != null || smartGuideDistance.vertical != null) && (
+                <div className="absolute bottom-2 left-2 z-10 rounded bg-emerald-600/90 px-2 py-1 text-[10px] text-white pointer-events-none">
+                  {smartGuideDistance.horizontal != null && <span>ΔX {smartGuideDistance.horizontal}mm </span>}
+                  {smartGuideDistance.vertical != null && <span>ΔY {smartGuideDistance.vertical}mm</span>}
+                </div>
+              )}
+
               {selectionBox && (
                 <div
                   className="absolute border border-primary/80 bg-primary/10 pointer-events-none"
@@ -1639,6 +1833,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                     <li><span className="font-medium text-foreground">Ausrichten-Leiste</span> Bei Mehrfachauswahl sichtbar</li>
                     <li><span className="font-medium text-foreground">Verteilen</span> Ab 3 selektierten Elementen</li>
                     <li><span className="font-medium text-foreground">Snap-Linien</span> Blitzen beim Einrasten kurz auf</li>
+                    <li><span className="font-medium text-foreground">Smart-Guide ΔX/ΔY</span> Zeigt nächste Abstände beim Drag</li>
                     <li><span className="font-medium text-foreground">Tab / Shift+Tab</span> Auswahl wechseln</li>
                     <li><span className="font-medium text-foreground">Pfeiltasten</span> Auswahl bewegen</li>
                     <li><span className="font-medium text-foreground">Resize-Handle</span> Skaliert bei Mehrfachauswahl die Gruppe</li>
@@ -1702,7 +1897,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   return (
                     <div key={element.id} className="absolute" aria-label={getElementAriaLabel(element)} style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${elW}px`, height: `${elH}px` }}>
                       <img src={imgSrc} alt="Header Image" className={`w-full h-full object-contain cursor-move border ${isElementSelected(element.id) ? 'border-primary border-dashed border-2' : 'border-transparent'}`} onMouseDown={(e) => onElementMouseDown(e, element)} draggable={false} />
-                      {isElementSelected(element.id) && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => onResizeMouseDown(e, element)} title="Ziehen zum Skalieren (fixes Seitenverhältnis aktiv, Ctrl ebenfalls möglich)" />}
+                      {renderResizeHandles(element)}
                     </div>
                   );
                 }
