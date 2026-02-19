@@ -12,6 +12,7 @@ import { ResponseOption, DECISION_TEMPLATES, DEFAULT_TEMPLATE_ID, getTemplateByI
 import { ResponseOptionsPreview } from "@/components/task-decisions/ResponseOptionsPreview";
 import { DecisionFileUpload } from "@/components/task-decisions/DecisionFileUpload";
 import { useDecisionAttachmentUpload } from "@/hooks/useDecisionAttachmentUpload";
+import type { EmailMetadata } from "@/utils/emlParser";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { Vote, Loader2, Mail, MessageSquare, Globe, Paperclip, Star } from "lucide-react";
@@ -61,6 +62,7 @@ export function NoteDecisionCreator({
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [priority, setPriority] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFileMetadata, setSelectedFileMetadata] = useState<Record<string, EmailMetadata | null>>({});
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
   const hasInitializedRef = useRef(false);
   const { uploadDecisionAttachments } = useDecisionAttachmentUpload();
@@ -244,6 +246,7 @@ export function NoteDecisionCreator({
           decisionId: decision.id,
           userId: user.id,
           files: selectedFiles,
+          metadataByIdentity: selectedFileMetadata,
           rollbackOnAnyFailure: true,
           onFileStart: (file, index, total) => {
             setUploadStatus(`Lade Anhang ${index + 1}/${total}: ${file.name}`);
@@ -342,12 +345,13 @@ export function NoteDecisionCreator({
       setVisibleToAll(true);
       setPriority(false);
       setSelectedFiles([]);
+      setSelectedFileMetadata({});
       setSelectedTopicIds([]);
       setUploadStatus(null);
     } catch (error) {
       setUploadStatus(null);
       console.error('Error creating decision:', error);
-      toast.error("Fehler beim Erstellen der Entscheidungsanfrage");
+      toast.error(error instanceof Error ? error.message : "Fehler beim Erstellen der Entscheidungsanfrage");
     } finally {
       setLoading(false);
       setUploadStatus(null);
@@ -490,6 +494,7 @@ export function NoteDecisionCreator({
             <DecisionFileUpload
               mode="creation"
               onFilesSelected={setSelectedFiles}
+              onFilesPrepared={({ metadataByIdentity }) => setSelectedFileMetadata(metadataByIdentity)}
               canUpload={true}
             />
           </div>

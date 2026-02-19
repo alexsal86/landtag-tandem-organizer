@@ -26,8 +26,13 @@ interface UploadParams {
   files: File[];
   onFileStart?: (file: File, index: number, total: number) => void;
   rollbackOnAnyFailure?: boolean;
+  metadataByIdentity?: Record<string, EmailMetadata | null>;
 }
 
+
+function getFileIdentity(file: File): string {
+  return `${file.name}::${file.size}::${file.lastModified}`;
+}
 function normalizeError(error: unknown): string {
   if (!error) return 'Unbekannter Fehler';
   if (typeof error === 'string') return error;
@@ -63,20 +68,27 @@ async function uploadToStorageWithCandidates(filePath: string, file: File, maxAt
   throw new Error(candidateErrors.join(' | ') || 'Upload fehlgeschlagen');
 }
 
-async function uploadOneFile(file: File, decisionId: string, userId: string) {
+async function uploadOneFile(
+  file: File,
+  decisionId: string,
+  userId: string,
+  metadataByIdentity?: Record<string, EmailMetadata | null>,
+) {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const filePath = `${userId}/decisions/${decisionId}/${uniqueSuffix}-${file.name}`;
 
   const { uploadData } = await uploadToStorageWithCandidates(filePath, file);
 
-  let emailMeta: EmailMetadata | null = null;
-  if (isEmlFile(file)) {
+  const cachedMetadata = metadataByIdentity?.[getFileIdentity(file)] ?? null;
+
+  let emailMeta: EmailMetadata | null = cachedMetadata;
+  if (!emailMeta && isEmlFile(file)) {
     try {
       emailMeta = (await parseEmlFile(file)).metadata;
     } catch (error) {
       console.error('EML parse error during upload:', error);
     }
-  } else if (isMsgFile(file)) {
+  } else if (!emailMeta && isMsgFile(file)) {
     try {
       emailMeta = (await parseMsgFile(file)).metadata;
     } catch (error) {
@@ -127,6 +139,7 @@ export function useDecisionAttachmentUpload() {
     files,
     onFileStart,
     rollbackOnAnyFailure = false,
+    metadataByIdentity,
   }: UploadParams): Promise<UploadResult> => {
     const failed: UploadFailure[] = [];
     const uploadedPaths: string[] = [];
@@ -135,7 +148,7 @@ export function useDecisionAttachmentUpload() {
     for (const [index, file] of files.entries()) {
       onFileStart?.(file, index, files.length);
       try {
-        const result = await uploadOneFile(file, decisionId, userId);
+        const result = await uploadOneFile(file, decisionId, userId, metadataByIdentity);
         uploadedPaths.push(result.filePath);
         uploadedCount += 1;
       } catch (error) {

@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
+import { isEmailFile, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, type EmailMetadata } from '@/utils/emlParser';
 import { useDecisionAttachmentUpload } from '@/hooks/useDecisionAttachmentUpload';
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
@@ -27,6 +27,7 @@ interface DecisionFileUploadProps {
   canUpload?: boolean;
   mode?: 'view' | 'creation';
   onFilesSelected?: (files: File[]) => void;
+  onFilesPrepared?: (payload: { files: File[]; metadataByIdentity: Record<string, EmailMetadata | null> }) => void;
 }
 
 interface SelectedFileEntry {
@@ -41,7 +42,8 @@ export function DecisionFileUpload({
   onFilesChange,
   canUpload = true,
   mode = 'view',
-  onFilesSelected
+  onFilesSelected,
+  onFilesPrepared
 }: DecisionFileUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -62,9 +64,15 @@ export function DecisionFileUpload({
 
   useEffect(() => {
     if (mode === 'creation') {
-      onFilesSelected?.(selectedFiles.map(entry => entry.file));
+      const files = selectedFiles.map(entry => entry.file);
+      const metadataByIdentity = Object.fromEntries(
+        selectedFiles.map(entry => [getFileIdentity(entry.file), entry.emailMetadata ?? null])
+      );
+
+      onFilesSelected?.(files);
+      onFilesPrepared?.({ files, metadataByIdentity });
     }
-  }, [mode, onFilesSelected, selectedFiles]);
+  }, [mode, onFilesPrepared, onFilesSelected, selectedFiles]);
 
   const loadExistingFiles = async () => {
     try {
@@ -166,10 +174,16 @@ export function DecisionFileUpload({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      const preparedEntries = await processFiles(filesArray);
+      const metadataByIdentity = Object.fromEntries(
+        preparedEntries.map(entry => [getFileIdentity(entry.file), entry.emailMetadata ?? null])
+      );
+
       const uploadResult = await uploadDecisionAttachments({
         decisionId,
         userId: user.id,
-        files: filesArray,
+        files: preparedEntries.map(entry => entry.file),
+        metadataByIdentity,
       });
 
       if (uploadResult.uploadedCount > 0) {
@@ -308,12 +322,24 @@ export function DecisionFileUpload({
     return decision?.created_by === user.id;
   };
 
+  const toFallbackEmailMetadata = (fileName: string): EmailMetadata => ({
+    subject: fileName,
+    from: 'Unbekannt',
+    to: [],
+    date: new Date().toISOString(),
+    hasHtmlBody: false,
+    attachmentCount: 0,
+  });
+
   const renderFileItem = (file: UploadedFile) => {
-    if (file.email_metadata) {
+    const fileLooksLikeEmail = file.file_name.toLowerCase().endsWith('.eml') || file.file_name.toLowerCase().endsWith('.msg');
+    const emailMetadata = file.email_metadata || (fileLooksLikeEmail ? toFallbackEmailMetadata(file.file_name) : null);
+
+    if (emailMetadata) {
       return (
         <EmailPreviewCard
           key={file.id}
-          metadata={file.email_metadata}
+          metadata={emailMetadata}
           fileName={file.file_name}
           fileSize={file.file_size}
           onPreviewOpen={() => setPreviewDialog({ open: true, filePath: file.file_path, fileName: file.file_name })}
@@ -406,10 +432,10 @@ export function DecisionFileUpload({
               <p className="text-sm font-medium">Ausgewählte Dateien ({selectedFiles.length})</p>
               <div className="max-h-[300px] overflow-y-auto space-y-2">
                 {selectedFiles.map((entry, index) => (
-                  entry.emailMetadata ? (
+                  (entry.emailMetadata || isEmailFile(entry.file)) ? (
                     <EmailPreviewCard
                       key={index}
-                      metadata={entry.emailMetadata}
+                      metadata={entry.emailMetadata ?? toFallbackEmailMetadata(entry.file.name)}
                       fileName={entry.file.name}
                       fileSize={entry.file.size}
                       onPreviewOpen={() => {}}

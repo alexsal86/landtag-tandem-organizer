@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
 import { useDecisionAttachmentUpload } from "@/hooks/useDecisionAttachmentUpload";
+import type { EmailMetadata } from "@/utils/emlParser";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { ResponseOptionsEditor } from "./ResponseOptionsEditor";
@@ -74,6 +75,7 @@ export const TaskDecisionCreator = ({
   const [sendViaMatrix, setSendViaMatrix] = useState(true);
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFileMetadata, setSelectedFileMetadata] = useState<Record<string, EmailMetadata | null>>({});
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
   const [priority, setPriority] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState(DEFAULT_TEMPLATE_ID);
@@ -322,6 +324,7 @@ export const TaskDecisionCreator = ({
           decisionId: decision.id,
           userId: userData.user.id,
           files: selectedFiles,
+          metadataByIdentity: selectedFileMetadata,
           rollbackOnAnyFailure: true,
           onFileStart: (file, index, total) => {
             setUploadStatus(`Lade Anhang ${index + 1}/${total}: ${file.name}`);
@@ -497,6 +500,7 @@ export const TaskDecisionCreator = ({
       setResponseDeadline("");
       setSelectedUsers([]);
       setSelectedFiles([]);
+      setSelectedFileMetadata({});
       setSelectedTopicIds([]);
       setSendByEmail(false);
       setSendViaMatrix(false);
@@ -513,7 +517,7 @@ export const TaskDecisionCreator = ({
       console.error('Error creating decision:', error);
       toast({
         title: "Fehler",
-        description: "Entscheidungsanfrage konnte nicht erstellt werden.",
+        description: error instanceof Error ? error.message : "Entscheidungsanfrage konnte nicht erstellt werden.",
         variant: "destructive",
       });
     } finally {
@@ -700,6 +704,7 @@ export const TaskDecisionCreator = ({
               <DecisionFileUpload
                 mode="creation"
                 onFilesSelected={setSelectedFiles}
+                onFilesPrepared={({ metadataByIdentity }) => setSelectedFileMetadata(metadataByIdentity)}
                 canUpload={true}
               />
             </div>
