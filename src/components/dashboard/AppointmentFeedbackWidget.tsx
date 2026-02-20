@@ -141,7 +141,10 @@ export const AppointmentFeedbackWidget = ({
     });
   };
 
-  const handleSaveNote = async (feedbackId: string, userName: string) => {
+  // Notification-Type ID for appointment_feedback
+  const FEEDBACK_NOTIFICATION_TYPE_ID = 'c51a3c97-a10d-40f9-9900-1931479a89c8';
+
+  const handleSaveNote = async (feedbackId: string, userName: string, appointmentTitle: string, appointmentStartTime: string) => {
     if (!noteText || noteText === '<p></p>' || noteText.trim() === '') {
       toast({ title: 'Fehler', description: 'Bitte geben Sie eine Notiz ein.', variant: 'destructive' });
       return;
@@ -156,9 +159,35 @@ export const AppointmentFeedbackWidget = ({
         completed_at: new Date().toISOString()
       }
     });
+
+    // Send notifications to all other tenant members
+    try {
+      await loadTenantUsers();
+      const otherUsers = tenantUsers.filter(u => u.user_id !== user?.id);
+      if (otherUsers.length > 0) {
+        const plainText = noteWithAuthor.replace(/<[^>]*>/g, '').slice(0, 120);
+        const dateStr = appointmentStartTime.split('T')[0];
+        await Promise.all(
+          otherUsers.map(u =>
+            supabase.rpc('create_notification', {
+              user_id_param: u.user_id,
+              type_name: 'appointment_feedback',
+              title_param: `Rückmeldung: ${appointmentTitle}`,
+              message_param: plainText,
+              priority_param: 'medium',
+              data_param: JSON.stringify({ navigation_context: `mywork?tab=feedbackfeed` }),
+            })
+          )
+        );
+      }
+    } catch (err) {
+      // Non-critical – don't block save if notifications fail
+      console.error('Failed to send feedback notifications:', err);
+    }
+
     setNoteText('');
     setNoteDialogOpen(null);
-    toast({ title: 'Notiz gespeichert', description: 'Die Rückmeldung wurde am Termin gespeichert.' });
+    toast({ title: 'Notiz gespeichert', description: 'Die Rückmeldung wurde am Termin gespeichert und alle Mitarbeiter wurden benachrichtigt.' });
   };
 
   const handleFileUpload = async (appointmentId: string, feedbackId: string, file: File) => {
@@ -432,7 +461,7 @@ export const AppointmentFeedbackWidget = ({
                               />
                             </div>
                             <Button
-                              onClick={() => handleSaveNote(feedback.id, displayName)}
+                              onClick={() => handleSaveNote(feedback.id, displayName, appointment.title, appointment.start_time)}
                               className="w-full"
                             >
                               Rückmeldung speichern
