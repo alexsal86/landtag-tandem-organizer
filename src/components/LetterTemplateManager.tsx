@@ -791,11 +791,11 @@ const LetterTemplateManager: React.FC = () => {
           headerElements={formData.header_elements}
           actionButtons={
             <>
-              <Button variant="outline" onClick={editingTemplate ? cancelEditing : () => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>
-                <X className="h-4 w-4 mr-2" />Abbrechen
-              </Button>
               <Button onClick={editingTemplate ? handleUpdateTemplate : handleCreateTemplate}>
                 <Save className="h-4 w-4 mr-2" />Speichern
+              </Button>
+              <Button variant="outline" onClick={editingTemplate ? cancelEditing : () => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>
+                <X className="h-4 w-4 mr-2" />Abbrechen
               </Button>
             </>
           }
@@ -955,10 +955,12 @@ const LetterTemplateManager: React.FC = () => {
               {renderTabsList()}
               {renderCommonTabsContent()}
             </Tabs>
-            <div className="flex justify-end space-x-2 pt-4 border-t">
-              <Button variant="outline" onClick={() => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>Abbrechen</Button>
-              <Button onClick={handleCreateTemplate}>Template erstellen</Button>
-            </div>
+            {activeTab !== 'canvas-designer' && (
+              <div className="flex justify-end space-x-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>Abbrechen</Button>
+                <Button onClick={handleCreateTemplate}>Template erstellen</Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -1009,10 +1011,12 @@ const LetterTemplateManager: React.FC = () => {
               {renderTabsList()}
               {renderCommonTabsContent()}
             </Tabs>
-            <div className="flex justify-end space-x-2 pt-4 border-t">
-              <Button variant="outline" onClick={cancelEditing}><X className="h-4 w-4 mr-2" />Abbrechen</Button>
-              <Button onClick={handleUpdateTemplate}><Save className="h-4 w-4 mr-2" />Speichern</Button>
-            </div>
+            {activeTab !== 'canvas-designer' && (
+              <div className="flex justify-end space-x-2 pt-4 border-t">
+                <Button variant="outline" onClick={cancelEditing}><X className="h-4 w-4 mr-2" />Abbrechen</Button>
+                <Button onClick={handleUpdateTemplate}><Save className="h-4 w-4 mr-2" />Speichern</Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

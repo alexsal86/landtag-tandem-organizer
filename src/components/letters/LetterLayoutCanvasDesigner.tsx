@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ZoomIn, ZoomOut, Trash2, Pencil, Eye, EyeOff, Lock, Unlock } from 'lucide-react';
+import { ZoomIn, ZoomOut, Trash2, Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 
 type BlockKey = 'header' | 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments';
@@ -90,9 +90,9 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   const [localLayout, setLocalLayout] = useState<LetterLayoutSettings>(() => cloneLayout(layoutSettings));
   const [showRuler, setShowRuler] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [editingLabel, setEditingLabel] = useState<string | null>(null);
-  const [editLabelValue, setEditLabelValue] = useState('');
+  const [selectedLabel, setSelectedLabel] = useState('');
   const canvasWrapRef = useRef<HTMLDivElement | null>(null);
+  const RULER_SIZE = 24;
 
   const SCALE = BASE_SCALE * zoomLevel;
 
@@ -231,6 +231,11 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     setBlocks(prev => prev.map(b => b.key === key ? { ...b, label: newLabel } : b));
   };
 
+  useEffect(() => {
+    const label = blocks.find((block) => block.key === selected)?.label || '';
+    setSelectedLabel(label);
+  }, [blocks, selected]);
+
   const updateBlockColor = (key: string, newColor: string) => {
     setBlocks(prev => prev.map(b => b.key === key ? { ...b, color: newColor } : b));
   };
@@ -302,12 +307,12 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
             <Label className="text-xs uppercase text-muted-foreground">Elemente</Label>
             <div className="grid grid-cols-1 gap-2">
               {blocks.map((block) => (
-                <div key={block.key} className="flex items-center gap-2">
+                <div key={block.key} className="grid grid-cols-[2.25rem_2.25rem_minmax(0,1fr)_2.25rem] gap-2 items-center">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0"
+                    className="h-9 w-9 p-0"
                     onClick={() => toggleBlock(block.key, disabledBlocks.has(block.key))}
                     title={disabledBlocks.has(block.key) ? 'Einblenden' : 'Ausblenden'}
                   >
@@ -317,42 +322,20 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0"
+                    className="h-9 w-9 p-0"
                     onClick={() => toggleLock(block.key)}
                     title={lockedBlocks.has(block.key) ? 'Sperre lösen' : 'Element sperren'}
                   >
                     {lockedBlocks.has(block.key) ? <Lock className="h-4 w-4 text-amber-600" /> : <Unlock className="h-4 w-4 text-muted-foreground" />}
                   </Button>
-                  {editingLabel === block.key ? (
-                    <Input
-                      value={editLabelValue}
-                      onChange={(e) => setEditLabelValue(e.target.value)}
-                      onBlur={() => { updateBlockLabel(block.key, editLabelValue); setEditingLabel(null); }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { updateBlockLabel(block.key, editLabelValue); setEditingLabel(null); } }}
-                      className="h-8 text-xs flex-1"
-                      autoFocus
-                    />
-                  ) : (
-                    <Button type="button" variant="outline" size="sm" className={`flex-1 ${selected === block.key ? 'ring-2 ring-primary' : ''} ${block.color}`} onClick={() => { setSelected(block.key); canvasWrapRef.current?.focus(); }}>
-                      {block.label}
+                  <Button type="button" variant="outline" size="sm" className={`h-9 w-full justify-start px-3 ${selected === block.key ? 'ring-2 ring-primary' : ''} ${block.color}`} onClick={() => { setSelected(block.key); canvasWrapRef.current?.focus(); }}>
+                    {block.label}
+                  </Button>
+                  {block.isCustom ? (
+                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => removeCustomBlock(block.key)} title="Löschen">
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
-                  )}
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      className={`h-5 w-5 rounded border ${block.color.split(' ')[0]} ${selected === block.key ? 'ring-1 ring-primary' : ''}`}
-                      onClick={() => setSelected(block.key)}
-                      title="Elementfarbe"
-                    />
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingLabel(block.key); setEditLabelValue(block.label); }} title="Umbenennen">
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    {block.isCustom && (
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => removeCustomBlock(block.key)} title="Löschen">
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </Button>
-                    )}
-                  </div>
+                  ) : <div className="h-9 w-9" />}
                 </div>
               ))}
             </div>
@@ -361,15 +344,13 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
         </div>
 
         <div ref={canvasWrapRef} tabIndex={0} onKeyDown={moveSelectedByKey} className="border rounded-lg p-4 bg-muted/20 overflow-auto outline-none" onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
-          <div className="relative mx-auto" style={{ width: pagePx.w + (showRuler ? 24 : 0), height: pagePx.h + (showRuler ? 24 : 0) }}>
-            {showRuler && (
-              <>
-                <div className="absolute top-0 left-6 right-0 h-6 border bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(localLayout.pageWidth / 10) + 1 }).map((_, i) => <span key={`rx-${i}`} className="absolute" style={{ left: i * 10 * SCALE }}>{i * 10}</span>)}</div>
-                <div className="absolute top-6 left-0 bottom-0 w-6 border bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(localLayout.pageHeight / 10) + 1 }).map((_, i) => <span key={`ry-${i}`} className="absolute" style={{ top: i * 10 * SCALE }}>{i * 10}</span>)}</div>
-              </>
-            )}
+          <div className="relative mx-auto" style={{ width: pagePx.w + RULER_SIZE, height: pagePx.h + RULER_SIZE }}>
+            <>
+              <div className={`absolute top-0 left-6 right-0 h-6 border bg-white/90 text-[9px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`}>{Array.from({ length: Math.floor(localLayout.pageWidth / 10) + 1 }).map((_, i) => <span key={`rx-${i}`} className="absolute" style={{ left: i * 10 * SCALE }}>{i * 10}</span>)}</div>
+              <div className={`absolute top-6 left-0 bottom-0 w-6 border bg-white/90 text-[9px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`}>{Array.from({ length: Math.floor(localLayout.pageHeight / 10) + 1 }).map((_, i) => <span key={`ry-${i}`} className="absolute" style={{ top: i * 10 * SCALE }}>{i * 10}</span>)}</div>
+            </>
 
-            <div className="absolute bg-white shadow-xl relative select-none" style={{ left: showRuler ? 24 : 0, top: showRuler ? 24 : 0, width: pagePx.w, height: pagePx.h }}>
+            <div className="absolute bg-white shadow-xl relative select-none" style={{ left: RULER_SIZE, top: RULER_SIZE, width: pagePx.w, height: pagePx.h }}>
               <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />
 
               {headerElements.map((element) => (
@@ -419,6 +400,21 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
 
           <div className="border rounded-lg p-3 space-y-2">
             <Label className="text-xs uppercase text-muted-foreground">Ausgewählt: {selectedBlockConfig?.label}</Label>
+            {selectedBlockConfig && (
+              <div>
+                <Label>Name</Label>
+                <Input
+                  value={selectedLabel}
+                  onChange={(e) => setSelectedLabel(e.target.value)}
+                  onBlur={() => updateBlockLabel(selected, selectedLabel.trim() || selectedBlockConfig.label)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      updateBlockLabel(selected, selectedLabel.trim() || selectedBlockConfig.label);
+                    }
+                  }}
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div><Label>X (mm)</Label><Input value={selectedRect.x.toFixed(1)} readOnly /></div>
               <div><Label>Y (mm)</Label><Input value={selectedRect.y.toFixed(1)} readOnly /></div>
