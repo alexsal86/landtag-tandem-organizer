@@ -1141,7 +1141,19 @@ export function CalendarView() {
 
       {/* Calendar Content - split layout when sidebar open */}
       <div className={`flex gap-0 transition-all duration-300`}>
-        {/* Main Calendar */}
+        {/* Inline Detail Panel – links */}
+        {sidebarOpen && selectedAppointment && (
+          <div className="w-[420px] shrink-0 border border-border rounded-lg mr-4 overflow-hidden" style={{ height: 'calc(600px + 57px)' }}>
+            <AppointmentDetailsSidebar
+              appointment={selectedAppointment}
+              open={sidebarOpen}
+              onClose={handleSidebarClose}
+              onUpdate={handleAppointmentUpdate}
+            />
+          </div>
+        )}
+
+        {/* Main Calendar – schiebt nach rechts wenn Sidebar offen */}
         <div className={`flex-1 min-w-0 transition-all duration-300`}>
           <Card className="bg-card shadow-card border-border">
             <CardHeader>
@@ -1189,18 +1201,6 @@ export function CalendarView() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Inline Detail Panel */}
-        {sidebarOpen && selectedAppointment && (
-          <div className="w-[420px] shrink-0 border border-border rounded-lg ml-4 overflow-hidden" style={{ height: 'calc(600px + 57px)' }}>
-            <AppointmentDetailsSidebar
-              appointment={selectedAppointment}
-              open={sidebarOpen}
-              onClose={handleSidebarClose}
-              onUpdate={handleAppointmentUpdate}
-            />
-          </div>
-        )}
       </div>
 
       {/* Appointment Preparation Sidebar */}

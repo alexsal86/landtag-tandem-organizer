@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { subDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from './useTenant';
 import { useAuth } from './useAuth';
@@ -24,6 +25,8 @@ export const useTeamFeedbackFeed = () => {
     queryFn: async (): Promise<TeamFeedbackEntry[]> => {
       if (!currentTenant?.id || !user?.id) return [];
 
+      const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+
       // Load feedback entries with appointment data
       const { data: feedbackData, error } = await supabase
         .from('appointment_feedback')
@@ -41,6 +44,7 @@ export const useTeamFeedbackFeed = () => {
         .eq('tenant_id', currentTenant.id)
         .eq('feedback_status', 'completed')
         .not('notes', 'is', null)
+        .gte('completed_at', sevenDaysAgo)
         .order('completed_at', { ascending: false })
         .limit(30);
 

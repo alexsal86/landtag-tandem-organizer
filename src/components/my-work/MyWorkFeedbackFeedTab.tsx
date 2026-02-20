@@ -33,7 +33,7 @@ export function MyWorkFeedbackFeedTab() {
   return (
     <div className="space-y-4 max-w-3xl">
       <p className="text-sm text-muted-foreground">
-        Alle abgeschlossenen Termin-Rückmeldungen des Teams – chronologisch sortiert.
+        Alle abgeschlossenen Termin-Rückmeldungen des Teams – chronologisch sortiert. Es werden nur Rückmeldungen der letzten 7 Tage angezeigt.
       </p>
 
       {entries.map((entry) => (
