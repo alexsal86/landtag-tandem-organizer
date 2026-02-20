@@ -165,7 +165,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
         next.subject.marginBottom = clamp(snapMm(rect.h - 4), 2, 40);
       } else if (key === 'content') {
         next.content.top = snapMm(rect.y);
-        next.content.maxHeight = clamp(snapMm(rect.h), 20, 220);
+        next.content.maxHeight = clamp(snapMm(rect.h), 20, 500);
       } else if (key === 'footer') next.footer.top = snapMm(rect.y);
       else if (key === 'attachments') next.attachments.top = snapMm(rect.y);
       return next;
