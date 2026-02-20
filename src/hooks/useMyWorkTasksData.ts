@@ -19,6 +19,18 @@ export interface MyWorkTask {
 }
 
 const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id";
+const TASKS_CACHE_TTL_MS = 30_000;
+
+interface TasksCacheEntry {
+  timestamp: number;
+  assignedTasks: MyWorkTask[];
+  createdTasks: MyWorkTask[];
+  subtasks: Record<string, MyWorkTask[]>;
+  taskSnoozes: Record<string, string>;
+  taskCommentCounts: Record<string, number>;
+}
+
+const tasksCache = new Map<string, TasksCacheEntry>();
 
 const normalizeAssignedTo = (assignedTo: string | null | undefined) => {
   if (!assignedTo) return [];
@@ -37,6 +49,14 @@ export function useMyWorkTasksData(userId?: string) {
   const [taskSnoozes, setTaskSnoozes] = useState<Record<string, string>>({});
   const [taskCommentCounts, setTaskCommentCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+
+  const applyCacheEntry = useCallback((entry: TasksCacheEntry) => {
+    setAssignedTasks(entry.assignedTasks);
+    setCreatedTasks(entry.createdTasks);
+    setSubtasks(entry.subtasks);
+    setTaskSnoozes(entry.taskSnoozes);
+    setTaskCommentCounts(entry.taskCommentCounts);
+  }, []);
 
   const loadTasks = useCallback(async () => {
     if (!userId) return;
@@ -157,6 +177,15 @@ export function useMyWorkTasksData(userId?: string) {
         commentCounts[comment.task_id] = (commentCounts[comment.task_id] || 0) + 1;
       });
       setTaskCommentCounts(commentCounts);
+
+      tasksCache.set(userId, {
+        timestamp: Date.now(),
+        assignedTasks: assignedByOthers,
+        createdTasks: createdByMe,
+        subtasks: grouped,
+        taskSnoozes: snoozeMap,
+        taskCommentCounts: commentCounts,
+      });
     } catch (error) {
       console.error("Error loading tasks:", error);
     } finally {
@@ -166,7 +195,44 @@ export function useMyWorkTasksData(userId?: string) {
 
   useEffect(() => {
     if (!userId) return;
+
+    const cached = tasksCache.get(userId);
+    const isFresh = !!cached && Date.now() - cached.timestamp < TASKS_CACHE_TTL_MS;
+
+    if (cached) {
+      applyCacheEntry(cached);
+      setLoading(!isFresh);
+      if (isFresh) return;
+    } else {
+      setLoading(true);
+    }
+
     void loadTasks();
+  }, [userId, loadTasks, applyCacheEntry]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        timeout = null;
+        void loadTasks();
+      }, 250);
+    };
+
+    const channel = supabase
+      .channel(`my-work-tasks-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_snoozes" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_comments" }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
   }, [userId, loadTasks]);
 
   return {

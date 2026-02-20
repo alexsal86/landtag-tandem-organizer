@@ -166,7 +166,14 @@ export function MyWorkTasksTab() {
       
       setAssignedTasks(prev => prev.filter(t => t.id !== taskId));
       setCreatedTasks(prev => prev.filter(t => t.id !== taskId));
-      await loadTasks();
+      setSubtasks(prev => {
+        const next = { ...prev };
+        delete next[taskId];
+        Object.keys(next).forEach((parentId) => {
+          next[parentId] = next[parentId].filter((t) => t.id !== taskId);
+        });
+        return next;
+      });
 
       setShowCelebration(true);
       toast({ title: "Aufgabe erledigt und archiviert" });
@@ -177,6 +184,15 @@ export function MyWorkTasksTab() {
   };
 
   const handleToggleSubtaskComplete = async (subtaskId: string) => {
+    const previousSubtasks = subtasks;
+    setSubtasks(prev => {
+      const next: Record<string, MyWorkTask[]> = {};
+      Object.entries(prev).forEach(([parentId, list]) => {
+        next[parentId] = list.filter((subtask) => subtask.id !== subtaskId);
+      });
+      return next;
+    });
+
     try {
       const { error } = await supabase
         .from("tasks")
@@ -187,8 +203,8 @@ export function MyWorkTasksTab() {
       if (error) throw error;
       setShowCelebration(true);
       toast({ title: "Unteraufgabe erledigt" });
-      loadTasks();
     } catch (error) {
+      setSubtasks(previousSubtasks);
       console.error("Error completing subtask:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
@@ -206,7 +222,13 @@ export function MyWorkTasksTab() {
       
       setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t));
       setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t));
-      await loadTasks();
+      setSubtasks(prev => {
+        const next: Record<string, MyWorkTask[]> = {};
+        Object.entries(prev).forEach(([parentId, list]) => {
+          next[parentId] = list.map((task) => (task.id === taskId ? { ...task, title } : task));
+        });
+        return next;
+      });
       toast({ title: "Titel aktualisiert" });
     } catch (error) {
       console.error("Error updating title:", error);
@@ -226,7 +248,13 @@ export function MyWorkTasksTab() {
       
       setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, description } : t));
       setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, description } : t));
-      await loadTasks();
+      setSubtasks(prev => {
+        const next: Record<string, MyWorkTask[]> = {};
+        Object.entries(prev).forEach(([parentId, list]) => {
+          next[parentId] = list.map((task) => (task.id === taskId ? { ...task, description } : task));
+        });
+        return next;
+      });
       toast({ title: "Beschreibung aktualisiert" });
     } catch (error) {
       console.error("Error updating description:", error);
@@ -247,7 +275,13 @@ export function MyWorkTasksTab() {
       const newDueDate = date?.toISOString() || null;
       setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDueDate } : t));
       setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDueDate } : t));
-      await loadTasks();
+      setSubtasks(prev => {
+        const next: Record<string, MyWorkTask[]> = {};
+        Object.entries(prev).forEach(([parentId, list]) => {
+          next[parentId] = list.map((task) => (task.id === taskId ? { ...task, due_date: newDueDate } : task));
+        });
+        return next;
+      });
       toast({ title: "Frist aktualisiert" });
     } catch (error) {
       console.error("Error updating due date:", error);
@@ -297,7 +331,6 @@ export function MyWorkTasksTab() {
       setTaskSnoozes(prev => ({ ...prev, [targetTaskId]: date.toISOString() }));
       setSnoozeDialogOpen(false);
       setSnoozeTaskId(null);
-      loadTasks();
     } catch (error) {
       console.error("Error setting snooze:", error);
       toast({ title: "Fehler", variant: "destructive" });
@@ -331,7 +364,6 @@ export function MyWorkTasksTab() {
       });
       setSnoozeDialogOpen(false);
       setSnoozeTaskId(null);
-      loadTasks();
     } catch (error) {
       console.error("Error clearing snooze:", error);
       toast({ title: "Fehler", variant: "destructive" });
@@ -347,7 +379,6 @@ export function MyWorkTasksTab() {
         delete next[taskId];
         return next;
       });
-      loadTasks();
     } catch (error) {
       console.error("Error clearing snooze:", error);
       toast({ title: "Fehler", variant: "destructive" });
@@ -386,7 +417,6 @@ export function MyWorkTasksTab() {
       setAssignDialogOpen(false);
       setAssignTaskId(null);
       setAssignSelectedUserIds([]);
-      loadTasks(); // Reload to update lists
     } catch (error) {
       console.error("Error updating assignee:", error);
       toast({ title: "Fehler", variant: "destructive" });
@@ -445,7 +475,6 @@ export function MyWorkTasksTab() {
       }
       
       toast({ title: `Aufgabe zu "${meetingTitle}" hinzugefügt` });
-      loadTasks();
     } catch (error: any) {
       console.error('Error adding task to meeting:', error);
       toast({ title: "Fehler", description: error.message, variant: "destructive" });
@@ -477,7 +506,6 @@ export function MyWorkTasksTab() {
       }
       
       toast({ title: "Aufgabe für nächsten Jour Fixe vorgemerkt" });
-      loadTasks();
     } catch (error: any) {
       console.error('Error marking task for next jour fixe:', error);
       toast({ title: "Fehler", description: error.message, variant: "destructive" });
@@ -496,7 +524,7 @@ export function MyWorkTasksTab() {
     }
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("tasks")
         .insert({
           user_id: user.id,
@@ -508,11 +536,20 @@ export function MyWorkTasksTab() {
           priority: "medium",
           category: parentTask.category || "personal",
           assigned_to: user.id,
-        });
+        })
+        .select("id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id")
+        .single();
 
       if (error) throw error;
       toast({ title: "Unteraufgabe erstellt" });
-      await loadTasks();
+      if (!data) return;
+      setSubtasks(prev => ({
+        ...prev,
+        [parentTaskId]: [
+          ...(prev[parentTaskId] || []),
+          data,
+        ],
+      }));
     } catch (error) {
       console.error("Error creating child task:", error);
       toast({ title: "Fehler", description: "Unteraufgabe konnte nicht erstellt werden.", variant: "destructive" });
@@ -558,7 +595,27 @@ export function MyWorkTasksTab() {
       toast({ title: "Aufgabe aktualisiert" });
       setTaskEditDialogOpen(false);
       setEditingTaskId(null);
-      await loadTasks();
+      setAssignedTasks(prev => prev.map((task) =>
+        task.id === editingTaskId
+          ? { ...task, title: editTaskTitle.trim() || 'Ohne Titel', description: editTaskDescription || null }
+          : task
+      ));
+      setCreatedTasks(prev => prev.map((task) =>
+        task.id === editingTaskId
+          ? { ...task, title: editTaskTitle.trim() || 'Ohne Titel', description: editTaskDescription || null }
+          : task
+      ));
+      setSubtasks(prev => {
+        const next: Record<string, MyWorkTask[]> = {};
+        Object.entries(prev).forEach(([parentId, list]) => {
+          next[parentId] = list.map((task) =>
+            task.id === editingTaskId
+              ? { ...task, title: editTaskTitle.trim() || 'Ohne Titel', description: editTaskDescription || null }
+              : task
+          );
+        });
+        return next;
+      });
     } catch (error) {
       console.error("Error updating task:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });

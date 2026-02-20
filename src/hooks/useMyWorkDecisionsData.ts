@@ -3,6 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { MyWorkDecision, getResponseSummary } from "@/components/my-work/decisions/types";
 
 const isEmailFile = (name: string) => /\.(eml|msg)$/i.test(name);
+const DECISIONS_CACHE_TTL_MS = 30_000;
+
+interface DecisionsCacheEntry {
+  timestamp: number;
+  decisions: MyWorkDecision[];
+}
+
+const decisionsCache = new Map<string, DecisionsCacheEntry>();
 
 const computeAttachmentInfo = (attachments: any[]) => {
   const all = attachments || [];
@@ -277,6 +285,7 @@ export function useMyWorkDecisionsData(userId?: string) {
 
       if (isCurrentRequest()) {
         setDecisions(allDecisionsList);
+        decisionsCache.set(userId, { timestamp: Date.now(), decisions: allDecisionsList });
       }
     } catch (error) {
       if (isCurrentRequest()) {
@@ -291,7 +300,44 @@ export function useMyWorkDecisionsData(userId?: string) {
 
   useEffect(() => {
     if (!userId) return;
+
+    const cached = decisionsCache.get(userId);
+    const isFresh = !!cached && Date.now() - cached.timestamp < DECISIONS_CACHE_TTL_MS;
+
+    if (cached) {
+      setDecisions(cached.decisions);
+      setLoading(!isFresh);
+      if (isFresh) return;
+    } else {
+      setLoading(true);
+    }
+
     void loadDecisions();
+  }, [userId, loadDecisions]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        timeout = null;
+        void loadDecisions();
+      }, 250);
+    };
+
+    const channel = supabase
+      .channel(`my-work-decisions-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_participants" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_responses" }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
   }, [userId, loadDecisions]);
 
   return {

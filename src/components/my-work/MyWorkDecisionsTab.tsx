@@ -186,6 +186,8 @@ export function MyWorkDecisionsTab() {
   const archiveDecision = async (decisionId: string) => {
     if (!user) return;
     setArchivingDecisionId(decisionId);
+    const previousDecisions = decisions;
+    setDecisions((prev) => prev.filter((decision) => decision.id !== decisionId));
     try {
       const { error } = await supabase
         .from('task_decisions')
@@ -193,8 +195,8 @@ export function MyWorkDecisionsTab() {
         .eq('id', decisionId);
       if (error) throw error;
       toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
-      scheduleDecisionsRefresh();
     } catch (error) {
+      setDecisions(previousDecisions);
       console.error('Error archiving:', error);
       toast({ title: "Fehler", description: "Archivierung fehlgeschlagen.", variant: "destructive" });
     } finally {
@@ -204,13 +206,16 @@ export function MyWorkDecisionsTab() {
 
   const handleDelete = async () => {
     if (!deletingDecisionId) return;
+    const decisionId = deletingDecisionId;
+    const previousDecisions = decisions;
+    setDecisions((prev) => prev.filter((decision) => decision.id !== decisionId));
     try {
-      const { error } = await supabase.from('task_decisions').delete().eq('id', deletingDecisionId);
+      const { error } = await supabase.from('task_decisions').delete().eq('id', decisionId);
       if (error) throw error;
       toast({ title: "Gelöscht", description: "Entscheidung wurde gelöscht." });
       setDeletingDecisionId(null);
-      scheduleDecisionsRefresh();
     } catch (error) {
+      setDecisions(previousDecisions);
       console.error('Error deleting:', error);
       toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
     }
