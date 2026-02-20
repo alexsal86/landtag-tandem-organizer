@@ -97,12 +97,16 @@ async function uploadToStorageWithCandidates(filePath: string, file: File, maxAt
 async function uploadOneFile(
   file: File,
   decisionId: string,
-  userId: string,
+  _userId: string,
   metadataByIdentity?: Record<string, EmailMetadata | null>,
 ) {
+  // Always fetch the real user ID from the session to avoid Tenant-ID being passed as userId
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Nicht angemeldet');
+
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const sanitizedFileName = sanitizeFileNameForStorage(file.name);
-  const filePath = `${userId}/decisions/${decisionId}/${uniqueSuffix}-${sanitizedFileName}`;
+  const filePath = `${user.id}/decisions/${decisionId}/${uniqueSuffix}-${sanitizedFileName}`;
 
   const { uploadData } = await uploadToStorageWithCandidates(filePath, file);
 
@@ -129,7 +133,7 @@ async function uploadOneFile(
     file_name: file.name,
     file_size: file.size,
     file_type: getUploadContentType(file),
-    uploaded_by: userId,
+    uploaded_by: user.id,
   };
 
   if (emailMeta) {
