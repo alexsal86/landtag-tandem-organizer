@@ -1,32 +1,33 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
 import { useAppointmentCategories } from '@/hooks/useAppointmentCategories';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { format, parse } from 'date-fns';
+import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { 
-  CheckCircle2, 
-  FileText, 
-  Paperclip, 
-  CheckSquare, 
-  SkipForward, 
+import {
+  CheckCircle2,
+  FileText,
+  Paperclip,
+  CheckSquare,
   HelpCircle,
   Clock,
   MapPin,
-  Loader2
+  Loader2,
+  Users
 } from 'lucide-react';
-
+import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
 import { AppointmentFeedbackSettings } from './AppointmentFeedbackSettings';
 
 interface AppointmentFeedbackWidgetProps {
@@ -34,215 +35,194 @@ interface AppointmentFeedbackWidgetProps {
   isEditMode?: boolean;
 }
 
-export const AppointmentFeedbackWidget = ({ 
+interface TenantUser {
+  user_id: string;
+  display_name: string;
+  role?: string;
+}
+
+export const AppointmentFeedbackWidget = ({
   widgetSize = '2x2',
-  isEditMode = false 
+  isEditMode = false
 }: AppointmentFeedbackWidgetProps) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { appointments, settings, updateFeedback, refetch } = useAppointmentFeedback();
   const { data: categories } = useAppointmentCategories();
-  
-  const [selectedAppointment, setSelectedAppointment] = useState<string | null>(null);
+
   const [noteText, setNoteText] = useState('');
+  const [noteDialogOpen, setNoteDialogOpen] = useState<string | null>(null);
+  const [taskDialogOpen, setTaskDialogOpen] = useState<string | null>(null);
   const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [taskDueDate, setTaskDueDate] = useState('');
+  const [taskAssignAll, setTaskAssignAll] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeFileAppointment, setActiveFileAppointment] = useState<{appointmentId: string; feedbackId: string} | null>(null);
 
   // Realtime subscription
   useEffect(() => {
     if (!user?.id) return;
-
     const channel = supabase
       .channel('appointment-feedback-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'appointment_feedback',
-          filter: `user_id=eq.${user.id}`
-        },
-        () => {
-          refetch();
-        }
-      )
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'appointment_feedback',
+        filter: `user_id=eq.${user.id}`
+      }, () => { refetch(); })
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user?.id, refetch]);
+
+  // Lade Tenant-Mitarbeiter für Aufgaben-Zuweisung
+  const loadTenantUsers = useCallback(async () => {
+    if (!currentTenant?.id || tenantUsers.length > 0) return;
+    setLoadingUsers(true);
+    try {
+      const { data: memberships } = await supabase
+        .from('user_tenant_memberships')
+        .select('user_id, role')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true);
+
+      if (!memberships?.length) return;
+
+      const userIds = memberships.map(m => m.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', userIds);
+
+      const merged: TenantUser[] = (profiles || []).map(p => ({
+        user_id: p.user_id,
+        display_name: p.display_name || p.user_id,
+        role: memberships.find(m => m.user_id === p.user_id)?.role
+      }));
+      setTenantUsers(merged);
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [currentTenant?.id, tenantUsers.length]);
 
   // Badge-Logik für Reminder
   const shouldShowReminder = useMemo(() => {
     if (!settings?.reminder_start_time) return false;
-
     const now = new Date();
     const currentTime = format(now, 'HH:mm:ss');
-
-    // Zeige Badge nur ab konfigurierter Zeit
     if (currentTime < settings.reminder_start_time) return false;
-
-    // Zeige Badge nur wenn pending Feedbacks vorhanden
-    const hasPending = appointments?.some(a => 
+    return appointments?.some(a =>
       a.feedback?.feedback_status === 'pending' && !a.feedback?.reminder_dismissed
-    );
-
-    return hasPending;
+    ) ?? false;
   }, [settings, appointments]);
 
-  // Anzahl der offenen Feedbacks
   const pendingFeedbackCount = useMemo(() => {
-    return appointments?.filter(a => 
-      a.feedback?.feedback_status === 'pending'
-    ).length || 0;
+    return appointments?.filter(a => a.feedback?.feedback_status === 'pending').length || 0;
   }, [appointments]);
 
-  // Sortierte Termine nach Priorität - nur pending anzeigen
   const sortedAppointments = useMemo(() => {
     if (!appointments) return [];
-    
     return [...appointments]
-      .filter(apt => {
-        // Zeige nur Termine mit Feedback
-        if (!apt.feedback) return false;
-        
-        // Nur pending Feedbacks anzeigen
-        return apt.feedback.feedback_status === 'pending';
-      })
-      .sort((a, b) => {
-        const priorityA = a.feedback?.priority_score || 0;
-        const priorityB = b.feedback?.priority_score || 0;
-        return priorityB - priorityA;
-      });
+      .filter(apt => apt.feedback && apt.feedback.feedback_status === 'pending')
+      .sort((a, b) => (b.feedback?.priority_score || 0) - (a.feedback?.priority_score || 0));
   }, [appointments]);
 
   const handleMarkCompleted = async (feedbackId: string) => {
     updateFeedback({
       feedbackId,
-      updates: { 
+      updates: {
         feedback_status: 'completed',
         completed_at: new Date().toISOString()
       }
     });
   };
 
-  const handleSkip = async (feedbackId: string) => {
-    updateFeedback({
-      feedbackId,
-      updates: { feedback_status: 'skipped' }
-    });
-  };
-
-  const handleSaveNote = async (feedbackId: string) => {
-    if (!noteText.trim()) {
-      toast({
-        title: 'Fehler',
-        description: 'Bitte geben Sie eine Notiz ein.',
-        variant: 'destructive'
-      });
+  const handleSaveNote = async (feedbackId: string, userName: string) => {
+    if (!noteText || noteText === '<p></p>' || noteText.trim() === '') {
+      toast({ title: 'Fehler', description: 'Bitte geben Sie eine Notiz ein.', variant: 'destructive' });
       return;
     }
-
-    updateFeedback({
+    // Wrap note with username prefix
+    const noteWithAuthor = `<p><strong>Rückmeldung ${userName}:</strong></p>${noteText}`;
+    await updateFeedback({
       feedbackId,
-      updates: { 
-        notes: noteText,
+      updates: {
+        notes: noteWithAuthor,
         feedback_status: 'completed',
         completed_at: new Date().toISOString()
       }
     });
-
     setNoteText('');
-    setSelectedAppointment(null);
-    
-    toast({
-      title: 'Notiz gespeichert',
-      description: 'Die Notiz wurde erfolgreich gespeichert.'
-    });
+    setNoteDialogOpen(null);
+    toast({ title: 'Notiz gespeichert', description: 'Die Rückmeldung wurde am Termin gespeichert.' });
   };
 
   const handleFileUpload = async (appointmentId: string, feedbackId: string, file: File) => {
     if (!user?.id || !currentTenant?.id) return;
-
     setIsUploading(true);
-
     try {
       const filePath = `${currentTenant.id}/${appointmentId}/${Date.now()}_${file.name}`;
-
-      // Upload zu Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('documents')
         .upload(filePath, file);
-
       if (uploadError) throw uploadError;
 
-      // Dokument-Metadaten für spätere Referenz speichern
-      // Falls appointment_documents Tabelle vorhanden ist, können wir hier einfügen
-      // Für jetzt speichern wir nur den Feedback-Status
-      console.log('Document uploaded:', filePath);
-
-      // Feedback aktualisieren
-      updateFeedback({
+      await updateFeedback({
         feedbackId,
-        updates: { 
+        updates: {
           has_documents: true,
           feedback_status: 'completed',
           completed_at: new Date().toISOString()
         }
       });
-
       toast({
-        title: 'Dokument hochgeladen',
-        description: `${file.name} wurde erfolgreich hochgeladen.`
+        title: 'Anhang hochgeladen',
+        description: `${file.name} wurde gespeichert. Sie finden ihn in Ihren Dokumenten.`
       });
     } catch (error) {
-      console.error('Upload error:', error);
-      toast({
-        title: 'Upload fehlgeschlagen',
-        description: 'Das Dokument konnte nicht hochgeladen werden.',
-        variant: 'destructive'
-      });
+      toast({ title: 'Upload fehlgeschlagen', description: 'Das Dokument konnte nicht hochgeladen werden.', variant: 'destructive' });
     } finally {
       setIsUploading(false);
+      setActiveFileAppointment(null);
     }
   };
 
-  const handleCreateTask = async (appointmentId: string, feedbackId: string, appointment: any) => {
+  const handleCreateTask = async (feedbackId: string, appointmentTitle: string) => {
     if (!taskTitle.trim()) {
-      toast({
-        title: 'Fehler',
-        description: 'Bitte geben Sie einen Aufgabentitel ein.',
-        variant: 'destructive'
-      });
+      toast({ title: 'Fehler', description: 'Bitte geben Sie einen Aufgabentitel ein.', variant: 'destructive' });
       return;
     }
-
     if (!user?.id || !currentTenant?.id) return;
 
     try {
+      // Sammle alle Mitarbeiter-IDs (außer dem aktuellen Benutzer, der sowieso erstellt)
+      const mitarbeiterIds = tenantUsers.map(u => u.user_id);
+      // assigned_to als komma-separierte Liste aller Mitarbeiter
+      const assignedToValue = mitarbeiterIds.join(',');
+
       const { error } = await supabase
         .from('tasks')
         .insert({
           title: taskTitle,
-          description: `Follow-up zu Termin: ${appointment.title}`,
+          description: taskDescription || `Follow-up zu Termin: ${appointmentTitle}`,
           category: 'follow-up',
           user_id: user.id,
           tenant_id: currentTenant.id,
-          assigned_to: user.id,
+          assigned_to: assignedToValue,
           due_date: taskDueDate || null,
           status: 'todo',
-          priority: 'medium'
+          priority: taskPriority
         });
 
       if (error) throw error;
 
-      // Feedback aktualisieren
-      updateFeedback({
+      await updateFeedback({
         feedbackId,
-        updates: { 
+        updates: {
           has_tasks: true,
           feedback_status: 'completed',
           completed_at: new Date().toISOString()
@@ -250,20 +230,17 @@ export const AppointmentFeedbackWidget = ({
       });
 
       setTaskTitle('');
+      setTaskDescription('');
       setTaskDueDate('');
-      setSelectedAppointment(null);
+      setTaskPriority('medium');
+      setTaskDialogOpen(null);
 
       toast({
         title: 'Aufgabe erstellt',
-        description: 'Die Follow-up Aufgabe wurde erstellt.'
+        description: `Die Aufgabe wurde erstellt und an alle ${mitarbeiterIds.length} Mitarbeiter zugewiesen.`
       });
     } catch (error) {
-      console.error('Task creation error:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Die Aufgabe konnte nicht erstellt werden.',
-        variant: 'destructive'
-      });
+      toast({ title: 'Fehler', description: 'Die Aufgabe konnte nicht erstellt werden.', variant: 'destructive' });
     }
   };
 
@@ -279,39 +256,40 @@ export const AppointmentFeedbackWidget = ({
     return category?.label || categoryName;
   };
 
-  if (sortedAppointments.length === 0) {
-    // Prüfe ob es completed-Termine gibt (die schon länger als 24h her sind)
-    const hasRecentlyCompleted = appointments?.some(apt => 
-      apt.feedback?.feedback_status === 'completed' &&
-      apt.feedback.completed_at &&
-      (Date.now() - new Date(apt.feedback.completed_at).getTime()) < 24 * 60 * 60 * 1000
-    );
+  // Benutzername für Notiz-Präfix
+  const [displayName, setDisplayName] = useState('');
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from('profiles').select('display_name').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => setDisplayName(data?.display_name || user.email?.split('@')[0] || 'Nutzer'));
+  }, [user?.id]);
 
-    const allAreCompleted = appointments?.every(apt => 
+  if (sortedAppointments.length === 0) {
+    const allAreCompleted = appointments?.every(apt =>
       apt.feedback?.feedback_status === 'completed' || apt.feedback?.feedback_status === 'skipped'
     );
 
     return (
       <Card className="h-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <div className="relative">
-            <CheckCircle2 className="w-5 h-5" />
-            {pendingFeedbackCount > 0 && (
-              <Badge 
-                variant="destructive" 
-                className="absolute -top-2 -right-2 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] rounded-full"
-              >
-                {pendingFeedbackCount}
-              </Badge>
-            )}
-          </div>
-          Termin-Feedback
-          <div className="ml-auto">
-            <AppointmentFeedbackSettings />
-          </div>
-        </CardTitle>
-      </CardHeader>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <div className="relative">
+              <CheckCircle2 className="w-5 h-5" />
+              {pendingFeedbackCount > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute -top-2 -right-2 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] rounded-full"
+                >
+                  {pendingFeedbackCount}
+                </Badge>
+              )}
+            </div>
+            Termin-Feedback
+            <div className="ml-auto">
+              <AppointmentFeedbackSettings />
+            </div>
+          </CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <CheckCircle2 className="w-12 h-12 mb-3 opacity-50" />
@@ -354,26 +332,26 @@ export const AppointmentFeedbackWidget = ({
             {sortedAppointments.map((appointment) => {
               const feedback = appointment.feedback;
               if (!feedback) return null;
-
               const isCompleted = feedback.feedback_status === 'completed';
 
               return (
-                <div 
+                <div
                   key={appointment.id}
                   className={`p-4 rounded-lg border transition-all ${
-                    isCompleted 
-                      ? 'bg-muted/30 border-muted' 
+                    isCompleted
+                      ? 'bg-muted/30 border-muted'
                       : 'bg-card border-border hover:border-primary/50'
                   }`}
                 >
+                  {/* Header */}
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm truncate mb-1">
+                      <h4 className="font-bold text-base truncate mb-1">
                         {appointment.title}
                       </h4>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" />
-                        {format(new Date(appointment.start_time), 'HH:mm', { locale: de })} - 
+                        {format(new Date(appointment.start_time), 'HH:mm', { locale: de })} –{' '}
                         {format(new Date(appointment.end_time), 'HH:mm', { locale: de })}
                         {appointment.location && (
                           <>
@@ -384,14 +362,12 @@ export const AppointmentFeedbackWidget = ({
                       </div>
                     </div>
                     {appointment.event_type === 'external_event' ? (
-                      <Badge variant="outline" className="text-xs shrink-0">
-                        📅 Externer Kalender
-                      </Badge>
+                      <Badge variant="outline" className="text-xs shrink-0">📅 Externer Kalender</Badge>
                     ) : (
-                      <Badge 
-                        variant="secondary" 
+                      <Badge
+                        variant="secondary"
                         className="text-xs shrink-0"
-                        style={{ 
+                        style={{
                           backgroundColor: `${getCategoryColor(appointment.category)}20`,
                           color: getCategoryColor(appointment.category)
                         }}
@@ -403,132 +379,203 @@ export const AppointmentFeedbackWidget = ({
 
                   {isCompleted ? (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      <CheckCircle2 className="w-4 h-4 text-primary" />
                       <span>Feedback abgeschlossen</span>
-                      {feedback.notes && (
-                        <span className="ml-2 text-xs">• Notiz vorhanden</span>
-                      )}
-                      {feedback.has_documents && (
-                        <span className="ml-2 text-xs">• Dokumente vorhanden</span>
-                      )}
-                      {feedback.has_tasks && (
-                        <span className="ml-2 text-xs">• Aufgabe erstellt</span>
-                      )}
+                      {feedback.notes && <span className="ml-2">• Notiz vorhanden</span>}
+                      {feedback.has_documents && <span className="ml-2">• Anhang vorhanden</span>}
+                      {feedback.has_tasks && <span className="ml-2">• Aufgabe erstellt</span>}
                     </div>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-1">
+                      {/* Erledigt – links, abgetrennt */}
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => handleMarkCompleted(feedback.id)}
-                        className="h-8"
+                        className="h-8 text-primary hover:text-primary/80"
                       >
                         <CheckCircle2 className="w-4 h-4 mr-1" />
                         Erledigt
                       </Button>
 
-                      <Dialog>
+                      <div className="h-5 w-px bg-border mx-1" />
+
+                      {/* Notiz Dialog */}
+                      <Dialog
+                        open={noteDialogOpen === appointment.id}
+                        onOpenChange={(open) => {
+                          setNoteDialogOpen(open ? appointment.id : null);
+                          if (!open) setNoteText('');
+                        }}
+                      >
                         <DialogTrigger asChild>
                           <Button size="sm" variant="ghost" className="h-8">
                             <FileText className="w-4 h-4 mr-1" />
                             Notiz
                           </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="max-w-xl">
                           <DialogHeader>
-                            <DialogTitle>Notiz zu "{appointment.title}"</DialogTitle>
+                            <DialogTitle>Rückmeldung zu „{appointment.title}"</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-4">
-                            <Textarea
-                              value={noteText}
-                              onChange={(e) => setNoteText(e.target.value)}
-                              placeholder="Was möchten Sie festhalten?"
-                              rows={5}
-                            />
-                            <Button 
-                              onClick={() => handleSaveNote(feedback.id)}
+                            <p className="text-sm text-muted-foreground">
+                              Die Rückmeldung wird unter Ihrem Namen am Termin gespeichert und ist in den Termindetails einsehbar.
+                            </p>
+                            <div className="border rounded-md min-h-[150px]">
+                              <SimpleRichTextEditor
+                                initialContent={noteText}
+                                onChange={setNoteText}
+                                placeholder="Was möchten Sie festhalten? (@Erwähnung möglich)"
+                                minHeight="150px"
+                                showToolbar={true}
+                              />
+                            </div>
+                            <Button
+                              onClick={() => handleSaveNote(feedback.id, displayName)}
                               className="w-full"
                             >
-                              Speichern
+                              Rückmeldung speichern
                             </Button>
                           </div>
                         </DialogContent>
                       </Dialog>
 
+                      {/* Aufgabe Dialog */}
+                      <Dialog
+                        open={taskDialogOpen === appointment.id}
+                        onOpenChange={(open) => {
+                          if (open) {
+                            loadTenantUsers();
+                            setTaskTitle(`Follow-up: ${appointment.title}`);
+                          }
+                          setTaskDialogOpen(open ? appointment.id : null);
+                          if (!open) {
+                            setTaskTitle('');
+                            setTaskDescription('');
+                            setTaskDueDate('');
+                            setTaskPriority('medium');
+                          }
+                        }}
+                      >
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="ghost" className="h-8">
+                            <CheckSquare className="w-4 h-4 mr-1" />
+                            Aufgabe
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-xl">
+                          <DialogHeader>
+                            <DialogTitle>Aufgabe zu „{appointment.title}"</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="task-title">Titel</Label>
+                              <Input
+                                id="task-title"
+                                value={taskTitle}
+                                onChange={(e) => setTaskTitle(e.target.value)}
+                                placeholder="Aufgabentitel..."
+                              />
+                            </div>
+                            <div>
+                              <Label>Beschreibung</Label>
+                              <div className="border rounded-md min-h-[120px] mt-1">
+                                <SimpleRichTextEditor
+                                  initialContent={taskDescription}
+                                  onChange={setTaskDescription}
+                                  placeholder="Was ist zu tun? (@Erwähnung möglich)"
+                                  minHeight="120px"
+                                  showToolbar={true}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-3">
+                              <div className="flex-1">
+                                <Label htmlFor="task-priority">Priorität</Label>
+                                <Select value={taskPriority} onValueChange={(v: any) => setTaskPriority(v)}>
+                                  <SelectTrigger id="task-priority" className="mt-1">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="low">Niedrig</SelectItem>
+                                    <SelectItem value="medium">Mittel</SelectItem>
+                                    <SelectItem value="high">Hoch</SelectItem>
+                                    <SelectItem value="urgent">Dringend</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex-1">
+                                <Label htmlFor="task-due">Fällig am</Label>
+                                <Input
+                                  id="task-due"
+                                  type="date"
+                                  value={taskDueDate}
+                                  onChange={(e) => setTaskDueDate(e.target.value)}
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="bg-muted/50 rounded-md p-3">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Users className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-sm font-medium">Zuweisung</span>
+                              </div>
+                              {loadingUsers ? (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Lade Mitarbeiter...
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">
+                                  Diese Aufgabe wird an alle {tenantUsers.length} Mitarbeiter des Teams zugewiesen.
+                                </p>
+                              )}
+                            </div>
+
+                            <Button
+                              onClick={() => handleCreateTask(feedback.id, appointment.title)}
+                              className="w-full"
+                              disabled={loadingUsers}
+                            >
+                              <Users className="w-4 h-4 mr-2" />
+                              Aufgabe an alle erstellen
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      {/* Anhang */}
                       <input
                         type="file"
                         ref={fileInputRef}
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) {
-                            handleFileUpload(appointment.id, feedback.id, file);
+                          if (file && activeFileAppointment) {
+                            handleFileUpload(activeFileAppointment.appointmentId, activeFileAppointment.feedbackId, file);
                           }
+                          e.target.value = '';
                         }}
                       />
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={() => {
+                          setActiveFileAppointment({ appointmentId: appointment.id, feedbackId: feedback.id });
+                          fileInputRef.current?.click();
+                        }}
                         disabled={isUploading}
+                        title="Dokument anhängen – wird in Ihren Dokumenten gespeichert und dem Termin zugeordnet"
                         className="h-8"
                       >
-                        {isUploading ? (
+                        {isUploading && activeFileAppointment?.feedbackId === feedback.id ? (
                           <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                         ) : (
                           <Paperclip className="w-4 h-4 mr-1" />
                         )}
-                        Upload
-                      </Button>
-
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button size="sm" variant="ghost" className="h-8">
-                            <CheckSquare className="w-4 h-4 mr-1" />
-                            Task
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Aufgabe zu "{appointment.title}"</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div>
-                              <Label htmlFor="task-title">Aufgabe</Label>
-                              <Input
-                                id="task-title"
-                                value={taskTitle}
-                                onChange={(e) => setTaskTitle(e.target.value)}
-                                placeholder="Aufgabentitel eingeben..."
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="task-due">Fällig am</Label>
-                              <Input
-                                id="task-due"
-                                type="date"
-                                value={taskDueDate}
-                                onChange={(e) => setTaskDueDate(e.target.value)}
-                              />
-                            </div>
-                            <Button 
-                              onClick={() => handleCreateTask(appointment.id, feedback.id, appointment)}
-                              className="w-full"
-                            >
-                              Aufgabe erstellen
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleSkip(feedback.id)}
-                        className="h-8 ml-auto"
-                      >
-                        <SkipForward className="w-4 h-4 mr-1" />
-                        Überspringen
+                        Anhang
                       </Button>
                     </div>
                   )}

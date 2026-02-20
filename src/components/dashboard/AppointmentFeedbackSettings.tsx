@@ -73,7 +73,7 @@ export const AppointmentFeedbackSettings = () => {
           <div className="space-y-2">
             <Label>Prioritäts-Kategorien</Label>
             <p className="text-xs text-muted-foreground mb-3">
-              Diese Kategorien werden zuerst angezeigt
+              Termine in diesen Kategorien erhalten einen höheren Prioritätswert und werden oben angezeigt. Termine, die im letzten Jour-Fixe mit einem Stern ⭐ versehen wurden, haben immer höchste Priorität – unabhängig von der Kategorie.
             </p>
             <div className="flex flex-wrap gap-2">
               {categories?.map((category) => (
@@ -116,7 +116,7 @@ export const AppointmentFeedbackSettings = () => {
             <div className="space-y-0.5">
               <Label>Interne Termine überspringen</Label>
               <p className="text-xs text-muted-foreground">
-                Interne Termine automatisch als erledigt markieren
+                Interne Termine sind Jour-Fixe-Meetings, die innerhalb der Plattform erstellt wurden (Kategorie „Meeting"). Diese werden beim Feedback automatisch als erledigt markiert, da sie bereits in der Sitzung nachbereitet werden.
               </p>
             </div>
             <Switch

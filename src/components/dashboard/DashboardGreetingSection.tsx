@@ -1,8 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
 import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getWeather, translateCondition, getWeatherIcon } from '@/utils/dashboard/weatherApi';
@@ -21,6 +23,8 @@ interface AppointmentData {
 export const DashboardGreetingSection = () => {
   const { user } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
+  const navigate = useNavigate();
+  const { appointments: feedbackAppointments, settings: feedbackSettings } = useAppointmentFeedback();
 
   const [userName, setUserName] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('');
@@ -33,15 +37,17 @@ export const DashboardGreetingSection = () => {
   const [showWeather, setShowWeather] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Show skeleton while tenant is loading
-  if (tenantLoading) {
-    return <div className="animate-pulse h-32 bg-muted rounded-lg mb-6" />;
-  }
+  // Feedback-Reminder: zeitgesteuert + offene Feedbacks
+  const feedbackReminderVisible = useMemo(() => {
+    if (!feedbackSettings?.reminder_start_time) return false;
+    const currentTime = format(new Date(), 'HH:mm:ss');
+    if (currentTime < feedbackSettings.reminder_start_time) return false;
+    return (feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0) > 0;
+  }, [feedbackSettings, feedbackAppointments]);
 
-  // Don't render without tenant
-  if (!currentTenant?.id) {
-    return null;
-  }
+  const pendingFeedbackCount = useMemo(() => {
+    return feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0;
+  }, [feedbackAppointments]);
 
   // Load user name
   useEffect(() => {
@@ -403,11 +409,32 @@ export const DashboardGreetingSection = () => {
     });
   }, [fullText]);
 
+  // Show skeleton while tenant is loading
+  if (tenantLoading) {
+    return <div className="animate-pulse h-32 bg-muted rounded-lg mb-6" />;
+  }
+
+  // Don't render without tenant
+  if (!currentTenant?.id) {
+    return null;
+  }
+
   return (
     <div>
       <span className="text-xl lg:text-2xl font-light tracking-tight text-foreground/90 block whitespace-pre-wrap">
         {parsedContent}
       </span>
+      {feedbackReminderVisible && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => navigate('/mywork?tab=appointmentfeedback')}
+            className="text-sm text-primary hover:underline flex items-center gap-1"
+          >
+            🔔 {pendingFeedbackCount} offene{pendingFeedbackCount === 1 ? 's' : ''} Termin-Feedback{pendingFeedbackCount !== 1 ? 's' : ''} – jetzt bearbeiten
+          </button>
+        </div>
+      )}
       <div className="mt-4">
         <button
           type="button"
