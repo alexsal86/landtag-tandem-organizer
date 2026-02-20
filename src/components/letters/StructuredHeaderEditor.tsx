@@ -1211,10 +1211,37 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-      <div className="space-y-4">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={undo} disabled={!canUndo}><Undo2 className="h-3.5 w-3.5 mr-1" />Undo</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={redo} disabled={!canRedo}><Redo2 className="h-3.5 w-3.5 mr-1" />Redo</Button>
+        <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowRuler(v => !v)}><Ruler className="h-3.5 w-3.5 mr-1" />Lineal</Button>
+        <Button variant={showCenterGuides ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowCenterGuides(v => !v)}><Crosshair className="h-3.5 w-3.5 mr-1" />Achsen</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={copySelectedElement} disabled={!selectedElement}><Copy className="h-3.5 w-3.5 mr-1" />Kopieren</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={pasteClipboardElement} disabled={!canPasteFromClipboard}><ClipboardPaste className="h-3.5 w-3.5 mr-1" />Einfügen</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={duplicateSelectedElement} disabled={!selectedElement}><CopyPlus className="h-3.5 w-3.5 mr-1" />Duplizieren</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, -1)} disabled={!canMoveLayerBackward}><ArrowDown className="h-3.5 w-3.5 mr-1" />Ebene runter</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, 1)} disabled={!canMoveLayerForward}><ArrowUp className="h-3.5 w-3.5 mr-1" />Ebene hoch</Button>
+        <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}><Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts</Button>
+      </div>
+
+      {canAlignSelection && (
+        <div className="flex flex-wrap gap-1 rounded-md border bg-background p-1">
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('left')}>Links</Button>
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('center')}>Zentrum</Button>
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('right')}>Rechts</Button>
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('top')}>Oben</Button>
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('middle')}>Mitte</Button>
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('bottom')}>Unten</Button>
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => distributeSelection('horizontal')} disabled={!canDistributeSelection}>Horizontal verteilen</Button>
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => distributeSelection('vertical')} disabled={!canDistributeSelection}>Vertikal verteilen</Button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_300px] gap-6">
+      <div className="space-y-4 xl:contents">
         {actionButtons && (
-          <Card>
+          <Card className="xl:col-start-3">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm">Bearbeitung</CardTitle>
             </CardHeader>
@@ -1225,7 +1252,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         )}
 
         {/* Tools */}
-        <Card>
+        <Card className="xl:col-start-1">
           <CardHeader className="py-3 px-4">
             <CardTitle className="text-sm">Elemente hinzufügen</CardTitle>
           </CardHeader>
@@ -1257,7 +1284,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
 
         {/* Image Gallery */}
-        <Card>
+        <Card className="xl:col-start-1">
           <CardHeader className="py-3 px-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-1"><FolderOpen className="h-3.5 w-3.5" /> Bilder-Galerie</CardTitle>
@@ -1283,7 +1310,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
 
         {/* Elements list */}
-        <Card>
+        <Card className="xl:col-start-3">
           <CardHeader className="py-3 px-4">
             <CardTitle className="text-sm">Elemente ({elements.length})</CardTitle>
           </CardHeader>
@@ -1416,11 +1443,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="py-3 px-4">
-          <CardTitle className="text-sm">Vorschau</CardTitle>
-          <p className="text-xs text-muted-foreground">DIN A4 Header (210mm × 45mm). Delete/Backspace löscht. Resize + Ctrl = Seitenverhältnis. Bei Mehrfachauswahl skaliert der Handle die ganze Gruppe.</p>
-        </CardHeader>
+      <Card className="xl:col-start-2 xl:row-span-4">
         <CardContent className="p-6">
           <div ref={previewContainerRef} className="flex items-center justify-center min-h-[340px] w-full mt-4">
           <div className="relative" style={{ paddingLeft: showRuler ? 28 : 0, paddingTop: showRuler ? 28 : 0 }}>
@@ -1437,7 +1460,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </>
             )}
 
-            <div className="absolute top-2 right-2 z-20 flex flex-wrap justify-end gap-2 max-w-[calc(100%-1rem)]">
+            <div className="hidden absolute top-2 right-2 z-20 flex flex-wrap justify-end gap-2 max-w-[calc(100%-1rem)]">
               <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={undo} disabled={!canUndo}>
                 <Undo2 className="h-3.5 w-3.5 mr-1" />Undo
               </Button>
@@ -1477,7 +1500,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             </div>
 
             {canAlignSelection && (
-              <div className="absolute top-12 right-2 z-20 flex flex-wrap justify-end gap-1 max-w-[calc(100%-1rem)] rounded-md border bg-background/95 p-1">
+              <div className="hidden absolute top-12 right-2 z-20 flex flex-wrap justify-end gap-1 max-w-[calc(100%-1rem)] rounded-md border bg-background/95 p-1">
                 <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('left')}>Links</Button>
                 <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('center')}>Zentrum</Button>
                 <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('right')}>Rechts</Button>
@@ -1638,6 +1661,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           </div>
         </CardContent>
       </Card>
+    </div>
     </div>
   );
 };

@@ -807,14 +807,14 @@ const LetterTemplateManager: React.FC = () => {
           initialElements={formData.header_elements}
           onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
           actionButtons={
-            <>
-              <Button variant="outline" onClick={editingTemplate ? cancelEditing : () => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>
-                <X className="h-4 w-4 mr-2" />Abbrechen
-              </Button>
+            <div className="flex flex-col gap-2">
               <Button onClick={editingTemplate ? handleUpdateTemplate : handleCreateTemplate}>
                 <Save className="h-4 w-4 mr-2" />Speichern
               </Button>
-            </>
+              <Button variant="outline" onClick={editingTemplate ? cancelEditing : () => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>
+                <X className="h-4 w-4 mr-2" />Abbrechen
+              </Button>
+            </div>
           }
         />
       </TabsContent>
@@ -955,7 +955,7 @@ const LetterTemplateManager: React.FC = () => {
               {renderTabsList()}
               {renderCommonTabsContent()}
             </Tabs>
-            {activeTab !== 'canvas-designer' && (
+            {activeTab !== 'canvas-designer' && activeTab !== 'header-designer' && (
               <div className="flex justify-end space-x-2 pt-4 border-t">
                 <Button variant="outline" onClick={() => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>Abbrechen</Button>
                 <Button onClick={handleCreateTemplate}>Template erstellen</Button>
@@ -1011,7 +1011,7 @@ const LetterTemplateManager: React.FC = () => {
               {renderTabsList()}
               {renderCommonTabsContent()}
             </Tabs>
-            {activeTab !== 'canvas-designer' && (
+            {activeTab !== 'canvas-designer' && activeTab !== 'header-designer' && (
               <div className="flex justify-end space-x-2 pt-4 border-t">
                 <Button variant="outline" onClick={cancelEditing}><X className="h-4 w-4 mr-2" />Abbrechen</Button>
                 <Button onClick={handleUpdateTemplate}><Save className="h-4 w-4 mr-2" />Speichern</Button>
