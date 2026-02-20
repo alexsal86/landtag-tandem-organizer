@@ -63,110 +63,88 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       const hasBirthdays = items.some((i) => i.system_type === "birthdays");
       const encounteredUserIds = new Set<string>();
 
-      if (hasNotes) {
-        try {
-          const { data } = await supabase
-            .from("quick_notes")
-            .select("id, title, user_id")
-            .eq("meeting_id", meetingId)
-            .is("deleted_at", null);
+      const nowDate = new Date();
+      const now = nowDate.toISOString();
+      const in7Days = addDays(nowDate, 7).toISOString();
 
-          if (!isCurrentRequest()) return;
+      const [notesResult, tasksResult, decisionsResult, contactsResult] = await Promise.all([
+        hasNotes
+          ? supabase
+              .from("quick_notes")
+              .select("id, title, user_id")
+              .eq("meeting_id", meetingId)
+              .is("deleted_at", null)
+          : Promise.resolve({ data: [] as SystemItemData[], error: null }),
+        hasTasks
+          ? supabase.from("tasks").select("id, title, user_id").eq("meeting_id", meetingId)
+          : Promise.resolve({ data: [] as SystemItemData[], error: null }),
+        hasDecisions && tenantId && userId
+          ? supabase
+              .from("task_decisions")
+              .select("id, title, created_by, task_decision_participants(user_id)")
+              .eq("tenant_id", tenantId)
+              .eq("status", "active")
+              .or(`priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})`)
+              .order("priority", { ascending: false, nullsFirst: false })
+              .order("response_deadline", { ascending: true, nullsFirst: false })
+          : Promise.resolve({ data: [] as any[], error: null }),
+        hasBirthdays && tenantId
+          ? supabase
+              .from("contacts")
+              .select("id, name, birthday")
+              .eq("tenant_id", tenantId)
+              .not("birthday", "is", null)
+          : Promise.resolve({ data: [] as Array<{ id: string; name: string; birthday: string | null }>, error: null }),
+      ]);
 
-          (data || []).forEach((note) => note.user_id && encounteredUserIds.add(note.user_id));
-          setMeetingQuickNotes((prev) => ({ ...prev, [meetingId]: data || [] }));
-        } catch (error) {
-          if (isCurrentRequest()) {
-            console.error("Error loading quick notes for meeting:", { meetingId, error });
-          }
-        }
+      if (!isCurrentRequest()) return;
+
+      if (notesResult.error) {
+        console.error("Error loading quick notes for meeting:", { meetingId, error: notesResult.error });
+      } else {
+        const notes = notesResult.data || [];
+        notes.forEach((note) => note.user_id && encounteredUserIds.add(note.user_id));
+        setMeetingQuickNotes((prev) => ({ ...prev, [meetingId]: notes }));
       }
 
-      if (hasTasks) {
-        try {
-          const { data } = await supabase.from("tasks").select("id, title, user_id").eq("meeting_id", meetingId);
-
-          if (!isCurrentRequest()) return;
-
-          (data || []).forEach((task) => task.user_id && encounteredUserIds.add(task.user_id));
-          setMeetingTasks((prev) => ({ ...prev, [meetingId]: data || [] }));
-        } catch (error) {
-          if (isCurrentRequest()) {
-            console.error("Error loading tasks for meeting:", { meetingId, error });
-          }
-        }
+      if (tasksResult.error) {
+        console.error("Error loading tasks for meeting:", { meetingId, error: tasksResult.error });
+      } else {
+        const tasks = tasksResult.data || [];
+        tasks.forEach((task) => task.user_id && encounteredUserIds.add(task.user_id));
+        setMeetingTasks((prev) => ({ ...prev, [meetingId]: tasks }));
       }
 
-      if (hasDecisions && tenantId && userId) {
-        try {
-          const nowDate = new Date();
-          const now = nowDate.toISOString();
-          const in7Days = addDays(nowDate, 7).toISOString();
-          const { data: decisions } = await supabase
-            .from("task_decisions")
-            .select("id, title, created_by, status, response_deadline, priority")
-            .eq("tenant_id", tenantId)
-            .eq("status", "active")
-            .or(`priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})`)
-            .order("priority", { ascending: false, nullsFirst: false })
-            .order("response_deadline", { ascending: true, nullsFirst: false });
+      if (decisionsResult.error) {
+        console.error("Error loading decisions for meeting:", { meetingId, error: decisionsResult.error });
+        setMeetingDecisions((prev) => ({ ...prev, [meetingId]: [] }));
+      } else {
+        const decisions = decisionsResult.data || [];
+        const relevantDecisions = decisions
+          .filter((decision: any) => {
+            const participants = decision.task_decision_participants || [];
+            return decision.created_by === userId || participants.some((participant: any) => participant.user_id === userId);
+          })
+          .map((decision: any) => ({
+            id: decision.id,
+            title: decision.title,
+            user_id: decision.created_by,
+          }));
 
-          if (!isCurrentRequest()) return;
-
-          const decisionIds = (decisions || []).map((decision) => decision.id);
-          let participantRows: Array<{ decision_id: string; user_id: string }> = [];
-
-          if (decisionIds.length > 0) {
-            const { data: participants } = await supabase
-              .from("task_decision_participants")
-              .select("decision_id, user_id")
-              .in("decision_id", decisionIds);
-
-            if (!isCurrentRequest()) return;
-
-            participantRows = participants || [];
-          }
-
-          const relevantDecisions = (decisions || [])
-            .filter(
-              (decision) =>
-                decision.created_by === userId ||
-                participantRows.some((participant) => participant.decision_id === decision.id && participant.user_id === userId),
-            )
-            .map((decision) => ({
-              id: decision.id,
-              title: decision.title,
-              user_id: decision.created_by,
-            }));
-
-          relevantDecisions.forEach((decision) => decision.user_id && encounteredUserIds.add(decision.user_id));
-          setMeetingDecisions((prev) => ({ ...prev, [meetingId]: relevantDecisions }));
-        } catch (error) {
-          if (isCurrentRequest()) {
-            console.error("Error loading decisions for meeting:", { meetingId, error });
-            setMeetingDecisions((prev) => ({ ...prev, [meetingId]: [] }));
-          }
-        }
+        relevantDecisions.forEach((decision) => decision.user_id && encounteredUserIds.add(decision.user_id));
+        setMeetingDecisions((prev) => ({ ...prev, [meetingId]: relevantDecisions }));
       }
 
-      if (hasBirthdays && tenantId) {
-        try {
+      if (contactsResult.error) {
+        console.error("Error loading birthdays for meeting:", { meetingId, error: contactsResult.error });
+        setMeetingBirthdays((prev) => ({ ...prev, [meetingId]: [] }));
+      } else {
+        const contacts = contactsResult.data || [];
+        if (contacts.length === 0) {
+          setMeetingBirthdays((prev) => ({ ...prev, [meetingId]: [] }));
+        } else {
           const referenceDate = meetingDate ? new Date(meetingDate) : new Date();
           const endDate = addDays(referenceDate, 14);
-
-          const { data: contacts } = await supabase
-            .from("contacts")
-            .select("id, name, birthday")
-            .eq("tenant_id", tenantId)
-            .not("birthday", "is", null);
-
-          if (!isCurrentRequest()) return;
-
-          if (!contacts || contacts.length === 0) {
-            setMeetingBirthdays((prev) => ({ ...prev, [meetingId]: [] }));
-            return;
-          }
-
           const birthdays: BirthdayItemData[] = [];
           const referenceYear = referenceDate.getFullYear();
 
@@ -195,11 +173,6 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
 
           birthdays.sort((a, b) => a.nextBirthday.getTime() - b.nextBirthday.getTime());
           setMeetingBirthdays((prev) => ({ ...prev, [meetingId]: birthdays }));
-        } catch (error) {
-          if (isCurrentRequest()) {
-            console.error("Error loading birthdays for meeting:", { meetingId, error });
-            setMeetingBirthdays((prev) => ({ ...prev, [meetingId]: [] }));
-          }
         }
       }
 

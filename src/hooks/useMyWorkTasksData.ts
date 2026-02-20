@@ -18,6 +18,20 @@ export interface MyWorkTask {
   tenant_id?: string;
 }
 
+const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id";
+const TASKS_CACHE_TTL_MS = 30_000;
+
+interface TasksCacheEntry {
+  timestamp: number;
+  assignedTasks: MyWorkTask[];
+  createdTasks: MyWorkTask[];
+  subtasks: Record<string, MyWorkTask[]>;
+  taskSnoozes: Record<string, string>;
+  taskCommentCounts: Record<string, number>;
+}
+
+const tasksCache = new Map<string, TasksCacheEntry>();
+
 const normalizeAssignedTo = (assignedTo: string | null | undefined) => {
   if (!assignedTo) return [];
 
@@ -36,6 +50,14 @@ export function useMyWorkTasksData(userId?: string) {
   const [taskCommentCounts, setTaskCommentCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
+  const applyCacheEntry = useCallback((entry: TasksCacheEntry) => {
+    setAssignedTasks(entry.assignedTasks);
+    setCreatedTasks(entry.createdTasks);
+    setSubtasks(entry.subtasks);
+    setTaskSnoozes(entry.taskSnoozes);
+    setTaskCommentCounts(entry.taskCommentCounts);
+  }, []);
+
   const loadTasks = useCallback(async () => {
     if (!userId) return;
 
@@ -43,14 +65,14 @@ export function useMyWorkTasksData(userId?: string) {
       const [assignedResult, createdResult] = await Promise.all([
         supabase
           .from("tasks")
-          .select("*")
+          .select(TASK_LIST_SELECT)
           .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%`)
           .neq("status", "completed")
           .is("parent_task_id", null)
           .order("due_date", { ascending: true, nullsFirst: false }),
         supabase
           .from("tasks")
-          .select("*")
+          .select(TASK_LIST_SELECT)
           .eq("user_id", userId)
           .neq("status", "completed")
           .is("parent_task_id", null)
@@ -87,31 +109,38 @@ export function useMyWorkTasksData(userId?: string) {
         return;
       }
 
-      const { data: snoozesData, error: snoozesError } = await supabase
-        .from("task_snoozes")
-        .select("task_id, snoozed_until")
-        .eq("user_id", userId);
-
-      if (snoozesError) throw snoozesError;
-
       const grouped: Record<string, MyWorkTask[]> = {};
       const tenantIds = [...new Set([...createdByMe, ...assignedByOthers].map((task) => task.tenant_id).filter(Boolean))] as string[];
 
       const subtasksQuery = supabase
         .from("tasks")
-        .select("*")
+        .select(TASK_LIST_SELECT)
         .neq("status", "completed")
         .not("parent_task_id", "is", null)
         .order("due_date", { ascending: true, nullsFirst: false });
 
-      const { data: allSubtasksData, error: allSubtasksError } = tenantIds.length > 0
-        ? await subtasksQuery.in("tenant_id", tenantIds)
-        : await subtasksQuery;
+      const [snoozesResult, subtasksResult, commentsResult] = await Promise.all([
+        supabase
+          .from("task_snoozes")
+          .select("task_id, snoozed_until")
+          .eq("user_id", userId),
+        tenantIds.length > 0
+          ? subtasksQuery.in("tenant_id", tenantIds)
+          : subtasksQuery,
+        supabase
+          .from("task_comments")
+          .select("task_id")
+          .in("task_id", allTaskIds),
+      ]);
 
-      if (allSubtasksError) throw allSubtasksError;
+      if (snoozesResult.error) throw snoozesResult.error;
+      if (subtasksResult.error) throw subtasksResult.error;
+
+      const snoozesData = snoozesResult.data || [];
+      const allSubtasksData = subtasksResult.data || [];
 
       const childrenByParent = new Map<string, MyWorkTask[]>();
-      (allSubtasksData || []).forEach((task) => {
+      allSubtasksData.forEach((task) => {
         if (!task.parent_task_id) return;
         const siblings = childrenByParent.get(task.parent_task_id) || [];
         siblings.push(task);
@@ -137,22 +166,26 @@ export function useMyWorkTasksData(userId?: string) {
       setSubtasks(grouped);
 
       const snoozeMap: Record<string, string> = {};
-      (snoozesData || []).forEach((snooze) => {
+      snoozesData.forEach((snooze) => {
         if (snooze.task_id) snoozeMap[snooze.task_id] = snooze.snoozed_until;
       });
       setTaskSnoozes(snoozeMap);
 
-      const { data: commentsData } = await supabase
-        .from("task_comments")
-        .select("task_id")
-        .in("task_id", allTaskIds);
-
       const commentCounts: Record<string, number> = {};
-      (commentsData || []).forEach((comment) => {
+      (commentsResult.data || []).forEach((comment) => {
         if (!comment.task_id) return;
         commentCounts[comment.task_id] = (commentCounts[comment.task_id] || 0) + 1;
       });
       setTaskCommentCounts(commentCounts);
+
+      tasksCache.set(userId, {
+        timestamp: Date.now(),
+        assignedTasks: assignedByOthers,
+        createdTasks: createdByMe,
+        subtasks: grouped,
+        taskSnoozes: snoozeMap,
+        taskCommentCounts: commentCounts,
+      });
     } catch (error) {
       console.error("Error loading tasks:", error);
     } finally {
@@ -162,7 +195,44 @@ export function useMyWorkTasksData(userId?: string) {
 
   useEffect(() => {
     if (!userId) return;
+
+    const cached = tasksCache.get(userId);
+    const isFresh = !!cached && Date.now() - cached.timestamp < TASKS_CACHE_TTL_MS;
+
+    if (cached) {
+      applyCacheEntry(cached);
+      setLoading(!isFresh);
+      if (isFresh) return;
+    } else {
+      setLoading(true);
+    }
+
     void loadTasks();
+  }, [userId, loadTasks, applyCacheEntry]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        timeout = null;
+        void loadTasks();
+      }, 250);
+    };
+
+    const channel = supabase
+      .channel(`my-work-tasks-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_snoozes" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_comments" }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
   }, [userId, loadTasks]);
 
   return {
