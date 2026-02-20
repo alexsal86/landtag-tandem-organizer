@@ -1,153 +1,235 @@
 
-# Wo sollen Termin-Rückmeldungen für andere Mitarbeiter sichtbar sein?
+# Plan: 6 Änderungen in Meine Arbeit, Kalender und Kontakte
 
-## Das Problem
+## Überblick der 6 Punkte
 
-Aktuell ist eine Rückmeldung ausschliesslich im Termindetail-Panel (AppointmentDetailsSidebar) einsehbar – d.h. ein Mitarbeiter muss aktiv den Kalender öffnen, den richtigen Termin finden und die Details aufklappen. Das ist in der Praxis kaum realistisch.
-
-## Drei sinnvolle Integrationspunkte
-
-### Option A: Notification beim Speichern einer Rückmeldung
-Wenn der Abgeordnete (oder wer auch immer das Feedback schreibt) auf "Rückmeldung speichern" klickt, wird für alle anderen Mitarbeiter des Tenants eine Benachrichtigung in das bestehende Benachrichtigungssystem (`notifications`-Tabelle) eingetragen.
-
-**Inhalt der Benachrichtigung:**
-- Titel: "Neue Rückmeldung: [Terminname]"
-- Nachricht: Kurzvorschau der Notiz (erste 100 Zeichen, HTML-stripped)
-- Link: zum Kalender mit dem Termin-Datum vorselektiert (via `navigation_context`)
-
-**Vorteil:** Das bestehende System wird verwendet (Bell-Icon oben rechts), keine neue UI nötig.  
-**Nachteil:** Nur einmal bei Erstellung – kein Feed/Übersicht.
-
-### Option B: Dedizierter "Rückmeldungs-Feed" in der Jour-Fixe Ansicht (MyWork > Jour Fixe Tab)
-Im Jour-Fixe-Tab bei vergangenen Meetings einen neuen Abschnitt "Rückmeldungen" hinzufügen, der die `appointment_feedback.notes` zu allen Terminen des Teams anzeigt.
-
-**Vorteil:** Kontextuell – Mitarbeiter sehen beim Nachbereiten des Meetings auch die Rückmeldungen.  
-**Nachteil:** Nur für Jour-Fixe-Termine, nicht für externe/andere Termine.
-
-### Option C: Neuer Tab "Rückmeldungen" in Meine Arbeit (für alle Mitarbeiter)
-Ein eigener Tab in `MyWorkView` für **alle Mitarbeiter** (nicht nur Abgeordnete), der die letzten Rückmeldungen aller Termine des Tenants in einer Feed-Ansicht zeigt:
-
-```
-┌─────────────────────────────────────────────┐
-│ 📋 Rückmeldungen                           │
-├─────────────────────────────────────────────┤
-│ ✅ Ausschuss Wirtschaft – 19.02.2026        │
-│ Rückmeldung Max Mustermann:                 │
-│ "Gutes Ergebnis beim Haushalt. Nächster ... │
-│ 📎 1 Anhang  ✅ 2 Aufgaben erstellt        │
-│                                             │
-│ ✅ Fraktionssitzung – 18.02.2026            │
-│ Rückmeldung Anna Schmidt:                   │
-│ "Beschluss zu @Klaus liegt vor..."          │
-└─────────────────────────────────────────────┘
-```
-
-**Vorteil:** Vollständige Transparenz, kein aktives Suchen nötig, skaliert für alle Termintypen.
+| Punkt | Bereich | Datei(en) |
+|-------|---------|-----------|
+| 1 | "Rückmeldungen"-Tab vereint Feedback + Feed | `MyWorkView.tsx`, `MyWorkFeedbackFeedTab.tsx` |
+| 2 | Feed auf letzte 7 Tage begrenzen | `useTeamFeedbackFeed.ts` |
+| 3 | Kalender-Details links, Inhalt nach rechts | `CalendarView.tsx` |
+| 4 | Kontakte-Details links (analog zu Kalender) | `ContactsView.tsx` |
+| 5 | Tab-Reihenfolge tauschen (Rückmeldungen vor Team) | `MyWorkView.tsx` |
+| 6 | Team-Tab: nur Benachrichtigungs-Badge | `MyWorkView.tsx` |
 
 ---
 
-## Meine Empfehlung: Option A + C kombiniert
+## Punkt 1: "Rückmeldungen"-Tab vereint Termine Feedback (links) + Feed (rechts)
 
-**Option A (Notification)** für sofortige Sichtbarkeit bei Erstellung – der Mitarbeiter bekommt direkt Bescheid.
+**Aktuell:** Zwei separate Tabs – `appointmentfeedback` (nur Abgeordneter) und `feedbackfeed` (alle).
 
-**Option C (Feed-Tab)** als persistente Übersicht für alle – das Gedächtnis des Teams.
+**Neu:** Ein einziger Tab namens "Rückmeldungen", der für den Abgeordneten ein 2-Spalten-Layout zeigt. Für alle anderen (Mitarbeiter, Büroleitung) wird nur die rechte Spalte (Feed) angezeigt.
 
-Option B (Jour-Fixe-Integration) kann später ergänzt werden.
+```
+Abgeordneter (2 Spalten):
+┌──────────────────────┬──────────────────────┐
+│  Termine Feedback    │  Team-Rückmeldungen  │
+│  (nur für ihn)       │  (alle sehen das)    │
+│  AppointmentFeedback │  FeedbackFeed        │
+│  Widget              │  letzte 7 Tage       │
+└──────────────────────┴──────────────────────┘
+
+Mitarbeiter (1 Spalte):
+┌───────────────────────────────────────────────┐
+│  Team-Rückmeldungen (letzte 7 Tage)           │
+│  FeedbackFeed                                 │
+└───────────────────────────────────────────────┘
+```
+
+**Technische Umsetzung:**
+- `MyWorkView.tsx`: Tab `appointmentfeedback` wird entfernt. Tab `feedbackfeed` wird umbenannt zu "Rückmeldungen" (bleibt `feedbackfeed` als URL-Wert).
+- `MyWorkView.tsx`: Der Tab-Content-Block für `feedbackfeed` rendert nun:
+  ```tsx
+  {activeTab === "feedbackfeed" && (
+    isAbgeordneter
+      ? <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <MyWorkAppointmentFeedbackTab />
+          <MyWorkFeedbackFeedTab />
+        </div>
+      : <MyWorkFeedbackFeedTab />
+  )}
+  ```
+- `MyWorkFeedbackFeedTab.tsx`: Leichte Beschriftungsanpassung – macht klar, dass es sich um den "Team-Feed" handelt.
+- Der alte `appointmentfeedback`-Tab (inkl. Tabkonfiguration mit `abgeordneterOnly`) wird aus `BASE_TABS` entfernt.
 
 ---
 
-## Technische Umsetzung
+## Punkt 2: Feed auf letzte 7 Tage begrenzen + Hinweis
 
-### Teil 1: Notification beim Speichern (Option A)
-
-**In `AppointmentFeedbackWidget.tsx` → `handleSaveNote`:**
-
-Nach dem Speichern der Rückmeldung werden für alle anderen Mitarbeiter des Tenants Notifications angelegt:
-
+**`useTeamFeedbackFeed.ts`:** Filterung auf letzte 7 Tage durch `.gte('completed_at', sevenDaysAgo)` hinzufügen:
 ```ts
-// Strip HTML für Vorschau
-const plainText = noteWithAuthor.replace(/<[^>]*>/g, '').slice(0, 120);
-
-// Notification-Type-ID für "appointment_feedback" laden (oder fester UUID)
-// Für jeden anderen Mitarbeiter im Tenant einen Notification-Eintrag erstellen
-const otherUsers = tenantUsers.filter(u => u.user_id !== user.id);
-await supabase.from('notifications').insert(
-  otherUsers.map(u => ({
-    user_id: u.user_id,
-    title: `Rückmeldung: ${appointment.title}`,
-    message: plainText,
-    is_read: false,
-    priority: 'medium',
-    navigation_context: `calendar?date=${appointment.start_time.split('T')[0]}`
-  }))
-);
+const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+// In der Query:
+.gte('completed_at', sevenDaysAgo)
+.limit(30) // bleibt als Sicherheitslimit
 ```
 
-**Hinweis:** Die `notification_type_id` ist eine Pflicht-Spalte (FK). Wir prüfen, ob bereits ein Type `appointment_feedback` existiert – wenn nicht, legen wir ihn per Migration an. Alternativ wird `notification_type_id` nullable gemacht (Migration).
-
-### Teil 2: Rückmeldungs-Feed Tab in Meine Arbeit (Option C)
-
-**Neue Dateien:**
-- `src/components/my-work/MyWorkFeedbackFeedTab.tsx` – neue Komponente
-- `src/hooks/useTeamFeedbackFeed.ts` – Datenabfrage
-
-**Datenabfrage `useTeamFeedbackFeed`:**
-```sql
-SELECT 
-  af.id, af.notes, af.completed_at, af.has_documents, af.has_tasks,
-  a.title, a.start_time,  -- für reguläre Termine
-  ee.title, ee.start_time  -- für externe Events
-FROM appointment_feedback af
-LEFT JOIN appointments a ON a.id = af.appointment_id
-LEFT JOIN external_events ee ON ee.id = af.external_event_id
-WHERE af.tenant_id = currentTenant.id
-  AND af.feedback_status = 'completed'
-  AND af.notes IS NOT NULL
-ORDER BY af.completed_at DESC
-LIMIT 20
-```
-
-**Anzeige in `MyWorkFeedbackFeedTab`:**
-- Filtert nur Einträge mit `notes != null`
-- Rendert Termintitel, Datum, `<RichTextDisplay content={af.notes}>`
-- Zeigt Badges: "📎 Anhang", "✅ Aufgaben" wenn vorhanden
-- Keine Bearbeitungsfunktion – reine Leseansicht
-
-**Integration in `MyWorkView.tsx`:**
-- Neuer Tab "Rückmeldungen" sichtbar für alle Rollen (`mitarbeiter`, `bueroleitung`, `abgeordneter`)
-- Tab-Icon: `MessageSquare` oder `ClipboardList`
-- Platzierung nach "Aufgaben", vor "Kalender"
-
-### Teil 3: Notification-Type Migration (wenn nötig)
-
-Wenn `notification_type_id` NOT NULL ist, benötigen wir eine Migration:
-
-```sql
--- Neuen Notification-Type anlegen
-INSERT INTO notification_types (name, label, description)
-VALUES ('appointment_feedback', 'Termin-Rückmeldung', 'Rückmeldung zu einem Termin wurde gespeichert')
-ON CONFLICT (name) DO NOTHING;
-```
-
-Damit können wir die UUID in der Code-Logik verwenden.
+**`MyWorkFeedbackFeedTab.tsx`:** Hinweis in der Beschreibung ergänzen:
+> *"Rückmeldungen der letzten 7 Tage werden angezeigt."*
 
 ---
 
-## Geänderte/neue Dateien
+## Punkt 3: Kalender – Details erscheinen links, Inhalt schiebt nach rechts
 
-| Datei | Aktion |
-|-------|--------|
-| `supabase/migrations/...appointment_feedback_notification_type.sql` | Notification-Type anlegen |
-| `src/components/dashboard/AppointmentFeedbackWidget.tsx` | Notification-Versand beim Speichern |
-| `src/hooks/useTeamFeedbackFeed.ts` | Neuer Hook für Team-Feed |
-| `src/components/my-work/MyWorkFeedbackFeedTab.tsx` | Neue Feed-Komponente |
-| `src/components/MyWorkView.tsx` | Neuer Tab "Rückmeldungen" |
+**Aktuell:** Das Detail-Panel erscheint rechts neben dem Kalender (`ml-4`).
+
+**Gewünschtes Verhalten:** Das Detail-Panel soll links erscheinen, als würde es aus der Navigation "herausgleiten". Der Kalender-Header (Terminkalender-Titel, Datum-Navigation, Ansichts-Buttons) bleibt oben. Das Submenü (sofern vorhanden) bleibt unverändert. Nur der Kalender-Grid selbst schiebt nach rechts.
+
+**Technische Umsetzung in `CalendarView.tsx`:**
+
+Der Flex-Container bei Zeile 1142 wird umgeordnet: Das Detail-Panel kommt **vor** dem Hauptkalender in der DOM-Reihenfolge. Mit `flex-row-reverse` wäre das Layout optisch falsch – stattdessen wird die Reihenfolge im JSX einfach umgedreht:
+
+```tsx
+{/* Calendar Content - split layout when sidebar open */}
+<div className="flex gap-0 transition-all duration-300">
+
+  {/* Inline Detail Panel – jetzt LINKS */}
+  {sidebarOpen && selectedAppointment && (
+    <div className="w-[420px] shrink-0 border border-border rounded-lg mr-4 overflow-hidden"
+         style={{ height: 'calc(600px + 57px)' }}>
+      <AppointmentDetailsSidebar ... />
+    </div>
+  )}
+
+  {/* Main Calendar – schiebt nach rechts */}
+  <div className="flex-1 min-w-0 transition-all duration-300">
+    <Card ...>
+      ...
+    </Card>
+  </div>
+
+</div>
+```
+
+Das Submenü (Header mit Navigationsbuttons, Datumsauswahl, Ansichtsauswahl bei Zeilen 1066–1140) liegt **außerhalb** des Flex-Containers und bleibt unverändert. Nur der Flex-Container (Kalender-Grid + Detail-Panel) ändert die Reihenfolge.
+
+**Ergebnis:** Wenn ein Termin angeklickt wird, schiebt das Detail-Panel von links ein und der Kalender-Grid weicht nach rechts – analog zum Verhalten in Verwaltungsansichten.
 
 ---
 
-## Reihenfolge der Umsetzung
+## Punkt 4: Kontakte – Details erscheinen links (analog Kalender)
 
-1. Migration (Notification-Type)
-2. Notification-Versand im Widget
-3. Feed-Hook + Feed-Tab
-4. Tab in MyWorkView integrieren
+**Aktuell:** Das `ContactDetailPanel` erscheint rechts neben der Kontaktliste (`w-3/5` mit `border-l`).
+
+**Gewünschtes Verhalten:** Gleiches Prinzip wie Kalender – Details links, Liste rechts.
+
+**Technische Umsetzung in `ContactsView.tsx`:**
+
+Die aktuelle Struktur (Zeilen 414–1358) hat bereits einen äußeren `flex`-Container:
+```tsx
+<div className="flex h-[calc(100vh-3.5rem)]">
+  {/* Left: Contact List */}
+  <div className={cn("flex-1 overflow-y-auto ...", ...)}>
+    ...Kontaktliste...
+  </div>
+
+  {/* Right: Contact Detail Panel */}
+  {selectedContactId && !isSheetOpen && (
+    <div className="w-full md:w-3/5 lg:w-3/5 border-l ...">
+      <ContactDetailPanel ... />
+    </div>
+  )}
+</div>
+```
+
+**Änderung:** Das `ContactDetailPanel` wird **vor** der Kontaktliste in der DOM-Reihenfolge platziert. Das Panel erhält `border-r` statt `border-l`. Die Kontaktliste behält `flex-1`.
+
+```tsx
+<div className="flex h-[calc(100vh-3.5rem)]">
+
+  {/* Left: Contact Detail Panel – jetzt LINKS */}
+  {selectedContactId && !isSheetOpen && (
+    <div className="w-full md:w-2/5 lg:w-2/5 border-r border-border overflow-hidden bg-background">
+      <ContactDetailPanel ... />
+    </div>
+  )}
+
+  {/* Right: Contact List – schiebt nach rechts */}
+  <div className={cn(
+    "flex-1 overflow-y-auto transition-all",
+    selectedContactId && !isSheetOpen ? "hidden md:block" : "w-full"
+  )}>
+    ...Kontaktliste...
+  </div>
+
+</div>
+```
+
+**Ergebnis:** Klick auf Kontakt → Details erscheinen links, Liste schiebt nach rechts. Identisches Muster wie Kalender.
+
+---
+
+## Punkt 5: Tab-Reihenfolge tauschen
+
+**Aktuell in `BASE_TABS` (Zeilen 57–69 in `MyWorkView.tsx`):**
+```
+... | team | appointmentfeedback | feedbackfeed
+```
+
+**Neu (nach den Änderungen aus Punkt 1 und 5):**
+```
+... | feedbackfeed (jetzt "Rückmeldungen") | team
+```
+
+Der `feedbackfeed`-Tab (der nun beide Komponenten enthält) kommt **vor** dem `team`-Tab. Das ist eine einfache Umsortierung der Array-Einträge in `BASE_TABS`.
+
+---
+
+## Punkt 6: Team-Tab zeigt nur neue Benachrichtigungen
+
+**Problem:** Der Team-Tab zählt aktuell `(requestCount || 0) + warningCount` – also Anzahl offener Meeting-Requests + Mitarbeiter ohne Zeiteintrag. Das ist kein reines Benachrichtigungs-Badge.
+
+**Gewünschtes Verhalten:** Nur *neue* (ungelesene) Benachrichtigungen sollen das Badge befüllen – analog zu den anderen Tabs im `new`-Modus.
+
+**Technische Umsetzung:**
+
+In `MyWorkView.tsx`, `getDisplayCount()` für das Team-Tab (Zeilen 462–465):
+```tsx
+// Team tab always shows total (no "new" logic for team)
+if (tab.countKey === 'team') {
+  return totalCounts.team;
+}
+```
+
+Diesen Block ändern auf:
+```tsx
+if (tab.countKey === 'team') {
+  // Zeige nur ungelesene Benachrichtigungen aus dem Notifications-System
+  return newCounts.team || 0; // neu: über newCounts
+}
+```
+
+Dafür muss `NewCounts` in `useMyWorkNewCounts.tsx` um ein `team`-Feld erweitert werden:
+```ts
+export interface NewCounts {
+  tasks: number; decisions: number; jourFixe: number;
+  caseFiles: number; plannings: number;
+  team: number; // NEU
+}
+```
+
+Die `loadNewCounts`-Funktion berechnet dann:
+```ts
+// Ungelesene Benachrichtigungen für den User (Typ: team-relevant)
+const { count: unreadNotifCount } = await supabase
+  .from('notifications')
+  .select('id', { count: 'exact', head: true })
+  .eq('user_id', user.id)
+  .eq('is_read', false)
+  .gt('created_at', teamLastVisit);
+```
+
+Und in `loadCounts` (MyWorkView) wird die aufwändige `teamCount`-Berechnung (Requests + Warnings) **entfernt** – das Badge ist jetzt vollständig an das Benachrichtigungssystem delegiert.
+
+---
+
+## Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `src/components/MyWorkView.tsx` | Tab `appointmentfeedback` entfernen; `feedbackfeed` umbenennen; 2-Spalten-Layout für Abgeordneter; Tab-Reihenfolge; Team-Badge-Logik vereinfachen |
+| `src/components/my-work/MyWorkFeedbackFeedTab.tsx` | 7-Tage-Hinweis in Beschreibung ergänzen |
+| `src/hooks/useTeamFeedbackFeed.ts` | `.gte('completed_at', sevenDaysAgo)` ergänzen |
+| `src/hooks/useMyWorkNewCounts.tsx` | `team`-Feld zu `NewCounts` + `loadNewCounts` hinzufügen |
+| `src/components/CalendarView.tsx` | Detail-Panel vor Kalender in DOM; `mr-4` statt `ml-4` |
+| `src/components/ContactsView.tsx` | Detail-Panel vor Kontaktliste; `border-r` statt `border-l` |
