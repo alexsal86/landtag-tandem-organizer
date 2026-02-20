@@ -413,7 +413,18 @@ export function ContactsView() {
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
-      {/* Left: Contact List */}
+      {/* Left: Contact Detail Panel (inline, not overlay) */}
+      {selectedContactId && !isSheetOpen && (
+        <div className="w-full md:w-3/5 lg:w-3/5 border-r border-border overflow-hidden bg-background">
+          <ContactDetailPanel
+            contactId={selectedContactId}
+            onClose={() => setSelectedContactId(null)}
+            onContactUpdate={refreshContacts}
+          />
+        </div>
+      )}
+
+      {/* Right: Contact List */}
       <div className={cn(
         "flex-1 overflow-y-auto transition-all",
         selectedContactId && !isSheetOpen ? "hidden md:block md:w-2/5 lg:w-2/5" : "w-full"
@@ -1342,17 +1353,6 @@ export function ContactsView() {
       />
     </div>
     </div>
-
-      {/* Right: Contact Detail Panel (inline, not overlay) */}
-      {selectedContactId && !isSheetOpen && (
-        <div className="w-full md:w-3/5 lg:w-3/5 border-l border-border overflow-hidden bg-background">
-          <ContactDetailPanel
-            contactId={selectedContactId}
-            onClose={() => setSelectedContactId(null)}
-            onContactUpdate={refreshContacts}
-          />
-        </div>
-      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ export interface NewCounts {
   jourFixe: number;
   caseFiles: number;
   plannings: number;
+  team: number;
 }
 
 interface LastVisits {
@@ -16,6 +17,7 @@ interface LastVisits {
   mywork_jourFixe?: Date;
   mywork_casefiles?: Date;
   mywork_plannings?: Date;
+  mywork_team?: Date;
 }
 
 const CONTEXTS = [
@@ -24,6 +26,7 @@ const CONTEXTS = [
   'mywork_jourFixe',
   'mywork_casefiles',
   'mywork_plannings',
+  'mywork_team',
 ] as const;
 
 type ContextType = typeof CONTEXTS[number];
@@ -43,6 +46,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
     jourFixe: 0,
     caseFiles: 0,
     plannings: 0,
+    team: 0,
   });
   const [lastVisits, setLastVisits] = useState<LastVisits>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -86,6 +90,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
       const jourFixeLastVisit = lastVisits.mywork_jourFixe?.toISOString() || new Date(0).toISOString();
       const caseFilesLastVisit = lastVisits.mywork_casefiles?.toISOString() || new Date(0).toISOString();
       const planningsLastVisit = lastVisits.mywork_plannings?.toISOString() || new Date(0).toISOString();
+      const teamLastVisit = lastVisits.mywork_team?.toISOString() || new Date(0).toISOString();
 
       // Count new tasks (created after last visit, assigned to user or created by user)
       const { count: newTaskCount } = await supabase
@@ -157,12 +162,21 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
         .eq('user_id', user.id)
         .gt('created_at', planningsLastVisit);
 
+      // Count unread notifications for team tab
+      const { count: newTeamNotifCount } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false)
+        .gt('created_at', teamLastVisit);
+
       setNewCounts({
         tasks: newTaskCount || 0,
         decisions: (newDecisionRequestCount || 0) + newResponseCount,
         jourFixe: (newJourFixeCount || 0) + (newParticipantMeetingCount || 0),
         caseFiles: newCaseFileCount || 0,
         plannings: (newOwnedPlanningCount || 0) + (newCollabPlanningCount || 0),
+        team: newTeamNotifCount || 0,
       });
     } catch (error) {
       console.error('Error loading new counts:', error);
@@ -200,6 +214,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
         mywork_jourFixe: 'jourFixe',
         mywork_casefiles: 'caseFiles',
         mywork_plannings: 'plannings',
+        mywork_team: 'team',
       };
 
       const countKey = contextToCountKey[context];

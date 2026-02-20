@@ -39,7 +39,7 @@ interface TabCounts {
   jourFixe: number;
 }
 
-type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "casefiles" | "plannings" | "team" | "time" | "appointmentfeedback" | "feedbackfeed";
+type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "casefiles" | "plannings" | "team" | "time" | "feedbackfeed";
 
 interface TabConfig {
   value: TabValue;
@@ -63,9 +63,8 @@ const BASE_TABS: TabConfig[] = [
   { value: "casefiles", label: "FallAkten", icon: Briefcase, countKey: "caseFiles" },
   { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
-  { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOrBueroOnly: true },
-  { value: "appointmentfeedback", label: "Termine Feedback", icon: CheckCircle2, abgeordneterOnly: true },
   { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare },
+  { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOrBueroOnly: true },
 ];
 
 const countBusinessDaysSince = (fromDate: string, toDate: Date) => {
@@ -126,7 +125,6 @@ export function MyWorkView() {
       plannings: 'mywork_plannings',
       time: '',
       team: '',
-      appointmentfeedback: '',
       feedbackfeed: '',
     };
     
@@ -459,9 +457,9 @@ export function MyWorkView() {
             const getDisplayCount = () => {
               if (!tab.countKey) return 0;
               
-              // Team tab always shows total (no "new" logic for team)
+              // Team tab shows unread notifications count
               if (tab.countKey === 'team') {
-                return totalCounts.team;
+                return newCounts.team || 0;
               }
               
               if (badgeDisplayMode === 'new') {
@@ -545,8 +543,18 @@ export function MyWorkView() {
       {activeTab === "plannings" && <Suspense fallback={tabFallback}><MyWorkPlanningsTab /></Suspense>}
       {activeTab === "time" && <Suspense fallback={tabFallback}><MyWorkTimeTrackingTab /></Suspense>}
       {activeTab === "team" && <Suspense fallback={tabFallback}><MyWorkTeamTab /></Suspense>}
-      {activeTab === "appointmentfeedback" && isAbgeordneter && <Suspense fallback={tabFallback}><MyWorkAppointmentFeedbackTab /></Suspense>}
-      {activeTab === "feedbackfeed" && <Suspense fallback={tabFallback}><MyWorkFeedbackFeedTab /></Suspense>}
+      {activeTab === "feedbackfeed" && (
+        <Suspense fallback={tabFallback}>
+          {isAbgeordneter ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <MyWorkAppointmentFeedbackTab />
+              <MyWorkFeedbackFeedTab />
+            </div>
+          ) : (
+            <MyWorkFeedbackFeedTab />
+          )}
+        </Suspense>
+      )}
     </div>
   );
 }
