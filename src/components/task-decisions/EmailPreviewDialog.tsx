@@ -12,6 +12,36 @@ interface EmailPreviewDialogProps {
   fileName: string;
 }
 
+// --- Path normalization (same logic as DecisionAttachmentPreviewDialog) ---
+const isHttpUrl = (value: string) => /^https?:\/\//i.test(value);
+
+const safeDecode = (value: string) => {
+  try { return decodeURIComponent(value); } catch { return value; }
+};
+
+const normalizeStoragePath = (rawPath: string) => {
+  const trimmed = rawPath.trim();
+  if (!trimmed) return '';
+
+  const stripBucketPrefix = (value: string) =>
+    safeDecode(value)
+      .split(/[?#]/, 1)[0]
+      .replace(/^\/+/, '')
+      .replace(/^decision-attachments\//, '');
+
+  if (!isHttpUrl(trimmed)) return stripBucketPrefix(trimmed);
+
+  try {
+    const parsed = new URL(trimmed);
+    const marker = '/decision-attachments/';
+    const markerIndex = parsed.pathname.indexOf(marker);
+    if (markerIndex === -1) return '';
+    return stripBucketPrefix(parsed.pathname.slice(markerIndex + marker.length));
+  } catch {
+    return '';
+  }
+};
+
 export function EmailPreviewDialog({ open, onOpenChange, filePath, fileName }: EmailPreviewDialogProps) {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState<ParsedEmail | null>(null);
@@ -31,13 +61,29 @@ export function EmailPreviewDialog({ open, onOpenChange, filePath, fileName }: E
     setLoading(true);
     setError(null);
     try {
-      const { data, error: dlError } = await supabase.storage
+      const normalizedPath = normalizeStoragePath(filePath);
+      const pathToUse = normalizedPath || filePath;
+
+      // Try signed URL first, fall back to direct download
+      let buffer: ArrayBuffer | null = null;
+
+      const { data: signedData, error: signedError } = await supabase.storage
         .from('decision-attachments')
-        .download(filePath);
+        .createSignedUrl(pathToUse, 60 * 10);
 
-      if (dlError) throw dlError;
+      if (!signedError && signedData?.signedUrl) {
+        const response = await fetch(signedData.signedUrl);
+        if (response.ok) buffer = await response.arrayBuffer();
+      }
 
-      const buffer = await data.arrayBuffer();
+      if (!buffer) {
+        const { data: blobData, error: dlError } = await supabase.storage
+          .from('decision-attachments')
+          .download(pathToUse);
+        if (dlError) throw dlError;
+        buffer = await blobData.arrayBuffer();
+      }
+
       const isMsgExt = fileName.toLowerCase().endsWith('.msg');
       const parsed = isMsgExt
         ? await parseMsgFromArrayBuffer(buffer)

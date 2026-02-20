@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home } from "lucide-react";
+import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2 } from "lucide-react";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,7 @@ const MyWorkPlanningsTab = lazy(() => import("./my-work/MyWorkPlanningsTab").the
 const MyWorkTeamTab = lazy(() => import("./my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
 const MyWorkJourFixeTab = lazy(() => import("./my-work/MyWorkJourFixeTab").then(m => ({ default: m.MyWorkJourFixeTab })));
 const MyWorkTimeTrackingTab = lazy(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
+const MyWorkAppointmentFeedbackTab = lazy(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
 import { DashboardGreetingSection } from "./dashboard/DashboardGreetingSection";
 import { NewsWidget } from "./widgets/NewsWidget";
 
@@ -37,7 +38,7 @@ interface TabCounts {
   jourFixe: number;
 }
 
-type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "casefiles" | "plannings" | "team" | "time";
+type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "casefiles" | "plannings" | "team" | "time" | "appointmentfeedback";
 
 interface TabConfig {
   value: TabValue;
@@ -48,6 +49,7 @@ interface TabConfig {
   adminOnly?: boolean;
   employeeOnly?: boolean;
   abgeordneterOrBueroOnly?: boolean;
+  abgeordneterOnly?: boolean;
   isLogo?: boolean;
 }
 
@@ -61,6 +63,7 @@ const BASE_TABS: TabConfig[] = [
   { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
   { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOrBueroOnly: true },
+  { value: "appointmentfeedback", label: "Termine Feedback", icon: CheckCircle2, abgeordneterOnly: true },
 ];
 
 const countBusinessDaysSince = (fromDate: string, toDate: Date) => {
@@ -121,6 +124,7 @@ export function MyWorkView() {
       plannings: 'mywork_plannings',
       time: '',
       team: '',
+      appointmentfeedback: '',
     };
     
     const context = tabToContext[tab];
@@ -442,6 +446,7 @@ export function MyWorkView() {
             if (tab.adminOnly && !isAdmin) return false;
             if (tab.employeeOnly && !isEmployee) return false;
             if (tab.abgeordneterOrBueroOnly && !isAbgeordneter && !isBueroleitung) return false;
+            if (tab.abgeordneterOnly && !isAbgeordneter) return false;
             return true;
           })
           .map((tab) => {
@@ -537,6 +542,7 @@ export function MyWorkView() {
       {activeTab === "plannings" && <Suspense fallback={tabFallback}><MyWorkPlanningsTab /></Suspense>}
       {activeTab === "time" && <Suspense fallback={tabFallback}><MyWorkTimeTrackingTab /></Suspense>}
       {activeTab === "team" && <Suspense fallback={tabFallback}><MyWorkTeamTab /></Suspense>}
+      {activeTab === "appointmentfeedback" && isAbgeordneter && <Suspense fallback={tabFallback}><MyWorkAppointmentFeedbackTab /></Suspense>}
     </div>
   );
 }
