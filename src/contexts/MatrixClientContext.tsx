@@ -134,6 +134,13 @@ const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): Matrix
   };
 };
 
+const isLocalEchoEvent = (event: sdk.MatrixEvent): boolean => {
+  const localEchoByStatus = Boolean((event as any).status);
+  const localEchoByTxn = Boolean(event.getUnsigned()?.transaction_id) && !event.getId();
+  return localEchoByStatus || localEchoByTxn;
+};
+
+
 /**
  * Shared helper: attach SAS verifier listeners.
  * Used by both `connect` (incoming verification) and `requestSelfVerification` (outgoing).
@@ -261,6 +268,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const authPasswordRef = useRef<string | undefined>(undefined);
   const clientRef = useRef<sdk.MatrixClient | null>(null);
   const listenersRef = useRef<Array<{ event: string; handler: (...args: any[]) => void }>>([]);
+  const refreshInFlightRef = useRef<Set<string>>(new Set());
 
   // Keep isConnectedRef in sync
   useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
@@ -507,6 +515,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         const eventType = event.getType();
 
         if (eventType === 'm.room.message' || eventType === 'm.room.encrypted') {
+          if (isLocalEchoEvent(event)) return;
+
           const newMessage = mapMatrixEventToMessage(room, event);
           if (!newMessage) return;
 
@@ -784,7 +794,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
     const timeline = room.getLiveTimeline().getEvents();
 
-    if (timeline.length < limit) {
+    if (timeline.length < limit && !refreshInFlightRef.current.has(roomId)) {
+      refreshInFlightRef.current.add(roomId);
       void (async () => {
         try {
           let hasMore = true;
@@ -793,6 +804,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           }
         } catch (error) {
           console.warn('Matrix scrollback failed:', error);
+        } finally {
+          refreshInFlightRef.current.delete(roomId);
         }
       })();
     }

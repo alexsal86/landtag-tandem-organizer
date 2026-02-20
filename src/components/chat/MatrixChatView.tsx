@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, Plus, Lock, ExternalLink } from 'lucide-react';
+import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, Plus, Lock, ExternalLink, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useMatrixClient } from '@/contexts/MatrixClientContext';
@@ -42,6 +42,7 @@ export function MatrixChatView() {
   const [showSearch, setShowSearch] = useState(false);
   const [roomFilter, setRoomFilter] = useState<RoomFilterType>('all');
   const [replyTo, setReplyTo] = useState<{ eventId: string; sender: string; content: string } | null>(null);
+  const [isRoomListCollapsed, setIsRoomListCollapsed] = useState(false);
 
   // Get messages from context
   const messages = selectedRoomId ? (roomMessages.get(selectedRoomId) || []) : [];
@@ -61,6 +62,9 @@ export function MatrixChatView() {
     groups: rooms.filter(r => !r.isDirect).length,
   };
 
+  const selectedRoom = rooms.find(r => r.roomId === selectedRoomId);
+
+
   // Auto-select first room
   useEffect(() => {
     if (rooms.length > 0 && !selectedRoomId) {
@@ -78,14 +82,14 @@ export function MatrixChatView() {
 
   // Fallback refresh for encrypted timelines if event callbacks are delayed/missed
   useEffect(() => {
-    if (!selectedRoomId || !isConnected) return;
+    if (!selectedRoomId || !isConnected || !selectedRoom?.isEncrypted) return;
 
     const intervalId = window.setInterval(() => {
       refreshMessages(selectedRoomId, 100);
     }, 5000);
 
     return () => window.clearInterval(intervalId);
-  }, [selectedRoomId, isConnected, refreshMessages]);
+  }, [selectedRoomId, selectedRoom?.isEncrypted, isConnected, refreshMessages]);
 
   const handleSendMessage = useCallback(async (message: string) => {
     if (!selectedRoomId) return;
@@ -124,7 +128,6 @@ export function MatrixChatView() {
     }
   }, [selectedRoomId, removeReaction]);
 
-  const selectedRoom = rooms.find(r => r.roomId === selectedRoomId);
 
   // Show settings/login form
   if (showSettings || (!credentials && !isConnecting)) {
@@ -235,7 +238,8 @@ export function MatrixChatView() {
       {/* Chat Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Room List */}
-        <div className="w-72 border-r flex flex-col bg-muted/30">
+        {!isRoomListCollapsed && (
+          <div className="w-72 border-r flex flex-col bg-muted/30">
           <div className="p-3 border-b flex items-center justify-between">
             <h2 className="text-sm font-medium">Räume</h2>
             <CreateRoomDialog
@@ -257,7 +261,8 @@ export function MatrixChatView() {
             selectedRoomId={selectedRoomId}
             onSelectRoom={setSelectedRoomId}
           />
-        </div>
+          </div>
+        )}
 
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
@@ -266,6 +271,15 @@ export function MatrixChatView() {
               {/* Room Header */}
               <div className="px-4 py-3 border-b bg-background">
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setIsRoomListCollapsed(!isRoomListCollapsed)}
+                    title={isRoomListCollapsed ? 'Raumliste anzeigen' : 'Raumliste ausblenden'}
+                  >
+                    {isRoomListCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                  </Button>
                   <h2 className="font-medium">{selectedRoom.name}</h2>
                   {selectedRoom.isEncrypted && (
                     <span className={cn(
