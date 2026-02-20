@@ -16,6 +16,7 @@ export function ChatInput({ onSendMessage, onTyping, disabled, placeholder }: Ch
   const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const sendLockRef = useRef(false);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -45,7 +46,7 @@ export function ChatInput({ onSendMessage, onTyping, disabled, placeholder }: Ch
 
   const handleSend = async () => {
     const trimmedMessage = message.trim();
-    if (!trimmedMessage || isSending || disabled) return;
+    if (!trimmedMessage || isSending || disabled || sendLockRef.current) return;
 
     // Stop typing notification
     if (onTyping) {
@@ -55,6 +56,7 @@ export function ChatInput({ onSendMessage, onTyping, disabled, placeholder }: Ch
       }
     }
 
+    sendLockRef.current = true;
     setIsSending(true);
     try {
       await onSendMessage(trimmedMessage);
@@ -63,6 +65,7 @@ export function ChatInput({ onSendMessage, onTyping, disabled, placeholder }: Ch
       console.error('Error sending message:', error);
     } finally {
       setIsSending(false);
+      sendLockRef.current = false;
     }
   };
 
