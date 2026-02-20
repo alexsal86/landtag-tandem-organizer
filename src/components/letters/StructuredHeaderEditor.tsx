@@ -31,6 +31,8 @@ interface StructuredHeaderEditorProps {
   actionButtons?: React.ReactNode;
 }
 
+const createElementId = () => crypto.randomUUID();
+
 const getShapeFillColor = (element: HeaderElement, fallback = '#000000') =>
   element.type === 'shape' ? (element.fillColor ?? element.color ?? fallback) : fallback;
 

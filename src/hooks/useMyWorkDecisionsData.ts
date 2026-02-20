@@ -204,16 +204,17 @@ export function useMyWorkDecisionsData(userId?: string) {
 
         const allUserIds = [...new Set([...participantsWithProfiles.map((p) => p.user_id), ...allDecisionsList.map((d) => d.created_by)])];
 
+        type ProfileRow = { user_id: string; display_name: string | null; badge_color: string | null; avatar_url: string | null };
         const { data: profiles, error: profilesError } =
           allUserIds.length > 0
             ? await supabase.from("profiles").select("user_id, display_name, badge_color, avatar_url").in("user_id", allUserIds)
-            : { data: [], error: null as any };
+            : { data: [] as ProfileRow[], error: null as any };
 
         if (!isCurrentRequest()) return;
 
         if (profilesError) throw profilesError;
 
-        const profileMap = new Map(profiles?.map((p) => [p.user_id, p]) || []);
+        const profileMap = new Map<string, ProfileRow>((profiles ?? []).map((p) => [p.user_id, p] as [string, ProfileRow]));
 
         const topicsByDecision = new Map<string, string[]>();
         topicsData.forEach((t) => {

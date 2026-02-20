@@ -49,8 +49,6 @@ export function MyWorkDecisionsTab() {
 
   const { decisions, setDecisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
 
-  const { decisions, setDecisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
-
   // Comment counts
   const decisionIds = useMemo(() => decisions.map(d => d.id), [decisions]);
   const { getCommentCount, refresh: refreshCommentCounts } = useDecisionComments(decisionIds);
@@ -297,7 +295,7 @@ export function MyWorkDecisionsTab() {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
           <TabsList className="grid w-full grid-cols-4 h-8">
             <TabsTrigger value="for-me" className="text-[10px] px-1">
               Für mich
