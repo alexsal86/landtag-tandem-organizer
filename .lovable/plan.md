@@ -1,118 +1,153 @@
 
-# Wurzel-Ursache der kaputten Vorschauen
+# Wo sollen Termin-Rückmeldungen für andere Mitarbeiter sichtbar sein?
 
-## Das eigentliche Problem (endlich vollständig verstanden)
+## Das Problem
 
-Nach direkter DB-Analyse ist das Problem eindeutig identifiziert:
+Aktuell ist eine Rückmeldung ausschliesslich im Termindetail-Panel (AppointmentDetailsSidebar) einsehbar – d.h. ein Mitarbeiter muss aktiv den Kalender öffnen, den richtigen Termin finden und die Details aufklappen. Das ist in der Praxis kaum realistisch.
 
-**Dateien wurden mit Tenant-ID als Ordner hochgeladen:**
+## Drei sinnvolle Integrationspunkte
+
+### Option A: Notification beim Speichern einer Rückmeldung
+Wenn der Abgeordnete (oder wer auch immer das Feedback schreibt) auf "Rückmeldung speichern" klickt, wird für alle anderen Mitarbeiter des Tenants eine Benachrichtigung in das bestehende Benachrichtigungssystem (`notifications`-Tabelle) eingetragen.
+
+**Inhalt der Benachrichtigung:**
+- Titel: "Neue Rückmeldung: [Terminname]"
+- Nachricht: Kurzvorschau der Notiz (erste 100 Zeichen, HTML-stripped)
+- Link: zum Kalender mit dem Termin-Datum vorselektiert (via `navigation_context`)
+
+**Vorteil:** Das bestehende System wird verwendet (Bell-Icon oben rechts), keine neue UI nötig.  
+**Nachteil:** Nur einmal bei Erstellung – kein Feed/Übersicht.
+
+### Option B: Dedizierter "Rückmeldungs-Feed" in der Jour-Fixe Ansicht (MyWork > Jour Fixe Tab)
+Im Jour-Fixe-Tab bei vergangenen Meetings einen neuen Abschnitt "Rückmeldungen" hinzufügen, der die `appointment_feedback.notes` zu allen Terminen des Teams anzeigt.
+
+**Vorteil:** Kontextuell – Mitarbeiter sehen beim Nachbereiten des Meetings auch die Rückmeldungen.  
+**Nachteil:** Nur für Jour-Fixe-Termine, nicht für externe/andere Termine.
+
+### Option C: Neuer Tab "Rückmeldungen" in Meine Arbeit (für alle Mitarbeiter)
+Ein eigener Tab in `MyWorkView` für **alle Mitarbeiter** (nicht nur Abgeordnete), der die letzten Rückmeldungen aller Termine des Tenants in einer Feed-Ansicht zeigt:
+
 ```
-DB-Pfad: adb472ab-1f29-481c-ad56-f623998d347e/decisions/66915fd2.../datei.pdf
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-         = Tenant-ID (nicht User-ID!)
+┌─────────────────────────────────────────────┐
+│ 📋 Rückmeldungen                           │
+├─────────────────────────────────────────────┤
+│ ✅ Ausschuss Wirtschaft – 19.02.2026        │
+│ Rückmeldung Max Mustermann:                 │
+│ "Gutes Ergebnis beim Haushalt. Nächster ... │
+│ 📎 1 Anhang  ✅ 2 Aufgaben erstellt        │
+│                                             │
+│ ✅ Fraktionssitzung – 18.02.2026            │
+│ Rückmeldung Anna Schmidt:                   │
+│ "Beschluss zu @Klaus liegt vor..."          │
+└─────────────────────────────────────────────┘
 ```
 
-**Die RLS SELECT-Policy prüft aber:**
-```sql
-(storage.foldername(name))[1] = auth.uid()::text
-```
-Diese Bedingung ist `false`, weil `foldername[1]` = Tenant-ID ist, aber `auth.uid()` = User-ID.
-
-Die Policy hat zwar ODER-Bedingungen mit DB-JOINs (über `task_decision_attachments`), die theoretisch greifen würden – aber `createSignedUrl` schlägt fehl, weil die Policy insgesamt `false` zurückgibt (die JOIN-Checks funktionieren nur, wenn Supabase den Service-Role-Kontext nutzt, was bei `createSignedUrl` vom anon-Client nicht der Fall ist).
-
-**Warum funktionieren Mails?** `EmailPreviewDialog` lädt `.msg` via direktem Download-Aufruf mit dem Supabase-Client, der die Session-Auth mitschickt. Bei Mails greift der JOIN-Check gerade noch.
-
-**Warum schlägt `createSignedUrl` fehl?** Es prüft die RLS-Policy mit dem User-Token – der Folder-Check `foldername[1] = auth.uid()` schlägt fehl → kein Zugriff → Signed URL wird verweigert.
+**Vorteil:** Vollständige Transparenz, kein aktives Suchen nötig, skaliert für alle Termintypen.
 
 ---
 
-## Lösung: 2 Ebenen
+## Meine Empfehlung: Option A + C kombiniert
 
-### Ebene 1: RLS-Policy reparieren (Datenbank-Migration)
+**Option A (Notification)** für sofortige Sichtbarkeit bei Erstellung – der Mitarbeiter bekommt direkt Bescheid.
 
-Die SELECT-Policy muss den ersten Ordner als entweder User-ID ODER Tenant-ID akzeptieren. Da alle Pfade konsistent der `task_decision_attachments`-Tabelle zugeordnet sind, ist die sicherste Lösung: Die Policy greift immer dann, wenn der Pfad in `task_decision_attachments` registriert ist und der User Zugriff auf die zugehörige Entscheidung hat.
+**Option C (Feed-Tab)** als persistente Übersicht für alle – das Gedächtnis des Teams.
 
-**Neue Policy (ersetzt die alte SELECT-Policy):**
-```sql
-DROP POLICY IF EXISTS "Users can view decision attachments they have access to" ON storage.objects;
+Option B (Jour-Fixe-Integration) kann später ergänzt werden.
 
-CREATE POLICY "Users can view decision attachments they have access to"
-ON storage.objects FOR SELECT
-USING (
-  bucket_id = 'decision-attachments'
-  AND auth.uid() IS NOT NULL
-  AND (
-    -- Eigener Ordner (User-ID oder Tenant-ID als erstem Segment)
-    (storage.foldername(name))[1] = (auth.uid())::text
-    OR
-    -- Datei ist in DB registriert UND User ist Teilnehmer der Entscheidung
-    EXISTS (
-      SELECT 1
-      FROM public.task_decision_attachments tda
-      JOIN public.task_decision_participants tdp ON tdp.decision_id = tda.decision_id
-      WHERE tda.file_path = objects.name
-        AND tdp.user_id = auth.uid()
-    )
-    OR
-    -- Datei ist in DB registriert UND User ist Ersteller der Entscheidung
-    EXISTS (
-      SELECT 1
-      FROM public.task_decision_attachments tda
-      JOIN public.task_decisions td ON td.id = tda.decision_id
-      WHERE tda.file_path = objects.name
-        AND td.created_by = auth.uid()
-    )
-    OR
-    -- Datei gehört zu einer tenant-weiten Entscheidung UND User ist im selben Tenant
-    EXISTS (
-      SELECT 1
-      FROM public.task_decision_attachments tda
-      JOIN public.task_decisions td ON td.id = tda.decision_id
-      JOIN public.user_tenant_memberships utm ON utm.tenant_id = td.tenant_id
-      WHERE tda.file_path = objects.name
-        AND td.visible_to_all = true
-        AND utm.user_id = auth.uid()
-        AND utm.is_active = true
-    )
-    OR
-    -- Datei gehört zu Entscheidung, hochgeladen unter Tenant-ID-Ordner
-    -- (Legacy-Uploads die mit Tenant-ID als userId hochgeladen wurden)
-    EXISTS (
-      SELECT 1
-      FROM public.task_decision_attachments tda
-      JOIN public.task_decisions td ON td.id = tda.decision_id
-      JOIN public.user_tenant_memberships utm ON utm.tenant_id = td.tenant_id
-      WHERE tda.file_path = objects.name
-        AND utm.user_id = auth.uid()
-        AND utm.is_active = true
-    )
-  )
+---
+
+## Technische Umsetzung
+
+### Teil 1: Notification beim Speichern (Option A)
+
+**In `AppointmentFeedbackWidget.tsx` → `handleSaveNote`:**
+
+Nach dem Speichern der Rückmeldung werden für alle anderen Mitarbeiter des Tenants Notifications angelegt:
+
+```ts
+// Strip HTML für Vorschau
+const plainText = noteWithAuthor.replace(/<[^>]*>/g, '').slice(0, 120);
+
+// Notification-Type-ID für "appointment_feedback" laden (oder fester UUID)
+// Für jeden anderen Mitarbeiter im Tenant einen Notification-Eintrag erstellen
+const otherUsers = tenantUsers.filter(u => u.user_id !== user.id);
+await supabase.from('notifications').insert(
+  otherUsers.map(u => ({
+    user_id: u.user_id,
+    title: `Rückmeldung: ${appointment.title}`,
+    message: plainText,
+    is_read: false,
+    priority: 'medium',
+    navigation_context: `calendar?date=${appointment.start_time.split('T')[0]}`
+  }))
 );
 ```
 
-Die letzte Bedingung fängt alle bestehenden Dateien ab, die unter der Tenant-ID hochgeladen wurden – jeder aktive Tenant-Member kann auf Dateien in Entscheidungen seines Tenants zugreifen, sofern sie registriert sind.
+**Hinweis:** Die `notification_type_id` ist eine Pflicht-Spalte (FK). Wir prüfen, ob bereits ein Type `appointment_feedback` existiert – wenn nicht, legen wir ihn per Migration an. Alternativ wird `notification_type_id` nullable gemacht (Migration).
 
-### Ebene 2: Upload-Hook reparieren (Code-Änderung)
+### Teil 2: Rückmeldungs-Feed Tab in Meine Arbeit (Option C)
 
-Der Upload-Hook `useDecisionAttachmentUpload.ts` muss sicherstellen, dass immer die echte User-ID verwendet wird (nicht die Tenant-ID). Aktuell ist Zeile 105:
-```ts
-const filePath = `${userId}/decisions/${decisionId}/${uniqueSuffix}-${sanitizedFileName}`;
+**Neue Dateien:**
+- `src/components/my-work/MyWorkFeedbackFeedTab.tsx` – neue Komponente
+- `src/hooks/useTeamFeedbackFeed.ts` – Datenabfrage
+
+**Datenabfrage `useTeamFeedbackFeed`:**
+```sql
+SELECT 
+  af.id, af.notes, af.completed_at, af.has_documents, af.has_tasks,
+  a.title, a.start_time,  -- für reguläre Termine
+  ee.title, ee.start_time  -- für externe Events
+FROM appointment_feedback af
+LEFT JOIN appointments a ON a.id = af.appointment_id
+LEFT JOIN external_events ee ON ee.id = af.external_event_id
+WHERE af.tenant_id = currentTenant.id
+  AND af.feedback_status = 'completed'
+  AND af.notes IS NOT NULL
+ORDER BY af.completed_at DESC
+LIMIT 20
 ```
-Der Parameter `userId` kommt vom Aufrufer. In manchen Aufrufen wurde fälschlicherweise die Tenant-ID übergeben. Der Hook muss die User-ID direkt aus der Supabase-Session holen:
-```ts
-const { data: { user } } = await supabase.auth.getUser();
-if (!user) throw new Error('Nicht angemeldet');
-const filePath = `${user.id}/decisions/${decisionId}/${uniqueSuffix}-${sanitizedFileName}`;
+
+**Anzeige in `MyWorkFeedbackFeedTab`:**
+- Filtert nur Einträge mit `notes != null`
+- Rendert Termintitel, Datum, `<RichTextDisplay content={af.notes}>`
+- Zeigt Badges: "📎 Anhang", "✅ Aufgaben" wenn vorhanden
+- Keine Bearbeitungsfunktion – reine Leseansicht
+
+**Integration in `MyWorkView.tsx`:**
+- Neuer Tab "Rückmeldungen" sichtbar für alle Rollen (`mitarbeiter`, `bueroleitung`, `abgeordneter`)
+- Tab-Icon: `MessageSquare` oder `ClipboardList`
+- Platzierung nach "Aufgaben", vor "Kalender"
+
+### Teil 3: Notification-Type Migration (wenn nötig)
+
+Wenn `notification_type_id` NOT NULL ist, benötigen wir eine Migration:
+
+```sql
+-- Neuen Notification-Type anlegen
+INSERT INTO notification_types (name, label, description)
+VALUES ('appointment_feedback', 'Termin-Rückmeldung', 'Rückmeldung zu einem Termin wurde gespeichert')
+ON CONFLICT (name) DO NOTHING;
 ```
-Das macht zukünftige Uploads robust, unabhängig davon was der Aufrufer übergibt.
+
+Damit können wir die UUID in der Code-Logik verwenden.
 
 ---
 
-## Geänderte Dateien
+## Geänderte/neue Dateien
 
-| Datei | Änderung |
-|-------|----------|
-| `supabase/migrations/20260220_fix_decision_attachment_rls.sql` | Neue RLS-Policy die Tenant-ID-Ordner erlaubt |
-| `src/hooks/useDecisionAttachmentUpload.ts` | User-ID aus Session holen statt Parameter vertrauen |
+| Datei | Aktion |
+|-------|--------|
+| `supabase/migrations/...appointment_feedback_notification_type.sql` | Notification-Type anlegen |
+| `src/components/dashboard/AppointmentFeedbackWidget.tsx` | Notification-Versand beim Speichern |
+| `src/hooks/useTeamFeedbackFeed.ts` | Neuer Hook für Team-Feed |
+| `src/components/my-work/MyWorkFeedbackFeedTab.tsx` | Neue Feed-Komponente |
+| `src/components/MyWorkView.tsx` | Neuer Tab "Rückmeldungen" |
 
-Das sind exakt 2 Dateien. Keine Änderungen an den Dialog-Komponenten nötig – die sind korrekt implementiert. Das Problem liegt ausschliesslich in der Datenbank-Policy und dem Upload-Pfad.
+---
+
+## Reihenfolge der Umsetzung
+
+1. Migration (Notification-Type)
+2. Notification-Versand im Widget
+3. Feed-Hook + Feed-Tab
+4. Tab in MyWorkView integrieren
