@@ -71,45 +71,54 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
 
       const selectFields = "id, title, meeting_date, meeting_time, status, description, is_public, user_id";
 
-      const { data: ownUpcoming } = await supabase
-        .from("meetings")
-        .select(selectFields)
-        .eq("user_id", userId)
-        .neq("status", "archived")
-        .gte("meeting_date", now)
-        .order("meeting_date", { ascending: true })
-        .limit(20);
+      const [ownUpcomingResult, ownPastResult, participantResult, publicResult] = await Promise.all([
+        supabase
+          .from("meetings")
+          .select(selectFields)
+          .eq("user_id", userId)
+          .neq("status", "archived")
+          .gte("meeting_date", now)
+          .order("meeting_date", { ascending: true })
+          .limit(20),
+        supabase
+          .from("meetings")
+          .select(selectFields)
+          .eq("user_id", userId)
+          .neq("status", "archived")
+          .lt("meeting_date", now)
+          .gte("meeting_date", thirtyDaysAgo.toISOString())
+          .order("meeting_date", { ascending: false })
+          .limit(10),
+        supabase
+          .from("meeting_participants")
+          .select(`meeting_id, meetings(${selectFields})`)
+          .eq("user_id", userId),
+        supabase
+          .from("meetings")
+          .select(selectFields)
+          .eq("is_public", true)
+          .neq("status", "archived")
+          .gte("meeting_date", thirtyDaysAgo.toISOString()),
+      ]);
 
-      const { data: ownPast } = await supabase
-        .from("meetings")
-        .select(selectFields)
-        .eq("user_id", userId)
-        .neq("status", "archived")
-        .lt("meeting_date", now)
-        .gte("meeting_date", thirtyDaysAgo.toISOString())
-        .order("meeting_date", { ascending: false })
-        .limit(10);
+      if (ownUpcomingResult.error) throw ownUpcomingResult.error;
+      if (ownPastResult.error) throw ownPastResult.error;
+      if (participantResult.error) throw participantResult.error;
+      if (publicResult.error) throw publicResult.error;
 
-      const { data: participantData } = await supabase
-        .from("meeting_participants")
-        .select(`meeting_id, meetings(${selectFields})`)
-        .eq("user_id", userId);
+      const ownUpcoming = ownUpcomingResult.data || [];
+      const ownPast = ownPastResult.data || [];
+      const participantData = participantResult.data || [];
+      const publicMeetings = publicResult.data || [];
 
-      const { data: publicMeetings } = await supabase
-        .from("meetings")
-        .select(selectFields)
-        .eq("is_public", true)
-        .neq("status", "archived")
-        .gte("meeting_date", thirtyDaysAgo.toISOString());
-
-      const ownIds = new Set([...(ownUpcoming || []).map(m => m.id), ...(ownPast || []).map(m => m.id)]);
-      const participantMeetings = (participantData || [])
+      const ownIds = new Set([...ownUpcoming.map(m => m.id), ...ownPast.map(m => m.id)]);
+      const participantMeetings = participantData
         .filter((p: any) => p.meetings && !ownIds.has(p.meetings.id) && p.meetings.status !== 'archived')
         .map((p: any) => p.meetings as Meeting);
 
       const allIds = new Set([...ownIds, ...participantMeetings.map(m => m.id)]);
-      const publicExtra = (publicMeetings || []).filter(m => !allIds.has(m.id));
-      const allMeetings: Meeting[] = [ ...(ownUpcoming || []), ...(ownPast || []), ...participantMeetings, ...publicExtra ];
+      const publicExtra = publicMeetings.filter(m => !allIds.has(m.id));
+      const allMeetings: Meeting[] = [...ownUpcoming, ...ownPast, ...participantMeetings, ...publicExtra];
 
       const seenIds = new Set<string>();
       const deduped = allMeetings.filter(m => {

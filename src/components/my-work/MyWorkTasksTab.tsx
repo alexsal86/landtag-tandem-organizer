@@ -47,11 +47,9 @@ export function MyWorkTasksTab() {
     createdTasks,
     setCreatedTasks,
     subtasks,
-    setSubtasks,
     taskSnoozes,
     setTaskSnoozes,
     taskCommentCounts,
-    setTaskCommentCounts,
     loading,
     loadTasks,
   } = useMyWorkTasksData(user?.id);
