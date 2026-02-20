@@ -205,27 +205,34 @@ export function DecisionAttachmentPreviewDialog({
       setLoading(true);
       setError(null);
       try {
-        // Always try to normalize and get a signed URL - never use raw HTTP URLs
-        // for private bucket files (they don't have public access)
         const pathToUse = normalizedFilePath || filePath;
         if (!pathToUse) {
           throw new Error('Invalid storage path');
         }
 
-        console.log('[DecisionPreview] Creating signed URL for path:', pathToUse);
+        // For images: ALWAYS use blob URL to avoid Cross-Origin-Resource-Policy (CORP) issues
+        // caused by coi-serviceworker setting COEP: require-corp.
+        // <img src="signed-url"> is blocked by CORP, but blob URLs are same-origin.
+        if (isImage) {
+          const { data: blobData, error: downloadError } = await supabase.storage
+            .from('decision-attachments')
+            .download(pathToUse);
+          if (downloadError) throw downloadError;
+          const blobUrl = URL.createObjectURL(blobData);
+          setSignedUrl(blobUrl);
+          return;
+        }
 
-        // Try createSignedUrl first
+        // For all other types (PDF, Word, Excel): use signed URL first (pdfjs/fetch internals
+        // handle CORP differently), with download fallback.
         const { data, error: signedUrlError } = await supabase.storage
           .from('decision-attachments')
           .createSignedUrl(pathToUse, 60 * 10);
 
         if (!signedUrlError && data?.signedUrl) {
-          console.log('[DecisionPreview] Signed URL created successfully');
           setSignedUrl(data.signedUrl);
           return;
         }
-
-        console.warn('[DecisionPreview] createSignedUrl failed, trying download fallback:', signedUrlError?.message);
 
         // Fallback: download the file and create a blob URL
         const { data: blobData, error: downloadError } = await supabase.storage
