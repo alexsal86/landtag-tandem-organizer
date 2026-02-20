@@ -13,6 +13,7 @@ import { formatEventDisplay } from "@/lib/timeUtils";
 import { GuestManager } from "../GuestManager";
 import { useTenant } from "@/hooks/useTenant";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 
 interface AppointmentDetailsSidebarProps {
   appointment: CalendarEvent | null;
@@ -715,7 +716,7 @@ export function AppointmentDetailsSidebar({
                   </Badge>
                   {feedback.notes && (
                     <div className="text-sm text-muted-foreground bg-muted/30 p-2 rounded-md">
-                      {feedback.notes}
+                      <RichTextDisplay content={feedback.notes} />
                     </div>
                   )}
                   <div className="flex gap-2">
