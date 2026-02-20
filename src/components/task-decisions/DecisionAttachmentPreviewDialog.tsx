@@ -205,11 +205,8 @@ export function DecisionAttachmentPreviewDialog({
       setLoading(true);
       setError(null);
       try {
-        if (isHttpUrl(filePath) && !normalizedFilePath) {
-          setSignedUrl(filePath);
-          return;
-        }
-
+        // Always try to normalize and get a signed URL - never use raw HTTP URLs
+        // for private bucket files (they don't have public access)
         const pathToUse = normalizedFilePath || filePath;
         if (!pathToUse) {
           throw new Error('Invalid storage path');
@@ -303,7 +300,16 @@ export function DecisionAttachmentPreviewDialog({
     if (isImage) {
       return (
         <div className="h-full w-full overflow-auto bg-background/70 p-4 flex items-center justify-center">
-          <img src={signedUrl} alt={fileName} className="max-w-full max-h-full object-contain" />
+          <img
+            src={signedUrl}
+            alt={fileName}
+            className="max-w-full max-h-full object-contain"
+            onError={(e) => {
+              // If the signed URL fails (e.g. expired), show an error message
+              (e.target as HTMLImageElement).style.display = 'none';
+              setError('Bildvorschau konnte nicht geladen werden. Bitte herunterladen.');
+            }}
+          />
         </div>
       );
     }
@@ -331,7 +337,7 @@ export function DecisionAttachmentPreviewDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 min-h-[60vh] border rounded-md overflow-hidden bg-muted/20">
+        <div className="flex-1 min-h-[60vh] border rounded-md overflow-auto bg-muted/20">
           {renderPreview()}
         </div>
       </DialogContent>

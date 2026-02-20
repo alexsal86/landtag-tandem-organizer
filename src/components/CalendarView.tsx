@@ -1139,70 +1139,69 @@ export function CalendarView() {
         </div>
       </div>
 
-      {/* Calendar Content */}
-      <div className="w-full">
+      {/* Calendar Content - split layout when sidebar open */}
+      <div className={`flex gap-0 transition-all duration-300`}>
         {/* Main Calendar */}
-        <Card className="bg-card shadow-card border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              {view === "day" && "Tagesansicht"}
-              {view === "week" && "Wochenansicht"}
-              {view === "month" && "Monatsansicht"}
-              {view === "agenda" && "Agenda"}
-              {view === "polls" && "Terminabstimmungen"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 h-[600px]">
-            {view === "polls" ? (
-              <PollListView />
-            ) : loading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Termine werden geladen...
-              </div>
-            ) : (
-              <>
-                {(() => {
-                  // Handle polls view separately since it doesn't need calendar rendering
-                  if (!isCalendarView(view)) {
-                    return null; // polls view is handled above
-                  }
-                  
-                   // Now TypeScript knows view is a calendar view type
-                   const rbcView = view;
-                   return (
-                     <ProperReactBigCalendar
-                       events={appointments}
-                       view={rbcView}
-                       date={currentDate}
-                       onNavigate={setCurrentDate}
-                       onView={(newView) => setView(newView as typeof view)}
-                       onEventSelect={handleAppointmentClick}
-                       onEventDrop={handleEventDrop}
-                       onEventResize={handleEventResize}
+        <div className={`flex-1 min-w-0 transition-all duration-300`}>
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                {view === "day" && "Tagesansicht"}
+                {view === "week" && "Wochenansicht"}
+                {view === "month" && "Monatsansicht"}
+                {view === "agenda" && "Agenda"}
+                {view === "polls" && "Terminabstimmungen"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 h-[600px]">
+              {view === "polls" ? (
+                <PollListView />
+              ) : loading ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Termine werden geladen...
+                </div>
+              ) : (
+                <>
+                  {(() => {
+                    if (!isCalendarView(view)) return null;
+                    const rbcView = view;
+                    return (
+                      <ProperReactBigCalendar
+                        events={appointments}
+                        view={rbcView}
+                        date={currentDate}
+                        onNavigate={setCurrentDate}
+                        onView={(newView) => setView(newView as typeof view)}
+                        onEventSelect={handleAppointmentClick}
+                        onEventDrop={handleEventDrop}
+                        onEventResize={handleEventResize}
                         onSelectSlot={(slotInfo) => {
-                          // Navigate to appointment creation with pre-filled date/time and show dialog
                           const startDate = slotInfo.start.toISOString();
                           const endDate = slotInfo.end.toISOString();
                           navigate(`/calendar?action=create-appointment&start=${startDate}&end=${endDate}`);
                         }}
-                     />
-                   );
-                })()}
-              </>
-            )}
-          </CardContent>
-        </Card>
+                      />
+                    );
+                  })()}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
+        {/* Inline Detail Panel */}
+        {sidebarOpen && selectedAppointment && (
+          <div className="w-[420px] shrink-0 border border-border rounded-lg ml-4 overflow-hidden" style={{ height: 'calc(600px + 57px)' }}>
+            <AppointmentDetailsSidebar
+              appointment={selectedAppointment}
+              open={sidebarOpen}
+              onClose={handleSidebarClose}
+              onUpdate={handleAppointmentUpdate}
+            />
+          </div>
+        )}
       </div>
-
-      {/* Appointment Details Sidebar */}
-      <AppointmentDetailsSidebar
-        appointment={selectedAppointment}
-        open={sidebarOpen}
-        onClose={handleSidebarClose}
-        onUpdate={handleAppointmentUpdate}
-      />
 
       {/* Appointment Preparation Sidebar */}
       <AppointmentPreparationSidebar

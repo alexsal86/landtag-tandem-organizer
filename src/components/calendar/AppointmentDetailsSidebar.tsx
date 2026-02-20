@@ -3,7 +3,6 @@ import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, 
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -509,26 +508,24 @@ export function AppointmentDetailsSidebar({
     }
   };
 
-  if (!appointment) return null;
+  if (!appointment || !open) return null;
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
-        <SheetHeader className="space-y-4">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-xl font-bold">Termindetails</SheetTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-6 w-6"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </SheetHeader>
+    <div className="h-full flex flex-col overflow-hidden bg-background border-l border-border">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+        <h2 className="text-lg font-semibold">Termindetails</h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          className="h-7 w-7"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
 
-        <div className="space-y-6 mt-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Title and Type */}
           <div>
             {isEditing ? (
@@ -958,7 +955,6 @@ export function AppointmentDetailsSidebar({
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </div>
   );
 }
