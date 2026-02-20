@@ -1214,7 +1214,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-2">
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={undo} disabled={!canUndo}><Undo2 className="h-3.5 w-3.5 mr-1" />Undo</Button>
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={redo} disabled={!canRedo}><Redo2 className="h-3.5 w-3.5 mr-1" />Redo</Button>
         <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowRuler(v => !v)}><Ruler className="h-3.5 w-3.5 mr-1" />Lineal</Button>
@@ -1225,6 +1225,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, -1)} disabled={!canMoveLayerBackward}><ArrowDown className="h-3.5 w-3.5 mr-1" />Ebene runter</Button>
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, 1)} disabled={!canMoveLayerForward}><ArrowUp className="h-3.5 w-3.5 mr-1" />Ebene hoch</Button>
         <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}><Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoom((value) => Math.max(0.5, value - 0.1))}>−</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>100%</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoom((value) => Math.min(3, value + 0.1))}>+</Button>
+        <div className="h-7 px-2 text-xs rounded border bg-background/90 flex items-center text-muted-foreground">
+          Auswahl: <span className="ml-1 font-semibold text-foreground">{selectedCount}</span>
+        </div>
       </div>
 
       {canAlignSelection && (
@@ -1445,9 +1451,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
       </div>
 
-      <Card className="xl:col-start-2 xl:row-span-4">
-        <CardContent className="p-6">
-          <div ref={previewContainerRef} className="flex items-center justify-center min-h-[340px] w-full mt-4">
+        <Card className="xl:col-start-2 xl:row-span-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Header-Vorschau</CardTitle>
+            <p className="text-xs text-muted-foreground">Doppelklick auf Text/Block zum Bearbeiten. Mit Mausrad + Strg/Cmd zoomen.</p>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div ref={previewContainerRef} className="flex items-start justify-center min-h-[340px] w-full">
           <div className="relative" style={{ paddingLeft: showRuler ? 28 : 0, paddingTop: showRuler ? 28 : 0 }}>
             {showRuler && (
               <>
@@ -1460,58 +1470,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   {Array.from({ length: 5 }).map((_, i) => (<span key={`label-y-${i}`} className="absolute left-0" style={{ top: `${(i * previewHeight) / 4}px` }}>{i * 10}</span>))}
                 </div>
               </>
-            )}
-
-            <div className="hidden absolute top-2 right-2 z-20 flex flex-wrap justify-end gap-2 max-w-[calc(100%-1rem)]">
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={undo} disabled={!canUndo}>
-                <Undo2 className="h-3.5 w-3.5 mr-1" />Undo
-              </Button>
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={redo} disabled={!canRedo}>
-                <Redo2 className="h-3.5 w-3.5 mr-1" />Redo
-              </Button>
-              <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowRuler(v => !v)}>
-                <Ruler className="h-3.5 w-3.5 mr-1" />Lineal
-              </Button>
-              <Button variant={showCenterGuides ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowCenterGuides(v => !v)}>
-                <Crosshair className="h-3.5 w-3.5 mr-1" />Achsen
-              </Button>
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={copySelectedElement} disabled={!selectedElement}>
-                <Copy className="h-3.5 w-3.5 mr-1" />Kopieren
-              </Button>
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={pasteClipboardElement} disabled={!canPasteFromClipboard}>
-                <ClipboardPaste className="h-3.5 w-3.5 mr-1" />Einfügen
-              </Button>
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={duplicateSelectedElement} disabled={!selectedElement}>
-                <CopyPlus className="h-3.5 w-3.5 mr-1" />Duplizieren
-              </Button>
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, -1)} disabled={!canMoveLayerBackward}>
-                <ArrowDown className="h-3.5 w-3.5 mr-1" />Ebene runter
-              </Button>
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, 1)} disabled={!canMoveLayerForward}>
-                <ArrowUp className="h-3.5 w-3.5 mr-1" />Ebene hoch
-              </Button>
-              <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}>
-                <Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts
-              </Button>
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoom((value) => Math.max(0.5, value - 0.1))}>−</Button>
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>100%</Button>
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoom((value) => Math.min(3, value + 0.1))}>+</Button>
-              <div className="h-7 px-2 text-xs rounded border bg-background/90 flex items-center text-muted-foreground">
-                Auswahl: <span className="ml-1 font-semibold text-foreground">{selectedCount}</span>
-              </div>
-            </div>
-
-            {canAlignSelection && (
-              <div className="hidden absolute top-12 right-2 z-20 flex flex-wrap justify-end gap-1 max-w-[calc(100%-1rem)] rounded-md border bg-background/95 p-1">
-                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('left')}>Links</Button>
-                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('center')}>Zentrum</Button>
-                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('right')}>Rechts</Button>
-                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('top')}>Oben</Button>
-                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('middle')}>Mitte</Button>
-                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => alignSelection('bottom')}>Unten</Button>
-                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => distributeSelection('horizontal')} disabled={!canDistributeSelection}>Horizontal verteilen</Button>
-                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => distributeSelection('vertical')} disabled={!canDistributeSelection}>Vertikal verteilen</Button>
-              </div>
             )}
 
             <div
