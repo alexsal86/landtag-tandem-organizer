@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,15 +16,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
 import { useAppSettings } from "@/hooks/useAppSettings";
-import { MyWorkQuickCapture } from "./my-work/MyWorkQuickCapture";
-import { MyWorkNotesList } from "./my-work/MyWorkNotesList";
-import { MyWorkTasksTab } from "./my-work/MyWorkTasksTab";
-import { MyWorkDecisionsTab } from "./my-work/MyWorkDecisionsTab";
-import { MyWorkCaseFilesTab } from "./my-work/MyWorkCaseFilesTab";
-import { MyWorkPlanningsTab } from "./my-work/MyWorkPlanningsTab";
-import { MyWorkTeamTab } from "./my-work/MyWorkTeamTab";
-import { MyWorkJourFixeTab } from "./my-work/MyWorkJourFixeTab";
-import { MyWorkTimeTrackingTab } from "./my-work/MyWorkTimeTrackingTab";
+const MyWorkQuickCapture = lazy(() => import("./my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
+const MyWorkNotesList = lazy(() => import("./my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
+const MyWorkTasksTab = lazy(() => import("./my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
+const MyWorkDecisionsTab = lazy(() => import("./my-work/MyWorkDecisionsTab").then(m => ({ default: m.MyWorkDecisionsTab })));
+const MyWorkCaseFilesTab = lazy(() => import("./my-work/MyWorkCaseFilesTab").then(m => ({ default: m.MyWorkCaseFilesTab })));
+const MyWorkPlanningsTab = lazy(() => import("./my-work/MyWorkPlanningsTab").then(m => ({ default: m.MyWorkPlanningsTab })));
+const MyWorkTeamTab = lazy(() => import("./my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
+const MyWorkJourFixeTab = lazy(() => import("./my-work/MyWorkJourFixeTab").then(m => ({ default: m.MyWorkJourFixeTab })));
+const MyWorkTimeTrackingTab = lazy(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
 import { DashboardGreetingSection } from "./dashboard/DashboardGreetingSection";
 import { NewsWidget } from "./widgets/NewsWidget";
 
@@ -363,6 +363,12 @@ export function MyWorkView() {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  const tabFallback = (
+    <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+      Bereich wird geladen…
+    </div>
+  );
+
   return (
     <div className="min-h-[calc(100vh-8rem)] p-6">
       {/* Header */}
@@ -505,19 +511,21 @@ export function MyWorkView() {
       )}
 
       {activeTab === "capture" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
-          <MyWorkNotesList refreshTrigger={refreshTrigger} />
-        </div>
+        <Suspense fallback={tabFallback}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
+            <MyWorkNotesList refreshTrigger={refreshTrigger} />
+          </div>
+        </Suspense>
       )}
       
-      {activeTab === "tasks" && <MyWorkTasksTab />}
-      {activeTab === "decisions" && <MyWorkDecisionsTab />}
-      {activeTab === "jourFixe" && <MyWorkJourFixeTab />}
-      {activeTab === "casefiles" && <MyWorkCaseFilesTab />}
-      {activeTab === "plannings" && <MyWorkPlanningsTab />}
-      {activeTab === "time" && <MyWorkTimeTrackingTab />}
-      {activeTab === "team" && <MyWorkTeamTab />}
+      {activeTab === "tasks" && <Suspense fallback={tabFallback}><MyWorkTasksTab /></Suspense>}
+      {activeTab === "decisions" && <Suspense fallback={tabFallback}><MyWorkDecisionsTab /></Suspense>}
+      {activeTab === "jourFixe" && <Suspense fallback={tabFallback}><MyWorkJourFixeTab /></Suspense>}
+      {activeTab === "casefiles" && <Suspense fallback={tabFallback}><MyWorkCaseFilesTab /></Suspense>}
+      {activeTab === "plannings" && <Suspense fallback={tabFallback}><MyWorkPlanningsTab /></Suspense>}
+      {activeTab === "time" && <Suspense fallback={tabFallback}><MyWorkTimeTrackingTab /></Suspense>}
+      {activeTab === "team" && <Suspense fallback={tabFallback}><MyWorkTeamTab /></Suspense>}
     </div>
   );
 }
