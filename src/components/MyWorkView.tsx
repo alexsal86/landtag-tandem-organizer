@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,15 +16,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
 import { useAppSettings } from "@/hooks/useAppSettings";
-import { MyWorkQuickCapture } from "./my-work/MyWorkQuickCapture";
-import { MyWorkNotesList } from "./my-work/MyWorkNotesList";
-import { MyWorkTasksTab } from "./my-work/MyWorkTasksTab";
-import { MyWorkDecisionsTab } from "./my-work/MyWorkDecisionsTab";
-import { MyWorkCaseFilesTab } from "./my-work/MyWorkCaseFilesTab";
-import { MyWorkPlanningsTab } from "./my-work/MyWorkPlanningsTab";
-import { MyWorkTeamTab } from "./my-work/MyWorkTeamTab";
-import { MyWorkJourFixeTab } from "./my-work/MyWorkJourFixeTab";
-import { MyWorkTimeTrackingTab } from "./my-work/MyWorkTimeTrackingTab";
+const MyWorkQuickCapture = lazy(() => import("./my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
+const MyWorkNotesList = lazy(() => import("./my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
+const MyWorkTasksTab = lazy(() => import("./my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
+const MyWorkDecisionsTab = lazy(() => import("./my-work/MyWorkDecisionsTab").then(m => ({ default: m.MyWorkDecisionsTab })));
+const MyWorkCaseFilesTab = lazy(() => import("./my-work/MyWorkCaseFilesTab").then(m => ({ default: m.MyWorkCaseFilesTab })));
+const MyWorkPlanningsTab = lazy(() => import("./my-work/MyWorkPlanningsTab").then(m => ({ default: m.MyWorkPlanningsTab })));
+const MyWorkTeamTab = lazy(() => import("./my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
+const MyWorkJourFixeTab = lazy(() => import("./my-work/MyWorkJourFixeTab").then(m => ({ default: m.MyWorkJourFixeTab })));
+const MyWorkTimeTrackingTab = lazy(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
 import { DashboardGreetingSection } from "./dashboard/DashboardGreetingSection";
 import { NewsWidget } from "./widgets/NewsWidget";
 
@@ -63,6 +63,21 @@ const BASE_TABS: TabConfig[] = [
   { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOrBueroOnly: true },
 ];
 
+const countBusinessDaysSince = (fromDate: string, toDate: Date) => {
+  const last = new Date(fromDate);
+  let count = 0;
+  const current = new Date(last);
+  current.setDate(current.getDate() + 1);
+
+  while (current <= toDate) {
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) count++;
+    current.setDate(current.getDate() + 1);
+  }
+
+  return count;
+};
+
 export function MyWorkView() {
   const { user } = useAuth();
   const { app_logo_url } = useAppSettings();
@@ -82,6 +97,8 @@ export function MyWorkView() {
     team: 0,
     jourFixe: 0,
   });
+  const loadCountsRequestRef = useRef(0);
+  const shouldIncludeTeamCountRef = useRef(false);
   
   // Badge display mode setting and new counts
   const { badgeDisplayMode } = useMyWorkSettings();
@@ -139,65 +156,62 @@ export function MyWorkView() {
   }, [app_logo_url]);
 
   // Memoized loadCounts for realtime updates
-  const loadCounts = useCallback(async () => {
+  const loadCounts = useCallback(async (includeTeamCount = false) => {
     if (!user) return;
 
+    const requestId = ++loadCountsRequestRef.current;
+
     try {
-      // Count tasks
-      const { count: taskCount } = await supabase
-        .from("tasks")
-        .select("*", { count: "exact", head: true })
-        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-        .neq("status", "completed");
-
-      // Count decisions (participant)
-      const { count: decisionCount } = await supabase
-        .from("task_decision_participants")
-        .select("*, task_decisions!inner(*)", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .in("task_decisions.status", ["active", "open"]);
-
-      // Count case files
-      const { count: caseFileCount } = await supabase
-        .from("case_files")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .in("status", ["active", "pending"]);
-
-      // Count plannings (owned + collaborating)
-      const { count: ownedPlanningCount } = await supabase
-        .from("event_plannings")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
-
-      const { count: collabPlanningCount } = await supabase
-        .from("event_planning_collaborators")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
+      const [
+        { count: taskCount },
+        { count: decisionCount },
+        { count: caseFileCount },
+        { count: ownedPlanningCount },
+        { count: collabPlanningCount },
+        { count: jourFixeCount },
+      ] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select("id", { count: "exact", head: true })
+          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
+          .neq("status", "completed"),
+        supabase
+          .from("task_decision_participants")
+          .select("id, task_decisions!inner(id)", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .in("task_decisions.status", ["active", "open"]),
+        supabase
+          .from("case_files")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .in("status", ["active", "pending"]),
+        supabase
+          .from("event_plannings")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id),
+        supabase
+          .from("event_planning_collaborators")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id),
+        supabase
+          .from("meetings")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .neq("status", "archived")
+          .gte("meeting_date", new Date().toISOString()),
+      ]);
 
       const planningCount = (ownedPlanningCount || 0) + (collabPlanningCount || 0);
 
-      // Count upcoming Jour Fixe meetings
-      const { count: jourFixeCount } = await supabase
-        .from("meetings")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .neq("status", "archived")
-        .gte("meeting_date", new Date().toISOString());
-
-      // Check if admin for team count (meeting requests + time entry warnings)
-      const { data: adminData } = await supabase.rpc("is_admin", { _user_id: user.id });
       let teamCount = 0;
-      if (adminData) {
+      if (includeTeamCount) {
         const { count: requestCount } = await supabase
           .from("employee_meeting_requests")
-          .select("*", { count: "exact", head: true })
+          .select("id", { count: "exact", head: true })
           .eq("status", "pending");
 
-        // Count employees with missing time entries (>3 business days)
         let warningCount = 0;
         try {
-          // Get employee IDs
           const { data: memberships } = await supabase
             .from("user_tenant_memberships")
             .select("user_id")
@@ -205,7 +219,6 @@ export function MyWorkView() {
 
           if (memberships?.length) {
             const userIds = memberships.map(m => m.user_id);
-            
             const { data: roles } = await supabase
               .from("user_roles")
               .select("user_id, role")
@@ -216,20 +229,23 @@ export function MyWorkView() {
               .map(r => r.user_id);
 
             if (employeeIds.length > 0) {
-              const { data: lastEntries } = await supabase
+              const cutoff = new Date();
+              cutoff.setDate(cutoff.getDate() - 45);
+
+              const { data: recentEntries } = await supabase
                 .from("time_entries")
                 .select("user_id, work_date")
                 .in("user_id", employeeIds)
+                .gte("work_date", cutoff.toISOString().slice(0, 10))
                 .order("work_date", { ascending: false });
 
               const lastEntryByUser: Record<string, string> = {};
-              (lastEntries || []).forEach((entry: any) => {
+              (recentEntries || []).forEach((entry: { user_id: string; work_date: string }) => {
                 if (!lastEntryByUser[entry.user_id]) {
                   lastEntryByUser[entry.user_id] = entry.work_date;
                 }
               });
 
-              // Calculate business days for each employee
               const today = new Date();
               employeeIds.forEach(uid => {
                 const lastDate = lastEntryByUser[uid];
@@ -237,16 +253,7 @@ export function MyWorkView() {
                   warningCount++;
                   return;
                 }
-                const last = new Date(lastDate);
-                let count = 0;
-                let current = new Date(last);
-                current.setDate(current.getDate() + 1);
-                while (current <= today) {
-                  const day = current.getDay();
-                  if (day !== 0 && day !== 6) count++;
-                  current.setDate(current.getDate() + 1);
-                }
-                if (count > 3) warningCount++;
+                if (countBusinessDaysSince(lastDate, today) > 3) warningCount++;
               });
             }
           }
@@ -257,11 +264,13 @@ export function MyWorkView() {
         teamCount = (requestCount || 0) + warningCount;
       }
 
+      if (requestId !== loadCountsRequestRef.current) return;
+
       setTotalCounts({
         tasks: taskCount || 0,
         decisions: decisionCount || 0,
         caseFiles: caseFileCount || 0,
-        plannings: planningCount || 0,
+        plannings: planningCount,
         team: teamCount,
         jourFixe: jourFixeCount || 0,
       });
@@ -281,7 +290,7 @@ export function MyWorkView() {
   const debouncedUpdate = useCallback(() => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      loadCounts();
+      loadCounts(shouldIncludeTeamCountRef.current);
       refreshCounts();
     }, 2000);
   }, [loadCounts, refreshCounts]);
@@ -342,26 +351,34 @@ export function MyWorkView() {
 
   const loadUserRoleAndCounts = async () => {
     if (!user) return;
-    
-    // Check user role
+
     const [adminCheck, roleData] = await Promise.all([
       supabase.rpc("is_admin", { _user_id: user.id }),
       supabase.from("user_roles").select("role").eq("user_id", user.id).single()
     ]);
-    
-    setIsAdmin(!!adminCheck.data);
-    
+
+    const admin = !!adminCheck.data;
+    const role = roleData.data?.role;
     const employeeRoles = ["mitarbeiter", "praktikant", "bueroleitung"];
-    setIsEmployee(roleData.data ? employeeRoles.includes(roleData.data.role) : false);
-    setIsAbgeordneter(roleData.data?.role === "abgeordneter");
-    setIsBueroleitung(roleData.data?.role === "bueroleitung");
-    
-    loadCounts();
+
+    setIsAdmin(admin);
+    setIsEmployee(role ? employeeRoles.includes(role) : false);
+    setIsAbgeordneter(role === "abgeordneter");
+    setIsBueroleitung(role === "bueroleitung");
+
+    shouldIncludeTeamCountRef.current = admin && (role === "abgeordneter" || role === "bueroleitung");
+    loadCounts(shouldIncludeTeamCountRef.current);
   };
 
   const handleNoteSaved = () => {
     setRefreshTrigger(prev => prev + 1);
   };
+
+  const tabFallback = (
+    <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+      Bereich wird geladen…
+    </div>
+  );
 
   return (
     <div className="min-h-[calc(100vh-8rem)] p-6">
@@ -505,19 +522,21 @@ export function MyWorkView() {
       )}
 
       {activeTab === "capture" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
-          <MyWorkNotesList refreshTrigger={refreshTrigger} />
-        </div>
+        <Suspense fallback={tabFallback}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
+            <MyWorkNotesList refreshTrigger={refreshTrigger} />
+          </div>
+        </Suspense>
       )}
       
-      {activeTab === "tasks" && <MyWorkTasksTab />}
-      {activeTab === "decisions" && <MyWorkDecisionsTab />}
-      {activeTab === "jourFixe" && <MyWorkJourFixeTab />}
-      {activeTab === "casefiles" && <MyWorkCaseFilesTab />}
-      {activeTab === "plannings" && <MyWorkPlanningsTab />}
-      {activeTab === "time" && <MyWorkTimeTrackingTab />}
-      {activeTab === "team" && <MyWorkTeamTab />}
+      {activeTab === "tasks" && <Suspense fallback={tabFallback}><MyWorkTasksTab /></Suspense>}
+      {activeTab === "decisions" && <Suspense fallback={tabFallback}><MyWorkDecisionsTab /></Suspense>}
+      {activeTab === "jourFixe" && <Suspense fallback={tabFallback}><MyWorkJourFixeTab /></Suspense>}
+      {activeTab === "casefiles" && <Suspense fallback={tabFallback}><MyWorkCaseFilesTab /></Suspense>}
+      {activeTab === "plannings" && <Suspense fallback={tabFallback}><MyWorkPlanningsTab /></Suspense>}
+      {activeTab === "time" && <Suspense fallback={tabFallback}><MyWorkTimeTrackingTab /></Suspense>}
+      {activeTab === "team" && <Suspense fallback={tabFallback}><MyWorkTeamTab /></Suspense>}
     </div>
   );
 }
