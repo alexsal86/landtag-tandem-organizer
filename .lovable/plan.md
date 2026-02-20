@@ -1,108 +1,106 @@
 
+# Plan: 5 Fehlerbehebungen & Features
 
-# Outlook-Mails per Drag and Drop / Paste importieren
+## Zusammenfassung der Issues
 
-## Problemanalyse
+1. **.msg Vorschau in Entscheidungen kaputt** – `EmailPreviewDialog` lädt `.msg` Dateien direkt via `supabase.storage.download(filePath)` mit dem rohen `filePath`. Dieser Pfad enthält aber möglicherweise den Bucket-Präfix oder ist URL-encodiert. Die gleiche `normalizeStoragePath`-Logik, die `DecisionAttachmentPreviewDialog` korrekt verwendet, fehlt hier komplett.
 
-### Drag and Drop
-- Outlook Desktop nutzt proprietaeres OLE-Drag-and-Drop, das nicht dem Standard-Web-API entspricht
-- Chrome/Edge auf Windows koennen in manchen Faellen eine .msg-Datei aus dem Drag-Event extrahieren, aber nicht zuverlaessig
-- Der aktuelle Code liest nur `e.dataTransfer.files` - wenn das leer ist, passiert nichts und der Nutzer bekommt kein Feedback
+2. **Bilder-Vorschau in Entscheidungen kaputt** – In `DecisionAttachmentPreviewDialog` wird beim Öffnen einer Bildvorschau eine Signed-URL erstellt und im `<img>`-Tag angezeigt. Das Problem: Signed-URLs für private Buckets erlaufen nach 10 Minuten. Außerdem kann das Bild nicht geladen werden, wenn der `filePath` nicht korrekt normalisiert ist. Es gibt auch einen logischen Fehler: Die Kondition `isHttpUrl(filePath) && !normalizedFilePath` führt zu `setSignedUrl(filePath)`, was für private Bucket-Dateien nicht funktioniert.
 
-### Strg+C / Strg+V (Paste)
-- Outlook legt beim Kopieren einer Mail **keine Datei** in die Zwischenablage, sondern HTML- und Text-Inhalt
-- Der aktuelle Paste-Handler prueft nur `clipboardData.files` und `clipboardData.items` (kind === 'file') - beides ist leer bei Outlook-Paste
-- Daher passiert beim Einfuegen aktuell gar nichts
+3. **Termin-Feedback als neuer Tab in "Meine Arbeit"** – Das `AppointmentFeedbackWidget` existiert bereits im Dashboard-Bereich. Es muss als eigener Tab in `MyWorkView` eingebettet werden. Dieser Tab soll nur für die Rolle `abgeordneter` sichtbar sein (wie vom Nutzer beschrieben).
 
-### Build-Fehler
-- Zusaetzlich gibt es einen bestehenden Build-Fehler in `send-document-email/index.ts`: Die Resend-API akzeptiert `scheduledAt` nicht als Property in `CreateEmailOptions`. Dies muss separat behoben werden.
+4. **Excel/Word-Dateien in Entscheidungen sollen scrollbar sein** – In `DecisionAttachmentPreviewDialog` sind die inneren Wrapper von `ExcelPreview` und `WordPreview` schon mit `overflow-auto` versehen. Das Problem liegt am äußeren Container: `<div className="flex-1 min-h-[60vh] border rounded-md overflow-hidden bg-muted/20">` – `overflow-hidden` schneidet den Scrollbereich ab. Außerdem verhindert `max-h-[90vh]` auf dem Dialog-Content, dass der innere Bereich genügend Platz zum Scrollen hat.
+
+5. **Termin-Details im Split-Layout statt rechtem Popup** – `AppointmentDetailsSidebar` verwendet aktuell `Sheet` (rechtes Overlay). Der Nutzer möchte dasselbe Split-Layout-Muster wie bei `ContactsView`, wo ein Inline-Panel neben der Liste eingeblendet wird (kein Overlay). Die `CalendarView` muss entsprechend umgebaut werden.
 
 ---
 
-## Loesung
+## Änderungen im Detail
 
-### 1. Build-Fehler beheben (send-document-email)
+### Issue 1: .msg Vorschau reparieren
 
-Die `scheduledAt`-Property wird von der aktuellen Resend-Version nicht direkt in `emails.send()` unterstuetzt. Loesung: Die Property entfernen oder ueber die korrekte API (`resend.emails.create()` oder separates Scheduling) handhaben.
+**Datei:** `src/components/task-decisions/EmailPreviewDialog.tsx`
 
-### 2. Drag and Drop verbessern (DecisionFileUpload.tsx)
+- Dieselbe `normalizeStoragePath`-Funktion importieren/einbauen (oder inline definieren), die in `DecisionAttachmentPreviewDialog` bereits existiert und funktioniert.
+- Den rohen `download(filePath)` Aufruf ersetzen durch: erst `createSignedUrl` mit normalisiertem Pfad, Fallback auf `download` wenn Signed-URL fehlschlägt.
+- Damit ist die Logik konsistent mit dem funktionierenden `DecisionAttachmentPreviewDialog`.
 
-**Wenn `dataTransfer.files` leer ist:**
-- Pruefen, ob `dataTransfer.types` Outlook-spezifische Formate enthaelt (z.B. `text/html`, `text/plain`)
-- Dem Nutzer eine klare Fehlermeldung/Hinweis anzeigen: "Outlook-Mails koennen nicht direkt per Drag and Drop uebernommen werden. Bitte speichern Sie die Mail zuerst als .msg-Datei (Datei > Speichern unter) und ziehen Sie dann die gespeicherte Datei hierher."
-- Falls `dataTransfer.files` eine Datei enthaelt (funktioniert manchmal in Chrome/Edge), diese normal verarbeiten (funktioniert bereits)
+### Issue 2: Bilder-Vorschau reparieren
 
-### 3. Paste-Handler erweitern (DecisionFileUpload.tsx)
+**Datei:** `src/components/task-decisions/DecisionAttachmentPreviewDialog.tsx`
 
-**Neuer Fallback fuer HTML-Paste aus Outlook:**
-- Wenn keine Dateien in der Zwischenablage sind, pruefen ob `text/html`-Inhalt vorhanden ist
-- Falls ja: Den HTML-Inhalt analysieren und als synthetische `.eml`-Datei erzeugen
-  - Subject aus dem HTML-Titel oder Betreff-Feld extrahieren
-  - Absender, Empfaenger und Datum aus typischen Outlook-HTML-Patterns parsen
-  - Eine RFC822-konforme `.eml`-Datei im Speicher erzeugen und als `File`-Objekt einfuegen
-- Falls die HTML-Analyse keinen E-Mail-Inhalt erkennt: Hinweis-Toast anzeigen mit Anleitung zum Speichern als .msg
+- Den Logikfehler beheben: Wenn `filePath` eine HTTP-URL ist, soll trotzdem eine normalisierte Pfad-Extraktion stattfinden und eine Signed-URL via Supabase Storage erstellt werden – nicht die rohe HTTP-URL direkt nutzen.
+- Den existierenden Fallback-Download-Mechanismus (Blob-URL) als letzten Ausweg beibehalten.
+- Für die Bild-Vorschau explizit sicherstellen, dass bei Bild-Typen ein `onError`-Handler gesetzt wird, der auf den Download-Fallback ausweicht.
 
-### 4. Hilfreiche Nutzerfuehrung
+### Issue 3: Termin-Feedback Tab in Meine Arbeit (nur für Abgeordnete)
 
-- Toast-Meldungen mit konkreten Anleitungen wenn Import fehlschlaegt
-- Erweiterte Beschreibung in der Dropzone mit Outlook-spezifischem Hinweis
+**Dateien:**
+- `src/components/MyWorkView.tsx`
+- Neues `src/components/my-work/MyWorkAppointmentFeedbackTab.tsx` (thin wrapper)
+
+**Änderungen:**
+- Neuen Tab-Wert `"appointmentfeedback"` in `TabValue` hinzufügen.
+- Tab-Konfiguration in `BASE_TABS` mit `abgeordneterOnly: true` Flag ergänzen.
+- Filter-Logik: Tab nur anzeigen wenn `isAbgeordneter === true`.
+- Lazy-Load des neuen `MyWorkAppointmentFeedbackTab`, das `AppointmentFeedbackWidget` als Vollseiten-Ansicht rendert (kein Widget-Sizing, volle Breite).
+- Tab-Label: "Termine Feedback", Icon: `CheckCircle2`.
+
+### Issue 4: Excel/Word scrollbar machen
+
+**Datei:** `src/components/task-decisions/DecisionAttachmentPreviewDialog.tsx`
+
+- Den äußeren Container-`div` von `overflow-hidden` auf `overflow-auto` ändern.
+- Die Dialog-Content-Klasse anpassen: Statt `overflow-hidden` muss der Preview-Container die Scroll-Kontrolle übernehmen. Die inneren Komponenten (`ExcelPreview`, `WordPreview`) haben bereits `overflow-auto`, funktionieren aber nur, wenn der äußere Container eine feste Höhe hat und nicht `overflow-hidden` blockiert.
+- Lösung: `<div className="flex-1 min-h-[60vh] border rounded-md overflow-auto bg-muted/20">` – nur `overflow-hidden` durch `overflow-auto` ersetzen. Der Dialog selbst bleibt `overflow-hidden` (für den Header), nur der Preview-Bereich scrollt.
+
+### Issue 5: Termin-Details im Split-Layout (kein rechtes Popup)
+
+**Dateien:**
+- `src/components/CalendarView.tsx`
+- `src/components/calendar/AppointmentDetailsSidebar.tsx`
+
+**Änderungen:**
+
+Die `AppointmentDetailsSidebar` verwendet intern `Sheet` / `SheetContent`. Diese Wrapper werden entfernt und durch ein scrollbares `<div>` ersetzt, das als Inline-Panel gerendert wird.
+
+Das Layout in `CalendarView` wird umgebaut:
+```text
+VORHER:
+┌─────────────────────────────┐
+│ Kalender (Vollbreite)       │
+└─────────────────────────────┘
+↓ Sheet schiebt sich von rechts als Overlay
+
+NACHHER:
+┌────────────────┬────────────────┐
+│ Kalender       │ Detail-Panel   │  ← beide nebeneinander
+└────────────────┴────────────────┘
+   flex-1 min-w-0    w-[420px]
+```
+
+- Das `<div className="w-full">` in CalendarView wird zu `<div className="flex gap-4">`.
+- Linke Seite: `<div className="flex-1 min-w-0">` mit dem Kalender.
+- Rechte Seite: `{sidebarOpen && <div className="w-[420px] shrink-0 border-l ...">}` mit dem neuen Inline-Panel.
+- Das Panel gleitet mit `transition-all` ein/aus.
+- `AppointmentDetailsSidebar` erhält eine neue Variante ohne Sheet-Wrapper (oder ein neues Prop `mode="inline"`), das den Inhalt direkt als `<div>` rendert.
+- Der `onClose`-Button oben rechts im Panel bleibt erhalten.
 
 ---
 
-## Technische Details
+## Technische Risiken & Hinweise
 
-### Neue Hilfsfunktion: `buildEmlFromOutlookHtml`
+- **Issue 5 Impact:** Die `AppointmentDetailsSidebar` hat ~964 Zeilen. Die Änderung betrifft nur den äußersten Wrapper (Sheet → div) und das Layout in `CalendarView`. Der Inhalt selbst bleibt unverändert.
+- **Issue 3:** `AppointmentFeedbackWidget` hat ein `widgetSize`-Prop. Im neuen Tab wird `widgetSize="full"` oder kein Sizing verwendet, damit es die volle Breite ausfüllt.
+- Die `EmailPreviewDialog`-Logik ist in Issue 1 und Issue 2 eng verwandt – beide bekommen dieselbe robuste URL-Normalisierung.
 
-```text
-Eingabe: HTML-String aus Outlook-Zwischenablage
-Ausgabe: File-Objekt (.eml) oder null
+## Geänderte Dateien
 
-Schritte:
-1. HTML parsen (DOMParser)
-2. Typische Outlook-Metadaten extrahieren:
-   - Betreff (aus <title> oder spezifischen Outlook-Klassen)
-   - Von/An/Datum aus Header-Tabellen
-3. RFC822-Header zusammenbauen:
-   From: ...
-   To: ...
-   Subject: ...
-   Date: ...
-   MIME-Version: 1.0
-   Content-Type: text/html; charset=utf-8
-   
-   [HTML-Body]
-4. Als File-Objekt mit .eml-Endung zurueckgeben
-```
-
-### Aenderungen in DecisionFileUpload.tsx
-
-```text
-handleDrop():
-  - Nach files = e.dataTransfer.files
-  - WENN files leer UND dataTransfer.types enthaelt 'text/html':
-    -> Toast: "Direkt-Drag aus Outlook nicht moeglich, bitte .msg speichern"
-  - SONST WENN files vorhanden:
-    -> Bestehende Logik (funktioniert)
-
-handlePastedFiles():
-  - WENN keine Dateien gefunden:
-    -> clipboardData.getData('text/html') pruefen
-    -> buildEmlFromOutlookHtml() aufrufen
-    -> Falls erfolgreich: synthetische .eml-Datei in Pipeline einspeisen
-    -> Falls nicht: Toast mit Hinweis anzeigen
-```
-
-### Betroffene Dateien
-
-| Datei | Aenderung |
-|-------|-----------|
-| `supabase/functions/send-document-email/index.ts` | `scheduledAt` Build-Fehler beheben |
-| `src/components/task-decisions/DecisionFileUpload.tsx` | Drop- und Paste-Handler erweitern |
-| `src/utils/emlParser.ts` | Neue Funktion `buildEmlFromOutlookHtml()` |
-
-### Einschraenkungen
-
-- Drag and Drop direkt aus Outlook wird in den meisten Faellen **nicht** funktionieren (Browser-Limitation). Der Nutzer erhaelt aber einen klaren Hinweis statt Stille.
-- Paste funktioniert nur, wenn Outlook HTML-Inhalt in die Zwischenablage legt (Standard bei "Mail kopieren"). Die extrahierten Metadaten sind abhaengig vom Outlook-HTML-Format.
-- Die sicherste Methode bleibt: Mail in Outlook als .msg speichern, dann per Drag and Drop oder Dateiauswahl hochladen.
-
+| Datei | Aktion |
+|-------|--------|
+| `src/components/task-decisions/EmailPreviewDialog.tsx` | Fix: normalizeStoragePath + Signed-URL-Logik |
+| `src/components/task-decisions/DecisionAttachmentPreviewDialog.tsx` | Fix: Bild-Logik + overflow-auto |
+| `src/components/my-work/MyWorkAppointmentFeedbackTab.tsx` | Neu erstellen |
+| `src/components/MyWorkView.tsx` | Neuer Tab "Termin-Feedback" (nur abgeordneter) |
+| `src/components/calendar/AppointmentDetailsSidebar.tsx` | Sheet → Inline-div-Variante |
+| `src/components/CalendarView.tsx` | Split-Layout statt Sidebar-Overlay |
