@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -357,6 +357,20 @@ export function SuperadminTenantManagement() {
     ? allUsers 
     : allUsers.filter(u => u.tenants.some(t => t.id === selectedTenantFilter));
 
+  const usersByTenantId = useMemo(() => {
+    const map = new Map<string, UserWithTenants[]>();
+
+    allUsers.forEach((userEntry) => {
+      userEntry.tenants.forEach((tenantEntry) => {
+        const usersForTenant = map.get(tenantEntry.id) || [];
+        usersForTenant.push(userEntry);
+        map.set(tenantEntry.id, usersForTenant);
+      });
+    });
+
+    return map;
+  }, [allUsers]);
+
   if (!isSuperadmin) {
     return (
       <Card>
@@ -407,6 +421,7 @@ export function SuperadminTenantManagement() {
                     <TableHead>Name</TableHead>
                     <TableHead>Beschreibung</TableHead>
                     <TableHead className="text-center">Benutzer</TableHead>
+                    <TableHead>Zugeordnete Benutzer</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead>Erstellt</TableHead>
                     <TableHead className="text-right">Aktionen</TableHead>
@@ -424,6 +439,19 @@ export function SuperadminTenantManagement() {
                           <Users className="h-3 w-3" />
                           {tenant.user_count}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {usersByTenantId.get(tenant.id)?.length ? (
+                          <div className="flex flex-wrap gap-1">
+                            {usersByTenantId.get(tenant.id)!.map((tenantUser) => (
+                              <Badge key={`${tenant.id}-${tenantUser.id}`} variant="outline" className="text-xs">
+                                {tenantUser.display_name || tenantUser.email}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Keine Benutzer zugewiesen</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant={tenant.is_active ? "default" : "outline"}>
@@ -477,7 +505,7 @@ export function SuperadminTenantManagement() {
                   ))}
                   {tenants.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         Keine Tenants vorhanden
                       </TableCell>
                     </TableRow>
