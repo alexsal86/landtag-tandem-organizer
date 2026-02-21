@@ -35,6 +35,58 @@ const tabSourceMap: Record<typeof tabs[number], string> = {
   team: "src/components/my-work/MyWorkTeamTab.tsx",
 };
 
+const tabContextMap: Record<typeof tabs[number], string> = {
+  dashboard: "kein Visit-Context (Landing-Tab)",
+  capture: "kein Visit-Context (Quick Notes lokal)",
+  tasks: "mywork_tasks",
+  decisions: "mywork_decisions",
+  jourFixe: "mywork_jourFixe",
+  casefiles: "mywork_casefiles",
+  plannings: "mywork_plannings",
+  time: "kein Visit-Context",
+  feedbackfeed: "kein Visit-Context",
+  team: "kein Visit-Context",
+};
+
+function makeTabInteractionSequence(tab: typeof tabs[number]) {
+  return `sequenceDiagram
+  actor U as User
+  participant T as MyWork Tab Leiste
+  participant V as MyWorkView
+  participant R as URL SearchParams
+  participant S as Suspense
+  participant C as Tab Component ${tab}
+  participant DB as Supabase Client
+
+  U->>T: Klick auf Tab ${tab}
+  T->>V: setActiveTab ${tab}
+  V->>R: setSearchParams tab=${tab}
+  V->>V: markTabAsVisited ${tabContextMap[tab]}
+  V->>S: render active tab
+  S->>C: lazy import
+  C->>DB: query oder mutation
+  DB-->>C: daten und status
+  C-->>U: inhalt sichtbar`;
+}
+
+function makeTabHookFlow(tab: typeof tabs[number]) {
+  return `flowchart TD
+  A["MyWorkView"] --> B["useMyWorkSettings()"]
+  A --> C["useMyWorkNewCounts()"]
+  C --> D["refreshCounts()"]
+  A --> E["setActiveTab(${tab})"]
+  E --> F["markTabAsVisited()"]
+  F --> G["${tabContextMap[tab]}"]
+  A --> H["Supabase realtime channel"]
+  H --> I["debouncedUpdate()"]
+  I --> J["loadCounts()"]
+  I --> D
+  J --> K["get_my_work_counts RPC"]
+  K --> L[("Supabase Postgres")]
+  A --> M["${tabSourceMap[tab]}"]
+  M --> L`;
+}
+
 function makeTabProfile(tab: typeof tabs[number]): SchemaOverviewProfile {
   return {
     id: tab,
@@ -93,6 +145,43 @@ function makeTabProfile(tab: typeof tabs[number]): SchemaOverviewProfile {
         states: ["Init", "RoleCheck", "TabsFiltered", "CountLoading", "TabsReady", "LazyLoading", "ContentVisible", "RealtimeUpdate", "ErrorState"],
         chart: stateMachineMermaid,
       },
+      {
+        type: "diagram",
+        subtype: "sequence",
+        title: "4.1) Interaction Flow (Klickpfad)",
+        description: `Sequence-Diagramm für Klicks, URL-Update, Lazy-Import und Datenabruf im Tab ${tab}.`,
+        chart: makeTabInteractionSequence(tab),
+      },
+      {
+        type: "diagram",
+        subtype: "flowchart",
+        title: "4.2) Hook & Realtime Abhängigkeiten",
+        description: `Hook- und Realtime-Abfolge für ${tab}, inklusive refreshCounts/loadCounts.`,
+        chart: makeTabHookFlow(tab),
+      },
+      ...(tab === "capture"
+        ? [{
+            type: "table" as const,
+            title: "4.3) Quick Notes: Icon-Ansteuerung",
+            description: "Welche Icons klicken auf welchen Handler und welche UI-Reaktion folgt.",
+            columns: [
+              { key: "icon", label: "Icon" },
+              { key: "where", label: "Ort" },
+              { key: "trigger", label: "Trigger/Handler" },
+              { key: "effect", label: "UI- / Daten-Effekt" },
+              { key: "source", label: "Code-Quelle" },
+            ],
+            rows: [
+              { icon: "StickyNote", where: "Tab-Leiste", trigger: "setActiveTab('capture')", effect: "öffnet Quick Notes Bereich", source: "src/components/MyWorkView.tsx (BASE_TABS + onClick)" },
+              { icon: "Info", where: "MyWorkQuickCapture Header", trigger: "TooltipTrigger hover/focus", effect: "Keyboard-Hinweis wird angezeigt", source: "src/components/my-work/MyWorkQuickCapture.tsx" },
+              { icon: "Pin", where: "MyWorkQuickCapture Header", trigger: "onClick => setIsPinned(!isPinned)", effect: "Pin-Status toggelt und wird gespeichert", source: "src/components/my-work/MyWorkQuickCapture.tsx" },
+              { icon: "Palette", where: "MyWorkQuickCapture Header", trigger: "Popover + setSelectedColor(color)", effect: "Farbcode der Notiz wird gesetzt", source: "src/components/my-work/MyWorkQuickCapture.tsx" },
+              { icon: "Save/ListTodo", where: "QuickCapture Actions", trigger: "handleSaveNote / handleSaveAsTask", effect: "Notiz speichern oder als Aufgabe anlegen", source: "src/components/my-work/MyWorkQuickCapture.tsx" },
+              { icon: "Archive", where: "MyWorkNotesList Header", trigger: "setArchiveOpen(true)", effect: "Archiv/Papierkorb Dialog öffnet", source: "src/components/my-work/MyWorkNotesList.tsx" },
+              { icon: "Globe", where: "MyWorkNotesList Header", trigger: "setGlobalShareOpen(true)", effect: "Global-Share Dialog öffnet", source: "src/components/my-work/MyWorkNotesList.tsx" },
+            ],
+          }]
+        : []),
       {
         type: "table",
         title: "5) Fehlerverhalten & Edge Cases",
@@ -251,6 +340,20 @@ const overviewProfile: SchemaOverviewProfile = {
       description: "Mermaid-Definition für den gesamten Ablauf auf der Seite.",
       states: ["Init", "RoleCheck", "TabsFiltered", "CountLoading", "TabsReady", "LazyLoading", "ContentVisible", "RealtimeUpdate", "ErrorState"],
       chart: stateMachineMermaid,
+    },
+    {
+      type: "diagram",
+      subtype: "sequence",
+      title: "4.1) Interaction Flow (Klickpfad über alle Tabs)",
+      description: "Sequenz für Tab-Klick, URL-Synchronisierung, Lazy Rendering und Datenabruf.",
+      chart: makeTabInteractionSequence("dashboard"),
+    },
+    {
+      type: "diagram",
+      subtype: "flowchart",
+      title: "4.2) Hook & Realtime Abhängigkeiten (gesamt)",
+      description: "Flowchart für hooks, Debounce, Realtime-Events und Count-Neuladen.",
+      chart: makeTabHookFlow("dashboard"),
     },
     {
       type: "list",
