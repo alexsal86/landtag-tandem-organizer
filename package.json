@@ -9,7 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint . --report-unused-disable-directives",
     "preview": "vite preview",
-    "test:role-smoke": "node scripts/mywork-role-smoke-test.mjs"
+    "test:role-smoke": "node scripts/mywork-role-smoke-test.mjs",
+    "check:diagram-drift": "node scripts/check-diagram-drift.mjs"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",

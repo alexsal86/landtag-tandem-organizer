@@ -22,6 +22,14 @@ export interface SchemaStateSection {
   chart: string;
 }
 
+export interface SchemaDiagramSection {
+  type: "diagram";
+  subtype: "sequence" | "flowchart" | "state";
+  title: string;
+  description?: string;
+  chart: string;
+}
+
 export interface SchemaCodeSection {
   type: "code";
   title: string;
@@ -34,7 +42,7 @@ export interface SchemaListSection {
   items: string[];
 }
 
-export type SchemaSection = SchemaTableSection | SchemaStateSection | SchemaCodeSection | SchemaListSection;
+export type SchemaSection = SchemaTableSection | SchemaStateSection | SchemaDiagramSection | SchemaCodeSection | SchemaListSection;
 
 export interface SchemaOverviewProfile {
   id: string;
@@ -43,7 +51,17 @@ export interface SchemaOverviewProfile {
   sections: SchemaSection[];
 }
 
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9äöüß]+/gi, "-")
+    .replace(/^-+|-+$/g, "");
+
 export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile }) {
+  const sectionAnchors = profile.sections.map((section, index) => ({
+    title: section.title,
+    id: `${slugify(section.title)}-${index + 1}`,
+  }));
   return (
     <div className="space-y-6">
       <Card>
@@ -53,10 +71,29 @@ export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile
         </CardHeader>
       </Card>
 
-      {profile.sections.map((section) => {
+      <Card>
+        <CardHeader>
+          <CardTitle>Schnellnavigation</CardTitle>
+          <CardDescription>Direkt zu Abschnitten springen.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {sectionAnchors.map((anchor) => (
+            <a
+              key={anchor.id}
+              href={`#${anchor.id}`}
+              className="text-xs rounded-md border px-2 py-1 hover:bg-muted"
+            >
+              {anchor.title}
+            </a>
+          ))}
+        </CardContent>
+      </Card>
+
+      {profile.sections.map((section, sectionIndex) => {
+        const sectionId = sectionAnchors[sectionIndex]?.id;
         if (section.type === "table") {
           return (
-            <Card key={section.title}>
+            <Card key={section.title} id={sectionId}>
               <CardHeader>
                 <CardTitle>{section.title}</CardTitle>
                 {section.description && <CardDescription>{section.description}</CardDescription>}
@@ -91,7 +128,7 @@ export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile
 
         if (section.type === "state") {
           return (
-            <Card key={section.title}>
+            <Card key={section.title} id={sectionId}>
               <CardHeader>
                 <CardTitle>{section.title}</CardTitle>
                 {section.description && <CardDescription>{section.description}</CardDescription>}
@@ -110,7 +147,7 @@ export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile
 
         if (section.type === "code") {
           return (
-            <Card key={section.title}>
+            <Card key={section.title} id={sectionId}>
               <CardHeader>
                 <CardTitle>{section.title}</CardTitle>
               </CardHeader>
@@ -127,8 +164,23 @@ export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile
           );
         }
 
+        if (section.type === "diagram") {
+          return (
+            <Card key={section.title} id={sectionId}>
+              <CardHeader>
+                <CardTitle>{section.title}</CardTitle>
+                {section.description && <CardDescription>{section.description}</CardDescription>}
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Badge variant="outline">{section.subtype}</Badge>
+                <div className="rounded-md border bg-muted/40 p-4"><MermaidRenderer chart={section.chart} /></div>
+              </CardContent>
+            </Card>
+          );
+        }
+
         return (
-          <Card key={section.title}>
+          <Card key={section.title} id={sectionId}>
             <CardHeader>
               <CardTitle>{section.title}</CardTitle>
             </CardHeader>
