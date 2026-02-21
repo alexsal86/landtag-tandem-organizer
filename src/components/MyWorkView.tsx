@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +29,10 @@ const MyWorkTimeTrackingTab = lazy(() => import("./my-work/MyWorkTimeTrackingTab
 const MyWorkAppointmentFeedbackTab = lazy(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
 const MyWorkFeedbackFeedTab = lazy(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
 import { DashboardGreetingSection } from "./dashboard/DashboardGreetingSection";
+import { canViewTab, getRoleFlags, type UserRole } from "@/components/my-work/tabVisibility";
+import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
 import { NewsWidget } from "./widgets/NewsWidget";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface TabCounts {
   tasks: number;
@@ -67,21 +71,6 @@ const BASE_TABS: TabConfig[] = [
   { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOrBueroOnly: true },
 ];
 
-const countBusinessDaysSince = (fromDate: string, toDate: Date) => {
-  const last = new Date(fromDate);
-  let count = 0;
-  const current = new Date(last);
-  current.setDate(current.getDate() + 1);
-
-  while (current <= toDate) {
-    const day = current.getDay();
-    if (day !== 0 && day !== 6) count++;
-    current.setDate(current.getDate() + 1);
-  }
-
-  return count;
-};
-
 export function MyWorkView() {
   const { user } = useAuth();
   const { app_logo_url } = useAppSettings();
@@ -103,6 +92,9 @@ export function MyWorkView() {
   });
   const loadCountsRequestRef = useRef(0);
   const shouldIncludeTeamCountRef = useRef(false);
+  const [countLoadError, setCountLoadError] = useState<string | null>(null);
+  const [isCountsLoading, setIsCountsLoading] = useState(false);
+  const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "connected" | "degraded">("connecting");
   
   // Badge display mode setting and new counts
   const { badgeDisplayMode } = useMyWorkSettings();
@@ -165,122 +157,38 @@ export function MyWorkView() {
     if (!user) return;
 
     const requestId = ++loadCountsRequestRef.current;
+    setIsCountsLoading(true);
+    setCountLoadError(null);
 
     try {
-      const [
-        { count: taskCount },
-        { count: decisionCount },
-        { count: caseFileCount },
-        { count: ownedPlanningCount },
-        { count: collabPlanningCount },
-        { count: jourFixeCount },
-      ] = await Promise.all([
-        supabase
-          .from("tasks")
-          .select("id", { count: "exact", head: true })
-          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-          .neq("status", "completed"),
-        supabase
-          .from("task_decision_participants")
-          .select("id, task_decisions!inner(id)", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .in("task_decisions.status", ["active", "open"]),
-        supabase
-          .from("case_files")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .in("status", ["active", "pending"]),
-        supabase
-          .from("event_plannings")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id),
-        supabase
-          .from("event_planning_collaborators")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id),
-        supabase
-          .from("meetings")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .neq("status", "archived")
-          .gte("meeting_date", new Date().toISOString()),
-      ]);
+      const { data, error } = await supabase.rpc("get_my_work_counts", {
+        p_user_id: user.id,
+        p_include_team: includeTeamCount,
+      });
 
-      const planningCount = (ownedPlanningCount || 0) + (collabPlanningCount || 0);
+      if (error) throw error;
 
-      let teamCount = 0;
-      if (includeTeamCount) {
-        const { count: requestCount } = await supabase
-          .from("employee_meeting_requests")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "pending");
-
-        let warningCount = 0;
-        try {
-          const { data: memberships } = await supabase
-            .from("user_tenant_memberships")
-            .select("user_id")
-            .eq("is_active", true);
-
-          if (memberships?.length) {
-            const userIds = memberships.map(m => m.user_id);
-            const { data: roles } = await supabase
-              .from("user_roles")
-              .select("user_id, role")
-              .in("user_id", userIds);
-
-            const employeeIds = (roles || [])
-              .filter(r => ["mitarbeiter", "praktikant", "bueroleitung"].includes(r.role))
-              .map(r => r.user_id);
-
-            if (employeeIds.length > 0) {
-              const cutoff = new Date();
-              cutoff.setDate(cutoff.getDate() - 45);
-
-              const { data: recentEntries } = await supabase
-                .from("time_entries")
-                .select("user_id, work_date")
-                .in("user_id", employeeIds)
-                .gte("work_date", cutoff.toISOString().slice(0, 10))
-                .order("work_date", { ascending: false });
-
-              const lastEntryByUser: Record<string, string> = {};
-              (recentEntries || []).forEach((entry: { user_id: string; work_date: string }) => {
-                if (!lastEntryByUser[entry.user_id]) {
-                  lastEntryByUser[entry.user_id] = entry.work_date;
-                }
-              });
-
-              const today = new Date();
-              employeeIds.forEach(uid => {
-                const lastDate = lastEntryByUser[uid];
-                if (!lastDate) {
-                  warningCount++;
-                  return;
-                }
-                if (countBusinessDaysSince(lastDate, today) > 3) warningCount++;
-              });
-            }
-          }
-        } catch (e) {
-          console.error("Error calculating time entry warnings:", e);
-        }
-
-        teamCount = (requestCount || 0) + warningCount;
-      }
+      const counts = (data || {}) as Partial<TabCounts>;
 
       if (requestId !== loadCountsRequestRef.current) return;
 
       setTotalCounts({
-        tasks: taskCount || 0,
-        decisions: decisionCount || 0,
-        caseFiles: caseFileCount || 0,
-        plannings: planningCount,
-        team: teamCount,
-        jourFixe: jourFixeCount || 0,
+        tasks: Number(counts.tasks || 0),
+        decisions: Number(counts.decisions || 0),
+        caseFiles: Number(counts.caseFiles || 0),
+        plannings: Number(counts.plannings || 0),
+        team: Number(counts.team || 0),
+        jourFixe: Number(counts.jourFixe || 0),
       });
+      setRealtimeStatus("connected");
     } catch (error) {
       console.error("Error loading counts:", error);
+      setCountLoadError("Counts konnten nicht aktualisiert werden.");
+      setRealtimeStatus("degraded");
+    } finally {
+      if (requestId === loadCountsRequestRef.current) {
+        setIsCountsLoading(false);
+      }
     }
   }, [user]);
 
@@ -303,6 +211,8 @@ export function MyWorkView() {
   // Supabase Realtime subscriptions for live updates
   useEffect(() => {
     if (!user) return;
+
+    setRealtimeStatus("connecting");
 
     const channel = supabase
       .channel('my-work-realtime')
@@ -346,7 +256,10 @@ export function MyWorkView() {
         { event: '*', schema: 'public', table: 'event_plannings', filter: `user_id=eq.${user.id}` },
         debouncedUpdate
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setRealtimeStatus("connected");
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setRealtimeStatus("degraded");
+      });
 
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -363,15 +276,15 @@ export function MyWorkView() {
     ]);
 
     const admin = !!adminCheck.data;
-    const role = roleData.data?.role;
-    const employeeRoles = ["mitarbeiter", "praktikant", "bueroleitung"];
+    const role = (roleData.data?.role || null) as UserRole;
+    const roleFlags = getRoleFlags(role);
 
     setIsAdmin(admin);
-    setIsEmployee(role ? employeeRoles.includes(role) : false);
-    setIsAbgeordneter(role === "abgeordneter");
-    setIsBueroleitung(role === "bueroleitung");
+    setIsEmployee(roleFlags.isEmployee);
+    setIsAbgeordneter(roleFlags.isAbgeordneter);
+    setIsBueroleitung(roleFlags.isBueroleitung);
 
-    shouldIncludeTeamCountRef.current = admin && (role === "abgeordneter" || role === "bueroleitung");
+    shouldIncludeTeamCountRef.current = admin && (roleFlags.isAbgeordneter || roleFlags.isBueroleitung);
     loadCounts(shouldIncludeTeamCountRef.current);
   };
 
@@ -381,8 +294,17 @@ export function MyWorkView() {
 
   const tabFallback = (
     <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-      Bereich wird geladen…
+      {isCountsLoading ? "Bereich wird geladen…" : "Lade Daten…"}
     </div>
+  );
+
+
+  const tabError = (label: string) => (
+    <MyWorkTabErrorState
+      title={`${label} konnte nicht geladen werden`}
+      description="Bitte erneut versuchen oder die Seite neu laden."
+      onRetry={() => window.location.reload()}
+    />
   );
 
   return (
@@ -400,6 +322,9 @@ export function MyWorkView() {
         </div>
         
         <div className="flex items-center gap-2">
+          <Badge variant={realtimeStatus === "connected" ? "secondary" : "destructive"} className="hidden md:inline-flex">
+            Realtime: {realtimeStatus === "connected" ? "online" : realtimeStatus === "connecting" ? "verbinde…" : "degradiert"}
+          </Badge>
           {/* Schnellaktionen-Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -439,16 +364,30 @@ export function MyWorkView() {
         </div>
       </div>
 
+
+      {countLoadError && (
+        <Alert className="mb-4" variant="destructive">
+          <AlertDescription className="flex items-center justify-between gap-3">
+            <span>{countLoadError}</span>
+            <Button size="sm" variant="outline" onClick={() => loadCounts(shouldIncludeTeamCountRef.current)}>
+              Erneut laden
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Tab Navigation (horizontal, oben) */}
       <div className="flex border-b mb-6 overflow-x-auto">
         {BASE_TABS
           .filter((tab) => {
-            // Filter based on role
-            if (tab.adminOnly && !isAdmin) return false;
-            if (tab.employeeOnly && !isEmployee) return false;
-            if (tab.abgeordneterOrBueroOnly && !isAbgeordneter && !isBueroleitung) return false;
-            if (tab.abgeordneterOnly && !isAbgeordneter) return false;
-            return true;
+            const role: UserRole = isAbgeordneter
+              ? "abgeordneter"
+              : isBueroleitung
+                ? "bueroleitung"
+                : isEmployee
+                  ? "mitarbeiter"
+                  : null;
+            return canViewTab(tab, role);
           })
           .map((tab) => {
             const Icon = tab.icon;
@@ -536,13 +475,13 @@ export function MyWorkView() {
         </Suspense>
       )}
       
-      {activeTab === "tasks" && <Suspense fallback={tabFallback}><MyWorkTasksTab /></Suspense>}
-      {activeTab === "decisions" && <Suspense fallback={tabFallback}><MyWorkDecisionsTab /></Suspense>}
-      {activeTab === "jourFixe" && <Suspense fallback={tabFallback}><MyWorkJourFixeTab /></Suspense>}
-      {activeTab === "casefiles" && <Suspense fallback={tabFallback}><MyWorkCaseFilesTab /></Suspense>}
-      {activeTab === "plannings" && <Suspense fallback={tabFallback}><MyWorkPlanningsTab /></Suspense>}
-      {activeTab === "time" && <Suspense fallback={tabFallback}><MyWorkTimeTrackingTab /></Suspense>}
-      {activeTab === "team" && <Suspense fallback={tabFallback}><MyWorkTeamTab /></Suspense>}
+      {activeTab === "tasks" && <ErrorBoundary fallback={tabError("Aufgaben")}><Suspense fallback={tabFallback}><MyWorkTasksTab /></Suspense></ErrorBoundary>}
+      {activeTab === "decisions" && <ErrorBoundary fallback={tabError("Entscheidungen")}><Suspense fallback={tabFallback}><MyWorkDecisionsTab /></Suspense></ErrorBoundary>}
+      {activeTab === "jourFixe" && <ErrorBoundary fallback={tabError("Jour Fixe")}><Suspense fallback={tabFallback}><MyWorkJourFixeTab /></Suspense></ErrorBoundary>}
+      {activeTab === "casefiles" && <ErrorBoundary fallback={tabError("FallAkten")}><Suspense fallback={tabFallback}><MyWorkCaseFilesTab /></Suspense></ErrorBoundary>}
+      {activeTab === "plannings" && <ErrorBoundary fallback={tabError("Planungen")}><Suspense fallback={tabFallback}><MyWorkPlanningsTab /></Suspense></ErrorBoundary>}
+      {activeTab === "time" && <ErrorBoundary fallback={tabError("Meine Zeit")}><Suspense fallback={tabFallback}><MyWorkTimeTrackingTab /></Suspense></ErrorBoundary>}
+      {activeTab === "team" && <ErrorBoundary fallback={tabError("Team")}><Suspense fallback={tabFallback}><MyWorkTeamTab /></Suspense></ErrorBoundary>}
       {activeTab === "feedbackfeed" && (
         <Suspense fallback={tabFallback}>
           {isAbgeordneter ? (

@@ -43,6 +43,7 @@ import {
   ShieldAlert,
   Bell,
   Globe,
+  PanelTop,
 } from "lucide-react";
 
 export interface AdminMenuItem {
@@ -153,6 +154,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "districts", label: "Betreuungswahlkreise", icon: MapPin },
       { id: "mapping", label: "Wahlkreis-Zuordnung", icon: Building2 },
       { id: "geo-import", label: "Geo-Datenimport", icon: Globe },
+      { id: "mywork-overview", label: "Meine Arbeit Übersicht", icon: PanelTop },
     ],
   },
 ];
