@@ -35,6 +35,58 @@ const tabSourceMap: Record<typeof tabs[number], string> = {
   team: "src/components/my-work/MyWorkTeamTab.tsx",
 };
 
+const tabContextMap: Record<typeof tabs[number], string> = {
+  dashboard: "kein Visit-Context (Landing-Tab)",
+  capture: "kein Visit-Context (Quick Notes lokal)",
+  tasks: "mywork_tasks",
+  decisions: "mywork_decisions",
+  jourFixe: "mywork_jourFixe",
+  casefiles: "mywork_casefiles",
+  plannings: "mywork_plannings",
+  time: "kein Visit-Context",
+  feedbackfeed: "kein Visit-Context",
+  team: "kein Visit-Context",
+};
+
+function makeTabInteractionSequence(tab: typeof tabs[number]) {
+  return `sequenceDiagram
+  actor User
+  participant TabBar as MyWork Tab-Leiste
+  participant MyWorkView as MyWorkView
+  participant Router as URL/SearchParams
+  participant Suspense as Suspense Boundary
+  participant TabComponent as ${tab} Tab-Komponente
+  participant Supabase as Supabase Client
+
+  User->>TabBar: Klick auf ${tab}
+  TabBar->>MyWorkView: setActiveTab("${tab}")
+  MyWorkView->>Router: setSearchParams({ tab: "${tab}" })
+  MyWorkView->>MyWorkView: markTabAsVisited("${tabContextMap[tab]}")
+  MyWorkView->>Suspense: render activeTab
+  Suspense->>TabComponent: lazy import()
+  TabComponent->>Supabase: Query/Mutation je Feature
+  Supabase-->>TabComponent: Daten/Status
+  TabComponent-->>User: Inhalt sichtbar/aktualisiert`;
+}
+
+function makeTabHookFlow(tab: typeof tabs[number]) {
+  return `flowchart TD
+  MyWorkView[MyWorkView] --> useMyWorkSettings[useMyWorkSettings]
+  MyWorkView --> useMyWorkNewCounts[useMyWorkNewCounts]
+  useMyWorkNewCounts --> refreshCounts[refreshCounts]
+  MyWorkView --> setActiveTab[setActiveTab(${tab})]
+  setActiveTab --> markVisited[markTabAsVisited]
+  markVisited --> context[${tabContextMap[tab]}]
+  MyWorkView --> realtimeChannel[Supabase Realtime Channel]
+  realtimeChannel --> debouncedUpdate[debouncedUpdate]
+  debouncedUpdate --> loadCounts[loadCounts]
+  debouncedUpdate --> refreshCounts
+  loadCounts --> rpc[get_my_work_counts RPC]
+  rpc --> supabase[(Supabase/Postgres)]
+  MyWorkView --> tabComponent[${tabSourceMap[tab]}]
+  tabComponent --> supabase`;
+}
+
 function makeTabProfile(tab: typeof tabs[number]): SchemaOverviewProfile {
   return {
     id: tab,
@@ -92,6 +144,20 @@ function makeTabProfile(tab: typeof tabs[number]): SchemaOverviewProfile {
         description: `Standardfluss für den Tab ${tab} innerhalb der Gesamtseite.`,
         states: ["Init", "RoleCheck", "TabsFiltered", "CountLoading", "TabsReady", "LazyLoading", "ContentVisible", "RealtimeUpdate", "ErrorState"],
         chart: stateMachineMermaid,
+      },
+      {
+        type: "diagram",
+        subtype: "sequence",
+        title: "4.1) Interaction Flow (Klickpfad)",
+        description: `Sequence-Diagramm für Klicks, URL-Update, Lazy-Import und Datenabruf im Tab ${tab}.`,
+        chart: makeTabInteractionSequence(tab),
+      },
+      {
+        type: "diagram",
+        subtype: "flowchart",
+        title: "4.2) Hook & Realtime Abhängigkeiten",
+        description: `Hook- und Realtime-Abfolge für ${tab}, inklusive refreshCounts/loadCounts.`,
+        chart: makeTabHookFlow(tab),
       },
       {
         type: "table",
@@ -251,6 +317,20 @@ const overviewProfile: SchemaOverviewProfile = {
       description: "Mermaid-Definition für den gesamten Ablauf auf der Seite.",
       states: ["Init", "RoleCheck", "TabsFiltered", "CountLoading", "TabsReady", "LazyLoading", "ContentVisible", "RealtimeUpdate", "ErrorState"],
       chart: stateMachineMermaid,
+    },
+    {
+      type: "diagram",
+      subtype: "sequence",
+      title: "4.1) Interaction Flow (Klickpfad über alle Tabs)",
+      description: "Sequenz für Tab-Klick, URL-Synchronisierung, Lazy Rendering und Datenabruf.",
+      chart: makeTabInteractionSequence("dashboard"),
+    },
+    {
+      type: "diagram",
+      subtype: "flowchart",
+      title: "4.2) Hook & Realtime Abhängigkeiten (gesamt)",
+      description: "Flowchart für hooks, Debounce, Realtime-Events und Count-Neuladen.",
+      chart: makeTabHookFlow("dashboard"),
     },
     {
       type: "list",

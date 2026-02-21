@@ -22,6 +22,14 @@ export interface SchemaStateSection {
   chart: string;
 }
 
+export interface SchemaDiagramSection {
+  type: "diagram";
+  subtype: "sequence" | "flowchart" | "state";
+  title: string;
+  description?: string;
+  chart: string;
+}
+
 export interface SchemaCodeSection {
   type: "code";
   title: string;
@@ -34,7 +42,7 @@ export interface SchemaListSection {
   items: string[];
 }
 
-export type SchemaSection = SchemaTableSection | SchemaStateSection | SchemaCodeSection | SchemaListSection;
+export type SchemaSection = SchemaTableSection | SchemaStateSection | SchemaDiagramSection | SchemaCodeSection | SchemaListSection;
 
 export interface SchemaOverviewProfile {
   id: string;
@@ -122,6 +130,21 @@ export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile
                     <pre className="rounded-md border bg-muted/40 p-4 text-xs overflow-x-auto">{block.content}</pre>
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+          );
+        }
+
+        if (section.type === "diagram") {
+          return (
+            <Card key={section.title}>
+              <CardHeader>
+                <CardTitle>{section.title}</CardTitle>
+                {section.description && <CardDescription>{section.description}</CardDescription>}
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Badge variant="outline">{section.subtype}</Badge>
+                <div className="rounded-md border bg-muted/40 p-4"><MermaidRenderer chart={section.chart} /></div>
               </CardContent>
             </Card>
           );
