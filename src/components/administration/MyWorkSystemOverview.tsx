@@ -1,197 +1,6 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Separator } from "@/components/ui/separator";
-import { MermaidRenderer } from "@/components/administration/MermaidRenderer";
-
-type Row = Record<string, string>;
-
-const uiSignals: Row[] = [
-  {
-    signal: "Tab-Icon",
-    where: "Tab-Leiste › alle Tabs",
-    meaning: "Semantische Orientierung pro Feature",
-    source: "src/components/MyWorkView.tsx (BASE_TABS.icon)",
-  },
-  {
-    signal: "Active-State (Primary + Unterstreichung)",
-    where: "Tab-Leiste",
-    meaning: "Aktiv sichtbarer Tab",
-    source: "src/components/MyWorkView.tsx (activeTab === tab.value)",
-  },
-  {
-    signal: "Badge (destructive)",
-    where: "Bei `badgeDisplayMode = new` + Team immer",
-    meaning: "Neu/Ungelesen",
-    source: "src/components/MyWorkView.tsx (newCounts)",
-  },
-  {
-    signal: "Badge (secondary)",
-    where: "Bei `badgeDisplayMode = total`",
-    meaning: "Gesamt offener Elemente",
-    source: "src/components/MyWorkView.tsx (totalCounts)",
-  },
-  {
-    signal: "Logo-Fallback-Icon",
-    where: "Dashboard-Tab",
-    meaning: "Home-Icon statt Logo bei Ladefehler",
-    source: "src/components/MyWorkView.tsx (isTabLogoError)",
-  },
-  {
-    signal: "Versteckter Tab (role-gated)",
-    where: "Time / Team / weitere Rollenregeln",
-    meaning: "Feature nicht erlaubt",
-    source: "src/components/MyWorkView.tsx (adminOnly/employeeOnly/...)",
-  },
-  {
-    signal: "Loading-Fallback",
-    where: "Tab-Content",
-    meaning: "Lazy-Komponente lädt",
-    source: "src/components/MyWorkView.tsx (tabFallback + Suspense)",
-  },
-];
-
-const decisionRows: Row[] = [
-  {
-    signal: "Tab sichtbar?",
-    rule: "Rolle erfüllt Constraints",
-    yes: "Tab rendern",
-    no: "Tab ausblenden",
-  },
-  {
-    signal: "Badge sichtbar?",
-    rule: "count > 0",
-    yes: "Badge rendern",
-    no: "Kein Badge",
-  },
-  {
-    signal: "Badge Typ",
-    rule: "Team-Tab ODER new-Modus",
-    yes: "destructive",
-    no: "secondary (oder tab.badgeVariant)",
-  },
-  {
-    signal: "Team Count Quelle",
-    rule: "countKey === team",
-    yes: "newCounts.team",
-    no: "newCountsMap/totalCounts",
-  },
-  {
-    signal: "Feedbackfeed Layout",
-    rule: "isAbgeordneter",
-    yes: "2-Spalten",
-    no: "1-Spalte",
-  },
-];
-
-const roleVisibilityRows: Row[] = [
-  {
-    role: "abgeordneter",
-    tabs: "dashboard, capture, tasks, decisions, jourFixe, casefiles, plannings, feedbackfeed, team",
-    notes: "Sieht Team-Tab und 2-Spalten-Feedbackfeed",
-  },
-  {
-    role: "bueroleitung",
-    tabs: "dashboard, capture, tasks, decisions, jourFixe, casefiles, plannings, time, feedbackfeed, team",
-    notes: "Time (employeeOnly) + Team (abgeordneterOrBueroOnly)",
-  },
-  {
-    role: "mitarbeiter",
-    tabs: "dashboard, capture, tasks, decisions, jourFixe, casefiles, plannings, time, feedbackfeed",
-    notes: "Kein Team-Tab",
-  },
-  {
-    role: "praktikant",
-    tabs: "dashboard, capture, tasks, decisions, jourFixe, casefiles, plannings, time, feedbackfeed",
-    notes: "Wie mitarbeiter bzgl. Tab-Sichtbarkeit",
-  },
-];
-
-const realtimeRows: Row[] = [
-  { table: "tasks", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(tasks)" },
-  { table: "task_decisions", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(task_decisions)" },
-  { table: "task_decision_participants", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(task_decision_participants)" },
-  { table: "task_decision_responses", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(task_decision_responses)" },
-  { table: "quick_notes", trigger: "INSERT/UPDATE/DELETE", effect: "setRefreshTrigger(prev+1) (Notes-Liste)", source: "MyWorkView.tsx: channel.on(quick_notes)" },
-  { table: "meetings", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(meetings)" },
-  { table: "case_files", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(case_files)" },
-  { table: "event_plannings", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(event_plannings)" },
-];
-
-const errorRows: Row[] = [
-  {
-    case: "Logo lädt nicht",
-    behavior: "Fallback auf Home-Icon via `isTabLogoError`",
-    visibility: "Sichtbar als Icon-Wechsel",
-    improvement: "Optional Toast + Audit-Event für kaputte Assets",
-  },
-  {
-    case: "Counts-Query fehlschlägt",
-    behavior: "Error wird aktuell primär geloggt, UI bleibt mit letztem/0-Wert",
-    visibility: "Nur indirekt über stagnierende Badges",
-    improvement: "Expliziter Error-Banner + Retry-Button",
-  },
-  {
-    case: "Realtime-Verbindung unterbrochen",
-    behavior: "Keine explizite Statusanzeige im MyWork-Header",
-    visibility: "Updates kommen verspätet/erst nach manueller Aktion",
-    improvement: "Connection-Badge (online/degraded/offline)",
-  },
-  {
-    case: "Lazy-Import Tab-Komponente fehlschlägt",
-    behavior: "Globaler ErrorBoundary-Kontext, kein tab-spezifischer Fehlerzustand",
-    visibility: "Hard failure je nach ErrorBoundary-Platzierung",
-    improvement: "Tab-lokaler Fallback mit Fehlerkarte",
-  },
-];
-
-const loadingRows: Row[] = [
-  {
-    area: "Tab-Inhalte (lazy)",
-    state: "Suspense fallback: „Bereich wird geladen…“",
-    gap: "Kein Skeleton je Tab, gleiche Darstellung für alle",
-  },
-  {
-    area: "Counts laden",
-    state: "Kein expliziter Loader in Tab-Leiste",
-    gap: "Unklar, ob 0 = wirklich 0 oder noch loading",
-  },
-  {
-    area: "Rollenprüfung",
-    state: "Asynchron beim Mount",
-    gap: "Keine sichtbare Kennzeichnung während RoleCheck",
-  },
-];
-
-const performanceRows: Row[] = [
-  {
-    topic: "Race-Condition-Schutz",
-    current: "`loadCountsRequestRef` verwirft veraltete Requests",
-    risk: "Viele Realtime-Events können trotzdem Burst-Loads auslösen",
-    improvement: "Debounce/Throttle für refreshCounts + loadCounts",
-  },
-  {
-    topic: "Subscription Cleanup",
-    current: "Realtime Subscriptions werden in Effect-Cleanup beendet",
-    risk: "Bei Erweiterungen drohen Leaks, falls Cleanup vergessen wird",
-    improvement: "Channel-Factory + zentraler Cleanup-Helper",
-  },
-  {
-    topic: "Query-Footprint",
-    current: "Mehrere Count-Queries parallel + Team-Zusatzqueries",
-    risk: "Hohe Last in großen Tenants",
-    improvement: "Materialisierte Count-Views / serverseitige Aggregation",
-  },
-];
-
-const codemapRows: Row[] = [
-  { concern: "Tab-Konfiguration", location: "src/components/MyWorkView.tsx › BASE_TABS" },
-  { concern: "Rollen-Check", location: "src/components/MyWorkView.tsx › checkPermissions()" },
-  { concern: "Count-Berechnung", location: "src/components/MyWorkView.tsx › loadCounts()" },
-  { concern: "Badge-Mode new/total", location: "src/components/MyWorkView.tsx › getDisplayCount()" },
-  { concern: "Realtime-Trigger", location: "src/components/MyWorkView.tsx › useEffect realtime channel setup" },
-  { concern: "Superadmin Einstieg", location: "src/components/administration/AdminSidebar.tsx + src/pages/Administration.tsx" },
-];
+import { useMemo, useState } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SchemaOverviewPage, type SchemaOverviewProfile } from "@/components/administration/system-overview/SchemaOverviewPage";
 
 const stateMachineMermaid = `stateDiagram-v2
   [*] --> Init
@@ -209,300 +18,273 @@ const stateMachineMermaid = `stateDiagram-v2
   ContentVisible --> [*]
 `;
 
+const tabs = ["dashboard", "capture", "tasks", "decisions", "jourFixe", "casefiles", "plannings", "time", "feedbackfeed", "team"] as const;
+
+type MyWorkTabId = typeof tabs[number] | "overview";
+
+const tabSourceMap: Record<typeof tabs[number], string> = {
+  dashboard: "src/components/MyWorkView.tsx + src/components/dashboard/DashboardGreetingSection.tsx",
+  capture: "src/components/my-work/MyWorkQuickCapture.tsx + src/components/my-work/MyWorkNotesList.tsx",
+  tasks: "src/components/my-work/MyWorkTasksTab.tsx",
+  decisions: "src/components/my-work/MyWorkDecisionsTab.tsx",
+  jourFixe: "src/components/my-work/MyWorkJourFixeTab.tsx",
+  casefiles: "src/components/my-work/MyWorkCaseFilesTab.tsx",
+  plannings: "src/components/my-work/MyWorkPlanningsTab.tsx",
+  time: "src/components/my-work/MyWorkTimeTrackingTab.tsx",
+  feedbackfeed: "src/components/my-work/MyWorkFeedbackFeedTab.tsx",
+  team: "src/components/my-work/MyWorkTeamTab.tsx",
+};
+
+function makeTabProfile(tab: typeof tabs[number]): SchemaOverviewProfile {
+  return {
+    id: tab,
+    title: `Systemübersicht Tab: „${tab}"`,
+    description: "Gleiche Analyse-Struktur wie bei der Gesamtseite, aber fokussiert auf einen einzelnen Bereich inklusive Inhalt.",
+    sections: [
+      {
+        type: "table",
+        title: "1) UI-Signale (Icons / Badges / Banner / States)",
+        columns: [
+          { key: "signal", label: "Signal" },
+          { key: "where", label: "Ort" },
+          { key: "meaning", label: "Bedeutung" },
+          { key: "source", label: "Code-Quelle" },
+        ],
+        rows: [
+          { signal: "Tab Trigger", where: "MyWork Tab-Leiste", meaning: `Navigiert auf ${tab}`, source: "src/components/MyWorkView.tsx (BASE_TABS + setActiveTab)" },
+          { signal: "Tab-Inhalt", where: `Lazy Content für ${tab}`, meaning: "Fachliche Arbeitsfläche", source: tabSourceMap[tab] },
+          { signal: "Badge/Count", where: "Tab Trigger", meaning: "Neu/Gesamt je Setting und Rolle", source: "src/components/MyWorkView.tsx (getDisplayCount)" },
+        ],
+      },
+      {
+        type: "table",
+        title: "2) Entscheidungstabellen",
+        description: "Sichtbarkeit und inhaltliches Rendering folgen denselben Regeln wie beim Haupt-Überblick.",
+        columns: [
+          { key: "signal", label: "Signal" },
+          { key: "rule", label: "Regel/Bedingung" },
+          { key: "yes", label: "Wenn JA" },
+          { key: "no", label: "Wenn NEIN" },
+        ],
+        rows: [
+          { signal: "Tab sichtbar?", rule: "Rollenregel erfüllt", yes: `${tab} im Menü sichtbar`, no: "Tab ausgeblendet" },
+          { signal: "Content geladen?", rule: "Lazy Import erfolgreich", yes: "Fachkomponente wird angezeigt", no: "Tab Error-State / ErrorBoundary" },
+          { signal: "Badge sichtbar?", rule: "Count > 0", yes: "Badge wird gerendert", no: "Kein Badge" },
+        ],
+      },
+      {
+        type: "table",
+        title: "3) Rollenmatrix (Sichtbarkeit je Rolle)",
+        columns: [
+          { key: "role", label: "Rolle" },
+          { key: "tabs", label: "Sichtbarkeit" },
+          { key: "notes", label: "Hinweise" },
+        ],
+        rows: [
+          { role: "abgeordneter", tabs: "sichtbar außer time", notes: "team sichtbar" },
+          { role: "bueroleitung", tabs: "alle inkl. team + time", notes: "breitester Zugriff" },
+          { role: "mitarbeiter/praktikant", tabs: "ohne team", notes: "time sichtbar" },
+        ],
+      },
+      {
+        type: "state",
+        title: "4) State Machine",
+        description: `Standardfluss für den Tab ${tab} innerhalb der Gesamtseite.`,
+        states: ["Init", "RoleCheck", "TabsFiltered", "CountLoading", "TabsReady", "LazyLoading", "ContentVisible", "RealtimeUpdate", "ErrorState"],
+        chart: stateMachineMermaid,
+      },
+      {
+        type: "table",
+        title: "5) Fehlerverhalten & Edge Cases",
+        columns: [
+          { key: "case", label: "Fehlerfall" },
+          { key: "behavior", label: "Aktuelles Verhalten" },
+          { key: "visibility", label: "Wie sichtbar?" },
+          { key: "improvement", label: "Empfohlene Verbesserung" },
+        ],
+        rows: [
+          { case: "Datenquery fehlschlägt", behavior: "Fehler wird geloggt", visibility: "indirekt über stagnierende Inhalte", improvement: "Tab-lokaler Retry + Banner" },
+          { case: "Lazy-Import schlägt fehl", behavior: "ErrorBoundary übernimmt", visibility: "harter Content-Fehler", improvement: "gezielte Tab-Fehlerkarte" },
+        ],
+      },
+      {
+        type: "table",
+        title: "6) Loading-States",
+        columns: [
+          { key: "area", label: "Bereich" },
+          { key: "state", label: "Aktueller Zustand" },
+          { key: "gap", label: "Lücke / Risiko" },
+        ],
+        rows: [
+          { area: `${tab} Inhalt`, state: "Suspense fallback aktiv", gap: "kein domänenspezifischer Skeleton" },
+          { area: "Counts", state: "global über MyWork geladen", gap: "0 vs. loading nicht klar unterscheidbar" },
+        ],
+      },
+      {
+        type: "table",
+        title: "7) Realtime-Refresh-Mapping",
+        columns: [
+          { key: "table", label: "Tabelle" },
+          { key: "trigger", label: "Trigger" },
+          { key: "effect", label: "UI-Effekt" },
+          { key: "source", label: "Quelle" },
+        ],
+        rows: [
+          { table: "my-work relevante Entitäten", trigger: "INSERT/UPDATE/DELETE", effect: "refreshCounts + loadCounts", source: "src/components/MyWorkView.tsx (realtime channel)" },
+          { table: "tab-spezifische Entitäten", trigger: "abhängig von Tab", effect: `Inhalt ${tab} reagiert via eigener Hooks`, source: tabSourceMap[tab] },
+        ],
+      },
+      {
+        type: "table",
+        title: "8) Performance-Hotspots",
+        columns: [
+          { key: "topic", label: "Thema" },
+          { key: "current", label: "Ist-Zustand" },
+          { key: "risk", label: "Risiko" },
+          { key: "improvement", label: "Verbesserung" },
+        ],
+        rows: [
+          { topic: "Count-Neuberechnung", current: "global debounce", risk: "Burst bei vielen Events", improvement: "tab- oder entity-basiertes throttling" },
+          { topic: "Tab Content", current: "lazy geladen", risk: "kalter Start pro Tab", improvement: "Prefetch häufig genutzter Tabs" },
+        ],
+      },
+      {
+        type: "code",
+        title: "9) C4 Container + Event-Storming-Light",
+        blocks: [
+          {
+            heading: "C4 Container (Text)",
+            content: `Person (Nutzer)
+  -> Web App (React: MyWorkView)
+     -> Tab ${tab} (${tabSourceMap[tab]})
+     -> Supabase Client
+        -> Postgres + Realtime`,
+          },
+          {
+            heading: "Event-Storming-Light",
+            content: `Command: Öffne Tab "${tab}"
+  -> Event: Rolle geprüft
+  -> Event: Tab sichtbar/unsichtbar
+  -> Event: Inhalt lazy geladen
+  -> Event: Realtime Update
+  -> Policy: Badge nur bei count > 0`,
+          },
+        ],
+      },
+      {
+        type: "table",
+        title: "10) Code-Map (wo debugge ich was?)",
+        columns: [
+          { key: "concern", label: "Concern" },
+          { key: "location", label: "Datei / Einstiegspunkt" },
+        ],
+        rows: [
+          { concern: "Tab-Konfiguration", location: "src/components/MyWorkView.tsx › BASE_TABS" },
+          { concern: `${tab} Inhalt`, location: tabSourceMap[tab] },
+          { concern: "Rollen-Logik", location: "src/components/my-work/tabVisibility.ts" },
+        ],
+      },
+      {
+        type: "list",
+        title: "11) Nächste sinnvolle Ausbaustufen",
+        items: [
+          `Tab-spezifische Health- und Fehlerindikatoren für ${tab}`,
+          "Gemeinsame Data-Layer Contracts für wiederverwendbare Instrumentierung",
+          "Gezielte Smoke-Tests für Sichtbarkeit + Kernaktionen je Rolle",
+        ],
+      },
+    ],
+  };
+}
+
+const overviewProfile: SchemaOverviewProfile = {
+  id: "overview",
+  title: "Systemübersicht: „Meine Arbeit“ (Deep-Dive)",
+  description: "Für Superadmins & Entwickler-Onboarding: positive Pfade, Fehlerverhalten, Rollenmatrix, Realtime-Mapping und Performance-Hotspots.",
+  sections: [
+    {
+      type: "table",
+      title: "1) UI-Signale (Icons / Badges / Banner / States)",
+      columns: [
+        { key: "signal", label: "Signal" },
+        { key: "where", label: "Ort" },
+        { key: "meaning", label: "Bedeutung" },
+        { key: "source", label: "Code-Quelle" },
+      ],
+      rows: [
+        { signal: "Tab-Icon", where: "Tab-Leiste", meaning: "Orientierung pro Feature", source: "src/components/MyWorkView.tsx (BASE_TABS.icon)" },
+        { signal: "Active-State", where: "Tab-Leiste", meaning: "Aktiv sichtbarer Tab", source: "src/components/MyWorkView.tsx (activeTab)" },
+        { signal: "Badge", where: "Tab-Leiste", meaning: "Neu/Gesamt je Modus", source: "src/components/MyWorkView.tsx (getDisplayCount)" },
+      ],
+    },
+    {
+      type: "table",
+      title: "2) Entscheidungstabellen",
+      columns: [
+        { key: "signal", label: "Signal" },
+        { key: "rule", label: "Regel/Bedingung" },
+        { key: "yes", label: "Wenn JA" },
+        { key: "no", label: "Wenn NEIN" },
+      ],
+      rows: [
+        { signal: "Tab sichtbar?", rule: "Rolle erfüllt Constraints", yes: "Tab rendern", no: "Tab ausblenden" },
+        { signal: "Badge sichtbar?", rule: "count > 0", yes: "Badge rendern", no: "Kein Badge" },
+      ],
+    },
+    {
+      type: "table",
+      title: "3) Rollenmatrix (Sichtbarkeit je Rolle)",
+      columns: [
+        { key: "role", label: "Rolle" },
+        { key: "tabs", label: "Sichtbare Tabs" },
+        { key: "notes", label: "Hinweise" },
+      ],
+      rows: [
+        { role: "abgeordneter", tabs: "dashboard, capture, tasks, decisions, jourFixe, casefiles, plannings, feedbackfeed, team", notes: "Team sichtbar" },
+        { role: "bueroleitung", tabs: "alle inkl. team und time", notes: "breitester Zugriff" },
+        { role: "mitarbeiter/praktikant", tabs: "ohne team", notes: "time sichtbar" },
+      ],
+    },
+    {
+      type: "state",
+      title: "4) State Machine",
+      description: "Mermaid-Definition für den gesamten Ablauf auf der Seite.",
+      states: ["Init", "RoleCheck", "TabsFiltered", "CountLoading", "TabsReady", "LazyLoading", "ContentVisible", "RealtimeUpdate", "ErrorState"],
+      chart: stateMachineMermaid,
+    },
+    {
+      type: "list",
+      title: "11) Nächste sinnvolle Ausbaustufen",
+      items: [
+        "Live-Health-Anzeige für Realtime-Status in der MyWork-Headerleiste",
+        "Vereinheitlichte Error-Komponente für tab-spezifische Lade-/Datenfehler",
+        "Serverseitige Count-Aggregation für große Tenants",
+      ],
+    },
+  ],
+};
+
 export function MyWorkSystemOverview() {
+  const [activeProfile, setActiveProfile] = useState<MyWorkTabId>("overview");
+
+  const profiles = useMemo<Record<MyWorkTabId, SchemaOverviewProfile>>(() => {
+    const entries = tabs.map((tab) => [tab, makeTabProfile(tab)] as const);
+    return Object.fromEntries([["overview", overviewProfile], ...entries]) as Record<MyWorkTabId, SchemaOverviewProfile>;
+  }, []);
+
+  const active = profiles[activeProfile];
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Systemübersicht: „Meine Arbeit“ (Deep-Dive)</CardTitle>
-          <CardDescription>
-            Für Superadmins & Entwickler-Onboarding: positive Pfade, Fehlerverhalten, Rollenmatrix, Realtime-Mapping und Performance-Hotspots.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>1) UI-Signale (Icons / Badges / Banner / States)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Signal</TableHead>
-                <TableHead>Ort</TableHead>
-                <TableHead>Bedeutung</TableHead>
-                <TableHead>Code-Quelle</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {uiSignals.map((row) => (
-                <TableRow key={row.signal}>
-                  <TableCell className="font-medium">{row.signal}</TableCell>
-                  <TableCell>{row.where}</TableCell>
-                  <TableCell>{row.meaning}</TableCell>
-                  <TableCell><code className="text-xs">{row.source}</code></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>2) Entscheidungstabellen</CardTitle>
-          <CardDescription>Pro Signal die relevante Bedingungslogik und Ergebnisrichtung.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Signal</TableHead>
-                <TableHead>Regel/Bedingung</TableHead>
-                <TableHead>Wenn JA</TableHead>
-                <TableHead>Wenn NEIN</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {decisionRows.map((row) => (
-                <TableRow key={row.signal}>
-                  <TableCell className="font-medium">{row.signal}</TableCell>
-                  <TableCell>{row.rule}</TableCell>
-                  <TableCell>{row.yes}</TableCell>
-                  <TableCell>{row.no}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>3) Rollenmatrix (Sichtbarkeit je Rolle)</CardTitle>
-          <CardDescription>
-            Explizite Matrix statt impliziter Flags, damit Onboarding und Debugging schneller gehen.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Rolle</TableHead>
-                <TableHead>Sichtbare Tabs</TableHead>
-                <TableHead>Hinweise</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {roleVisibilityRows.map((row) => (
-                <TableRow key={row.role}>
-                  <TableCell className="font-medium">{row.role}</TableCell>
-                  <TableCell className="max-w-[520px]">{row.tabs}</TableCell>
-                  <TableCell>{row.notes}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>4) State Machine</CardTitle>
-          <CardDescription>Mermaid-Definition (copy/paste-fähig für Doku/PRs) plus Zustandsbadges.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {["Init", "RoleCheck", "TabsFiltered", "CountLoading", "TabsReady", "LazyLoading", "ContentVisible", "RealtimeUpdate", "ErrorState"].map((state) => (
-              <Badge key={state} variant="secondary">{state}</Badge>
-            ))}
-          </div>
-          <div className="rounded-md border bg-muted/40 p-4"><MermaidRenderer chart={stateMachineMermaid} /></div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>5) Fehlerverhalten & Edge Cases</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fehlerfall</TableHead>
-                <TableHead>Aktuelles Verhalten</TableHead>
-                <TableHead>Wie sichtbar?</TableHead>
-                <TableHead>Empfohlene Verbesserung</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {errorRows.map((row) => (
-                <TableRow key={row.case}>
-                  <TableCell className="font-medium">{row.case}</TableCell>
-                  <TableCell>{row.behavior}</TableCell>
-                  <TableCell>{row.visibility}</TableCell>
-                  <TableCell>{row.improvement}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>6) Loading-States</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Bereich</TableHead>
-                <TableHead>Aktueller Zustand</TableHead>
-                <TableHead>Lücke / Risiko</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loadingRows.map((row) => (
-                <TableRow key={row.area}>
-                  <TableCell className="font-medium">{row.area}</TableCell>
-                  <TableCell>{row.state}</TableCell>
-                  <TableCell>{row.gap}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>7) Realtime-Refresh-Mapping</CardTitle>
-          <CardDescription>
-            Welche Datenänderung triggert welche Badge-/Count-Aktualisierung.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tabelle</TableHead>
-                <TableHead>Trigger</TableHead>
-                <TableHead>UI-Effekt</TableHead>
-                <TableHead>Quelle</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {realtimeRows.map((row) => (
-                <TableRow key={row.table}>
-                  <TableCell className="font-medium">{row.table}</TableCell>
-                  <TableCell>{row.trigger}</TableCell>
-                  <TableCell>{row.effect}</TableCell>
-                  <TableCell>{row.source}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-
-      <Card>
-        <CardHeader>
-          <CardTitle>8) Performance-Hotspots</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Thema</TableHead>
-                <TableHead>Ist-Zustand</TableHead>
-                <TableHead>Risiko</TableHead>
-                <TableHead>Verbesserung</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {performanceRows.map((row) => (
-                <TableRow key={row.topic}>
-                  <TableCell className="font-medium">{row.topic}</TableCell>
-                  <TableCell>{row.current}</TableCell>
-                  <TableCell>{row.risk}</TableCell>
-                  <TableCell>{row.improvement}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>9) C4 Container + Event-Storming-Light</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h4 className="font-medium mb-2">C4 Container (Text)</h4>
-            <pre className="rounded-md border bg-muted/40 p-4 text-xs overflow-x-auto">{`Person (Superadmin/Teammitglied)
-  -> Web App (React: MyWorkView)
-     -> Hooks/State Layer (Settings, NewCounts, Roles)
-     -> Supabase JS Client
-        -> Postgres (Tasks, Decisions, Meetings, CaseFiles...)
-        -> Realtime Channels (DB Events)
-        -> Edge Functions (Benachrichtigungen/Workflows)`}</pre>
-          </div>
-          <Separator />
-          <div>
-            <h4 className="font-medium mb-2">Event-Storming-Light</h4>
-            <pre className="rounded-md border bg-muted/40 p-4 text-xs overflow-x-auto">{`Command: Öffne "Meine Arbeit"
-  -> Event: Rolle geladen
-  -> Event: Tabs gefiltert
-  -> Event: Counts geladen
-  -> Event: Tab gewechselt
-  -> Event: Tab als besucht markiert
-  -> Event: Lazy Content geladen
-  -> Event: Realtime-Änderung eingegangen
-  -> Event: Counts neu berechnet
-  -> Policy: Badge nur bei count > 0`}</pre>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>10) Code-Map (wo debugge ich was?)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Concern</TableHead>
-                <TableHead>Datei / Einstiegspunkt</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {codemapRows.map((row) => (
-                <TableRow key={row.concern}>
-                  <TableCell className="font-medium">{row.concern}</TableCell>
-                  <TableCell><code className="text-xs">{row.location}</code></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>11) Nächste sinnvolle Ausbaustufen</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-1">
-          <p>• Live-Health-Anzeige für Realtime-Status in der MyWork-Headerleiste.</p>
-          <p>• Vereinheitlichte Error-Komponente für tab-spezifische Lade-/Datenfehler.</p>
-          <p>• Serverseitige Count-Aggregation (Performance bei großen Tenants).</p>
-          <p>• E2E Smoke-Test nur für Tab-Sichtbarkeit nach Rolle (Regression-Schutz).</p>
-        </CardContent>
-      </Card>
+      <Tabs value={activeProfile} onValueChange={(value) => setActiveProfile(value as MyWorkTabId)}>
+        <TabsList className="flex w-full flex-wrap h-auto justify-start">
+          <TabsTrigger value="overview">Übersicht</TabsTrigger>
+          {tabs.map((tab) => (
+            <TabsTrigger key={tab} value={tab}>{tab}</TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+      <SchemaOverviewPage profile={active} />
     </div>
   );
 }
