@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SchemaOverviewPage, type SchemaOverviewProfile } from "@/components/administration/system-overview/SchemaOverviewPage";
+import { CAPTURE_DIAGRAM_HANDLERS, CAPTURE_DIAGRAM_LABELS } from "@/components/administration/system-overview/myWorkDiagramConstants";
 
 const stateMachineMermaid = `stateDiagram-v2
   [*] --> Init
@@ -97,27 +98,27 @@ function makeCaptureConversionSequence() {
 
   U->>I: Klick CheckSquare
   alt noch kein task_id
-    I->>Q: createTaskFromNote(note)
+    I->>Q: ${CAPTURE_DIAGRAM_LABELS.createTaskFromNote}
     Q->>DB: insert tasks
     DB-->>Q: task.id
     Q->>DB: update quick_notes.task_id
-    Q->>Q: loadNotes()
+    Q->>Q: ${CAPTURE_DIAGRAM_LABELS.loadNotes}
     Q-->>UI: Task Icon aktiv + Tooltip Aufgabe entfernen
   else task_id vorhanden
-    I->>Q: setConfirmDeleteTaskNote(note)
+    I->>Q: ${CAPTURE_DIAGRAM_HANDLERS.setConfirmDeleteTaskNote}(note)
     U->>Q: bestaetigt Entfernen
     Q->>DB: delete tasks by id
     Q->>DB: update quick_notes.task_id null
-    Q->>Q: loadNotes()
+    Q->>Q: ${CAPTURE_DIAGRAM_LABELS.loadNotes}
     Q-->>UI: Task Icon neutral + Tooltip Als Aufgabe
   end
 
   U->>I: Klick Vote
-  I->>Q: NoteDecisionCreator oder removeDecisionFromNote
+  I->>Q: NoteDecisionCreator oder ${CAPTURE_DIAGRAM_LABELS.removeDecisionFromNote}
   Q-->>UI: Decision Icon toggelt (aktiv oder neutral)
 
   U->>I: Klick Clock
-  I->>Q: setNoteForDatePicker + handleSetFollowUp
+  I->>Q: ${CAPTURE_DIAGRAM_HANDLERS.setNoteForDatePicker} + ${CAPTURE_DIAGRAM_LABELS.handleSetFollowUp}
   Q->>DB: update quick_notes.follow_up_date
   Q-->>UI: Wiedervorlage Badge/Icon Status aktualisiert`;
 }
@@ -133,12 +134,12 @@ function makeCaptureLinkLifecycleFlow() {
   F --> G["task_id zeigt auf fehlenden Datensatz"]
   G --> H["Details zeigen Aufgabe wurde geloescht"]
   H --> I["Nutzer klickt erneut auf CheckSquare"]
-  I --> J["removeTaskFromNote()"]
+  I --> J["${CAPTURE_DIAGRAM_LABELS.removeTaskFromNote}"]
   J --> K["quick_notes.task_id null + loadNotes()"]
   K --> L["Icon neutral + Tooltip Als Aufgabe"]
 
   A --> M["Vote Klick"]
-  M --> N["Decision Creator oder removeDecisionFromNote()"]
+  M --> N["Decision Creator oder ${CAPTURE_DIAGRAM_LABELS.removeDecisionFromNote}"]
   N --> O["decision_id gesetzt oder geloescht"]
 
   A --> P["Clock Klick"]

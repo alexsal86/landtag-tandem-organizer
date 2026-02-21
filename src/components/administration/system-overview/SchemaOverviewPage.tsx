@@ -51,7 +51,17 @@ export interface SchemaOverviewProfile {
   sections: SchemaSection[];
 }
 
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9äöüß]+/gi, "-")
+    .replace(/^-+|-+$/g, "");
+
 export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile }) {
+  const sectionAnchors = profile.sections.map((section, index) => ({
+    title: section.title,
+    id: `${slugify(section.title)}-${index + 1}`,
+  }));
   return (
     <div className="space-y-6">
       <Card>
@@ -61,10 +71,29 @@ export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile
         </CardHeader>
       </Card>
 
-      {profile.sections.map((section) => {
+      <Card>
+        <CardHeader>
+          <CardTitle>Schnellnavigation</CardTitle>
+          <CardDescription>Direkt zu Abschnitten springen.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {sectionAnchors.map((anchor) => (
+            <a
+              key={anchor.id}
+              href={`#${anchor.id}`}
+              className="text-xs rounded-md border px-2 py-1 hover:bg-muted"
+            >
+              {anchor.title}
+            </a>
+          ))}
+        </CardContent>
+      </Card>
+
+      {profile.sections.map((section, sectionIndex) => {
+        const sectionId = sectionAnchors[sectionIndex]?.id;
         if (section.type === "table") {
           return (
-            <Card key={section.title}>
+            <Card key={section.title} id={sectionId}>
               <CardHeader>
                 <CardTitle>{section.title}</CardTitle>
                 {section.description && <CardDescription>{section.description}</CardDescription>}
@@ -99,7 +128,7 @@ export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile
 
         if (section.type === "state") {
           return (
-            <Card key={section.title}>
+            <Card key={section.title} id={sectionId}>
               <CardHeader>
                 <CardTitle>{section.title}</CardTitle>
                 {section.description && <CardDescription>{section.description}</CardDescription>}
@@ -118,7 +147,7 @@ export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile
 
         if (section.type === "code") {
           return (
-            <Card key={section.title}>
+            <Card key={section.title} id={sectionId}>
               <CardHeader>
                 <CardTitle>{section.title}</CardTitle>
               </CardHeader>
@@ -137,7 +166,7 @@ export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile
 
         if (section.type === "diagram") {
           return (
-            <Card key={section.title}>
+            <Card key={section.title} id={sectionId}>
               <CardHeader>
                 <CardTitle>{section.title}</CardTitle>
                 {section.description && <CardDescription>{section.description}</CardDescription>}
@@ -151,7 +180,7 @@ export function SchemaOverviewPage({ profile }: { profile: SchemaOverviewProfile
         }
 
         return (
-          <Card key={section.title}>
+          <Card key={section.title} id={sectionId}>
             <CardHeader>
               <CardTitle>{section.title}</CardTitle>
             </CardHeader>
