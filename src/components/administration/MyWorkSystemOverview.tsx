@@ -87,6 +87,65 @@ function makeTabHookFlow(tab: typeof tabs[number]) {
   M --> L`;
 }
 
+function makeCaptureConversionSequence() {
+  return `sequenceDiagram
+  actor U as User
+  participant I as Icon Leiste auf Notiz
+  participant Q as QuickNotesList
+  participant DB as Supabase
+  participant UI as Notiz Karte
+
+  U->>I: Klick CheckSquare
+  alt noch kein task_id
+    I->>Q: createTaskFromNote(note)
+    Q->>DB: insert tasks
+    DB-->>Q: task.id
+    Q->>DB: update quick_notes.task_id
+    Q->>Q: loadNotes()
+    Q-->>UI: Task Icon aktiv + Tooltip Aufgabe entfernen
+  else task_id vorhanden
+    I->>Q: setConfirmDeleteTaskNote(note)
+    U->>Q: bestaetigt Entfernen
+    Q->>DB: delete tasks by id
+    Q->>DB: update quick_notes.task_id null
+    Q->>Q: loadNotes()
+    Q-->>UI: Task Icon neutral + Tooltip Als Aufgabe
+  end
+
+  U->>I: Klick Vote
+  I->>Q: NoteDecisionCreator oder removeDecisionFromNote
+  Q-->>UI: Decision Icon toggelt (aktiv oder neutral)
+
+  U->>I: Klick Clock
+  I->>Q: setNoteForDatePicker + handleSetFollowUp
+  Q->>DB: update quick_notes.follow_up_date
+  Q-->>UI: Wiedervorlage Badge/Icon Status aktualisiert`;
+}
+
+function makeCaptureLinkLifecycleFlow() {
+  return `flowchart TD
+  A["Notiz ohne Links"] --> B["CheckSquare Klick"]
+  B --> C["createTaskFromNote()"]
+  C --> D["tasks.insert + quick_notes.task_id setzen"]
+  D --> E["Icon blau + Tooltip Aufgabe entfernen"]
+
+  E --> F["Aufgabe im Tasks Modul geloescht"]
+  F --> G["task_id zeigt auf fehlenden Datensatz"]
+  G --> H["Details zeigen Aufgabe wurde geloescht"]
+  H --> I["Nutzer klickt erneut auf CheckSquare"]
+  I --> J["removeTaskFromNote()"]
+  J --> K["quick_notes.task_id null + loadNotes()"]
+  K --> L["Icon neutral + Tooltip Als Aufgabe"]
+
+  A --> M["Vote Klick"]
+  M --> N["Decision Creator oder removeDecisionFromNote()"]
+  N --> O["decision_id gesetzt oder geloescht"]
+
+  A --> P["Clock Klick"]
+  P --> Q["follow_up_date setzen oder entfernen"]
+  Q --> R["Badge Wiedervorlage aktiv oder inaktiv"]`;
+}
+
 function makeTabProfile(tab: typeof tabs[number]): SchemaOverviewProfile {
   return {
     id: tab,
@@ -180,6 +239,20 @@ function makeTabProfile(tab: typeof tabs[number]): SchemaOverviewProfile {
               { icon: "Archive", where: "MyWorkNotesList Header", trigger: "setArchiveOpen(true)", effect: "Archiv/Papierkorb Dialog öffnet", source: "src/components/my-work/MyWorkNotesList.tsx" },
               { icon: "Globe", where: "MyWorkNotesList Header", trigger: "setGlobalShareOpen(true)", effect: "Global-Share Dialog öffnet", source: "src/components/my-work/MyWorkNotesList.tsx" },
             ],
+          },
+          {
+            type: "diagram" as const,
+            subtype: "sequence" as const,
+            title: "4.4) Quick Notes: Umwandlung Aufgabe/Entscheidung/Wiedervorlage",
+            description: "Ablauf der Icon-Klicks inkl. create/remove und sichtbarer UI-Änderung.",
+            chart: makeCaptureConversionSequence(),
+          },
+          {
+            type: "diagram" as const,
+            subtype: "flowchart" as const,
+            title: "4.5) Link-Lifecycle inkl. Löschfall",
+            description: "Was passiert nach Notiz→Aufgabe und wie sich Icon/Link nach Task-Löschung verhält.",
+            chart: makeCaptureLinkLifecycleFlow(),
           }]
         : []),
       {
