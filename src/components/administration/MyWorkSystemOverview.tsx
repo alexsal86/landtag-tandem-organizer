@@ -108,14 +108,14 @@ const roleVisibilityRows: Row[] = [
 ];
 
 const realtimeRows: Row[] = [
-  { table: "tasks", trigger: "INSERT/UPDATE/DELETE", effect: "refreshCounts() + loadCounts()", source: "MyWorkView realtime channels" },
-  { table: "task_decisions", trigger: "INSERT/UPDATE/DELETE", effect: "refreshCounts() + loadCounts()", source: "MyWorkView realtime channels" },
-  { table: "task_decision_participants", trigger: "INSERT/UPDATE/DELETE", effect: "refreshCounts() + loadCounts()", source: "MyWorkView realtime channels" },
-  { table: "task_decision_responses", trigger: "INSERT/UPDATE/DELETE", effect: "refreshCounts() + loadCounts()", source: "MyWorkView realtime channels" },
-  { table: "quick_notes", trigger: "INSERT/UPDATE/DELETE", effect: "refreshCounts() + loadCounts()", source: "MyWorkView realtime channels" },
-  { table: "meetings", trigger: "INSERT/UPDATE/DELETE", effect: "refreshCounts() + loadCounts()", source: "MyWorkView realtime channels" },
-  { table: "case_files", trigger: "INSERT/UPDATE/DELETE", effect: "refreshCounts() + loadCounts()", source: "MyWorkView realtime channels" },
-  { table: "event_plannings", trigger: "INSERT/UPDATE/DELETE", effect: "refreshCounts() + loadCounts()", source: "MyWorkView realtime channels" },
+  { table: "tasks", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(tasks)" },
+  { table: "task_decisions", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(task_decisions)" },
+  { table: "task_decision_participants", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(task_decision_participants)" },
+  { table: "task_decision_responses", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(task_decision_responses)" },
+  { table: "quick_notes", trigger: "INSERT/UPDATE/DELETE", effect: "setRefreshTrigger(prev+1) (Notes-Liste)", source: "MyWorkView.tsx: channel.on(quick_notes)" },
+  { table: "meetings", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(meetings)" },
+  { table: "case_files", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(case_files)" },
+  { table: "event_plannings", trigger: "INSERT/UPDATE/DELETE", effect: "debouncedUpdate() -> refreshCounts() + loadCounts()", source: "MyWorkView.tsx: channel.on(event_plannings)" },
 ];
 
 const errorRows: Row[] = [
@@ -407,9 +407,38 @@ export function MyWorkSystemOverview() {
         </CardContent>
       </Card>
 
+
       <Card>
         <CardHeader>
-          <CardTitle>8) C4 Container + Event-Storming-Light</CardTitle>
+          <CardTitle>8) Performance-Hotspots</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Thema</TableHead>
+                <TableHead>Ist-Zustand</TableHead>
+                <TableHead>Risiko</TableHead>
+                <TableHead>Verbesserung</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {performanceRows.map((row) => (
+                <TableRow key={row.topic}>
+                  <TableCell className="font-medium">{row.topic}</TableCell>
+                  <TableCell>{row.current}</TableCell>
+                  <TableCell>{row.risk}</TableCell>
+                  <TableCell>{row.improvement}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>9) C4 Container + Event-Storming-Light</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -441,7 +470,7 @@ export function MyWorkSystemOverview() {
 
       <Card>
         <CardHeader>
-          <CardTitle>9) Code-Map (wo debugge ich was?)</CardTitle>
+          <CardTitle>10) Code-Map (wo debugge ich was?)</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -465,7 +494,7 @@ export function MyWorkSystemOverview() {
 
       <Card>
         <CardHeader>
-          <CardTitle>10) Nächste sinnvolle Ausbaustufen</CardTitle>
+          <CardTitle>11) Nächste sinnvolle Ausbaustufen</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-1">
           <p>• Live-Health-Anzeige für Realtime-Status in der MyWork-Headerleiste.</p>

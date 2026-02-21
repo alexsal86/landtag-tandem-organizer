@@ -1,35 +1,35 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface MermaidRendererProps {
   chart: string;
 }
 
+type MermaidApi = {
+  initialize: (config: Record<string, unknown>) => void;
+  render: (id: string, text: string) => Promise<{ svg: string }>;
+};
+
 declare global {
   interface Window {
-    mermaid?: {
-      initialize: (config: Record<string, unknown>) => void;
-      run: (options: { nodes: HTMLElement[] }) => Promise<void>;
-    };
+    mermaid?: MermaidApi;
   }
 }
 
 const MERMAID_SCRIPT_ID = "mermaid-cdn-script";
 const MERMAID_SRC = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
 
-const ensureMermaidScript = () => {
+const ensureMermaidScript = async () => {
   const existing = document.getElementById(MERMAID_SCRIPT_ID) as HTMLScriptElement | null;
   if (existing) {
-    return new Promise<void>((resolve, reject) => {
-      if (window.mermaid) {
-        resolve();
-        return;
-      }
+    if (window.mermaid) return;
+    await new Promise<void>((resolve, reject) => {
       existing.addEventListener("load", () => resolve(), { once: true });
       existing.addEventListener("error", () => reject(new Error("Mermaid script failed to load")), { once: true });
     });
+    return;
   }
 
-  return new Promise<void>((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
     script.id = MERMAID_SCRIPT_ID;
     script.src = MERMAID_SRC;
@@ -41,34 +41,33 @@ const ensureMermaidScript = () => {
 };
 
 export function MermaidRenderer({ chart }: MermaidRendererProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [svg, setSvg] = useState<string>("");
   const [error, setError] = useState<string>("");
-  const chartMarkup = useMemo(() => `<div class=\"mermaid\">${chart}</div>`, [chart]);
+  const renderId = useMemo(() => `mywork-mermaid-${Math.random().toString(36).slice(2)}`, [chart]);
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
     setError("");
 
     ensureMermaidScript()
       .then(async () => {
-        if (!window.mermaid || !containerRef.current) return;
-
+        if (!window.mermaid) throw new Error("Mermaid API unavailable");
         window.mermaid.initialize({ startOnLoad: false, securityLevel: "loose", theme: "default" });
-        await window.mermaid.run({ nodes: [containerRef.current] });
+        const result = await window.mermaid.render(renderId, chart);
+        if (active) setSvg(result.svg);
       })
       .catch((e) => {
         console.error("Failed to render mermaid diagram", e);
-        if (mounted) setError("Diagramm konnte nicht gerendert werden.");
+        if (active) setError("Diagramm konnte nicht gerendert werden.");
       });
 
     return () => {
-      mounted = false;
+      active = false;
     };
-  }, [chartMarkup]);
+  }, [chart, renderId]);
 
-  if (error) {
-    return <p className="text-sm text-destructive">{error}</p>;
-  }
+  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (!svg) return <p className="text-sm text-muted-foreground">Diagramm wird geladen…</p>;
 
-  return <div ref={containerRef} className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: chartMarkup }} />;
+  return <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
