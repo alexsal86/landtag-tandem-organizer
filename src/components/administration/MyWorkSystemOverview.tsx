@@ -351,7 +351,8 @@ function makeTabProfile(tab: typeof tabs[number]): SchemaOverviewProfile {
         title: "11) Nächste sinnvolle Ausbaustufen",
         items: [
           `Tab-spezifische Health- und Fehlerindikatoren für ${tab}`,
-          "Gemeinsame Data-Layer Contracts für wiederverwendbare Instrumentierung",
+          "Gemeinsame Data-Layer Contracts (Query-Key, Loader-State, Error-Shape, Telemetry-Metadaten) als einheitliche Schnittstelle zwischen Hooks und UI",
+          "Rollout in 4 Schritten: Contract-Typen definieren, zentrale Hook-Wrapper einführen, Instrumentierung auf Tab-Module migrieren, Smoke-Tests je Rolle ergänzen",
           "Gezielte Smoke-Tests für Sichtbarkeit + Kernaktionen je Rolle",
         ],
       },
