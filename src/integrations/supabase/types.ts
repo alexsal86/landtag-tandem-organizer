@@ -7843,6 +7843,7 @@ export type Database = {
       starred_appointments: {
         Row: {
           appointment_id: string | null
+          assigned_to: string[] | null
           created_at: string | null
           external_event_id: string | null
           id: string
@@ -7852,6 +7853,7 @@ export type Database = {
         }
         Insert: {
           appointment_id?: string | null
+          assigned_to?: string[] | null
           created_at?: string | null
           external_event_id?: string | null
           id?: string
@@ -7861,6 +7863,7 @@ export type Database = {
         }
         Update: {
           appointment_id?: string | null
+          assigned_to?: string[] | null
           created_at?: string | null
           external_event_id?: string | null
           id?: string

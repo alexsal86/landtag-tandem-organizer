@@ -50,6 +50,8 @@ interface SystemAgendaItemProps {
   className?: string;
   isEmbedded?: boolean;
   defaultCollapsed?: boolean;
+  /** Profiles passed through to child components like BirthdayAgendaItem */
+  allProfiles?: ProfileInfo[];
 }
 
 function ProfileBadge({ userId, profiles }: { userId?: string; profiles?: ProfileInfo[] }) {
@@ -84,7 +86,7 @@ export function SystemAgendaItem({
   onDelete,
   className,
   isEmbedded = false,
-  defaultCollapsed = false
+  defaultCollapsed = false,
 }: SystemAgendaItemProps) {
   // Color scheme based on system type
   const getBorderColor = () => {
@@ -180,6 +182,7 @@ export function SystemAgendaItem({
             meetingDate={meetingDate} 
             meetingId={meetingId}
             allowStarring={allowStarring}
+            profiles={profiles}
             className="border-0 shadow-none bg-transparent p-0"
             defaultCollapsed={defaultCollapsed}
           />
@@ -306,6 +309,7 @@ export function SystemAgendaItem({
         onDelete={onDelete}
         className={className}
         isEmbedded={isEmbedded}
+        profiles={profiles}
       />
     );
   }

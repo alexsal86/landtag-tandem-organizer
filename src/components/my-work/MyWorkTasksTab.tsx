@@ -47,6 +47,7 @@ export function MyWorkTasksTab() {
     createdTasks,
     setCreatedTasks,
     subtasks,
+    setSubtasks,
     taskSnoozes,
     setTaskSnoozes,
     taskCommentCounts,

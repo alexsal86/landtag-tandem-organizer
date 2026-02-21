@@ -1328,7 +1328,7 @@ export function MeetingsView() {
       }
 
       // Step 3a: Agenda items that are already linked to a task
-      // -> append meeting result to the existing task description
+      // -> create a child task with the meeting result
       const itemsWithLinkedTaskResult = agendaItemsData?.filter(item =>
         item.task_id && item.result_text?.trim()
       ) || [];
@@ -1337,23 +1337,30 @@ export function MeetingsView() {
         try {
           const { data: existingTask } = await supabase
             .from('tasks')
-            .select('description')
+            .select('id, user_id, assigned_to, tenant_id')
             .eq('id', item.task_id)
             .maybeSingle();
 
           if (existingTask) {
-            const meetingResult = `\n\n--- Ergebnis aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}: ---\n${item.result_text}`;
+            const meetingContext = `Ergebnis aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}`;
             await supabase
               .from('tasks')
-              .update({
-                description: (existingTask.description || '') + meetingResult,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', item.task_id);
-            console.log(`Updated existing task with result for: ${item.title}`);
+              .insert({
+                user_id: user.id,
+                tenant_id: existingTask.tenant_id || currentTenant?.id || '',
+                parent_task_id: existingTask.id,
+                title: item.result_text!.substring(0, 200),
+                description: `**${meetingContext}**\n\n${item.result_text}`,
+                assigned_to: existingTask.assigned_to || existingTask.user_id || user.id,
+                status: 'todo',
+                priority: 'medium',
+                category: 'meeting',
+                due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              });
+            console.log(`Created child task for linked task: ${item.title}`);
           }
         } catch (taskCreateError) {
-          console.error('Error creating task for assigned item (non-fatal):', taskCreateError);
+          console.error('Error creating child task for linked item (non-fatal):', taskCreateError);
         }
       }
 
@@ -1412,15 +1419,15 @@ export function MeetingsView() {
         }
       }
 
-      // Step 3b: Create birthday follow-up tasks for all employees
+      // Step 3b: Create birthday follow-up tasks based on assignment selection
       const birthdayItems = agendaItemsData?.filter(item =>
         item.system_type === 'birthdays' && item.result_text?.trim()
       ) || [];
 
-      if (birthdayItems.length > 0 && profiles.length > 0) {
+      if (birthdayItems.length > 0) {
         for (const birthdayItem of birthdayItems) {
           try {
-            const parsedResults = JSON.parse(birthdayItem.result_text || '{}') as Record<string, { action?: 'card' | 'mail' | 'call' | 'gift' }>;
+            const parsedResults = JSON.parse(birthdayItem.result_text || '{}') as Record<string, { action?: 'card' | 'mail' | 'call' | 'gift'; assigned_to?: string[] }>;
             const selectedContactIds = Object.keys(parsedResults).filter(contactId => parsedResults[contactId]?.action);
 
             if (selectedContactIds.length === 0) continue;
@@ -1445,30 +1452,43 @@ export function MeetingsView() {
               gift: 'Geschenk'
             };
 
-            const tasksToInsert = profiles.flatMap((profile) =>
-              contactsData
-                .map((contact) => {
-                  const action = parsedResults[contact.id]?.action;
-                  if (!action) return null;
+            // Create ONE task per contact, assigned to selected users or all members
+            const tasksToInsert = contactsData
+              .map((contact) => {
+                const result = parsedResults[contact.id];
+                const action = result?.action;
+                if (!action) return null;
 
-                  const birthdayDate = contact.birthday
-                    ? format(new Date(contact.birthday), 'dd.MM.yyyy', { locale: de })
-                    : 'unbekannt';
+                const birthdayDate = contact.birthday
+                  ? format(new Date(contact.birthday), 'dd.MM.yyyy', { locale: de })
+                  : 'unbekannt';
 
-                  return {
-                    user_id: user.id,
-                    title: `Geburtstag: ${actionLabelMap[action]} für ${contact.name}`,
-                    description: `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Aktion:** ${actionLabelMap[action]}\n**Kontakt:** ${contact.name}\n**Geburtstag:** ${birthdayDate}`,
-                    priority: 'medium',
-                    category: 'meeting',
-                    status: 'todo',
-                    assigned_to: profile.user_id,
-                    tenant_id: currentTenant?.id || '',
-                    due_date: new Date(new Date(meeting.meeting_date).getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-                  };
-                })
-                .filter(Boolean)
-            );
+                // Use assigned_to from the selection, or all profile user_ids if none selected
+                const assignedUserIds = result.assigned_to && result.assigned_to.length > 0
+                  ? result.assigned_to
+                  : profiles.map(p => p.user_id);
+                
+                // For the tasks table, assigned_to is a single text field
+                // Store as comma-separated or use the first user + list others
+                const assignedToValue = `{${assignedUserIds.join(',')}}`;
+                const assigneeNames = assignedUserIds.map(id => {
+                  const profile = profiles.find(p => p.user_id === id);
+                  return profile?.display_name || 'Unbekannt';
+                }).join(', ');
+
+                return {
+                  user_id: user.id,
+                  title: `Geburtstag: ${actionLabelMap[action]} für ${contact.name}`,
+                  description: `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Aktion:** ${actionLabelMap[action]}\n**Kontakt:** ${contact.name}\n**Geburtstag:** ${birthdayDate}\n**Zuständig:** ${assigneeNames}`,
+                  priority: 'medium',
+                  category: 'meeting',
+                  status: 'todo',
+                  assigned_to: assignedToValue,
+                  tenant_id: currentTenant?.id || '',
+                  due_date: new Date(new Date(meeting.meeting_date).getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+                };
+              })
+              .filter(Boolean);
 
             if (tasksToInsert.length > 0) {
               const { error: birthdayTasksError } = await supabase
@@ -1603,7 +1623,7 @@ export function MeetingsView() {
         console.error('Error processing task results (non-fatal):', taskResultError);
       }
 
-      // Step 5d: Create single task with child tasks for starred appointments
+      // Step 5d: Create tasks for starred appointments with per-appointment assignment
       try {
         const meetingTenantId = currentTenant?.id || meeting.tenant_id;
         if (!meetingTenantId) {
@@ -1612,19 +1632,27 @@ export function MeetingsView() {
 
         const { data: starredAppts } = await supabase
           .from('starred_appointments')
-          .select('id, appointment_id, external_event_id')
+          .select('id, appointment_id, external_event_id, assigned_to')
           .eq('meeting_id', meeting.id);
 
         if (meetingTenantId && starredAppts && starredAppts.length > 0) {
-          const appointmentIds = starredAppts.filter(s => s.appointment_id).map(s => s.appointment_id);
-          const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => s.external_event_id);
+          // Build a map of appointment/event ID -> assigned_to from starred records
+          const starredAssignmentMap = new Map<string, string[] | null>();
+          const appointmentIds = starredAppts.filter(s => s.appointment_id).map(s => {
+            starredAssignmentMap.set(s.appointment_id!, (s as any).assigned_to || null);
+            return s.appointment_id;
+          });
+          const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => {
+            starredAssignmentMap.set(s.external_event_id!, (s as any).assigned_to || null);
+            return s.external_event_id;
+          });
           
-          const allAppointments: Array<{ title: string; start_time: string }> = [];
+          const allAppointments: Array<{ id: string; title: string; start_time: string }> = [];
           
           if (appointmentIds.length > 0) {
             const { data: appointments } = await supabase
               .from('appointments')
-              .select('title, start_time')
+              .select('id, title, start_time')
               .in('id', appointmentIds);
             if (appointments) allAppointments.push(...appointments);
           }
@@ -1632,66 +1660,73 @@ export function MeetingsView() {
           if (externalEventIds.length > 0) {
             const { data: externalEvents } = await supabase
               .from('external_events')
-              .select('title, start_time')
+              .select('id, title, start_time')
               .in('id', externalEventIds);
             if (externalEvents) allAppointments.push(...externalEvents);
           }
           
           if (allAppointments.length > 0) {
+            // Get all meeting participants as fallback
             const { data: participants } = await supabase
               .from('meeting_participants')
               .select('user_id')
               .eq('meeting_id', meeting.id);
 
-            const participantIds = Array.from(new Set([
+            const allParticipantIds = Array.from(new Set([
               ...(participants?.map(p => p.user_id).filter(Boolean) || []),
               meeting.user_id,
             ].filter(Boolean))) as string[];
 
-            if (participantIds.length === 0) {
-              participantIds.push(user.id);
+            if (allParticipantIds.length === 0) {
+              allParticipantIds.push(user.id);
             }
 
             allAppointments.sort(
               (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
             );
             
-            // Create one task per participant with the same child tasks
-            for (const participantId of participantIds) {
-              const { data: apptTask } = await supabase
-                .from('tasks')
-                .insert({
-                  user_id: user.id,
-                  title: `Vorbereitung: Markierte Termine aus ${meeting.title}`,
-                  description: `Folgende Termine wurden in der Besprechung als wichtig markiert.`,
-                  priority: 'medium',
-                  category: 'meeting',
-                  status: 'todo',
-                  assigned_to: participantId,
-                  tenant_id: meetingTenantId,
-                  due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-                })
-                .select()
-                .single();
-              
-              if (apptTask) {
-                const childTasks = allAppointments.map((apt) => ({
+            // Create one parent task, then child tasks with per-appointment assignment
+            const allAssignedIds = `{${allParticipantIds.join(',')}}`;
+            const { data: apptTask } = await supabase
+              .from('tasks')
+              .insert({
+                user_id: user.id,
+                title: `Vorbereitung: Markierte Termine aus ${meeting.title}`,
+                description: `Folgende Termine wurden in der Besprechung als wichtig markiert.`,
+                priority: 'medium',
+                category: 'meeting',
+                status: 'todo',
+                assigned_to: allAssignedIds,
+                tenant_id: meetingTenantId,
+                due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+              })
+              .select()
+              .single();
+            
+            if (apptTask) {
+              const childTasks = allAppointments.map((apt) => {
+                const specificAssignment = starredAssignmentMap.get(apt.id);
+                const assignedTo = specificAssignment && specificAssignment.length > 0
+                  ? `{${specificAssignment.join(',')}}`
+                  : allAssignedIds;
+                
+                return {
                   user_id: user.id,
                   tenant_id: meetingTenantId,
                   parent_task_id: apptTask.id,
                   title: `${apt.title} (${format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})`,
                   description: null,
-                  assigned_to: participantId,
+                  assigned_to: assignedTo,
                   status: 'todo',
                   priority: 'medium',
                   category: 'meeting',
-                }));
+                };
+              });
 
-                await supabase.from('tasks').insert(childTasks);
-              }
+              await supabase.from('tasks').insert(childTasks);
             }
             
-            console.log(`Created starred appointments tasks for ${participantIds.length} participants with ${allAppointments.length} child tasks each`);
+            console.log(`Created starred appointments task with ${allAppointments.length} child tasks`);
           }
         }
       } catch (starredError) {
@@ -1713,6 +1748,42 @@ export function MeetingsView() {
       console.log('Archive error:', archiveError);
       
       if (archiveError) throw archiveError;
+
+      // Step 6b: Send notifications to all meeting participants
+      try {
+        const { data: meetingParticipants } = await supabase
+          .from('meeting_participants')
+          .select('user_id')
+          .eq('meeting_id', meeting.id);
+
+        const notifyUserIds = Array.from(new Set([
+          ...(meetingParticipants?.map(p => p.user_id).filter(Boolean) || []),
+        ].filter(id => id !== user.id)));
+
+        const meetingDateFormatted = format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de });
+
+        for (const recipientId of notifyUserIds) {
+          try {
+            await supabase.rpc('create_notification', {
+              user_id_param: recipientId,
+              type_name: 'meeting_archived',
+              title_param: `Besprechung archiviert: ${meeting.title}`,
+              message_param: `Die Besprechung "${meeting.title}" vom ${meetingDateFormatted} wurde archiviert. Prüfen Sie Ihre neuen Aufgaben.`,
+              priority_param: 'medium',
+              data_param: JSON.stringify({
+                meeting_id: meeting.id,
+                meeting_title: meeting.title,
+                meeting_date: meeting.meeting_date,
+              }),
+            });
+          } catch (notifError) {
+            console.error(`Notification to ${recipientId} failed (non-fatal):`, notifError);
+          }
+        }
+        console.log(`Sent archive notifications to ${notifyUserIds.length} participants`);
+      } catch (notifError) {
+        console.error('Error sending archive notifications (non-fatal):', notifError);
+      }
       
       // Step 7: Reset ALL related state BEFORE reloading
       console.log('Step 7: Resetting all meeting state...');
@@ -1729,7 +1800,7 @@ export function MeetingsView() {
       console.log('=== ARCHIVE MEETING COMPLETED SUCCESSFULLY ===');
       toast({
         title: "Besprechung archiviert",
-        description: "Die Besprechung wurde erfolgreich archiviert und Aufgaben wurden aktualisiert."
+        description: "Die Besprechung wurde erfolgreich archiviert und Aufgaben wurden erstellt. Teilnehmer wurden benachrichtigt."
       });
     } catch (error) {
       console.error('=== ARCHIVE MEETING ERROR ===');
