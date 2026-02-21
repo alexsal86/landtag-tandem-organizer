@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, ChevronDown, ChevronRight, Star } from 'lucide-react';
+import { Calendar, Clock, MapPin, ChevronDown, ChevronRight, Star, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { format, addDays, startOfDay, endOfDay, isSameWeek, addWeeks } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { MultiUserAssignSelect } from './MultiUserAssignSelect';
 
 interface Appointment {
   id: string;
@@ -28,6 +29,13 @@ interface StarredAppointment {
   appointment_id?: string;
   external_event_id?: string;
   meeting_id: string;
+  assigned_to?: string[] | null;
+}
+
+interface ProfileInfo {
+  user_id: string;
+  display_name: string | null;
+  avatar_url?: string | null;
 }
 
 interface UpcomingAppointmentsSectionProps {
@@ -36,6 +44,7 @@ interface UpcomingAppointmentsSectionProps {
   className?: string;
   defaultCollapsed?: boolean;
   allowStarring?: boolean;
+  profiles?: ProfileInfo[];
 }
 
 export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionProps> = ({
@@ -43,12 +52,14 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
   meetingId,
   className = '',
   defaultCollapsed = false,
-  allowStarring = false
+  allowStarring = false,
+  profiles = [],
 }) => {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
+  const [starredAssignments, setStarredAssignments] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(!defaultCollapsed);
 
@@ -142,18 +153,25 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
     try {
       const { data, error } = await supabase
         .from('starred_appointments')
-        .select('id, appointment_id, external_event_id')
+        .select('id, appointment_id, external_event_id, assigned_to')
         .eq('meeting_id', meetingId)
         .eq('user_id', user.id);
 
       if (error) throw error;
 
       const ids = new Set<string>();
+      const assignments: Record<string, string[]> = {};
       data?.forEach(item => {
-        if (item.appointment_id) ids.add(item.appointment_id);
-        if (item.external_event_id) ids.add(item.external_event_id);
+        const aptId = item.appointment_id || item.external_event_id;
+        if (aptId) {
+          ids.add(aptId);
+          if (item.assigned_to && Array.isArray(item.assigned_to) && item.assigned_to.length > 0) {
+            assignments[aptId] = item.assigned_to;
+          }
+        }
       });
       setStarredIds(ids);
+      setStarredAssignments(assignments);
     } catch (error) {
       console.error('Error loading starred appointments:', error);
     }
@@ -215,6 +233,32 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
     }
   };
 
+  const updateStarredAssignment = async (aptId: string, userIds: string[]) => {
+    if (!meetingId || !user?.id) return;
+
+    // Optimistic update
+    setStarredAssignments(prev => {
+      const next = { ...prev };
+      if (userIds.length > 0) {
+        next[aptId] = userIds;
+      } else {
+        delete next[aptId];
+      }
+      return next;
+    });
+
+    try {
+      await supabase
+        .from('starred_appointments')
+        .update({ assigned_to: userIds.length > 0 ? userIds : null })
+        .eq('meeting_id', meetingId)
+        .eq('user_id', user.id)
+        .or(`appointment_id.eq.${aptId},external_event_id.eq.${aptId}`);
+    } catch (error) {
+      console.error('Error updating starred assignment:', error);
+    }
+  };
+
   // Group appointments by week
   const thisWeekAppointments = appointments.filter(apt => 
     isSameWeek(new Date(apt.start_time), baseDate, { locale: de, weekStartsOn: 1 })
@@ -244,62 +288,79 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
     const isStarred = starredIds.has(apt.id);
     
     return (
-      <div 
-        key={apt.id} 
-        className={cn(
-          "flex items-start gap-3 py-2 px-3 rounded-md transition-colors",
-          isStarred ? "bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50" : "hover:bg-muted/50"
-        )}
-        style={apt.isExternal && apt.calendarColor ? { borderLeft: `3px solid ${apt.calendarColor}` } : undefined}
-      >
-        {allowStarring && meetingId && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleStar(apt);
-            }}
-          >
-            <Star 
-              className={cn(
-                "h-4 w-4 transition-colors",
-                isStarred ? "fill-amber-400 text-amber-400" : "text-muted-foreground"
-              )} 
-            />
-          </Button>
-        )}
-        <div className="flex flex-col items-center min-w-[50px] text-xs text-muted-foreground">
-          <span className="font-medium">{format(new Date(apt.start_time), 'EEE', { locale: de })}</span>
-          <span className="text-lg font-bold text-foreground">{format(new Date(apt.start_time), 'd')}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className={cn("font-medium text-sm truncate", isStarred && "text-amber-700 dark:text-amber-300")}>
-            {apt.title}
+      <div key={apt.id}>
+        <div 
+          className={cn(
+            "flex items-start gap-3 py-2 px-3 rounded-md transition-colors",
+            isStarred ? "bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50" : "hover:bg-muted/50"
+          )}
+          style={apt.isExternal && apt.calendarColor ? { borderLeft: `3px solid ${apt.calendarColor}` } : undefined}
+        >
+          {allowStarring && meetingId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleStar(apt);
+              }}
+            >
+              <Star 
+                className={cn(
+                  "h-4 w-4 transition-colors",
+                  isStarred ? "fill-amber-400 text-amber-400" : "text-muted-foreground"
+                )} 
+              />
+            </Button>
+          )}
+          <div className="flex flex-col items-center min-w-[50px] text-xs text-muted-foreground">
+            <span className="font-medium">{format(new Date(apt.start_time), 'EEE', { locale: de })}</span>
+            <span className="text-lg font-bold text-foreground">{format(new Date(apt.start_time), 'd')}</span>
           </div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-            <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {formatAppointmentTime(apt.start_time, apt.end_time)}
-            </span>
-            {apt.location && (
-              <span className="flex items-center gap-1 truncate">
-                <MapPin className="h-3 w-3" />
-                {apt.location}
+          <div className="flex-1 min-w-0">
+            <div className={cn("font-medium text-sm truncate", isStarred && "text-amber-700 dark:text-amber-300")}>
+              {apt.title}
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {formatAppointmentTime(apt.start_time, apt.end_time)}
               </span>
+              {apt.location && (
+                <span className="flex items-center gap-1 truncate">
+                  <MapPin className="h-3 w-3" />
+                  {apt.location}
+                </span>
+              )}
+            </div>
+            {apt.isExternal && apt.calendarName && (
+              <div className="text-xs text-muted-foreground mt-0.5 italic">
+                📅 {apt.calendarName}
+              </div>
             )}
           </div>
-          {apt.isExternal && apt.calendarName && (
-            <div className="text-xs text-muted-foreground mt-0.5 italic">
-              📅 {apt.calendarName}
-            </div>
+          {apt.category && (
+            <Badge variant="secondary" className={`text-xs shrink-0 ${getCategoryColor(apt.category)}`}>
+              {apt.isExternal ? 'Extern' : apt.category}
+            </Badge>
           )}
         </div>
-        {apt.category && (
-          <Badge variant="secondary" className={`text-xs shrink-0 ${getCategoryColor(apt.category)}`}>
-            {apt.isExternal ? 'Extern' : apt.category}
-          </Badge>
+        {/* Assignment selector for starred appointments */}
+        {isStarred && allowStarring && profiles.length > 0 && (
+          <div className="flex items-center gap-2 ml-12 px-3 pb-2">
+            <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="text-xs text-muted-foreground shrink-0">Zuständig:</span>
+            <MultiUserAssignSelect
+              assignedTo={starredAssignments[apt.id] || null}
+              profiles={profiles}
+              onChange={(userIds) => updateStarredAssignment(apt.id, userIds)}
+              size="sm"
+            />
+            {!starredAssignments[apt.id]?.length && (
+              <span className="text-xs text-muted-foreground italic">Alle Teilnehmer</span>
+            )}
+          </div>
         )}
       </div>
     );

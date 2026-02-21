@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Cake, Mail, Phone, Gift, CreditCard, Trash } from 'lucide-react';
+import { Cake, Mail, Phone, Gift, CreditCard, Trash, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { format, addDays, differenceInYears, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { MultiUserAssignSelect } from './MultiUserAssignSelect';
 
 interface BirthdayContact {
   id: string;
@@ -21,6 +22,13 @@ interface BirthdayContact {
 interface BirthdayAction {
   action: 'card' | 'mail' | 'call' | 'gift';
   note?: string;
+  assigned_to?: string[];
+}
+
+interface ProfileInfo {
+  user_id: string;
+  display_name: string | null;
+  avatar_url?: string | null;
 }
 
 interface BirthdayAgendaItemProps {
@@ -31,6 +39,7 @@ interface BirthdayAgendaItemProps {
   onDelete?: () => void;
   className?: string;
   isEmbedded?: boolean;
+  profiles?: ProfileInfo[];
 }
 
 const ACTION_OPTIONS = [
@@ -48,6 +57,7 @@ export function BirthdayAgendaItem({
   onDelete,
   className,
   isEmbedded = false,
+  profiles = [],
 }: BirthdayAgendaItemProps) {
   const { currentTenant } = useTenant();
   const [contacts, setContacts] = useState<BirthdayContact[]>([]);
@@ -88,7 +98,6 @@ export function BirthdayAgendaItem({
           return;
         }
 
-        // Filter contacts whose birthday falls within the next 14 days
         const birthdayContacts: BirthdayContact[] = [];
         const refYear = refDate.getFullYear();
 
@@ -99,7 +108,6 @@ export function BirthdayAgendaItem({
           const month = bday.getMonth();
           const day = bday.getDate();
 
-          // Check this year and next year for wrapping around year boundary
           for (const year of [refYear, refYear + 1]) {
             const nextBday = new Date(year, month, day);
             if (nextBday >= refDate && nextBday <= endDate) {
@@ -117,7 +125,6 @@ export function BirthdayAgendaItem({
           }
         }
 
-        // Sort by date
         birthdayContacts.sort((a, b) => a.nextBirthday.getTime() - b.nextBirthday.getTime());
         setContacts(birthdayContacts);
       } catch (error) {
@@ -135,8 +142,22 @@ export function BirthdayAgendaItem({
     if (newActions[contactId]?.action === actionKey) {
       delete newActions[contactId];
     } else {
-      newActions[contactId] = { action: actionKey };
+      newActions[contactId] = { 
+        action: actionKey,
+        assigned_to: newActions[contactId]?.assigned_to,
+      };
     }
+    setActions(newActions);
+    onUpdateResult?.(JSON.stringify(newActions));
+  };
+
+  const updateAssignment = (contactId: string, userIds: string[]) => {
+    const newActions = { ...actions };
+    if (!newActions[contactId]) return;
+    newActions[contactId] = {
+      ...newActions[contactId],
+      assigned_to: userIds.length > 0 ? userIds : undefined,
+    };
     setActions(newActions);
     onUpdateResult?.(JSON.stringify(newActions));
   };
@@ -179,7 +200,8 @@ export function BirthdayAgendaItem({
         ) : (
           <div className="space-y-2">
             {contacts.map((contact) => {
-              const selectedAction = actions[contact.id]?.action;
+              const contactAction = actions[contact.id];
+              const selectedAction = contactAction?.action;
               return (
                 <div key={contact.id} className="p-3 bg-muted/50 rounded-md">
                   <div className="flex items-center justify-between mb-2">
@@ -209,6 +231,22 @@ export function BirthdayAgendaItem({
                       );
                     })}
                   </div>
+                  {/* Assignment selector - only shown when an action is selected */}
+                  {selectedAction && profiles.length > 0 && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-xs text-muted-foreground shrink-0">Zuständig:</span>
+                      <MultiUserAssignSelect
+                        assignedTo={contactAction?.assigned_to || null}
+                        profiles={profiles}
+                        onChange={(userIds) => updateAssignment(contact.id, userIds)}
+                        size="sm"
+                      />
+                      {!contactAction?.assigned_to?.length && (
+                        <span className="text-xs text-muted-foreground italic">Alle Mitarbeiter</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
