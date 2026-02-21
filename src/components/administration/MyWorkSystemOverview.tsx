@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { MermaidRenderer } from "@/components/administration/MermaidRenderer";
 
 type Row = Record<string, string>;
 
@@ -317,7 +318,7 @@ export function MyWorkSystemOverview() {
               <Badge key={state} variant="secondary">{state}</Badge>
             ))}
           </div>
-          <pre className="rounded-md border bg-muted/40 p-4 text-xs overflow-x-auto">{stateMachineMermaid}</pre>
+          <div className="rounded-md border bg-muted/40 p-4"><MermaidRenderer chart={stateMachineMermaid} /></div>
         </CardContent>
       </Card>
 
