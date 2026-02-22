@@ -24,7 +24,6 @@ interface TenantWithStats {
   description: string | null;
   is_active: boolean;
   created_at: string;
-  user_count: number;
 }
 
 interface UserWithTenants {
@@ -91,23 +90,7 @@ export function SuperadminTenantManagement() {
 
       if (error) throw error;
 
-      // User-Counts laden
-      const { data: memberships } = await supabase
-        .from("user_tenant_memberships")
-        .select("tenant_id")
-        .eq("is_active", true);
-
-      const countMap = new Map<string, number>();
-      (memberships || []).forEach(m => {
-        countMap.set(m.tenant_id, (countMap.get(m.tenant_id) || 0) + 1);
-      });
-
-      const tenantsWithStats = (data || []).map(t => ({
-        ...t,
-        user_count: countMap.get(t.id) || 0,
-      }));
-
-      setTenants(tenantsWithStats);
+      setTenants(data || []);
     } catch (error) {
       console.error("Error loading tenants:", error);
       toast({ title: "Fehler", description: "Tenants konnten nicht geladen werden", variant: "destructive" });
@@ -203,10 +186,12 @@ export function SuperadminTenantManagement() {
   };
 
   const handleDeleteTenant = async (tenant: TenantWithStats) => {
-    if (tenant.user_count > 0) {
+    const assignedUsersCount = usersByTenantId.get(tenant.id)?.length || 0;
+
+    if (assignedUsersCount > 0) {
       toast({ 
         title: "Nicht möglich", 
-        description: `Tenant hat noch ${tenant.user_count} Benutzer. Bitte erst alle Benutzer entfernen.`,
+        description: `Tenant hat noch ${assignedUsersCount} Benutzer. Bitte erst alle Benutzer entfernen.`,
         variant: "destructive" 
       });
       return;
@@ -358,17 +343,19 @@ export function SuperadminTenantManagement() {
     : allUsers.filter(u => u.tenants.some(t => t.id === selectedTenantFilter));
 
   const usersByTenantId = useMemo(() => {
-    const map = new Map<string, UserWithTenants[]>();
+    const map = new Map<string, Map<string, UserWithTenants>>();
 
     allUsers.forEach((userEntry) => {
       userEntry.tenants.forEach((tenantEntry) => {
-        const usersForTenant = map.get(tenantEntry.id) || [];
-        usersForTenant.push(userEntry);
+        const usersForTenant = map.get(tenantEntry.id) || new Map<string, UserWithTenants>();
+        usersForTenant.set(userEntry.id, userEntry);
         map.set(tenantEntry.id, usersForTenant);
       });
     });
 
-    return map;
+    return new Map(
+      Array.from(map.entries()).map(([tenantId, users]) => [tenantId, Array.from(users.values())])
+    );
   }, [allUsers]);
 
   if (!isSuperadmin) {
@@ -437,13 +424,13 @@ export function SuperadminTenantManagement() {
                       <TableCell className="text-center">
                         <Badge variant="secondary" className="gap-1">
                           <Users className="h-3 w-3" />
-                          {tenant.user_count}
+                          {(usersByTenantId.get(tenant.id) || []).length}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {usersByTenantId.get(tenant.id)?.length ? (
+                        {(usersByTenantId.get(tenant.id) || []).length ? (
                           <div className="flex flex-wrap gap-1">
-                            {usersByTenantId.get(tenant.id)!.map((tenantUser) => (
+                            {(usersByTenantId.get(tenant.id) || []).map((tenantUser) => (
                               <Badge key={`${tenant.id}-${tenantUser.id}`} variant="outline" className="text-xs">
                                 {tenantUser.display_name || tenantUser.email}
                               </Badge>
@@ -475,7 +462,7 @@ export function SuperadminTenantManagement() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                disabled={tenant.user_count > 0}
+                                disabled={(usersByTenantId.get(tenant.id) || []).length > 0}
                                 className="text-destructive hover:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4" />
