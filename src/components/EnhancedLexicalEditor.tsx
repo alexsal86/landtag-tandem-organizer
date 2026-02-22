@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef } from 'react';
 import { $getRoot, EditorState, $createParagraphNode, $createTextNode } from 'lexical';
+import { $generateHtmlFromNodes } from '@lexical/html';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -59,7 +60,7 @@ const MATCHERS = [
 interface EnhancedLexicalEditorProps {
   content: string;
   contentNodes?: string;
-  onChange: (content: string, contentNodes?: string) => void;
+  onChange: (content: string, contentNodes?: string, contentHtml?: string) => void;
   placeholder?: string;
   documentId?: string;
   showToolbar?: boolean;
@@ -185,17 +186,26 @@ export default function EnhancedLexicalEditor({
     },
   }), [editable]);
 
-  const handleChange = useCallback((editorState: EditorState) => {
+  const editorRef = useRef<any>(null);
+
+  const handleChange = useCallback((editorState: EditorState, editor: any) => {
+    editorRef.current = editor;
     editorState.read(() => {
       const root = $getRoot();
       const plainText = root.getTextContent();
       let jsonContent: string | undefined;
+      let htmlContent: string | undefined;
       try {
         jsonContent = JSON.stringify(editorState.toJSON());
       } catch {
         jsonContent = undefined;
       }
-      onChange(plainText, jsonContent);
+      try {
+        htmlContent = $generateHtmlFromNodes(editor);
+      } catch {
+        htmlContent = undefined;
+      }
+      onChange(plainText, jsonContent, htmlContent);
     });
   }, [onChange]);
 

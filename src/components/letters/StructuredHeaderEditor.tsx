@@ -1248,7 +1248,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
       <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_300px] gap-6">
         {actionButtons && (
-          <Card className="xl:col-start-3">
+          <Card className="xl:col-start-3 xl:row-start-1">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm">Bearbeitung</CardTitle>
             </CardHeader>
@@ -1259,7 +1259,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         )}
 
         {/* Tools */}
-        <Card className="xl:col-start-1">
+        <Card className="xl:col-start-1 xl:row-start-1">
           <CardHeader className="py-3 px-4">
             <CardTitle className="text-sm">Elemente hinzufügen</CardTitle>
           </CardHeader>
@@ -1291,7 +1291,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
 
         {/* Image Gallery */}
-        <Card className="xl:col-start-1">
+        <Card className="xl:col-start-1 xl:row-start-2">
           <CardHeader className="py-3 px-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-1"><FolderOpen className="h-3.5 w-3.5" /> Bilder-Galerie</CardTitle>
@@ -1317,7 +1317,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
 
         {/* Elements list */}
-        <Card className="xl:col-start-3">
+        <Card className="xl:col-start-3 xl:row-start-2 xl:row-span-2">
           <CardHeader className="py-3 px-4">
             <CardTitle className="text-sm">Elemente ({elements.length})</CardTitle>
           </CardHeader>
@@ -1449,7 +1449,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           </CardContent>
         </Card>
 
-        <Card className="xl:col-start-2 xl:row-span-4">
+        <Card className="xl:col-start-2 xl:row-start-1 xl:row-span-4">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Header-Vorschau</CardTitle>
             <p className="text-xs text-muted-foreground">Doppelklick auf Text/Block zum Bearbeiten. Mit Mausrad + Strg/Cmd zoomen.</p>

@@ -187,9 +187,12 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
     }
   };
 
-  const handleContentChange = useCallback((newContent: string, newContentNodes?: string) => {
+  const handleContentChange = useCallback((newContent: string, newContentNodes?: string, newContentHtml?: string) => {
     setContent(newContent);
     setContentNodes(newContentNodes);
+    if (newContentHtml) {
+      setContentHtml(newContentHtml);
+    }
   }, []);
 
   const handleTitleChange = (newTitle: string) => {

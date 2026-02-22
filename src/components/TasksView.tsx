@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download, ChevronDown, ChevronRight, ListTodo, AlarmClock, StickyNote } from "lucide-react";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -82,6 +83,7 @@ interface Subtask {
 
 export function TasksView() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
   
   // Clear indicators when component unmounts
   useEffect(() => {
@@ -1885,7 +1887,7 @@ export function TasksView() {
               const cleanTaskDescription = stripLetterSourceMarker(task.description);
 
               return (
-              <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer relative" onClick={() => handleTaskClick(task)}>
+              <Card key={task.id} ref={highlightRef(task.id)} className={`hover:shadow-md transition-shadow cursor-pointer relative ${isHighlighted(task.id) ? 'notification-highlight' : ''}`} onClick={() => handleTaskClick(task)}>
                 <NewItemIndicator isVisible={isItemNew(task.id, task.created_at || '')} />
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">

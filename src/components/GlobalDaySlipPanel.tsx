@@ -306,7 +306,15 @@ const editorTheme = {
 export function GlobalDaySlipPanel() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('day-slip-panel-open');
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('day-slip-panel-open', JSON.stringify(open)); } catch {}
+  }, [open]);
   const [showArchive, setShowArchive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [store, setStore] = useState<DaySlipStore>(() => {
