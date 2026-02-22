@@ -163,6 +163,10 @@ async function rollbackAttachmentBatch(decisionId: string, uploadedPaths: string
     .eq('decision_id', decisionId);
 }
 
+const MAX_ATTACHMENTS_PER_DECISION = 10;
+
+const activeUploads = new Set<string>();
+
 export function useDecisionAttachmentUpload() {
   const uploadDecisionAttachments = async ({
     decisionId,
@@ -172,32 +176,87 @@ export function useDecisionAttachmentUpload() {
     rollbackOnAnyFailure = false,
     metadataByIdentity,
   }: UploadParams): Promise<UploadResult> => {
-    const failed: UploadFailure[] = [];
-    const uploadedPaths: string[] = [];
-    let uploadedCount = 0;
+    // 1) Upload-Lock: prevent parallel uploads for the same decision
+    if (activeUploads.has(decisionId)) {
+      return {
+        uploadedCount: 0,
+        failed: [{ fileName: '*', reason: 'Ein Upload für diese Entscheidung läuft bereits.', candidateErrors: [] }],
+      };
+    }
+    activeUploads.add(decisionId);
 
-    for (const [index, file] of files.entries()) {
-      onFileStart?.(file, index, files.length);
-      try {
-        const result = await uploadOneFile(file, decisionId, userId, metadataByIdentity);
-        uploadedPaths.push(result.filePath);
-        uploadedCount += 1;
-      } catch (error) {
-        const reason = normalizeError(error);
-        failed.push({
-          fileName: file.name,
-          reason,
-          candidateErrors: reason.split(' | '),
-        });
+    try {
+      // 3) Max files limit: check existing count
+      const { count: existingCount, error: countError } = await supabase
+        .from('task_decision_attachments')
+        .select('id', { count: 'exact', head: true })
+        .eq('decision_id', decisionId);
 
-        if (rollbackOnAnyFailure) {
-          await rollbackAttachmentBatch(decisionId, uploadedPaths);
-          return { uploadedCount: 0, failed };
+      if (countError) {
+        return { uploadedCount: 0, failed: [{ fileName: '*', reason: normalizeError(countError), candidateErrors: [] }] };
+      }
+
+      const currentCount = existingCount ?? 0;
+      const remainingSlots = MAX_ATTACHMENTS_PER_DECISION - currentCount;
+
+      if (remainingSlots <= 0) {
+        return {
+          uploadedCount: 0,
+          failed: [{ fileName: '*', reason: `Maximum von ${MAX_ATTACHMENTS_PER_DECISION} Anhängen pro Entscheidung erreicht.`, candidateErrors: [] }],
+        };
+      }
+
+      // 2) Deduplizierung: fetch existing file names + sizes
+      const { data: existingFiles } = await supabase
+        .from('task_decision_attachments')
+        .select('file_name, file_size')
+        .eq('decision_id', decisionId);
+
+      const existingSet = new Set(
+        (existingFiles ?? []).map(f => `${f.file_name}::${f.file_size}`)
+      );
+
+      const failed: UploadFailure[] = [];
+      const uploadedPaths: string[] = [];
+      let uploadedCount = 0;
+
+      // Cap files to remaining slots
+      const filesToUpload = files.slice(0, remainingSlots);
+      if (filesToUpload.length < files.length) {
+        for (const skipped of files.slice(remainingSlots)) {
+          failed.push({ fileName: skipped.name, reason: `Maximum von ${MAX_ATTACHMENTS_PER_DECISION} Anhängen erreicht.`, candidateErrors: [] });
         }
       }
-    }
 
-    return { uploadedCount, failed };
+      for (const [index, file] of filesToUpload.entries()) {
+        // Deduplizierung check
+        const fileKey = `${file.name}::${file.size}`;
+        if (existingSet.has(fileKey)) {
+          failed.push({ fileName: file.name, reason: 'Datei existiert bereits (gleicher Name und Größe).', candidateErrors: [] });
+          continue;
+        }
+
+        onFileStart?.(file, index, filesToUpload.length);
+        try {
+          const result = await uploadOneFile(file, decisionId, userId, metadataByIdentity);
+          uploadedPaths.push(result.filePath);
+          uploadedCount += 1;
+          existingSet.add(fileKey); // prevent duplicates within same batch
+        } catch (error) {
+          const reason = normalizeError(error);
+          failed.push({ fileName: file.name, reason, candidateErrors: reason.split(' | ') });
+
+          if (rollbackOnAnyFailure) {
+            await rollbackAttachmentBatch(decisionId, uploadedPaths);
+            return { uploadedCount: 0, failed };
+          }
+        }
+      }
+
+      return { uploadedCount, failed };
+    } finally {
+      activeUploads.delete(decisionId);
+    }
   };
 
   return { uploadDecisionAttachments };
