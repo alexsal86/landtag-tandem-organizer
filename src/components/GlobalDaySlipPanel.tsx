@@ -26,6 +26,7 @@ import {
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 import {
   ClipboardPen,
+  Check,
   Clock3,
   Folder,
   FolderArchive,
@@ -51,6 +52,7 @@ interface DaySlipDayData {
   struckLines?: string[]; // deprecated legacy fallback (read-only)
   struckLineIds?: string[];
   resolved?: Array<{ lineId: string; text: string; target: ResolveTarget }>;
+  completedAt?: string;
 }
 
 type ResolvedItem = { lineId: string; text: string; target: ResolveTarget };
@@ -130,7 +132,12 @@ const extractLinesFromHtml = (html: string): DaySlipLineEntry[] => {
 };
 
 const normalizeRuleMarker = (text: string) =>
-  text.replace(/[‐‑‒–—―−]/g, "-").replace(/\s+/g, "").trim();
+  text
+    .replace(/[‐‑‒–—―−]/g, "-")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, "")
+    .trim();
 
 const normalizeLineText = (text: string) => text.replace(/\s+/g, " ").trim();
 const isRuleLine = (text: string) => /^[-_]{3,}$/.test(normalizeRuleMarker(text));
@@ -308,6 +315,8 @@ export function GlobalDaySlipPanel() {
   const [resolveMode, setResolveMode] = useState(false);
   const [closing, setClosing] = useState(false);
   const [contentTransitioning, setContentTransitioning] = useState(false);
+  const [completionMessage, setCompletionMessage] = useState<string | null>(null);
+  const [showCompletePulse, setShowCompletePulse] = useState(false);
   const [recurringDraft, setRecurringDraft] = useState("");
   const [recurringEditIndex, setRecurringEditIndex] = useState<number | null>(null);
   const [recurringEditDraft, setRecurringEditDraft] = useState("");
@@ -390,16 +399,39 @@ export function GlobalDaySlipPanel() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+
+  useEffect(() => {
+    if (!completionMessage) return;
+    const timeout = window.setTimeout(() => setCompletionMessage(null), 2800);
+    return () => window.clearTimeout(timeout);
+  }, [completionMessage]);
+
   // ── Derived data ─────────────────────────────────────────────────────────
 
-  const yesterdayOpenLines = useMemo(() => {
+  const yesterdayKey = useMemo(() => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const key = toDayKey(yesterday);
-    const allLines = extractLinesFromHtml(store[key]?.html ?? "");
-    const struck = store[key]?.struckLineIds ?? store[key]?.struckLines ?? [];
-    return allLines.filter((line) => !struck.includes(line.id));
-  }, [store]);
+    return toDayKey(yesterday);
+  }, []);
+
+  const yesterdayCarryLines = useMemo(() => {
+    const yesterdayData = store[yesterdayKey];
+    const allLines = extractLinesFromHtml(yesterdayData?.html ?? "");
+    const struck = new Set(yesterdayData?.struckLineIds ?? yesterdayData?.struckLines ?? []);
+    const openUnstruck = allLines.filter((line) => !struck.has(line.id));
+    const snoozed = (yesterdayData?.resolved ?? [])
+      .filter((item) => item.target === "snoozed")
+      .map((item) => ({ lineId: item.lineId, text: item.text }));
+
+    const merged = new Map<string, DaySlipLineEntry>();
+    openUnstruck.forEach((line) => merged.set(line.id, line));
+    snoozed.forEach((line) => {
+      if (!line.text.trim()) return;
+      merged.set(line.lineId, { id: line.lineId, text: line.text.trim() });
+    });
+
+    return Array.from(merged.values());
+  }, [store, yesterdayKey]);
 
   const allLineEntries = useMemo(
     () => extractLinesFromHtml(todayData.html),
@@ -433,6 +465,18 @@ export function GlobalDaySlipPanel() {
   );
 
   const unresolvedCount = openLines.length;
+
+  const completeButtonLabel =
+    resolveMode && unresolvedCount === 0
+      ? "✓ Alle zugewiesen – Tag abschließen"
+      : "🏁 Tag abschließen";
+
+  const completeButtonHint =
+    resolveMode && unresolvedCount > 0
+      ? "abbrechen"
+      : unresolvedCount > 0
+        ? `${unresolvedCount} offen →`
+        : "alles erledigt →";
 
   const triageEntries = useMemo(() => {
     const unresolved = openLines;
@@ -517,34 +561,48 @@ export function GlobalDaySlipPanel() {
 
   // ── Panel close / resolve flow ───────────────────────────────────────────
 
-  const handleClose = () => {
-    if (unresolvedCount > 0) {
-      setResolveMode(true);
-    } else {
-      setClosing(true);
-      setTimeout(() => {
-        setResolveMode(false);
-        setOpen(false);
-        setClosing(false);
-      }, 220);
-    }
-  };
-
-  const completeDay = () => {
-    if (resolveMode) {
-      setResolveMode(false);
-      return;
-    }
-    if (unresolvedCount > 0) {
-      setResolveMode(true);
-      return;
-    }
+  const animateClosePanel = () => {
     setClosing(true);
     setTimeout(() => {
       setResolveMode(false);
       setOpen(false);
       setClosing(false);
+      setShowCompletePulse(true);
+      setTimeout(() => setShowCompletePulse(false), 500);
     }, 220);
+  };
+
+  const markDayCompleted = () => {
+    const completedAt = new Date().toISOString();
+    setStore((prev) => ({
+      ...prev,
+      [todayKey]: {
+        ...(prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] }),
+        completedAt,
+      },
+    }));
+    setCompletionMessage(`✅ Tag abgeschlossen (${new Date(completedAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })})`);
+    animateClosePanel();
+  };
+
+  const handleClose = () => {
+    if (unresolvedCount > 0) {
+      setResolveMode(true);
+      return;
+    }
+    markDayCompleted();
+  };
+
+  const completeDay = () => {
+    if (resolveMode && unresolvedCount > 0) {
+      setResolveMode(false);
+      return;
+    }
+    if (unresolvedCount > 0) {
+      setResolveMode(true);
+      return;
+    }
+    markDayCompleted();
   };
 
 
@@ -617,12 +675,12 @@ export function GlobalDaySlipPanel() {
   };
 
   const carryOverFromYesterday = () => {
-    if (yesterdayOpenLines.length === 0) return;
+    if (yesterdayCarryLines.length === 0) return;
     setStore((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [] };
       const existingLines = extractLinesFromHtml(day.html);
       const existingIds = new Set(existingLines.map((line) => line.id));
-      const toAppend = yesterdayOpenLines.filter((line) => !existingIds.has(line.id));
+      const toAppend = yesterdayCarryLines.filter((line) => !existingIds.has(line.id));
       if (toAppend.length === 0) return prev;
       const merged = [...existingLines, ...toAppend];
       const appended = merged.map(toParagraphHtml).join("");
@@ -950,32 +1008,46 @@ export function GlobalDaySlipPanel() {
                   Noch keine vergangenen Tage.
                 </p>
               )}
-              {archiveDays.map((day) => (
-                <div
-                  key={day}
-                  className="rounded-lg border border-border/60 p-3"
-                >
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {formatDate(day)}
-                  </p>
-                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                    {stripHtml(store[day]?.html ?? "") || "—"}
-                  </p>
-                </div>
-              ))}
+              {archiveDays.map((day) => {
+                const dayData = store[day];
+                const lines = extractLinesFromHtml(dayData?.html ?? "");
+                const struck = new Set(dayData?.struckLineIds ?? dayData?.struckLines ?? []);
+                const resolved = dayData?.resolved ?? [];
+                const unresolved = lines.filter((line) => !struck.has(line.id)).length;
+                const completedInfo = dayData?.completedAt
+                  ? `Abgeschlossen um ${new Date(dayData.completedAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`
+                  : "Nicht explizit abgeschlossen";
+
+                return (
+                  <div
+                    key={day}
+                    className="rounded-lg border border-border/60 p-3"
+                  >
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {formatDate(day)}
+                    </p>
+                    <p className="mb-2 text-[11px] text-muted-foreground/90">
+                      {completedInfo} · {resolved.length} zugewiesen · {unresolved} offen geblieben
+                    </p>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {stripHtml(dayData?.html ?? "") || "—"}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className={`flex min-h-0 flex-1 flex-col transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               {/* ── Yesterday banner ── */}
-              {yesterdayOpenLines.length > 0 && (
+              {yesterdayCarryLines.length > 0 && (
                 <div className={`border-b border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm text-amber-200 transition-all duration-200 ${contentTransitioning ? "opacity-0" : "opacity-100"}`}>
                   <span className="font-semibold">Gestern noch offen:</span>{" "}
-                  &ldquo;{yesterdayOpenLines[0].text}&rdquo;
-                  {yesterdayOpenLines.length > 1
-                    ? ` +${yesterdayOpenLines.length - 1}`
+                  &ldquo;{yesterdayCarryLines[0].text}&rdquo;
+                  {yesterdayCarryLines.length > 1
+                    ? ` +${yesterdayCarryLines.length - 1}`
                     : ""}
                   <div className="mt-1 flex items-center justify-between gap-2 text-xs text-amber-100/80">
-                    <span>Es werden bewusst nur offene Punkte von gestern angezeigt.</span>
+                    <span>Es werden offene und gesnoozte Punkte von gestern angeboten.</span>
                     <button
                       type="button"
                       className="rounded border border-amber-300/40 px-2 py-0.5 hover:bg-amber-400/10"
@@ -988,17 +1060,22 @@ export function GlobalDaySlipPanel() {
               )}
 
               {/* ── Editor OR Triage ── */}
-              {resolveMode && unresolvedCount > 0 ? (
+              {resolveMode ? (
                 /* Triage view – replaces editor completely */
                 <div className="flex-1 border-b border-border/60">
                   <div className="border-b border-border/60 bg-muted/30 px-4 py-3">
                     <p className="text-sm font-medium">
-                      {unresolvedCount}{" "}
-                      {unresolvedCount === 1 ? "Eintrag" : "Einträge"} noch
-                      offen – was soll damit passieren?
+                      {unresolvedCount > 0
+                        ? `${unresolvedCount} ${unresolvedCount === 1 ? "Eintrag" : "Einträge"} noch offen – was soll damit passieren?`
+                        : "Alle Einträge sind zugewiesen. Du kannst den Tag jetzt abschließen."}
                     </p>
                   </div>
                   <div className="h-full space-y-2 overflow-y-auto p-4">
+                    {unresolvedCount === 0 && (
+                      <p className="rounded border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                        ✓ Alle offenen Punkte wurden zugewiesen. Mit dem Button unten wird der Tag abgeschlossen.
+                      </p>
+                    )}
                     {triageEntries.map(({ id, text }) => {
                       const activeTarget = resolvedByLineId.get(id);
                       const buttonClass = (target: ResolveTarget) =>
@@ -1107,19 +1184,19 @@ export function GlobalDaySlipPanel() {
                   onClick={completeDay}
                   className="flex h-10 w-full items-center justify-between rounded-lg border border-emerald-300/40 bg-emerald-500/10 px-3 text-sm font-medium text-emerald-200"
                 >
-                  <span>🏁 Tag abschließen</span>
-                  <span className="text-xs opacity-70">
-                    {resolveMode
-                      ? "abbrechen"
-                      : unresolvedCount > 0
-                        ? `${unresolvedCount} offen →`
-                        : "alles erledigt →"}
-                  </span>
+                  <span>{completeButtonLabel}</span>
+                  <span className="text-xs opacity-70">{completeButtonHint}</span>
                 </button>
               </div>
             </div>
           )}
         </aside>
+      )}
+
+      {completionMessage && (
+        <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-100 shadow-lg backdrop-blur">
+          {completionMessage}
+        </div>
       )}
 
       {/* ── Trigger button ── */}
@@ -1129,7 +1206,7 @@ export function GlobalDaySlipPanel() {
         aria-label="Tageszettel öffnen (Strg+Alt+J)"
         onClick={() => setOpen((prev) => !prev)}
       >
-        <ClipboardPen className="h-5 w-5" />
+        {showCompletePulse ? <Check className="h-5 w-5 text-emerald-300" /> : <ClipboardPen className="h-5 w-5" />}
         {unresolvedCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
             {unresolvedCount}
