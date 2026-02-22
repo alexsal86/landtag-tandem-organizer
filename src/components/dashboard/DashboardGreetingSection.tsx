@@ -50,6 +50,12 @@ export const DashboardGreetingSection = () => {
     return feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0;
   }, [feedbackAppointments]);
 
+  const handleTaskTitleDragStart = (event: React.DragEvent<HTMLLIElement>, taskTitle: string) => {
+    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.setData('text/plain', taskTitle);
+    event.dataTransfer.setData('application/x-mywork-task-title', taskTitle);
+  };
+
   // Load user name
   useEffect(() => {
     const loadUserName = async () => {
@@ -370,12 +376,6 @@ export const DashboardGreetingSection = () => {
       text += ` · ${completedTasksToday} heute abgeschlossen`;
     }
     text += '\n';
-    if (openTaskTitles.length > 0) {
-      openTaskTitles.forEach((title) => {
-        text += `• ${title}\n`;
-      });
-    }
-
     if (showWeather) {
       text += '\n☀️ **Das Wetter heute (optional):**\n';
       if (weatherKarlsruhe) {
@@ -442,6 +442,21 @@ export const DashboardGreetingSection = () => {
       <span className="text-xl lg:text-2xl font-light tracking-tight text-foreground/90 block whitespace-pre-wrap">
         {parsedContent}
       </span>
+      {openTaskTitles.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {openTaskTitles.map((taskTitle, index) => (
+            <li
+              key={`${taskTitle}-${index}`}
+              draggable
+              onDragStart={(event) => handleTaskTitleDragStart(event, taskTitle)}
+              className="w-fit max-w-full cursor-grab rounded px-1.5 py-0.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 active:cursor-grabbing"
+              title="Per Drag & Drop in den Tageszettel ziehen"
+            >
+              • {taskTitle}
+            </li>
+          ))}
+        </ul>
+      )}
       {feedbackReminderVisible && (
         <div className="mt-3">
           <button
