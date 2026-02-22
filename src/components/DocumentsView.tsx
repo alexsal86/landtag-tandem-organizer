@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useViewPreference } from "@/hooks/useViewPreference";
@@ -140,6 +141,7 @@ interface ParentTaskOption {
 
 export function DocumentsView() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -2102,7 +2104,7 @@ export function DocumentsView() {
             viewType === 'card' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredLetters.map((letter) => (
-                  <Card key={letter.id} className="hover:shadow-lg transition-shadow">
+                  <Card key={letter.id} ref={highlightRef(letter.id)} className={`hover:shadow-lg transition-shadow ${isHighlighted(letter.id) ? 'notification-highlight' : ''}`}>
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
