@@ -23,6 +23,8 @@ import { getColorClasses } from "@/lib/decisionTemplates";
 
 interface MyWorkDecisionCardProps {
   decision: MyWorkDecision;
+  isHighlighted?: boolean;
+  highlightRef?: (el: HTMLElement | null) => void;
   onOpenDetails: (decisionId: string) => void;
   onEdit: (decisionId: string) => void;
   onArchive: (decisionId: string) => void;
@@ -78,6 +80,8 @@ const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; m
 
 const MyWorkDecisionCardInner = ({
   decision,
+  isHighlighted: highlighted,
+  highlightRef: hRef,
   onOpenDetails,
   onEdit,
   onArchive,
@@ -113,9 +117,11 @@ const MyWorkDecisionCardInner = ({
   return (
     <>
     <Card 
+      ref={hRef as any}
       className={cn(
         "group border-l-4 hover:bg-muted/50 transition-colors cursor-pointer",
-        getBorderColor(summary, decision.response_options, decision.participants)
+        getBorderColor(summary, decision.response_options, decision.participants),
+        highlighted && "notification-highlight"
       )}
       onClick={() => onOpenDetails(decision.id)}
     >

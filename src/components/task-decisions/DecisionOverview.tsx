@@ -186,6 +186,37 @@ export const DecisionOverview = () => {
     }
   }, [user?.id]);
 
+  // Auto-switch tab when highlight param points to a decision in a different tab
+  useEffect(() => {
+    const highlightId = searchParams.get('highlight');
+    if (!highlightId || decisions.length === 0 || !user?.id) return;
+
+    const decision = decisions.find(d => d.id === highlightId);
+    if (!decision) return;
+
+    let targetTab = activeTab;
+    if (decision.status === 'archived') {
+      targetTab = 'archived';
+    } else if (decision.isParticipant && !decision.hasResponded && !decision.isCreator) {
+      targetTab = 'for-me';
+    } else if (decision.isCreator) {
+      const s = getResponseSummary(decision.participants);
+      if (s.questionCount > 0 || (s.total > 0 && s.pending < s.total)) {
+        targetTab = 'for-me';
+      } else {
+        targetTab = 'my-decisions';
+      }
+    } else if (decision.isParticipant && decision.hasResponded) {
+      targetTab = 'answered';
+    } else if (decision.visible_to_all) {
+      targetTab = 'public';
+    }
+
+    if (targetTab !== activeTab) {
+      setActiveTab(targetTab);
+    }
+  }, [decisions, searchParams]);
+
   const loadDecisionRequests = async (currentUserId: string) => {
     try {
       // Load active decisions where user is a participant
