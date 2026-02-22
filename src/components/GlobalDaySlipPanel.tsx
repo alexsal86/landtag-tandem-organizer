@@ -17,6 +17,7 @@ import {
   type EditorState,
   type LexicalEditor,
   KEY_ENTER_COMMAND,
+  ParagraphNode,
 } from "lexical";
 import {
   $createHorizontalRuleNode,
@@ -25,25 +26,30 @@ import {
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 import {
   ClipboardPen,
+  Clock3,
   Folder,
   FolderArchive,
   ListTodo,
   NotebookPen,
+  Pencil,
   Scale,
   Settings,
+  Trash2,
   X,
+  Clock3,
 } from "lucide-react";
 import FloatingTextFormatToolbar from "@/components/FloatingTextFormatToolbar";
+import { DaySlipLineNode, $createDaySlipLineNode } from "@/components/DaySlipLineNode";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type ResolveTarget = "note" | "task" | "decision" | "archived";
+type ResolveTarget = "note" | "task" | "decision" | "archived" | "snoozed";
 
 interface DaySlipDayData {
   html: string;
   plainText: string;
   nodes?: string;
-  struckLines?: string[]; // legacy
+  struckLines?: string[]; // deprecated legacy fallback (read-only)
   struckLineIds?: string[];
   resolved?: Array<{ lineId: string; text: string; target: ResolveTarget }>;
 }
@@ -55,10 +61,39 @@ type DaySlipStore = Record<string, DaySlipDayData>;
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "day-slip-v2";
-const RECURRING_STORAGE_KEY = "day-slip-recurring-v1";
+const RECURRING_STORAGE_KEY = "day-slip-recurring-v2";
+const RESOLVE_EXPORT_KEY = "day-slip-resolve-export-v1";
 const SAVE_DEBOUNCE_MS = 400;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+
+type DaySlipLineEntry = { id: string; text: string };
+type RecurringTemplate = {
+  id: string;
+  text: string;
+  weekday: (typeof weekDays)[number];
+};
+type ResolveExportItem = {
+  sourceDayKey: string;
+  lineId: string;
+  text: string;
+  target: Exclude<ResolveTarget, "archived" | "snoozed">;
+  createdAt: string;
+};
+
+const weekDays = ["all", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+
+const weekDayLabels: Record<(typeof weekDays)[number], string> = {
+  all: "Jeden Tag",
+  monday: "Montag",
+  tuesday: "Dienstag",
+  wednesday: "Mittwoch",
+  thursday: "Donnerstag",
+  friday: "Freitag",
+  saturday: "Samstag",
+  sunday: "Sonntag",
+};
 
 const toDayKey = (date: Date) => {
   const y = date.getFullYear();
@@ -83,17 +118,42 @@ const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").trim();
  * Extracts non-empty paragraph text values from HTML.
  * Skips horizontal rule separators.
  */
-const extractLinesFromHtml = (html: string): string[] => {
+const extractLinesFromHtml = (html: string): DaySlipLineEntry[] => {
   if (!html.trim()) return [];
   const parser = new DOMParser();
   const dom = parser.parseFromString(html, "text/html");
   return Array.from(dom.querySelectorAll("p"))
-    .map((p) => (p.textContent ?? "").trim())
-    .filter((line) => line.length > 0 && line !== "---");
+    .map((p) => ({
+      id: p.dataset.lineId || crypto.randomUUID(),
+      text: (p.textContent ?? "").trim(),
+    }))
+    .filter((line) => line.text.length > 0 && !/^-{3,}$/.test(normalizeRuleMarker(line.text)));
 };
 
 const normalizeRuleMarker = (text: string) =>
   text.replace(/[‐‑‒–—―−]/g, "-").replace(/\s+/g, "").trim();
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+const toParagraphHtml = (entry: DaySlipLineEntry) =>
+  `<p data-line-id="${entry.id}">${escapeHtml(entry.text)}</p>`;
+
+const weekdayKey = (date: Date): (typeof weekDays)[number] => {
+  const idx = date.getDay();
+  if (idx === 0) return "sunday";
+  if (idx === 1) return "monday";
+  if (idx === 2) return "tuesday";
+  if (idx === 3) return "wednesday";
+  if (idx === 4) return "thursday";
+  if (idx === 5) return "friday";
+  return "saturday";
+};
 
 // ─── Lexical Plugins ─────────────────────────────────────────────────────────
 
@@ -135,7 +195,7 @@ function InitialContentPlugin({
         return;
       }
 
-      root.append($createParagraphNode());
+      root.append($createDaySlipLineNode());
     });
   }, [dayKey, editor, initialHtml, initialNodes]);
 
@@ -164,15 +224,15 @@ function DaySlipEnterBehaviorPlugin() {
 
           if (/^-{3,}$/.test(normalizeRuleMarker(text))) {
             const hr = $createHorizontalRuleNode();
-            const newParagraph = $createParagraphNode();
-            topLevel.insertBefore(hr);
-            topLevel.replace(newParagraph);
+            const newParagraph = $createDaySlipLineNode();
+            topLevel.replace(hr);
+            hr.insertAfter(newParagraph);
             newParagraph.select();
             handled = true;
             return;
           }
 
-          const newParagraph = $createParagraphNode();
+          const newParagraph = $createDaySlipLineNode();
           newParagraph.append($createTextNode(""));
           topLevel.insertAfter(newParagraph);
           newParagraph.select();
@@ -212,12 +272,13 @@ function EditorEditablePlugin({ editable }: { editable: boolean }) {
 const editorTheme = {
   paragraph:
     "day-slip-item group relative mb-0 pl-7 " +
-    // The dash – always visible, pointer cursor
-    "before:absolute before:left-0 before:top-[2px] " +
-    "before:content-['—'] before:text-muted-foreground " +
+    // Short dash marker only for non-empty lines
+    "before:absolute before:left-1 before:top-[2px] " +
+    "before:content-['–'] before:text-muted-foreground before:opacity-0 " +
     "before:cursor-pointer before:select-none " +
-    "before:rounded before:px-1 before:border before:border-transparent " +
+    "before:rounded before:px-0.5 before:border before:border-transparent " +
     "before:transition-colors transition-all duration-200 " +
+    "[&.has-text]:before:opacity-100 " +
     "hover:before:border-border/70 hover:before:bg-muted/40 hover:before:shadow-sm",
   text: {
     bold: "font-bold",
@@ -244,13 +305,32 @@ export function GlobalDaySlipPanel() {
   });
   const [resolveMode, setResolveMode] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [contentTransitioning, setContentTransitioning] = useState(false);
   const [recurringDraft, setRecurringDraft] = useState("");
   const [recurringEditIndex, setRecurringEditIndex] = useState<number | null>(null);
   const [recurringEditDraft, setRecurringEditDraft] = useState("");
-  const [recurringItems, setRecurringItems] = useState<string[]>(() => {
+  const [recurringDraftWeekday, setRecurringDraftWeekday] = useState<(typeof weekDays)[number]>("all");
+  const [recurringItems, setRecurringItems] = useState<RecurringTemplate[]>(() => {
     try {
       const raw = localStorage.getItem(RECURRING_STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as string[]) : [];
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as RecurringTemplate[] | string[];
+      if (Array.isArray(parsed)) {
+        if (parsed.length === 0) return [];
+        if (typeof parsed[0] === "string") {
+          return (parsed as string[]).map((text) => ({
+            id: crypto.randomUUID(),
+            text,
+            weekday: "all",
+          }));
+        }
+        return (parsed as RecurringTemplate[]).map((item) => ({
+          id: item.id ?? crypto.randomUUID(),
+          text: item.text,
+          weekday: weekDays.includes(item.weekday) ? item.weekday : "all",
+        }));
+      }
+      return [];
     } catch {
       return [];
     }
@@ -315,11 +395,10 @@ export function GlobalDaySlipPanel() {
     const key = toDayKey(yesterday);
     const allLines = extractLinesFromHtml(store[key]?.html ?? "");
     const struck = store[key]?.struckLineIds ?? store[key]?.struckLines ?? [];
-    // Only show lines that weren't struck off yesterday
-    return allLines.filter((line, index) => !struck.includes(`${index}:${line}`));
+    return allLines.filter((line) => !struck.includes(line.id));
   }, [store]);
 
-  const allLines = useMemo(
+  const allLineEntries = useMemo(
     () => extractLinesFromHtml(todayData.html),
     [todayData.html],
   );
@@ -329,19 +408,14 @@ export function GlobalDaySlipPanel() {
     [todayData.struckLineIds, todayData.struckLines],
   );
 
-  const allLineEntries = useMemo(
-    () => allLines.map((line, index) => ({ id: `${index}:${line}`, line })),
-    [allLines],
-  );
-
   const resolvedItems = useMemo<ResolvedItem[]>(
     () =>
       (todayData.resolved ?? []).map((item) => ({
-        lineId: item.lineId ?? `${allLines.indexOf(item.text)}:${item.text}`,
+        lineId: item.lineId ?? crypto.randomUUID(),
         text: item.text,
         target: item.target,
       })),
-    [todayData.resolved, allLines],
+    [todayData.resolved],
   );
 
   const resolvedByLineId = useMemo(
@@ -370,6 +444,8 @@ export function GlobalDaySlipPanel() {
         .sort((a, b) => b.localeCompare(a)),
     [store, todayKey],
   );
+
+  const currentRecurringItems = recurringItems;
 
   // ── Strike toggle (dash click) ───────────────────────────────────────────
 
@@ -424,9 +500,10 @@ export function GlobalDaySlipPanel() {
     const struckSet = new Set(struckLineIds);
     requestAnimationFrame(() => {
       const nodes = document.querySelectorAll<HTMLElement>(".day-slip-item");
-      nodes.forEach((node, index) => {
-        const text = (node.textContent ?? "").trim();
-        const lineId = `${index}:${text}`;
+      nodes.forEach((node) => {
+        const lineId = node.dataset.lineId ?? "";
+        const hasText = (node.textContent ?? "").trim().length > 0;
+        node.classList.toggle("has-text", hasText);
         const struck = struckSet.has(lineId);
         node.classList.toggle("line-through", struck);
         node.classList.toggle("text-muted-foreground", struck);
@@ -467,6 +544,38 @@ export function GlobalDaySlipPanel() {
     }, 220);
   };
 
+
+  const syncResolveExport = (
+    lineId: string,
+    text: string,
+    target: ResolveTarget,
+    isUndo: boolean,
+  ) => {
+    if (target === "archived" || target === "snoozed") return;
+    try {
+      const raw = localStorage.getItem(RESOLVE_EXPORT_KEY);
+      const existing = raw ? (JSON.parse(raw) as ResolveExportItem[]) : [];
+      const filtered = existing.filter(
+        (item) => !(item.sourceDayKey === todayKey && item.lineId === lineId),
+      );
+      const next = isUndo
+        ? filtered
+        : [
+            ...filtered,
+            {
+              sourceDayKey: todayKey,
+              lineId,
+              text,
+              target,
+              createdAt: new Date().toISOString(),
+            },
+          ];
+      localStorage.setItem(RESOLVE_EXPORT_KEY, JSON.stringify(next));
+    } catch (error) {
+      console.warn("Resolve export sync failed", error);
+    }
+  };
+
   const toggleResolveLine = (
     lineId: string,
     line: string,
@@ -491,6 +600,8 @@ export function GlobalDaySlipPanel() {
           ? struck
           : [...struck, lineId];
 
+      syncResolveExport(lineId, line, target, isUndo);
+
       return {
         ...prev,
         [todayKey]: {
@@ -507,15 +618,17 @@ export function GlobalDaySlipPanel() {
     setStore((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [] };
       const existingLines = extractLinesFromHtml(day.html);
-      const toAppend = yesterdayOpenLines.filter((line) => !existingLines.includes(line));
+      const existingIds = new Set(existingLines.map((line) => line.id));
+      const toAppend = yesterdayOpenLines.filter((line) => !existingIds.has(line.id));
       if (toAppend.length === 0) return prev;
-      const appended = [...existingLines, ...toAppend].map((line) => `<p>${line}</p>`).join("");
+      const merged = [...existingLines, ...toAppend];
+      const appended = merged.map(toParagraphHtml).join("");
       return {
         ...prev,
         [todayKey]: {
           ...day,
           html: appended,
-          plainText: [...existingLines, ...toAppend].join("\n"),
+          plainText: merged.map((line) => line.text).join("\n"),
           nodes: undefined,
         },
       };
@@ -561,8 +674,12 @@ export function GlobalDaySlipPanel() {
   const addRecurringItem = () => {
     const value = recurringDraft.trim();
     if (!value) return;
-    setRecurringItems((prev) => (prev.includes(value) ? prev : [...prev, value]));
+    setRecurringItems((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), text: value, weekday: recurringDraftWeekday },
+    ]);
     setRecurringDraft("");
+    setRecurringDraftWeekday("all");
   };
 
   const removeRecurringItem = (index: number) => {
@@ -575,7 +692,7 @@ export function GlobalDaySlipPanel() {
 
   const startEditRecurringItem = (index: number) => {
     setRecurringEditIndex(index);
-    setRecurringEditDraft(recurringItems[index] ?? "");
+    setRecurringEditDraft(recurringItems[index]?.text ?? "");
   };
 
   const saveEditRecurringItem = () => {
@@ -583,29 +700,45 @@ export function GlobalDaySlipPanel() {
     const value = recurringEditDraft.trim();
     if (!value) return;
     setRecurringItems((prev) =>
-      prev.map((item, idx) => (idx === recurringEditIndex ? value : item)),
+      prev.map((item, idx) =>
+        idx === recurringEditIndex ? { ...item, text: value } : item,
+      ),
     );
     setRecurringEditIndex(null);
     setRecurringEditDraft("");
   };
 
   useEffect(() => {
-    if (todayData.html.trim() || recurringItems.length === 0) return;
+    const todayWeekday = weekdayKey(new Date());
+    const recurringForToday = recurringItems
+      .filter((item) => item.weekday === "all" || item.weekday === todayWeekday)
+      .map((item) => item.text);
+    if (todayData.html.trim() || recurringForToday.length === 0) return;
     setStore((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "" };
       if (day.html.trim()) return prev;
-      const html = recurringItems.map((line) => `<p>${line}</p>`).join("");
+      const entries = recurringForToday.map((text) => ({ id: crypto.randomUUID(), text }));
+      const html = entries.map(toParagraphHtml).join("");
       return {
         ...prev,
         [todayKey]: {
           ...day,
           html,
-          plainText: recurringItems.join("\n"),
+          plainText: recurringForToday.join("\n"),
           nodes: undefined,
         },
       };
     });
   }, [todayData.html, recurringItems, todayKey]);
+
+  const switchView = (view: "settings" | "archive" | "default") => {
+    setContentTransitioning(true);
+    requestAnimationFrame(() => {
+      setShowSettings(view === "settings");
+      setShowArchive(view === "archive");
+      setTimeout(() => setContentTransitioning(false), 220);
+    });
+  };
 
   // ── Click handler attached to editor container ───────────────────────────
   //
@@ -627,7 +760,8 @@ export function GlobalDaySlipPanel() {
 
     const lineText = (item.textContent ?? "").trim();
     if (!lineText || /^-{3,}$/.test(normalizeRuleMarker(lineText))) return;
-    const lineId = `${Array.from(item.parentElement?.querySelectorAll(".day-slip-item") ?? []).indexOf(item)}:${lineText}`;
+    const lineId = item.dataset.lineId;
+    if (!lineId) return;
     toggleStrike(lineId);
   };
 
@@ -636,7 +770,14 @@ export function GlobalDaySlipPanel() {
   const editorConfig = useMemo(() => ({
     namespace: "DaySlipEditor",
     theme: editorTheme,
-    nodes: [HorizontalRuleNode],
+    nodes: [
+      HorizontalRuleNode,
+      DaySlipLineNode,
+      {
+        replace: ParagraphNode,
+        with: () => $createDaySlipLineNode(),
+      },
+    ],
     onError: (error: Error) => console.error("DaySlip Lexical error", error),
   }), []);
 
@@ -666,10 +807,7 @@ export function GlobalDaySlipPanel() {
               <button
                 type="button"
                 className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => {
-                  setShowSettings((prev) => !prev);
-                  setShowArchive(false);
-                }}
+                onClick={() => switchView(showSettings ? "default" : "settings")}
                 aria-label="Einstellungen anzeigen"
               >
                 <Settings className="h-4 w-4" />
@@ -677,10 +815,7 @@ export function GlobalDaySlipPanel() {
               <button
                 type="button"
                 className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => {
-                  setShowArchive((prev) => !prev);
-                  setShowSettings(false);
-                }}
+                onClick={() => switchView(showArchive ? "default" : "archive")}
                 aria-label="Archiv anzeigen"
               >
                 <Folder className="h-4 w-4" />
@@ -698,7 +833,7 @@ export function GlobalDaySlipPanel() {
 
           {/* ── Archive view ── */}
           {showSettings ? (
-            <div className="max-h-[560px] space-y-4 overflow-y-auto p-4">
+            <div className={`max-h-[560px] space-y-4 overflow-y-auto p-4 transition-all duration-200 ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               <div>
                 <p className="text-sm font-medium">Einstellungen</p>
                 <p className="text-xs text-muted-foreground">Wiederkehrende Punkte verwalten</p>
@@ -707,6 +842,18 @@ export function GlobalDaySlipPanel() {
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Wiederkehrende Punkte
                 </p>
+                <div className="mb-2 flex flex-wrap gap-1">
+                  {weekDays.map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => setRecurringDraftWeekday(day)}
+                      className={`rounded border px-2 py-0.5 text-[11px] ${recurringDraftWeekday === day ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-100" : "border-border/60 hover:bg-muted"}`}
+                    >
+                      {weekDayLabels[day]}
+                    </button>
+                  ))}
+                </div>
                 <div className="flex gap-2">
                   <input
                     value={recurringDraft}
@@ -720,11 +867,11 @@ export function GlobalDaySlipPanel() {
                 </div>
 
                 <div className="space-y-2">
-                  {recurringItems.length === 0 && (
+                  {currentRecurringItems.length === 0 && (
                     <p className="text-xs text-muted-foreground">Noch keine wiederkehrenden Punkte gespeichert.</p>
                   )}
-                  {recurringItems.map((item, index) => (
-                    <div key={`${item}-${index}`} className="flex items-center gap-2 rounded border border-border/50 px-2 py-1.5 text-xs">
+                  {currentRecurringItems.map((item, index) => (
+                    <div key={item.id} className="flex items-center gap-2 rounded border border-border/50 px-2 py-1.5 text-xs">
                       {recurringEditIndex === index ? (
                         <>
                           <input
@@ -741,12 +888,15 @@ export function GlobalDaySlipPanel() {
                         </>
                       ) : (
                         <>
-                          <span className="flex-1">{item}</span>
-                          <button type="button" className="rounded border border-border/60 px-2 py-1 hover:bg-muted" onClick={() => startEditRecurringItem(index)}>
-                            Bearbeiten
+                          <span className="flex-1">{item.text}</span>
+                          <span className="rounded border border-border/50 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            {weekDayLabels[item.weekday]}
+                          </span>
+                          <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => startEditRecurringItem(index)} aria-label="Wiederkehrenden Punkt bearbeiten">
+                            <Pencil className="h-3.5 w-3.5" />
                           </button>
-                          <button type="button" className="rounded border border-red-300/60 px-2 py-1 text-red-300 hover:bg-red-500/10" onClick={() => removeRecurringItem(index)}>
-                            Löschen
+                          <button type="button" className="rounded p-1 text-red-300 hover:bg-red-500/10" onClick={() => removeRecurringItem(index)} aria-label="Wiederkehrenden Punkt löschen">
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </>
                       )}
@@ -756,7 +906,7 @@ export function GlobalDaySlipPanel() {
               </div>
             </div>
           ) : showArchive ? (
-            <div className="max-h-[560px] space-y-3 overflow-y-auto p-4">
+            <div className={`max-h-[560px] space-y-3 overflow-y-auto p-4 transition-all duration-200 ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               <p className="text-sm font-medium">Archiv (nur lesen)</p>
               {archiveDays.length === 0 && (
                 <p className="text-sm text-muted-foreground">
@@ -778,12 +928,12 @@ export function GlobalDaySlipPanel() {
               ))}
             </div>
           ) : (
-            <>
+            <div className={`transition-all duration-200 ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               {/* ── Yesterday banner ── */}
               {yesterdayOpenLines.length > 0 && (
-                <div className="border-b border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
+                <div className={`border-b border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm text-amber-200 transition-all duration-200 ${contentTransitioning ? "opacity-0" : "opacity-100"}`}>
                   <span className="font-semibold">Gestern noch offen:</span>{" "}
-                  &ldquo;{yesterdayOpenLines[0]}&rdquo;
+                  &ldquo;{yesterdayOpenLines[0].text}&rdquo;
                   {yesterdayOpenLines.length > 1
                     ? ` +${yesterdayOpenLines.length - 1}`
                     : ""}
@@ -827,7 +977,7 @@ export function GlobalDaySlipPanel() {
                     </p>
                   </div>
                   <div className="max-h-[460px] space-y-2 overflow-y-auto p-4">
-                    {triageEntries.map(({ id, line }) => {
+                    {triageEntries.map(({ id, text }) => {
                       const activeTarget = resolvedByLineId.get(id);
                       const buttonClass = (target: ResolveTarget) =>
                         `rounded p-1 transition-colors ${activeTarget === target ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/50" : "hover:bg-muted"}`;
@@ -837,13 +987,13 @@ export function GlobalDaySlipPanel() {
                         key={id}
                         className="flex items-center justify-between gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm"
                       >
-                        <span className="line-clamp-1 flex-1">{line}</span>
+                        <span className="line-clamp-1 flex-1">{text}</span>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <button
                             type="button"
                             title="Als Notiz"
                             className={buttonClass("note")}
-                            onClick={() => toggleResolveLine(id, line, "note")}
+                            onClick={() => toggleResolveLine(id, text, "note")}
                           >
                             <NotebookPen className="h-4 w-4" />
                           </button>
@@ -851,7 +1001,7 @@ export function GlobalDaySlipPanel() {
                             type="button"
                             title="Als Aufgabe"
                             className={buttonClass("task")}
-                            onClick={() => toggleResolveLine(id, line, "task")}
+                            onClick={() => toggleResolveLine(id, text, "task")}
                           >
                             <ListTodo className="h-4 w-4" />
                           </button>
@@ -859,15 +1009,23 @@ export function GlobalDaySlipPanel() {
                             type="button"
                             title="Als Entscheidung"
                             className={buttonClass("decision")}
-                            onClick={() => toggleResolveLine(id, line, "decision")}
+                            onClick={() => toggleResolveLine(id, text, "decision")}
                           >
                             <Scale className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
+                            title="Snoozen"
+                            className={buttonClass("snoozed")}
+                            onClick={() => toggleResolveLine(id, text, "snoozed")}
+                          >
+                            <Clock3 className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
                             title="Archivieren"
                             className={buttonClass("archived")}
-                            onClick={() => toggleResolveLine(id, line, "archived")}
+                            onClick={() => toggleResolveLine(id, text, "archived")}
                           >
                             <FolderArchive className="h-4 w-4" />
                           </button>
@@ -934,7 +1092,7 @@ export function GlobalDaySlipPanel() {
                   </span>
                 </button>
               </div>
-            </>
+            </div>
           )}
         </aside>
       )}
