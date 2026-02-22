@@ -26,12 +26,15 @@ import {
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 import {
   ClipboardPen,
+  Clock3,
   Folder,
   FolderArchive,
   ListTodo,
   NotebookPen,
+  Pencil,
   Scale,
   Settings,
+  Trash2,
   X,
   Clock3,
 } from "lucide-react";
@@ -66,7 +69,11 @@ const SAVE_DEBOUNCE_MS = 400;
 
 
 type DaySlipLineEntry = { id: string; text: string };
-type RecurringByWeekday = Record<string, string[]>;
+type RecurringTemplate = {
+  id: string;
+  text: string;
+  weekday: (typeof weekDays)[number];
+};
 type ResolveExportItem = {
   sourceDayKey: string;
   lineId: string;
@@ -218,8 +225,8 @@ function DaySlipEnterBehaviorPlugin() {
           if (/^-{3,}$/.test(normalizeRuleMarker(text))) {
             const hr = $createHorizontalRuleNode();
             const newParagraph = $createDaySlipLineNode();
-            topLevel.insertBefore(hr);
-            topLevel.replace(newParagraph);
+            topLevel.replace(hr);
+            hr.insertAfter(newParagraph);
             newParagraph.select();
             handled = true;
             return;
@@ -265,12 +272,13 @@ function EditorEditablePlugin({ editable }: { editable: boolean }) {
 const editorTheme = {
   paragraph:
     "day-slip-item group relative mb-0 pl-7 " +
-    // The dash – always visible, pointer cursor
-    "before:absolute before:left-0 before:top-[2px] " +
-    "before:content-['—'] before:text-muted-foreground " +
+    // Short dash marker only for non-empty lines
+    "before:absolute before:left-1 before:top-[2px] " +
+    "before:content-['–'] before:text-muted-foreground before:opacity-0 " +
     "before:cursor-pointer before:select-none " +
-    "before:rounded before:px-1 before:border before:border-transparent " +
+    "before:rounded before:px-0.5 before:border before:border-transparent " +
     "before:transition-colors transition-all duration-200 " +
+    "[&.has-text]:before:opacity-100 " +
     "hover:before:border-border/70 hover:before:bg-muted/40 hover:before:shadow-sm",
   text: {
     bold: "font-bold",
@@ -297,39 +305,34 @@ export function GlobalDaySlipPanel() {
   });
   const [resolveMode, setResolveMode] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [contentTransitioning, setContentTransitioning] = useState(false);
   const [recurringDraft, setRecurringDraft] = useState("");
   const [recurringEditIndex, setRecurringEditIndex] = useState<number | null>(null);
   const [recurringEditDraft, setRecurringEditDraft] = useState("");
-  const [selectedRecurringWeekday, setSelectedRecurringWeekday] = useState<(typeof weekDays)[number]>("all");
-  const [recurringItemsByWeekday, setRecurringItemsByWeekday] = useState<RecurringByWeekday>(() => {
+  const [recurringDraftWeekday, setRecurringDraftWeekday] = useState<(typeof weekDays)[number]>("all");
+  const [recurringItems, setRecurringItems] = useState<RecurringTemplate[]>(() => {
     try {
       const raw = localStorage.getItem(RECURRING_STORAGE_KEY);
-      if (!raw) return Object.fromEntries(weekDays.map((day) => [day, []])) as RecurringByWeekday;
-      const parsed = JSON.parse(raw) as string[] | RecurringByWeekday;
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as RecurringTemplate[] | string[];
       if (Array.isArray(parsed)) {
-        return {
-          all: parsed,
-          monday: [],
-          tuesday: [],
-          wednesday: [],
-          thursday: [],
-          friday: [],
-          saturday: [],
-          sunday: [],
-        };
+        if (parsed.length === 0) return [];
+        if (typeof parsed[0] === "string") {
+          return (parsed as string[]).map((text) => ({
+            id: crypto.randomUUID(),
+            text,
+            weekday: "all",
+          }));
+        }
+        return (parsed as RecurringTemplate[]).map((item) => ({
+          id: item.id ?? crypto.randomUUID(),
+          text: item.text,
+          weekday: weekDays.includes(item.weekday) ? item.weekday : "all",
+        }));
       }
-      return {
-        all: parsed.all ?? [],
-        monday: parsed.monday ?? [],
-        tuesday: parsed.tuesday ?? [],
-        wednesday: parsed.wednesday ?? [],
-        thursday: parsed.thursday ?? [],
-        friday: parsed.friday ?? [],
-        saturday: parsed.saturday ?? [],
-        sunday: parsed.sunday ?? [],
-      };
+      return [];
     } catch {
-      return Object.fromEntries(weekDays.map((day) => [day, []])) as RecurringByWeekday;
+      return [];
     }
   });
 
@@ -362,11 +365,11 @@ export function GlobalDaySlipPanel() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(recurringItemsByWeekday));
+      localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(recurringItems));
     } catch (error) {
       console.warn("Recurring items localStorage write failed", error);
     }
-  }, [recurringItemsByWeekday]);
+  }, [recurringItems]);
 
   // ── Global keyboard shortcut: Ctrl+Alt+J ────────────────────────────────
   useEffect(() => {
@@ -442,8 +445,7 @@ export function GlobalDaySlipPanel() {
     [store, todayKey],
   );
 
-  const currentRecurringItems =
-    recurringItemsByWeekday[selectedRecurringWeekday] ?? [];
+  const currentRecurringItems = recurringItems;
 
   // ── Strike toggle (dash click) ───────────────────────────────────────────
 
@@ -500,6 +502,8 @@ export function GlobalDaySlipPanel() {
       const nodes = document.querySelectorAll<HTMLElement>(".day-slip-item");
       nodes.forEach((node) => {
         const lineId = node.dataset.lineId ?? "";
+        const hasText = (node.textContent ?? "").trim().length > 0;
+        node.classList.toggle("has-text", hasText);
         const struck = struckSet.has(lineId);
         node.classList.toggle("line-through", struck);
         node.classList.toggle("text-muted-foreground", struck);
@@ -634,20 +638,16 @@ export function GlobalDaySlipPanel() {
   const addRecurringItem = () => {
     const value = recurringDraft.trim();
     if (!value) return;
-    setRecurringItemsByWeekday((prev) => ({
+    setRecurringItems((prev) => [
       ...prev,
-      [selectedRecurringWeekday]: prev[selectedRecurringWeekday].includes(value)
-        ? prev[selectedRecurringWeekday]
-        : [...prev[selectedRecurringWeekday], value],
-    }));
+      { id: crypto.randomUUID(), text: value, weekday: recurringDraftWeekday },
+    ]);
     setRecurringDraft("");
+    setRecurringDraftWeekday("all");
   };
 
   const removeRecurringItem = (index: number) => {
-    setRecurringItemsByWeekday((prev) => ({
-      ...prev,
-      [selectedRecurringWeekday]: prev[selectedRecurringWeekday].filter((_, idx) => idx !== index),
-    }));
+    setRecurringItems((prev) => prev.filter((_, idx) => idx !== index));
     if (recurringEditIndex === index) {
       setRecurringEditIndex(null);
       setRecurringEditDraft("");
@@ -656,43 +656,53 @@ export function GlobalDaySlipPanel() {
 
   const startEditRecurringItem = (index: number) => {
     setRecurringEditIndex(index);
-    setRecurringEditDraft(recurringItemsByWeekday[selectedRecurringWeekday][index] ?? "");
+    setRecurringEditDraft(recurringItems[index]?.text ?? "");
   };
 
   const saveEditRecurringItem = () => {
     if (recurringEditIndex === null) return;
     const value = recurringEditDraft.trim();
     if (!value) return;
-    setRecurringItemsByWeekday((prev) => ({
-      ...prev,
-      [selectedRecurringWeekday]: prev[selectedRecurringWeekday].map((item, idx) =>
-        idx === recurringEditIndex ? value : item,
+    setRecurringItems((prev) =>
+      prev.map((item, idx) =>
+        idx === recurringEditIndex ? { ...item, text: value } : item,
       ),
-    }));
+    );
     setRecurringEditIndex(null);
     setRecurringEditDraft("");
   };
 
   useEffect(() => {
-    const weekdayRecurring = recurringItemsByWeekday[weekdayKey(new Date())] ?? [];
-    const recurringItems = [...(recurringItemsByWeekday.all ?? []), ...weekdayRecurring];
-    if (todayData.html.trim() || recurringItems.length === 0) return;
+    const todayWeekday = weekdayKey(new Date());
+    const recurringForToday = recurringItems
+      .filter((item) => item.weekday === "all" || item.weekday === todayWeekday)
+      .map((item) => item.text);
+    if (todayData.html.trim() || recurringForToday.length === 0) return;
     setStore((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "" };
       if (day.html.trim()) return prev;
-      const entries = recurringItems.map((text) => ({ id: crypto.randomUUID(), text }));
+      const entries = recurringForToday.map((text) => ({ id: crypto.randomUUID(), text }));
       const html = entries.map(toParagraphHtml).join("");
       return {
         ...prev,
         [todayKey]: {
           ...day,
           html,
-          plainText: recurringItems.join("\n"),
+          plainText: recurringForToday.join("\n"),
           nodes: undefined,
         },
       };
     });
-  }, [todayData.html, recurringItemsByWeekday, todayKey]);
+  }, [todayData.html, recurringItems, todayKey]);
+
+  const switchView = (view: "settings" | "archive" | "default") => {
+    setContentTransitioning(true);
+    requestAnimationFrame(() => {
+      setShowSettings(view === "settings");
+      setShowArchive(view === "archive");
+      setTimeout(() => setContentTransitioning(false), 220);
+    });
+  };
 
   // ── Click handler attached to editor container ───────────────────────────
   //
@@ -757,10 +767,7 @@ export function GlobalDaySlipPanel() {
               <button
                 type="button"
                 className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => {
-                  setShowSettings((prev) => !prev);
-                  setShowArchive(false);
-                }}
+                onClick={() => switchView(showSettings ? "default" : "settings")}
                 aria-label="Einstellungen anzeigen"
               >
                 <Settings className="h-4 w-4" />
@@ -768,10 +775,7 @@ export function GlobalDaySlipPanel() {
               <button
                 type="button"
                 className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => {
-                  setShowArchive((prev) => !prev);
-                  setShowSettings(false);
-                }}
+                onClick={() => switchView(showArchive ? "default" : "archive")}
                 aria-label="Archiv anzeigen"
               >
                 <Folder className="h-4 w-4" />
@@ -789,7 +793,7 @@ export function GlobalDaySlipPanel() {
 
           {/* ── Archive view ── */}
           {showSettings ? (
-            <div className="max-h-[560px] space-y-4 overflow-y-auto p-4">
+            <div className={`max-h-[560px] space-y-4 overflow-y-auto p-4 transition-all duration-200 ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               <div>
                 <p className="text-sm font-medium">Einstellungen</p>
                 <p className="text-xs text-muted-foreground">Wiederkehrende Punkte verwalten</p>
@@ -803,8 +807,8 @@ export function GlobalDaySlipPanel() {
                     <button
                       key={day}
                       type="button"
-                      onClick={() => setSelectedRecurringWeekday(day)}
-                      className={`rounded border px-2 py-0.5 text-[11px] ${selectedRecurringWeekday === day ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-100" : "border-border/60 hover:bg-muted"}`}
+                      onClick={() => setRecurringDraftWeekday(day)}
+                      className={`rounded border px-2 py-0.5 text-[11px] ${recurringDraftWeekday === day ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-100" : "border-border/60 hover:bg-muted"}`}
                     >
                       {weekDayLabels[day]}
                     </button>
@@ -827,7 +831,7 @@ export function GlobalDaySlipPanel() {
                     <p className="text-xs text-muted-foreground">Noch keine wiederkehrenden Punkte gespeichert.</p>
                   )}
                   {currentRecurringItems.map((item, index) => (
-                    <div key={`${item}-${index}`} className="flex items-center gap-2 rounded border border-border/50 px-2 py-1.5 text-xs">
+                    <div key={item.id} className="flex items-center gap-2 rounded border border-border/50 px-2 py-1.5 text-xs">
                       {recurringEditIndex === index ? (
                         <>
                           <input
@@ -844,12 +848,15 @@ export function GlobalDaySlipPanel() {
                         </>
                       ) : (
                         <>
-                          <span className="flex-1">{item}</span>
-                          <button type="button" className="rounded border border-border/60 px-2 py-1 hover:bg-muted" onClick={() => startEditRecurringItem(index)}>
-                            Bearbeiten
+                          <span className="flex-1">{item.text}</span>
+                          <span className="rounded border border-border/50 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            {weekDayLabels[item.weekday]}
+                          </span>
+                          <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => startEditRecurringItem(index)} aria-label="Wiederkehrenden Punkt bearbeiten">
+                            <Pencil className="h-3.5 w-3.5" />
                           </button>
-                          <button type="button" className="rounded border border-red-300/60 px-2 py-1 text-red-300 hover:bg-red-500/10" onClick={() => removeRecurringItem(index)}>
-                            Löschen
+                          <button type="button" className="rounded p-1 text-red-300 hover:bg-red-500/10" onClick={() => removeRecurringItem(index)} aria-label="Wiederkehrenden Punkt löschen">
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </>
                       )}
@@ -859,7 +866,7 @@ export function GlobalDaySlipPanel() {
               </div>
             </div>
           ) : showArchive ? (
-            <div className="max-h-[560px] space-y-3 overflow-y-auto p-4">
+            <div className={`max-h-[560px] space-y-3 overflow-y-auto p-4 transition-all duration-200 ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               <p className="text-sm font-medium">Archiv (nur lesen)</p>
               {archiveDays.length === 0 && (
                 <p className="text-sm text-muted-foreground">
@@ -881,10 +888,10 @@ export function GlobalDaySlipPanel() {
               ))}
             </div>
           ) : (
-            <>
+            <div className={`transition-all duration-200 ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               {/* ── Yesterday banner ── */}
               {yesterdayOpenLines.length > 0 && (
-                <div className="border-b border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
+                <div className={`border-b border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm text-amber-200 transition-all duration-200 ${contentTransitioning ? "opacity-0" : "opacity-100"}`}>
                   <span className="font-semibold">Gestern noch offen:</span>{" "}
                   &ldquo;{yesterdayOpenLines[0].text}&rdquo;
                   {yesterdayOpenLines.length > 1
@@ -1043,7 +1050,7 @@ export function GlobalDaySlipPanel() {
                   </span>
                 </button>
               </div>
-            </>
+            </div>
           )}
         </aside>
       )}
