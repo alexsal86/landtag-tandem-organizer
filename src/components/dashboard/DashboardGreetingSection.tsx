@@ -384,6 +384,7 @@ export const DashboardGreetingSection = () => {
       text += ` · ${completedTasksToday} heute abgeschlossen`;
     }
     text += '\n';
+    text += '{{TASK_LIST_PLACEHOLDER}}\n';
     if (showWeather) {
       text += '\n☀️ **Das Wetter heute (optional):**\n';
       if (weatherKarlsruhe) {
@@ -423,17 +424,59 @@ export const DashboardGreetingSection = () => {
     return text;
   }, [isLoading, userName, userRole, weatherKarlsruhe, weatherStuttgart, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, openTaskTitles, showWeather]);
 
-  // Parse text for bold markers (**text**)
+  // Parse text for bold markers (**text**) and task list placeholder
   const parsedContent = useMemo(() => {
-    const parts = fullText.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, index) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        const boldText = part.slice(2, -2);
-        return <strong key={index} className="font-bold">{boldText}</strong>;
-      }
-      return part;
-    });
-  }, [fullText]);
+    // Split by task list placeholder first
+    const sections = fullText.split('{{TASK_LIST_PLACEHOLDER}}\n');
+    
+    const parseTextSection = (text: string) => {
+      const parts = text.split(/(\*\*.*?\*\*)/g);
+      return parts.map((part, index) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          const boldText = part.slice(2, -2);
+          return <strong key={index} className="font-bold">{boldText}</strong>;
+        }
+        return part;
+      });
+    };
+
+    if (sections.length < 2) {
+      return parseTextSection(fullText.replace('{{TASK_LIST_PLACEHOLDER}}\n', ''));
+    }
+
+    return (
+      <>
+        {parseTextSection(sections[0])}
+        {openTaskTitles.length > 0 && (
+          <span className="block">
+            {openTaskTitles.map((taskTitle, index) => (
+              <span
+                key={`${taskTitle}-${index}`}
+                className="flex items-start gap-1.5 rounded px-1 py-0.5 text-sm text-muted-foreground cursor-pointer hover:bg-muted/40 transition-colors"
+                onClick={() => navigate('/mywork?tab=tasks')}
+                title="Klicken um zur Aufgabe zu gehen, oder per Handle in den Tageszettel ziehen"
+              >
+                <span
+                  draggable
+                  onDragStart={(event) => {
+                    event.stopPropagation();
+                    handleTaskTitleDragStart(event, taskTitle);
+                  }}
+                  className="mt-[1px] cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
+                  aria-label="Aufgabe in den Tageszettel ziehen"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <GripVertical className="h-3.5 w-3.5" />
+                </span>
+                <span className="flex-1">{taskTitle}</span>
+              </span>
+            ))}
+          </span>
+        )}
+        {parseTextSection(sections[1])}
+      </>
+    );
+  }, [fullText, openTaskTitles, navigate, handleTaskTitleDragStart]);
 
   // Show skeleton while tenant is loading
   if (tenantLoading) {
@@ -450,27 +493,6 @@ export const DashboardGreetingSection = () => {
       <span className="text-xl lg:text-2xl font-light tracking-tight text-foreground/90 block whitespace-pre-wrap">
         {parsedContent}
       </span>
-      {openTaskTitles.length > 0 && (
-        <ul className="mt-2 space-y-1">
-          {openTaskTitles.map((taskTitle, index) => (
-            <li
-              key={`${taskTitle}-${index}`}
-              className="flex items-start gap-1.5 rounded px-1 py-0.5 text-sm text-muted-foreground"
-              title="Per Handle in den Tageszettel ziehen"
-            >
-              <span
-                draggable
-                onDragStart={(event) => handleTaskTitleDragStart(event, taskTitle)}
-                className="mt-[1px] cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
-                aria-label="Aufgabe in den Tageszettel ziehen"
-              >
-                <GripVertical className="h-3.5 w-3.5" />
-              </span>
-              <span className="flex-1">{taskTitle}</span>
-            </li>
-          ))}
-        </ul>
-      )}
       {feedbackReminderVisible && (
         <div className="mt-3">
           <button

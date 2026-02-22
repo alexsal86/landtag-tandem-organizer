@@ -1247,7 +1247,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_300px] gap-6">
-      <div className="space-y-4 xl:contents">
         {actionButtons && (
           <Card className="xl:col-start-3">
             <CardHeader className="py-3 px-4">
@@ -1449,7 +1448,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             )}
           </CardContent>
         </Card>
-      </div>
 
         <Card className="xl:col-start-2 xl:row-span-4">
           <CardHeader className="pb-2">

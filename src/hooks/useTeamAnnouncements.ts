@@ -187,6 +187,32 @@ export function useTeamAnnouncements() {
 
       if (error) throw error;
 
+      // Push notification to all tenant members (except author)
+      try {
+        const { data: members } = await supabase
+          .from("user_tenant_memberships")
+          .select("user_id")
+          .eq("tenant_id", currentTenant.id)
+          .eq("is_active", true)
+          .neq("user_id", user.id);
+
+        if (members && members.length > 0) {
+          const notifications = members.map((m) => 
+            supabase.rpc("create_notification", {
+              user_id_param: m.user_id,
+              type_name: "team_news",
+              title_param: `Team-Mitteilung: ${data.title}`,
+              message_param: data.message.substring(0, 200),
+              priority_param: data.priority === "critical" ? "high" : "medium",
+              data_param: JSON.stringify({ announcement_id: newAnnouncement.id }),
+            })
+          );
+          await Promise.allSettled(notifications);
+        }
+      } catch (pushErr) {
+        console.error("Error sending announcement notifications:", pushErr);
+      }
+
       toast.success("Mitteilung erstellt");
       await fetchAnnouncements();
       return newAnnouncement;

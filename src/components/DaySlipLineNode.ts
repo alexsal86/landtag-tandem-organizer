@@ -2,6 +2,7 @@ import {
   ParagraphNode,
   type DOMConversionMap,
   type DOMConversionOutput,
+  type DOMExportOutput,
   type EditorConfig,
   type LexicalNode,
   type NodeKey,

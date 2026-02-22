@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -301,6 +304,8 @@ const editorTheme = {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function GlobalDaySlipPanel() {
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [open, setOpen] = useState(true);
   const [showArchive, setShowArchive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -572,7 +577,49 @@ export function GlobalDaySlipPanel() {
     }, 220);
   };
 
-  const markDayCompleted = () => {
+  const persistResolvedItems = async () => {
+    if (!user?.id) return;
+    const resolved = (store[todayKey]?.resolved ?? []) as ResolvedItem[];
+    const exportableItems = resolved.filter(
+      (item) => item.target === "note" || item.target === "task" || item.target === "decision"
+    );
+    
+    for (const item of exportableItems) {
+      try {
+        if (item.target === "note") {
+          await supabase.from("quick_notes").insert({
+            user_id: user.id,
+            title: item.text,
+            content: `Aus Tageszettel (${todayKey})`,
+          });
+        } else if (item.target === "task") {
+          if (currentTenant?.id) {
+            await supabase.from("tasks").insert({
+              user_id: user.id,
+              tenant_id: currentTenant.id,
+              title: item.text,
+              description: `Aus Tageszettel (${todayKey})`,
+              status: "open",
+              priority: "medium",
+              category: "allgemein",
+            });
+          }
+        } else if (item.target === "decision") {
+          await supabase.from("task_decisions").insert({
+            created_by: user.id,
+            title: item.text,
+            description: `Aus Tageszettel (${todayKey})`,
+            status: "open",
+          });
+        }
+      } catch (err) {
+        console.error(`Failed to persist resolved item (${item.target}):`, err);
+      }
+    }
+  };
+
+  const markDayCompleted = async () => {
+    await persistResolvedItems();
     const completedAt = new Date().toISOString();
     setStore((prev) => ({
       ...prev,
