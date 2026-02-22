@@ -30,6 +30,7 @@ import {
   ListTodo,
   NotebookPen,
   Scale,
+  Settings,
   X,
 } from "lucide-react";
 import FloatingTextFormatToolbar from "@/components/FloatingTextFormatToolbar";
@@ -44,8 +45,10 @@ interface DaySlipDayData {
   nodes?: string;
   struckLines?: string[]; // legacy
   struckLineIds?: string[];
-  resolved?: Array<{ text: string; target: ResolveTarget }>;
+  resolved?: Array<{ lineId: string; text: string; target: ResolveTarget }>;
 }
+
+type ResolvedItem = { lineId: string; text: string; target: ResolveTarget };
 
 type DaySlipStore = Record<string, DaySlipDayData>;
 
@@ -90,7 +93,7 @@ const extractLinesFromHtml = (html: string): string[] => {
 };
 
 const normalizeRuleMarker = (text: string) =>
-  text.replace(/[—–]/g, "-").replace(/\s+/g, "").trim();
+  text.replace(/[‐‑‒–—―−]/g, "-").replace(/\s+/g, "").trim();
 
 // ─── Lexical Plugins ─────────────────────────────────────────────────────────
 
@@ -159,7 +162,7 @@ function DaySlipEnterBehaviorPlugin() {
             selection.anchor.getNode().getTopLevelElementOrThrow();
           const text = topLevel.getTextContent().trim();
 
-          if (normalizeRuleMarker(text) === "---") {
+          if (/^-{3,}$/.test(normalizeRuleMarker(text))) {
             const hr = $createHorizontalRuleNode();
             const newParagraph = $createParagraphNode();
             topLevel.insertBefore(hr);
@@ -230,6 +233,7 @@ const editorTheme = {
 export function GlobalDaySlipPanel() {
   const [open, setOpen] = useState(true);
   const [showArchive, setShowArchive] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [store, setStore] = useState<DaySlipStore>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -241,6 +245,8 @@ export function GlobalDaySlipPanel() {
   const [resolveMode, setResolveMode] = useState(false);
   const [closing, setClosing] = useState(false);
   const [recurringDraft, setRecurringDraft] = useState("");
+  const [recurringEditIndex, setRecurringEditIndex] = useState<number | null>(null);
+  const [recurringEditDraft, setRecurringEditDraft] = useState("");
   const [recurringItems, setRecurringItems] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem(RECURRING_STORAGE_KEY);
@@ -328,6 +334,21 @@ export function GlobalDaySlipPanel() {
     [allLines],
   );
 
+  const resolvedItems = useMemo<ResolvedItem[]>(
+    () =>
+      (todayData.resolved ?? []).map((item) => ({
+        lineId: item.lineId ?? `${allLines.indexOf(item.text)}:${item.text}`,
+        text: item.text,
+        target: item.target,
+      })),
+    [todayData.resolved, allLines],
+  );
+
+  const resolvedByLineId = useMemo(
+    () => new Map(resolvedItems.map((item) => [item.lineId, item.target])),
+    [resolvedItems],
+  );
+
   // Lines not yet struck = open; used for triage
   const openLines = useMemo(
     () => allLineEntries.filter((entry) => !struckLineIds.includes(entry.id)),
@@ -335,6 +356,12 @@ export function GlobalDaySlipPanel() {
   );
 
   const unresolvedCount = openLines.length;
+
+  const triageEntries = useMemo(() => {
+    const unresolved = openLines;
+    const resolved = allLineEntries.filter((entry) => resolvedByLineId.has(entry.id));
+    return [...unresolved, ...resolved];
+  }, [allLineEntries, openLines, resolvedByLineId]);
 
   const archiveDays = useMemo(
     () =>
@@ -432,24 +459,44 @@ export function GlobalDaySlipPanel() {
       setResolveMode(true);
       return;
     }
-    setResolveMode(false);
-    setOpen(false);
+    setClosing(true);
+    setTimeout(() => {
+      setResolveMode(false);
+      setOpen(false);
+      setClosing(false);
+    }, 220);
   };
 
-  const resolveLine = (lineId: string, line: string, target: ResolveTarget) => {
+  const toggleResolveLine = (
+    lineId: string,
+    line: string,
+    target: ResolveTarget,
+  ) => {
     setStore((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
-      // Mark as struck so it disappears from openLines
       const struck = day.struckLineIds ?? day.struckLines ?? [];
+      const resolved = (day.resolved ?? []) as ResolvedItem[];
+      const existing = resolved.find((item) => item.lineId === lineId);
+      const isUndo = existing?.target === target;
+      const nextResolved = isUndo
+        ? resolved.filter((item) => item.lineId !== lineId)
+        : [
+            ...resolved.filter((item) => item.lineId !== lineId),
+            { lineId, text: line, target },
+          ];
+
+      const nextStruck = isUndo
+        ? struck.filter((id) => id !== lineId)
+        : struck.includes(lineId)
+          ? struck
+          : [...struck, lineId];
+
       return {
         ...prev,
         [todayKey]: {
           ...day,
-          struckLineIds: struck.includes(lineId) ? struck : [...struck, lineId],
-          resolved: [
-            ...(day.resolved ?? []),
-            { text: line, target },
-          ],
+          struckLineIds: nextStruck,
+          resolved: nextResolved,
         },
       };
     });
@@ -480,6 +527,30 @@ export function GlobalDaySlipPanel() {
     if (!value) return;
     setRecurringItems((prev) => (prev.includes(value) ? prev : [...prev, value]));
     setRecurringDraft("");
+  };
+
+  const removeRecurringItem = (index: number) => {
+    setRecurringItems((prev) => prev.filter((_, idx) => idx !== index));
+    if (recurringEditIndex === index) {
+      setRecurringEditIndex(null);
+      setRecurringEditDraft("");
+    }
+  };
+
+  const startEditRecurringItem = (index: number) => {
+    setRecurringEditIndex(index);
+    setRecurringEditDraft(recurringItems[index] ?? "");
+  };
+
+  const saveEditRecurringItem = () => {
+    if (recurringEditIndex === null) return;
+    const value = recurringEditDraft.trim();
+    if (!value) return;
+    setRecurringItems((prev) =>
+      prev.map((item, idx) => (idx === recurringEditIndex ? value : item)),
+    );
+    setRecurringEditIndex(null);
+    setRecurringEditDraft("");
   };
 
   useEffect(() => {
@@ -519,7 +590,7 @@ export function GlobalDaySlipPanel() {
     if (clickX > 28) return;
 
     const lineText = (item.textContent ?? "").trim();
-    if (!lineText || lineText === "---") return;
+    if (!lineText || /^-{3,}$/.test(normalizeRuleMarker(lineText))) return;
     const lineId = `${Array.from(item.parentElement?.querySelectorAll(".day-slip-item") ?? []).indexOf(item)}:${lineText}`;
     toggleStrike(lineId);
   };
@@ -555,7 +626,21 @@ export function GlobalDaySlipPanel() {
               <button
                 type="button"
                 className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => setShowArchive((prev) => !prev)}
+                onClick={() => {
+                  setShowSettings((prev) => !prev);
+                  setShowArchive(false);
+                }}
+                aria-label="Einstellungen anzeigen"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                onClick={() => {
+                  setShowArchive((prev) => !prev);
+                  setShowSettings(false);
+                }}
                 aria-label="Archiv anzeigen"
               >
                 <Folder className="h-4 w-4" />
@@ -572,7 +657,65 @@ export function GlobalDaySlipPanel() {
           </div>
 
           {/* ── Archive view ── */}
-          {showArchive ? (
+          {showSettings ? (
+            <div className="max-h-[560px] space-y-4 overflow-y-auto p-4">
+              <div>
+                <p className="text-sm font-medium">Einstellungen</p>
+                <p className="text-xs text-muted-foreground">Wiederkehrende Punkte verwalten</p>
+              </div>
+              <div className="space-y-2 rounded-lg border border-border/60 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Wiederkehrende Punkte
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    value={recurringDraft}
+                    onChange={(e) => setRecurringDraft(e.target.value)}
+                    placeholder="z. B. Inbox prüfen"
+                    className="h-8 flex-1 rounded border border-border/60 bg-background px-2 text-xs"
+                  />
+                  <button type="button" onClick={addRecurringItem} className="rounded border border-border/60 px-2 text-xs hover:bg-muted">
+                    Hinzufügen
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {recurringItems.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Noch keine wiederkehrenden Punkte gespeichert.</p>
+                  )}
+                  {recurringItems.map((item, index) => (
+                    <div key={`${item}-${index}`} className="flex items-center gap-2 rounded border border-border/50 px-2 py-1.5 text-xs">
+                      {recurringEditIndex === index ? (
+                        <>
+                          <input
+                            value={recurringEditDraft}
+                            onChange={(e) => setRecurringEditDraft(e.target.value)}
+                            className="h-7 flex-1 rounded border border-border/60 bg-background px-2 text-xs"
+                          />
+                          <button type="button" className="rounded border border-border/60 px-2 py-1 hover:bg-muted" onClick={saveEditRecurringItem}>
+                            Speichern
+                          </button>
+                          <button type="button" className="rounded border border-border/60 px-2 py-1 hover:bg-muted" onClick={() => setRecurringEditIndex(null)}>
+                            Abbrechen
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex-1">{item}</span>
+                          <button type="button" className="rounded border border-border/60 px-2 py-1 hover:bg-muted" onClick={() => startEditRecurringItem(index)}>
+                            Bearbeiten
+                          </button>
+                          <button type="button" className="rounded border border-red-300/60 px-2 py-1 text-red-300 hover:bg-red-500/10" onClick={() => removeRecurringItem(index)}>
+                            Löschen
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : showArchive ? (
             <div className="max-h-[560px] space-y-3 overflow-y-auto p-4">
               <p className="text-sm font-medium">Archiv (nur lesen)</p>
               {archiveDays.length === 0 && (
@@ -644,7 +787,12 @@ export function GlobalDaySlipPanel() {
                     </p>
                   </div>
                   <div className="max-h-[460px] space-y-2 overflow-y-auto p-4">
-                    {openLines.map(({ id, line }) => (
+                    {triageEntries.map(({ id, line }) => {
+                      const activeTarget = resolvedByLineId.get(id);
+                      const buttonClass = (target: ResolveTarget) =>
+                        `rounded p-1 transition-colors ${activeTarget === target ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/50" : "hover:bg-muted"}`;
+
+                      return (
                       <div
                         key={id}
                         className="flex items-center justify-between gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm"
@@ -654,38 +802,39 @@ export function GlobalDaySlipPanel() {
                           <button
                             type="button"
                             title="Als Notiz"
-                            className="rounded p-1 hover:bg-muted"
-                            onClick={() => resolveLine(id, line, "note")}
+                            className={buttonClass("note")}
+                            onClick={() => toggleResolveLine(id, line, "note")}
                           >
                             <NotebookPen className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
                             title="Als Aufgabe"
-                            className="rounded p-1 hover:bg-muted"
-                            onClick={() => resolveLine(id, line, "task")}
+                            className={buttonClass("task")}
+                            onClick={() => toggleResolveLine(id, line, "task")}
                           >
                             <ListTodo className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
                             title="Als Entscheidung"
-                            className="rounded p-1 hover:bg-muted"
-                            onClick={() => resolveLine(id, line, "decision")}
+                            className={buttonClass("decision")}
+                            onClick={() => toggleResolveLine(id, line, "decision")}
                           >
                             <Scale className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
                             title="Archivieren"
-                            className="rounded p-1 hover:bg-muted"
-                            onClick={() => resolveLine(id, line, "archived")}
+                            className={buttonClass("archived")}
+                            onClick={() => toggleResolveLine(id, line, "archived")}
                           >
                             <FolderArchive className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
