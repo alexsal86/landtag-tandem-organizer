@@ -57,8 +57,8 @@ export const DashboardGreetingSection = () => {
     event.dataTransfer.setData('application/x-mywork-task-title', taskTitle);
 
     const ghost = document.createElement('div');
-    ghost.className = 'rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground shadow-xl';
-    ghost.textContent = `Tageszettel: ${taskTitle}`;
+    ghost.className = 'pointer-events-none bg-transparent px-0 py-0 text-lg font-medium text-foreground';
+    ghost.textContent = taskTitle;
     document.body.appendChild(ghost);
     event.dataTransfer.setDragImage(ghost, 12, 12);
     requestAnimationFrame(() => ghost.remove());
@@ -447,7 +447,7 @@ export const DashboardGreetingSection = () => {
             {openTaskTitles.map((taskTitle, index) => (
               <span
                 key={`${taskTitle}-${index}`}
-                className="flex items-start gap-1.5 rounded px-1 py-0.5 text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
+                className="flex items-center gap-1.5 rounded px-1 py-0.5 text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
                 onClick={() => navigate('/mywork?tab=tasks')}
                 title="Klicken um zur Aufgabe zu gehen, oder per Handle in den Tageszettel ziehen"
               >
@@ -457,11 +457,11 @@ export const DashboardGreetingSection = () => {
                     event.stopPropagation();
                     handleTaskTitleDragStart(event, taskTitle);
                   }}
-                  className="mt-[1px] cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
+                  className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
                   aria-label="Aufgabe in den Tageszettel ziehen"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <GripVertical className="h-3.5 w-3.5" />
+                  <GripVertical className="h-4 w-4" />
                 </span>
                 <span className="flex-1">{taskTitle}</span>
               </span>
