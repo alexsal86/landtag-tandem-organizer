@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Archive,
-  ClipboardList,
+  ClipboardPen,
   Folder,
   FolderArchive,
   ListTodo,
@@ -10,11 +9,11 @@ import {
   X,
 } from "lucide-react";
 
-type EntryStatus = "open" | "done" | "note" | "task" | "decision" | "archived";
+type EntryStatus = "open" | "done" | "note" | "task" | "decision" | "archived" | "separator";
 
 interface DaySlipEntry {
   id: string;
-  text: string;
+  content: string;
   createdAt: string;
   status: EntryStatus;
 }
@@ -48,14 +47,28 @@ const statusLabel: Record<Exclude<EntryStatus, "open" | "done">, string> = {
   task: "Aufgabe",
   decision: "Entscheidung",
   archived: "Archiv",
+  separator: "Linie",
 };
 
+const escapeHtml = (text: string) =>
+  text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").trim();
+
 export function GlobalDaySlipPanel() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [showArchive, setShowArchive] = useState(false);
   const [input, setInput] = useState("");
   const [store, setStore] = useState<DaySlipStore>({});
   const [resolveMode, setResolveMode] = useState(false);
+  const [activeEditorId, setActiveEditorId] = useState<string | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const editorRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const todayKey = toDayKey(new Date());
 
@@ -107,11 +120,13 @@ export function GlobalDaySlipPanel() {
     const text = input.trim();
     if (!text) return;
 
+    const isSeparator = text === "---";
+
     const newEntry: DaySlipEntry = {
       id: crypto.randomUUID(),
-      text,
+      content: isSeparator ? "" : escapeHtml(text),
       createdAt: new Date().toISOString(),
-      status: "open",
+      status: isSeparator ? "separator" : "open",
     };
 
     setStore((prev) => ({
@@ -121,28 +136,62 @@ export function GlobalDaySlipPanel() {
     setInput("");
   };
 
-  const toggleDone = (id: string) => {
+  const updateContent = (id: string, html: string) => {
     setStore((prev) => ({
       ...prev,
       [todayKey]: (prev[todayKey] ?? []).map((entry) =>
-        entry.id === id
-          ? { ...entry, status: entry.status === "done" ? "open" : "done" }
-          : entry,
+        entry.id === id ? { ...entry, content: html } : entry,
       ),
     }));
   };
 
-  const resolveEntry = (id: string, status: Exclude<EntryStatus, "open" | "done">) => {
+  const toggleDone = (id: string) => {
+    setStore((prev) => ({
+      ...prev,
+      [todayKey]: (prev[todayKey] ?? []).map((entry) => {
+        if (entry.id !== id || entry.status === "separator") return entry;
+        return { ...entry, status: entry.status === "done" ? "open" : "done" };
+      }),
+    }));
+  };
+
+  const resolveEntry = (id: string, status: Exclude<EntryStatus, "open" | "done" | "separator">) => {
     setStore((prev) => ({
       ...prev,
       [todayKey]: (prev[todayKey] ?? []).map((entry) => (entry.id === id ? { ...entry, status } : entry)),
     }));
   };
 
+  const reorderEntries = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+
+    setStore((prev) => {
+      const list = [...(prev[todayKey] ?? [])];
+      const sourceIndex = list.findIndex((entry) => entry.id === sourceId);
+      const targetIndex = list.findIndex((entry) => entry.id === targetId);
+      if (sourceIndex < 0 || targetIndex < 0) return prev;
+
+      const [moved] = list.splice(sourceIndex, 1);
+      list.splice(targetIndex, 0, moved);
+
+      return { ...prev, [todayKey]: list };
+    });
+  };
+
+  const applyFormat = (command: "bold" | "italic" | "underline") => {
+    const active = activeEditorId ? editorRefs.current[activeEditorId] : null;
+    if (!active) return;
+    active.focus();
+    document.execCommand(command);
+    updateContent(activeEditorId, active.innerHTML);
+  };
+
   const completeDay = () => {
     setStore((prev) => ({
       ...prev,
-      [todayKey]: (prev[todayKey] ?? []).map((entry) => (entry.status === "done" ? { ...entry, status: "archived" } : entry)),
+      [todayKey]: (prev[todayKey] ?? []).map((entry) =>
+        entry.status === "done" ? { ...entry, status: "archived" } : entry,
+      ),
     }));
 
     if (openEntries.length > 0) {
@@ -169,11 +218,11 @@ export function GlobalDaySlipPanel() {
   return (
     <>
       {open && (
-        <aside className="fixed bottom-24 right-6 z-50 w-[420px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border/60 bg-background/95 shadow-2xl backdrop-blur">
+        <aside className="fixed bottom-24 right-6 z-50 w-[520px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border/60 bg-background/95 shadow-2xl backdrop-blur">
           <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
             <div>
               <p className="flex items-center gap-2 text-lg font-semibold">
-                <ClipboardList className="h-4 w-4" /> Tageszettel
+                <ClipboardPen className="h-5 w-5" /> Tageszettel
               </p>
               <p className="text-xs text-muted-foreground">{formatDate(todayKey)}</p>
             </div>
@@ -198,7 +247,7 @@ export function GlobalDaySlipPanel() {
           </div>
 
           {showArchive ? (
-            <div className="max-h-[420px] space-y-3 overflow-y-auto p-4">
+            <div className="max-h-[520px] space-y-3 overflow-y-auto p-4">
               <p className="text-sm font-medium">Archiv (nur lesen)</p>
               {archiveDays.length === 0 && <p className="text-sm text-muted-foreground">Noch keine vergangenen Tage.</p>}
               {archiveDays.map((day) => (
@@ -207,8 +256,10 @@ export function GlobalDaySlipPanel() {
                   <ul className="space-y-1 text-sm">
                     {(store[day] ?? []).map((entry) => (
                       <li key={entry.id} className="flex items-center justify-between gap-2">
-                        <span className="line-clamp-1">{entry.text}</span>
-                        <span className="text-xs text-muted-foreground">{entry.status === "open" || entry.status === "done" ? entry.status : statusLabel[entry.status]}</span>
+                        <span className="line-clamp-1">{stripHtml(entry.content) || "—"}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {entry.status === "open" || entry.status === "done" ? entry.status : statusLabel[entry.status]}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -219,49 +270,94 @@ export function GlobalDaySlipPanel() {
             <>
               {yesterdayOpen.length > 0 && (
                 <div className="border-b border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
-                  <span className="font-semibold">Gestern noch offen:</span> "{yesterdayOpen[0].text}"
+                  <span className="font-semibold">Gestern noch offen:</span> "{stripHtml(yesterdayOpen[0].content)}"
                   {yesterdayOpen.length > 1 ? ` +${yesterdayOpen.length - 1}` : ""}
                 </div>
               )}
 
-              <ul className="max-h-[280px] space-y-1 overflow-y-auto px-4 py-3">
+              {activeEditorId && (
+                <div className="sticky top-0 z-10 flex gap-1 border-b border-border/50 bg-background/90 px-4 py-2 backdrop-blur">
+                  <button type="button" onClick={() => applyFormat("bold")} className="rounded border border-border px-2 py-1 text-xs font-bold hover:bg-muted">B</button>
+                  <button type="button" onClick={() => applyFormat("italic")} className="rounded border border-border px-2 py-1 text-xs italic hover:bg-muted">I</button>
+                  <button type="button" onClick={() => applyFormat("underline")} className="rounded border border-border px-2 py-1 text-xs underline hover:bg-muted">U</button>
+                </div>
+              )}
+
+              <ul className="max-h-[560px] min-h-[380px] space-y-1 overflow-y-auto px-4 py-3">
                 {todayEntries.length === 0 && (
                   <li className="py-5 text-sm italic text-muted-foreground">Was steht heute an? Einfach drauflosschreiben …</li>
                 )}
                 {todayEntries.map((entry) => {
+                  if (entry.status === "separator") {
+                    return (
+                      <li key={entry.id} className="py-2">
+                        <hr className="border-border/80" />
+                      </li>
+                    );
+                  }
+
                   const done = entry.status === "done";
 
                   return (
-                    <li key={entry.id} className="group flex items-start gap-2 rounded px-2 py-1 hover:bg-muted/40">
+                    <li
+                      key={entry.id}
+                      className="group flex items-start gap-2 rounded px-2 py-1 hover:bg-muted/40"
+                      draggable
+                      onDragStart={() => setDraggedId(entry.id)}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => {
+                        if (!draggedId) return;
+                        reorderEntries(draggedId, entry.id);
+                        setDraggedId(null);
+                      }}
+                    >
                       <button
                         type="button"
                         onClick={() => toggleDone(entry.id)}
                         className="mt-1 h-2.5 w-2.5 rounded-full border border-muted-foreground/60"
                         aria-label="Eintrag erledigt markieren"
                       />
-                      <span
-                        title={`Erfasst um ${formatTime(entry.createdAt)}`}
-                        className={`flex-1 text-sm ${done ? "text-muted-foreground line-through" : "text-foreground"}`}
+                      <button
+                        type="button"
+                        aria-label="Zeile greifen und verschieben"
+                        className="mt-0.5 w-4 text-left text-base font-black leading-none text-muted-foreground opacity-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] transition group-hover:opacity-100 cursor-grab active:cursor-grabbing"
                       >
-                        {entry.text}
-                      </span>
+                        -
+                      </button>
+                      <div
+                        ref={(node) => {
+                          editorRefs.current[entry.id] = node;
+                        }}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onFocus={() => setActiveEditorId(entry.id)}
+                        onBlur={(event) => {
+                          updateContent(entry.id, event.currentTarget.innerHTML);
+                          if (activeEditorId === entry.id) {
+                            setActiveEditorId(null);
+                          }
+                        }}
+                        title={`Erfasst um ${formatTime(entry.createdAt)}`}
+                        className={`flex-1 rounded px-1 text-sm outline-none ${done ? "text-muted-foreground line-through" : "text-foreground"}`}
+                        dangerouslySetInnerHTML={{ __html: entry.content || "" }}
+                      />
                     </li>
                   );
                 })}
               </ul>
 
               <div className="border-t border-border/60 p-3">
-                <input
+                <textarea
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") {
+                    if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
                       addEntry();
                     }
                   }}
-                  placeholder="+ noch etwas hinzufügen …"
-                  className="h-10 w-full rounded-lg border border-emerald-400/50 bg-transparent px-3 text-sm outline-none ring-0 placeholder:text-muted-foreground focus:border-emerald-400"
+                  placeholder="+ schreib los … (--- für Linie)"
+                  className="h-20 w-full resize-none rounded-lg border border-emerald-400/50 bg-transparent px-3 py-2 text-sm outline-none ring-0 placeholder:text-muted-foreground focus:border-emerald-400"
                 />
                 <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>{unresolvedCount} offen • {doneEntries.length} erledigt</span>
@@ -275,7 +371,7 @@ export function GlobalDaySlipPanel() {
                   <div className="space-y-2">
                     {openEntries.map((entry) => (
                       <div key={entry.id} className="flex items-center justify-between gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm">
-                        <span className="line-clamp-1">{entry.text}</span>
+                        <span className="line-clamp-1">{stripHtml(entry.content)}</span>
                         <div className="flex items-center gap-1">
                           <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => resolveEntry(entry.id, "note")} aria-label="Als Notiz übernehmen">
                             <NotebookPen className="h-4 w-4" />
@@ -317,7 +413,7 @@ export function GlobalDaySlipPanel() {
         aria-label="Tageszettel öffnen"
         onClick={() => setOpen((prev) => !prev)}
       >
-        <Archive className="h-5 w-5" />
+        <ClipboardPen className="h-5 w-5" />
       </button>
     </>
   );
