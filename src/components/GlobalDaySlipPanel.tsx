@@ -216,6 +216,7 @@ function InitialContentPlugin({
 
 function DaySlipEnterBehaviorPlugin() {
   const [editor] = useLexicalComposerContext();
+  console.log("DaySlipEnterBehaviorPlugin mounted", editor);
 
   useEffect(() => {
     return editor.registerCommand(
