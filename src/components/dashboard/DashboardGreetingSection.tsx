@@ -33,6 +33,7 @@ export const DashboardGreetingSection = () => {
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [completedTasksToday, setCompletedTasksToday] = useState(0);
+  const [openTaskTitles, setOpenTaskTitles] = useState<string[]>([]);
   const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,7 +108,7 @@ export const DashboardGreetingSection = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const [{ count: openCount }, { count: completedTodayCount }] = await Promise.all([
+      const [{ count: openCount }, { count: completedTodayCount }, { data: openTasks }] = await Promise.all([
         supabase
           .from('tasks')
           .select('*', { count: 'exact', head: true })
@@ -118,11 +119,23 @@ export const DashboardGreetingSection = () => {
           .select('*', { count: 'exact', head: true })
           .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
           .eq('status', 'completed')
-          .gte('updated_at', today.toISOString())
+          .gte('updated_at', today.toISOString()),
+        supabase
+          .from('tasks')
+          .select('title')
+          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
+          .neq('status', 'completed')
+          .order('due_date', { ascending: true, nullsFirst: false })
+          .limit(3)
       ]);
 
       setOpenTasksCount(openCount || 0);
       setCompletedTasksToday(completedTodayCount || 0);
+      setOpenTaskTitles(
+        (openTasks || [])
+          .map((task) => task.title?.trim())
+          .filter((title): title is string => Boolean(title))
+      );
     };
 
     loadTaskStats();
@@ -357,6 +370,11 @@ export const DashboardGreetingSection = () => {
       text += ` · ${completedTasksToday} heute abgeschlossen`;
     }
     text += '\n';
+    if (openTaskTitles.length > 0) {
+      openTaskTitles.forEach((title) => {
+        text += `• ${title}\n`;
+      });
+    }
 
     if (showWeather) {
       text += '\n☀️ **Das Wetter heute (optional):**\n';
@@ -395,7 +413,7 @@ export const DashboardGreetingSection = () => {
     }
     
     return text;
-  }, [isLoading, userName, userRole, weatherKarlsruhe, weatherStuttgart, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, showWeather]);
+  }, [isLoading, userName, userRole, weatherKarlsruhe, weatherStuttgart, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, openTaskTitles, showWeather]);
 
   // Parse text for bold markers (**text**)
   const parsedContent = useMemo(() => {
