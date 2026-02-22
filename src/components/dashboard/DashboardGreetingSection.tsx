@@ -379,11 +379,6 @@ export const DashboardGreetingSection = () => {
     
     // Task summary section
     text += '✅ **Aufgabenstatus:**\n';
-    text += `${openTasksCount} offen`;
-    if (completedTasksToday > 0) {
-      text += ` · ${completedTasksToday} heute abgeschlossen`;
-    }
-    text += '\n';
     text += '{{TASK_LIST_PLACEHOLDER}}\n';
     if (showWeather) {
       text += '\n☀️ **Das Wetter heute (optional):**\n';
@@ -452,7 +447,7 @@ export const DashboardGreetingSection = () => {
             {openTaskTitles.map((taskTitle, index) => (
               <span
                 key={`${taskTitle}-${index}`}
-                className="flex items-start gap-1.5 rounded px-1 py-0.5 text-sm text-muted-foreground cursor-pointer hover:bg-muted/40 transition-colors"
+                className="flex items-start gap-1.5 rounded px-1 py-0.5 text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
                 onClick={() => navigate('/mywork?tab=tasks')}
                 title="Klicken um zur Aufgabe zu gehen, oder per Handle in den Tageszettel ziehen"
               >
