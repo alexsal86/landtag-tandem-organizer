@@ -11,7 +11,6 @@ import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { HorizontalRulePlugin } from "@lexical/react/LexicalHorizontalRulePlugin";
 import {
-  $createParagraphNode,
   $createTextNode,
   $getRoot,
   $getSelection,
@@ -56,6 +55,7 @@ interface DaySlipDayData {
   struckLineIds?: string[];
   resolved?: Array<{ lineId: string; text: string; target: ResolveTarget }>;
   completedAt?: string;
+  recurringInjected?: boolean;
 }
 
 type ResolvedItem = { lineId: string; text: string; target: ResolveTarget };
@@ -216,11 +216,14 @@ function InitialContentPlugin({
 
 function DaySlipEnterBehaviorPlugin() {
   const [editor] = useLexicalComposerContext();
+  console.log("DaySlipEnterBehaviorPlugin mounted", editor);
 
   useEffect(() => {
+    console.log("registering KEY_ENTER_COMMAND");
     return editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event) => {
+        console.log("KEY_ENTER_COMMAND fired", event);
         // Shift+Enter → default behaviour
         if (event?.shiftKey) return false;
 
@@ -233,6 +236,8 @@ function DaySlipEnterBehaviorPlugin() {
           const topLevel =
             selection.anchor.getNode().getTopLevelElementOrThrow();
           const text = topLevel.getTextContent().trim();
+          console.log("DaySlip ENTER:", JSON.stringify(text), "| chars:", [...text].map(c => c.codePointAt(0)?.toString(16)));
+          console.log("isRuleLine:", isRuleLine(text));
 
           if (isRuleLine(text)) {
             const hr = $createHorizontalRuleNode();
@@ -313,7 +318,9 @@ export function GlobalDaySlipPanel() {
     } catch { return false; }
   });
   useEffect(() => {
-    try { localStorage.setItem('day-slip-panel-open', JSON.stringify(open)); } catch {}
+    try { localStorage.setItem('day-slip-panel-open', JSON.stringify(open)); } catch {
+      // ignore localStorage write failures
+    }
   }, [open]);
   const [showArchive, setShowArchive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -505,7 +512,6 @@ export function GlobalDaySlipPanel() {
     [store, todayKey],
   );
 
-  const currentRecurringItems = recurringItems;
 
   // ── Strike toggle (dash click) ───────────────────────────────────────────
 
@@ -627,6 +633,11 @@ export function GlobalDaySlipPanel() {
   };
 
   const markDayCompleted = async () => {
+    if (store[todayKey]?.completedAt) {
+      animateClosePanel();
+      return;
+    }
+
     await persistResolvedItems();
     const completedAt = new Date().toISOString();
     setStore((prev) => ({
@@ -645,7 +656,7 @@ export function GlobalDaySlipPanel() {
       setResolveMode(true);
       return;
     }
-    markDayCompleted();
+    animateClosePanel();
   };
 
   const completeDay = () => {
@@ -758,7 +769,6 @@ export function GlobalDaySlipPanel() {
     if (normalizedLines.length === 0) return;
 
     if (editorRef.current) {
-      let inserted = false;
       editorRef.current.update(() => {
         const root = $getRoot();
         const existing = new Set(
@@ -775,11 +785,10 @@ export function GlobalDaySlipPanel() {
           paragraph.append($createTextNode(line));
           root.append(paragraph);
           existing.add(normalized);
-          inserted = true;
         });
       });
 
-      if (inserted) return;
+      return;
     }
 
     setStore((prev) => {
@@ -863,10 +872,10 @@ export function GlobalDaySlipPanel() {
     const recurringForToday = recurringItems
       .filter((item) => item.weekday === "all" || item.weekday === todayWeekday)
       .map((item) => item.text);
-    if (todayData.html.trim() || recurringForToday.length === 0) return;
+    if (todayData.html.trim() || recurringForToday.length === 0 || todayData.recurringInjected) return;
     setStore((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "" };
-      if (day.html.trim()) return prev;
+      if (day.html.trim() || day.recurringInjected) return prev;
       const entries = recurringForToday.map((text) => ({ id: crypto.randomUUID(), text }));
       const html = entries.map(toParagraphHtml).join("");
       return {
@@ -876,10 +885,11 @@ export function GlobalDaySlipPanel() {
           html,
           plainText: recurringForToday.join("\n"),
           nodes: undefined,
+          recurringInjected: true,
         },
       };
     });
-  }, [todayData.html, recurringItems, todayKey]);
+  }, [todayData.html, todayData.recurringInjected, recurringItems, todayKey]);
 
   const switchView = (view: "settings" | "archive" | "default") => {
     setContentTransitioning(true);
@@ -1017,10 +1027,10 @@ export function GlobalDaySlipPanel() {
                 </div>
 
                 <div className="space-y-2">
-                  {currentRecurringItems.length === 0 && (
+                  {recurringItems.length === 0 && (
                     <p className="text-xs text-muted-foreground">Noch keine wiederkehrenden Punkte gespeichert.</p>
                   )}
-                  {currentRecurringItems.map((item, index) => (
+                  {recurringItems.map((item, index) => (
                     <div key={item.id} className="flex items-center gap-2 rounded border border-border/50 px-2 py-1.5 text-xs">
                       {recurringEditIndex === index ? (
                         <>
@@ -1115,7 +1125,7 @@ export function GlobalDaySlipPanel() {
               )}
 
               {/* ── Editor OR Triage ── */}
-              {resolveMode ? (
+              {resolveMode && triageEntries.length > 0 ? (
                 /* Triage view – replaces editor completely */
                 <div className="flex-1 border-b border-border/60">
                   <div className="border-b border-border/60 bg-muted/30 px-4 py-3">
