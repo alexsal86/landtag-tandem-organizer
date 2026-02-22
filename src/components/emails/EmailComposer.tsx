@@ -176,7 +176,7 @@ export function EmailComposer() {
         .in('setting_key', ['press_email_template_subject', 'press_email_template_body', 'press_default_distribution_list_id']);
 
       let templateSubject = 'Pressemitteilung: {{titel}}';
-      let templateBody = 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unsere aktuelle Pressemitteilung:\n\n{{titel}}\n\n{{excerpt}}\n\nDen vollständigen Beitrag finden Sie unter:\n{{link}}';
+      let templateBody = 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unsere aktuelle Pressemitteilung:\n\n{{titel}}\n\n{{excerpt}}\n\n{{inhalt}}\n\nDen vollständigen Beitrag finden Sie unter:\n{{link}}';
       let defaultDistListId: string | null = null;
 
       (settings || []).forEach(s => {
