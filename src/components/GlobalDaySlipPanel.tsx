@@ -36,7 +36,6 @@ import {
   Settings,
   Trash2,
   X,
-  Clock3,
 } from "lucide-react";
 import FloatingTextFormatToolbar from "@/components/FloatingTextFormatToolbar";
 import { DaySlipLineNode, $createDaySlipLineNode } from "@/components/DaySlipLineNode";
@@ -127,11 +126,14 @@ const extractLinesFromHtml = (html: string): DaySlipLineEntry[] => {
       id: p.dataset.lineId || crypto.randomUUID(),
       text: (p.textContent ?? "").trim(),
     }))
-    .filter((line) => line.text.length > 0 && !/^-{3,}$/.test(normalizeRuleMarker(line.text)));
+    .filter((line) => line.text.length > 0 && !isRuleLine(line.text));
 };
 
 const normalizeRuleMarker = (text: string) =>
   text.replace(/[‐‑‒–—―−]/g, "-").replace(/\s+/g, "").trim();
+
+const normalizeLineText = (text: string) => text.replace(/\s+/g, " ").trim();
+const isRuleLine = (text: string) => /^[-_]{3,}$/.test(normalizeRuleMarker(text));
 
 const escapeHtml = (value: string) =>
   value
@@ -222,7 +224,7 @@ function DaySlipEnterBehaviorPlugin() {
             selection.anchor.getNode().getTopLevelElementOrThrow();
           const text = topLevel.getTextContent().trim();
 
-          if (/^-{3,}$/.test(normalizeRuleMarker(text))) {
+          if (isRuleLine(text)) {
             const hr = $createHorizontalRuleNode();
             const newParagraph = $createDaySlipLineNode();
             topLevel.replace(hr);
@@ -337,6 +339,7 @@ export function GlobalDaySlipPanel() {
   });
 
   const editorRef = useRef<LexicalEditor | null>(null);
+  const [editorReadyVersion, setEditorReadyVersion] = useState(0);
 
   // Debounce ref for localStorage writes
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -510,7 +513,7 @@ export function GlobalDaySlipPanel() {
         node.classList.toggle("opacity-70", struck);
       });
     });
-  }, [struckLineIds, todayData.html]);
+  }, [struckLineIds, todayData.html, open, editorReadyVersion]);
 
   // ── Panel close / resolve flow ───────────────────────────────────────────
 
@@ -636,21 +639,51 @@ export function GlobalDaySlipPanel() {
   };
 
   const appendLinesToToday = (lines: string[]) => {
-    if (lines.length === 0) return;
+    const normalizedLines = lines
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    if (normalizedLines.length === 0) return;
+
+    if (editorRef.current) {
+      let inserted = false;
+      editorRef.current.update(() => {
+        const root = $getRoot();
+        const existing = new Set(
+          root
+            .getChildren()
+            .map((node) => normalizeLineText(node.getTextContent()))
+            .filter((line) => line.length > 0),
+        );
+
+        normalizedLines.forEach((line) => {
+          const normalized = normalizeLineText(line);
+          if (!normalized || existing.has(normalized)) return;
+          const paragraph = $createDaySlipLineNode();
+          paragraph.append($createTextNode(line));
+          root.append(paragraph);
+          existing.add(normalized);
+          inserted = true;
+        });
+      });
+
+      if (inserted) return;
+    }
+
     setStore((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [] };
       const existingLines = extractLinesFromHtml(day.html);
-      const toAppend = lines
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0 && !existingLines.includes(line));
+      const existingTexts = new Set(existingLines.map((line) => normalizeLineText(line.text)));
+      const toAppend = normalizedLines
+        .filter((line) => !existingTexts.has(normalizeLineText(line)))
+        .map((text) => ({ id: crypto.randomUUID(), text }));
       if (toAppend.length === 0) return prev;
-      const appended = [...existingLines, ...toAppend].map((line) => `<p>${line}</p>`).join("");
+      const merged = [...existingLines, ...toAppend];
       return {
         ...prev,
         [todayKey]: {
           ...day,
-          html: appended,
-          plainText: [...existingLines, ...toAppend].join("\n"),
+          html: merged.map(toParagraphHtml).join(""),
+          plainText: merged.map((entry) => entry.text).join("\n"),
           nodes: undefined,
         },
       };
@@ -661,10 +694,14 @@ export function GlobalDaySlipPanel() {
     event.preventDefault();
     const droppedTaskTitle = event.dataTransfer.getData("application/x-mywork-task-title").trim();
     const droppedPlainText = event.dataTransfer.getData("text/plain").trim();
-    const value = droppedTaskTitle || droppedPlainText;
-    if (!value) return;
+    const rawValue = droppedTaskTitle || droppedPlainText;
+    if (!rawValue) return;
 
-    appendLinesToToday([value]);
+    const withTaskIcon = droppedTaskTitle && !rawValue.startsWith("✅")
+      ? `✅ ${rawValue}`
+      : rawValue;
+
+    appendLinesToToday([withTaskIcon]);
     setOpen(true);
     setResolveMode(false);
     setShowArchive(false);
@@ -736,7 +773,7 @@ export function GlobalDaySlipPanel() {
     requestAnimationFrame(() => {
       setShowSettings(view === "settings");
       setShowArchive(view === "archive");
-      setTimeout(() => setContentTransitioning(false), 220);
+      setTimeout(() => setContentTransitioning(false), 360);
     });
   };
 
@@ -759,7 +796,7 @@ export function GlobalDaySlipPanel() {
     if (clickX > 28) return;
 
     const lineText = (item.textContent ?? "").trim();
-    if (!lineText || /^-{3,}$/.test(normalizeRuleMarker(lineText))) return;
+    if (!lineText || isRuleLine(lineText)) return;
     const lineId = item.dataset.lineId;
     if (!lineId) return;
     toggleStrike(lineId);
@@ -788,7 +825,7 @@ export function GlobalDaySlipPanel() {
       {/* ── Floating panel ── */}
       {open && (
         <aside
-          className={`fixed bottom-24 right-6 z-50 w-[520px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border/60 bg-background/95 shadow-2xl backdrop-blur transition-all duration-200 ${closing ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100"}`}
+          className={`fixed bottom-24 right-6 z-50 flex h-[min(84vh,920px)] w-[calc(100vw-1rem)] sm:w-[min(24rem,calc(100vw-2rem))] lg:w-[min(35rem,calc(100vw-3rem))] max-w-[calc(100vw-1rem)] flex-col rounded-2xl border border-border/60 bg-background/95 shadow-2xl backdrop-blur transition-all duration-300 ease-out ${closing ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100"}`}
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDropToDaySlip}
         >
@@ -833,7 +870,7 @@ export function GlobalDaySlipPanel() {
 
           {/* ── Archive view ── */}
           {showSettings ? (
-            <div className={`max-h-[560px] space-y-4 overflow-y-auto p-4 transition-all duration-200 ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
+            <div className={`flex-1 space-y-4 overflow-y-auto p-4 transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               <div>
                 <p className="text-sm font-medium">Einstellungen</p>
                 <p className="text-xs text-muted-foreground">Wiederkehrende Punkte verwalten</p>
@@ -906,7 +943,7 @@ export function GlobalDaySlipPanel() {
               </div>
             </div>
           ) : showArchive ? (
-            <div className={`max-h-[560px] space-y-3 overflow-y-auto p-4 transition-all duration-200 ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
+            <div className={`flex-1 space-y-3 overflow-y-auto p-4 transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               <p className="text-sm font-medium">Archiv (nur lesen)</p>
               {archiveDays.length === 0 && (
                 <p className="text-sm text-muted-foreground">
@@ -928,7 +965,7 @@ export function GlobalDaySlipPanel() {
               ))}
             </div>
           ) : (
-            <div className={`transition-all duration-200 ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
+            <div className={`flex min-h-0 flex-1 flex-col transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               {/* ── Yesterday banner ── */}
               {yesterdayOpenLines.length > 0 && (
                 <div className={`border-b border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm text-amber-200 transition-all duration-200 ${contentTransitioning ? "opacity-0" : "opacity-100"}`}>
@@ -950,25 +987,10 @@ export function GlobalDaySlipPanel() {
                 </div>
               )}
 
-              <div className="border-b border-border/60 px-4 py-2">
-                <p className="mb-1 text-xs text-muted-foreground">Wiederkehrende Punkte</p>
-                <div className="flex gap-2">
-                  <input
-                    value={recurringDraft}
-                    onChange={(e) => setRecurringDraft(e.target.value)}
-                    placeholder="z. B. Inbox prüfen"
-                    className="h-8 flex-1 rounded border border-border/60 bg-background px-2 text-xs"
-                  />
-                  <button type="button" onClick={addRecurringItem} className="rounded border border-border/60 px-2 text-xs hover:bg-muted">
-                    Hinzufügen
-                  </button>
-                </div>
-              </div>
-
               {/* ── Editor OR Triage ── */}
               {resolveMode && unresolvedCount > 0 ? (
                 /* Triage view – replaces editor completely */
-                <div className="border-b border-border/60">
+                <div className="flex-1 border-b border-border/60">
                   <div className="border-b border-border/60 bg-muted/30 px-4 py-3">
                     <p className="text-sm font-medium">
                       {unresolvedCount}{" "}
@@ -976,7 +998,7 @@ export function GlobalDaySlipPanel() {
                       offen – was soll damit passieren?
                     </p>
                   </div>
-                  <div className="max-h-[460px] space-y-2 overflow-y-auto p-4">
+                  <div className="h-full space-y-2 overflow-y-auto p-4">
                     {triageEntries.map(({ id, text }) => {
                       const activeTarget = resolvedByLineId.get(id);
                       const buttonClass = (target: ResolveTarget) =>
@@ -1038,17 +1060,17 @@ export function GlobalDaySlipPanel() {
               ) : (
                 /* Editor view */
                 <div
-                  className="relative min-h-[520px] border-b border-border/60"
+                  className="relative flex-1 border-b border-border/60"
                   onClick={handleEditorClick}
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={handleDropToDaySlip}
                 >
                   <LexicalComposer initialConfig={editorConfig}>
                     <EditorEditablePlugin editable={!resolveMode} />
-                    <div className="relative">
+                    <div className="relative h-full">
                       <RichTextPlugin
                         contentEditable={
-                          <ContentEditable className="editor-input min-h-[520px] p-4 text-sm focus:outline-none" />
+                          <ContentEditable className="editor-input h-full min-h-[340px] p-4 text-sm focus:outline-none" />
                         }
                         placeholder={
                           <div className="pointer-events-none absolute left-4 top-4 whitespace-pre-line text-base italic text-muted-foreground">
@@ -1061,7 +1083,10 @@ export function GlobalDaySlipPanel() {
                     </div>
                     <OnChangePlugin onChange={onEditorChange} />
                     <OnChangePlugin onChange={(_, editor) => {
-                      editorRef.current = editor;
+                      if (editorRef.current !== editor) {
+                        editorRef.current = editor;
+                        setEditorReadyVersion((prev) => prev + 1);
+                      }
                     }} ignoreSelectionChange />
                     <HistoryPlugin />
                     <HorizontalRulePlugin />

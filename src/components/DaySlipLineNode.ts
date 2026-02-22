@@ -2,6 +2,7 @@ import {
   ParagraphNode,
   type DOMConversionMap,
   type DOMConversionOutput,
+  type EditorConfig,
   type LexicalNode,
   type NodeKey,
   type SerializedParagraphNode,
@@ -31,6 +32,20 @@ export class DaySlipLineNode extends ParagraphNode {
 
   static clone(node: DaySlipLineNode): DaySlipLineNode {
     return new DaySlipLineNode(node.__lineId, node.__key);
+  }
+
+  createDOM(config: EditorConfig): HTMLElement {
+    const dom = super.createDOM(config);
+    dom.dataset.lineId = this.__lineId;
+    return dom;
+  }
+
+  updateDOM(prevNode: DaySlipLineNode, dom: HTMLElement, config: EditorConfig): boolean {
+    const updated = super.updateDOM(prevNode, dom, config);
+    if (dom.dataset.lineId !== this.__lineId) {
+      dom.dataset.lineId = this.__lineId;
+    }
+    return updated;
   }
 
   exportJSON(): SerializedDaySlipLineNode {
