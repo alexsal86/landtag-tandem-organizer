@@ -522,6 +522,42 @@ export function GlobalDaySlipPanel() {
     });
   };
 
+  const appendLinesToToday = (lines: string[]) => {
+    if (lines.length === 0) return;
+    setStore((prev) => {
+      const day = prev[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [] };
+      const existingLines = extractLinesFromHtml(day.html);
+      const toAppend = lines
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !existingLines.includes(line));
+      if (toAppend.length === 0) return prev;
+      const appended = [...existingLines, ...toAppend].map((line) => `<p>${line}</p>`).join("");
+      return {
+        ...prev,
+        [todayKey]: {
+          ...day,
+          html: appended,
+          plainText: [...existingLines, ...toAppend].join("\n"),
+          nodes: undefined,
+        },
+      };
+    });
+  };
+
+  const handleDropToDaySlip = (event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    const droppedTaskTitle = event.dataTransfer.getData("application/x-mywork-task-title").trim();
+    const droppedPlainText = event.dataTransfer.getData("text/plain").trim();
+    const value = droppedTaskTitle || droppedPlainText;
+    if (!value) return;
+
+    appendLinesToToday([value]);
+    setOpen(true);
+    setResolveMode(false);
+    setShowArchive(false);
+    setShowSettings(false);
+  };
+
   const addRecurringItem = () => {
     const value = recurringDraft.trim();
     if (!value) return;
@@ -610,7 +646,11 @@ export function GlobalDaySlipPanel() {
     <>
       {/* ── Floating panel ── */}
       {open && (
-        <aside className={`fixed bottom-24 right-6 z-50 w-[520px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border/60 bg-background/95 shadow-2xl backdrop-blur transition-all duration-200 ${closing ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100"}`}>
+        <aside
+          className={`fixed bottom-24 right-6 z-50 w-[520px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border/60 bg-background/95 shadow-2xl backdrop-blur transition-all duration-200 ${closing ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100"}`}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={handleDropToDaySlip}
+        >
 
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
@@ -842,6 +882,8 @@ export function GlobalDaySlipPanel() {
                 <div
                   className="relative min-h-[520px] border-b border-border/60"
                   onClick={handleEditorClick}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={handleDropToDaySlip}
                 >
                   <LexicalComposer initialConfig={editorConfig}>
                     <EditorEditablePlugin editable={!resolveMode} />
