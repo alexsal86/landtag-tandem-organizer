@@ -11,6 +11,7 @@ import { MatrixClientProvider } from "@/contexts/MatrixClientContext";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { GlobalSearchCommand } from "@/components/GlobalSearchCommand";
 import { GlobalQuickNoteDialog } from "@/components/GlobalQuickNoteDialog";
+import { GlobalDaySlipPanel } from "@/components/GlobalDaySlipPanel";
 import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
 import CreateTask from "./pages/CreateTask";
@@ -67,6 +68,7 @@ const AppContent = () => {
       <BrowserRouter>
         <GlobalSearchCommand />
         <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
+        <GlobalDaySlipPanel />
         <Routes>
           <Route path="/" element={<Navigate to="/mywork" replace />} />
           <Route path="/auth" element={<Auth />} />
