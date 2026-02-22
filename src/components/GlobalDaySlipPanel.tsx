@@ -273,9 +273,9 @@ function EditorEditablePlugin({ editable }: { editable: boolean }) {
 //
 const editorTheme = {
   paragraph:
-    "day-slip-item group relative mb-0 pl-7 " +
+    "day-slip-item group relative mb-1.5 pl-6 " +
     // Short dash marker only for non-empty lines
-    "before:absolute before:left-1 before:top-[2px] " +
+    "before:absolute before:left-1 before:top-1/2 before:-translate-y-1/2 " +
     "before:content-['–'] before:text-muted-foreground before:opacity-0 " +
     "before:cursor-pointer before:select-none " +
     "before:rounded before:px-0.5 before:border before:border-transparent " +
@@ -780,7 +780,7 @@ export function GlobalDaySlipPanel() {
   // ── Click handler attached to editor container ───────────────────────────
   //
   // We intercept clicks on the `::before` pseudo-element (the dash) by
-  // checking if the click landed in the left 28 px of a .day-slip-item.
+  // checking if the click landed in the left 24 px of a .day-slip-item.
   // Pseudo-elements cannot be directly targeted in JS, but their rendered
   // box is within the element's padding area which we can measure.
   //
@@ -792,8 +792,8 @@ export function GlobalDaySlipPanel() {
     const rect = item.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
 
-    // The dash occupies roughly 0–28 px (pl-7 = 1.75rem ≈ 28px)
-    if (clickX > 28) return;
+    // The dash occupies roughly 0–24 px (pl-6 = 1.5rem ≈ 24px)
+    if (clickX > 24) return;
 
     const lineText = (item.textContent ?? "").trim();
     if (!lineText || isRuleLine(lineText)) return;
