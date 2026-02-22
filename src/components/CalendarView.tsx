@@ -1,5 +1,5 @@
 import React, { useState, useEffect, startTransition } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Calendar, Clock, MapPin, Users, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +49,7 @@ export interface CalendarEvent {
 
 export function CalendarView() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { currentTenant } = useTenant();
   const { isItemNew, clearAllIndicators } = useNewItemIndicators('calendar');
   const { flags } = useFeatureFlag();
@@ -61,6 +62,14 @@ export function CalendarView() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [preparationSidebarOpen, setPreparationSidebarOpen] = useState(false);
   const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<CalendarEvent | null>(null);
+
+  // Auto-switch to polls view when highlight param targets a poll
+  useEffect(() => {
+    const highlightId = searchParams.get('highlight');
+    if (highlightId && view !== 'polls') {
+      setView('polls');
+    }
+  }, [searchParams]);
 
   // Type guard to check if view is a calendar view
   const isCalendarView = (v: string): v is "day" | "week" | "month" | "agenda" => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -122,6 +123,7 @@ interface Profile {
 
 export function MeetingsView() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -3414,10 +3416,12 @@ export function MeetingsView() {
               <div className="space-y-3">
                 {upcomingMeetings.map((meeting) => (
                   <Card 
-                    key={meeting.id} 
+                    key={meeting.id}
+                    ref={highlightRef(meeting.id!)}
                     className={cn(
                       "cursor-pointer hover:shadow-sm transition-all",
-                      selectedMeeting?.id === meeting.id && "border-primary ring-1 ring-primary bg-primary/5"
+                      selectedMeeting?.id === meeting.id && "border-primary ring-1 ring-primary bg-primary/5",
+                      isHighlighted(meeting.id!) && "notification-highlight"
                     )}
                     onClick={() => { 
                       setSelectedMeeting(meeting); 

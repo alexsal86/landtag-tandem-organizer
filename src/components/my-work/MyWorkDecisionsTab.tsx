@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -48,6 +49,36 @@ export function MyWorkDecisionsTab() {
   const latestLoadRequestRef = useRef(0);
 
   const { decisions, setDecisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
+
+  // Auto-switch tab when highlight param points to a decision in a different tab
+  useEffect(() => {
+    const highlightId = searchParams.get('highlight');
+    if (!highlightId || decisions.length === 0 || !user?.id) return;
+
+    const decision = decisions.find(d => d.id === highlightId);
+    if (!decision) return;
+
+    let targetTab: typeof activeTab = activeTab;
+    if (decision.isParticipant && !decision.hasResponded && !decision.isCreator) {
+      targetTab = 'for-me';
+    } else if (decision.isCreator) {
+      const s = getResponseSummary(decision.participants);
+      if (s.questionCount > 0 || (s.total > 0 && s.pending < s.total)) {
+        targetTab = 'for-me';
+      } else {
+        targetTab = 'my-decisions';
+      }
+    } else if (decision.isParticipant && decision.hasResponded) {
+      targetTab = 'answered';
+    } else if (decision.visible_to_all) {
+      targetTab = 'public';
+    }
+
+    if (targetTab !== activeTab) {
+      setActiveTab(targetTab);
+    }
+  }, [decisions, searchParams]);
 
   // Comment counts
   const decisionIds = useMemo(() => decisions.map(d => d.id), [decisions]);
@@ -335,6 +366,8 @@ export function MyWorkDecisionsTab() {
                       <MyWorkDecisionCard
                         key={decision.id}
                         decision={decision}
+                        isHighlighted={isHighlighted(decision.id)}
+                        highlightRef={highlightRef(decision.id)}
                         onOpenDetails={handleOpenDetails}
                         onEdit={setEditingDecisionId}
                         onArchive={archiveDecision}

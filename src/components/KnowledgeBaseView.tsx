@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Database, User, ChevronLeft, ChevronRight, Lock, Unlock, Save, Trash2 } from 'lucide-react';
 import EnhancedLexicalEditor from './EnhancedLexicalEditor';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNotificationHighlight } from '@/hooks/useNotificationHighlight';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,6 +38,7 @@ const KnowledgeBaseView = () => {
   const { subId, documentId: legacyDocumentId } = useParams<{ subId?: string; documentId?: string }>();
   const documentId = subId ?? legacyDocumentId;
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isHighlighted, highlightRef, highlightId } = useNotificationHighlight();
   const { topics, getActiveTopics } = useTopics();
   
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
@@ -75,6 +78,16 @@ const KnowledgeBaseView = () => {
     is_published: false,
     selectedTopics: [] as string[]
   });
+
+  // Auto-open document from highlight param
+  useEffect(() => {
+    if (highlightId && !documentId && documents.length > 0) {
+      const doc = documents.find(d => d.id === highlightId);
+      if (doc) {
+        navigate(`/knowledge/${doc.id}`, { replace: true });
+      }
+    }
+  }, [highlightId, documentId, documents, navigate]);
 
   // Handle URL-based document selection
   useEffect(() => {
@@ -609,10 +622,13 @@ const KnowledgeBaseView = () => {
                 <div className="space-y-3">
                   {filteredDocuments.map((doc) => (
                     <Card 
-                      key={doc.id} 
-                      className={`hover:shadow-md transition-shadow cursor-pointer ${
-                        selectedDocument?.id === doc.id ? 'ring-2 ring-primary' : ''
-                      }`}
+                      key={doc.id}
+                      ref={highlightRef(doc.id)}
+                      className={cn(
+                        "hover:shadow-md transition-shadow cursor-pointer",
+                        selectedDocument?.id === doc.id && 'ring-2 ring-primary',
+                        isHighlighted(doc.id) && "notification-highlight"
+                      )}
                       onClick={() => navigate(`/knowledge/${doc.id}`)}
                     >
                       <CardContent className="p-4">

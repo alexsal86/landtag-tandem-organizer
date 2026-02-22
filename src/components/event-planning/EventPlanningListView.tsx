@@ -1,3 +1,4 @@
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,8 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
     archivePlanning, togglePlanningCompleted, restorePlanning,
     archivePreparation, handlePreparationClick, createPlanning,
   } = data;
+
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
@@ -118,7 +121,7 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
               const creatorProfile = allProfiles.find(p => p.user_id === planning.user_id);
               
               return (
-                <Card key={planning.id} className={cn("cursor-pointer hover:shadow-lg transition-shadow flex flex-col relative", (planning as any).is_completed && "opacity-60")} onClick={() => setSelectedPlanning(planning)}>
+                <Card key={planning.id} ref={highlightRef(planning.id)} className={cn("cursor-pointer hover:shadow-lg transition-shadow flex flex-col relative", (planning as any).is_completed && "opacity-60", isHighlighted(planning.id) && "notification-highlight")} onClick={() => setSelectedPlanning(planning)}>
                   <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} />
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between gap-2">
