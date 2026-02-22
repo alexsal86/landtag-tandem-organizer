@@ -34,6 +34,7 @@ interface CommentThreadProps {
   onDelete: (commentId: string, hasReplies: boolean) => Promise<void>;
   currentUserId?: string;
   isLastReply?: boolean;
+  highlightedCommentId?: string | null;
 }
 
 const getInitials = (name: string | null) => {
@@ -50,6 +51,7 @@ export function CommentThread({
   onDelete,
   currentUserId,
   isLastReply = false,
+  highlightedCommentId = null,
 }: CommentThreadProps) {
   const [isReplying, setIsReplying] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -126,6 +128,13 @@ export function CommentThread({
   };
 
   const canReply = depth < maxDepth && !isDeleted;
+  const isHighlighted = highlightedCommentId === comment.id;
+
+  useEffect(() => {
+    if (isHighlighted && containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isHighlighted]);
   const showEditedLabel = Boolean(comment.updated_at && new Date(comment.updated_at) > new Date(comment.created_at));
 
   // Avatar size is 24px (h-6), center is at 12px
@@ -133,7 +142,7 @@ export function CommentThread({
   const AVATAR_CENTER = AVATAR_SIZE / 2; // 12px
 
   return (
-    <div ref={containerRef} className={cn("relative", depth > 0 && "ml-8", depth > 0 && !isLastReply && "mb-2")}>
+    <div ref={containerRef} data-comment-id={comment.id} className={cn("relative rounded-md", depth > 0 && "ml-8", depth > 0 && !isLastReply && "mb-2", isHighlighted && "notification-highlight")}>
       {/* Vertical line from this comment's avatar down through all replies */}
       {hasReplies && parentLineHeight != null && parentLineHeight > 0 && (
         <div
@@ -295,6 +304,7 @@ export function CommentThread({
               onDelete={onDelete}
               currentUserId={currentUserId}
               isLastReply={index === comment.replies!.length - 1}
+              highlightedCommentId={highlightedCommentId}
             />
           ))}
         </div>

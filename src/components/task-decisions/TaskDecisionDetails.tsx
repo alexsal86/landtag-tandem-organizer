@@ -64,9 +64,11 @@ interface TaskDecisionDetailsProps {
   isOpen: boolean;
   onClose: () => void;
   onArchived?: () => void;
+  highlightCommentId?: string | null;
+  highlightResponseId?: string | null;
 }
 
-export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }: TaskDecisionDetailsProps) => {
+export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, highlightCommentId = null, highlightResponseId = null }: TaskDecisionDetailsProps) => {
   const [decision, setDecision] = useState<any>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -81,6 +83,8 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [activeHighlightCommentId, setActiveHighlightCommentId] = useState<string | null>(null);
+  const [activeHighlightResponseId, setActiveHighlightResponseId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -92,6 +96,20 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
       loadDecisionDetails();
     }
   }, [decisionId, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setActiveHighlightCommentId(highlightCommentId);
+    setActiveHighlightResponseId(highlightResponseId);
+
+    if (!highlightCommentId && !highlightResponseId) return;
+    const timeoutId = window.setTimeout(() => {
+      setActiveHighlightCommentId(null);
+      setActiveHighlightResponseId(null);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [highlightCommentId, highlightResponseId, isOpen]);
 
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -586,7 +604,12 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
 
   const renderResponseThread = (thread: ResponseThread, participantId: string, depth: number): React.ReactNode => {
     return (
-      <div key={thread.id} className={cn("space-y-2", depth > 0 && "ml-6 pl-4 border-l-2 border-muted")}>
+      <div
+        key={thread.id}
+        data-response-id={thread.id}
+        ref={depth === 0 && activeHighlightResponseId === thread.id ? (el) => el?.scrollIntoView({ behavior: "smooth", block: "center" }) : undefined}
+        className={cn("space-y-2 rounded-md", depth > 0 && "ml-6 pl-4 border-l-2 border-muted", activeHighlightResponseId === thread.id && "notification-highlight")}
+      >
         {/* The response message */}
         {thread.comment && (
           <div className="flex items-start justify-between">
@@ -874,6 +897,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                       onEdit={handleEditComment}
                       onDelete={handleDeleteComment}
                       currentUserId={currentUserId || undefined}
+                      highlightedCommentId={activeHighlightCommentId}
                     />
                   ))}
                 </div>
