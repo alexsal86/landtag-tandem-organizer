@@ -37,6 +37,8 @@ export function MyWorkDecisionsTab() {
   // Dialog states
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(null);
+  const [highlightResponseId, setHighlightResponseId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
   const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
@@ -180,6 +182,15 @@ export function MyWorkDecisionsTab() {
   // Actions
   const handleOpenDetails = (decisionId: string) => {
     setSelectedDecisionId(decisionId);
+    setHighlightCommentId(null);
+    setHighlightResponseId(null);
+    setIsDetailsOpen(true);
+  };
+
+  const handleActivityOpen = (activity: { decisionId: string; type: "comment" | "response" | "decision"; targetId: string }) => {
+    setSelectedDecisionId(activity.decisionId);
+    setHighlightCommentId(activity.type === "comment" ? activity.targetId : null);
+    setHighlightResponseId(activity.type === "response" ? activity.targetId : null);
     setIsDetailsOpen(true);
   };
 
@@ -362,6 +373,7 @@ export function MyWorkDecisionsTab() {
                 recentActivities={sidebarData.recentActivities}
                 onQuestionClick={handleOpenDetails}
                 onCommentClick={handleOpenDetails}
+                onActivityClick={handleActivityOpen}
                 onResponseSent={() => scheduleDecisionsRefresh(0)}
               />
             </div>
@@ -374,8 +386,10 @@ export function MyWorkDecisionsTab() {
         <TaskDecisionDetails
           decisionId={selectedDecisionId}
           isOpen={isDetailsOpen}
-          onClose={() => { setIsDetailsOpen(false); setSelectedDecisionId(null); }}
+          onClose={() => { setIsDetailsOpen(false); setSelectedDecisionId(null); setHighlightCommentId(null); setHighlightResponseId(null); }}
           onArchived={() => scheduleDecisionsRefresh(0)}
+          highlightCommentId={highlightCommentId}
+          highlightResponseId={highlightResponseId}
         />
       )}
 

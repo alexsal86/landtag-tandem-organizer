@@ -147,6 +147,8 @@ export const DecisionOverview = () => {
   const [decisions, setDecisions] = useState<DecisionRequest[]>([]);
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(null);
+  const [highlightResponseId, setHighlightResponseId] = useState<string | null>(null);
   const [creatorResponses, setCreatorResponses] = useState<{[key: string]: string}>({});
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("for-me");
@@ -162,6 +164,7 @@ export const DecisionOverview = () => {
     decisionId: string;
     decisionTitle: string;
     type: "comment";
+    targetId: string;
     actorName: string | null;
     actorBadgeColor: string | null;
     actorAvatarUrl: string | null;
@@ -600,12 +603,23 @@ export const DecisionOverview = () => {
 
   const handleOpenDetails = (decisionId: string) => {
     setSelectedDecisionId(decisionId);
+    setHighlightCommentId(null);
+    setHighlightResponseId(null);
+    setIsDetailsOpen(true);
+  };
+
+  const handleActivityOpen = (activity: { decisionId: string; type: "comment" | "response" | "decision"; targetId: string }) => {
+    setSelectedDecisionId(activity.decisionId);
+    setHighlightCommentId(activity.type === "comment" ? activity.targetId : null);
+    setHighlightResponseId(activity.type === "response" ? activity.targetId : null);
     setIsDetailsOpen(true);
   };
 
   const handleCloseDetails = () => {
     setIsDetailsOpen(false);
     setSelectedDecisionId(null);
+    setHighlightCommentId(null);
+    setHighlightResponseId(null);
   };
 
   const handleDecisionArchived = () => {
@@ -866,6 +880,7 @@ export const DecisionOverview = () => {
             decisionId: decision.id,
             decisionTitle: decision.title,
             type: 'response' as const,
+            targetId: response.id,
             actorName: participant.profile?.display_name || null,
             actorBadgeColor: participant.profile?.badge_color || null,
             actorAvatarUrl: participant.profile?.avatar_url || null,
@@ -875,9 +890,23 @@ export const DecisionOverview = () => {
         )
       );
 
-    const recentActivities = [...responseActivities, ...recentDiscussionActivities]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 4);
+    const decisionActivities = decisions
+      .filter((decision) => decision.status !== 'archived')
+      .map((decision) => ({
+        id: `decision-${decision.id}`,
+        decisionId: decision.id,
+        decisionTitle: decision.title,
+        type: 'decision' as const,
+        targetId: decision.id,
+        actorName: null,
+        actorBadgeColor: null,
+        actorAvatarUrl: null,
+        content: decision.description,
+        createdAt: decision.created_at,
+      }));
+
+    const recentActivities = [...responseActivities, ...recentDiscussionActivities, ...decisionActivities]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return { openQuestions, newComments, recentActivities };
   }, [decisions, recentDiscussionActivities]);
@@ -917,6 +946,7 @@ export const DecisionOverview = () => {
           decisionId: comment.decision_id,
           decisionTitle: decisionTitleMap.get(comment.decision_id) || 'Entscheidung',
           type: 'comment' as const,
+          targetId: comment.id,
           actorName: profileMap.get(comment.user_id)?.display_name || null,
           actorBadgeColor: profileMap.get(comment.user_id)?.badge_color || null,
           actorAvatarUrl: profileMap.get(comment.user_id)?.avatar_url || null,
@@ -1485,7 +1515,7 @@ export const DecisionOverview = () => {
             recentActivities={sidebarData.recentActivities}
             onQuestionClick={handleOpenDetails}
             onCommentClick={handleOpenDetails}
-            onActivityClick={handleOpenDetails}
+            onActivityClick={handleActivityOpen}
             onResponseSent={() => user?.id && loadDecisionRequests(user.id)}
           />
         </div>
@@ -1498,6 +1528,8 @@ export const DecisionOverview = () => {
           isOpen={isDetailsOpen}
           onClose={handleCloseDetails}
           onArchived={handleDecisionArchived}
+          highlightCommentId={highlightCommentId}
+          highlightResponseId={highlightResponseId}
         />
       )}
 

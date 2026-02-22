@@ -112,6 +112,7 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
         (decision.participants || []).flatMap((participant) =>
           participant.responses.map((response) => ({
             id: `response-${response.id}`,
+            targetId: response.id,
             decisionId: decision.id,
             decisionTitle: decision.title,
             type: "response" as const,
@@ -126,6 +127,7 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
 
     const commentActivities = sidebarComments.map((comment) => ({
       id: `comment-${comment.id}`,
+      targetId: comment.id,
       decisionId: comment.decisionId,
       decisionTitle: comment.decisionTitle,
       type: "comment" as const,
@@ -136,9 +138,23 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
       createdAt: comment.createdAt,
     }));
 
-    const recentActivities = [...responseActivities, ...commentActivities]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 4);
+    const decisionActivities = decisions
+      .filter((decision) => decision.status !== "archived")
+      .map((decision) => ({
+        id: `decision-${decision.id}`,
+        targetId: decision.id,
+        decisionId: decision.id,
+        decisionTitle: decision.title,
+        type: "decision" as const,
+        actorName: decision.creator?.display_name || null,
+        actorBadgeColor: decision.creator?.badge_color || null,
+        actorAvatarUrl: decision.creator?.avatar_url || null,
+        content: decision.description,
+        createdAt: decision.created_at,
+      }));
+
+    const recentActivities = [...responseActivities, ...commentActivities, ...decisionActivities]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return { openQuestions, newComments, discussionComments: sidebarComments, recentActivities };
   }, [decisions, sidebarComments]);

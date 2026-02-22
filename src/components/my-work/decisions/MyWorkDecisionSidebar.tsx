@@ -43,7 +43,8 @@ interface MyWorkDecisionSidebarProps {
     id: string;
     decisionId: string;
     decisionTitle: string;
-    type: "comment" | "response";
+    type: "comment" | "response" | "decision";
+    targetId: string;
     actorName: string | null;
     actorBadgeColor: string | null;
     actorAvatarUrl: string | null;
@@ -52,6 +53,7 @@ interface MyWorkDecisionSidebarProps {
   }>;
   onQuestionClick: (decisionId: string) => void;
   onCommentClick: (decisionId: string) => void;
+  onActivityClick?: (activity: { decisionId: string; type: "comment" | "response" | "decision"; targetId: string }) => void;
   onResponseSent?: () => void;
 }
 
@@ -68,6 +70,7 @@ export function MyWorkDecisionSidebar({
   onQuestionClick,
   onCommentClick,
   onResponseSent,
+  onActivityClick,
 }: MyWorkDecisionSidebarProps) {
   const ACTIVITY_BATCH_SIZE = 5;
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
@@ -271,7 +274,7 @@ export function MyWorkDecisionSidebar({
             visibleActivities.map((activity) => (
               <button
                 key={activity.id}
-                onClick={() => onCommentClick(activity.decisionId)}
+                onClick={() => onActivityClick ? onActivityClick({ decisionId: activity.decisionId, type: activity.type, targetId: activity.targetId }) : onCommentClick(activity.decisionId)}
                 className="w-full text-left p-2 rounded-md border hover:bg-accent/50 transition-colors"
               >
                 <div className="flex items-center gap-1 mb-1">
@@ -282,7 +285,7 @@ export function MyWorkDecisionSidebar({
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-xs text-muted-foreground line-clamp-1">
-                    {activity.actorName || 'Unbekannt'} · {activity.type === 'comment' ? 'Kommentar' : 'Rückmeldung'}
+                    {activity.actorName || 'Unbekannt'} · {activity.type === 'comment' ? 'Kommentar' : activity.type === 'response' ? 'Rückmeldung' : 'Entscheidung'}
                   </span>
                 </div>
                 <p className="text-xs font-semibold line-clamp-1">{activity.decisionTitle}</p>
