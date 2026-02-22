@@ -450,6 +450,7 @@ export const CustomizableDashboard: React.FC = () => {
               useCSSTransforms={true}
               preventCollision={false}
               compactType="vertical"
+              draggableHandle=".widget-drag-handle"
             >
               {currentLayout?.widgets
                 .filter(widget => widget.type !== 'quickactions')

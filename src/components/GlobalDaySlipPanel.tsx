@@ -36,6 +36,7 @@ import {
   Settings,
   Trash2,
   X,
+  Clock3,
 } from "lucide-react";
 import FloatingTextFormatToolbar from "@/components/FloatingTextFormatToolbar";
 import { DaySlipLineNode, $createDaySlipLineNode } from "@/components/DaySlipLineNode";
@@ -908,6 +909,21 @@ export function GlobalDaySlipPanel() {
                   </div>
                 </div>
               )}
+
+              <div className="border-b border-border/60 px-4 py-2">
+                <p className="mb-1 text-xs text-muted-foreground">Wiederkehrende Punkte</p>
+                <div className="flex gap-2">
+                  <input
+                    value={recurringDraft}
+                    onChange={(e) => setRecurringDraft(e.target.value)}
+                    placeholder="z. B. Inbox prüfen"
+                    className="h-8 flex-1 rounded border border-border/60 bg-background px-2 text-xs"
+                  />
+                  <button type="button" onClick={addRecurringItem} className="rounded border border-border/60 px-2 text-xs hover:bg-muted">
+                    Hinzufügen
+                  </button>
+                </div>
+              </div>
 
               {/* ── Editor OR Triage ── */}
               {resolveMode && unresolvedCount > 0 ? (
