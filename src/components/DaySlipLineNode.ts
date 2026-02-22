@@ -50,7 +50,7 @@ export class DaySlipLineNode extends ParagraphNode {
     return node;
   }
 
-  exportDOM(editor: Parameters<ParagraphNode["exportDOM"]>[0]): DOMExportOutput {
+  exportDOM(editor: Parameters<ParagraphNode["exportDOM"]>[0]): ReturnType<ParagraphNode["exportDOM"]> {
     const output = super.exportDOM(editor);
     if (output.element instanceof HTMLElement) {
       output.element.dataset.lineId = this.__lineId;

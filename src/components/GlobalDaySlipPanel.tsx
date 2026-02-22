@@ -148,9 +148,6 @@ const weekdayKey = (date: Date): (typeof weekDays)[number] => {
   return "saturday";
 };
 
-const normalizeRuleMarker = (text: string) =>
-  text.replace(/[‐‑‒–—―−]/g, "-").replace(/\s+/g, "").trim();
-
 // ─── Lexical Plugins ─────────────────────────────────────────────────────────
 
 function InitialContentPlugin({
