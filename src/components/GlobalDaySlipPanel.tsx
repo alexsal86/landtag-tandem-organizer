@@ -219,9 +219,11 @@ function DaySlipEnterBehaviorPlugin() {
   console.log("DaySlipEnterBehaviorPlugin mounted", editor);
 
   useEffect(() => {
+    console.log("registering KEY_ENTER_COMMAND");
     return editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event) => {
+        console.log("KEY_ENTER_COMMAND fired", event);
         // Shift+Enter → default behaviour
         if (event?.shiftKey) return false;
 
