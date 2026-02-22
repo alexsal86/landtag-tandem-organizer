@@ -126,13 +126,14 @@ const extractLinesFromHtml = (html: string): DaySlipLineEntry[] => {
       id: p.dataset.lineId || crypto.randomUUID(),
       text: (p.textContent ?? "").trim(),
     }))
-    .filter((line) => line.text.length > 0 && !/^-{3,}$/.test(normalizeRuleMarker(line.text)));
+    .filter((line) => line.text.length > 0 && !isRuleLine(line.text));
 };
 
 const normalizeRuleMarker = (text: string) =>
   text.replace(/[‐‑‒–—―−]/g, "-").replace(/\s+/g, "").trim();
 
 const normalizeLineText = (text: string) => text.replace(/\s+/g, " ").trim();
+const isRuleLine = (text: string) => /^[-_]{3,}$/.test(normalizeRuleMarker(text));
 
 const escapeHtml = (value: string) =>
   value
@@ -223,7 +224,7 @@ function DaySlipEnterBehaviorPlugin() {
             selection.anchor.getNode().getTopLevelElementOrThrow();
           const text = topLevel.getTextContent().trim();
 
-          if (/^-{3,}$/.test(normalizeRuleMarker(text))) {
+          if (isRuleLine(text)) {
             const hr = $createHorizontalRuleNode();
             const newParagraph = $createDaySlipLineNode();
             topLevel.replace(hr);
@@ -338,6 +339,7 @@ export function GlobalDaySlipPanel() {
   });
 
   const editorRef = useRef<LexicalEditor | null>(null);
+  const [editorReadyVersion, setEditorReadyVersion] = useState(0);
 
   // Debounce ref for localStorage writes
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -511,7 +513,7 @@ export function GlobalDaySlipPanel() {
         node.classList.toggle("opacity-70", struck);
       });
     });
-  }, [struckLineIds, todayData.html, open]);
+  }, [struckLineIds, todayData.html, open, editorReadyVersion]);
 
   // ── Panel close / resolve flow ───────────────────────────────────────────
 
@@ -692,10 +694,14 @@ export function GlobalDaySlipPanel() {
     event.preventDefault();
     const droppedTaskTitle = event.dataTransfer.getData("application/x-mywork-task-title").trim();
     const droppedPlainText = event.dataTransfer.getData("text/plain").trim();
-    const value = droppedTaskTitle || droppedPlainText;
-    if (!value) return;
+    const rawValue = droppedTaskTitle || droppedPlainText;
+    if (!rawValue) return;
 
-    appendLinesToToday([value]);
+    const withTaskIcon = droppedTaskTitle && !rawValue.startsWith("✅")
+      ? `✅ ${rawValue}`
+      : rawValue;
+
+    appendLinesToToday([withTaskIcon]);
     setOpen(true);
     setResolveMode(false);
     setShowArchive(false);
@@ -790,7 +796,7 @@ export function GlobalDaySlipPanel() {
     if (clickX > 28) return;
 
     const lineText = (item.textContent ?? "").trim();
-    if (!lineText || /^-{3,}$/.test(normalizeRuleMarker(lineText))) return;
+    if (!lineText || isRuleLine(lineText)) return;
     const lineId = item.dataset.lineId;
     if (!lineId) return;
     toggleStrike(lineId);
@@ -819,7 +825,7 @@ export function GlobalDaySlipPanel() {
       {/* ── Floating panel ── */}
       {open && (
         <aside
-          className={`fixed bottom-24 right-6 z-50 flex h-[min(84vh,920px)] w-[min(58rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-border/60 bg-background/95 shadow-2xl backdrop-blur transition-all duration-300 ease-out ${closing ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100"}`}
+          className={`fixed bottom-24 right-6 z-50 flex h-[min(84vh,920px)] w-[calc(100vw-1rem)] sm:w-[min(24rem,calc(100vw-2rem))] lg:w-[min(35rem,calc(100vw-3rem))] max-w-[calc(100vw-1rem)] flex-col rounded-2xl border border-border/60 bg-background/95 shadow-2xl backdrop-blur transition-all duration-300 ease-out ${closing ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100"}`}
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDropToDaySlip}
         >
@@ -1077,7 +1083,10 @@ export function GlobalDaySlipPanel() {
                     </div>
                     <OnChangePlugin onChange={onEditorChange} />
                     <OnChangePlugin onChange={(_, editor) => {
-                      editorRef.current = editor;
+                      if (editorRef.current !== editor) {
+                        editorRef.current = editor;
+                        setEditorReadyVersion((prev) => prev + 1);
+                      }
                     }} ignoreSelectionChange />
                     <HistoryPlugin />
                     <HorizontalRulePlugin />
