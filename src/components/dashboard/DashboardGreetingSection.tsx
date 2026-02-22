@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { GripVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
@@ -50,10 +51,17 @@ export const DashboardGreetingSection = () => {
     return feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0;
   }, [feedbackAppointments]);
 
-  const handleTaskTitleDragStart = (event: React.DragEvent<HTMLLIElement>, taskTitle: string) => {
+  const handleTaskTitleDragStart = (event: React.DragEvent<HTMLElement>, taskTitle: string) => {
     event.dataTransfer.effectAllowed = 'copy';
     event.dataTransfer.setData('text/plain', taskTitle);
     event.dataTransfer.setData('application/x-mywork-task-title', taskTitle);
+
+    const ghost = document.createElement('div');
+    ghost.className = 'rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground shadow-xl';
+    ghost.textContent = `Tageszettel: ${taskTitle}`;
+    document.body.appendChild(ghost);
+    event.dataTransfer.setDragImage(ghost, 12, 12);
+    requestAnimationFrame(() => ghost.remove());
   };
 
   // Load user name
@@ -132,7 +140,7 @@ export const DashboardGreetingSection = () => {
           .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
           .neq('status', 'completed')
           .order('due_date', { ascending: true, nullsFirst: false })
-          .limit(3)
+
       ]);
 
       setOpenTasksCount(openCount || 0);
@@ -447,12 +455,18 @@ export const DashboardGreetingSection = () => {
           {openTaskTitles.map((taskTitle, index) => (
             <li
               key={`${taskTitle}-${index}`}
-              draggable
-              onDragStart={(event) => handleTaskTitleDragStart(event, taskTitle)}
-              className="w-fit max-w-full cursor-grab rounded px-1.5 py-0.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 active:cursor-grabbing"
-              title="Per Drag & Drop in den Tageszettel ziehen"
+              className="flex items-start gap-1.5 rounded px-1 py-0.5 text-sm text-muted-foreground"
+              title="Per Handle in den Tageszettel ziehen"
             >
-              • {taskTitle}
+              <span
+                draggable
+                onDragStart={(event) => handleTaskTitleDragStart(event, taskTitle)}
+                className="mt-[1px] cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
+                aria-label="Aufgabe in den Tageszettel ziehen"
+              >
+                <GripVertical className="h-3.5 w-3.5" />
+              </span>
+              <span className="flex-1">{taskTitle}</span>
             </li>
           ))}
         </ul>
