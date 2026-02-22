@@ -162,7 +162,7 @@ export function EmailComposer() {
     try {
       const { data: pr, error: prError } = await supabase
         .from('press_releases')
-        .select('id, title, excerpt, content_html, ghost_post_url, published_at')
+        .select('id, title, excerpt, content, content_html, ghost_post_url, published_at')
         .eq('id', prId)
         .single();
 
@@ -195,13 +195,17 @@ export function EmailComposer() {
         ? format(new Date(pr.published_at), "dd.MM.yyyy", { locale: de })
         : format(new Date(), "dd.MM.yyyy", { locale: de });
 
+      const pressContent = pr.content_html?.trim()
+        ? pr.content_html
+        : (pr.content || '').replace(/\n/g, '<br>');
+
       const replacePressVars = (text: string) => {
         return text
           .replace(/\{\{titel\}\}/g, pr.title || '')
           .replace(/\{\{excerpt\}\}/g, pr.excerpt || '')
           .replace(/\{\{link\}\}/g, pr.ghost_post_url || '')
           .replace(/\{\{datum\}\}/g, publishedDate)
-          .replace(/\{\{inhalt\}\}/g, pr.content_html || '');
+          .replace(/\{\{inhalt\}\}/g, pressContent);
       };
 
       setSubject(replacePressVars(templateSubject));
