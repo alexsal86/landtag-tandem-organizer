@@ -766,17 +766,17 @@ const LetterTemplateManager: React.FC = () => {
   // Consolidated tab list - used by both create and edit
   // Order: Canvas, Header, Footer, Adressfeld, Rücksende, Info-Block, Betreff, Anlagen, Layout, Allgemein
   const renderTabsList = () => (
-    <TabsList className="grid w-full grid-cols-10">
-      <TabsTrigger value="canvas-designer">Canvas</TabsTrigger>
-      <TabsTrigger value="header-designer">Header</TabsTrigger>
-      <TabsTrigger value="footer-designer">Footer</TabsTrigger>
-      <TabsTrigger value="block-address">Adressfeld</TabsTrigger>
-      <TabsTrigger value="block-return-address">Rücksende</TabsTrigger>
-      <TabsTrigger value="block-info">Info-Block</TabsTrigger>
-      <TabsTrigger value="block-subject">Betreff</TabsTrigger>
-      <TabsTrigger value="block-attachments">Anlagen</TabsTrigger>
-      <TabsTrigger value="layout-settings">Layout</TabsTrigger>
-      <TabsTrigger value="general">Allgemein</TabsTrigger>
+    <TabsList className="flex w-full justify-start gap-1 overflow-x-auto whitespace-nowrap">
+      <TabsTrigger className="shrink-0" value="canvas-designer">Canvas</TabsTrigger>
+      <TabsTrigger className="shrink-0" value="header-designer">Header</TabsTrigger>
+      <TabsTrigger className="shrink-0" value="footer-designer">Footer</TabsTrigger>
+      <TabsTrigger className="shrink-0" value="block-address">Adressfeld</TabsTrigger>
+      <TabsTrigger className="shrink-0" value="block-return-address">Rücksende</TabsTrigger>
+      <TabsTrigger className="shrink-0" value="block-info">Info-Block</TabsTrigger>
+      <TabsTrigger className="shrink-0" value="block-subject">Betreff</TabsTrigger>
+      <TabsTrigger className="shrink-0" value="block-attachments">Anlagen</TabsTrigger>
+      <TabsTrigger className="shrink-0" value="layout-settings">Layout</TabsTrigger>
+      <TabsTrigger className="shrink-0" value="general">Allgemein</TabsTrigger>
     </TabsList>
   );
 
