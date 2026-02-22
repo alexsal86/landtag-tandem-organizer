@@ -477,7 +477,7 @@ export const TaskDecisionResponse = ({
   if (isSingleFreetext) {
     const opt = responseOptions[0];
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 w-full max-w-3xl">
         <SimpleRichTextEditor
           initialContent={questionComment}
           onChange={setQuestionComment}

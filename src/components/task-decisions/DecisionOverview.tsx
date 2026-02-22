@@ -1208,7 +1208,7 @@ export const DecisionOverview = () => {
             {/* Description */}
             {decision.description && (
               <div onClick={(e) => e.stopPropagation()}>
-                <TruncatedDescription content={decision.description} maxLength={100} />
+                <TruncatedDescription content={decision.description} maxLength={300} />
               </div>
             )}
           </div>
@@ -1301,9 +1301,9 @@ export const DecisionOverview = () => {
 
           {/* Voting row: buttons left, results + avatars right */}
           {decision.participants && decision.participants.length > 0 && (
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex items-start justify-between gap-4 mt-4">
               {/* Left: Inline voting for unanswered participants */}
-              <div onClick={(e) => e.stopPropagation()}>
+              <div className="flex-1 min-w-0 max-w-3xl" onClick={(e) => e.stopPropagation()}>
                 {decision.isParticipant && decision.participant_id && !decision.hasResponded && (
                   <TaskDecisionResponse 
                     decisionId={decision.id}
@@ -1316,7 +1316,7 @@ export const DecisionOverview = () => {
               </div>
 
               {/* Right: Voting results + AvatarStack */}
-              <div className="flex items-center gap-3 ml-auto">
+              <div className="flex items-center gap-3 ml-auto shrink-0">
                 <div className="flex items-center gap-1.5 text-sm font-bold">
                   {(() => {
                     // Check if custom template (not standard yes/no/question)
