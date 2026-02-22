@@ -373,6 +373,38 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       clientRef.current = matrixClient;
 
+      // Helper: clear local crypto IndexedDB stores
+      const clearLocalCryptoStores = async (userId: string) => {
+        try {
+          if (typeof indexedDB.databases === 'function') {
+            const databases = await indexedDB.databases();
+            const cryptoDbs = databases.filter(db =>
+              db.name && (
+                db.name.includes('matrix-js-sdk:crypto') ||
+                db.name.includes('rust-crypto') ||
+                db.name.includes('matrix-sdk-crypto')
+              )
+            );
+            for (const db of cryptoDbs) {
+              if (db.name) {
+                indexedDB.deleteDatabase(db.name);
+                console.log('Cleared stale crypto DB:', db.name);
+              }
+            }
+          } else {
+            const knownNames = [
+              `matrix-js-sdk:crypto:${userId}`,
+              `matrix-rust-sdk-crypto-${userId}`,
+            ];
+            for (const name of knownNames) {
+              try { indexedDB.deleteDatabase(name); } catch {}
+            }
+          }
+        } catch (e) {
+          console.warn('Could not clear crypto stores:', e);
+        }
+      };
+
       // Validate stored device still exists on homeserver
       if (localDeviceId) {
         try {
@@ -383,6 +415,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           if (!resp.ok) {
             console.warn('Stored device no longer exists on server, creating new device');
             localStorage.removeItem(`matrix_device_id:${creds.userId}`);
+            // Clear stale crypto stores to prevent OTK collisions
+            await clearLocalCryptoStores(creds.userId);
             // Recreate client without stale deviceId
             matrixClient = sdk.createClient({
               baseUrl: creds.homeserverUrl,
@@ -702,8 +736,71 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       );
       listenersRef.current = registeredListeners;
 
-      // 8. Start client
+      // 8. Start client (with OTK collision auto-recovery)
+      // Intercept fetch to detect 400 on keys/upload (OTK collision)
+      let otkCollisionDetected = false;
+      const nativeFetch = window.fetch;
+      window.fetch = async function (...args: Parameters<typeof fetch>) {
+        const response = await nativeFetch.apply(this, args);
+        if (!otkCollisionDetected && response.status === 400) {
+          const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request)?.url || '';
+          if (url.includes('/keys/upload')) {
+            try {
+              const cloned = response.clone();
+              const body = await cloned.json();
+              if (body?.error?.includes('already exists') || body?.errcode === 'M_UNKNOWN') {
+                otkCollisionDetected = true;
+                console.warn('[Matrix] OTK collision detected – will auto-recover after sync');
+              }
+            } catch {}
+          }
+        }
+        return response;
+      };
+
       await matrixClient.startClient({ initialSyncLimit: 50 });
+
+      // Restore native fetch
+      window.fetch = nativeFetch;
+
+      // If OTK collision was detected, auto-recover by resetting crypto store
+      if (otkCollisionDetected) {
+        console.warn('[Matrix] Auto-recovering from OTK collision: clearing crypto stores and reconnecting...');
+        // Stop the client we just started
+        matrixClient.stopClient();
+        // Clear crypto stores
+        await clearLocalCryptoStores(creds.userId);
+        localStorage.removeItem(`matrix_device_id:${creds.userId}`);
+        // Recreate client from scratch without stale device
+        matrixClient = sdk.createClient({
+          baseUrl: creds.homeserverUrl,
+          accessToken: creds.accessToken,
+          userId: creds.userId,
+          cryptoCallbacks: { getSecretStorageKey },
+        });
+        clientRef.current = matrixClient;
+        await matrixClient.initRustCrypto();
+        // Re-register listeners on new client
+        for (const l of registeredListeners) {
+          matrixClient.removeListener(l.event as any, l.handler);
+        }
+        registeredListeners.length = 0;
+        matrixClient.on(sdk.ClientEvent.Sync, onSync);
+        matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as any);
+        matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as any);
+        matrixClient.on(sdk.MatrixEventEvent.Decrypted, onDecrypted);
+        matrixClient.on(CryptoEvent.VerificationRequestReceived, onVerificationRequestReceived);
+        registeredListeners.push(
+          { event: sdk.ClientEvent.Sync, handler: onSync },
+          { event: sdk.RoomEvent.Timeline, handler: onTimeline as any },
+          { event: sdk.RoomMemberEvent.Typing, handler: onTyping as any },
+          { event: sdk.MatrixEventEvent.Decrypted, handler: onDecrypted },
+          { event: CryptoEvent.VerificationRequestReceived, handler: onVerificationRequestReceived },
+        );
+        listenersRef.current = registeredListeners;
+        await matrixClient.startClient({ initialSyncLimit: 50 });
+        console.log('[Matrix] OTK collision recovery complete');
+      }
 
       // 9. Read & persist diagnostics + device ID
       setCryptoEnabled(Boolean(matrixClient.getCrypto()));
