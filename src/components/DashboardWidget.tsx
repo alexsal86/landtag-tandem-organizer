@@ -373,7 +373,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
           </div>
         );
 
-      case 'tasks':
+      case 'tasks': {
         // Filter out snoozed tasks and subtasks
         const filteredAssignedTasks = assignedTasks.filter(task => {
           return !taskSnoozes[task.id] || new Date(taskSnoozes[task.id]) <= new Date();
@@ -430,7 +430,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-accent-foreground truncate">
-                            {item.title || item.description}
+                            {item.title || 'Ohne Titel'}
                           </span>
                           <Badge 
                             variant="outline" 
@@ -439,7 +439,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                             {isTask ? "Aufgabe" : "Unteraufgabe"}
                           </Badge>
                         </div>
-                        {item.description && item.title && (
+                        {item.description && (
                           <p className="text-sm text-muted-foreground truncate">{item.description}</p>
                         )}
                         {!isTask && ((item as any).assigned_to_names || (item as any).assigned_to) && (
@@ -533,6 +533,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
             )}
           </div>
         );
+      }
 
       case 'schedule':
         return (
@@ -597,20 +598,25 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
   if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news', 'appointmentfeedback', 'stats', 'actions', 'tasks', 'schedule', 'messages', 'blackboard'].includes(widget.type)) {
     return (
       <div 
-        className={`relative h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''} ${isEditMode ? 'cursor-move' : ''}`}
-        draggable={isEditMode}
+        className={`group relative h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''}`}
         style={{ 
           width: '100%', 
           height: '100%', 
           boxSizing: 'border-box'
         }}
       >
+        {isEditMode && (
+          <div className="widget-drag-handle absolute left-2 top-2 z-50 rounded-md border border-border/60 bg-background/70 p-1 text-muted-foreground/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100 cursor-move">
+            <GripVertical className="h-3.5 w-3.5" />
+          </div>
+        )}
+
         {/* Edit Icon - nur im Edit-Modus sichtbar */}
         {isEditMode && !showOverlayMenu && (
           <Button
             variant="outline"
             size="sm"
-            className="absolute top-2 right-2 z-50 h-8 w-8 p-0 bg-background/90 backdrop-blur-sm shadow-md hover:bg-accent"
+            className="widget-no-drag absolute top-2 right-2 z-50 h-8 w-8 p-0 bg-background/90 backdrop-blur-sm shadow-md hover:bg-accent"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -662,8 +668,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
     <Card 
       className={`relative bg-card shadow-card border-border h-full w-full max-w-full overflow-hidden ${
         isDragging ? 'rotate-3 shadow-lg' : 'hover:shadow-elegant'
-      } transition-all duration-300 ${isEditMode ? 'cursor-move' : ''}`}
-      draggable={isEditMode}
+      } transition-all duration-300 group`}
       
       style={{ 
         width: '100%', 
@@ -676,7 +681,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         <Button
           variant="outline"
           size="sm"
-          className="absolute top-2 right-2 z-50 h-8 w-8 p-0 bg-background/90 backdrop-blur-sm shadow-md hover:bg-accent"
+          className="widget-no-drag absolute top-2 right-2 z-50 h-8 w-8 p-0 bg-background/90 backdrop-blur-sm shadow-md hover:bg-accent"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -720,7 +725,11 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 truncate">
-            {isEditMode && <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+            {isEditMode && (
+              <span className="widget-drag-handle rounded-md border border-border/60 bg-background/70 p-1 text-muted-foreground/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100 cursor-move">
+                <GripVertical className="h-3.5 w-3.5 flex-shrink-0" />
+              </span>
+            )}
             <span className="truncate">{widget.title}</span>
           </CardTitle>
         </div>
