@@ -1,42 +1,77 @@
 
-# Plan zur Behebung der 6 Punkte
 
-## 1. Build-Fehler beheben: DOMExportOutput
-In `src/components/DaySlipLineNode.ts` fehlt der Import von `DOMExportOutput` aus `lexical`. Dieser wird zur Import-Liste hinzugefuegt.
+# Plan zur Behebung der 4 Probleme
 
-## 2. Pressemitteilungs-E-Mail: Inhalt wird nicht uebernommen
-In `src/components/emails/EmailComposer.tsx` (Zeile 179) verwendet das Standard-Template den Platzhalter `{{inhalt}}` nicht. Der Fallback-Template-Body enthaelt nur `{{titel}}`, `{{excerpt}}` und `{{link}}`, aber nicht `{{inhalt}}`. Der Platzhalter wird zum Standard-Template-Body hinzugefuegt, sodass der HTML-Inhalt der Pressemitteilung automatisch in die E-Mail eingefuegt wird.
+## 1. Pressemitteilungs-Inhalt wird nicht in E-Mail uebernommen
 
-## 3. Unsplash-Option beim Titelbild der Pressemitteilung
-In `src/components/press/FeatureImagePicker.tsx` wird ein neuer Tab "Unsplash" als erste Option vor "Dokumente" und "URL" eingefuegt. Die bestehende Unsplash-Suche aus `src/components/dashboard/UnsplashImagePicker.tsx` dient als Referenz. Die Suche verwendet die bereits vorhandene Edge Function `search-unsplash`.
+**Ursache:** Der `EnhancedLexicalEditor` gibt beim Aendern nur Klartext (`plainText`) und Lexical-JSON (`contentNodes`) zurueck, aber kein HTML. In `PressReleaseEditor.tsx` wird `contentHtml` daher nie aktualisiert und bleibt leer. Beim Speichern wird `content_html` als leerer String in die Datenbank geschrieben. In der E-Mail-Funktion (`loadPressReleaseForEmail`) greift zwar ein Fallback auf `content` (Klartext), aber dieser enthaelt keine Formatierung.
 
-## 4. Header-Tab Layout-Problem in Briefvorlagen
-In `src/components/letters/StructuredHeaderEditor.tsx` (Zeile 1249-1250) ist das 3-Spalten-Grid mit einer verschachtelten `div.xl:contents` umschlossen. Dies kann in bestimmten Szenarien das Grid-Layout brechen. Die Struktur wird korrigiert, indem die Cards direkt als Grid-Kinder positioniert werden, ohne den `xl:contents`-Wrapper, der das Layout stoert.
+**Loesung:**
+- In `EnhancedLexicalEditor.tsx` (`handleChange`, Zeile 188-200): Zusaetzlich HTML aus dem Editor generieren mittels `$generateHtmlFromNodes` und als dritten Parameter an `onChange` uebergeben
+- Die `onChange`-Signatur erweitern auf `(content: string, contentNodes?: string, contentHtml?: string)`
+- In `PressReleaseEditor.tsx` (`handleContentChange`, Zeile 190-192): Den dritten Parameter `contentHtml` entgegennehmen und `setContentHtml` aufrufen
+- Die anderen Nutzer des Editors (LetterEditor, KnowledgeBaseView) werden durch den optionalen dritten Parameter nicht beeinflusst
 
-## 5. Dashboard: Aufgaben unter "Aufgabenstatus" statt "Termine morgen"
-In `src/components/dashboard/DashboardGreetingSection.tsx` werden die offenen Aufgaben aktuell mit einem Drag-Handle unter der Terminliste angezeigt. Die Darstellung wird so geaendert, dass:
-- Die Aufgabentitel unter der Sektion "Aufgabenstatus" angezeigt werden (statt nach den Terminen)
-- Der Draggable-Indikator visuell anders gestaltet wird (z.B. subtilere Card-Optik)
-- Ein Klick auf eine Aufgabe den Nutzer zu `/mywork?tab=tasks` navigiert
-
-## 6. Tageszettel: Punkte in Quicknote/Aufgabe/Entscheidung umwandeln
-Am Ende des Tages (Resolve-Modus) koennen Tageszettel-Eintraege bereits als "note", "task" oder "decision" markiert werden (der `ResolveTarget`-Typ enthaelt diese bereits). Der Resolve-Export-Mechanismus (`syncResolveExport`) schreibt diese in localStorage. Hier muss sichergestellt werden, dass die markierten Eintraege tatsaechlich als Quicknote, Aufgabe oder Entscheidung in der Datenbank erstellt werden, wenn der Tag abgeschlossen wird.
-
-## 7. Team-Mitteilungen: Push-Benachrichtigung bei Erstellung
-In `src/hooks/useTeamAnnouncements.ts` wird nach dem erfolgreichen Erstellen einer Mitteilung (`createAnnouncement`) eine Benachrichtigung via `create_notification` RPC fuer alle aktiven Tenant-Mitglieder (ausser dem Autor) erstellt. Da das bestehende Push-System einen DB-Trigger auf der `notifications`-Tabelle hat, wird die Browser-Push-Benachrichtigung automatisch ausgeloest.
+**Dateien:**
+- `src/components/EnhancedLexicalEditor.tsx` - HTML-Generierung in `handleChange` hinzufuegen, `onChange`-Typ erweitern
+- `src/components/press/PressReleaseEditor.tsx` - `handleContentChange` um `contentHtml` erweitern
 
 ---
 
-## Technische Details
+## 2. Header-Layout in Briefvorlagen ist kaputt
 
-### Datei-Aenderungen:
+**Ursache:** Im 3-Spalten-Grid (`xl:grid-cols-[280px_1fr_300px]`) in `StructuredHeaderEditor.tsx` fehlen explizite Zeilenpositionen. Die Canvas-Card hat `xl:col-start-2 xl:row-span-4`, aber kein `xl:row-start-1`. Dadurch kann die CSS-Grid-Auto-Platzierung die Elemente falsch anordnen, je nach Renderreihenfolge.
+
+**Loesung:**
+- Canvas-Card (Zeile 1452): `xl:row-start-1` hinzufuegen, damit sie garantiert in Zeile 1 beginnt
+- Action-Buttons-Card (Zeile 1251): `xl:row-start-1` hinzufuegen
+- Tools-Card (Zeile 1262): `xl:row-start-2` hinzufuegen
+- Gallery-Card (Zeile 1294): `xl:row-start-3` hinzufuegen
+- Elements-Card (Zeile 1320): `xl:row-start-2 xl:row-span-2` hinzufuegen, damit sie sich unter den Action Buttons erstreckt
+
+**Datei:**
+- `src/components/letters/StructuredHeaderEditor.tsx` - Explizite Zeilen-Zuweisung fuer alle Grid-Kinder
+
+---
+
+## 3. Tageszettel oeffnet sich nach Refresh obwohl er geschlossen war
+
+**Ursache:** In `GlobalDaySlipPanel.tsx` (Zeile 309) wird der Offen-Status mit `useState(true)` initialisiert, d.h. nach jedem Seitenaufruf ist der Tageszettel offen.
+
+**Loesung:**
+- Den `open`-Status im `localStorage` persistieren (z.B. unter dem Key `day-slip-panel-open`)
+- Beim Initialisieren den gespeicherten Wert lesen (Standard: `false` statt `true`)
+- Bei jeder Aenderung von `open` den neuen Wert in `localStorage` schreiben
+
+**Datei:**
+- `src/components/GlobalDaySlipPanel.tsx` - Open-State mit localStorage-Persistenz
+
+---
+
+## 4. Benachrichtigungs-Deep-Links leuchten nicht mehr auf
+
+**Ursache:** Der `useNotificationHighlight`-Hook wird nur in `DecisionOverview.tsx` verwendet. Alle anderen Views (Aufgaben, Dokumente, Meetings etc.) nutzen den Hook nicht, obwohl `notificationDeepLinks.ts` fuer sie `?highlight=xxx` URLs generiert. Dadurch navigiert ein Klick auf eine Benachrichtigung zwar zur richtigen Seite, aber nichts leuchtet auf.
+
+**Loesung:**
+Den `useNotificationHighlight`-Hook in die wichtigsten Views integrieren und die `notification-highlight`-CSS-Klasse auf die entsprechenden Elemente anwenden:
+- `TasksView.tsx` - Aufgaben-Karten mit Highlight versehen
+- `DocumentsView.tsx` - Briefe/Dokumente mit Highlight versehen
+- Weitere Views nach gleichem Muster (Meetings, Calendar etc.)
+
+**Dateien:**
+- `src/components/TasksView.tsx` - `useNotificationHighlight` importieren und auf Task-Karten anwenden
+- `src/components/DocumentsView.tsx` - `useNotificationHighlight` importieren und auf Briefe/Dokumente anwenden
+
+---
+
+## Technische Uebersicht
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/DaySlipLineNode.ts` | `DOMExportOutput` zum Import hinzufuegen |
-| `src/components/emails/EmailComposer.tsx` | `{{inhalt}}` zum Standard-Template-Body hinzufuegen |
-| `src/components/press/FeatureImagePicker.tsx` | Unsplash-Tab als erste Option einfuegen |
-| `src/components/letters/StructuredHeaderEditor.tsx` | Grid-Struktur korrigieren: `xl:contents`-Wrapper entfernen und Cards direkt im Grid platzieren |
-| `src/components/dashboard/DashboardGreetingSection.tsx` | Aufgabenliste unter "Aufgabenstatus" verschieben, Klick-Navigation hinzufuegen, Draggable-Darstellung anpassen |
-| `src/components/GlobalDaySlipPanel.tsx` | Beim Abschluss des Tages die aufgeloesten Eintraege als Quicknote/Aufgabe/Entscheidung in die Datenbank schreiben |
-| `src/hooks/useTeamAnnouncements.ts` | Benachrichtigungen fuer alle Tenant-Mitglieder beim Erstellen einer Mitteilung anlegen |
+| `src/components/EnhancedLexicalEditor.tsx` | HTML-Generierung via `$generateHtmlFromNodes` in `handleChange`, `onChange`-Signatur erweitern |
+| `src/components/press/PressReleaseEditor.tsx` | `handleContentChange` um HTML-Parameter erweitern, `setContentHtml` aufrufen |
+| `src/components/letters/StructuredHeaderEditor.tsx` | Explizite `xl:row-start-*` Klassen fuer alle Grid-Kinder |
+| `src/components/GlobalDaySlipPanel.tsx` | `open`-State mit localStorage persistieren |
+| `src/components/TasksView.tsx` | `useNotificationHighlight` integrieren |
+| `src/components/DocumentsView.tsx` | `useNotificationHighlight` integrieren |
+
