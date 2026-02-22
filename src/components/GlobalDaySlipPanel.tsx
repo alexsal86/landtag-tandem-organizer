@@ -9,6 +9,7 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { HorizontalRulePlugin } from "@lexical/react/LexicalHorizontalRulePlugin";
 import {
   $createParagraphNode,
+  $createTextNode,
   $getRoot,
   $getSelection,
   $isRangeSelection,
@@ -16,10 +17,7 @@ import {
   EditorState,
   KEY_ENTER_COMMAND,
 } from "lexical";
-import {
-  $createHorizontalRuleNode,
-  HorizontalRuleNode,
-} from "@lexical/react/LexicalHorizontalRuleNode";
+import { $createHorizontalRuleNode, HorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleNode";
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 import { ClipboardPen, Folder, FolderArchive, ListTodo, NotebookPen, Scale, X } from "lucide-react";
 import FloatingTextFormatToolbar from "@/components/FloatingTextFormatToolbar";
@@ -56,6 +54,16 @@ const formatDate = (dayKey: string) => {
 
 const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").trim();
 
+const extractPointsFromHtml = (html: string) => {
+  if (!html.trim()) return [];
+  const parser = new DOMParser();
+  const dom = parser.parseFromString(html, "text/html");
+
+  return Array.from(dom.querySelectorAll("p"))
+    .map((p) => (p.textContent ?? "").trim())
+    .filter((line) => line.length > 0 && line !== "---");
+};
+
 function InitialContentPlugin({ initialHtml, initialNodes, dayKey }: { initialHtml: string; initialNodes?: string; dayKey: string }) {
   const [editor] = useLexicalComposerContext();
   const loadedForDayRef = useRef<string | null>(null);
@@ -74,7 +82,7 @@ function InitialContentPlugin({ initialHtml, initialNodes, dayKey }: { initialHt
           editor.setEditorState(parsed);
           return;
         } catch {
-          // fallback to HTML path below
+          // fallback to HTML path
         }
       }
 
@@ -93,42 +101,49 @@ function InitialContentPlugin({ initialHtml, initialNodes, dayKey }: { initialHt
   return null;
 }
 
-function HorizontalRuleShortcutPlugin() {
+function DaySlipEnterBehaviorPlugin() {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
     return editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event) => {
-        let shouldInsert = false;
+        if (event?.shiftKey) {
+          return false;
+        }
 
-        editor.getEditorState().read(() => {
-          const selection = $getSelection();
-          if (!$isRangeSelection(selection)) return;
-          const text = selection.anchor.getNode().getTextContent().trim();
-          shouldInsert = text === "---";
-        });
-
-        if (!shouldInsert) return false;
-
-        event?.preventDefault();
+        let handled = false;
 
         editor.update(() => {
           const selection = $getSelection();
           if (!$isRangeSelection(selection)) return;
 
-          const paragraph = selection.anchor.getNode().getTopLevelElementOrThrow();
-          paragraph.remove();
-          const hr = $createHorizontalRuleNode();
-          const newParagraph = $createParagraphNode();
-          const root = $getRoot();
+          const topLevel = selection.anchor.getNode().getTopLevelElementOrThrow();
+          const text = topLevel.getTextContent().trim();
 
-          root.append(hr);
-          root.append(newParagraph);
+          if (text === "---") {
+            const hr = $createHorizontalRuleNode();
+            const newParagraph = $createParagraphNode();
+            topLevel.insertBefore(hr);
+            topLevel.replace(newParagraph);
+            newParagraph.select();
+            handled = true;
+            return;
+          }
+
+          const newParagraph = $createParagraphNode();
+          newParagraph.append($createTextNode(""));
+          topLevel.insertAfter(newParagraph);
           newParagraph.select();
+          handled = true;
         });
 
-        return true;
+        if (handled) {
+          event?.preventDefault();
+          return true;
+        }
+
+        return false;
       },
       COMMAND_PRIORITY_EDITOR,
     );
@@ -163,7 +178,7 @@ export function GlobalDaySlipPanel() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === "k") {
+      if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === "j") {
         event.preventDefault();
         setOpen((prev) => !prev);
       }
@@ -177,17 +192,10 @@ export function GlobalDaySlipPanel() {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const key = toDayKey(yesterday);
-    const content = store[key]?.plainText ?? "";
-    return content
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
+    return extractPointsFromHtml(store[key]?.html ?? "");
   }, [store]);
 
-  const openLines = todayData.plainText
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line && line !== "---");
+  const openLines = useMemo(() => extractPointsFromHtml(todayData.html), [todayData.html]);
 
   const archiveDays = useMemo(
     () => Object.keys(store).filter((key) => key !== todayKey).sort((a, b) => b.localeCompare(a)),
@@ -206,25 +214,23 @@ export function GlobalDaySlipPanel() {
   };
 
   const completeDay = () => {
+    if (resolveMode) {
+      setResolveMode(false);
+      return;
+    }
+
     if (unresolvedCount > 0) {
       setResolveMode(true);
       return;
     }
+
     setResolveMode(false);
     setOpen(false);
   };
 
-  const resolveLine = (line: string, target: ResolveTarget) => {
-    const remaining = openLines.filter((item) => item !== line || remainingOnceFlag());
-
-    let removedOnce = false;
-    function remainingOnceFlag() {
-      if (!removedOnce) {
-        removedOnce = true;
-        return false;
-      }
-      return true;
-    }
+  const resolveLine = (line: string, target: ResolveTarget, index: number) => {
+    const remaining = [...openLines];
+    remaining.splice(index, 1);
 
     setStore((prev) => ({
       ...prev,
@@ -241,7 +247,8 @@ export function GlobalDaySlipPanel() {
     namespace: "DaySlipEditor",
     editable: true,
     theme: {
-      paragraph: "mb-2",
+      paragraph:
+        "day-slip-item group relative mb-2 pl-7 before:absolute before:left-0 before:top-[2px] before:content-['—'] before:text-muted-foreground before:rounded before:px-1 before:border before:border-transparent before:transition-colors hover:before:border-border/70 hover:before:bg-muted/40 hover:before:shadow-sm before:cursor-grab",
       text: {
         bold: "font-bold",
         italic: "italic",
@@ -322,8 +329,12 @@ export function GlobalDaySlipPanel() {
                 <LexicalComposer initialConfig={editorConfig}>
                   <div className="relative">
                     <RichTextPlugin
-                      contentEditable={<ContentEditable className="min-h-[520px] p-4 text-sm focus:outline-none" />}
-                      placeholder={<div className="pointer-events-none absolute top-4 left-4 text-base italic text-muted-foreground">Was steht heute an? Einfach drauflosschreiben …</div>}
+                      contentEditable={<ContentEditable className="editor-input min-h-[520px] p-4 text-sm focus:outline-none" />}
+                      placeholder={
+                        <div className="pointer-events-none absolute top-4 left-4 text-base italic text-muted-foreground whitespace-pre-line">
+                          {"Was steht heute an? Einfach drauflos schreiben …\n\n— Rückruf Joschka\n— Pressemitteilung Schulgesetz abstimmen\n— Unterlagen Ausschusssitzung"}
+                        </div>
+                      }
                       ErrorBoundary={LexicalErrorBoundary}
                     />
                     <FloatingTextFormatToolbar />
@@ -331,7 +342,7 @@ export function GlobalDaySlipPanel() {
                   <OnChangePlugin onChange={onEditorChange} />
                   <HistoryPlugin />
                   <HorizontalRulePlugin />
-                  <HorizontalRuleShortcutPlugin />
+                  <DaySlipEnterBehaviorPlugin />
                   <InitialContentPlugin initialHtml={todayData.html} initialNodes={todayData.nodes} dayKey={todayKey} />
                 </LexicalComposer>
               </div>
@@ -344,10 +355,10 @@ export function GlobalDaySlipPanel() {
                       <div key={`${line}-${index}`} className="flex items-center justify-between gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm">
                         <span className="line-clamp-1">{line}</span>
                         <div className="flex items-center gap-1">
-                          <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => resolveLine(line, "note")} aria-label="Als Notiz übernehmen"><NotebookPen className="h-4 w-4" /></button>
-                          <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => resolveLine(line, "task")} aria-label="Als Aufgabe übernehmen"><ListTodo className="h-4 w-4" /></button>
-                          <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => resolveLine(line, "decision")} aria-label="Als Entscheidung übernehmen"><Scale className="h-4 w-4" /></button>
-                          <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => resolveLine(line, "archived")} aria-label="Archivieren"><FolderArchive className="h-4 w-4" /></button>
+                          <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => resolveLine(line, "note", index)} aria-label="Als Notiz übernehmen"><NotebookPen className="h-4 w-4" /></button>
+                          <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => resolveLine(line, "task", index)} aria-label="Als Aufgabe übernehmen"><ListTodo className="h-4 w-4" /></button>
+                          <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => resolveLine(line, "decision", index)} aria-label="Als Entscheidung übernehmen"><Scale className="h-4 w-4" /></button>
+                          <button type="button" className="rounded p-1 hover:bg-muted" onClick={() => resolveLine(line, "archived", index)} aria-label="Archivieren"><FolderArchive className="h-4 w-4" /></button>
                         </div>
                       </div>
                     ))}
@@ -358,7 +369,7 @@ export function GlobalDaySlipPanel() {
               <div className="p-3">
                 <button type="button" onClick={completeDay} className="flex h-10 w-full items-center justify-between rounded-lg border border-emerald-300/40 bg-emerald-500/10 px-3 text-sm font-medium text-emerald-200">
                   <span>🏁 Tag abschließen</span>
-                  <span>{unresolvedCount} offen →</span>
+                  <span>{resolveMode ? "abbrechen" : `${unresolvedCount} offen →`}</span>
                 </button>
               </div>
             </>
