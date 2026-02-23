@@ -459,6 +459,9 @@ export function GlobalDaySlipPanel() {
     struckLines: [],
   };
 
+  const initialHtmlRef = useRef(todayData.html);
+  const initialNodesRef = useRef(todayData.nodes);
+
   // ── Persist: debounced write on every store change ───────────────────────
   useEffect(() => {
     clearTimeout(saveTimeoutRef.current);
@@ -1212,8 +1215,8 @@ export function GlobalDaySlipPanel() {
               {/* ── Editor OR Triage ── */}
               <DaySlipEditor
                 hidden={resolveMode && triageEntries.length > 0}
-                initialHtml={todayData.html}
-                initialNodes={todayData.nodes}
+                initialHtml={initialHtmlRef.current}
+                initialNodes={initialNodesRef.current}
                 dayKey={todayKey}
                 resolveMode={resolveMode}
                 editorConfig={editorConfig}
