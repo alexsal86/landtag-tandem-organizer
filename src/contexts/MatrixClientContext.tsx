@@ -98,6 +98,10 @@ const MATRIX_CONSOLE_NOISE_PATTERNS = [
   'matrix_sdk_crypto::machine: Failed to decrypt a room event',
   'This message was sent before this device logged in',
   "Can't find the room key to decrypt the event",
+  '/_matrix/client/v3/keys/upload',
+  'Failed to process outgoing request',
+  'One time key signed_curve25519',
+  'already exists. Old key:',
 ] as const;
 
 const shouldSuppressMatrixConsoleNoise = (args: unknown[]) => {
@@ -121,8 +125,20 @@ const installMatrixConsoleNoiseFilter = () => {
     return () => {};
   }
 
+  const originalLog = globalThis.console.log.bind(globalThis.console);
+  const originalInfo = globalThis.console.info.bind(globalThis.console);
   const originalWarn = globalThis.console.warn.bind(globalThis.console);
   const originalError = globalThis.console.error.bind(globalThis.console);
+
+  globalThis.console.log = (...args: unknown[]) => {
+    if (shouldSuppressMatrixConsoleNoise(args)) return;
+    originalLog(...args);
+  };
+
+  globalThis.console.info = (...args: unknown[]) => {
+    if (shouldSuppressMatrixConsoleNoise(args)) return;
+    originalInfo(...args);
+  };
 
   globalThis.console.warn = (...args: unknown[]) => {
     if (shouldSuppressMatrixConsoleNoise(args)) return;
@@ -135,6 +151,8 @@ const installMatrixConsoleNoiseFilter = () => {
   };
 
   return () => {
+    globalThis.console.log = originalLog;
+    globalThis.console.info = originalInfo;
     globalThis.console.warn = originalWarn;
     globalThis.console.error = originalError;
   };
