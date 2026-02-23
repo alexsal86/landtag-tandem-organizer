@@ -1,110 +1,113 @@
 
-# Notification-Highlights reparieren und erweitern
 
-## Problem bei Entscheidungen
+# Tageszettel: 7 Verbesserungen
 
-Die `DecisionOverview` verwendet zwar bereits den `useNotificationHighlight`-Hook, aber der aktive Tab wird nicht automatisch gewechselt. Wenn eine Entscheidung z.B. auf dem Tab "Beantwortet" liegt, der Nutzer aber auf "Fuer mich" landet, ist die Karte nicht sichtbar und das Highlight laeuft ins Leere. Dasselbe Problem besteht auch im `MyWorkDecisionsTab`.
+## 1. HR-Linie: Gleichmaessiger Abstand oben und unten
 
-**Loesung:** Beim Laden der Entscheidungen pruefen, in welchem Tab sich die highlightete Decision befindet, und automatisch dorthin wechseln.
+**Problem:** Die horizontale Linie (`<hr>`) hat visuell ungleichen Abstand -- sie klebt zu nah am unteren Element.
 
-## Fehlende Highlights in anderen Views
+**Loesung:** Die Lexical-Theme-Klasse `horizontalRule: "my-3 border-border/80"` wird angepasst. Zusaetzlich wird ein symmetrisches Padding/Margin ueber eine Custom-CSS-Regel sichergestellt, da die DaySlipLineNode (`mb-1.5`) den Abstand nach oben verkuerzt. Der Wert wird auf `my-4` erhoehen oder ein explizites `pt-2` auf die nachfolgende Zeile angewandt.
 
-Folgende Views generieren `?highlight=`-URLs via `notificationDeepLinks.ts`, haben aber keinen `useNotificationHighlight`-Hook:
-
-| View | Notification-Typ | Datei |
-|------|-------------------|-------|
-| Meetings (Jour fixe) | `meeting_created` | `src/components/MeetingsView.tsx` |
-| Wissensdatenbank | `knowledge_document_created` | `src/components/KnowledgeBaseView.tsx` |
-| Veranstaltungsplanung | `planning_collaborator_added` | `src/components/event-planning/EventPlanningListView.tsx` |
-| Kalender (Polls) | `poll_auto_cancelled/completed/restored` | `src/components/CalendarView.tsx` |
-| Zeiterfassung (Antraege) | `vacation/sick_leave/leave_request_*` | Wird ueber `/time?tab=leave-requests` geroutet |
-| Meine Arbeit (Notizen) | `note_follow_up` | Wird ueber `/mywork?tab=notes` geroutet |
-
-## Aenderungen
-
-### 1. DecisionOverview - Tab-Auto-Switch (Entscheidungen-Seite)
-
-**Datei:** `src/components/task-decisions/DecisionOverview.tsx`
-
-Nach dem Laden der Entscheidungen (`setDecisions`): Wenn ein `highlight`-Parameter vorhanden ist, die passende Entscheidung in der Liste suchen und den korrekten Tab setzen:
-- Ist der Nutzer Participant und hat nicht geantwortet -> "for-me"
-- Hat geantwortet und ist nicht Creator -> "answered"
-- Ist Creator -> "my-decisions"
-- Ist oeffentlich -> "public"
-- Ist archiviert -> "archived"
-
-### 2. MyWorkDecisionsTab - Tab-Auto-Switch (Meine Arbeit)
-
-**Datei:** `src/components/my-work/MyWorkDecisionsTab.tsx`
-
-Gleiche Logik wie bei DecisionOverview: Highlight-ID lesen, passenden Tab aktivieren. Zusaetzlich `useNotificationHighlight` importieren und an die `MyWorkDecisionCard`-Komponente weitergeben.
-
-### 3. MeetingsView - Highlight fuer Meetings
-
-**Datei:** `src/components/MeetingsView.tsx`
-
-- `useNotificationHighlight` importieren und initialisieren
-- Meeting-Karten mit `ref={highlightRef(meeting.id)}` und `notification-highlight`-Klasse versehen
-
-### 4. KnowledgeBaseView - Highlight fuer Wissensartikel
-
-**Datei:** `src/components/KnowledgeBaseView.tsx`
-
-- `useNotificationHighlight` importieren
-- Dokument-Karten in der Seitenleiste mit Highlight-Ref und CSS-Klasse versehen
-- Bei Highlight automatisch das entsprechende Dokument auswaehlen/oeffnen
-
-### 5. EventPlanningListView - Highlight fuer Planungen
-
-**Datei:** `src/components/event-planning/EventPlanningListView.tsx`
-
-- `useNotificationHighlight` importieren (oder ueber Props von `EventPlanningView` durchreichen)
-- Planungs-Karten mit Highlight-Ref und CSS-Klasse versehen
-
-### 6. CalendarView - Highlight fuer Polls
-
-**Datei:** `src/components/CalendarView.tsx`
-
-- `useNotificationHighlight` importieren
-- Da Kalender-Eintraege keine Karten-Liste sind: Bei vorhandenem `highlight`-Parameter den entsprechenden Termin/die Umfrage als Detail oeffnen (oder zum Datum navigieren)
-
-### 7. MyWorkView - Tab-Auto-Switch fuer Notizen
-
-**Datei:** `src/components/MyWorkView.tsx`
-
-- Bei `highlight`-Parameter in Kombination mit `tab=notes`: Automatisch den Notizen-Tab aktivieren
-- Die Notizen-Komponente muss den Highlight-Hook erhalten
+**Datei:** `src/components/GlobalDaySlipPanel.tsx` (editorTheme)
 
 ---
 
-## Technische Details
+## 2. "In heute uebernehmen" zuverlaessig machen
 
-Jede Integration folgt demselben Muster:
+**Problem:** `carryOverFromYesterday()` schreibt nur in den `store` (HTML), aber der Lexical-Editor ist bereits gemountet und zeigt den alten State. Die neuen Zeilen erscheinen erst nach einem Page-Refresh. Ausserdem wird `nodes: undefined` gesetzt, was beim naechsten Editor-Mount dazu fuehrt, dass der HTML-Pfad genutzt wird -- aber der Editor mountet nicht neu.
 
-```text
-1. Import: useNotificationHighlight aus "@/hooks/useNotificationHighlight"
-2. Hook: const { isHighlighted, highlightRef } = useNotificationHighlight();
-3. Ref:   ref={highlightRef(item.id)}
-4. Class: isHighlighted(item.id) && "notification-highlight"
-```
+**Loesung:**
+- Nach dem Store-Update wird der Editor direkt ueber `editorRef.current.update()` aktualisiert, indem die neuen Zeilen als `DaySlipLineNode`-Nodes an den Root angehaengt werden (analog zu `appendLinesToToday`).
+- Tatsaechlich kann `carryOverFromYesterday` die bereits existierende `appendLinesToToday`-Funktion nutzen, die genau das tut: Zeilen dedupliziert in den laufenden Editor einfuegen.
+- Der "Gestern noch offen"-Banner wird nach erfolgreicher Uebernahme ausgeblendet (z.B. ueber einen `carriedOver`-State).
 
-Bei Tab-basierten Views (Decisions, MyWork) kommt zusaetzlich hinzu:
+**Datei:** `src/components/GlobalDaySlipPanel.tsx`
 
-```text
-5. URL-Param "highlight" lesen
-6. Item in der Gesamtliste suchen
-7. Passenden Tab automatisch aktivieren
-```
+---
 
-### Betroffene Dateien
+## 3. Labeled HR: `--- Mittag` erzeugt Trennlinie mit Beschriftung
 
-| Datei | Art der Aenderung |
-|-------|-------------------|
-| `src/components/task-decisions/DecisionOverview.tsx` | Tab-Auto-Switch bei highlight-Param |
-| `src/components/my-work/MyWorkDecisionsTab.tsx` | useNotificationHighlight + Tab-Auto-Switch |
-| `src/components/my-work/decisions/MyWorkDecisionCard.tsx` | Highlight-Ref und CSS-Klasse auf Karte |
-| `src/components/MeetingsView.tsx` | useNotificationHighlight auf Meeting-Karten |
-| `src/components/KnowledgeBaseView.tsx` | useNotificationHighlight auf Dokument-Karten |
-| `src/components/event-planning/EventPlanningListView.tsx` | useNotificationHighlight auf Planungs-Karten |
-| `src/components/CalendarView.tsx` | useNotificationHighlight - Detail oeffnen bei highlight |
-| `src/components/MyWorkView.tsx` | Tab-Auto-Switch bei highlight + tab-Param |
+**Problem:** Aktuell wird nur reines `---` erkannt. Der Nutzer moechte `--- Text` eingeben und eine HR-Linie mit zentriertem Label erhalten.
+
+**Loesung:**
+- Die `isRuleLine`-Pruefung wird erweitert: Ein neuer Helper `parseRuleLine(text)` gibt `{ isRule: boolean; label?: string }` zurueck. Pattern: `---` gefolgt von optionalem Text.
+- Ein neuer Lexical `DecoratorNode` namens `LabeledHorizontalRuleNode` wird erstellt:
+  - Speichert ein `label`-Feld (z.B. "Mittag")
+  - Rendert als `<div>` mit einer Linie links, Text in der Mitte, Linie rechts (CSS: `flex items-center gap-2` mit `<hr class="flex-1" />` links und rechts)
+  - Serialisiert/deserialisiert das Label in JSON
+- Im `DaySlipEnterBehaviorPlugin` wird bei erkanntem `--- Mittag` statt `$createHorizontalRuleNode()` ein `$createLabeledHorizontalRuleNode("Mittag")` eingefuegt.
+- Ohne Label (reines `---`) bleibt das Verhalten wie bisher.
+
+**Neue Datei:** `src/components/LabeledHorizontalRuleNode.tsx`
+**Bearbeitet:** `src/components/GlobalDaySlipPanel.tsx`
+
+---
+
+## 4. Drag-and-Drop-Aufgaben persistent mit Task verknuepfen
+
+**Problem:** Aktuell wird beim Drop nur der Titel mit einem Checkmark-Emoji eingefuegt. Es gibt keine tatsaechliche Verknuepfung zur Aufgabe in der Datenbank.
+
+**Loesung:**
+- Beim Drop wird zusaetzlich die Task-ID aus `application/x-mywork-task-id` (muss im Drag-Source gesetzt werden) gelesen.
+- Im `DaySlipLineNode` wird ein optionales Feld `linkedTaskId` hinzugefuegt, das in `exportJSON`/`importJSON` persistiert wird.
+- Zeilen mit `linkedTaskId` behalten ihre Verknuepfung unabhaengig von Textaenderungen.
+- Das Checkmark-Icon wird als visueller Indikator beibehalten und ggf. klickbar gemacht, um die Aufgabe zu oeffnen.
+- Die Task-Drag-Source-Komponenten muessen `application/x-mywork-task-id` im `dataTransfer` setzen (falls noch nicht vorhanden).
+
+**Bearbeitet:**
+- `src/components/DaySlipLineNode.ts` (neues Feld `linkedTaskId`)
+- `src/components/GlobalDaySlipPanel.tsx` (Drop-Handler liest Task-ID, uebergibt an Node)
+- Task-Drag-Source-Komponenten (setzen `application/x-mywork-task-id`)
+
+---
+
+## 5. X-Button schliesst Panel ohne Tag zu beenden
+
+**Problem:** Der X-Button ruft `handleClose` auf, das bei offenen Punkten den Resolve-Modus startet statt einfach zu schliessen.
+
+**Loesung:**
+- Der X-Button bekommt einen eigenen Handler, der einfach `animateClosePanel()` aufruft -- ohne Resolve-Logik.
+- Die "Tag abschliessen"-Logik bleibt ausschliesslich beim Footer-Button.
+
+**Datei:** `src/components/GlobalDaySlipPanel.tsx` (Zeile ~1081)
+
+---
+
+## 6. Placeholder verschwindet bei Fokus
+
+**Problem:** Der Placeholder-Text "Was steht heute an?" bleibt auch bei Fokus sichtbar. Er sollte nur erscheinen, wenn der Editor leer ist UND keinen Fokus hat.
+
+**Loesung:**
+- Ein `isFocused`-State wird im Editor oder via Plugin (`FOCUS_COMMAND` / `BLUR_COMMAND`) getrackt.
+- Der Placeholder bekommt eine zusaetzliche CSS-Klasse, die ihn bei Fokus ausblendet: `opacity-0` wenn fokussiert, `opacity-100` wenn nicht fokussiert und leer.
+- Alternativ: Der Placeholder-`<div>` wird nur gerendert, wenn `!isFocused && isEmpty`.
+
+**Datei:** `src/components/GlobalDaySlipPanel.tsx` (DaySlipEditor + neues FocusPlugin)
+
+---
+
+## 7. Weitere Feature-Ideen fuer den Tageszettel
+
+Hier einige Ideen, die den Tageszettel weiter aufwerten koennten:
+
+- **Zeitstempel pro Zeile**: Automatisch die Uhrzeit erfassen, wann ein Punkt hinzugefuegt oder abgehakt wurde -- nuetzlich fuer Zeitnachweise.
+- **Pomodoro/Timer-Integration**: Ein kleiner Timer pro Zeile oder global, um fokussierte Arbeitszeiten zu tracken.
+- **Prioritaets-Markierungen**: Zeilen mit `!` oder `!!` am Anfang farblich hervorheben (gelb/rot) als schnelle Priorisierung.
+- **Tagesrueckblick/Statistik**: Am Ende des Tages eine kleine Zusammenfassung: X von Y erledigt, Y offene Punkte uebertragen, Z Minuten getrackt.
+- **Vorlagen/Templates**: Neben wiederkehrenden Punkten auch ganze Tagesvorlagen (z.B. "Sitzungstag", "Homeoffice-Tag") mit vordefinierten Bloecken und HR-Trennlinien.
+- **Drag-Reihenfolge**: Zeilen per Drag-and-Drop innerhalb des Tageszettels umsortieren.
+- **Kontextmenu**: Rechtsklick auf eine Zeile fuer schnelle Aktionen (Aufgabe erstellen, Notiz, Snoozen, Loeschen).
+
+---
+
+## Technische Zusammenfassung
+
+| Nr. | Aenderung | Dateien |
+|-----|-----------|---------|
+| 1 | HR-Spacing anpassen | `GlobalDaySlipPanel.tsx` |
+| 2 | carryOver via appendLinesToToday | `GlobalDaySlipPanel.tsx` |
+| 3 | LabeledHorizontalRuleNode | Neue Datei + `GlobalDaySlipPanel.tsx` |
+| 4 | linkedTaskId in DaySlipLineNode | `DaySlipLineNode.ts` + `GlobalDaySlipPanel.tsx` + Drag-Sources |
+| 5 | X-Button = einfach schliessen | `GlobalDaySlipPanel.tsx` |
+| 6 | Placeholder bei Fokus ausblenden | `GlobalDaySlipPanel.tsx` |
+
