@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { MessageCircle, Bell, Send } from "lucide-react";
+import { MessageCircle, Bell, Send, Reply } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -38,6 +38,7 @@ interface NewComment {
 interface MyWorkDecisionSidebarProps {
   openQuestions: OpenQuestion[];
   newComments: NewComment[];
+  pendingDirectReplies: NewComment[];
   discussionComments?: SidebarDiscussionComment[];
   recentActivities?: Array<{
     id: string;
@@ -65,6 +66,7 @@ const getInitials = (name: string | null) => {
 export function MyWorkDecisionSidebar({
   openQuestions,
   newComments,
+  pendingDirectReplies,
   discussionComments = [],
   recentActivities = [],
   onQuestionClick,
@@ -78,7 +80,7 @@ export function MyWorkDecisionSidebar({
   const [isLoading, setIsLoading] = useState(false);
   const [visibleActivityCount, setVisibleActivityCount] = useState(ACTIVITY_BATCH_SIZE);
 
-  const totalItems = openQuestions.length + newComments.length;
+  const totalItems = openQuestions.length + newComments.length + pendingDirectReplies.length;
   const activityDatasetKey = useMemo(
     () => recentActivities.map((activity) => activity.id).join("|"),
     [recentActivities]
@@ -207,6 +209,42 @@ export function MyWorkDecisionSidebar({
                           </Button>
                         )}
                       </div>
+                    ))}
+                  </div>
+                )}
+
+
+                {pendingDirectReplies.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1 text-xs font-medium text-blue-600">
+                      <Reply className="h-3 w-3" />
+                      <span>Antworten auf dich</span>
+                      <Badge variant="outline" className="text-blue-600 border-blue-600 text-xs px-1.5 py-0">
+                        {pendingDirectReplies.length}
+                      </Badge>
+                    </div>
+                    {pendingDirectReplies.map((reply) => (
+                      <button
+                        key={`reply-${reply.id}`}
+                        onClick={() => onCommentClick(reply.decisionId)}
+                        className="w-full text-left p-2 rounded-md border-l-2 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors"
+                      >
+                        <p className="text-xs font-semibold line-clamp-2">{reply.decisionTitle}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Avatar className="h-4 w-4">
+                            {reply.participantAvatarUrl && <AvatarImage src={reply.participantAvatarUrl} />}
+                            <AvatarFallback className="text-[8px]" style={{ backgroundColor: reply.participantBadgeColor || undefined }}>
+                              {getInitials(reply.participantName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs text-muted-foreground">{reply.participantName || 'Unbekannt'}</span>
+                        </div>
+                        {reply.comment && (
+                          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            <RichTextDisplay content={reply.comment} className="text-xs" />
+                          </div>
+                        )}
+                      </button>
                     ))}
                   </div>
                 )}

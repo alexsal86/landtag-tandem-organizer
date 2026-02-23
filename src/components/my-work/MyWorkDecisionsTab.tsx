@@ -402,6 +402,7 @@ export function MyWorkDecisionsTab() {
               <MyWorkDecisionSidebar
                 openQuestions={sidebarData.openQuestions}
                 newComments={sidebarData.newComments}
+                pendingDirectReplies={sidebarData.pendingDirectReplies}
                 discussionComments={sidebarData.discussionComments}
                 recentActivities={sidebarData.recentActivities}
                 onQuestionClick={handleOpenDetails}
