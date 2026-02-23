@@ -15,7 +15,7 @@ import {
   $getRoot,
   $getSelection,
   $isRangeSelection,
-  COMMAND_PRIORITY_EDITOR,
+  COMMAND_PRIORITY_CRITICAL,
   type EditorState,
   type LexicalEditor,
   KEY_ENTER_COMMAND,
@@ -259,7 +259,7 @@ function DaySlipEnterBehaviorPlugin() {
         }
         return false;
       },
-      COMMAND_PRIORITY_EDITOR,
+      COMMAND_PRIORITY_CRITICAL,
     );
   }, [editor]);
 
