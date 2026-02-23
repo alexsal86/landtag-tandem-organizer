@@ -249,7 +249,9 @@ function DaySlipEnterBehaviorPlugin() {
             const hr = $createHorizontalRuleNode();
             const newParagraph = $createDaySlipLineNode();
             topLevel.replace(hr);
+            console.log("hr in tree:", hr.isAttached());
             hr.insertAfter(newParagraph);
+            console.log("paragraph in tree:", newParagraph.isAttached());
             newParagraph.select();
             handled = true;
             return;
