@@ -44,6 +44,7 @@ import {
 import FloatingTextFormatToolbar from "@/components/FloatingTextFormatToolbar";
 import { DaySlipLineNode, $createDaySlipLineNode } from "@/components/DaySlipLineNode";
 import { LabeledHorizontalRuleNode, $createLabeledHorizontalRuleNode } from "@/components/LabeledHorizontalRuleNode";
+import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,8 @@ interface DaySlipDayData {
   resolved?: Array<{ lineId: string; text: string; target: ResolveTarget }>;
   completedAt?: string;
   recurringInjected?: boolean;
+  lineTimestamps?: Record<string, { addedAt: string; checkedAt?: string }>;
+  dayMood?: 1 | 2 | 3 | 4 | 5;
 }
 
 type ResolvedItem = { lineId: string; text: string; target: ResolveTarget };
@@ -68,6 +71,7 @@ type DaySlipStore = Record<string, DaySlipDayData>;
 
 const STORAGE_KEY = "day-slip-v2";
 const RECURRING_STORAGE_KEY = "day-slip-recurring-v2";
+const DAY_TEMPLATE_STORAGE_KEY = "day-slip-day-templates-v1";
 const RESOLVE_EXPORT_KEY = "day-slip-resolve-export-v1";
 const SAVE_DEBOUNCE_MS = 400;
 
@@ -87,6 +91,43 @@ type ResolveExportItem = {
   target: Exclude<ResolveTarget, "archived" | "snoozed">;
   createdAt: string;
 };
+
+type DayTemplate = {
+  id: string;
+  name: string;
+  lines: string[];
+};
+
+const defaultDayTemplates: DayTemplate[] = [
+  {
+    id: "meeting-day",
+    name: "Sitzungstag",
+    lines: [
+      "--- Vorbereitung ---",
+      "!! Tagesordnung final prüfen",
+      "Unterlagen für Ausschuss ausdrucken",
+      "--- Sitzung ---",
+      "! Offene Fragen notieren",
+      "Beschlüsse direkt ins Protokoll übertragen",
+      "--- Nachbereitung ---",
+      "Aufgaben an Team verteilen",
+    ],
+  },
+  {
+    id: "homeoffice-day",
+    name: "Homeoffice-Tag",
+    lines: [
+      "--- Fokusblöcke ---",
+      "!! Wichtigste Aufgabe des Tages (MIT)",
+      "! E-Mails nur um 11:00 und 16:00",
+      "--- Kommunikation ---",
+      "Jour fixe vorbereiten",
+      "Rückrufe und Nachrichten abarbeiten",
+      "--- Tagesabschluss ---",
+      "Ergebnisse dokumentieren",
+    ],
+  },
+];
 
 const weekDays = ["all", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 
@@ -326,6 +367,7 @@ interface DaySlipEditorProps {
   onEditorChange: (editorState: EditorState, editor: LexicalEditor) => void;
   onEditorReady: (editor: LexicalEditor) => void;
   onEditorClick: (e: MouseEvent<HTMLDivElement>) => void;
+  onEditorContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
   onDrop: (e: DragEvent<HTMLElement>) => void;
   hidden?: boolean;
 }
@@ -340,6 +382,7 @@ const DaySlipEditor = memo(function DaySlipEditor(props: DaySlipEditorProps) {
     onEditorChange,
     onEditorReady,
     onEditorClick,
+    onEditorContextMenu,
     onDrop,
     hidden,
   } = props;
@@ -362,6 +405,7 @@ const DaySlipEditor = memo(function DaySlipEditor(props: DaySlipEditorProps) {
     <div
       className={`relative flex-1 border-b border-border/60${hidden ? " hidden" : ""}`}
       onClick={onEditorClick}
+      onContextMenu={onEditorContextMenu}
       onDragOver={(event) => event.preventDefault()}
       onDrop={onDrop}
     >
@@ -489,6 +533,23 @@ export function GlobalDaySlipPanel() {
       return [];
     }
   });
+  const [dayTemplates] = useState<DayTemplate[]>(() => {
+    try {
+      const raw = localStorage.getItem(DAY_TEMPLATE_STORAGE_KEY);
+      if (!raw) return defaultDayTemplates;
+      const parsed = JSON.parse(raw) as DayTemplate[];
+      if (!Array.isArray(parsed) || parsed.length === 0) return defaultDayTemplates;
+      return parsed;
+    } catch {
+      return defaultDayTemplates;
+    }
+  });
+  const [lineContextMenu, setLineContextMenu] = useState<{
+    x: number;
+    y: number;
+    lineId: string;
+    text: string;
+  } | null>(null);
 
   const editorRef = useRef<LexicalEditor | null>(null);
   const [editorReadyVersion, setEditorReadyVersion] = useState(0);
@@ -502,6 +563,7 @@ export function GlobalDaySlipPanel() {
     plainText: "",
     nodes: "",
     struckLines: [],
+    lineTimestamps: {},
   };
 
   // Editor key: stable per day, only remounts on day change
@@ -551,6 +613,16 @@ export function GlobalDaySlipPanel() {
     const timeout = window.setTimeout(() => setCompletionMessage(null), 2800);
     return () => window.clearTimeout(timeout);
   }, [completionMessage]);
+
+  useEffect(() => {
+    const closeMenu = () => setLineContextMenu(null);
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("scroll", closeMenu);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("scroll", closeMenu);
+    };
+  }, []);
 
   // ── Derived data ─────────────────────────────────────────────────────────
 
@@ -638,9 +710,116 @@ export function GlobalDaySlipPanel() {
     [store, todayKey],
   );
 
-
   // ── Strike toggle (dash click) ───────────────────────────────────────────
 
+  const formatTimeStamp = (iso?: string) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const insertStructuredLines = useCallback((lines: string[]) => {
+    if (!editorRef.current) {
+      setStore((prev) => {
+        const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
+        const existingLines = extractLinesFromHtml(day.html);
+        const extra = lines
+          .filter((line) => !parseRuleLine(line).isRule)
+          .map((text) => ({ id: crypto.randomUUID(), text }));
+        const merged = [...existingLines, ...extra];
+        return {
+          ...prev,
+          [todayKey]: {
+            ...day,
+            html: merged.map(toParagraphHtml).join(""),
+            plainText: merged.map((line) => line.text).join("\n"),
+            nodes: undefined,
+          },
+        };
+      });
+      return;
+    }
+
+    editorRef.current.update(() => {
+      const root = $getRoot();
+      lines.forEach((line) => {
+        const parsed = parseRuleLine(line);
+        if (parsed.isRule) {
+          const hrNode = parsed.label
+            ? $createLabeledHorizontalRuleNode(parsed.label)
+            : $createHorizontalRuleNode();
+          root.append(hrNode);
+          return;
+        }
+        const paragraph = $createDaySlipLineNode();
+        paragraph.append($createTextNode(line));
+        root.append(paragraph);
+      });
+    });
+  }, [todayKey]);
+
+  const applyDayTemplate = (template: DayTemplate) => {
+    insertStructuredLines(template.lines);
+    setShowSettings(false);
+  };
+
+  const createFromLine = async (lineText: string, target: "note" | "task") => {
+    if (!user?.id || !lineText.trim()) return;
+    if (target === "note") {
+      await supabase.from("quick_notes").insert({
+        user_id: user.id,
+        title: lineText,
+        content: `Aus Tageszettel (${todayKey})`,
+      });
+      return;
+    }
+
+    if (!currentTenant?.id) return;
+    await supabase.from("tasks").insert({
+      user_id: user.id,
+      tenant_id: currentTenant.id,
+      title: lineText,
+      description: `Aus Tageszettel (${todayKey})`,
+      status: "open",
+      priority: "medium",
+      category: "allgemein",
+    });
+  };
+
+  const deleteLine = useCallback((lineId: string) => {
+    if (editorRef.current) {
+      editorRef.current.update(() => {
+        const root = $getRoot();
+        root.getChildren().forEach((node) => {
+          const maybeLineId = (node as DaySlipLineNode & { __lineId?: string }).__lineId;
+          if (maybeLineId === lineId) {
+            node.remove();
+          }
+        });
+      });
+    }
+
+    setStore((prev) => {
+      const day = prev[todayKey];
+      if (!day) return prev;
+      const lines = extractLinesFromHtml(day.html).filter((line) => line.id !== lineId);
+      const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
+      delete lineTimestamps[lineId];
+      return {
+        ...prev,
+        [todayKey]: {
+          ...day,
+          html: lines.map(toParagraphHtml).join(""),
+          plainText: lines.map((line) => line.text).join("\n"),
+          struckLineIds: (day.struckLineIds ?? day.struckLines ?? []).filter((id) => id !== lineId),
+          resolved: (day.resolved ?? []).filter((item) => item.lineId !== lineId),
+          lineTimestamps,
+        },
+      };
+    });
+  }, [todayKey]);
+
+
+  // ── Strike
   const toggleStrike = useCallback((lineId: string) => {
     setStore((prev) => {
       const day = prev[todayKey] ?? {
@@ -650,6 +829,16 @@ export function GlobalDaySlipPanel() {
       };
       const struck = day.struckLineIds ?? day.struckLines ?? [];
       const isStruck = struck.includes(lineId);
+      const now = new Date().toISOString();
+      const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
+      if (!lineTimestamps[lineId]) {
+        lineTimestamps[lineId] = { addedAt: now };
+      }
+      if (isStruck) {
+        delete lineTimestamps[lineId].checkedAt;
+      } else {
+        lineTimestamps[lineId].checkedAt = now;
+      }
       return {
         ...prev,
         [todayKey]: {
@@ -657,6 +846,7 @@ export function GlobalDaySlipPanel() {
           struckLineIds: isStruck
             ? struck.filter((l) => l !== lineId)
             : [...struck, lineId],
+          lineTimestamps,
         },
       };
     });
@@ -675,15 +865,34 @@ export function GlobalDaySlipPanel() {
         nodes = undefined;
       }
 
-      setStore((prev) => ({
-        ...prev,
-        [todayKey]: {
-          ...(prev[todayKey] ?? { resolved: [], struckLines: [] }),
-          plainText,
-          html,
-          nodes,
-        },
-      }));
+      setStore((prev) => {
+        const day = prev[todayKey] ?? { resolved: [], struckLines: [] };
+        const currentEntries = extractLinesFromHtml(html);
+        const now = new Date().toISOString();
+        const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
+        currentEntries.forEach((entry) => {
+          if (!lineTimestamps[entry.id]) {
+            lineTimestamps[entry.id] = { addedAt: now };
+          }
+        });
+        const validLineIds = new Set(currentEntries.map((entry) => entry.id));
+        Object.keys(lineTimestamps).forEach((lineId) => {
+          if (!validLineIds.has(lineId)) {
+            delete lineTimestamps[lineId];
+          }
+        });
+
+        return {
+          ...prev,
+          [todayKey]: {
+            ...day,
+            plainText,
+            html,
+            nodes,
+            lineTimestamps,
+          },
+        };
+      });
     });
   }, [todayKey]);
 
@@ -701,15 +910,29 @@ export function GlobalDaySlipPanel() {
       const nodes = document.querySelectorAll<HTMLElement>(".day-slip-item");
       nodes.forEach((node) => {
         const lineId = node.dataset.lineId ?? "";
-        const hasText = (node.textContent ?? "").trim().length > 0;
+        const text = (node.textContent ?? "").trim();
+        const hasText = text.length > 0;
         node.classList.toggle("has-text", hasText);
         const struck = struckSet.has(lineId);
         node.classList.toggle("line-through", struck);
         node.classList.toggle("text-muted-foreground", struck);
         node.classList.toggle("opacity-70", struck);
+        const isHighPriority = /^!!\s*/.test(text);
+        const isPriority = !isHighPriority && /^!\s*/.test(text);
+        node.classList.toggle("bg-red-500/10", isHighPriority);
+        node.classList.toggle("border", isHighPriority || isPriority);
+        node.classList.toggle("border-red-400/40", isHighPriority);
+        node.classList.toggle("bg-amber-400/10", isPriority);
+        node.classList.toggle("border-amber-400/40", isPriority);
+        const stamp = todayData.lineTimestamps?.[lineId];
+        if (stamp) {
+          node.title = `Erfasst: ${formatTimeStamp(stamp.addedAt)} · Abgehakt: ${formatTimeStamp(stamp.checkedAt)}`;
+        } else {
+          node.title = "";
+        }
       });
     });
-  }, [struckLineIds, todayData.html, open, editorReadyVersion]);
+  }, [struckLineIds, todayData.html, todayData.lineTimestamps, open, editorReadyVersion]);
 
   // ── Panel close / resolve flow ───────────────────────────────────────────
 
@@ -865,6 +1088,16 @@ export function GlobalDaySlipPanel() {
         : struck.includes(lineId)
           ? struck
           : [...struck, lineId];
+      const now = new Date().toISOString();
+      const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
+      if (!lineTimestamps[lineId]) {
+        lineTimestamps[lineId] = { addedAt: now };
+      }
+      if (isUndo) {
+        delete lineTimestamps[lineId].checkedAt;
+      } else {
+        lineTimestamps[lineId].checkedAt = now;
+      }
 
       syncResolveExport(lineId, line, target, isUndo);
 
@@ -874,6 +1107,7 @@ export function GlobalDaySlipPanel() {
           ...day,
           struckLineIds: nextStruck,
           resolved: nextResolved,
+          lineTimestamps,
         },
       };
     });
@@ -1070,6 +1304,17 @@ export function GlobalDaySlipPanel() {
     toggleStrike(lineId);
   }, [toggleStrike]);
 
+  const handleEditorContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const item = target.closest(".day-slip-item") as HTMLElement | null;
+    if (!item) return;
+    const lineId = item.dataset.lineId;
+    const text = (item.textContent ?? "").trim();
+    if (!lineId || !text || isRuleLine(text)) return;
+    e.preventDefault();
+    setLineContextMenu({ x: e.clientX, y: e.clientY, lineId, text });
+  }, []);
+
   // ── Lexical config ────────────────────────────────────────────────────────
 
   const editorConfig = useMemo(() => ({
@@ -1210,6 +1455,24 @@ export function GlobalDaySlipPanel() {
                   ))}
                 </div>
               </div>
+              <div className="space-y-2 rounded-lg border border-border/60 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Tagesvorlagen
+                </p>
+                <p className="text-xs text-muted-foreground">Fügt vordefinierte Blöcke inkl. HR-Trennlinien ein.</p>
+                <div className="space-y-1.5">
+                  {dayTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      className="w-full rounded border border-border/60 px-2 py-1.5 text-left text-xs hover:bg-muted"
+                      onClick={() => applyDayTemplate(template)}
+                    >
+                      {template.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : showArchive ? (
             <div className={`flex-1 space-y-3 overflow-y-auto p-4 transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
@@ -1228,6 +1491,8 @@ export function GlobalDaySlipPanel() {
                 const completedInfo = dayData?.completedAt
                   ? `Abgeschlossen um ${new Date(dayData.completedAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`
                   : "Nicht explizit abgeschlossen";
+                const moodMap = ["😞", "🙁", "😐", "🙂", "😄"] as const;
+                const mood = dayData?.dayMood ? moodMap[dayData.dayMood - 1] : "—";
 
                 return (
                   <div
@@ -1238,7 +1503,7 @@ export function GlobalDaySlipPanel() {
                       {formatDate(day)}
                     </p>
                     <p className="mb-2 text-[11px] text-muted-foreground/90">
-                      {completedInfo} · {resolved.length} zugewiesen · {unresolved} offen geblieben
+                      {completedInfo} · {resolved.length} zugewiesen · {unresolved} offen geblieben · Stimmung: {mood}
                     </p>
                     <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                       {stripHtml(dayData?.html ?? "") || "—"}
@@ -1282,6 +1547,7 @@ export function GlobalDaySlipPanel() {
                 onEditorChange={onEditorChange}
                 onEditorReady={handleEditorReady}
                 onEditorClick={handleEditorClick}
+                onEditorContextMenu={handleEditorContextMenu}
                 onDrop={handleDropToDaySlip}
               />
               {resolveMode && triageEntries.length > 0 && (
@@ -1304,13 +1570,23 @@ export function GlobalDaySlipPanel() {
                       const activeTarget = resolvedByLineId.get(id);
                       const buttonClass = (target: ResolveTarget) =>
                         `rounded p-1 transition-colors ${activeTarget === target ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/50" : "hover:bg-muted"}`;
+                      const stamp = todayData.lineTimestamps?.[id];
+                      const isHighPriority = /^!!\s*/.test(text);
+                      const isPriority = !isHighPriority && /^!\s*/.test(text);
 
                       return (
                       <div
                         key={id}
-                        className="flex items-center justify-between gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm"
+                        className={cn(
+                          "flex items-center justify-between gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm",
+                          isHighPriority && "bg-red-500/10 border-red-400/40",
+                          isPriority && "bg-amber-400/10 border-amber-400/40",
+                        )}
                       >
-                        <span className="line-clamp-1 flex-1">{text}</span>
+                        <div className="flex flex-1 flex-col">
+                          <span className="line-clamp-1">{text}</span>
+                          <span className="text-[10px] text-muted-foreground">Erfasst {formatTimeStamp(stamp?.addedAt)} · Abgehakt {formatTimeStamp(stamp?.checkedAt)}</span>
+                        </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <button
                             type="button"
@@ -1361,7 +1637,33 @@ export function GlobalDaySlipPanel() {
               )}
 
               {/* ── Footer ── */}
-              <div className="p-3">
+              <div className="space-y-2 p-3">
+                <div className="rounded-lg border border-border/60 px-3 py-2">
+                  <p className="mb-1 text-[11px] text-muted-foreground">Wie war dein Tag?</p>
+                  <div className="flex items-center justify-between">
+                    {["😞", "🙁", "😐", "🙂", "😄"].map((mood, index) => (
+                      <button
+                        key={mood}
+                        type="button"
+                        className={cn(
+                          "rounded px-1.5 py-1 text-lg transition hover:bg-muted",
+                          todayData.dayMood === (index + 1) ? "bg-emerald-500/20 ring-1 ring-emerald-400/50" : "opacity-70",
+                        )}
+                        onClick={() =>
+                          setStore((prev) => ({
+                            ...prev,
+                            [todayKey]: {
+                              ...(prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] }),
+                              dayMood: (index + 1) as 1 | 2 | 3 | 4 | 5,
+                            },
+                          }))
+                        }
+                      >
+                        {mood}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={completeDay}
@@ -1374,6 +1676,26 @@ export function GlobalDaySlipPanel() {
             </div>
           )}
         </aside>
+      )}
+
+      {lineContextMenu && (
+        <div
+          className="fixed z-[70] min-w-44 rounded-md border border-border bg-popover p-1 shadow-xl"
+          style={{ left: lineContextMenu.x, top: lineContextMenu.y }}
+        >
+          <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { await createFromLine(lineContextMenu.text, "task"); setLineContextMenu(null); }}>
+            Als Aufgabe erstellen
+          </button>
+          <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { await createFromLine(lineContextMenu.text, "note"); setLineContextMenu(null); }}>
+            Als Notiz speichern
+          </button>
+          <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={() => { toggleResolveLine(lineContextMenu.lineId, lineContextMenu.text, "snoozed"); setLineContextMenu(null); }}>
+            Snoozen
+          </button>
+          <button className="flex w-full rounded px-2 py-1 text-left text-sm text-red-300 hover:bg-red-500/10" onClick={() => { deleteLine(lineContextMenu.lineId); setLineContextMenu(null); }}>
+            Löschen
+          </button>
+        </div>
       )}
 
       {completionMessage && (
