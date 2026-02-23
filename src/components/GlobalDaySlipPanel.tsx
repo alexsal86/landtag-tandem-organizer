@@ -204,8 +204,8 @@ function InitialContentPlugin({
           const parsed = editor.parseEditorState(initialNodes);
           editor.setEditorState(parsed);
           return;
-        } catch {
-          // fall through to HTML path
+        } catch (e) {
+          console.warn("Failed to parse saved nodes, falling back to HTML", e);
         }
       }
 
@@ -504,11 +504,8 @@ export function GlobalDaySlipPanel() {
     struckLines: [],
   };
 
-  // editorKey increments each time the panel opens, forcing a fresh editor mount
-  const [editorKey, setEditorKey] = useState(0);
-  useEffect(() => {
-    if (open) setEditorKey((k) => k + 1);
-  }, [open]);
+  // Editor key: stable per day, only remounts on day change
+  // No increment on open/close to preserve Lexical state
 
   // ── Persist: debounced write on every store change ───────────────────────
   useEffect(() => {
@@ -1275,7 +1272,7 @@ export function GlobalDaySlipPanel() {
 
               {/* ── Editor OR Triage ── */}
               <DaySlipEditor
-                key={editorKey}
+                key={todayKey}
                 hidden={resolveMode && triageEntries.length > 0}
                 initialHtml={todayData.html}
                 initialNodes={todayData.nodes}
