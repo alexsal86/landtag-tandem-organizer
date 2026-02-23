@@ -1,113 +1,68 @@
 
+# Fix: Labeled HR und Text-Verlust beim Schliessen
 
-# Tageszettel: 7 Verbesserungen
+## Problem 1: Labeled HR zeigt nur grauen Text, keine Linien
 
-## 1. HR-Linie: Gleichmaessiger Abstand oben und unten
+**Ursache:** Der `LabeledHorizontalRuleNode` erzeugt in `createDOM()` einen aeusseren `<div>` und in `decorate()` einen inneren `<div>` mit den `<hr>`-Elementen. Lexical rendert den React-Output von `decorate()` als Kind-Element in den DOM-Container. Dadurch entsteht eine verschachtelte Struktur, in der die `flex-1`-Klassen der `<hr>`-Elemente nicht greifen, weil der aeussere Container kein korrektes Flex-Layout an den inneren weitergibt.
 
-**Problem:** Die horizontale Linie (`<hr>`) hat visuell ungleichen Abstand -- sie klebt zu nah am unteren Element.
+**Loesung:**
+- `createDOM()` gibt einen minimalen Container zurueck (nur notwendige Lexical-Attribute, kein Layout-Styling)
+- `decorate()` uebernimmt das gesamte visuelle Rendering mit korrektem Flex-Layout
+- Sicherstellen, dass der aeussere Container `display: flex` und volle Breite hat, damit die inneren `<hr>`-Elemente sich korrekt ausdehnen
 
-**Loesung:** Die Lexical-Theme-Klasse `horizontalRule: "my-3 border-border/80"` wird angepasst. Zusaetzlich wird ein symmetrisches Padding/Margin ueber eine Custom-CSS-Regel sichergestellt, da die DaySlipLineNode (`mb-1.5`) den Abstand nach oben verkuerzt. Der Wert wird auf `my-4` erhoehen oder ein explizites `pt-2` auf die nachfolgende Zeile angewandt.
-
-**Datei:** `src/components/GlobalDaySlipPanel.tsx` (editorTheme)
+**Datei:** `src/components/LabeledHorizontalRuleNode.tsx`
 
 ---
 
-## 2. "In heute uebernehmen" zuverlaessig machen
+## Problem 2: Text verschwindet beim Schliessen und Wiederoeffen
 
-**Problem:** `carryOverFromYesterday()` schreibt nur in den `store` (HTML), aber der Lexical-Editor ist bereits gemountet und zeigt den alten State. Die neuen Zeilen erscheinen erst nach einem Page-Refresh. Ausserdem wird `nodes: undefined` gesetzt, was beim naechsten Editor-Mount dazu fuehrt, dass der HTML-Pfad genutzt wird -- aber der Editor mountet nicht neu.
+**Ursache:** `initialHtmlRef` und `initialNodesRef` werden einmalig beim Mount der `GlobalDaySlipPanel`-Komponente gesetzt (`useRef(todayData.html)`). Diese Refs werden nie aktualisiert. Wenn der Nutzer Text eingibt und das Panel schliesst:
+
+1. Der `onEditorChange`-Handler aktualisiert den `store` korrekt
+2. Der Store wird per Debounce (400ms) in localStorage geschrieben
+3. Beim Wiederoeffen wird `DaySlipEditor` neu gemountet, bekommt aber die alten Ref-Werte
+4. `InitialContentPlugin` laedt dadurch den veralteten Inhalt
 
 **Loesung:**
-- Nach dem Store-Update wird der Editor direkt ueber `editorRef.current.update()` aktualisiert, indem die neuen Zeilen als `DaySlipLineNode`-Nodes an den Root angehaengt werden (analog zu `appendLinesToToday`).
-- Tatsaechlich kann `carryOverFromYesterday` die bereits existierende `appendLinesToToday`-Funktion nutzen, die genau das tut: Zeilen dedupliziert in den laufenden Editor einfuegen.
-- Der "Gestern noch offen"-Banner wird nach erfolgreicher Uebernahme ausgeblendet (z.B. ueber einen `carriedOver`-State).
+- Die Refs (`initialHtmlRef`, `initialNodesRef`) werden durch direkte Nutzung von `todayData.html` und `todayData.nodes` ersetzt, damit beim Remount des Editors immer der aktuelle Store-Wert geladen wird
+- Alternativ: Die Refs werden bei jeder Aenderung des Store aktualisiert, aber nur beim Editor-Mount gelesen
+- Zusaetzlich: Beim Schliessen des Panels wird der Store sofort (ohne Debounce) in localStorage geschrieben, um Datenverlust zu vermeiden
 
 **Datei:** `src/components/GlobalDaySlipPanel.tsx`
 
 ---
 
-## 3. Labeled HR: `--- Mittag` erzeugt Trennlinie mit Beschriftung
+## Technische Details
 
-**Problem:** Aktuell wird nur reines `---` erkannt. Der Nutzer moechte `--- Text` eingeben und eine HR-Linie mit zentriertem Label erhalten.
+### LabeledHorizontalRuleNode.tsx
 
-**Loesung:**
-- Die `isRuleLine`-Pruefung wird erweitert: Ein neuer Helper `parseRuleLine(text)` gibt `{ isRule: boolean; label?: string }` zurueck. Pattern: `---` gefolgt von optionalem Text.
-- Ein neuer Lexical `DecoratorNode` namens `LabeledHorizontalRuleNode` wird erstellt:
-  - Speichert ein `label`-Feld (z.B. "Mittag")
-  - Rendert als `<div>` mit einer Linie links, Text in der Mitte, Linie rechts (CSS: `flex items-center gap-2` mit `<hr class="flex-1" />` links und rechts)
-  - Serialisiert/deserialisiert das Label in JSON
-- Im `DaySlipEnterBehaviorPlugin` wird bei erkanntem `--- Mittag` statt `$createHorizontalRuleNode()` ein `$createLabeledHorizontalRuleNode("Mittag")` eingefuegt.
-- Ohne Label (reines `---`) bleibt das Verhalten wie bisher.
+```text
+createDOM():
+  - Aenderung: style="display:flex; width:100%" statt Tailwind-Klassen
+  - contentEditable="false" bleibt
 
-**Neue Datei:** `src/components/LabeledHorizontalRuleNode.tsx`
-**Bearbeitet:** `src/components/GlobalDaySlipPanel.tsx`
+decorate():
+  - Bleibt wie bisher, aber mit w-full auf dem aeusseren div
+  - Die <hr>-Elemente behalten flex-1
+```
 
----
+### GlobalDaySlipPanel.tsx
 
-## 4. Drag-and-Drop-Aufgaben persistent mit Task verknuepfen
+```text
+Zeile ~507-508 (initialHtmlRef/initialNodesRef):
+  - Entfernen der useRef-Caching-Logik
+  - Stattdessen todayData.html / todayData.nodes direkt an DaySlipEditor uebergeben
 
-**Problem:** Aktuell wird beim Drop nur der Titel mit einem Checkmark-Emoji eingefuegt. Es gibt keine tatsaechliche Verknuepfung zur Aufgabe in der Datenbank.
+Zeile ~1270-1271:
+  - initialHtml={todayData.html} statt initialHtmlRef.current
+  - initialNodes={todayData.nodes} statt initialNodesRef.current
 
-**Loesung:**
-- Beim Drop wird zusaetzlich die Task-ID aus `application/x-mywork-task-id` (muss im Drag-Source gesetzt werden) gelesen.
-- Im `DaySlipLineNode` wird ein optionales Feld `linkedTaskId` hinzugefuegt, das in `exportJSON`/`importJSON` persistiert wird.
-- Zeilen mit `linkedTaskId` behalten ihre Verknuepfung unabhaengig von Textaenderungen.
-- Das Checkmark-Icon wird als visueller Indikator beibehalten und ggf. klickbar gemacht, um die Aufgabe zu oeffnen.
-- Die Task-Drag-Source-Komponenten muessen `application/x-mywork-task-id` im `dataTransfer` setzen (falls noch nicht vorhanden).
+InitialContentPlugin (Zeile ~182-224):
+  - loadedForDayRef Logik beibehalten (verhindert Doppel-Load)
+  - Aber: Wenn open=false->true wechselt, muss ein neuer Load erlaubt sein
+  - Loesung: editorKey auf DaySlipEditor setzen, der sich bei jedem Oeffnen aendert,
+    damit der Editor komplett neu gemountet wird und InitialContentPlugin erneut laueft
 
-**Bearbeitet:**
-- `src/components/DaySlipLineNode.ts` (neues Feld `linkedTaskId`)
-- `src/components/GlobalDaySlipPanel.tsx` (Drop-Handler liest Task-ID, uebergibt an Node)
-- Task-Drag-Source-Komponenten (setzen `application/x-mywork-task-id`)
-
----
-
-## 5. X-Button schliesst Panel ohne Tag zu beenden
-
-**Problem:** Der X-Button ruft `handleClose` auf, das bei offenen Punkten den Resolve-Modus startet statt einfach zu schliessen.
-
-**Loesung:**
-- Der X-Button bekommt einen eigenen Handler, der einfach `animateClosePanel()` aufruft -- ohne Resolve-Logik.
-- Die "Tag abschliessen"-Logik bleibt ausschliesslich beim Footer-Button.
-
-**Datei:** `src/components/GlobalDaySlipPanel.tsx` (Zeile ~1081)
-
----
-
-## 6. Placeholder verschwindet bei Fokus
-
-**Problem:** Der Placeholder-Text "Was steht heute an?" bleibt auch bei Fokus sichtbar. Er sollte nur erscheinen, wenn der Editor leer ist UND keinen Fokus hat.
-
-**Loesung:**
-- Ein `isFocused`-State wird im Editor oder via Plugin (`FOCUS_COMMAND` / `BLUR_COMMAND`) getrackt.
-- Der Placeholder bekommt eine zusaetzliche CSS-Klasse, die ihn bei Fokus ausblendet: `opacity-0` wenn fokussiert, `opacity-100` wenn nicht fokussiert und leer.
-- Alternativ: Der Placeholder-`<div>` wird nur gerendert, wenn `!isFocused && isEmpty`.
-
-**Datei:** `src/components/GlobalDaySlipPanel.tsx` (DaySlipEditor + neues FocusPlugin)
-
----
-
-## 7. Weitere Feature-Ideen fuer den Tageszettel
-
-Hier einige Ideen, die den Tageszettel weiter aufwerten koennten:
-
-- **Zeitstempel pro Zeile**: Automatisch die Uhrzeit erfassen, wann ein Punkt hinzugefuegt oder abgehakt wurde -- nuetzlich fuer Zeitnachweise.
-- **Pomodoro/Timer-Integration**: Ein kleiner Timer pro Zeile oder global, um fokussierte Arbeitszeiten zu tracken.
-- **Prioritaets-Markierungen**: Zeilen mit `!` oder `!!` am Anfang farblich hervorheben (gelb/rot) als schnelle Priorisierung.
-- **Tagesrueckblick/Statistik**: Am Ende des Tages eine kleine Zusammenfassung: X von Y erledigt, Y offene Punkte uebertragen, Z Minuten getrackt.
-- **Vorlagen/Templates**: Neben wiederkehrenden Punkten auch ganze Tagesvorlagen (z.B. "Sitzungstag", "Homeoffice-Tag") mit vordefinierten Bloecken und HR-Trennlinien.
-- **Drag-Reihenfolge**: Zeilen per Drag-and-Drop innerhalb des Tageszettels umsortieren.
-- **Kontextmenu**: Rechtsklick auf eine Zeile fuer schnelle Aktionen (Aufgabe erstellen, Notiz, Snoozen, Loeschen).
-
----
-
-## Technische Zusammenfassung
-
-| Nr. | Aenderung | Dateien |
-|-----|-----------|---------|
-| 1 | HR-Spacing anpassen | `GlobalDaySlipPanel.tsx` |
-| 2 | carryOver via appendLinesToToday | `GlobalDaySlipPanel.tsx` |
-| 3 | LabeledHorizontalRuleNode | Neue Datei + `GlobalDaySlipPanel.tsx` |
-| 4 | linkedTaskId in DaySlipLineNode | `DaySlipLineNode.ts` + `GlobalDaySlipPanel.tsx` + Drag-Sources |
-| 5 | X-Button = einfach schliessen | `GlobalDaySlipPanel.tsx` |
-| 6 | Placeholder bei Fokus ausblenden | `GlobalDaySlipPanel.tsx` |
-
+Zeile ~716-724 (animateClosePanel):
+  - Vor dem Schliessen sofortiges localStorage.setItem ausfuehren (flush)
+```
