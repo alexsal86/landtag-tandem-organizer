@@ -228,6 +228,15 @@ function DaySlipEnterBehaviorPlugin() {
 
         let handled = false;
 
+        let currentText = "";
+        editor.getEditorState().read(() => {
+          const sel = $getSelection();
+          if ($isRangeSelection(sel)) {
+            currentText = sel.anchor.getNode().getTopLevelElementOrThrow().getTextContent().trim();
+          }
+        });
+        console.log("currentText:", JSON.stringify(currentText), "isRule:", isRuleLine(currentText));
+
         editor.update(() => {
           const selection = $getSelection();
           if (!$isRangeSelection(selection)) return;
