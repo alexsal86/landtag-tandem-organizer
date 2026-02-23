@@ -216,11 +216,13 @@ function InitialContentPlugin({
 
 function DaySlipEnterBehaviorPlugin() {
   const [editor] = useLexicalComposerContext();
+  console.log("ENTER plugin mounted");
 
   useEffect(() => {
     return editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event) => {
+        console.log("ENTER fired");
         // Shift+Enter → default behaviour
         if (event?.shiftKey) return false;
 
