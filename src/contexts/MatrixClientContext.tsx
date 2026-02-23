@@ -83,6 +83,31 @@ export interface MatrixMessage {
 
 const MAX_CACHED_MESSAGES = 200;
 
+
+const isMatrixConsoleLoggingEnabled = () => {
+  try {
+    return localStorage.getItem('matrix_debug_console') === 'true';
+  } catch {
+    return false;
+  }
+};
+
+const matrixLogger = {
+  log: (...args: unknown[]) => {
+    if (isMatrixConsoleLoggingEnabled()) globalThis.console.log(...args);
+  },
+  info: (...args: unknown[]) => {
+    if (isMatrixConsoleLoggingEnabled()) globalThis.console.info(...args);
+  },
+  warn: (...args: unknown[]) => {
+    if (isMatrixConsoleLoggingEnabled()) globalThis.console.warn(...args);
+  },
+  error: (...args: unknown[]) => {
+    if (isMatrixConsoleLoggingEnabled()) globalThis.console.error(...args);
+  },
+};
+
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): MatrixMessage | null => {
@@ -327,7 +352,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           });
         }
       } catch (error) {
-        console.error('Error loading Matrix credentials:', error);
+        matrixLogger.error('Error loading Matrix credentials:', error);
       }
     };
 
@@ -388,7 +413,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             for (const db of cryptoDbs) {
               if (db.name) {
                 indexedDB.deleteDatabase(db.name);
-                console.log('Cleared stale crypto DB:', db.name);
+                matrixLogger.log('Cleared stale crypto DB:', db.name);
               }
             }
           } else {
@@ -401,7 +426,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             }
           }
         } catch (e) {
-          console.warn('Could not clear crypto stores:', e);
+          matrixLogger.warn('Could not clear crypto stores:', e);
         }
       };
 
@@ -413,7 +438,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             { headers: { Authorization: `Bearer ${creds.accessToken}` } }
           );
           if (!resp.ok) {
-            console.warn('Stored device no longer exists on server, creating new device');
+            matrixLogger.warn('Stored device no longer exists on server, creating new device');
             localStorage.removeItem(`matrix_device_id:${creds.userId}`);
             // Clear stale crypto stores to prevent OTK collisions
             await clearLocalCryptoStores(creds.userId);
@@ -451,18 +476,18 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       // 3. Init Rust Crypto (BEFORE startClient)
       try {
-        console.log('=== Matrix E2EE Diagnostics ===');
-        console.log('Cross-Origin Isolated:', window.crossOriginIsolated);
-        console.log('SharedArrayBuffer available:', typeof SharedArrayBuffer !== 'undefined');
+        matrixLogger.log('=== Matrix E2EE Diagnostics ===');
+        matrixLogger.log('Cross-Origin Isolated:', window.crossOriginIsolated);
+        matrixLogger.log('SharedArrayBuffer available:', typeof SharedArrayBuffer !== 'undefined');
 
         if (!window.crossOriginIsolated) {
-          console.warn('Cross-Origin Isolation not enabled. E2EE may not work. Try a new tab.');
+          matrixLogger.warn('Cross-Origin Isolation not enabled. E2EE may not work. Try a new tab.');
         }
 
         await matrixClient.initRustCrypto();
-        console.log('Matrix E2EE initialized successfully');
+        matrixLogger.log('Matrix E2EE initialized successfully');
       } catch (cryptoError) {
-        console.error('Failed to initialize E2EE:', cryptoError);
+        matrixLogger.error('Failed to initialize E2EE:', cryptoError);
         lastCryptoError = cryptoError instanceof Error ? cryptoError.message : 'E2EE-Initialisierung fehlgeschlagen';
         updateRuntimeDiagnostics(lastCryptoError);
         setCryptoEnabled(false);
@@ -486,15 +511,15 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
                   }
                 },
               });
-              console.log('Secret Storage bootstrapped');
+              matrixLogger.log('Secret Storage bootstrapped');
             } catch (e) {
-              console.warn('bootstrapSecretStorage failed (non-critical):', e);
+              matrixLogger.warn('bootstrapSecretStorage failed (non-critical):', e);
             }
           } else if (isReady) {
-            console.log('Secret Storage already ready, skipping bootstrap');
+            matrixLogger.log('Secret Storage already ready, skipping bootstrap');
           }
         } catch (e) {
-          console.warn('isSecretStorageReady check failed:', e);
+          matrixLogger.warn('isSecretStorageReady check failed:', e);
         }
 
         // 5. Bootstrap Cross-Signing with UIA (password only)
@@ -510,20 +535,20 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
                 });
               },
             } as any);
-            console.log('Cross-Signing bootstrapped (with UIA password)');
+            matrixLogger.log('Cross-Signing bootstrapped (with UIA password)');
           } catch (e) {
-            console.warn('bootstrapCrossSigning failed:', e);
+            matrixLogger.warn('bootstrapCrossSigning failed:', e);
           }
         } else {
-          console.info('Skipping bootstrapCrossSigning: no password available for UIA');
+          matrixLogger.info('Skipping bootstrapCrossSigning: no password available for UIA');
         }
 
         // 6. Check & enable key backup
         try {
           await crypto.checkKeyBackupAndEnable();
-          console.log('Key backup checked/enabled');
+          matrixLogger.log('Key backup checked/enabled');
         } catch (e) {
-          console.warn('checkKeyBackupAndEnable failed (non-critical):', e);
+          matrixLogger.warn('checkKeyBackupAndEnable failed (non-critical):', e);
         }
       }
 
@@ -654,14 +679,14 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       };
 
       const onVerificationRequestReceived = async (verificationRequest: any) => {
-        console.log('[Matrix] Incoming verification request, phase:', verificationRequest.phase);
+        matrixLogger.log('[Matrix] Incoming verification request, phase:', verificationRequest.phase);
 
         if (verificationRequest.phase === VerificationPhase.Requested) {
           try {
             await verificationRequest.accept();
-            console.log('[Matrix] Verification request accepted');
+            matrixLogger.log('[Matrix] Verification request accepted');
           } catch (e) {
-            console.error('[Matrix] Failed to accept verification request:', e);
+            matrixLogger.error('[Matrix] Failed to accept verification request:', e);
             return;
           }
         }
@@ -691,7 +716,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
           if (waitResult !== 'ok') {
             try { await verificationRequest.cancel(); } catch {}
-            console.warn('[Matrix] Incoming verification aborted:', waitResult);
+            matrixLogger.warn('[Matrix] Incoming verification aborted:', waitResult);
             return;
           }
         }
@@ -703,20 +728,20 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           const cleanupVerifierListeners = setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError);
           verifier.verify()
             .then(() => {
-              console.log('[Matrix] Incoming SAS verification succeeded');
+              matrixLogger.log('[Matrix] Incoming SAS verification succeeded');
               setLastVerificationError(null);
               setActiveSasVerification(null);
               cleanupVerifierListeners();
             })
             .catch((err: unknown) => {
-              console.error('[Matrix] Incoming SAS verification failed:', err);
+              matrixLogger.error('[Matrix] Incoming SAS verification failed:', err);
               setLastVerificationError(err instanceof Error ? err.message : 'Verifizierung fehlgeschlagen');
               setActiveSasVerification(null);
               cleanupVerifierListeners();
             });
-          console.log('[Matrix] Incoming verification SAS started');
+          matrixLogger.log('[Matrix] Incoming verification SAS started');
         } catch (err) {
-          console.error('[Matrix] Failed to handle incoming verification:', err);
+          matrixLogger.error('[Matrix] Failed to handle incoming verification:', err);
         }
       };
 
@@ -750,7 +775,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
               const body = await cloned.json();
               if (body?.error?.includes('already exists') || body?.errcode === 'M_UNKNOWN') {
                 otkCollisionDetected = true;
-                console.warn('[Matrix] OTK collision detected – will auto-recover after sync');
+                matrixLogger.warn('[Matrix] OTK collision detected – will auto-recover after sync');
               }
             } catch {}
           }
@@ -765,7 +790,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       // If OTK collision was detected, auto-recover by resetting crypto store
       if (otkCollisionDetected) {
-        console.warn('[Matrix] Auto-recovering from OTK collision: clearing crypto stores and reconnecting...');
+        matrixLogger.warn('[Matrix] Auto-recovering from OTK collision: clearing crypto stores and reconnecting...');
         // Stop the client we just started
         matrixClient.stopClient();
         // Clear crypto stores
@@ -799,7 +824,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         );
         listenersRef.current = registeredListeners;
         await matrixClient.startClient({ initialSyncLimit: 50 });
-        console.log('[Matrix] OTK collision recovery complete');
+        matrixLogger.log('[Matrix] OTK collision recovery complete');
       }
 
       // 9. Read & persist diagnostics + device ID
@@ -816,7 +841,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           crossSigningReady = await cryptoAfterStart.isCrossSigningReady();
           keyBackupEnabled = (await cryptoAfterStart.checkKeyBackupAndEnable()) !== null;
         } catch (e) {
-          console.error('Failed to read crypto state:', e);
+          matrixLogger.error('Failed to read crypto state:', e);
         }
       }
 
@@ -836,7 +861,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       const { password: _password, ...safeCreds } = creds;
       setCredentials({ ...safeCreds, deviceId: finalDeviceId || undefined });
     } catch (error) {
-      console.error('Error connecting to Matrix:', error);
+      matrixLogger.error('Error connecting to Matrix:', error);
       setConnectionError(error instanceof Error ? error.message : 'Verbindungsfehler');
       setIsConnecting(false);
     } finally {
@@ -900,7 +925,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             hasMore = (await mc.scrollback(room, limit)) as unknown as boolean;
           }
         } catch (error) {
-          console.warn('Matrix scrollback failed:', error);
+          matrixLogger.warn('Matrix scrollback failed:', error);
         } finally {
           refreshInFlightRef.current.delete(roomId);
         }
@@ -1127,7 +1152,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         cleanupVerifierListeners();
       })
       .catch((error) => {
-        console.error('Matrix SAS verification failed:', error);
+        matrixLogger.error('Matrix SAS verification failed:', error);
         setLastVerificationError(describeError(error));
         setActiveSasVerification(null);
         cleanupVerifierListeners();
@@ -1162,10 +1187,10 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             identifier: { type: 'm.id.user', user: localpart },
             password: authPasswordRef.current,
           } : {});
-          console.log('Device deleted from server:', deviceId);
+          matrixLogger.log('Device deleted from server:', deviceId);
         }
       } catch (e) {
-        console.warn('Could not delete device from server (non-critical):', e);
+        matrixLogger.warn('Could not delete device from server (non-critical):', e);
       }
     }
 
@@ -1185,7 +1210,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         for (const db of cryptoDbs) {
           if (db.name) {
             indexedDB.deleteDatabase(db.name);
-            console.log('Deleted crypto DB:', db.name);
+            matrixLogger.log('Deleted crypto DB:', db.name);
           }
         }
       } else {
