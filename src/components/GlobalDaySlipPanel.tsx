@@ -216,13 +216,11 @@ function InitialContentPlugin({
 
 function DaySlipEnterBehaviorPlugin() {
   const [editor] = useLexicalComposerContext();
-  console.log("ENTER plugin mounted");
 
   useEffect(() => {
     return editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event) => {
-        console.log("ENTER fired");
         // Shift+Enter → default behaviour
         if (event?.shiftKey) return false;
 
@@ -286,6 +284,7 @@ interface DaySlipEditorProps {
   onEditorReady: (editor: LexicalEditor) => void;
   onEditorClick: (e: MouseEvent<HTMLDivElement>) => void;
   onDrop: (e: DragEvent<HTMLElement>) => void;
+  hidden?: boolean;
 }
 
 const DaySlipEditor = memo(function DaySlipEditor({
@@ -298,10 +297,11 @@ const DaySlipEditor = memo(function DaySlipEditor({
   onEditorReady,
   onEditorClick,
   onDrop,
+  hidden,
 }: DaySlipEditorProps) {
   return (
     <div
-      className="relative flex-1 border-b border-border/60"
+      className={`relative flex-1 border-b border-border/60${hidden ? " hidden" : ""}`}
       onClick={onEditorClick}
       onDragOver={(event) => event.preventDefault()}
       onDrop={onDrop}
@@ -1195,7 +1195,19 @@ export function GlobalDaySlipPanel() {
               )}
 
               {/* ── Editor OR Triage ── */}
-              {resolveMode && triageEntries.length > 0 ? (
+              <DaySlipEditor
+                hidden={resolveMode && triageEntries.length > 0}
+                initialHtml={todayData.html}
+                initialNodes={todayData.nodes}
+                dayKey={todayKey}
+                resolveMode={resolveMode}
+                editorConfig={editorConfig}
+                onEditorChange={onEditorChange}
+                onEditorReady={handleEditorReady}
+                onEditorClick={handleEditorClick}
+                onDrop={handleDropToDaySlip}
+              />
+              {resolveMode && triageEntries.length > 0 && (
                 /* Triage view – replaces editor completely */
                 <div className="flex-1 border-b border-border/60">
                   <div className="border-b border-border/60 bg-muted/30 px-4 py-3">
@@ -1269,19 +1281,6 @@ export function GlobalDaySlipPanel() {
                     })}
                   </div>
                 </div>
-              ) : (
-                /* Editor view */
-                <DaySlipEditor
-                  initialHtml={todayData.html}
-                  initialNodes={todayData.nodes}
-                  dayKey={todayKey}
-                  resolveMode={resolveMode}
-                  editorConfig={editorConfig}
-                  onEditorChange={onEditorChange}
-                  onEditorReady={handleEditorReady}
-                  onEditorClick={handleEditorClick}
-                  onDrop={handleDropToDaySlip}
-                />
               )}
 
               {/* ── Footer ── */}
