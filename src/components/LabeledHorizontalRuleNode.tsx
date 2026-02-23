@@ -38,7 +38,8 @@ export class LabeledHorizontalRuleNode extends DecoratorNode<JSX.Element> {
 
   createDOM(_config: EditorConfig): HTMLElement {
     const div = document.createElement("div");
-    div.className = "labeled-hr my-4 flex items-center gap-3 select-none";
+    div.style.display = "flex";
+    div.style.width = "100%";
     div.contentEditable = "false";
     return div;
   }
