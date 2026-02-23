@@ -160,7 +160,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     if (!previewContainerRef.current) return;
     const updatePreviewSize = () => {
       if (!previewContainerRef.current) return;
-      const nextWidth = Math.min(780, Math.max(360, Math.floor(previewContainerRef.current.clientWidth - 16)));
+      const rulerOffset = showRuler ? 28 : 0;
+      const nextWidth = Math.min(780, Math.max(360, Math.floor(previewContainerRef.current.clientWidth - 16 - rulerOffset)));
       setPreviewWidth(nextWidth);
     };
 
@@ -168,7 +169,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const observer = new ResizeObserver(updatePreviewSize);
     observer.observe(previewContainerRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [showRuler]);
 
   useEffect(() => {
     if (!showRuler) return;
@@ -1054,7 +1055,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
       <div className="flex h-8 items-center gap-2 rounded-md border bg-background px-2">
-        <span className="h-4 w-4 shrink-0 rounded border" style={{ backgroundColor: value }} />
         <Input
           type="color"
           value={value}
@@ -1248,11 +1248,11 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
       <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_300px] gap-6">
         {actionButtons && (
-          <Card className="xl:col-start-3 xl:row-start-1">
+          <Card className="self-start xl:col-start-3 xl:row-start-1">
             <CardHeader className="py-3 px-4">
               <CardTitle className="text-sm">Bearbeitung</CardTitle>
             </CardHeader>
-            <CardContent className="px-4 pb-4 space-y-2">
+            <CardContent className="px-4 pb-3 pt-1 space-y-2">
               {actionButtons}
             </CardContent>
           </Card>
