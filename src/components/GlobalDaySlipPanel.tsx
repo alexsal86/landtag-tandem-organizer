@@ -289,18 +289,31 @@ interface DaySlipEditorProps {
   hidden?: boolean;
 }
 
-const DaySlipEditor = memo(function DaySlipEditor({
-  initialHtml,
-  initialNodes,
-  dayKey,
-  resolveMode,
-  editorConfig,
-  onEditorChange,
-  onEditorReady,
-  onEditorClick,
-  onDrop,
-  hidden,
-}: DaySlipEditorProps) {
+const DaySlipEditor = memo(function DaySlipEditor(props: DaySlipEditorProps) {
+  const {
+    initialHtml,
+    initialNodes,
+    dayKey,
+    resolveMode,
+    editorConfig,
+    onEditorChange,
+    onEditorReady,
+    onEditorClick,
+    onDrop,
+    hidden,
+  } = props;
+
+  const prevProps = useRef(props);
+  useEffect(() => {
+    const changed = Object.entries(props).filter(
+      ([k, v]) => prevProps.current[k as keyof DaySlipEditorProps] !== v,
+    );
+    if (changed.length) {
+      console.log("DaySlipEditor props changed:", changed.map(([k]) => k));
+    }
+    prevProps.current = props;
+  });
+
   return (
     <div
       className={`relative flex-1 border-b border-border/60${hidden ? " hidden" : ""}`}
