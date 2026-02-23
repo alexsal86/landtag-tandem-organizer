@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -15,7 +15,7 @@ import {
   $getRoot,
   $getSelection,
   $isRangeSelection,
-  COMMAND_PRIORITY_EDITOR,
+  COMMAND_PRIORITY_CRITICAL,
   type EditorState,
   type LexicalEditor,
   KEY_ENTER_COMMAND,
@@ -216,14 +216,13 @@ function InitialContentPlugin({
 
 function DaySlipEnterBehaviorPlugin() {
   const [editor] = useLexicalComposerContext();
-  console.log("DaySlipEnterBehaviorPlugin mounted", editor);
+  console.log("ENTER plugin mounted");
 
   useEffect(() => {
-    console.log("registering KEY_ENTER_COMMAND");
     return editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event) => {
-        console.log("KEY_ENTER_COMMAND fired", event);
+        console.log("ENTER fired");
         // Shift+Enter → default behaviour
         if (event?.shiftKey) return false;
 
@@ -236,8 +235,6 @@ function DaySlipEnterBehaviorPlugin() {
           const topLevel =
             selection.anchor.getNode().getTopLevelElementOrThrow();
           const text = topLevel.getTextContent().trim();
-          console.log("DaySlip ENTER:", JSON.stringify(text), "| chars:", [...text].map(c => c.codePointAt(0)?.toString(16)));
-          console.log("isRuleLine:", isRuleLine(text));
 
           if (isRuleLine(text)) {
             const hr = $createHorizontalRuleNode();
@@ -262,7 +259,7 @@ function DaySlipEnterBehaviorPlugin() {
         }
         return false;
       },
-      COMMAND_PRIORITY_EDITOR,
+      COMMAND_PRIORITY_CRITICAL,
     );
   }, [editor]);
 
@@ -278,6 +275,87 @@ function EditorEditablePlugin({ editable }: { editable: boolean }) {
 
   return null;
 }
+
+interface DaySlipEditorProps {
+  initialHtml: string;
+  initialNodes?: string;
+  dayKey: string;
+  resolveMode: boolean;
+  editorConfig: Parameters<typeof LexicalComposer>[0]["initialConfig"];
+  onEditorChange: (editorState: EditorState, editor: LexicalEditor) => void;
+  onEditorReady: (editor: LexicalEditor) => void;
+  onEditorClick: (e: MouseEvent<HTMLDivElement>) => void;
+  onDrop: (e: DragEvent<HTMLElement>) => void;
+  hidden?: boolean;
+}
+
+const DaySlipEditor = memo(function DaySlipEditor(props: DaySlipEditorProps) {
+  const {
+    initialHtml,
+    initialNodes,
+    dayKey,
+    resolveMode,
+    editorConfig,
+    onEditorChange,
+    onEditorReady,
+    onEditorClick,
+    onDrop,
+    hidden,
+  } = props;
+
+  const prevProps = useRef(props);
+  useEffect(() => {
+    const changed = Object.entries(props).filter(
+      ([k, v]) => prevProps.current[k as keyof DaySlipEditorProps] !== v,
+    );
+    if (changed.length) {
+      console.log("DaySlipEditor props changed:", changed.map(([k]) => k));
+    }
+    prevProps.current = props;
+  });
+
+  return (
+    <div
+      className={`relative flex-1 border-b border-border/60${hidden ? " hidden" : ""}`}
+      onClick={onEditorClick}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={onDrop}
+    >
+      <LexicalComposer initialConfig={editorConfig}>
+        <EditorEditablePlugin editable={!resolveMode} />
+        <div className="relative h-full">
+          <RichTextPlugin
+            contentEditable={
+              <ContentEditable className="editor-input h-full min-h-[340px] p-4 text-sm focus:outline-none" />
+            }
+            placeholder={
+              <div className="pointer-events-none absolute left-4 top-4 whitespace-pre-line text-base italic text-muted-foreground">
+                {"Was steht heute an? Einfach drauflos schreiben …\n\n— Rückruf Joschka\n— Pressemitteilung Schulgesetz abstimmen\n— Unterlagen Ausschusssitzung"}
+              </div>
+            }
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <FloatingTextFormatToolbar />
+        </div>
+        <OnChangePlugin onChange={onEditorChange} />
+        <OnChangePlugin
+          onChange={(_, editor) => {
+            onEditorReady(editor);
+          }}
+          ignoreSelectionChange
+        />
+        <HistoryPlugin />
+        <HorizontalRulePlugin />
+        <DaySlipEnterBehaviorPlugin />
+        <InitialContentPlugin
+          initialHtml={initialHtml}
+          initialNodes={initialNodes}
+          dayKey={dayKey}
+        />
+      </LexicalComposer>
+    </div>
+  );
+});
 
 // ─── Lexical editor theme ─────────────────────────────────────────────────────
 //
@@ -380,6 +458,9 @@ export function GlobalDaySlipPanel() {
     nodes: "",
     struckLines: [],
   };
+
+  const initialHtmlRef = useRef(todayData.html);
+  const initialNodesRef = useRef(todayData.nodes);
 
   // ── Persist: debounced write on every store change ───────────────────────
   useEffect(() => {
@@ -515,7 +596,7 @@ export function GlobalDaySlipPanel() {
 
   // ── Strike toggle (dash click) ───────────────────────────────────────────
 
-  const toggleStrike = (lineId: string) => {
+  const toggleStrike = useCallback((lineId: string) => {
     setStore((prev) => {
       const day = prev[todayKey] ?? {
         html: "",
@@ -534,11 +615,11 @@ export function GlobalDaySlipPanel() {
         },
       };
     });
-  };
+  }, [todayKey]);
 
   // ── Editor change handler (debounced via store effect above) ─────────────
 
-  const onEditorChange = (editorState: EditorState, editor: LexicalEditor) => {
+  const onEditorChange = useCallback((editorState: EditorState, editor: LexicalEditor) => {
     editorState.read(() => {
       const plainText = $getRoot().getTextContent();
       const html = $generateHtmlFromNodes(editor, null);
@@ -559,7 +640,14 @@ export function GlobalDaySlipPanel() {
         },
       }));
     });
-  };
+  }, [todayKey]);
+
+  const handleEditorReady = useCallback((editor: LexicalEditor) => {
+    if (editorRef.current !== editor) {
+      editorRef.current = editor;
+      setEditorReadyVersion((prev) => prev + 1);
+    }
+  }, []);
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -762,7 +850,7 @@ export function GlobalDaySlipPanel() {
     });
   };
 
-  const appendLinesToToday = (lines: string[]) => {
+  const appendLinesToToday = useCallback((lines: string[]) => {
     const normalizedLines = lines
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
@@ -810,9 +898,9 @@ export function GlobalDaySlipPanel() {
         },
       };
     });
-  };
+  }, [todayKey]);
 
-  const handleDropToDaySlip = (event: React.DragEvent<HTMLElement>) => {
+  const handleDropToDaySlip = useCallback((event: DragEvent<HTMLElement>) => {
     event.preventDefault();
     const droppedTaskTitle = event.dataTransfer.getData("application/x-mywork-task-title").trim();
     const droppedPlainText = event.dataTransfer.getData("text/plain").trim();
@@ -828,7 +916,7 @@ export function GlobalDaySlipPanel() {
     setResolveMode(false);
     setShowArchive(false);
     setShowSettings(false);
-  };
+  }, [appendLinesToToday]);
 
   const addRecurringItem = () => {
     const value = recurringDraft.trim();
@@ -907,7 +995,7 @@ export function GlobalDaySlipPanel() {
   // Pseudo-elements cannot be directly targeted in JS, but their rendered
   // box is within the element's padding area which we can measure.
   //
-  const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleEditorClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const item = target.closest(".day-slip-item") as HTMLElement | null;
     if (!item) return;
@@ -923,7 +1011,7 @@ export function GlobalDaySlipPanel() {
     const lineId = item.dataset.lineId;
     if (!lineId) return;
     toggleStrike(lineId);
-  };
+  }, [toggleStrike]);
 
   // ── Lexical config ────────────────────────────────────────────────────────
 
@@ -1125,7 +1213,19 @@ export function GlobalDaySlipPanel() {
               )}
 
               {/* ── Editor OR Triage ── */}
-              {resolveMode && triageEntries.length > 0 ? (
+              <DaySlipEditor
+                hidden={resolveMode && triageEntries.length > 0}
+                initialHtml={initialHtmlRef.current}
+                initialNodes={initialNodesRef.current}
+                dayKey={todayKey}
+                resolveMode={resolveMode}
+                editorConfig={editorConfig}
+                onEditorChange={onEditorChange}
+                onEditorReady={handleEditorReady}
+                onEditorClick={handleEditorClick}
+                onDrop={handleDropToDaySlip}
+              />
+              {resolveMode && triageEntries.length > 0 && (
                 /* Triage view – replaces editor completely */
                 <div className="flex-1 border-b border-border/60">
                   <div className="border-b border-border/60 bg-muted/30 px-4 py-3">
@@ -1198,47 +1298,6 @@ export function GlobalDaySlipPanel() {
                       );
                     })}
                   </div>
-                </div>
-              ) : (
-                /* Editor view */
-                <div
-                  className="relative flex-1 border-b border-border/60"
-                  onClick={handleEditorClick}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={handleDropToDaySlip}
-                >
-                  <LexicalComposer initialConfig={editorConfig}>
-                    <EditorEditablePlugin editable={!resolveMode} />
-                    <div className="relative h-full">
-                      <RichTextPlugin
-                        contentEditable={
-                          <ContentEditable className="editor-input h-full min-h-[340px] p-4 text-sm focus:outline-none" />
-                        }
-                        placeholder={
-                          <div className="pointer-events-none absolute left-4 top-4 whitespace-pre-line text-base italic text-muted-foreground">
-                            {"Was steht heute an? Einfach drauflos schreiben …\n\n— Rückruf Joschka\n— Pressemitteilung Schulgesetz abstimmen\n— Unterlagen Ausschusssitzung"}
-                          </div>
-                        }
-                        ErrorBoundary={LexicalErrorBoundary}
-                      />
-                      <FloatingTextFormatToolbar />
-                    </div>
-                    <OnChangePlugin onChange={onEditorChange} />
-                    <OnChangePlugin onChange={(_, editor) => {
-                      if (editorRef.current !== editor) {
-                        editorRef.current = editor;
-                        setEditorReadyVersion((prev) => prev + 1);
-                      }
-                    }} ignoreSelectionChange />
-                    <HistoryPlugin />
-                    <HorizontalRulePlugin />
-                    <DaySlipEnterBehaviorPlugin />
-                    <InitialContentPlugin
-                      initialHtml={todayData.html}
-                      initialNodes={todayData.nodes}
-                      dayKey={todayKey}
-                    />
-                  </LexicalComposer>
                 </div>
               )}
 
