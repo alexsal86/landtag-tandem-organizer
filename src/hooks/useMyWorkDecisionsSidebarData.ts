@@ -67,10 +67,14 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
   return useMemo(() => {
     const openQuestions: SidebarOpenQuestion[] = [];
     const newComments: SidebarNewComment[] = [];
+    const pendingDirectReplies: SidebarNewComment[] = [];
 
     decisions.forEach((decision) => {
+      if (decision.status === "archived") return;
+
       decision.participants?.forEach((participant) => {
-        const latest = participant.responses[0];
+        const rootResponses = participant.responses.filter((response) => !response.parent_response_id);
+        const latest = rootResponses[0];
         if (!latest) return;
 
         if (decision.isCreator && latest.response_type === "question" && !latest.creator_response) {
@@ -102,6 +106,32 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
               createdAt: latest.created_at,
             });
           }
+        }
+
+        const hasDirectReplyFromCreator = Boolean(latest.creator_response);
+        const participantHasFollowedUp = participant.responses.some(
+          (response) =>
+            response.parent_response_id === latest.id &&
+            new Date(response.created_at).getTime() > new Date(latest.updated_at || latest.created_at).getTime(),
+        );
+
+        if (
+          participant.user_id === userId &&
+          !decision.isCreator &&
+          hasDirectReplyFromCreator &&
+          !participantHasFollowedUp
+        ) {
+          pendingDirectReplies.push({
+            id: latest.id,
+            decisionId: decision.id,
+            decisionTitle: decision.title,
+            participantName: decision.creator?.display_name || null,
+            participantBadgeColor: decision.creator?.badge_color || null,
+            participantAvatarUrl: decision.creator?.avatar_url || null,
+            responseType: latest.response_type,
+            comment: latest.creator_response,
+            createdAt: latest.updated_at || latest.created_at,
+          });
         }
       });
     });
@@ -156,6 +186,6 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
     const recentActivities = [...responseActivities, ...commentActivities, ...decisionActivities]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    return { openQuestions, newComments, discussionComments: sidebarComments, recentActivities };
-  }, [decisions, sidebarComments]);
+    return { openQuestions, newComments, pendingDirectReplies, discussionComments: sidebarComments, recentActivities };
+  }, [decisions, sidebarComments, userId]);
 }

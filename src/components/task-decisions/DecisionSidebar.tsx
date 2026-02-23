@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { MessageCircle, Bell, ChevronRight, Send } from "lucide-react";
+import { MessageCircle, Bell, ChevronRight, Send, Reply } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -42,6 +42,7 @@ interface NewComment {
 interface DecisionSidebarProps {
   openQuestions: OpenQuestion[];
   newComments: NewComment[];
+  pendingDirectReplies: NewComment[];
   recentActivities: Array<{
     id: string;
     decisionId: string;
@@ -68,6 +69,7 @@ const getInitials = (name: string | null) => {
 export function DecisionSidebar({
   openQuestions,
   newComments,
+  pendingDirectReplies,
   recentActivities,
   onQuestionClick,
   onCommentClick,
@@ -80,7 +82,7 @@ export function DecisionSidebar({
   const [isLoading, setIsLoading] = useState(false);
   const [visibleActivityCount, setVisibleActivityCount] = useState(ACTIVITY_BATCH_SIZE);
 
-  const totalItems = openQuestions.length + newComments.length;
+  const totalItems = openQuestions.length + newComments.length + pendingDirectReplies.length;
   const activityDatasetKey = useMemo(
     () => recentActivities.map((activity) => activity.id).join("|"),
     [recentActivities]
@@ -232,6 +234,47 @@ export function DecisionSidebar({
                             </Button>
                           )}
                         </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Direkte Antworten auf dich */}
+                {pendingDirectReplies.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600">
+                      <Reply className="h-3.5 w-3.5" />
+                      <span>Antworten auf dich</span>
+                      <Badge variant="outline" className="text-blue-600 border-blue-600 text-[10px] px-1.5 py-0">
+                        {pendingDirectReplies.length}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1.5">
+                      {pendingDirectReplies.map((reply) => (
+                        <button
+                          key={`reply-${reply.id}`}
+                          onClick={() => onCommentClick(reply.decisionId)}
+                          className="w-full text-left p-2.5 rounded-md border-l-2 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors"
+                        >
+                          <p className="text-sm font-semibold line-clamp-3">{reply.decisionTitle}</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <Avatar className="h-4 w-4">
+                              {reply.participantAvatarUrl && <AvatarImage src={reply.participantAvatarUrl} />}
+                              <AvatarFallback
+                                className="text-[8px]"
+                                style={{ backgroundColor: reply.participantBadgeColor || undefined }}
+                              >
+                                {getInitials(reply.participantName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-muted-foreground">{reply.participantName || 'Unbekannt'}</span>
+                          </div>
+                          {reply.comment && (
+                            <div className="text-xs text-muted-foreground mt-1.5 line-clamp-3">
+                              <RichTextDisplay content={reply.comment} className="text-xs" />
+                            </div>
+                          )}
+                        </button>
                       ))}
                     </div>
                   </div>

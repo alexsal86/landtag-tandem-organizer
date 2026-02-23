@@ -856,12 +856,26 @@ export const DecisionOverview = () => {
       createdAt: string;
     }> = [];
 
-    // Find open questions (for creator) and new comments
+    const pendingDirectReplies: Array<{
+      id: string;
+      decisionId: string;
+      decisionTitle: string;
+      participantName: string | null;
+      participantBadgeColor: string | null;
+      participantUserId: string;
+      participantAvatarUrl: string | null;
+      responseType: string;
+      comment: string | null;
+      createdAt: string;
+    }> = [];
+
+    // Find open questions (for creator), new comments and direct replies to current user
     decisions.forEach(decision => {
       if (decision.status === 'archived') return;
       
       decision.participants?.forEach(participant => {
-        const latestResponse = participant.responses[0];
+        const rootResponses = participant.responses.filter((response) => !response.parent_response_id);
+        const latestResponse = rootResponses[0];
         if (!latestResponse) return;
 
         // Open questions: questions without creator response (for decision creator)
@@ -898,6 +912,33 @@ export const DecisionOverview = () => {
               createdAt: latestResponse.created_at,
             });
           }
+        }
+
+        const participantHasFollowedUp = participant.responses.some(
+          (response) =>
+            response.parent_response_id === latestResponse.id &&
+            new Date(response.created_at).getTime() > new Date(latestResponse.updated_at || latestResponse.created_at).getTime()
+        );
+
+        if (
+          user?.id &&
+          participant.user_id === user.id &&
+          !decision.isCreator &&
+          latestResponse.creator_response &&
+          !participantHasFollowedUp
+        ) {
+          pendingDirectReplies.push({
+            id: latestResponse.id,
+            decisionId: decision.id,
+            decisionTitle: decision.title,
+            participantName: decision.creator?.display_name || null,
+            participantBadgeColor: decision.creator?.badge_color || null,
+            participantUserId: decision.creator?.user_id || '',
+            participantAvatarUrl: decision.creator?.avatar_url || null,
+            responseType: latestResponse.response_type,
+            comment: latestResponse.creator_response,
+            createdAt: latestResponse.updated_at || latestResponse.created_at,
+          });
         }
       });
     });
@@ -939,8 +980,8 @@ export const DecisionOverview = () => {
     const recentActivities = [...responseActivities, ...recentDiscussionActivities, ...decisionActivities]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    return { openQuestions, newComments, recentActivities };
-  }, [decisions, recentDiscussionActivities]);
+    return { openQuestions, newComments, pendingDirectReplies, recentActivities };
+  }, [decisions, recentDiscussionActivities, user?.id]);
 
   useEffect(() => {
     if (decisions.length === 0) {
@@ -1543,6 +1584,7 @@ export const DecisionOverview = () => {
           <DecisionSidebar
             openQuestions={sidebarData.openQuestions}
             newComments={sidebarData.newComments}
+            pendingDirectReplies={sidebarData.pendingDirectReplies}
             recentActivities={sidebarData.recentActivities}
             onQuestionClick={handleOpenDetails}
             onCommentClick={handleOpenDetails}
