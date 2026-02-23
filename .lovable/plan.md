@@ -1,32 +1,31 @@
 
-# Fix: Labeled HR und Text-Verlust beim Schliessen
 
-## Problem 1: Labeled HR zeigt nur grauen Text, keine Linien
+# Fix: Labeled HR Rendering + Datenverlust beim Schliessen
 
-**Ursache:** Der `LabeledHorizontalRuleNode` erzeugt in `createDOM()` einen aeusseren `<div>` und in `decorate()` einen inneren `<div>` mit den `<hr>`-Elementen. Lexical rendert den React-Output von `decorate()` als Kind-Element in den DOM-Container. Dadurch entsteht eine verschachtelte Struktur, in der die `flex-1`-Klassen der `<hr>`-Elemente nicht greifen, weil der aeussere Container kein korrektes Flex-Layout an den inneren weitergibt.
+## Problem 1: Labeled HR zeigt keine Linien
 
-**Loesung:**
-- `createDOM()` gibt einen minimalen Container zurueck (nur notwendige Lexical-Attribute, kein Layout-Styling)
-- `decorate()` uebernimmt das gesamte visuelle Rendering mit korrektem Flex-Layout
-- Sicherstellen, dass der aeussere Container `display: flex` und volle Breite hat, damit die inneren `<hr>`-Elemente sich korrekt ausdehnen
+**Ursache:** `createDOM()` erzeugt einen Flex-Container, und `decorate()` gibt einen weiteren verschachtelten `<div>` mit eigenem Flex-Layout zurueck. Lexical mountet das React-Element von `decorate()` als Kind in den `createDOM()`-Container. Zwei verschachtelte Flex-Container verhindern, dass die `<hr>`-Elemente sich korrekt ausdehnen.
+
+**Loesung (wie von Claude vorgeschlagen):**
+- `createDOM()` wird zum vollstaendigen Flex-Container mit `alignItems: center` und `gap`
+- `decorate()` gibt ein React Fragment (`<>...</>`) zurueck statt eines verschachtelten `<div>` -- so landen die `<hr>` und `<span>` direkt im Flex-Container von `createDOM()`
+- Margin (`my-4`) wird ueber `createDOM()` inline gesetzt, da es der aeussere DOM-Knoten ist
 
 **Datei:** `src/components/LabeledHorizontalRuleNode.tsx`
 
 ---
 
-## Problem 2: Text verschwindet beim Schliessen und Wiederoeffen
+## Problem 2: Text verschwindet beim Schliessen/Oeffnen
 
-**Ursache:** `initialHtmlRef` und `initialNodesRef` werden einmalig beim Mount der `GlobalDaySlipPanel`-Komponente gesetzt (`useRef(todayData.html)`). Diese Refs werden nie aktualisiert. Wenn der Nutzer Text eingibt und das Panel schliesst:
+**Ursache:** `editorKey` wird bei jedem `open`-Wechsel inkrementiert. Das erzwingt einen kompletten Remount des Editors. Da der Editor beim Remount `todayData.html`/`todayData.nodes` als Props bekommt, und `store` als React-State erhalten bleibt, sollte das eigentlich funktionieren -- ABER: der Remount passiert im gleichen Render-Zyklus wie `setOpen(true)`, und `animateClosePanel` flusht `store` in localStorage. Das eigentliche Problem ist subtiler:
 
-1. Der `onEditorChange`-Handler aktualisiert den `store` korrekt
-2. Der Store wird per Debounce (400ms) in localStorage geschrieben
-3. Beim Wiederoeffen wird `DaySlipEditor` neu gemountet, bekommt aber die alten Ref-Werte
-4. `InitialContentPlugin` laedt dadurch den veralteten Inhalt
+Der `editorKey`-Increment beim Oeffnen ist unnoetig und schaedlich. Der Editor-State lebt im React-State (`store`), nicht nur in localStorage. Beim Schliessen bleibt `store` intakt. Beim Wiederoeffnen muss der Editor NICHT neu gemountet werden -- er kann einfach mit seinem bestehenden Lexical-State weiterleben.
 
-**Loesung:**
-- Die Refs (`initialHtmlRef`, `initialNodesRef`) werden durch direkte Nutzung von `todayData.html` und `todayData.nodes` ersetzt, damit beim Remount des Editors immer der aktuelle Store-Wert geladen wird
-- Alternativ: Die Refs werden bei jeder Aenderung des Store aktualisiert, aber nur beim Editor-Mount gelesen
-- Zusaetzlich: Beim Schliessen des Panels wird der Store sofort (ohne Debounce) in localStorage geschrieben, um Datenverlust zu vermeiden
+**Loesung:** 
+- `editorKey` wird auf `todayKey` gesetzt (stabiler String, aendert sich nur beim Tagwechsel)
+- Der `useEffect` mit `setEditorKey` bei `open`-Aenderung wird entfernt
+- Der Editor bleibt beim Oeffnen/Schliessen gemountet und behaelt seinen State
+- Der `animateClosePanel`-Flush bleibt als Sicherheitsnetz fuer localStorage
 
 **Datei:** `src/components/GlobalDaySlipPanel.tsx`
 
@@ -38,31 +37,36 @@
 
 ```text
 createDOM():
-  - Aenderung: style="display:flex; width:100%" statt Tailwind-Klassen
-  - contentEditable="false" bleibt
+  div.style.display = "flex"
+  div.style.alignItems = "center"
+  div.style.width = "100%"
+  div.style.gap = "12px"
+  div.style.margin = "16px 0"
+  div.style.userSelect = "none"
+  div.contentEditable = "false"
 
 decorate():
-  - Bleibt wie bisher, aber mit w-full auf dem aeusseren div
-  - Die <hr>-Elemente behalten flex-1
+  return (
+    <>
+      <hr ... />
+      <span ...>{label}</span>
+      <hr ... />
+    </>
+  )
+  // Kein umschliessendes <div> mehr
 ```
 
 ### GlobalDaySlipPanel.tsx
 
 ```text
-Zeile ~507-508 (initialHtmlRef/initialNodesRef):
-  - Entfernen der useRef-Caching-Logik
-  - Stattdessen todayData.html / todayData.nodes direkt an DaySlipEditor uebergeben
+Entfernen (Zeile 507-511):
+  const [editorKey, setEditorKey] = useState(0);
+  useEffect(() => { if (open) setEditorKey(k => k + 1); }, [open]);
 
-Zeile ~1270-1271:
-  - initialHtml={todayData.html} statt initialHtmlRef.current
-  - initialNodes={todayData.nodes} statt initialNodesRef.current
+DaySlipEditor (Zeile 1278):
+  key={todayKey}   // statt key={editorKey}
 
-InitialContentPlugin (Zeile ~182-224):
-  - loadedForDayRef Logik beibehalten (verhindert Doppel-Load)
-  - Aber: Wenn open=false->true wechselt, muss ein neuer Load erlaubt sein
-  - Loesung: editorKey auf DaySlipEditor setzen, der sich bei jedem Oeffnen aendert,
-    damit der Editor komplett neu gemountet wird und InitialContentPlugin erneut laueft
-
-Zeile ~716-724 (animateClosePanel):
-  - Vor dem Schliessen sofortiges localStorage.setItem ausfuehren (flush)
+parseEditorState Fehlerdiagnose (im InitialContentPlugin):
+  catch-Block erhaelt console.warn fuer Debugging
 ```
+
