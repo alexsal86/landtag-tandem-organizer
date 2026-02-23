@@ -700,8 +700,8 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
           <EnhancedLexicalEditor
             content={content}
             contentNodes={contentNodes}
-            onChange={(newContent, newContentNodes) => {
-              handleContentChange(newContent, newContentNodes);
+            onChange={(newContent, newContentNodes, newContentHtml) => {
+              handleContentChange(newContent, newContentNodes, newContentHtml);
             }}
             onMentionInsert={(userId, displayName) => {
               pendingMentionsRef.current.add(userId);
