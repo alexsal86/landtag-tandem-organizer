@@ -6,6 +6,7 @@ import { decodeRecoveryKey } from 'matrix-js-sdk/lib/crypto-api/recovery-key';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole, isDebugConsoleEnabled } from '@/utils/debugConsole';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -84,14 +85,6 @@ export interface MatrixMessage {
 const MAX_CACHED_MESSAGES = 200;
 
 
-const isMatrixConsoleLoggingEnabled = () => {
-  try {
-    return localStorage.getItem('matrix_debug_console') === 'true';
-  } catch {
-    return false;
-  }
-};
-
 
 const MATRIX_CONSOLE_NOISE_PATTERNS = [
   'Error decrypting event',
@@ -102,6 +95,12 @@ const MATRIX_CONSOLE_NOISE_PATTERNS = [
   'Failed to process outgoing request',
   'One time key signed_curve25519',
   'already exists. Old key:',
+  'Missing default global override push rule',
+  'Adding default global override push rule',
+  'Adding default global underride push rule',
+  'Missing default global underride push rule',
+  '[PerSessionKeyBackupDownloader]',
+  '/_matrix/client/v3/keys/upload 400',
 ] as const;
 
 const shouldSuppressMatrixConsoleNoise = (args: unknown[]) => {
@@ -121,7 +120,7 @@ const shouldSuppressMatrixConsoleNoise = (args: unknown[]) => {
 };
 
 const installMatrixConsoleNoiseFilter = () => {
-  if (isMatrixConsoleLoggingEnabled()) {
+  if (isDebugConsoleEnabled()) {
     return () => {};
   }
 
@@ -159,18 +158,10 @@ const installMatrixConsoleNoiseFilter = () => {
 };
 
 const matrixLogger = {
-  log: (...args: unknown[]) => {
-    if (isMatrixConsoleLoggingEnabled()) globalThis.console.log(...args);
-  },
-  info: (...args: unknown[]) => {
-    if (isMatrixConsoleLoggingEnabled()) globalThis.console.info(...args);
-  },
-  warn: (...args: unknown[]) => {
-    if (isMatrixConsoleLoggingEnabled()) globalThis.console.warn(...args);
-  },
-  error: (...args: unknown[]) => {
-    if (isMatrixConsoleLoggingEnabled()) globalThis.console.error(...args);
-  },
+  log: (...args: unknown[]) => debugConsole.log(...args),
+  info: (...args: unknown[]) => debugConsole.info(...args),
+  warn: (...args: unknown[]) => debugConsole.warn(...args),
+  error: (...args: unknown[]) => debugConsole.error(...args),
 };
 
 
