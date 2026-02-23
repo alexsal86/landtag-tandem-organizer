@@ -15,7 +15,7 @@ import {
   $getRoot,
   $getSelection,
   $isRangeSelection,
-  COMMAND_PRIORITY_EDITOR,
+  COMMAND_PRIORITY_CRITICAL,
   type EditorState,
   type LexicalEditor,
   KEY_ENTER_COMMAND,
@@ -216,11 +216,13 @@ function InitialContentPlugin({
 
 function DaySlipEnterBehaviorPlugin() {
   const [editor] = useLexicalComposerContext();
+  console.log("ENTER plugin mounted");
 
   useEffect(() => {
     return editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event) => {
+        console.log("ENTER fired");
         // Shift+Enter → default behaviour
         if (event?.shiftKey) return false;
 
@@ -257,7 +259,7 @@ function DaySlipEnterBehaviorPlugin() {
         }
         return false;
       },
-      COMMAND_PRIORITY_EDITOR,
+      COMMAND_PRIORITY_CRITICAL,
     );
   }, [editor]);
 
@@ -287,18 +289,31 @@ interface DaySlipEditorProps {
   hidden?: boolean;
 }
 
-const DaySlipEditor = memo(function DaySlipEditor({
-  initialHtml,
-  initialNodes,
-  dayKey,
-  resolveMode,
-  editorConfig,
-  onEditorChange,
-  onEditorReady,
-  onEditorClick,
-  onDrop,
-  hidden,
-}: DaySlipEditorProps) {
+const DaySlipEditor = memo(function DaySlipEditor(props: DaySlipEditorProps) {
+  const {
+    initialHtml,
+    initialNodes,
+    dayKey,
+    resolveMode,
+    editorConfig,
+    onEditorChange,
+    onEditorReady,
+    onEditorClick,
+    onDrop,
+    hidden,
+  } = props;
+
+  const prevProps = useRef(props);
+  useEffect(() => {
+    const changed = Object.entries(props).filter(
+      ([k, v]) => prevProps.current[k as keyof DaySlipEditorProps] !== v,
+    );
+    if (changed.length) {
+      console.log("DaySlipEditor props changed:", changed.map(([k]) => k));
+    }
+    prevProps.current = props;
+  });
+
   return (
     <div
       className={`relative flex-1 border-b border-border/60${hidden ? " hidden" : ""}`}
@@ -443,6 +458,9 @@ export function GlobalDaySlipPanel() {
     nodes: "",
     struckLines: [],
   };
+
+  const initialHtmlRef = useRef(todayData.html);
+  const initialNodesRef = useRef(todayData.nodes);
 
   // ── Persist: debounced write on every store change ───────────────────────
   useEffect(() => {
@@ -1197,8 +1215,8 @@ export function GlobalDaySlipPanel() {
               {/* ── Editor OR Triage ── */}
               <DaySlipEditor
                 hidden={resolveMode && triageEntries.length > 0}
-                initialHtml={todayData.html}
-                initialNodes={todayData.nodes}
+                initialHtml={initialHtmlRef.current}
+                initialNodes={initialNodesRef.current}
                 dayKey={todayKey}
                 resolveMode={resolveMode}
                 editorConfig={editorConfig}
