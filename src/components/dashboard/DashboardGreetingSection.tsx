@@ -34,7 +34,7 @@ export const DashboardGreetingSection = () => {
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [completedTasksToday, setCompletedTasksToday] = useState(0);
-  const [openTaskTitles, setOpenTaskTitles] = useState<string[]>([]);
+  const [openTaskTitles, setOpenTaskTitles] = useState<{id: string; title: string}[]>([]);
   const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,10 +51,13 @@ export const DashboardGreetingSection = () => {
     return feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0;
   }, [feedbackAppointments]);
 
-  const handleTaskTitleDragStart = (event: React.DragEvent<HTMLElement>, taskTitle: string) => {
+  const handleTaskTitleDragStart = (event: React.DragEvent<HTMLElement>, taskTitle: string, taskId?: string) => {
     event.dataTransfer.effectAllowed = 'copy';
     event.dataTransfer.setData('text/plain', taskTitle);
     event.dataTransfer.setData('application/x-mywork-task-title', taskTitle);
+    if (taskId) {
+      event.dataTransfer.setData('application/x-mywork-task-id', taskId);
+    }
 
     const ghost = document.createElement('div');
     ghost.className = 'pointer-events-none bg-transparent px-0 py-0 text-lg font-medium text-foreground';
@@ -136,7 +139,7 @@ export const DashboardGreetingSection = () => {
           .gte('updated_at', today.toISOString()),
         supabase
           .from('tasks')
-          .select('title')
+          .select('id, title')
           .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
           .neq('status', 'completed')
           .order('due_date', { ascending: true, nullsFirst: false })
@@ -147,8 +150,8 @@ export const DashboardGreetingSection = () => {
       setCompletedTasksToday(completedTodayCount || 0);
       setOpenTaskTitles(
         (openTasks || [])
-          .map((task) => task.title?.trim())
-          .filter((title): title is string => Boolean(title))
+          .filter((task) => Boolean(task.title?.trim()))
+          .map((task) => ({ id: task.id, title: task.title!.trim() }))
       );
     };
 
@@ -444,9 +447,9 @@ export const DashboardGreetingSection = () => {
         {parseTextSection(sections[0])}
         {openTaskTitles.length > 0 && (
           <span className="block">
-            {openTaskTitles.map((taskTitle, index) => (
+            {openTaskTitles.map((task, index) => (
               <span
-                key={`${taskTitle}-${index}`}
+                key={`${task.id}-${index}`}
                 className="flex items-center gap-1.5 rounded px-1 py-0.5 text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
                 onClick={() => navigate('/mywork?tab=tasks')}
                 title="Klicken um zur Aufgabe zu gehen, oder per Handle in den Tageszettel ziehen"
@@ -455,7 +458,7 @@ export const DashboardGreetingSection = () => {
                   draggable
                   onDragStart={(event) => {
                     event.stopPropagation();
-                    handleTaskTitleDragStart(event, taskTitle);
+                    handleTaskTitleDragStart(event, task.title, task.id);
                   }}
                   className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
                   aria-label="Aufgabe in den Tageszettel ziehen"
@@ -463,7 +466,7 @@ export const DashboardGreetingSection = () => {
                 >
                   <GripVertical className="h-4 w-4" />
                 </span>
-                <span className="flex-1">{taskTitle}</span>
+                <span className="flex-1">{task.title}</span>
               </span>
             ))}
           </span>

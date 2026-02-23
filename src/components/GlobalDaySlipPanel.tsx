@@ -25,6 +25,7 @@ import {
   $createHorizontalRuleNode,
   HorizontalRuleNode,
 } from "@lexical/react/LexicalHorizontalRuleNode";
+import { BLUR_COMMAND, FOCUS_COMMAND } from "lexical";
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 import {
   ClipboardPen,
@@ -42,6 +43,7 @@ import {
 } from "lucide-react";
 import FloatingTextFormatToolbar from "@/components/FloatingTextFormatToolbar";
 import { DaySlipLineNode, $createDaySlipLineNode } from "@/components/DaySlipLineNode";
+import { LabeledHorizontalRuleNode, $createLabeledHorizontalRuleNode } from "@/components/LabeledHorizontalRuleNode";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -145,6 +147,14 @@ const normalizeRuleMarker = (text: string) =>
 const normalizeLineText = (text: string) => text.replace(/\s+/g, " ").trim();
 const isRuleLine = (text: string) => /^[-_]{3,}$/.test(normalizeRuleMarker(text));
 
+const parseRuleLine = (text: string): { isRule: boolean; label?: string } => {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^[-–—―−_]{3,}\s*(.*)$/);
+  if (!match) return { isRule: false };
+  const label = match[1]?.trim();
+  return { isRule: true, label: label || undefined };
+};
+
 const escapeHtml = (value: string) =>
   value
     .replace(/&/g, "&amp;")
@@ -238,6 +248,9 @@ function DaySlipEnterBehaviorPlugin() {
 
         if (!hasRangeSelection) return false;
 
+        // Check for rule line (with optional label)
+        const ruleParsed = parseRuleLine(currentText);
+
         // Prevent default BEFORE the (potentially deferred) update
         event?.preventDefault();
 
@@ -247,13 +260,14 @@ function DaySlipEnterBehaviorPlugin() {
 
           const topLevel =
             selection.anchor.getNode().getTopLevelElementOrThrow();
-          const text = topLevel.getTextContent().trim();
 
-          if (isRuleLine(text)) {
-            const hr = $createHorizontalRuleNode();
+          if (ruleParsed.isRule) {
+            const hrNode = ruleParsed.label
+              ? $createLabeledHorizontalRuleNode(ruleParsed.label)
+              : $createHorizontalRuleNode();
             const newParagraph = $createDaySlipLineNode();
-            topLevel.replace(hr);
-            hr.insertAfter(newParagraph);
+            topLevel.replace(hrNode);
+            hrNode.insertAfter(newParagraph);
             newParagraph.select();
             return;
           }
@@ -269,6 +283,26 @@ function DaySlipEnterBehaviorPlugin() {
       COMMAND_PRIORITY_CRITICAL,
     );
   }, [editor]);
+
+  return null;
+}
+
+function FocusPlugin({ onFocusChange }: { onFocusChange: (focused: boolean) => void }) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    const unregFocus = editor.registerCommand(
+      FOCUS_COMMAND,
+      () => { onFocusChange(true); return false; },
+      COMMAND_PRIORITY_CRITICAL,
+    );
+    const unregBlur = editor.registerCommand(
+      BLUR_COMMAND,
+      () => { onFocusChange(false); return false; },
+      COMMAND_PRIORITY_CRITICAL,
+    );
+    return () => { unregFocus(); unregBlur(); };
+  }, [editor, onFocusChange]);
 
   return null;
 }
@@ -310,6 +344,9 @@ const DaySlipEditor = memo(function DaySlipEditor(props: DaySlipEditorProps) {
     hidden,
   } = props;
 
+  const [isFocused, setIsFocused] = useState(false);
+  const handleFocusChange = useCallback((focused: boolean) => setIsFocused(focused), []);
+
   const prevProps = useRef(props);
   useEffect(() => {
     const changed = Object.entries(props).filter(
@@ -336,7 +373,7 @@ const DaySlipEditor = memo(function DaySlipEditor(props: DaySlipEditorProps) {
               <ContentEditable className="editor-input h-full min-h-[340px] p-4 text-sm focus:outline-none" />
             }
             placeholder={
-              <div className="pointer-events-none absolute left-4 top-4 whitespace-pre-line text-base italic text-muted-foreground">
+              <div className={`pointer-events-none absolute left-4 top-4 whitespace-pre-line text-base italic text-muted-foreground transition-opacity duration-200 ${isFocused ? "opacity-0" : "opacity-100"}`}>
                 {"Was steht heute an? Einfach drauflos schreiben …\n\n— Rückruf Joschka\n— Pressemitteilung Schulgesetz abstimmen\n— Unterlagen Ausschusssitzung"}
               </div>
             }
@@ -354,6 +391,7 @@ const DaySlipEditor = memo(function DaySlipEditor(props: DaySlipEditorProps) {
         <HistoryPlugin />
         <HorizontalRulePlugin />
         <DaySlipEnterBehaviorPlugin />
+        <FocusPlugin onFocusChange={handleFocusChange} />
         <InitialContentPlugin
           initialHtml={initialHtml}
           initialNodes={initialNodes}
@@ -388,7 +426,7 @@ const editorTheme = {
     underline: "underline",
     strikethrough: "line-through",
   },
-  horizontalRule: "my-3 border-border/80",
+  horizontalRule: "my-4 border-border/80",
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -835,26 +873,13 @@ export function GlobalDaySlipPanel() {
     });
   };
 
+  const [carriedOver, setCarriedOver] = useState(false);
+
   const carryOverFromYesterday = () => {
     if (yesterdayCarryLines.length === 0) return;
-    setStore((prev) => {
-      const day = prev[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [] };
-      const existingLines = extractLinesFromHtml(day.html);
-      const existingIds = new Set(existingLines.map((line) => line.id));
-      const toAppend = yesterdayCarryLines.filter((line) => !existingIds.has(line.id));
-      if (toAppend.length === 0) return prev;
-      const merged = [...existingLines, ...toAppend];
-      const appended = merged.map(toParagraphHtml).join("");
-      return {
-        ...prev,
-        [todayKey]: {
-          ...day,
-          html: appended,
-          plainText: merged.map((line) => line.text).join("\n"),
-          nodes: undefined,
-        },
-      };
-    });
+    const linesToAppend = yesterdayCarryLines.map((line) => line.text);
+    appendLinesToToday(linesToAppend);
+    setCarriedOver(true);
   };
 
   const appendLinesToToday = useCallback((lines: string[]) => {
@@ -910,6 +935,7 @@ export function GlobalDaySlipPanel() {
   const handleDropToDaySlip = useCallback((event: DragEvent<HTMLElement>) => {
     event.preventDefault();
     const droppedTaskTitle = event.dataTransfer.getData("application/x-mywork-task-title").trim();
+    const droppedTaskId = event.dataTransfer.getData("application/x-mywork-task-id").trim();
     const droppedPlainText = event.dataTransfer.getData("text/plain").trim();
     const rawValue = droppedTaskTitle || droppedPlainText;
     if (!rawValue) return;
@@ -918,7 +944,25 @@ export function GlobalDaySlipPanel() {
       ? `✅ ${rawValue}`
       : rawValue;
 
-    appendLinesToToday([withTaskIcon]);
+    // If we have a task ID, insert directly with linkedTaskId
+    if (droppedTaskId && editorRef.current) {
+      editorRef.current.update(() => {
+        const root = $getRoot();
+        const existing = new Set(
+          root.getChildren()
+            .map((node) => normalizeLineText(node.getTextContent()))
+            .filter((l) => l.length > 0),
+        );
+        const normalized = normalizeLineText(withTaskIcon);
+        if (!normalized || existing.has(normalized)) return;
+        const paragraph = $createDaySlipLineNode(undefined, droppedTaskId);
+        paragraph.append($createTextNode(withTaskIcon));
+        root.append(paragraph);
+      });
+    } else {
+      appendLinesToToday([withTaskIcon]);
+    }
+
     setOpen(true);
     setResolveMode(false);
     setShowArchive(false);
@@ -1027,6 +1071,7 @@ export function GlobalDaySlipPanel() {
     theme: editorTheme,
     nodes: [
       HorizontalRuleNode,
+      LabeledHorizontalRuleNode,
       DaySlipLineNode,
       {
         replace: ParagraphNode,
@@ -1078,7 +1123,7 @@ export function GlobalDaySlipPanel() {
               <button
                 type="button"
                 className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={handleClose}
+                onClick={animateClosePanel}
                 aria-label="Panel schließen"
               >
                 <X className="h-4 w-4" />
@@ -1199,7 +1244,7 @@ export function GlobalDaySlipPanel() {
           ) : (
             <div className={`flex min-h-0 flex-1 flex-col transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               {/* ── Yesterday banner ── */}
-              {yesterdayCarryLines.length > 0 && (
+              {yesterdayCarryLines.length > 0 && !carriedOver && (
                 <div className={`border-b border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm text-amber-200 transition-all duration-200 ${contentTransitioning ? "opacity-0" : "opacity-100"}`}>
                   <span className="font-semibold">Gestern noch offen:</span>{" "}
                   &ldquo;{yesterdayCarryLines[0].text}&rdquo;

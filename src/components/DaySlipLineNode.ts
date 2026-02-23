@@ -13,6 +13,7 @@ import {
 export type SerializedDaySlipLineNode = Spread<
   {
     lineId: string;
+    linkedTaskId?: string;
     type: "dayslip-line";
     version: 1;
   },
@@ -21,10 +22,12 @@ export type SerializedDaySlipLineNode = Spread<
 
 export class DaySlipLineNode extends ParagraphNode {
   __lineId: string;
+  __linkedTaskId: string | undefined;
 
-  constructor(lineId?: string, key?: NodeKey) {
+  constructor(lineId?: string, key?: NodeKey, linkedTaskId?: string) {
     super(key);
     this.__lineId = lineId ?? crypto.randomUUID();
+    this.__linkedTaskId = linkedTaskId;
   }
 
   static getType(): string {
@@ -32,7 +35,18 @@ export class DaySlipLineNode extends ParagraphNode {
   }
 
   static clone(node: DaySlipLineNode): DaySlipLineNode {
-    return new DaySlipLineNode(node.__lineId, node.__key);
+    const clone = new DaySlipLineNode(node.__lineId, node.__key, node.__linkedTaskId);
+    return clone;
+  }
+
+  getLinkedTaskId(): string | undefined {
+    return this.__linkedTaskId;
+  }
+
+  setLinkedTaskId(taskId: string | undefined): this {
+    const self = this.getWritable();
+    self.__linkedTaskId = taskId;
+    return self;
   }
 
   createDOM(config: EditorConfig): HTMLElement {
@@ -53,13 +67,14 @@ export class DaySlipLineNode extends ParagraphNode {
     return {
       ...super.exportJSON(),
       lineId: this.__lineId,
+      linkedTaskId: this.__linkedTaskId,
       type: "dayslip-line",
       version: 1,
     };
   }
 
   static importJSON(serializedNode: SerializedDaySlipLineNode): DaySlipLineNode {
-    const node = new DaySlipLineNode(serializedNode.lineId);
+    const node = new DaySlipLineNode(serializedNode.lineId, undefined, serializedNode.linkedTaskId);
     node.setFormat(serializedNode.format);
     node.setIndent(serializedNode.indent);
     node.setDirection(serializedNode.direction);
@@ -91,8 +106,8 @@ export class DaySlipLineNode extends ParagraphNode {
   }
 }
 
-export function $createDaySlipLineNode(lineId?: string): DaySlipLineNode {
-  return new DaySlipLineNode(lineId);
+export function $createDaySlipLineNode(lineId?: string, linkedTaskId?: string): DaySlipLineNode {
+  return new DaySlipLineNode(lineId, undefined, linkedTaskId);
 }
 
 export function $isDaySlipLineNode(
