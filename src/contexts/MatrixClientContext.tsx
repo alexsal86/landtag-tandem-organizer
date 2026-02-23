@@ -92,6 +92,54 @@ const isMatrixConsoleLoggingEnabled = () => {
   }
 };
 
+
+const MATRIX_CONSOLE_NOISE_PATTERNS = [
+  'Error decrypting event',
+  'matrix_sdk_crypto::machine: Failed to decrypt a room event',
+  'This message was sent before this device logged in',
+  "Can't find the room key to decrypt the event",
+] as const;
+
+const shouldSuppressMatrixConsoleNoise = (args: unknown[]) => {
+  const text = args
+    .map((arg) => {
+      if (typeof arg === 'string') return arg;
+      if (arg instanceof Error) return arg.message;
+      try {
+        return JSON.stringify(arg);
+      } catch {
+        return String(arg);
+      }
+    })
+    .join(' ');
+
+  return MATRIX_CONSOLE_NOISE_PATTERNS.some((pattern) => text.includes(pattern));
+};
+
+const installMatrixConsoleNoiseFilter = () => {
+  if (isMatrixConsoleLoggingEnabled()) {
+    return () => {};
+  }
+
+  const originalWarn = globalThis.console.warn.bind(globalThis.console);
+  const originalError = globalThis.console.error.bind(globalThis.console);
+
+  globalThis.console.warn = (...args: unknown[]) => {
+    if (shouldSuppressMatrixConsoleNoise(args)) return;
+    originalWarn(...args);
+  };
+
+  globalThis.console.error = (...args: unknown[]) => {
+    if (shouldSuppressMatrixConsoleNoise(args)) return;
+    originalError(...args);
+  };
+
+  return () => {
+    globalThis.console.warn = originalWarn;
+    globalThis.console.error = originalError;
+  };
+};
+
 const matrixLogger = {
   log: (...args: unknown[]) => {
     if (isMatrixConsoleLoggingEnabled()) globalThis.console.log(...args);
@@ -297,6 +345,13 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
   // Keep isConnectedRef in sync
   useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
+
+  useEffect(() => {
+    const restoreConsole = installMatrixConsoleNoiseFilter();
+    return () => {
+      restoreConsole();
+    };
+  }, []);
 
   // ─── updateRoomList (stable callback) ─────────────────────────────────
 
