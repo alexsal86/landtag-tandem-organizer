@@ -39,7 +39,11 @@ export class LabeledHorizontalRuleNode extends DecoratorNode<JSX.Element> {
   createDOM(_config: EditorConfig): HTMLElement {
     const div = document.createElement("div");
     div.style.display = "flex";
+    div.style.alignItems = "center";
     div.style.width = "100%";
+    div.style.gap = "12px";
+    div.style.margin = "16px 0";
+    div.style.userSelect = "none";
     div.contentEditable = "false";
     return div;
   }
@@ -92,13 +96,13 @@ export class LabeledHorizontalRuleNode extends DecoratorNode<JSX.Element> {
 
   decorate(): JSX.Element {
     return (
-      <div className="flex items-center gap-3 my-4 select-none" contentEditable={false}>
-        <hr className="flex-1 border-t border-border/60" />
-        <span className="text-xs text-muted-foreground/70 whitespace-nowrap font-medium">
+      <>
+        <hr style={{ flex: 1, borderTop: "1px solid", opacity: 0.4 }} />
+        <span style={{ fontSize: "0.75rem", opacity: 0.6, whiteSpace: "nowrap", fontWeight: 500 }}>
           {this.__label}
         </span>
-        <hr className="flex-1 border-t border-border/60" />
-      </div>
+        <hr style={{ flex: 1, borderTop: "1px solid", opacity: 0.4 }} />
+      </>
     );
   }
 }
