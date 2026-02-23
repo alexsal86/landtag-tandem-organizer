@@ -216,26 +216,30 @@ function InitialContentPlugin({
 
 function DaySlipEnterBehaviorPlugin() {
   const [editor] = useLexicalComposerContext();
-  console.log("ENTER plugin mounted");
+  
 
   useEffect(() => {
     return editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event) => {
-        console.log("ENTER fired");
         // Shift+Enter → default behaviour
         if (event?.shiftKey) return false;
 
-        let handled = false;
-
+        // Read the current text synchronously first
         let currentText = "";
+        let hasRangeSelection = false;
         editor.getEditorState().read(() => {
           const sel = $getSelection();
           if ($isRangeSelection(sel)) {
+            hasRangeSelection = true;
             currentText = sel.anchor.getNode().getTopLevelElementOrThrow().getTextContent().trim();
           }
         });
-        console.log("currentText:", JSON.stringify(currentText), "isRule:", isRuleLine(currentText));
+
+        if (!hasRangeSelection) return false;
+
+        // Prevent default BEFORE the (potentially deferred) update
+        event?.preventDefault();
 
         editor.update(() => {
           const selection = $getSelection();
@@ -249,11 +253,8 @@ function DaySlipEnterBehaviorPlugin() {
             const hr = $createHorizontalRuleNode();
             const newParagraph = $createDaySlipLineNode();
             topLevel.replace(hr);
-            console.log("hr in tree:", hr.isAttached());
             hr.insertAfter(newParagraph);
-            console.log("paragraph in tree:", newParagraph.isAttached());
             newParagraph.select();
-            handled = true;
             return;
           }
 
@@ -261,14 +262,9 @@ function DaySlipEnterBehaviorPlugin() {
           newParagraph.append($createTextNode(""));
           topLevel.insertAfter(newParagraph);
           newParagraph.select();
-          handled = true;
         });
 
-        if (handled) {
-          event?.preventDefault();
-          return true;
-        }
-        return false;
+        return true;
       },
       COMMAND_PRIORITY_CRITICAL,
     );
