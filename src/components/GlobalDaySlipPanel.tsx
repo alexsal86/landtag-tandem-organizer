@@ -504,8 +504,11 @@ export function GlobalDaySlipPanel() {
     struckLines: [],
   };
 
-  const initialHtmlRef = useRef(todayData.html);
-  const initialNodesRef = useRef(todayData.nodes);
+  // editorKey increments each time the panel opens, forcing a fresh editor mount
+  const [editorKey, setEditorKey] = useState(0);
+  useEffect(() => {
+    if (open) setEditorKey((k) => k + 1);
+  }, [open]);
 
   // ── Persist: debounced write on every store change ───────────────────────
   useEffect(() => {
@@ -714,6 +717,12 @@ export function GlobalDaySlipPanel() {
   // ── Panel close / resolve flow ───────────────────────────────────────────
 
   const animateClosePanel = () => {
+    // Flush current store to localStorage immediately to prevent data loss
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    } catch { /* ignore */ }
+    clearTimeout(saveTimeoutRef.current);
+
     setClosing(true);
     setTimeout(() => {
       setResolveMode(false);
@@ -1266,9 +1275,10 @@ export function GlobalDaySlipPanel() {
 
               {/* ── Editor OR Triage ── */}
               <DaySlipEditor
+                key={editorKey}
                 hidden={resolveMode && triageEntries.length > 0}
-                initialHtml={initialHtmlRef.current}
-                initialNodes={initialNodesRef.current}
+                initialHtml={todayData.html}
+                initialNodes={todayData.nodes}
                 dayKey={todayKey}
                 resolveMode={resolveMode}
                 editorConfig={editorConfig}
