@@ -866,7 +866,7 @@ export function GlobalDaySlipPanel() {
       }
 
       setStore((prev) => {
-        const day = prev[todayKey] ?? { resolved: [], struckLines: [] };
+        const day: DaySlipDayData = prev[todayKey] ?? { html: '', plainText: '', resolved: [], struckLines: [] };
         const currentEntries = extractLinesFromHtml(html);
         const now = new Date().toISOString();
         const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
