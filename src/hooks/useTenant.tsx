@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface Tenant {
   id: string;
@@ -51,13 +52,13 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      console.log('🏢 Fetching tenant memberships for user:', user.id);
+      debugConsole.log('🏢 Fetching tenant memberships for user:', user.id);
       
       // Clean up legacy global key (one-time migration)
       const legacyKey = 'currentTenantId';
       if (localStorage.getItem(legacyKey)) {
         localStorage.removeItem(legacyKey);
-        console.log('🧹 Cleaned up legacy tenant storage key');
+        debugConsole.log('🧹 Cleaned up legacy tenant storage key');
       }
       
       // User-specific storage key for tenant isolation
@@ -74,7 +75,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('is_active', true);
 
       if (membershipError) {
-        console.error('❌ Error fetching tenant memberships:', membershipError);
+        debugConsole.error('❌ Error fetching tenant memberships:', membershipError);
         setTenants([]);
         setCurrentTenant(null);
         setMemberships([]);
@@ -82,7 +83,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      console.log('🏢 Tenant memberships:', membershipData);
+      debugConsole.log('🏢 Tenant memberships:', membershipData);
 
       const membershipsWithTenants = membershipData || [];
       const tenantsData = membershipsWithTenants
@@ -92,7 +93,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
       setMemberships(membershipsWithTenants);
       setTenants(tenantsData);
 
-      console.log('🏢 Available tenants for user:', tenantsData.map(t => t.name));
+      debugConsole.log('🏢 Available tenants for user:', tenantsData.map(t => t.name));
 
       // Set current tenant from user-specific localStorage or default to first tenant
       const savedTenantId = localStorage.getItem(tenantStorageKey);
@@ -103,10 +104,10 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
         currentTenantToSet = tenantsData.find(t => t.id === savedTenantId) || null;
         
         if (currentTenantToSet) {
-          console.log('🏢 Restored tenant from localStorage:', currentTenantToSet.name);
+          debugConsole.log('🏢 Restored tenant from localStorage:', currentTenantToSet.name);
         } else {
           // Stored tenant is not accessible - remove it
-          console.warn('⚠️ Stored tenant not accessible for this user, clearing localStorage');
+          debugConsole.warn('⚠️ Stored tenant not accessible for this user, clearing localStorage');
           localStorage.removeItem(tenantStorageKey);
         }
       }
@@ -114,19 +115,19 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
       // Fallback to first available tenant
       if (!currentTenantToSet && tenantsData.length > 0) {
         currentTenantToSet = tenantsData[0];
-        console.log('🏢 Using first available tenant:', currentTenantToSet.name);
+        debugConsole.log('🏢 Using first available tenant:', currentTenantToSet.name);
       }
 
       setCurrentTenant(currentTenantToSet);
       if (currentTenantToSet) {
         localStorage.setItem(tenantStorageKey, currentTenantToSet.id);
-        console.log('🏢 Current tenant set to:', currentTenantToSet.name);
+        debugConsole.log('🏢 Current tenant set to:', currentTenantToSet.name);
       } else {
-        console.warn('⚠️ No tenant available for user - user may need tenant assignment');
+        debugConsole.warn('⚠️ No tenant available for user - user may need tenant assignment');
         localStorage.removeItem(tenantStorageKey);
       }
     } catch (error) {
-      console.error('Error in fetchTenants:', error);
+      debugConsole.error('Error in fetchTenants:', error);
     } finally {
       setLoading(false);
     }
@@ -140,7 +141,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
       setCurrentTenant(tenant);
       // Use user-specific key for tenant isolation
       localStorage.setItem(`currentTenantId_${user.id}`, tenantId);
-      console.log('🏢 Switched to tenant:', tenant.name);
+      debugConsole.log('🏢 Switched to tenant:', tenant.name);
     }
   };
 

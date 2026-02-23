@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
 import { toast } from 'sonner';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface StatusOption {
   id: string;
@@ -110,7 +111,7 @@ export const useUserStatus = () => {
         .order('sort_order');
 
       if (error) {
-        console.error('Error loading status options:', error);
+        debugConsole.error('Error loading status options:', error);
         return;
       }
 
@@ -133,7 +134,7 @@ export const useUserStatus = () => {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error loading user status:', error);
+        debugConsole.error('Error loading user status:', error);
       } else if (data) {
         setCurrentStatus(data);
       }
@@ -154,7 +155,7 @@ export const useUserStatus = () => {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('Status changed:', payload);
+          debugConsole.log('Status changed:', payload);
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             setCurrentStatus(payload.new as UserStatus);
           }
@@ -180,7 +181,7 @@ export const useUserStatus = () => {
     const setupPresence = async () => {
       // TENANT-SPECIFIC channel name for isolation
       const channelName = `user_presence_${currentTenant.id}`;
-      console.log('🏢 Setting up presence channel:', channelName);
+      debugConsole.log('🏢 Setting up presence channel:', channelName);
       
       const channel = supabase.channel(channelName, {
         config: {
@@ -213,10 +214,10 @@ export const useUserStatus = () => {
           updateUsersWithStatus(onlineUsersList);
         })
         .on('presence', { event: 'join' }, ({ newPresences }) => {
-          console.log('User joined tenant presence:', newPresences);
+          debugConsole.log('User joined tenant presence:', newPresences);
         })
         .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-          console.log('User left tenant presence:', leftPresences);
+          debugConsole.log('User left tenant presence:', leftPresences);
         });
 
       channel.subscribe(async (status) => {
@@ -300,7 +301,7 @@ export const useUserStatus = () => {
 
       setUsersWithStatus(usersWithStatusData);
     } catch (error) {
-      console.error('Error updating users with status:', error);
+      debugConsole.error('Error updating users with status:', error);
     }
   };
 
@@ -341,7 +342,7 @@ export const useUserStatus = () => {
       setCurrentStatus(data);
       toast.success('Status aktualisiert');
     } catch (error) {
-      console.error('Error updating status:', error);
+      debugConsole.error('Error updating status:', error);
       toast.error('Fehler beim Aktualisieren des Status');
     }
   };
@@ -357,7 +358,7 @@ export const useUserStatus = () => {
           last_activity: new Date().toISOString()
         }, { onConflict: 'user_id' });
     } catch (error) {
-      console.error('Error updating last activity:', error);
+      debugConsole.error('Error updating last activity:', error);
     }
   };
 
@@ -399,7 +400,7 @@ export const useUserStatus = () => {
         );
       }
     } catch (error) {
-      console.error('Error setting quick status:', error);
+      debugConsole.error('Error setting quick status:', error);
     }
   };
 
