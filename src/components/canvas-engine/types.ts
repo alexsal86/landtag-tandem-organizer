@@ -21,6 +21,7 @@ export interface TextElement extends BaseElement {
   textDecoration?: string;
   color?: string;
   textLineHeight?: number;
+  textAlign?: 'left' | 'center' | 'right';
 }
 
 export interface ImageElement extends BaseElement {

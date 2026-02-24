@@ -225,11 +225,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       setZoomLevel(nextZoom);
 
       requestAnimationFrame(() => {
-        const newScale = previewScaleX * nextZoom;
-        const newCursorX = mmX * newScale + 28;
-        const newCursorY = mmY * newScale + 28;
-        container.scrollLeft = newCursorX - (e.clientX - rect.left);
-        container.scrollTop = newCursorY - (e.clientY - rect.top);
+        requestAnimationFrame(() => {
+          const newScale = previewScaleX * nextZoom;
+          const newCursorX = mmX * newScale + 28;
+          const newCursorY = mmY * newScale + 28;
+          container.scrollLeft = newCursorX - (e.clientX - rect.left);
+          container.scrollTop = newCursorY - (e.clientY - rect.top);
+        });
       });
     };
     el.addEventListener('wheel', handler, { passive: false });
@@ -1467,6 +1469,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                           </div>
                           </div>
                           <div><Label className="text-xs">Zeilenabstand</Label><Input type="number" step="0.1" min="0.8" value={element.textLineHeight || 1.2} onChange={(e) => updateElement(element.id, { textLineHeight: parseFloat(e.target.value) || 1.2 })} className="h-7 text-xs" /></div>
+                          <div><Label className="text-xs">Ausrichtung</Label>
+                          <div className="grid grid-cols-3 gap-1">
+                            <Button type="button" size="sm" className="h-6 text-xs" variant={(element as TextElement).textAlign === 'left' || !(element as TextElement).textAlign ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textAlign: 'left' })}>L</Button>
+                            <Button type="button" size="sm" className="h-6 text-xs" variant={(element as TextElement).textAlign === 'center' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textAlign: 'center' })}>M</Button>
+                            <Button type="button" size="sm" className="h-6 text-xs" variant={(element as TextElement).textAlign === 'right' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textAlign: 'right' })}>R</Button>
+                          </div>
+                          </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div><Label className="text-xs">Breite (mm)</Label>
                               <div className="flex gap-1">
@@ -1548,7 +1557,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             <p className="text-xs text-muted-foreground">Doppelklick auf Text/Block zum Bearbeiten. Mit Mausrad + Strg/Cmd zoomen.</p>
           </CardHeader>
           <CardContent className="p-3">
-            <div ref={previewContainerRef} className="w-full overflow-auto">
+            <div ref={previewContainerRef} className="border rounded-lg p-4 bg-muted/20 overflow-auto outline-none" style={{ maxHeight: 'calc(100vh - 280px)' }}>
           <div className="relative mx-auto" style={{ paddingLeft: 28, paddingTop: 28, width: canvasPixelWidth + 28, height: canvasPixelHeight + 28 }}>
               <div className={`absolute top-0 left-7 h-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ width: canvasPixelWidth }}>
                   <canvas ref={horizontalRulerRef} width={Math.round(canvasPixelWidth)} height={28} className="absolute inset-0 h-full w-full" />
