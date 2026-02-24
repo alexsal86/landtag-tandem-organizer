@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Edit3, Trash2, Plus, Save, X, Eye, Upload, ImageIcon } from 'lucide-react';
+import { Edit3, Trash2, Plus, Save, X, Eye, Upload, ImageIcon, GripVertical, Square, Circle, Minus, Undo2, Redo2, Ruler, Crosshair, Copy, ClipboardPaste, CopyPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -458,9 +458,20 @@ const LetterTemplateManager: React.FC = () => {
 
     const updateItem = (id: string, updates: any) => setBlockItems(blockKey, items.map((item: any) => (item.id === id ? { ...item, ...updates } : item)));
 
+    const addItem = (item: any) => {
+      const id = Date.now().toString();
+      setBlockItems(blockKey, [...items, { id, ...item }]);
+      setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
+    };
+
     const deleteItem = (id: string) => {
       setBlockItems(blockKey, items.filter((item: any) => item.id !== id));
       if (selectedId === id) setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: null }));
+    };
+
+    const duplicateSelectedItem = () => {
+      if (!selected) return;
+      addItem({ ...selected, x: (selected.x || 0) + 2, y: (selected.y || 0) + 2 });
     };
 
     const canvasW = rect.width * scale;
@@ -478,11 +489,16 @@ const LetterTemplateManager: React.FC = () => {
     return (
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">{title}</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
-          <div className="space-y-3 border rounded-lg p-3 overflow-y-auto max-h-[70vh]">
+        <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_300px] gap-4">
+          <div className="space-y-3 xl:col-start-1">
+            <Card>
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm">Elemente hinzufügen</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 px-4 pb-4">
             {/* Draggable text tool */}
             <div draggable onDragStart={(e) => { e.dataTransfer.setData('application/x-block-tool', 'text'); e.dataTransfer.effectAllowed = 'copy'; }} className="rounded border bg-background px-3 py-2 text-sm cursor-grab active:cursor-grabbing flex items-start gap-2">
-              <span className="text-muted-foreground mt-0.5">⠿</span>
+              <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div><div className="font-medium text-xs">Text-Block</div><div className="text-xs text-muted-foreground">Auf Canvas ziehen</div></div>
             </div>
             {/* Variablen-Platzhalter */}
@@ -555,62 +571,30 @@ const LetterTemplateManager: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
-              <Button type="button" variant={ruler ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [blockKey]: !prev[blockKey] }))}>Lineal</Button>
-              <Button type="button" variant={showAxes ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_axes`]: !prev[`${blockKey}_axes`] }))}>Achsen</Button>
-            </div>
-            {/* Element list */}
-            <div className="space-y-2 max-h-40 overflow-auto">
-              {items.map((item: any) => (
-                <div key={item.id} className={`p-2 border rounded cursor-pointer flex items-center justify-between ${selectedId === item.id ? 'border-primary bg-primary/10' : 'border-border'}`} onClick={() => setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id }))}>
-                  <div className="flex items-center gap-1 min-w-0">
-                    {item.isVariable && <span className="text-amber-600 text-[10px]">⚡</span>}
-                    <span className="text-sm truncate">{(item.content || item.type || 'Element').toString().slice(0, 30)}</span>
-                  </div>
-                  <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} className="h-6 w-6 p-0 shrink-0">
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-            {/* Selected element properties */}
-            {selected && (
-              <div className="space-y-2 border-t pt-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div><Label className="text-xs">X (mm)</Label><Input type="number" value={selected.x || 0} onChange={(e) => updateItem(selected.id, { x: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" /></div>
-                  <div><Label className="text-xs">Y (mm)</Label><Input type="number" value={selected.y || 0} onChange={(e) => updateItem(selected.id, { y: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div><Label className="text-xs">Breite (mm)</Label><Input type="number" value={selected.width || 50} onChange={(e) => updateItem(selected.id, { width: parseFloat(e.target.value) || 50 })} className="h-7 text-xs" /></div>
-                  {selected.height != null && <div><Label className="text-xs">Höhe (mm)</Label><Input type="number" value={selected.height || 10} onChange={(e) => updateItem(selected.id, { height: parseFloat(e.target.value) || 10 })} className="h-7 text-xs" /></div>}
-                </div>
-                {(selected.type === 'text' || !selected.type) && (
-                  <>
-                    <Label className="text-xs">Textinhalt</Label>
-                    <Textarea value={selected.content || ''} onChange={(e) => updateItem(selected.id, { content: e.target.value })} rows={3} className="text-xs" />
-                    <Label className="text-xs">Schriftart</Label>
-                    <Select value={selected.fontFamily || 'Arial'} onValueChange={(value) => updateItem(selected.id, { fontFamily: value })}>
-                      <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Arial">Arial</SelectItem>
-                        <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                        <SelectItem value="Calibri">Calibri</SelectItem>
-                        <SelectItem value="Verdana">Verdana</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="grid grid-cols-3 gap-1">
-                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontWeight: selected.fontWeight === 'bold' ? 'normal' : 'bold' })}>Fett</Button>
-                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontStyle: selected.fontStyle === 'italic' ? 'normal' : 'italic' })}>Kursiv</Button>
-                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { textDecoration: selected.textDecoration === 'underline' ? 'none' : 'underline' })}>U</Button>
-                    </div>
-                  </>
-                )}
-                {selected.type === 'image' && (
-                  <p className="text-xs text-muted-foreground">Bild-Element. Position und Größe oben anpassen.</p>
-                )}
-              </div>
-            )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm">Formen</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 grid grid-cols-3 gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => addItem({ type: 'shape', shapeType: 'line', x: 4, y: 4, width: 50, height: 1, strokeColor: '#111827', strokeWidth: 1.5 })}><Minus className="h-4 w-4" /></Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => addItem({ type: 'shape', shapeType: 'rectangle', x: 4, y: 4, width: 24, height: 10, fillColor: '#dbeafe', strokeColor: '#1d4ed8', strokeWidth: 1.2, borderRadius: 0 })}><Square className="h-4 w-4" /></Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => addItem({ type: 'shape', shapeType: 'circle', x: 4, y: 4, width: 16, height: 16, fillColor: '#dcfce7', strokeColor: '#166534', strokeWidth: 1.2 })}><Circle className="h-4 w-4" /></Button>
+            </CardContent>
+          </Card>
           </div>
+          <div className="space-y-3 xl:col-start-2">
+            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-2">
+              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled><Undo2 className="h-3.5 w-3.5 mr-1" />Undo</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled><Redo2 className="h-3.5 w-3.5 mr-1" />Redo</Button>
+              <Button type="button" variant={ruler ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [blockKey]: !prev[blockKey] }))}><Ruler className="h-3.5 w-3.5 mr-1" />Lineal</Button>
+              <Button type="button" variant={showAxes ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_axes`]: !prev[`${blockKey}_axes`] }))}><Crosshair className="h-3.5 w-3.5 mr-1" />Achsen</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={!selected}><Copy className="h-3.5 w-3.5 mr-1" />Kopieren</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled><ClipboardPaste className="h-3.5 w-3.5 mr-1" />Einfügen</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={duplicateSelectedItem} disabled={!selected}><CopyPlus className="h-3.5 w-3.5 mr-1" />Duplizieren</Button>
+            </div>
           {/* Canvas area - centered */}
           <div className="border rounded-lg p-6 bg-muted/30 overflow-auto flex items-center justify-center min-h-[200px]"
             onMouseMove={(e) => onBlockCanvasMouseMove(e, blockKey, scale)}
@@ -647,40 +631,28 @@ const LetterTemplateManager: React.FC = () => {
                   const x = Math.round((e.clientX - domRect.left) / scale);
                   const y = Math.round((e.clientY - domRect.top) / scale);
                   const tool = e.dataTransfer.getData('application/x-block-tool');
-                  // Handle text drop
                   if (tool === 'text') {
-                    const id = Date.now().toString();
-                    setBlockItems(blockKey, [...items, { id, type: 'text', x, y, width: 60, content: 'Neuer Text', fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' }]);
-                    setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
+                    addItem({ type: 'text', x, y, width: 60, content: 'Neuer Text', fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' });
                     return;
                   }
-                  // Handle variable drop
                   if (tool === 'variable') {
                     const varText = e.dataTransfer.getData('text/plain');
                     if (varText && varText.startsWith('{{')) {
-                      const id = Date.now().toString();
-                      setBlockItems(blockKey, [...items, { id, type: 'text', x, y, width: 60, content: varText, isVariable: true, fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' }]);
-                      setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
+                      addItem({ type: 'text', x, y, width: 60, content: varText, isVariable: true, fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' });
                       return;
                     }
                   }
-                  // Handle image drop
                   if (tool === 'image') {
                     const imgUrl = e.dataTransfer.getData('application/x-block-image-url');
                     const imgPath = e.dataTransfer.getData('application/x-block-image-path');
                     if (imgUrl) {
-                      const id = Date.now().toString();
-                      setBlockItems(blockKey, [...items, { id, type: 'image', x, y, width: 30, height: 15, imageUrl: imgUrl, storagePath: imgPath || null }]);
-                      setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
+                      addItem({ type: 'image', x, y, width: 30, height: 15, imageUrl: imgUrl, storagePath: imgPath || null });
                       return;
                     }
                   }
-                  // Fallback: check text/plain for variables
                   const textData = e.dataTransfer.getData('text/plain');
                   if (textData && textData.startsWith('{{')) {
-                    const id = Date.now().toString();
-                    setBlockItems(blockKey, [...items, { id, type: 'text', x, y, width: 60, content: textData, isVariable: true, fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' }]);
-                    setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
+                    addItem({ type: 'text', x, y, width: 60, content: textData, isVariable: true, fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' });
                   }
                 }}
                 tabIndex={0}
@@ -694,6 +666,18 @@ const LetterTemplateManager: React.FC = () => {
                 )}
                 {items.map((item: any) => {
                   const isSelected = selectedId === item.id;
+                  if (item.type === 'shape') {
+                    return (
+                      <div key={item.id} className={`absolute cursor-move border ${isSelected ? 'border-primary border-dashed border-2' : 'border-transparent'}`} style={{ left: (item.x || 0) * scale, top: (item.y || 0) * scale, width: (item.width || 20) * scale, height: Math.max(1, (item.height || 10) * scale) }} onMouseDown={(e) => { e.stopPropagation(); setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id })); setBlockDrag({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ox: item.x || 0, oy: item.y || 0 }); }}>
+                        <svg width="100%" height="100%" className="pointer-events-none">
+                          {item.shapeType === 'line' && <line x1="0" y1="50%" x2="100%" y2="50%" stroke={item.strokeColor || '#111827'} strokeWidth={item.strokeWidth || 1.5} />}
+                          {item.shapeType === 'rectangle' && <rect x="1" y="1" width="98%" height="98%" fill={item.fillColor || '#dbeafe'} stroke={item.strokeColor || '#1d4ed8'} strokeWidth={item.strokeWidth || 1.2} rx={item.borderRadius || 0} />}
+                          {item.shapeType === 'circle' && <ellipse cx="50%" cy="50%" rx="48%" ry="48%" fill={item.fillColor || '#dcfce7'} stroke={item.strokeColor || '#166534'} strokeWidth={item.strokeWidth || 1.2} />}
+                        </svg>
+                        {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => { e.stopPropagation(); setBlockResize({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ow: item.width || 20, oh: item.height || 10 }); }} />}
+                      </div>
+                    );
+                  }
                   // Image element
                   if (item.type === 'image' && item.imageUrl) {
                     return (
@@ -725,6 +709,88 @@ const LetterTemplateManager: React.FC = () => {
                 })}
               </div>
             </div>
+          </div>
+          </div>
+
+          <div className="space-y-3 xl:col-start-3">
+            <Card>
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm">Elemente ({items.length})</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-2 max-h-[36vh] overflow-auto">
+              {items.map((item: any) => (
+                <div key={item.id} className={`p-2 border rounded cursor-pointer flex items-center justify-between ${selectedId === item.id ? 'border-primary bg-primary/10' : 'border-border'}`} onClick={() => setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id }))}>
+                  <div className="flex items-center gap-1 min-w-0">
+                    {item.isVariable && <span className="text-amber-600 text-[10px]">⚡</span>}
+                    <span className="text-sm truncate">{(item.content || item.shapeType || item.type || 'Element').toString().slice(0, 30)}</span>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} className="h-6 w-6 p-0 shrink-0">
+                    <Trash2 className="h-3 w-3 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+              {items.length === 0 && <p className="text-xs text-muted-foreground">Keine Elemente vorhanden</p>}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm">Bearbeiten</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 px-4 pb-4 max-h-[38vh] overflow-auto">
+            {/* Selected element properties */}
+            {selected ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label className="text-xs">X (mm)</Label><Input type="number" value={selected.x || 0} onChange={(e) => updateItem(selected.id, { x: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" /></div>
+                  <div><Label className="text-xs">Y (mm)</Label><Input type="number" value={selected.y || 0} onChange={(e) => updateItem(selected.id, { y: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label className="text-xs">Breite (mm)</Label><Input type="number" value={selected.width || 50} onChange={(e) => updateItem(selected.id, { width: parseFloat(e.target.value) || 50 })} className="h-7 text-xs" /></div>
+                  {selected.height != null && <div><Label className="text-xs">Höhe (mm)</Label><Input type="number" value={selected.height || 10} onChange={(e) => updateItem(selected.id, { height: parseFloat(e.target.value) || 10 })} className="h-7 text-xs" /></div>}
+                </div>
+                {(selected.type === 'text' || !selected.type) && (
+                  <>
+                    <Label className="text-xs">Textinhalt</Label>
+                    <Textarea value={selected.content || ''} onChange={(e) => updateItem(selected.id, { content: e.target.value })} rows={3} className="text-xs" />
+                    <Label className="text-xs">Schriftart</Label>
+                    <Select value={selected.fontFamily || 'Arial'} onValueChange={(value) => updateItem(selected.id, { fontFamily: value })}>
+                      <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Arial">Arial</SelectItem>
+                        <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                        <SelectItem value="Calibri">Calibri</SelectItem>
+                        <SelectItem value="Verdana">Verdana</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="grid grid-cols-3 gap-1">
+                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontWeight: selected.fontWeight === 'bold' ? 'normal' : 'bold' })}>Fett</Button>
+                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontStyle: selected.fontStyle === 'italic' ? 'normal' : 'italic' })}>Kursiv</Button>
+                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { textDecoration: selected.textDecoration === 'underline' ? 'none' : 'underline' })}>U</Button>
+                    </div>
+                  </>
+                )}
+                {selected.type === 'image' && (
+                  <p className="text-xs text-muted-foreground">Bild-Element. Position und Größe oben anpassen.</p>
+                )}
+                {selected.type === 'shape' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><Label className="text-xs">Füllfarbe</Label><Input type="color" value={selected.fillColor || '#dbeafe'} onChange={(e) => updateItem(selected.id, { fillColor: e.target.value })} className="h-7 p-1" /></div>
+                      <div><Label className="text-xs">Randfarbe</Label><Input type="color" value={selected.strokeColor || '#1d4ed8'} onChange={(e) => updateItem(selected.id, { strokeColor: e.target.value })} className="h-7 p-1" /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><Label className="text-xs">Strichstärke</Label><Input type="number" value={selected.strokeWidth || 1.2} onChange={(e) => updateItem(selected.id, { strokeWidth: parseFloat(e.target.value) || 1.2 })} className="h-7 text-xs" /></div>
+                      {selected.shapeType === 'rectangle' && <div><Label className="text-xs">Rundung</Label><Input type="number" value={selected.borderRadius || 0} onChange={(e) => updateItem(selected.id, { borderRadius: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" /></div>}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Kein Element ausgewählt.</p>
+            )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
