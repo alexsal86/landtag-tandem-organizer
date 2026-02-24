@@ -42,7 +42,7 @@ import { ConfigurableTypeSettings } from "@/components/administration/Configurab
 import { MeetingTemplateParticipantsEditor } from "@/components/meetings/MeetingTemplateParticipantsEditor";
 import { AnnualTasksView } from "@/components/AnnualTasksView";
 import LetterTemplateManager from "@/components/LetterTemplateManager";
-import { AdminSidebar } from "@/components/administration/AdminSidebar";
+import { AdminSidebar, adminMenuItems } from "@/components/administration/AdminSidebar";
 import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
 import { InformationBlockManager } from "@/components/administration/InformationBlockManager";
 import { LetterOccasionManager } from "@/components/administration/LetterOccasionManager";
@@ -55,6 +55,7 @@ import { DirectPushTest } from "@/components/DirectPushTest";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { useLocation, useNavigate } from "react-router-dom";
 
 // Roles in descending hierarchy
 const ROLE_OPTIONS = [
@@ -77,10 +78,44 @@ type UserRole = {
   role: RoleValue;
 };
 
+const DEFAULT_SUB_SECTION: Record<string, string> = {
+  security: "general",
+  users: "status",
+  calendar: "config",
+  content: "topics",
+  templates: "letters",
+  politics: "associations",
+  automation: "rss-sources",
+  superadmin: "tenants",
+};
+
+const resolveNavigationState = (
+  section: string | null,
+  subSection: string | null,
+  isSuperAdmin: boolean,
+) => {
+  const visibleSections = adminMenuItems.filter((item) => !item.superAdminOnly || isSuperAdmin);
+  const fallbackSection = visibleSections[0]?.id ?? "security";
+  const matchedSection = visibleSections.find((item) => item.id === section) ??
+    visibleSections.find((item) => item.id === fallbackSection);
+
+  const nextSection = matchedSection?.id ?? "security";
+  const visibleSubSections = matchedSection?.children?.filter((child) => !child.superAdminOnly || isSuperAdmin) ?? [];
+  const fallbackSubSection =
+    visibleSubSections.find((child) => child.id === DEFAULT_SUB_SECTION[nextSection])?.id ??
+    visibleSubSections[0]?.id ??
+    "";
+  const nextSubSection = visibleSubSections.find((child) => child.id === subSection)?.id ?? fallbackSubSection;
+
+  return { section: nextSection, subSection: nextSubSection };
+};
+
 export default function Administration() {
   const { user, loading } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
   const [checkingAdmin, setCheckingAdmin] = useState<boolean>(true);
@@ -90,8 +125,12 @@ export default function Administration() {
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
 
   // Navigation state
-  const [activeSection, setActiveSection] = useState("security");
-  const [activeSubSection, setActiveSubSection] = useState("general");
+  const [activeSection, setActiveSection] = useState(() =>
+    resolveNavigationState(new URLSearchParams(location.search).get("adminSection"), new URLSearchParams(location.search).get("adminSubSection"), false).section,
+  );
+  const [activeSubSection, setActiveSubSection] = useState(() =>
+    resolveNavigationState(new URLSearchParams(location.search).get("adminSection"), new URLSearchParams(location.search).get("adminSubSection"), false).subSection,
+  );
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
 
   // Template states
@@ -122,6 +161,28 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       loadAnnualTasksBadge();
     }
   }, [loading, user, currentTenant]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextNavigation = resolveNavigationState(params.get("adminSection"), params.get("adminSubSection"), isSuperAdmin);
+
+    setActiveSection(nextNavigation.section);
+    setActiveSubSection(nextNavigation.subSection);
+
+    if (
+      params.get("adminSection") !== nextNavigation.section ||
+      params.get("adminSubSection") !== nextNavigation.subSection
+    ) {
+      params.set("adminSection", nextNavigation.section);
+      if (nextNavigation.subSection) {
+        params.set("adminSubSection", nextNavigation.subSection);
+      } else {
+        params.delete("adminSubSection");
+      }
+
+      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+    }
+  }, [isSuperAdmin, location.pathname, location.search, navigate]);
 
   const checkAdminStatus = async () => {
     if (!user) {
@@ -234,23 +295,16 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
   };
 
   const handleNavigate = (section: string, subSection?: string) => {
-    setActiveSection(section);
-    if (subSection) {
-      setActiveSubSection(subSection);
+    const nextNavigation = resolveNavigationState(section, subSection ?? null, isSuperAdmin);
+    const params = new URLSearchParams(location.search);
+    params.set("adminSection", nextNavigation.section);
+    if (nextNavigation.subSection) {
+      params.set("adminSubSection", nextNavigation.subSection);
     } else {
-      // Set default sub-section for sections with children
-      const defaults: Record<string, string> = {
-        security: "general",
-        users: "status",
-        calendar: "config",
-        content: "topics",
-        templates: "letters",
-        politics: "associations",
-        automation: "rss-sources",
-        superadmin: "tenants",
-      };
-      setActiveSubSection(defaults[section] || "");
+      params.delete("adminSubSection");
     }
+
+    navigate({ pathname: location.pathname, search: params.toString() });
   };
 
   // Drag & Drop handlers
