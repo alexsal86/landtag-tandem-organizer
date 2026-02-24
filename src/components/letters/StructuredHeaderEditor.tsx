@@ -308,10 +308,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const current = allElements.find((el) => el.id === id);
     if (!current) return { x, y, guides: {} as { x?: number; y?: number } };
     let sx = x, sy = y;
-    const w = current.width || 50, h = current.height || 10;
+    const { width: w, height: h } = getElementDimensions(current);
     const guides: { x?: number; y?: number } = {};
     const edgeTargets = allElements.filter((el) => el.id !== id).flatMap((el) => {
-      const tw = el.width || 50, th = el.height || 10;
+      const { width: tw, height: th } = getElementDimensions(el);
       return [{ x: el.x, y: el.y }, { x: el.x + tw, y: el.y + th }, { x: el.x + tw / 2, y: el.y + th / 2 }];
     });
     for (const t of edgeTargets) {
