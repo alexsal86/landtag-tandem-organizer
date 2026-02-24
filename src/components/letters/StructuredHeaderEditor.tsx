@@ -1302,16 +1302,17 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_300px] gap-6">
-        {actionButtons && (
-          <Card className="self-start xl:col-start-3 xl:row-start-1">
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm">Bearbeitung</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3 pt-1 space-y-2">
-              {actionButtons}
-            </CardContent>
-          </Card>
-        )}
+        <div className="xl:col-start-3 xl:row-start-1 xl:row-span-4 flex flex-col gap-6">
+          {actionButtons && (
+            <Card className="self-start">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm">Bearbeitung</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-3 pt-1 space-y-2">
+                {actionButtons}
+              </CardContent>
+            </Card>
+          )}
 
         {/* Tools */}
         <Card className="xl:col-start-1 xl:row-start-1">
@@ -1380,7 +1381,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
 
         {/* Elements list */}
-        <Card className="xl:col-start-3 xl:row-start-2 xl:row-span-2">
+        <Card>
           <CardHeader className="py-3 px-4">
             <CardTitle className="text-sm">Elemente ({elements.length})</CardTitle>
           </CardHeader>
@@ -1511,6 +1512,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             )}
           </CardContent>
         </Card>
+        </div>
 
         <Card className="xl:col-start-2 xl:row-start-1 xl:row-span-4">
           <CardHeader className="pb-2">
@@ -1587,45 +1589,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 </div>
               )}
 
-              </div>
-
-              {selectionBox && (
-                <div
-                  className="absolute border border-primary/80 bg-primary/10 pointer-events-none"
-                  style={{
-                    left: `${Math.min(selectionBox.startX, selectionBox.currentX)}px`,
-                    top: `${Math.min(selectionBox.startY, selectionBox.currentY)}px`,
-                    width: `${Math.abs(selectionBox.currentX - selectionBox.startX)}px`,
-                    height: `${Math.abs(selectionBox.currentY - selectionBox.startY)}px`,
-                  }}
-                />
-              )}
-
-              {showShortcutsHelp && (
-                <div className="absolute right-3 top-3 z-20 w-72 rounded-md border bg-background/95 p-3 text-xs shadow-lg backdrop-blur">
-                  <div className="mb-2 font-semibold">Tastatur-Shortcuts</div>
-                  <ul className="space-y-1 text-muted-foreground">
-                    <li><span className="font-medium text-foreground">Shift/Cmd/Ctrl + Klick</span> Mehrfachauswahl</li>
-                    <li><span className="font-medium text-foreground">Leere Fläche ziehen</span> Auswahlrechteck</li>
-                    <li><span className="font-medium text-foreground">Alt + Ziehen</span> Nur vollständig enthaltene Elemente</li>
-                    <li><span className="font-medium text-foreground">Strg/Cmd + Mausrad</span> Zoom auf Cursor</li>
-                    <li><span className="font-medium text-foreground">Leertaste + Drag / Mittlere Maustaste</span> Canvas verschieben</li>
-                    <li><span className="font-medium text-foreground">Ausrichten-Leiste</span> Bei Mehrfachauswahl sichtbar</li>
-                    <li><span className="font-medium text-foreground">Verteilen</span> Ab 3 selektierten Elementen</li>
-                    <li><span className="font-medium text-foreground">Snap-Linien</span> Blitzen beim Einrasten kurz auf</li>
-                    <li><span className="font-medium text-foreground">Smart-Guide ΔX/ΔY</span> Zeigt nächste Abstände beim Drag</li>
-                    <li><span className="font-medium text-foreground">Tab / Shift+Tab</span> Auswahl wechseln</li>
-                    <li><span className="font-medium text-foreground">Pfeiltasten</span> Auswahl bewegen</li>
-                    <li><span className="font-medium text-foreground">Resize-Handle</span> Skaliert bei Mehrfachauswahl die Gruppe</li>
-                    <li><span className="font-medium text-foreground">Entf / Backspace</span> Element löschen</li>
-                    <li><span className="font-medium text-foreground">Strg/Cmd + C / V</span> Kopieren / Einfügen</li>
-                    <li><span className="font-medium text-foreground">Strg/Cmd + D</span> Duplizieren</li>
-                    <li><span className="font-medium text-foreground">Strg/Cmd + ] / [</span> Ebene vor / zurück</li>
-                    <li><span className="font-medium text-foreground">Strg/Cmd + Shift + ?</span> Hilfe ein/aus</li>
-                  </ul>
-                </div>
-              )}
-
               {elements.map((element) => {
                 const scaleX = previewScaleX;
                 const scaleY = previewScaleY;
@@ -1677,7 +1640,46 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 }
 
                 return null;
-              })}            </div>
+              })}
+              </div>
+
+              {selectionBox && (
+                <div
+                  className="absolute border border-primary/80 bg-primary/10 pointer-events-none"
+                  style={{
+                    left: `${Math.min(selectionBox.startX, selectionBox.currentX)}px`,
+                    top: `${Math.min(selectionBox.startY, selectionBox.currentY)}px`,
+                    width: `${Math.abs(selectionBox.currentX - selectionBox.startX)}px`,
+                    height: `${Math.abs(selectionBox.currentY - selectionBox.startY)}px`,
+                  }}
+                />
+              )}
+
+              {showShortcutsHelp && (
+                <div className="absolute right-3 top-3 z-20 w-72 rounded-md border bg-background/95 p-3 text-xs shadow-lg backdrop-blur">
+                  <div className="mb-2 font-semibold">Tastatur-Shortcuts</div>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li><span className="font-medium text-foreground">Shift/Cmd/Ctrl + Klick</span> Mehrfachauswahl</li>
+                    <li><span className="font-medium text-foreground">Leere Fläche ziehen</span> Auswahlrechteck</li>
+                    <li><span className="font-medium text-foreground">Alt + Ziehen</span> Nur vollständig enthaltene Elemente</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + Mausrad</span> Zoom auf Cursor</li>
+                    <li><span className="font-medium text-foreground">Leertaste + Drag / Mittlere Maustaste</span> Canvas verschieben</li>
+                    <li><span className="font-medium text-foreground">Ausrichten-Leiste</span> Bei Mehrfachauswahl sichtbar</li>
+                    <li><span className="font-medium text-foreground">Verteilen</span> Ab 3 selektierten Elementen</li>
+                    <li><span className="font-medium text-foreground">Snap-Linien</span> Blitzen beim Einrasten kurz auf</li>
+                    <li><span className="font-medium text-foreground">Smart-Guide ΔX/ΔY</span> Zeigt nächste Abstände beim Drag</li>
+                    <li><span className="font-medium text-foreground">Tab / Shift+Tab</span> Auswahl wechseln</li>
+                    <li><span className="font-medium text-foreground">Pfeiltasten</span> Auswahl bewegen</li>
+                    <li><span className="font-medium text-foreground">Resize-Handle</span> Skaliert bei Mehrfachauswahl die Gruppe</li>
+                    <li><span className="font-medium text-foreground">Entf / Backspace</span> Element löschen</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + C / V</span> Kopieren / Einfügen</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + D</span> Duplizieren</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + ] / [</span> Ebene vor / zurück</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + Shift + ?</span> Hilfe ein/aus</li>
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
           </div>
         </CardContent>

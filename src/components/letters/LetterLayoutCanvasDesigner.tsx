@@ -31,7 +31,7 @@ interface Props {
   layoutSettings: LetterLayoutSettings;
   onLayoutChange: (settings: LetterLayoutSettings) => void;
   onJumpToTab?: (tab: EditorTab) => void;
-  headerElements?: Array<{ id: string; type: 'text' | 'image'; x: number; y: number; width?: number; height?: number; content?: string }>;
+  headerElements?: Array<{ id: string; type: 'text' | 'image' | 'shape' | 'block'; x: number; y: number; width?: number; height?: number; content?: string; blockContent?: string }>;
   actionButtons?: React.ReactNode;
 }
 
@@ -307,7 +307,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
             <Label className="text-xs uppercase text-muted-foreground">Elemente</Label>
             <div className="grid grid-cols-1 gap-2">
               {blocks.map((block) => (
-                <div key={block.key} className="grid grid-cols-[2.25rem_2.25rem_minmax(0,1fr)_2.25rem] gap-2 items-center">
+                <div key={block.key} className="flex items-center gap-2 min-w-0">
                   <Button
                     type="button"
                     variant="ghost"
@@ -328,14 +328,14 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   >
                     {lockedBlocks.has(block.key) ? <Lock className="h-4 w-4 text-amber-600" /> : <Unlock className="h-4 w-4 text-muted-foreground" />}
                   </Button>
-                  <Button type="button" variant="outline" size="sm" className={`h-9 w-full justify-start px-3 ${selected === block.key ? 'ring-2 ring-primary' : ''} ${block.color}`} onClick={() => { setSelected(block.key); canvasWrapRef.current?.focus(); }}>
-                    {block.label}
+                  <Button type="button" variant="outline" size="sm" className={`h-9 flex-1 min-w-0 justify-start px-3 overflow-hidden ${selected === block.key ? 'ring-2 ring-primary' : ''} ${block.color}`} onClick={() => { setSelected(block.key); canvasWrapRef.current?.focus(); }}>
+                    <span className="block w-full truncate text-left">{block.label}</span>
                   </Button>
                   {block.isCustom ? (
                     <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => removeCustomBlock(block.key)} title="Löschen">
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
-                  ) : <div className="h-9 w-9" />}
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -361,11 +361,11 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                     left: element.x * SCALE,
                     top: element.y * SCALE,
                     width: (element.width || 50) * SCALE,
-                    height: (element.height || 8) * SCALE,
+                    height: (element.height || (element.type === 'block' ? 18 : 8)) * SCALE,
                     overflow: 'hidden',
                   }}
                 >
-                  {element.type === 'text' ? element.content : '🖼️'}
+                  {element.type === 'text' ? element.content : element.type === 'block' ? element.blockContent : element.type === 'image' ? '🖼️' : '▦'}
                 </div>
               ))}
 
