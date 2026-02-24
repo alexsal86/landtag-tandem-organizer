@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ZoomIn, ZoomOut, Trash2, Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
+import { CSS_PX_PER_MM } from '@/lib/units';
 
 type BlockKey = 'header' | 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments';
 type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general' | 'block-address' | 'block-return-address' | 'block-info' | 'block-subject' | 'block-content' | 'block-attachments';
@@ -59,7 +60,7 @@ const COLOR_PRESETS = [
   { value: 'bg-teal-500/20 border-teal-600 text-teal-900', label: 'Teal' },
 ];
 
-const BASE_SCALE = 2.2;
+const BASE_SCALE = CSS_PX_PER_MM;
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const snapMm = (val: number) => Math.round(val);
 const clamp = (val: number, min: number, max: number) => Math.min(max, Math.max(min, val));

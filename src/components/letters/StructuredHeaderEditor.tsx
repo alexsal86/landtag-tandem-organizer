@@ -17,6 +17,7 @@ import { useCanvasHistory } from '@/components/canvas-engine/hooks/useCanvasHist
 import { useCanvasSelection } from '@/components/canvas-engine/hooks/useCanvasSelection';
 import { getElementIconFromRegistry, getElementLabelFromRegistry } from '@/components/letters/elements/registry';
 import { ImageCanvasElement, TextCanvasElement } from '@/components/letters/elements/canvasElements';
+import { CSS_PX_PER_MM } from '@/lib/units';
 
 interface GalleryImage {
   name: string;
@@ -172,10 +173,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const headerMaxWidth = 210;
   const headerMaxHeight = 45;
-  const [previewWidth, setPreviewWidth] = useState(960);
-  const previewHeight = Math.round((previewWidth * headerMaxHeight) / headerMaxWidth);
-  const previewScaleX = previewWidth / headerMaxWidth;
-  const previewScaleY = previewHeight / headerMaxHeight;
+  const previewWidth = headerMaxWidth * CSS_PX_PER_MM;
+  const previewHeight = headerMaxHeight * CSS_PX_PER_MM;
+  const previewScaleX = CSS_PX_PER_MM;
+  const previewScaleY = CSS_PX_PER_MM;
   const SNAP_MM = 1.5;
 
   const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -193,20 +194,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       const idx = ZOOM_STEPS.indexOf(z);
       return idx > 0 ? ZOOM_STEPS[idx - 1] : z;
     });
-  }, []);
-
-  useEffect(() => {
-    if (!previewContainerRef.current) return;
-    const updatePreviewSize = () => {
-      if (!previewContainerRef.current) return;
-      const nextWidth = Math.min(960, Math.max(360, Math.floor(previewContainerRef.current.clientWidth - 16 - 28)));
-      setPreviewWidth(nextWidth);
-    };
-
-    updatePreviewSize();
-    const observer = new ResizeObserver(updatePreviewSize);
-    observer.observe(previewContainerRef.current);
-    return () => observer.disconnect();
   }, []);
 
   // Native wheel listener for Ctrl+Scroll zoom (passive: false required)
