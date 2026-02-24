@@ -37,43 +37,43 @@ interface StructuredHeaderEditorProps {
   blockKey?: string;
 }
 
-const BLOCK_VARIABLES: Record<string, { label: string; value: string }[]> = {
+const BLOCK_VARIABLES: Record<string, { label: string; value: string; previewText: string }[]> = {
   header: [
-    { label: 'Absender Name', value: '{{absender_name}}' },
-    { label: 'Organisation', value: '{{absender_organisation}}' },
+    { label: 'Absender Name', value: '{{absender_name}}', previewText: 'Alexander Salomon' },
+    { label: 'Organisation', value: '{{absender_organisation}}', previewText: 'Fraktion GRÜNE im Landtag' },
   ],
   addressField: [
-    { label: 'Empfänger Name', value: '{{empfaenger_name}}' },
-    { label: 'Straße', value: '{{empfaenger_strasse}}' },
-    { label: 'PLZ', value: '{{empfaenger_plz}}' },
-    { label: 'Ort', value: '{{empfaenger_ort}}' },
-    { label: 'Land', value: '{{empfaenger_land}}' },
+    { label: 'Empfänger Name', value: '{{empfaenger_name}}', previewText: 'Max Mustermann' },
+    { label: 'Straße', value: '{{empfaenger_strasse}}', previewText: 'Musterstraße 12' },
+    { label: 'PLZ', value: '{{empfaenger_plz}}', previewText: '70173' },
+    { label: 'Ort', value: '{{empfaenger_ort}}', previewText: 'Stuttgart' },
+    { label: 'Land', value: '{{empfaenger_land}}', previewText: 'Deutschland' },
   ],
   returnAddress: [
-    { label: 'Absender Name', value: '{{absender_name}}' },
-    { label: 'Organisation', value: '{{absender_organisation}}' },
-    { label: 'Straße', value: '{{absender_strasse}}' },
-    { label: 'PLZ/Ort', value: '{{absender_plz_ort}}' },
+    { label: 'Absender Name', value: '{{absender_name}}', previewText: 'Alexander Salomon' },
+    { label: 'Organisation', value: '{{absender_organisation}}', previewText: 'Fraktion GRÜNE' },
+    { label: 'Straße', value: '{{absender_strasse}}', previewText: 'Konrad-Adenauer-Str. 3' },
+    { label: 'PLZ/Ort', value: '{{absender_plz_ort}}', previewText: '70173 Stuttgart' },
   ],
   infoBlock: [
-    { label: 'Datum', value: '{{datum}}' },
-    { label: 'Aktenzeichen', value: '{{aktenzeichen}}' },
-    { label: 'Bearbeiter', value: '{{bearbeiter}}' },
-    { label: 'Telefon', value: '{{telefon}}' },
-    { label: 'E-Mail', value: '{{email}}' },
-    { label: 'Unser Zeichen', value: '{{unser_zeichen}}' },
+    { label: 'Datum', value: '{{datum}}', previewText: '24. Februar 2026' },
+    { label: 'Aktenzeichen', value: '{{aktenzeichen}}', previewText: 'Az. 2026/0815' },
+    { label: 'Bearbeiter', value: '{{bearbeiter}}', previewText: 'A. Salomon' },
+    { label: 'Telefon', value: '{{telefon}}', previewText: '0711 2063-0' },
+    { label: 'E-Mail', value: '{{email}}', previewText: 'alexander.salomon@gruene.landtag-bw.de' },
+    { label: 'Unser Zeichen', value: '{{unser_zeichen}}', previewText: 'AS/kl' },
   ],
   subject: [
-    { label: 'Betreff', value: '{{betreff}}' },
+    { label: 'Betreff', value: '{{betreff}}', previewText: 'Ihr Schreiben vom 15. Januar 2026 – Stellungnahme' },
   ],
   attachments: [
-    { label: 'Anlagen-Liste', value: '{{anlagen_liste}}' },
+    { label: 'Anlagen-Liste', value: '{{anlagen_liste}}', previewText: '1. Stellungnahme\n2. Gutachten Prof. Dr. Müller' },
   ],
   footer: [
-    { label: 'Absender Name', value: '{{absender_name}}' },
-    { label: 'Organisation', value: '{{absender_organisation}}' },
-    { label: 'Telefon', value: '{{telefon}}' },
-    { label: 'E-Mail', value: '{{email}}' },
+    { label: 'Absender Name', value: '{{absender_name}}', previewText: 'Alexander Salomon' },
+    { label: 'Organisation', value: '{{absender_organisation}}', previewText: 'Fraktion GRÜNE' },
+    { label: 'Telefon', value: '{{telefon}}', previewText: '0711 2063-0' },
+    { label: 'E-Mail', value: '{{email}}', previewText: 'alexander.salomon@gruene.landtag-bw.de' },
   ],
 };
 
@@ -347,35 +347,52 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const snapToOtherElements = (id: string, x: number, y: number, allElements: HeaderElement[]) => {
     const current = allElements.find((el) => el.id === id);
     if (!current) return { x, y, guides: {} as { x?: number; y?: number } };
-    let sx = x, sy = y;
     const { width: w, height: h } = getElementDimensions(current);
-    const guides: { x?: number; y?: number } = {};
-    const edgeTargets = allElements.filter((el) => el.id !== id).flatMap((el) => {
+
+    // Collect all snap targets: other element edges/centers + canvas axis lines
+    const xTargets: number[] = [];
+    const yTargets: number[] = [];
+    for (const el of allElements) {
+      if (el.id === id) continue;
       const { width: tw, height: th } = getElementDimensions(el);
-      return [{ x: el.x, y: el.y }, { x: el.x + tw, y: el.y + th }, { x: el.x + tw / 2, y: el.y + th / 2 }];
-    });
-    for (const t of edgeTargets) {
-      if (Math.abs(sx - t.x) <= SNAP_MM) { sx = t.x; guides.x = t.x; }
-      if (Math.abs(sx + w - t.x) <= SNAP_MM) { sx = t.x - w; guides.x = t.x; }
-      if (Math.abs(sx + w / 2 - t.x) <= SNAP_MM) { sx = t.x - w / 2; guides.x = t.x; }
-      if (Math.abs(sy - t.y) <= SNAP_MM) { sy = t.y; guides.y = t.y; }
-      if (Math.abs(sy + h - t.y) <= SNAP_MM) { sy = t.y - h; guides.y = t.y; }
-      if (Math.abs(sy + h / 2 - t.y) <= SNAP_MM) { sy = t.y - h / 2; guides.y = t.y; }
+      xTargets.push(el.x, el.x + tw, el.x + tw / 2);
+      yTargets.push(el.y, el.y + th, el.y + th / 2);
     }
-    const centerX = canvasMaxWidth / 2;
-    const centerY = canvasMaxHeight / 2;
-    const axisTargetsX = [0, centerX, canvasMaxWidth];
-    const axisTargetsY = [0, centerY, canvasMaxHeight];
-    for (const tx of axisTargetsX) {
-      if (Math.abs(sx - tx) <= SNAP_MM) { sx = tx; guides.x = tx; }
-      if (Math.abs(sx + w - tx) <= SNAP_MM) { sx = tx - w; guides.x = tx; }
-      if (Math.abs(sx + w / 2 - tx) <= SNAP_MM) { sx = tx - w / 2; guides.x = tx; }
+    // Canvas axis targets
+    xTargets.push(0, canvasMaxWidth / 2, canvasMaxWidth);
+    yTargets.push(0, canvasMaxHeight / 2, canvasMaxHeight);
+
+    // Find best snap per axis (smallest delta wins)
+    let bestX: { delta: number; snapped: number; guide: number } | null = null;
+    let bestY: { delta: number; snapped: number; guide: number } | null = null;
+
+    for (const tx of xTargets) {
+      // Left edge snaps to target
+      const dLeft = Math.abs(x - tx);
+      if (dLeft <= SNAP_MM && (!bestX || dLeft < bestX.delta)) bestX = { delta: dLeft, snapped: tx, guide: tx };
+      // Right edge snaps to target
+      const dRight = Math.abs(x + w - tx);
+      if (dRight <= SNAP_MM && (!bestX || dRight < bestX.delta)) bestX = { delta: dRight, snapped: tx - w, guide: tx };
+      // Center snaps to target
+      const dCenter = Math.abs(x + w / 2 - tx);
+      if (dCenter <= SNAP_MM && (!bestX || dCenter < bestX.delta)) bestX = { delta: dCenter, snapped: tx - w / 2, guide: tx };
     }
-    for (const ty of axisTargetsY) {
-      if (Math.abs(sy - ty) <= SNAP_MM) { sy = ty; guides.y = ty; }
-      if (Math.abs(sy + h - ty) <= SNAP_MM) { sy = ty - h; guides.y = ty; }
-      if (Math.abs(sy + h / 2 - ty) <= SNAP_MM) { sy = ty - h / 2; guides.y = ty; }
+
+    for (const ty of yTargets) {
+      const dTop = Math.abs(y - ty);
+      if (dTop <= SNAP_MM && (!bestY || dTop < bestY.delta)) bestY = { delta: dTop, snapped: ty, guide: ty };
+      const dBottom = Math.abs(y + h - ty);
+      if (dBottom <= SNAP_MM && (!bestY || dBottom < bestY.delta)) bestY = { delta: dBottom, snapped: ty - h, guide: ty };
+      const dCenter = Math.abs(y + h / 2 - ty);
+      if (dCenter <= SNAP_MM && (!bestY || dCenter < bestY.delta)) bestY = { delta: dCenter, snapped: ty - h / 2, guide: ty };
     }
+
+    const sx = bestX ? bestX.snapped : x;
+    const sy = bestY ? bestY.snapped : y;
+    const guides: { x?: number; y?: number } = {};
+    if (bestX) guides.x = bestX.guide;
+    if (bestY) guides.y = bestY.guide;
+
     return { x: Math.round(sx), y: Math.round(sy), guides };
   };
 
@@ -569,6 +586,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     // Variable drop support
     const variableData = event.dataTransfer.getData('application/x-variable');
     if (variableData) {
+      // Find the previewText from BLOCK_VARIABLES
+      const allVars = Object.values(BLOCK_VARIABLES).flat();
+      const varDef = allVars.find(v => v.value === variableData);
       const el: HeaderElement = {
         id: createElementId(),
         type: 'text',
@@ -578,6 +598,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         fontSize: 10,
         fontFamily: 'Arial',
         isVariable: true,
+        variablePreviewText: varDef?.previewText,
       };
       applyElements(prev => [...prev, el]);
       setSelectedElementId(el.id);
@@ -588,6 +609,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     // Also detect {{...}} pattern from plain text drop
     const plainText = event.dataTransfer.getData('text/plain');
     if (plainText && /^\{\{.+\}\}$/.test(plainText.trim())) {
+      const allVars = Object.values(BLOCK_VARIABLES).flat();
+      const varDef = allVars.find(v => v.value === plainText.trim());
       const el: HeaderElement = {
         id: createElementId(),
         type: 'text',
@@ -597,6 +620,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         fontSize: 10,
         fontFamily: 'Arial',
         isVariable: true,
+        variablePreviewText: varDef?.previewText,
       };
       applyElements(prev => [...prev, el]);
       setSelectedElementId(el.id);

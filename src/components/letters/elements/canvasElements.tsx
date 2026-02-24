@@ -35,7 +35,10 @@ export const TextCanvasElement: React.FC<TextCanvasElementProps> = ({
   const hasExplicitWidth = element.width !== undefined && element.width !== null;
   const hasExplicitHeight = element.height !== undefined && element.height !== null;
 
-  const isVariable = (element as any).isVariable === true;
+  const isVariable = element.isVariable === true;
+  const displayText = isVariable && element.variablePreviewText
+    ? element.variablePreviewText
+    : (element.content || 'Text');
 
   return (
     <div
@@ -91,7 +94,7 @@ export const TextCanvasElement: React.FC<TextCanvasElementProps> = ({
       ) : (
         <>
           {isVariable && <span className="mr-1">⚡</span>}
-          {element.content || 'Text'}
+          {displayText}
         </>
       )}
       {renderResizeHandles?.(element)}

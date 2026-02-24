@@ -183,6 +183,9 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
   }
 
   const isVariable = (element as any).isVariable === true;
+  const displayText = isVariable && (element as any).variablePreviewText
+    ? (element as any).variablePreviewText
+    : element.content;
 
   return (
     <div
@@ -205,7 +208,7 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
       className="text-gray-800"
     >
       {isVariable && <span className="mr-0.5">⚡</span>}
-      {element.content}
+      {displayText}
     </div>
   );
 };

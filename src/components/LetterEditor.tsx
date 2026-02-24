@@ -21,6 +21,8 @@ import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
 import { ContactSelector } from './ContactSelector';
+import { buildVariableMap, substituteVariables } from '@/lib/letterVariables';
+import type { HeaderElement } from '@/components/canvas-engine/types';
 
 interface Letter {
   id: string;
@@ -1086,6 +1088,47 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     showPagination !== (letter.show_pagination || false) // WICHTIG: Paginierung in unsaved changes berücksichtigen
   );
 
+  // Build substituted canvas block elements from template
+  const substitutedBlocks = React.useMemo(() => {
+    if (!currentTemplate) return {};
+    const blockContent = (currentTemplate as any)?.layout_settings?.blockContent as Record<string, HeaderElement[]> | undefined;
+    if (!blockContent) return {};
+
+    const sender = senderInfos.find(s => s.id === editedLetter.sender_info_id);
+    const contact = contacts.find(c => c.name === editedLetter.recipient_name);
+    const infoBlock = informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id));
+
+    const recipientData = contact ? {
+      name: contact.name,
+      street: [contact.private_street, contact.private_house_number].filter(Boolean).join(' ') || [contact.business_street, contact.business_house_number].filter(Boolean).join(' '),
+      postal_code: contact.private_postal_code || contact.business_postal_code || '',
+      city: contact.private_city || contact.business_city || '',
+      country: contact.private_country || contact.business_country || '',
+    } : editedLetter.recipient_name ? {
+      name: editedLetter.recipient_name,
+      street: '',
+      postal_code: '',
+      city: '',
+      country: '',
+    } : null;
+
+    const varMap = buildVariableMap(
+      { subject: editedLetter.subject, letterDate: editedLetter.letter_date, referenceNumber: editedLetter.reference_number },
+      sender ? { name: sender.name, organization: sender.organization, street: sender.street, house_number: sender.house_number, postal_code: sender.postal_code, city: sender.city, phone: sender.phone, email: sender.email } : null,
+      recipientData,
+      infoBlock ? { reference: infoBlock.block_data?.reference_pattern, handler: infoBlock.block_data?.contact_name, our_reference: '' } : null,
+      attachments,
+    );
+
+    const result: Record<string, HeaderElement[]> = {};
+    for (const [key, elements] of Object.entries(blockContent)) {
+      if (Array.isArray(elements) && elements.length > 0) {
+        result[key] = substituteVariables(elements, varMap);
+      }
+    }
+    return result;
+  }, [currentTemplate, editedLetter, senderInfos, contacts, informationBlocks, attachments]);
+
   if (!isOpen) return null;
 
   return (
@@ -1709,6 +1752,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     attachments={attachments}
                     showPagination={showPagination}
                     debugMode={showLayoutDebug}
+                    addressFieldElements={substitutedBlocks.addressField}
+                    returnAddressElements={substitutedBlocks.returnAddress}
+                    infoBlockElements={substitutedBlocks.infoBlock}
+                    subjectElements={substitutedBlocks.subject}
+                    attachmentElements={substitutedBlocks.attachments}
+                    footerTextElements={substitutedBlocks.footer}
                   />
                 </div>
               </div>

@@ -5146,16 +5146,20 @@ export type Database = {
       }
       letter_templates: {
         Row: {
+          address_field_elements: Json | null
+          attachment_elements: Json | null
           created_at: string
           created_by: string
           default_info_blocks: string[] | null
           default_sender_id: string | null
           footer_blocks: Json | null
+          footer_text_elements: Json | null
           header_image_position: Json | null
           header_image_url: string | null
           header_layout_type: string | null
           header_text_elements: Json | null
           id: string
+          info_block_elements: Json | null
           is_active: boolean | null
           is_default: boolean | null
           layout_settings: Json | null
@@ -5163,20 +5167,26 @@ export type Database = {
           letterhead_html: string
           name: string
           response_time_days: number
+          return_address_elements: Json | null
+          subject_elements: Json | null
           tenant_id: string
           updated_at: string
         }
         Insert: {
+          address_field_elements?: Json | null
+          attachment_elements?: Json | null
           created_at?: string
           created_by: string
           default_info_blocks?: string[] | null
           default_sender_id?: string | null
           footer_blocks?: Json | null
+          footer_text_elements?: Json | null
           header_image_position?: Json | null
           header_image_url?: string | null
           header_layout_type?: string | null
           header_text_elements?: Json | null
           id?: string
+          info_block_elements?: Json | null
           is_active?: boolean | null
           is_default?: boolean | null
           layout_settings?: Json | null
@@ -5184,20 +5194,26 @@ export type Database = {
           letterhead_html?: string
           name: string
           response_time_days?: number
+          return_address_elements?: Json | null
+          subject_elements?: Json | null
           tenant_id: string
           updated_at?: string
         }
         Update: {
+          address_field_elements?: Json | null
+          attachment_elements?: Json | null
           created_at?: string
           created_by?: string
           default_info_blocks?: string[] | null
           default_sender_id?: string | null
           footer_blocks?: Json | null
+          footer_text_elements?: Json | null
           header_image_position?: Json | null
           header_image_url?: string | null
           header_layout_type?: string | null
           header_text_elements?: Json | null
           id?: string
+          info_block_elements?: Json | null
           is_active?: boolean | null
           is_default?: boolean | null
           layout_settings?: Json | null
@@ -5205,6 +5221,8 @@ export type Database = {
           letterhead_html?: string
           name?: string
           response_time_days?: number
+          return_address_elements?: Json | null
+          subject_elements?: Json | null
           tenant_id?: string
           updated_at?: string
         }
