@@ -235,7 +235,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const effectiveScaleX = previewScaleX * zoomLevel;
   const effectiveScaleY = previewScaleY * zoomLevel;
 
-  const marginGuides = [
+  const isFullPageCanvas = !blockKey || blockKey === 'header';
+  const marginGuides = isFullPageCanvas ? [
     { key: 'left', orientation: 'vertical' as const, pos: (layoutSettings?.margins.left ?? 25) * effectiveScaleX, label: 'Links', color: '#2563eb' },
     { key: 'right', orientation: 'vertical' as const, pos: (canvasMaxWidth - (layoutSettings?.margins.right ?? 20)) * effectiveScaleX, label: 'Rechts', color: '#2563eb' },
     { key: 'top', orientation: 'horizontal' as const, pos: (layoutSettings?.margins.top ?? 45) * effectiveScaleY, label: 'Oben', color: '#16a34a' },
@@ -243,7 +244,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   ].filter((guide) => {
     if (guide.orientation === 'vertical') return guide.pos >= 0 && guide.pos <= canvasPixelWidth;
     return guide.pos >= 0 && guide.pos <= canvasPixelHeight;
-  });
+  }) : [];
 
   useEffect(() => {
     if (!showRuler) return;
