@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
 import { StructuredFooterEditor } from '@/components/letters/StructuredFooterEditor';
 import { LayoutSettingsEditor } from '@/components/letters/LayoutSettingsEditor';
+import { CanvasToolbar } from '@/components/letters/CanvasToolbar';
 import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCanvasDesigner';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
@@ -681,16 +682,18 @@ const LetterTemplateManager: React.FC = () => {
           </Card>
           </div>
           <div className="space-y-3 xl:col-start-2">
-            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-2">
-              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled><Undo2 className="h-3.5 w-3.5 mr-1" />Undo</Button>
-              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled><Redo2 className="h-3.5 w-3.5 mr-1" />Redo</Button>
-              <Button type="button" variant={ruler ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [blockKey]: !prev[blockKey] }))}><Ruler className="h-3.5 w-3.5 mr-1" />Lineal</Button>
-              <Button type="button" variant={showAxes ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_axes`]: !prev[`${blockKey}_axes`] }))}><Crosshair className="h-3.5 w-3.5 mr-1" />Achsen</Button>
-              <Button type="button" variant={showMargins ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_margins`]: !(prev[`${blockKey}_margins`] !== false) }))}><Eye className="h-3.5 w-3.5 mr-1" />Ränder</Button>
-              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={!selected}><Copy className="h-3.5 w-3.5 mr-1" />Kopieren</Button>
-              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled><ClipboardPaste className="h-3.5 w-3.5 mr-1" />Einfügen</Button>
-              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={duplicateSelectedItem} disabled={!selected}><CopyPlus className="h-3.5 w-3.5 mr-1" />Duplizieren</Button>
-            </div>
+            <CanvasToolbar
+              showRuler={ruler}
+              onToggleRuler={() => setShowBlockRuler((prev) => ({ ...prev, [blockKey]: !prev[blockKey] }))}
+              showAxes={showAxes}
+              onToggleAxes={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_axes`]: !prev[`${blockKey}_axes`] }))}
+              showMargins={showMargins}
+              onToggleMargins={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_margins`]: !(prev[`${blockKey}_margins`] !== false) }))}
+              canCopy={!!selected}
+              canPaste={false}
+              canDuplicate={!!selected}
+              onDuplicate={duplicateSelectedItem}
+            />
           {/* Canvas area - centered */}
           <div className="border rounded-lg p-6 bg-muted/30 overflow-auto flex items-center justify-center min-h-[200px]"
             onMouseMove={(e) => onBlockCanvasMouseMove(e, blockKey, scale)}
@@ -983,6 +986,7 @@ const LetterTemplateManager: React.FC = () => {
         <StructuredHeaderEditor
           initialElements={formData.header_elements}
           onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
+          layoutSettings={formData.layout_settings}
           actionButtons={editingTemplate ? undefined : (
             <div className="flex flex-col gap-2">
               <Button onClick={handleCreateTemplate}>

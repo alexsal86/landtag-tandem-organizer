@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, LayoutGrid, Ruler, Crosshair, Undo2, Redo2, Keyboard, Copy, ClipboardPaste, CopyPlus, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, LayoutGrid, Keyboard, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -18,6 +18,8 @@ import { useCanvasSelection } from '@/components/canvas-engine/hooks/useCanvasSe
 import { getElementIconFromRegistry, getElementLabelFromRegistry } from '@/components/letters/elements/registry';
 import { ImageCanvasElement, TextCanvasElement } from '@/components/letters/elements/canvasElements';
 import { CSS_PX_PER_MM } from '@/lib/units';
+import { CanvasToolbar } from '@/components/letters/CanvasToolbar';
+import type { LetterLayoutSettings } from '@/types/letterLayout';
 
 interface GalleryImage {
   name: string;
@@ -29,6 +31,7 @@ interface StructuredHeaderEditorProps {
   initialElements?: HeaderElement[];
   onElementsChange: (elements: HeaderElement[]) => void;
   actionButtons?: React.ReactNode;
+  layoutSettings?: LetterLayoutSettings;
 }
 
 const createElementId = () => crypto.randomUUID();
@@ -98,7 +101,7 @@ const WappenSVG: React.FC<{ width: number; height: number; className?: string }>
   <img src="/assets/wappen-bw.svg" width={width} height={height} className={className} alt="Landeswappen Baden-Württemberg" style={{ objectFit: 'contain' }} />
 );
 
-export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ initialElements = [], onElementsChange, actionButtons }) => {
+export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ initialElements = [], onElementsChange, actionButtons, layoutSettings }) => {
   const { toast } = useToast();
   const { currentTenant } = useTenant();
   const {
@@ -123,6 +126,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   } = useCanvasSelection();
   const [showRuler, setShowRuler] = useState(false);
   const [showCenterGuides, setShowCenterGuides] = useState(false);
+  const [showMargins, setShowMargins] = useState(true);
   const [snapLines, setSnapLines] = useState<{ x?: number; y?: number }>({});
   const [smartGuideDistance, setSmartGuideDistance] = useState<{ horizontal?: number; vertical?: number }>({});
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
@@ -243,6 +247,16 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const canvasPixelHeight = previewHeight * zoomLevel;
   const effectiveScaleX = previewScaleX * zoomLevel;
   const effectiveScaleY = previewScaleY * zoomLevel;
+
+  const marginGuides = [
+    { key: 'left', orientation: 'vertical' as const, pos: (layoutSettings?.margins.left ?? 25) * effectiveScaleX, label: 'Links', color: '#2563eb' },
+    { key: 'right', orientation: 'vertical' as const, pos: (headerMaxWidth - (layoutSettings?.margins.right ?? 20)) * effectiveScaleX, label: 'Rechts', color: '#2563eb' },
+    { key: 'top', orientation: 'horizontal' as const, pos: (layoutSettings?.margins.top ?? 45) * effectiveScaleY, label: 'Oben', color: '#16a34a' },
+    { key: 'bottom', orientation: 'horizontal' as const, pos: (headerMaxHeight - (layoutSettings?.margins.bottom ?? 25)) * effectiveScaleY, label: 'Unten', color: '#16a34a' },
+  ].filter((guide) => {
+    if (guide.orientation === 'vertical') return guide.pos >= 0 && guide.pos <= canvasPixelWidth;
+    return guide.pos >= 0 && guide.pos <= canvasPixelHeight;
+  });
 
   useEffect(() => {
     if (!showRuler) return;
@@ -1270,24 +1284,37 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-2">
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={undo} disabled={!canUndo}><Undo2 className="h-3.5 w-3.5 mr-1" />Undo</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={redo} disabled={!canRedo}><Redo2 className="h-3.5 w-3.5 mr-1" />Redo</Button>
-        <Button variant={showRuler ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowRuler(v => !v)}><Ruler className="h-3.5 w-3.5 mr-1" />Lineal</Button>
-        <Button variant={showCenterGuides ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowCenterGuides(v => !v)}><Crosshair className="h-3.5 w-3.5 mr-1" />Achsen</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={copySelectedElement} disabled={!selectedElement}><Copy className="h-3.5 w-3.5 mr-1" />Kopieren</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={pasteClipboardElement} disabled={!canPasteFromClipboard}><ClipboardPaste className="h-3.5 w-3.5 mr-1" />Einfügen</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={duplicateSelectedElement} disabled={!selectedElement}><CopyPlus className="h-3.5 w-3.5 mr-1" />Duplizieren</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, -1)} disabled={!canMoveLayerBackward}><ArrowDown className="h-3.5 w-3.5 mr-1" />Ebene runter</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, 1)} disabled={!canMoveLayerForward}><ArrowUp className="h-3.5 w-3.5 mr-1" />Ebene hoch</Button>
-        <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}><Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={zoomOut} disabled={zoomLevel <= ZOOM_STEPS[0]}>−</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(1)}>{Math.round(zoomLevel * 100)}%</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={zoomIn} disabled={zoomLevel >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}>+</Button>
-        <div className="h-7 px-2 text-xs rounded border bg-background/90 flex items-center text-muted-foreground">
-          Auswahl: <span className="ml-1 font-semibold text-foreground">{selectedCount}</span>
-        </div>
-      </div>
+      <CanvasToolbar
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        showRuler={showRuler}
+        onToggleRuler={() => setShowRuler((v) => !v)}
+        showAxes={showCenterGuides}
+        onToggleAxes={() => setShowCenterGuides((v) => !v)}
+        showMargins={showMargins}
+        onToggleMargins={() => setShowMargins((v) => !v)}
+        canCopy={!!selectedElement}
+        onCopy={copySelectedElement}
+        canPaste={canPasteFromClipboard}
+        onPaste={pasteClipboardElement}
+        canDuplicate={!!selectedElement}
+        onDuplicate={duplicateSelectedElement}
+        trailingContent={
+          <>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, -1)} disabled={!canMoveLayerBackward}><ArrowDown className="h-3.5 w-3.5 mr-1" />Ebene runter</Button>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, 1)} disabled={!canMoveLayerForward}><ArrowUp className="h-3.5 w-3.5 mr-1" />Ebene hoch</Button>
+            <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}><Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts</Button>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={zoomOut} disabled={zoomLevel <= ZOOM_STEPS[0]}>−</Button>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(1)}>{Math.round(zoomLevel * 100)}%</Button>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={zoomIn} disabled={zoomLevel >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}>+</Button>
+            <div className="h-7 px-2 text-xs rounded border bg-background/90 flex items-center text-muted-foreground">
+              Auswahl: <span className="ml-1 font-semibold text-foreground">{selectedCount}</span>
+            </div>
+          </>
+        }
+      />
 
       {canAlignSelection && (
         <div className="flex flex-wrap gap-1 rounded-md border bg-background p-1">
@@ -1587,6 +1614,21 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none" />
                 </>
               )}
+              {showMargins && marginGuides.map((guide) => (
+                <React.Fragment key={guide.key}>
+                  {guide.orientation === 'vertical' ? (
+                    <>
+                      <div className="absolute top-0 bottom-0 border-l border-dashed pointer-events-none z-10" style={{ left: `${guide.pos}px`, borderColor: guide.color }} />
+                      <div className="absolute top-1 rounded bg-background/90 px-1 py-0 text-[10px] text-muted-foreground pointer-events-none z-10" style={{ left: `${Math.min(Math.max(guide.pos + 2, 2), Math.max(canvasPixelWidth - 42, 2))}px` }}>{guide.label}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="absolute left-0 right-0 border-t border-dashed pointer-events-none z-10" style={{ top: `${guide.pos}px`, borderColor: guide.color }} />
+                      <div className="absolute left-1 rounded bg-background/90 px-1 py-0 text-[10px] text-muted-foreground pointer-events-none z-10" style={{ top: `${Math.min(Math.max(guide.pos + 2, 2), Math.max(canvasPixelHeight - 18, 2))}px` }}>{guide.label}</div>
+                    </>
+                  )}
+                </React.Fragment>
+              ))}
 
               {snapLines.x != null && (
                 <>
