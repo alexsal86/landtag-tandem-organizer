@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Edit3, Trash2, Plus, Save, X, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,6 +64,12 @@ type TabRect = {
   width: number;
   height: number;
 };
+
+interface GalleryImage {
+  name: string;
+  path: string;
+  blobUrl: string;
+}
 
 
 
@@ -183,9 +189,9 @@ const LetterTemplateManager: React.FC = () => {
       width: formData.layout_settings.pageWidth,
       height: Math.max(0, formData.layout_settings.pageHeight - formData.layout_settings.footer.top),
     }),
-    'block-address': getMarginsForRect(formData.layout_settings.addressField),
-    'block-return-address': getMarginsForRect(formData.layout_settings.returnAddress),
-    'block-info': getMarginsForRect(formData.layout_settings.infoBlock),
+    'block-address': getMarginsForRect({ x: formData.layout_settings.addressField.left, y: formData.layout_settings.addressField.top, width: formData.layout_settings.addressField.width, height: formData.layout_settings.addressField.height }),
+    'block-return-address': getMarginsForRect({ x: formData.layout_settings.returnAddress.left, y: formData.layout_settings.returnAddress.top, width: formData.layout_settings.returnAddress.width, height: formData.layout_settings.returnAddress.height }),
+    'block-info': getMarginsForRect({ x: formData.layout_settings.infoBlock.left, y: formData.layout_settings.infoBlock.top, width: formData.layout_settings.infoBlock.width, height: formData.layout_settings.infoBlock.height }),
     'block-subject': getMarginsForRect({
       x: 0,
       y: formData.layout_settings.subject.top,

@@ -973,16 +973,16 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const alignSelection = (axis: AlignAxis) => {
     applyElements((prev) => alignElements(prev, axis, {
       selectedElementIds,
-      canvasMaxWidth,
-      canvasMaxHeight,
+      headerMaxWidth: canvasMaxWidth,
+      headerMaxHeight: canvasMaxHeight,
     }));
   };
 
   const distributeSelection = (axis: DistributeAxis) => {
     applyElements((prev) => distributeElements(prev, axis, {
       selectedElementIds,
-      canvasMaxWidth,
-      canvasMaxHeight,
+      headerMaxWidth: canvasMaxWidth,
+      headerMaxHeight: canvasMaxHeight,
     }));
   };
 
