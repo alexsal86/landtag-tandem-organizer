@@ -1,5 +1,5 @@
 export type ElementType = 'text' | 'image' | 'shape' | 'block';
-export type ShapeType = 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion';
+export type ShapeType = 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen';
 export type ResizeHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
 
 export interface BaseElement {
