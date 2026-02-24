@@ -200,20 +200,47 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     });
   }, []);
 
-  // Native wheel listener for Ctrl+Scroll zoom (passive: false required)
+  const zoomLevelRef = useRef(zoomLevel);
+  useEffect(() => { zoomLevelRef.current = zoomLevel; }, [zoomLevel]);
+
+  // Native wheel listener for Ctrl+Scroll zoom with cursor-centered scrolling
   useEffect(() => {
     const el = previewContainerRef.current;
     if (!el) return;
     const handler = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        if (e.deltaY < 0) zoomIn();
-        else zoomOut();
-      }
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+
+      const container = el;
+      const rect = container.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left + container.scrollLeft;
+      const cursorY = e.clientY - rect.top + container.scrollTop;
+
+      const currentScale = previewScaleX * zoomLevelRef.current;
+      const mmX = (cursorX - 28) / currentScale;
+      const mmY = (cursorY - 28) / currentScale;
+
+      const currentIdx = ZOOM_STEPS.indexOf(zoomLevelRef.current);
+      const nextZoom = e.deltaY < 0
+        ? (currentIdx < ZOOM_STEPS.length - 1 ? ZOOM_STEPS[currentIdx + 1] : zoomLevelRef.current)
+        : (currentIdx > 0 ? ZOOM_STEPS[currentIdx - 1] : zoomLevelRef.current);
+
+      if (nextZoom === zoomLevelRef.current) return;
+      setZoomLevel(nextZoom);
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const newScale = previewScaleX * nextZoom;
+          const newCursorX = mmX * newScale + 28;
+          const newCursorY = mmY * newScale + 28;
+          container.scrollLeft = newCursorX - (e.clientX - rect.left);
+          container.scrollTop = newCursorY - (e.clientY - rect.top);
+        });
+      });
     };
     el.addEventListener('wheel', handler, { passive: false });
     return () => el.removeEventListener('wheel', handler);
-  }, [zoomIn, zoomOut]);
+  }, []);
 
   // Effective scale includes zoom — drives canvas size, rulers, element positions
   const canvasPixelWidth = previewWidth * zoomLevel;
@@ -436,7 +463,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   const addTextElement = (x = 20, y = 12, content = 'Lorem ipsum dolor sit amet') => {
-    const el: HeaderElement = { id: createElementId(), type: 'text', x, y, content, fontSize: 12, fontFamily: 'Arial', fontWeight: 'normal', color: '#000000', textLineHeight: 1.2, width: 70, height: 8 };
+    const el: HeaderElement = { id: createElementId(), type: 'text', x, y, content, fontSize: 12, fontFamily: 'Arial', fontWeight: 'normal', color: '#000000', textLineHeight: 1.2 };
     applyElements(prev => [...prev, el]);
     selectOne(el.id);
   };
@@ -1469,6 +1496,27 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                           </div>
                           </div>
                           <div><Label className="text-xs">Zeilenabstand</Label><Input type="number" step="0.1" min="0.8" value={element.textLineHeight || 1.2} onChange={(e) => updateElement(element.id, { textLineHeight: parseFloat(e.target.value) || 1.2 })} className="h-7 text-xs" /></div>
+                          <div><Label className="text-xs">Ausrichtung</Label>
+                          <div className="grid grid-cols-3 gap-1">
+                            <Button type="button" size="sm" className="h-6 text-xs" variant={(element as TextElement).textAlign === 'left' || !(element as TextElement).textAlign ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textAlign: 'left' })}>L</Button>
+                            <Button type="button" size="sm" className="h-6 text-xs" variant={(element as TextElement).textAlign === 'center' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textAlign: 'center' })}>M</Button>
+                            <Button type="button" size="sm" className="h-6 text-xs" variant={(element as TextElement).textAlign === 'right' ? 'default' : 'outline'} onClick={() => updateElement(element.id, { textAlign: 'right' })}>R</Button>
+                          </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div><Label className="text-xs">Breite (mm)</Label>
+                              <div className="flex gap-1">
+                                <Input type="number" value={element.width ?? ''} placeholder="Auto" onChange={(e) => updateElement(element.id, { width: e.target.value ? parseFloat(e.target.value) || undefined : undefined })} className="h-7 text-xs flex-1" />
+                                {element.width != null && <Button type="button" size="sm" variant="ghost" className="h-7 px-1.5 text-[10px]" onClick={() => updateElement(element.id, { width: undefined })}>Auto</Button>}
+                              </div>
+                            </div>
+                            <div><Label className="text-xs">Höhe (mm)</Label>
+                              <div className="flex gap-1">
+                                <Input type="number" value={element.height ?? ''} placeholder="Auto" onChange={(e) => updateElement(element.id, { height: e.target.value ? parseFloat(e.target.value) || undefined : undefined })} className="h-7 text-xs flex-1" />
+                                {element.height != null && <Button type="button" size="sm" variant="ghost" className="h-7 px-1.5 text-[10px]" onClick={() => updateElement(element.id, { height: undefined })}>Auto</Button>}
+                              </div>
+                            </div>
+                          </div>
                         </>
                       )}
                       {element.type === 'image' && (
@@ -1536,8 +1584,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             <p className="text-xs text-muted-foreground">Doppelklick auf Text/Block zum Bearbeiten. Mit Mausrad + Strg/Cmd zoomen.</p>
           </CardHeader>
           <CardContent className="p-3">
-            <div ref={previewContainerRef} className="w-full overflow-auto">
-          <div className="relative inline-block" style={{ paddingLeft: 28, paddingTop: 28, width: canvasPixelWidth + 28, height: canvasPixelHeight + 28 }}>
+            <div ref={previewContainerRef} className="border rounded-lg p-4 bg-muted/20 overflow-auto outline-none" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+          <div className="relative mx-auto" style={{ paddingLeft: 28, paddingTop: 28, width: canvasPixelWidth + 28, height: canvasPixelHeight + 28 }}>
               <div className={`absolute top-0 left-7 h-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ width: canvasPixelWidth }}>
                   <canvas ref={horizontalRulerRef} width={Math.round(canvasPixelWidth)} height={28} className="absolute inset-0 h-full w-full" />
                   {Array.from({ length: 22 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * canvasPixelWidth) / 21}px` }}>{i * 10}</span>))}
@@ -1620,7 +1668,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 const scaleY = effectiveScaleY;
 
                 if (element.type === 'text') {
-                  return (
+                    return (
                     <TextCanvasElement
                       key={element.id}
                       element={element}
@@ -1638,6 +1686,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                       onCommitEdit={commitTextEditing}
                       onCancelEdit={cancelEditing}
                       ariaLabel={getElementAriaLabel(element)}
+                      renderResizeHandles={renderResizeHandles}
                     />
                   );
                 }
