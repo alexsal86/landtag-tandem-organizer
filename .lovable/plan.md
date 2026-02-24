@@ -1,72 +1,38 @@
 
+# Wappen-Form hinzufuegen + Flower2 Build-Fehler beheben
 
-# Fix: Labeled HR Rendering + Datenverlust beim Schliessen
+## Uebersicht
 
-## Problem 1: Labeled HR zeigt keine Linien
+Fuenf Aenderungen sind noetig, um das Landeswappen Baden-Wuerttemberg als neue Form im Canvas-Designer verfuegbar zu machen und den bestehenden Build-Fehler zu beheben.
 
-**Ursache:** `createDOM()` erzeugt einen Flex-Container, und `decorate()` gibt einen weiteren verschachtelten `<div>` mit eigenem Flex-Layout zurueck. Lexical mountet das React-Element von `decorate()` als Kind in den `createDOM()`-Container. Zwei verschachtelte Flex-Container verhindern, dass die `<hr>`-Elemente sich korrekt ausdehnen.
+## Aenderungen
 
-**Loesung (wie von Claude vorgeschlagen):**
-- `createDOM()` wird zum vollstaendigen Flex-Container mit `alignItems: center` und `gap`
-- `decorate()` gibt ein React Fragment (`<>...</>`) zurueck statt eines verschachtelten `<div>` -- so landen die `<hr>` und `<span>` direkt im Flex-Container von `createDOM()`
-- Margin (`my-4`) wird ueber `createDOM()` inline gesetzt, da es der aeussere DOM-Knoten ist
+### 1. SVG-Datei kopieren
+- Kopiere `user-uploads://Grosses_Landeswappen_Baden-Württemberg_sw.svg` nach `public/assets/wappen-bw.svg`
 
-**Datei:** `src/components/LabeledHorizontalRuleNode.tsx`
+### 2. ShapeType erweitern (`src/components/canvas-engine/types.ts`)
+- `'wappen'` zur ShapeType-Union hinzufuegen
 
----
+### 3. Element-Registry erweitern (`src/components/letters/elements/registry.tsx`)
+- Wappen-Fall im `shape`-Abschnitt der `getIcon`-Funktion hinzufuegen (img-Tag mit dem SVG)
 
-## Problem 2: Text verschwindet beim Schliessen/Oeffnen
+### 4. StructuredHeaderEditor.tsx -- Vier Stellen
 
-**Ursache:** `editorKey` wird bei jedem `open`-Wechsel inkrementiert. Das erzwingt einen kompletten Remount des Editors. Da der Editor beim Remount `todayData.html`/`todayData.nodes` als Props bekommt, und `store` als React-State erhalten bleibt, sollte das eigentlich funktionieren -- ABER: der Remount passiert im gleichen Render-Zyklus wie `setOpen(true)`, und `animateClosePanel` flusht `store` in localStorage. Das eigentliche Problem ist subtiler:
+**a) Import-Fix (Zeile 9):** `Flower2` zum lucide-react Import hinzufuegen (behebt den Build-Fehler)
 
-Der `editorKey`-Increment beim Oeffnen ist unnoetig und schaedlich. Der Editor-State lebt im React-State (`store`), nicht nur in localStorage. Beim Schliessen bleibt `store` intakt. Beim Wiederoeffnen muss der Editor NICHT neu gemountet werden -- er kann einfach mit seinem bestehenden Lexical-State weiterleben.
+**b) WappenSVG-Komponente (nach LionSVG, ca. Zeile 95):** Neue Komponente mit `<img>` Tag, die auf `/assets/wappen-bw.svg` verweist
 
-**Loesung:** 
-- `editorKey` wird auf `todayKey` gesetzt (stabiler String, aendert sich nur beim Tagwechsel)
-- Der `useEffect` mit `setEditorKey` bei `open`-Aenderung wird entfernt
-- Der Editor bleibt beim Oeffnen/Schliessen gemountet und behaelt seinen State
-- Der `animateClosePanel`-Flush bleibt als Sicherheitsnetz fuer localStorage
+**c) addShapeElement defaults (Zeile 446-452):** Wappen-Eintrag hinzufuegen:
+```text
+wappen: { width: 18, height: 10, fillColor: 'transparent', strokeColor: 'transparent', strokeWidth: 0 }
+```
 
-**Datei:** `src/components/GlobalDaySlipPanel.tsx`
+**d) renderShapeCanvas (nach lion-Branch, Zeile 1190):** Neuen Branch fuer `shapeType === 'wappen'` mit WappenSVG
 
----
+**e) Toolbar-Button (nach lion-Button, Zeile 1333):** Neuer Button mit kleinem Wappen-Vorschaubild
 
 ## Technische Details
 
-### LabeledHorizontalRuleNode.tsx
-
-```text
-createDOM():
-  div.style.display = "flex"
-  div.style.alignItems = "center"
-  div.style.width = "100%"
-  div.style.gap = "12px"
-  div.style.margin = "16px 0"
-  div.style.userSelect = "none"
-  div.contentEditable = "false"
-
-decorate():
-  return (
-    <>
-      <hr ... />
-      <span ...>{label}</span>
-      <hr ... />
-    </>
-  )
-  // Kein umschliessendes <div> mehr
-```
-
-### GlobalDaySlipPanel.tsx
-
-```text
-Entfernen (Zeile 507-511):
-  const [editorKey, setEditorKey] = useState(0);
-  useEffect(() => { if (open) setEditorKey(k => k + 1); }, [open]);
-
-DaySlipEditor (Zeile 1278):
-  key={todayKey}   // statt key={editorKey}
-
-parseEditorState Fehlerdiagnose (im InitialContentPlugin):
-  catch-Block erhaelt console.warn fuer Debugging
-```
-
+- Die SVG-Datei ist zu komplex fuer Inline-Rendering, daher wird ein `<img>`-Tag verwendet (wie vom User vorgegeben)
+- Das Wappen wird im `public/`-Ordner abgelegt, da es ueber einen direkten URL-Pfad referenziert wird
+- Default-Groesse 18x10mm spiegelt das Seitenverhaeltnis des Originals wider (1000:558)
