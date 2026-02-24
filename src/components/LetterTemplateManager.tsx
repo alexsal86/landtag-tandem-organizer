@@ -482,7 +482,7 @@ const LetterTemplateManager: React.FC = () => {
         />
       </TabsContent>
 
-      <TabsContent value="header-designer" className="space-y-4">
+      <TabsContent value="header-designer" className="space-y-4 min-w-0">
         <StructuredHeaderEditor
           initialElements={formData.header_elements}
           onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}

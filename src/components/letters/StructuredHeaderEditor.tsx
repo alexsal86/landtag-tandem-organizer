@@ -1331,7 +1331,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-3">
+      <div className="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)] gap-3">
         <div className="xl:col-start-1 xl:row-start-1 flex flex-col gap-4">
         {/* Tools */}
         <Card>
@@ -1580,7 +1580,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
         </div>
 
-        <CardContent className="xl:col-start-2 xl:row-start-1 xl:row-span-4 space-y-2 p-3 pt-4">
+        <CardContent className="xl:col-start-2 xl:row-start-1 xl:row-span-4 min-w-0 space-y-2 p-3 pt-4">
             <h3 className="text-sm font-semibold">Header-Vorschau</h3>
             <p className="text-xs text-muted-foreground">Doppelklick auf Text/Block zum Bearbeiten. Mit Mausrad + Strg/Cmd zoomen.</p>
             <div ref={previewContainerRef} className="border rounded-lg p-4 bg-muted/20 overflow-auto outline-none" style={{ maxHeight: 'calc(100vh - 280px)' }}>
