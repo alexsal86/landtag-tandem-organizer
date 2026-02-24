@@ -1,100 +1,185 @@
 
 
-# Fix: Header-Tab Zoom an Canvas-Tab angleichen
+# Fix: Header-Editor Text-Anzeige, Zoom-Verhalten, Layout und Text-Breite
 
-## Problem
+## Uebersicht
 
-Der Header-Tab hat drei Zoom-Probleme gegenueber dem Canvas-Tab:
+Vier Probleme im Brief-Template-Editor, die Header- und Canvas-Tabs betreffen.
 
-1. **Strg+Mausrad funktioniert nicht**: Der Header nutzt Reacts `onWheel` (passiver Event-Listener), der `preventDefault()` nicht ausfuehren kann. Der Canvas-Tab nutzt stattdessen `addEventListener('wheel', handler, { passive: false })` -- das ist der einzig funktionierende Ansatz.
+---
 
-2. **Zoom-Verhalten unterschiedlich**: Der Header nutzt `useCanvasViewport` mit kontinuierlichem Zoom (0.1er-Schritte) und Pan-Offset-Logik (`zoomAtPoint`). Der Canvas-Tab nutzt diskrete `ZOOM_STEPS` (50%, 75%, 100%, 125%, 150%, 200%) und laesst den Container wachsen -- Scrolling uebernimmt natuerlich das Panning.
+## 1. Text auf dem Canvas-Tab nicht sichtbar
 
-3. **Canvas zu klein / Scrollbalken**: Bei 100% sollte der Header-Canvas die volle verfuegbare Hoehe nutzen ohne Scrollbalken. Die aktuelle `maxHeight: 600px`-Beschraenkung erzwingt unnoetige Scrollleisten.
+**Problem:** Im `LetterLayoutCanvasDesigner` (Canvas-Tab) werden Header-Elemente mit der CSS-Klasse `text-foreground/80` gerendert (Zeile 410). Im Dark-Mode ist `text-foreground` weiss/hell -- auf dem weissen Canvas-Hintergrund ergibt das weissen Text auf weissem Grund = unsichtbar. Formen (Layout-Bloecke) sind sichtbar, weil sie eigene Farbklassen (`block.color`) haben.
 
-## Loesung
+**Loesung:** Die Header-Element-Vorschau im Canvas-Tab muss eine feste dunkle Textfarbe verwenden, da der Canvas immer weiss ist:
 
-Das Zoom-System des Canvas-Tabs 1:1 uebernehmen:
+### Aenderung in `LetterLayoutCanvasDesigner.tsx`
 
-### Aenderung 1: ZOOM_STEPS und zoomIn/zoomOut statt useCanvasViewport
-
-Den `useCanvasViewport`-Hook entfernen und durch lokale `zoomLevel`-State + `ZOOM_STEPS` ersetzen (wie im Canvas-Tab):
-
+Zeile 410 aendern:
 ```text
-const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
-const [zoomLevel, setZoomLevel] = useState(1);
+// Vorher:
+className="absolute text-[10px] text-foreground/80 pointer-events-none"
 
-const zoomIn = useCallback(() => {
-  setZoomLevel((z) => {
-    const idx = ZOOM_STEPS.indexOf(z);
-    return idx < ZOOM_STEPS.length - 1 ? ZOOM_STEPS[idx + 1] : z;
+// Nachher:
+className="absolute text-[10px] text-gray-700 pointer-events-none"
+```
+
+Zusaetzlich: Fuer Text-Elemente die tatsaechliche `color`-Eigenschaft verwenden, falls vorhanden:
+```text
+style={{
+  ...existingStyles,
+  color: element.type === 'text' && element.color ? element.color : undefined,
+}}
+```
+
+---
+
+## 2. Zoom folgt dem Mauszeiger (wie canva.com)
+
+**Problem:** Beim Zoomen mit Strg+Mausrad wird immer gleichmaessig gezoomt. Der Zoom sollte auf die Position des Mauszeigers zentriert sein -- wo der Cursor steht, bleibt fixiert, und der Rest skaliert darum herum.
+
+**Loesung:** Beim Wheel-Event die Mausposition relativ zum Scroll-Container merken und nach dem Zoom den Scroll-Offset so anpassen, dass der Punkt unter dem Cursor an derselben Stelle bleibt.
+
+### Aenderung in `StructuredHeaderEditor.tsx`
+
+Den nativen Wheel-Handler erweitern:
+```text
+const handler = (e: WheelEvent) => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+
+  const container = previewContainerRef.current;
+  if (!container) return;
+
+  // Cursor-Position relativ zum Scroll-Container
+  const rect = container.getBoundingClientRect();
+  const cursorX = e.clientX - rect.left + container.scrollLeft;
+  const cursorY = e.clientY - rect.top + container.scrollTop;
+
+  // Position in mm-Koordinaten (unabhaengig vom Zoom)
+  const currentScale = previewScaleXRef.current * zoomLevelRef.current;
+  const mmX = (cursorX - RULER_SIZE) / currentScale;
+  const mmY = (cursorY - RULER_SIZE) / currentScale;
+
+  // Zoom aendern
+  const nextZoom = e.deltaY < 0 ? zoomInStep(zoomLevelRef.current) : zoomOutStep(zoomLevelRef.current);
+  setZoomLevel(nextZoom);
+
+  // Nach dem Zoom: Scroll so anpassen, dass mmX/mmY wieder unter dem Cursor liegt
+  requestAnimationFrame(() => {
+    const newScale = previewScaleXRef.current * nextZoom;
+    const newCursorX = mmX * newScale + RULER_SIZE;
+    const newCursorY = mmY * newScale + RULER_SIZE;
+    container.scrollLeft = newCursorX - (e.clientX - rect.left);
+    container.scrollTop = newCursorY - (e.clientY - rect.top);
   });
-}, []);
-
-const zoomOut = useCallback(() => {
-  setZoomLevel((z) => {
-    const idx = ZOOM_STEPS.indexOf(z);
-    return idx > 0 ? ZOOM_STEPS[idx - 1] : z;
-  });
-}, []);
+};
 ```
 
-### Aenderung 2: Native Wheel-Event-Listener
+Da `zoomLevel` ein State ist und im Closure nicht aktuell waere, wird ein `useRef` als Mirror benoetigt:
+```text
+const zoomLevelRef = useRef(zoomLevel);
+useEffect(() => { zoomLevelRef.current = zoomLevel; }, [zoomLevel]);
+const previewScaleXRef = useRef(previewScaleX);
+useEffect(() => { previewScaleXRef.current = previewScaleX; }, [previewScaleX]);
+```
 
-Den React `onWheel={onPreviewWheel}` ersetzen durch einen nativen `addEventListener` mit `{ passive: false }` auf dem Canvas-Wrapper (wie im Canvas-Tab):
+Gleiches Prinzip auch fuer den Canvas-Tab (`LetterLayoutCanvasDesigner.tsx`) implementieren, damit beide Tabs identisches Zoom-Verhalten haben.
+
+---
+
+## 3. Canvas im Header-Tab mittig ausrichten, Scrollleiste entfernen
+
+**Problem:** Der Canvas ist links ausgerichtet und hat eine vertikale Scrollleiste auch bei 100% Zoom. Der Canvas-Tab verwendet `mx-auto` (Zeile 398) fuer zentrierte Darstellung.
+
+**Loesung:**
+
+### Aenderung in `StructuredHeaderEditor.tsx`
+
+**a) Canvas zentrieren:** Dem inneren Container `mx-auto` hinzufuegen (wie im Canvas-Tab):
 
 ```text
-useEffect(() => {
-  const el = previewContainerRef.current;
-  if (!el) return;
-  const handler = (e: WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      if (e.deltaY < 0) zoomIn();
-      else zoomOut();
-    }
-  };
-  el.addEventListener('wheel', handler, { passive: false });
-  return () => el.removeEventListener('wheel', handler);
-}, [zoomIn, zoomOut]);
+// Vorher (Zeile 1526):
+<div className="relative inline-block" style={{ ... }}>
+
+// Nachher:
+<div className="relative mx-auto" style={{ ... }}>
 ```
 
-### Aenderung 3: Skalierung vereinfachen
+**b) Scrollleiste nur bei Bedarf:** Den aeusseren Container von `overflow-auto` auf `overflow-auto` belassen, aber sicherstellen, dass bei 100% Zoom die Canvas-Hoehe in den Container passt. Die feste Hoehe des Canvas (`canvasPixelHeight`) bei 100% Zoom muss kleiner sein als der verfuegbare Platz.
 
-Alle Referenzen auf `zoom` durch `zoomLevel` ersetzen. Die `effectiveScaleX/Y`-Berechnung bleibt gleich, nutzt aber `zoomLevel`:
+Voraussetzung: `previewWidth` wird korrekt berechnet, sodass bei 100% die Proportionen stimmen. Da der Header nur 45mm hoch ist (vs 210mm breit), ist das Seitenverhaeltnis sehr flach -- bei 100% Zoom passt das normalerweise ohne vertikalen Scroll.
+
+**c) Container-Overflow anpassen:**
+```text
+// aeusserer Wrapper
+<div ref={previewContainerRef} className="w-full overflow-auto">
+```
+Kein `maxHeight` setzen -- der natuerliche Platz der Card reicht. Bei hohen Zoom-Stufen entsteht Scrollbedarf automatisch.
+
+---
+
+## 4. Text-DIV passt sich dem Textinhalt an, ist aber manuell vergroesser-/verkleinerbar
+
+**Problem:** Aktuell hat jedes Text-Element eine feste Breite (Default 70mm) und Hoehe (Default 8mm), mit `overflow: hidden`. Der Text wird abgeschnitten. Der Benutzer wuenscht:
+- Ohne manuelle Aenderung: DIV ist so breit wie der Text (auto-fit)
+- Mit manueller Aenderung: Breite ueber Resize-Handles anpassbar
+- Hoehe passt sich dem Inhalt an
+
+**Loesung:**
+
+### Aenderung in `canvasElements.tsx` (TextCanvasElement)
+
+Die `width` und `height` im Style nur setzen, wenn der Benutzer sie explizit geaendert hat. Dafuer ein Flag oder die Dimension `undefined` pruefen:
 
 ```text
-const effectiveScaleX = previewScaleX * zoomLevel;
-const effectiveScaleY = previewScaleY * zoomLevel;
-const canvasPixelWidth = previewWidth * zoomLevel;
-const canvasPixelHeight = previewHeight * zoomLevel;
+// Wenn width explizit gesetzt: feste Breite + overflow hidden
+// Wenn width nicht gesetzt: auto-fit (whiteSpace: nowrap, width: auto)
+const hasExplicitWidth = element.width !== undefined && element.width !== null;
+const hasExplicitHeight = element.height !== undefined && element.height !== null;
+
+style={{
+  left: ...,
+  top: ...,
+  width: hasExplicitWidth ? `${element.width * scaleX}px` : 'auto',
+  height: hasExplicitHeight ? `${element.height * scaleY}px` : 'auto',
+  whiteSpace: hasExplicitWidth ? 'normal' : 'nowrap',
+  overflow: hasExplicitWidth ? 'hidden' : 'visible',
+  ...fontStyles
+}}
 ```
 
-### Aenderung 4: maxHeight entfernen, Canvas-Container anpassen
-
-Die `maxHeight: 600px`-Beschraenkung vom aeusseren Container entfernen. Der Container bekommt `overflow-auto` nur fuer den Fall, dass bei hohen Zoom-Stufen gescrollt werden muss, aber bei 100% soll kein Scrollbalken sichtbar sein.
-
-### Aenderung 5: Zoom-Buttons anpassen
-
-Die Zoom-Buttons auf diskrete Schritte umstellen (wie im Canvas-Tab):
-
+Die fontSize muss mit dem Scale-Faktor skaliert werden, damit sie im Canvas proportional korrekt ist:
 ```text
-<Button onClick={zoomOut} disabled={zoomLevel <= ZOOM_STEPS[0]}>-</Button>
-<span>{Math.round(zoomLevel * 100)}%</span>
-<Button onClick={zoomIn} disabled={zoomLevel >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}>+</Button>
+// Vorher:
+fontSize: `${(element.fontSize || 12) * (96 / 72)}px`
+
+// Nachher -- pt zu mm, dann mm zu px via scale:
+fontSize: `${(element.fontSize || 12) * (25.4 / 72) * scaleY}px`
 ```
 
-Klick auf die Prozentanzeige setzt auf 100% zurueck.
+### Aenderung in `StructuredHeaderEditor.tsx`
 
-### Aenderung 6: Pan-Logik entfernen
+**a) Neues Text-Element ohne explizite Breite erstellen:**
+```text
+// addTextElement (Zeile 438):
+const el = { ..., width: undefined, height: undefined };
+```
 
-Da der Canvas-Tab kein manuelles Panning nutzt (er nutzt natuerliches Scrolling ueber `overflow-auto`), wird die `pan`/`setPan`/`getCanvasPoint`/`zoomAtPoint`-Logik aus `useCanvasViewport` nicht mehr benoetigt. Alle Referenzen auf `pan` werden entfernt. Die Maus-Koordinaten-Umrechnung erfolgt direkt ueber `getBoundingClientRect()`.
+**b) Resize-Handles fuer Text-Elemente aktivieren:** Derzeit haben nur Image-Elemente `renderResizeHandles`. Text-Elemente brauchen zumindest horizontale Resize-Handles (e, w), damit der Benutzer die Breite manuell setzen kann.
 
-## Zusammenfassung
+Im TextCanvasElement eine optionale `renderResizeHandles`-Prop hinzufuegen und im Container rendern.
+
+**c) Sidebar: Breite/Hoehe-Felder fuer Text:** Im Element-Properties-Panel (Zeile 1431-1458) Felder fuer Breite und Hoehe hinzufuegen, damit der Benutzer die Dimension auch numerisch eingeben kann. Ein "Auto"-Button setzt width/height zurueck auf `undefined`.
+
+---
+
+## Zusammenfassung der betroffenen Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `StructuredHeaderEditor.tsx` | useCanvasViewport durch lokalen zoomLevel-State ersetzen, nativer Wheel-Listener, ZOOM_STEPS, maxHeight entfernen, Pan-Logik entfernen |
-
-Keine neuen Dateien noetig. Das Ergebnis ist identisches Zoom-Verhalten wie im Canvas-Tab.
+| `LetterLayoutCanvasDesigner.tsx` | Text-Farbe auf dunkle Farbe aendern, Cursor-Zoom |
+| `StructuredHeaderEditor.tsx` | Cursor-Zoom, Canvas zentrieren, Scrollleiste, Text-Element ohne feste Breite, Resize-Handles fuer Text, fontSize-Skalierung |
+| `canvasElements.tsx` | Auto-Width fuer Text, fontSize mit Scale skalieren, optionale Resize-Handles |
 
