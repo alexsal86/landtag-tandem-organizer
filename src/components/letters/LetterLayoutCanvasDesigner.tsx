@@ -59,7 +59,8 @@ const COLOR_PRESETS = [
   { value: 'bg-teal-500/20 border-teal-600 text-teal-900', label: 'Teal' },
 ];
 
-const BASE_SCALE = 2.2;
+// 1mm in CSS pixels at browser zoom 100% (96dpi / 25.4mm)
+const BASE_SCALE = 96 / 25.4;
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const snapMm = (val: number) => Math.round(val);
 const clamp = (val: number, min: number, max: number) => Math.min(max, Math.max(min, val));
