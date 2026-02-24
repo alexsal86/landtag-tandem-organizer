@@ -14,6 +14,7 @@ interface TextCanvasElementProps {
   onCommitEdit: (id: string) => void;
   onCancelEdit: (id: string) => void;
   ariaLabel: string;
+  renderResizeHandles?: (element: TextElement) => React.ReactNode;
 }
 
 export const TextCanvasElement: React.FC<TextCanvasElementProps> = ({
@@ -29,55 +30,63 @@ export const TextCanvasElement: React.FC<TextCanvasElementProps> = ({
   onCommitEdit,
   onCancelEdit,
   ariaLabel,
-}) => (
-  <div
-    aria-label={ariaLabel}
-    className={`absolute border ${isSelected ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
-    style={{
-      left: `${element.x * scaleX}px`,
-      top: `${element.y * scaleY}px`,
-      width: `${(element.width || 70) * scaleX}px`,
-      height: `${(element.height || 8) * scaleY}px`,
-      overflow: 'hidden',
-      fontSize: `${(element.fontSize || 12) * (96 / 72)}px`,
-      fontFamily: element.fontFamily || 'Arial',
-      fontWeight: element.fontWeight || 'normal',
-      fontStyle: element.fontStyle || 'normal',
-      textDecoration: element.textDecoration || 'none',
-      color: element.color || '#000000',
-      lineHeight: `${element.textLineHeight || 1.2}`,
-    }}
-    onMouseDown={(event) => {
-      if (isEditing) {
-        event.stopPropagation();
-        return;
-      }
-      onMouseDown(event, element);
-    }}
-    onDoubleClick={(event) => onDoubleClick(event, element)}
-  >
-    {isEditing ? (
-      <textarea
-        className="w-full h-full min-w-[120px] resize-none border-0 bg-transparent p-0 outline-none"
-        value={draftValue}
-        autoFocus
-        onChange={(event) => onDraftChange(element.id, event.target.value)}
-        onBlur={() => onCommitEdit(element.id)}
-        onMouseDown={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            onCancelEdit(element.id);
-          }
-          if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-            event.preventDefault();
-            onCommitEdit(element.id);
-          }
-        }}
-      />
-    ) : (element.content || 'Text')}
-  </div>
-);
+  renderResizeHandles,
+}) => {
+  const hasExplicitWidth = element.width !== undefined && element.width !== null;
+  const hasExplicitHeight = element.height !== undefined && element.height !== null;
+
+  return (
+    <div
+      aria-label={ariaLabel}
+      className={`absolute border ${isSelected ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
+      style={{
+        left: `${element.x * scaleX}px`,
+        top: `${element.y * scaleY}px`,
+        width: hasExplicitWidth ? `${element.width! * scaleX}px` : 'auto',
+        height: hasExplicitHeight ? `${element.height! * scaleY}px` : 'auto',
+        whiteSpace: hasExplicitWidth ? 'normal' : 'nowrap',
+        overflow: hasExplicitWidth ? 'hidden' : 'visible',
+        fontSize: `${(element.fontSize || 12) * (25.4 / 72) * scaleY}px`,
+        fontFamily: element.fontFamily || 'Arial',
+        fontWeight: element.fontWeight || 'normal',
+        fontStyle: element.fontStyle || 'normal',
+        textDecoration: element.textDecoration || 'none',
+        color: element.color || '#000000',
+        lineHeight: `${element.textLineHeight || 1.2}`,
+      }}
+      onMouseDown={(event) => {
+        if (isEditing) {
+          event.stopPropagation();
+          return;
+        }
+        onMouseDown(event, element);
+      }}
+      onDoubleClick={(event) => onDoubleClick(event, element)}
+    >
+      {isEditing ? (
+        <textarea
+          className="w-full h-full min-w-[120px] resize-none border-0 bg-transparent p-0 outline-none"
+          value={draftValue}
+          autoFocus
+          onChange={(event) => onDraftChange(element.id, event.target.value)}
+          onBlur={() => onCommitEdit(element.id)}
+          onMouseDown={(event) => event.stopPropagation()}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              onCancelEdit(element.id);
+            }
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+              event.preventDefault();
+              onCommitEdit(element.id);
+            }
+          }}
+        />
+      ) : (element.content || 'Text')}
+      {renderResizeHandles?.(element)}
+    </div>
+  );
+};
 
 interface ImageCanvasElementProps {
   element: ImageElement;
