@@ -1,107 +1,86 @@
 
 
-# Fix: Canvas-Text-Groesse, Cursor-Zoom, Textausrichtung, Header-Layout
+# Fix: Canvas-Formen, Block-Dimensionen, Variablen-System, Header-Text
 
 ## Uebersicht
 
-Vier Probleme in den Brief-Template-Editor-Tabs (Canvas und Header).
+Vier Probleme im Brief-Template-Editor muessen behoben werden.
 
 ---
 
-## 1. Textgroesse im Canvas-Tab stimmt nicht
+## 1. Loewe und Sonnenblume werden im Canvas-Tab als Emoji statt SVG dargestellt
 
-**Problem:** In `LetterLayoutCanvasDesigner.tsx` Zeile 195 wird die Schriftgroesse mit `(fontSize || 11) * (96/72) * scale` berechnet. Das ist falsch: `96/72` konvertiert pt zu CSS-px, aber `scale` (= `CSS_PX_PER_MM * zoom`) wandelt mm in px um. Die Formel muss stattdessen pt erst in mm umrechnen (`25.4/72`), dann mm in px (`* scale`).
+**Problem:** In `LetterLayoutCanvasDesigner.tsx` (Zeilen 115-134) werden Sonnenblume und Loewe als Unicode-Emoji (🌻 und 🦁) gerendert, waehrend der Header-Tab die korrekten SVG-Komponenten (`SunflowerSVG`, `LionSVG`) verwendet.
 
-**Loesung:** In `renderCanvasElementPreview` (Zeile 195) die fontSize-Formel aendern:
+**Loesung:** Die SVG-Komponenten aus `StructuredHeaderEditor.tsx` in eigene Dateien extrahieren (oder inline in `LetterLayoutCanvasDesigner.tsx` importieren) und die Emoji-Darstellung durch die echten SVGs ersetzen.
 
-```text
-// Vorher:
-fontSize: `${(element.fontSize || 11) * (96 / 72) * scale}px`
-
-// Nachher:
-fontSize: `${(element.fontSize || 11) * (25.4 / 72) * scale}px`
-```
-
-Das ist konsistent mit `canvasElements.tsx`, das bereits `(25.4 / 72) * scaleY` verwendet.
+Konkret:
+- Neue Datei `src/components/letters/elements/shapeSVGs.tsx` mit den Komponenten `SunflowerSVG`, `LionSVG`, `WappenSVG` erstellen
+- In `LetterLayoutCanvasDesigner.tsx` importieren und in `renderCanvasElementPreview` verwenden
+- In `StructuredHeaderEditor.tsx` die lokalen Kopien durch Imports aus der neuen Datei ersetzen
 
 ---
 
-## 2. Cursor-zentrierter Zoom funktioniert nicht
+## 2. Block-Canvas-Dimensionen und Lineal sind fehlerhaft
 
-**Problem:** In beiden Tabs (Canvas und Header) setzt der Wheel-Handler `container.scrollLeft` und `container.scrollTop` nach dem Zoom per `requestAnimationFrame`. Das Problem: Wenn der Container bei 100% keinen Overflow hat (kein Scrollbalken), kann `scrollLeft/scrollTop` nicht gesetzt werden -- die Werte bleiben bei 0. Der Canvas waechst zwar, aber das Scrollen greift erst ab dem Moment, wo der Canvas groesser als der Container ist.
+**Problem:** Der `StructuredHeaderEditor` hat das vertikale Lineal auf 45mm fest verdrahtet (Zeile 287: `i <= 45`, Zeile 1594: `Array.from({ length: 5 })`). Wenn der Editor fuer andere Bloecke (Adressfeld=40mm, Betreff=12mm, Footer=25mm, Anlagen=20mm) wiederverwendet wird, stimmen Lineal und Tick-Labels nicht mit der tatsaechlichen Canvas-Hoehe ueberein.
 
-**Loesung:** Das grundlegende Zoom-Verhalten (Canvas waechst, Scrollbar entsteht) ist korrekt. Damit der Cursor-zentrierte Zoom funktioniert, muss sichergestellt werden, dass die `scrollLeft`/`scrollTop`-Zuweisung nach dem DOM-Update erfolgt. Dafuer in `requestAnimationFrame` ein weiteres `requestAnimationFrame` nesten (double-rAF), da React den State-Update erst im naechsten Frame committed:
-
-```text
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    const newScale = ...;
-    container.scrollLeft = ...;
-    container.scrollTop = ...;
-  });
-});
-```
-
-Dies in beiden Tabs (`StructuredHeaderEditor.tsx` und `LetterLayoutCanvasDesigner.tsx`) aendern.
+**Loesung:** Das Lineal dynamisch an `canvasMaxHeight` anpassen:
+- Vertikale Ruler-Ticks: `for (let i = 0; i <= canvasMaxHeight; i += 1)` mit `y = (i * canvasPixelHeight) / canvasMaxHeight`
+- Vertikale Labels: Anzahl dynamisch berechnen basierend auf `canvasMaxHeight`, z.B. `Math.ceil(canvasMaxHeight / 10) + 1` Labels
+- Horizontale Labels: Analog fuer `canvasMaxWidth` (aktuell auf 210mm/21 Labels hardcoded, was fuer nicht-volle-Seitenbreite-Bloecke falsch ist)
 
 ---
 
-## 3. Textausrichtung (links, mittig, rechts)
+## 3. Variablen-System fuer Adressfeld, Ruecksende, Info-Block, Betreff und Anlagen
 
-**Problem:** Text-Elemente haben keine `textAlign`-Eigenschaft. Der Benutzer kann die Ausrichtung nicht aendern.
+**Problem:** Es gibt kein Variablen-System. Der Benutzer kann im Template-Editor nicht definieren, wo dynamische Inhalte (z.B. Empfaengeradresse, Betreff-Text) eingefuegt werden sollen. Bei der spaeteren Brieferstellung muessen diese Platzhalter durch reale Daten ersetzt werden.
 
-**Loesung:**
+**Loesung:** Ein Drag-and-Drop-Variablen-System implementieren:
 
-### a) Typ erweitern (`types.ts`)
+### a) Variablen-Definitionen
 
-`TextElement` um `textAlign?: 'left' | 'center' | 'right'` erweitern.
-
-### b) Rendering anpassen (`canvasElements.tsx`)
-
-Im `TextCanvasElement` den `textAlign`-Style hinzufuegen:
+Eine vordefinierte Liste von Platzhalter-Variablen pro Block-Typ:
 
 ```text
-textAlign: element.textAlign || 'left',
+Adressfeld:     {{empfaenger_name}}, {{empfaenger_strasse}}, {{empfaenger_plz}}, {{empfaenger_ort}}, {{empfaenger_land}}
+Ruecksende:     {{absender_name}}, {{absender_organisation}}, {{absender_strasse}}, {{absender_plz_ort}}
+Info-Block:     {{datum}}, {{aktenzeichen}}, {{bearbeiter}}, {{telefon}}, {{email}}, {{unser_zeichen}}
+Betreff:        {{betreff}}
+Anlagen:        {{anlagen_liste}}
+Header:         {{absender_name}}, {{absender_organisation}}
 ```
 
-### c) Canvas-Tab Rendering (`LetterLayoutCanvasDesigner.tsx`)
+### b) UI: Variablen-Panel in der Sidebar
 
-Gleichen Style in `renderCanvasElementPreview` fuer Text-Elemente hinzufuegen.
+Im `StructuredHeaderEditor` ein neues Card-Panel "Variablen" unterhalb der Tools einfuegen. Die Variablen werden als ziehbare Elemente (draggable) dargestellt, die auf den Canvas gezogen werden koennen.
 
-### d) Sidebar-Controls (`StructuredHeaderEditor.tsx`)
+### c) Variablen als Text-Elemente mit `isVariable`-Flag
 
-Im Text-Properties-Panel drei Buttons fuer Links/Mitte/Rechts hinzufuegen (neben B/I/U):
+Die `TextElement`-Type um `isVariable?: boolean` erweitern. Wenn ein Variablen-Platzhalter auf den Canvas gezogen wird, entsteht ein Text-Element mit:
+- `content: '{{empfaenger_name}}'`
+- `isVariable: true`
+- Visuelles Styling: orangefarbener/Amber-Hintergrund mit Blitz-Icon
 
-```text
-<Label className="text-xs">Ausrichtung</Label>
-<div className="grid grid-cols-3 gap-1">
-  <Button size="sm" className="h-6 text-xs" variant={textAlign === 'left' ? 'default' : 'outline'} onClick={() => updateElement(id, { textAlign: 'left' })}>L</Button>
-  <Button size="sm" className="h-6 text-xs" variant={textAlign === 'center' ? 'default' : 'outline'} onClick={() => updateElement(id, { textAlign: 'center' })}>M</Button>
-  <Button size="sm" className="h-6 text-xs" variant={textAlign === 'right' ? 'default' : 'outline'} onClick={() => updateElement(id, { textAlign: 'right' })}>R</Button>
-</div>
-```
+### d) Drop-Handler erweitern
+
+Den `onPreviewDrop`-Handler in `StructuredHeaderEditor.tsx` erweitern, um Variablen-Drops zu erkennen (Format `application/x-variable` oder Text mit `{{...}}`-Muster).
+
+### e) Rendering auf Canvas
+
+Variable Text-Elemente bekommen ein spezielles Styling (Amber-Hintergrund, abgerundete Ecken, Blitz-Icon) sowohl im Header-Tab als auch im Canvas-Tab.
+
+### f) Variablen-Set pro Block-Tab
+
+In `LetterTemplateManager.tsx` wird `renderSharedElementsEditor` so erweitert, dass der jeweilige Block-Key an den `StructuredHeaderEditor` uebergeben wird. Dieser bestimmt dann, welche Variablen in der Sidebar angeboten werden.
 
 ---
 
-## 4. Header-Tab: Scrollleiste und ueberbreiter Canvas
+## 4. "Alexander Salomon MdL" Text im Header
 
-**Problem:** Der Header-Canvas-Container hat `overflow-auto` ohne Hoehenbegrenzung, was bei 200% Zoom dazu fuehrt, dass der aeussere Container (Card) mit waechst und eine Scrollleiste entsteht. Der Canvas ist nicht innerhalb eines begrenzten Bereichs eingeschlossen wie im Canvas-Tab.
+**Problem:** Der Text "Alexander Salomon MdL" ist ein tatsaechliches Text-Element, das in den `header_text_elements` des Templates "Abgeordnetenbrief" in der Datenbank gespeichert ist (zusammen mit dem Wappen). Es handelt sich nicht um einen Bug, sondern um vom Benutzer erstellten Inhalt.
 
-**Loesung:** Den Container um den Header-Canvas so gestalten wie im Canvas-Tab:
-
-### a) Aeusserer Container mit Begrenzung
-
-```text
-<div ref={previewContainerRef} 
-     className="border rounded-lg p-4 bg-muted/20 overflow-auto outline-none"
-     style={{ maxHeight: 'calc(100vh - 280px)' }}>
-```
-
-So hat der Container eine maximale Hoehe relativ zum Viewport, und bei hohen Zoom-Stufen erscheinen Scrollbalken innerhalb des Containers (nicht des gesamten Layouts). Bei 100% passt der Header (45mm hoch, ca. 170px) problemlos ohne Scrollleiste.
-
-### b) Canvas zentrieren
-
-Der innere Canvas-Container behaelt `mx-auto`, damit er bei kleinen Zoom-Stufen mittig steht.
+**Erlaeuterung:** Das Element wird korrekt im Header-Tab und als Vorschau im Canvas-Tab (als Teil der Header-Block-Vorschau) angezeigt. Falls der Benutzer diesen Text nicht moechte, kann er ihn im Header-Tab auswaehlen und loeschen. -- Es ist kein Code-Fix noetig, nur eine Erklaerung.
 
 ---
 
@@ -109,8 +88,21 @@ Der innere Canvas-Container behaelt `mx-auto`, damit er bei kleinen Zoom-Stufen 
 
 | Datei | Aenderung |
 |---|---|
-| `src/components/canvas-engine/types.ts` | `textAlign` Property zu `TextElement` hinzufuegen |
-| `src/components/letters/LetterLayoutCanvasDesigner.tsx` | fontSize-Formel korrigieren (25.4/72 statt 96/72), textAlign rendern, Double-rAF fuer Cursor-Zoom |
-| `src/components/letters/StructuredHeaderEditor.tsx` | Double-rAF fuer Cursor-Zoom, Container-maxHeight, Textausrichtungs-Buttons in Sidebar |
-| `src/components/letters/elements/canvasElements.tsx` | textAlign Style hinzufuegen |
+| `src/components/letters/elements/shapeSVGs.tsx` | Neu: Shared SVG-Komponenten (Sunflower, Lion, Wappen) |
+| `src/components/canvas-engine/types.ts` | `isVariable?: boolean` zu `TextElement` hinzufuegen |
+| `src/components/letters/LetterLayoutCanvasDesigner.tsx` | SVG-Import statt Emoji fuer Loewe/Sonnenblume; Variablen-Rendering |
+| `src/components/letters/StructuredHeaderEditor.tsx` | Dynamisches Lineal; Variablen-Panel und Drop-Handler; SVG-Import |
+| `src/components/letters/elements/canvasElements.tsx` | Variablen-Styling (Amber-Hintergrund) |
+| `src/components/LetterTemplateManager.tsx` | Block-Key an StructuredHeaderEditor uebergeben fuer Variablen-Auswahl |
+
+---
+
+## Technische Reihenfolge
+
+1. SVG-Komponenten extrahieren (shapeSVGs.tsx) -- keine Abhaengigkeiten
+2. Lineal dynamisch machen -- unabhaengig
+3. Types erweitern (isVariable) -- Grundlage fuer Variablen
+4. Variablen-Panel und Drop-Handler implementieren
+5. Variablen-Rendering auf Canvas
+6. Block-Key-Weiterleitung in LetterTemplateManager
 
