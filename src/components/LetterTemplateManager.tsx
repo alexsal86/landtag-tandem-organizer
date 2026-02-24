@@ -530,7 +530,7 @@ const LetterTemplateManager: React.FC = () => {
     setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
   };
 
-  const renderBlockCanvas = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments', title: string, rect: { top: number; left: number; width: number; height: number }) => {
+  const renderBlockCanvas = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments' | 'footer', title: string, rect: { top: number; left: number; width: number; height: number }) => {
     const items = getBlockItems(blockKey);
     const scale = 2.4;
     const selectedId = selectedBlockItem[blockKey] || items[0]?.id || null;
@@ -1001,6 +1001,12 @@ const LetterTemplateManager: React.FC = () => {
       </TabsContent>
 
       <TabsContent value="footer-designer" className="space-y-4">
+        {renderBlockCanvas('footer', 'Footer-Bereich', {
+          top: formData.layout_settings.footer.top,
+          left: formData.layout_settings.margins.left,
+          width: formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
+          height: Math.max(10, formData.layout_settings.pageHeight - formData.layout_settings.footer.top - formData.layout_settings.margins.bottom),
+        })}
         <StructuredFooterEditor
           initialBlocks={formData.footer_blocks}
           onBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
