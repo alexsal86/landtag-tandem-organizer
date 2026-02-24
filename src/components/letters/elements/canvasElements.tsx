@@ -36,6 +36,9 @@ export const TextCanvasElement: React.FC<TextCanvasElementProps> = ({
     style={{
       left: `${element.x * scaleX}px`,
       top: `${element.y * scaleY}px`,
+      width: `${(element.width || 70) * scaleX}px`,
+      height: `${(element.height || 8) * scaleY}px`,
+      overflow: 'hidden',
       fontSize: `${(element.fontSize || 12) * (96 / 72)}px`,
       fontFamily: element.fontFamily || 'Arial',
       fontWeight: element.fontWeight || 'normal',
@@ -55,7 +58,7 @@ export const TextCanvasElement: React.FC<TextCanvasElementProps> = ({
   >
     {isEditing ? (
       <textarea
-        className="w-full min-w-[120px] resize-none border-0 bg-transparent p-0 outline-none"
+        className="w-full h-full min-w-[120px] resize-none border-0 bg-transparent p-0 outline-none"
         value={draftValue}
         autoFocus
         onChange={(event) => onDraftChange(element.id, event.target.value)}
