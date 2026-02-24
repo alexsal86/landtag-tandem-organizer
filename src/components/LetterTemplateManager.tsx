@@ -188,9 +188,9 @@ const LetterTemplateManager: React.FC = () => {
       width: formData.layout_settings.pageWidth,
       height: Math.max(0, formData.layout_settings.pageHeight - formData.layout_settings.footer.top),
     }),
-    'block-address': getMarginsForRect({ x: formData.layout_settings.addressField.left, y: formData.layout_settings.addressField.top, width: formData.layout_settings.addressField.width, height: formData.layout_settings.addressField.height }),
-    'block-return-address': getMarginsForRect({ x: formData.layout_settings.returnAddress.left, y: formData.layout_settings.returnAddress.top, width: formData.layout_settings.returnAddress.width, height: formData.layout_settings.returnAddress.height }),
-    'block-info': getMarginsForRect({ x: formData.layout_settings.infoBlock.left, y: formData.layout_settings.infoBlock.top, width: formData.layout_settings.infoBlock.width, height: formData.layout_settings.infoBlock.height }),
+    'block-address': getMarginsForRect(formData.layout_settings.addressField),
+    'block-return-address': getMarginsForRect(formData.layout_settings.returnAddress),
+    'block-info': getMarginsForRect(formData.layout_settings.infoBlock),
     'block-subject': getMarginsForRect({
       x: 0,
       y: formData.layout_settings.subject.top,
@@ -536,6 +536,7 @@ const LetterTemplateManager: React.FC = () => {
     const selected = items.find((item: any) => item.id === selectedId) || null;
     const ruler = !!showBlockRuler[blockKey];
     const showAxes = !!showBlockRuler[`${blockKey}_axes`];
+    const showMargins = showBlockRuler[`${blockKey}_margins`] !== false;
 
     const updateItem = (id: string, updates: any) => setBlockItems(blockKey, items.map((item: any) => (item.id === id ? { ...item, ...updates } : item)));
 
@@ -557,6 +558,19 @@ const LetterTemplateManager: React.FC = () => {
 
     const canvasW = rect.width * scale;
     const canvasH = Math.max(rect.height, 25) * scale;
+    const pageMargins = formData.layout_settings.margins;
+    const pageWidth = formData.layout_settings.pageWidth;
+    const pageHeight = formData.layout_settings.pageHeight;
+
+    const marginGuides = [
+      { key: 'left', orientation: 'vertical' as const, pos: (pageMargins.left - rect.left) * scale, color: '#2563eb', label: 'Links' },
+      { key: 'right', orientation: 'vertical' as const, pos: (pageWidth - pageMargins.right - rect.left) * scale, color: '#2563eb', label: 'Rechts' },
+      { key: 'top', orientation: 'horizontal' as const, pos: (pageMargins.top - rect.top) * scale, color: '#16a34a', label: 'Oben' },
+      { key: 'bottom', orientation: 'horizontal' as const, pos: (pageHeight - pageMargins.bottom - rect.top) * scale, color: '#16a34a', label: 'Unten' },
+    ].filter((guide) => {
+      if (guide.orientation === 'vertical') return guide.pos >= 0 && guide.pos <= canvasW;
+      return guide.pos >= 0 && guide.pos <= canvasH;
+    });
 
     const variablePlaceholders = [
       { label: 'Betreff', variable: '{{betreff}}' },
@@ -672,6 +686,7 @@ const LetterTemplateManager: React.FC = () => {
               <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled><Redo2 className="h-3.5 w-3.5 mr-1" />Redo</Button>
               <Button type="button" variant={ruler ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [blockKey]: !prev[blockKey] }))}><Ruler className="h-3.5 w-3.5 mr-1" />Lineal</Button>
               <Button type="button" variant={showAxes ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_axes`]: !prev[`${blockKey}_axes`] }))}><Crosshair className="h-3.5 w-3.5 mr-1" />Achsen</Button>
+              <Button type="button" variant={showMargins ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_margins`]: !(prev[`${blockKey}_margins`] !== false) }))}><Eye className="h-3.5 w-3.5 mr-1" />Ränder</Button>
               <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={!selected}><Copy className="h-3.5 w-3.5 mr-1" />Kopieren</Button>
               <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled><ClipboardPaste className="h-3.5 w-3.5 mr-1" />Einfügen</Button>
               <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={duplicateSelectedItem} disabled={!selected}><CopyPlus className="h-3.5 w-3.5 mr-1" />Duplizieren</Button>
@@ -745,6 +760,21 @@ const LetterTemplateManager: React.FC = () => {
                     <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none z-10" />
                   </>
                 )}
+                {showMargins && marginGuides.map((guide) => (
+                  <React.Fragment key={guide.key}>
+                    {guide.orientation === 'vertical' ? (
+                      <>
+                        <div className="absolute top-0 bottom-0 border-l border-dashed pointer-events-none z-10" style={{ left: guide.pos, borderColor: guide.color }} />
+                        <Badge variant="secondary" className="absolute top-1 text-[10px] px-1 py-0 h-4 pointer-events-none z-10" style={{ left: Math.min(Math.max(guide.pos + 2, 2), Math.max(canvasW - 42, 2)) }}>{guide.label}</Badge>
+                      </>
+                    ) : (
+                      <>
+                        <div className="absolute left-0 right-0 border-t border-dashed pointer-events-none z-10" style={{ top: guide.pos, borderColor: guide.color }} />
+                        <Badge variant="secondary" className="absolute left-1 text-[10px] px-1 py-0 h-4 pointer-events-none z-10" style={{ top: Math.min(Math.max(guide.pos + 2, 2), Math.max(canvasH - 18, 2)) }}>{guide.label}</Badge>
+                      </>
+                    )}
+                  </React.Fragment>
+                ))}
                 {items.map((item: any) => {
                   const isSelected = selectedId === item.id;
                   if (item.type === 'shape') {
