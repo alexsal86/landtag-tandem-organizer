@@ -180,7 +180,7 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
       <div
         key={element.id}
         style={{ ...style, fontSize: `${Math.max(9, 10 * scale)}px`, lineHeight: `${1.2}` }}
-        className="border border-gray-400/70 bg-gray-100/50 px-1 py-0.5 text-foreground/80 whitespace-pre-wrap"
+        className="border border-gray-400/70 bg-gray-100/50 px-1 py-0.5 text-gray-700 whitespace-pre-wrap"
       >
         {element.blockContent || element.content}
       </div>
@@ -192,16 +192,17 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
       key={element.id}
       style={{
         ...style,
-        fontSize: `${(element.fontSize || 11) * (96 / 72) * scale}px`,
+        fontSize: `${(element.fontSize || 11) * (25.4 / 72) * scale}px`,
         fontFamily: element.fontFamily || 'Arial',
         fontWeight: element.fontWeight || 'normal',
         fontStyle: element.fontStyle || 'normal',
         textDecoration: element.textDecoration || 'none',
         color: element.color || '#111827',
         lineHeight: `${element.textLineHeight || 1.2}`,
+        textAlign: (element as any).textAlign || 'left',
         whiteSpace: 'pre-wrap',
       }}
-      className="text-foreground/90"
+      className="text-gray-800"
     >
       {element.content}
     </div>
@@ -256,19 +257,46 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     });
   }, []);
 
+  const zoomLevelRef = useRef(zoomLevel);
+  useEffect(() => { zoomLevelRef.current = zoomLevel; }, [zoomLevel]);
+
   useEffect(() => {
     const el = canvasWrapRef.current;
     if (!el) return;
     const handler = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        if (e.deltaY < 0) zoomIn();
-        else zoomOut();
-      }
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+
+      const container = el;
+      const rect = container.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left + container.scrollLeft;
+      const cursorY = e.clientY - rect.top + container.scrollTop;
+
+      const currentScale = BASE_SCALE * zoomLevelRef.current;
+      const mmX = (cursorX - RULER_SIZE) / currentScale;
+      const mmY = (cursorY - RULER_SIZE) / currentScale;
+
+      const currentIdx = ZOOM_STEPS.indexOf(zoomLevelRef.current);
+      const nextZoom = e.deltaY < 0
+        ? (currentIdx < ZOOM_STEPS.length - 1 ? ZOOM_STEPS[currentIdx + 1] : zoomLevelRef.current)
+        : (currentIdx > 0 ? ZOOM_STEPS[currentIdx - 1] : zoomLevelRef.current);
+
+      if (nextZoom === zoomLevelRef.current) return;
+      setZoomLevel(nextZoom);
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const newScale = BASE_SCALE * nextZoom;
+          const newCursorX = mmX * newScale + RULER_SIZE;
+          const newCursorY = mmY * newScale + RULER_SIZE;
+          container.scrollLeft = newCursorX - (e.clientX - rect.left);
+          container.scrollTop = newCursorY - (e.clientY - rect.top);
+        });
+      });
     };
     el.addEventListener('wheel', handler, { passive: false });
     return () => el.removeEventListener('wheel', handler);
-  }, [zoomIn, zoomOut]);
+  }, []);
 
   const disabledBlocks = useMemo(() => new Set(getDisabled(localLayout)), [localLayout]);
   const lockedBlocks = useMemo(() => new Set(getLocked(localLayout)), [localLayout]);
