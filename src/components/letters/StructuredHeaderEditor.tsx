@@ -32,6 +32,8 @@ interface StructuredHeaderEditorProps {
   onElementsChange: (elements: HeaderElement[]) => void;
   actionButtons?: React.ReactNode;
   layoutSettings?: LetterLayoutSettings;
+  canvasWidthMm?: number;
+  canvasHeightMm?: number;
 }
 
 const createElementId = () => crypto.randomUUID();
@@ -101,7 +103,7 @@ const WappenSVG: React.FC<{ width: number; height: number; className?: string }>
   <img src="/assets/wappen-bw.svg" width={width} height={height} className={className} alt="Landeswappen Baden-Württemberg" style={{ objectFit: 'contain' }} />
 );
 
-export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ initialElements = [], onElementsChange, actionButtons, layoutSettings }) => {
+export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ initialElements = [], onElementsChange, actionButtons, layoutSettings, canvasWidthMm, canvasHeightMm }) => {
   const { toast } = useToast();
   const { currentTenant } = useTenant();
   const {
@@ -175,10 +177,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   // Blob URL mapping
   const blobUrlMapRef = useRef<Map<string, string>>(new Map());
 
-  const headerMaxWidth = 210;
-  const headerMaxHeight = 45;
-  const previewWidth = headerMaxWidth * CSS_PX_PER_MM;
-  const previewHeight = headerMaxHeight * CSS_PX_PER_MM;
+  const canvasMaxWidth = canvasWidthMm ?? 210;
+  const canvasMaxHeight = canvasHeightMm ?? 45;
+  const previewWidth = canvasMaxWidth * CSS_PX_PER_MM;
+  const previewHeight = canvasMaxHeight * CSS_PX_PER_MM;
   const previewScaleX = CSS_PX_PER_MM;
   const previewScaleY = CSS_PX_PER_MM;
   const SNAP_MM = 1.5;
@@ -250,9 +252,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const marginGuides = [
     { key: 'left', orientation: 'vertical' as const, pos: (layoutSettings?.margins.left ?? 25) * effectiveScaleX, label: 'Links', color: '#2563eb' },
-    { key: 'right', orientation: 'vertical' as const, pos: (headerMaxWidth - (layoutSettings?.margins.right ?? 20)) * effectiveScaleX, label: 'Rechts', color: '#2563eb' },
+    { key: 'right', orientation: 'vertical' as const, pos: (canvasMaxWidth - (layoutSettings?.margins.right ?? 20)) * effectiveScaleX, label: 'Rechts', color: '#2563eb' },
     { key: 'top', orientation: 'horizontal' as const, pos: (layoutSettings?.margins.top ?? 45) * effectiveScaleY, label: 'Oben', color: '#16a34a' },
-    { key: 'bottom', orientation: 'horizontal' as const, pos: (headerMaxHeight - (layoutSettings?.margins.bottom ?? 25)) * effectiveScaleY, label: 'Unten', color: '#16a34a' },
+    { key: 'bottom', orientation: 'horizontal' as const, pos: (canvasMaxHeight - (layoutSettings?.margins.bottom ?? 25)) * effectiveScaleY, label: 'Unten', color: '#16a34a' },
   ].filter((guide) => {
     if (guide.orientation === 'vertical') return guide.pos >= 0 && guide.pos <= canvasPixelWidth;
     return guide.pos >= 0 && guide.pos <= canvasPixelHeight;
@@ -374,10 +376,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       if (Math.abs(sy + h - t.y) <= SNAP_MM) { sy = t.y - h; guides.y = t.y; }
       if (Math.abs(sy + h / 2 - t.y) <= SNAP_MM) { sy = t.y - h / 2; guides.y = t.y; }
     }
-    const centerX = headerMaxWidth / 2;
-    const centerY = headerMaxHeight / 2;
-    const axisTargetsX = [0, centerX, headerMaxWidth];
-    const axisTargetsY = [0, centerY, headerMaxHeight];
+    const centerX = canvasMaxWidth / 2;
+    const centerY = canvasMaxHeight / 2;
+    const axisTargetsX = [0, centerX, canvasMaxWidth];
+    const axisTargetsY = [0, centerY, canvasMaxHeight];
     for (const tx of axisTargetsX) {
       if (Math.abs(sx - tx) <= SNAP_MM) { sx = tx; guides.x = tx; }
       if (Math.abs(sx + w - tx) <= SNAP_MM) { sx = tx - w; guides.x = tx; }
@@ -566,8 +568,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     event.preventDefault();
     if (!previewRef.current) return;
     const rect = previewRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(headerMaxWidth, (event.clientX - rect.left) / effectiveScaleX));
-    const y = Math.max(0, Math.min(headerMaxHeight, (event.clientY - rect.top) / effectiveScaleY));
+    const x = Math.max(0, Math.min(canvasMaxWidth, (event.clientX - rect.left) / effectiveScaleX));
+    const y = Math.max(0, Math.min(canvasMaxHeight, (event.clientY - rect.top) / effectiveScaleY));
 
     const tool = event.dataTransfer.getData('application/x-header-tool');
     if (tool === 'text') { addTextElement(Math.round(x), Math.round(y)); return; }
@@ -704,10 +706,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       const topPx = Math.min(nextSelection.startY, nextSelection.currentY);
       const bottomPx = Math.max(nextSelection.startY, nextSelection.currentY);
 
-      const left = Math.max(0, Math.min(headerMaxWidth, leftPx / effectiveScaleX));
-      const right = Math.max(0, Math.min(headerMaxWidth, rightPx / effectiveScaleX));
-      const top = Math.max(0, Math.min(headerMaxHeight, topPx / effectiveScaleY));
-      const bottom = Math.max(0, Math.min(headerMaxHeight, bottomPx / effectiveScaleY));
+      const left = Math.max(0, Math.min(canvasMaxWidth, leftPx / effectiveScaleX));
+      const right = Math.max(0, Math.min(canvasMaxWidth, rightPx / effectiveScaleX));
+      const top = Math.max(0, Math.min(canvasMaxHeight, topPx / effectiveScaleY));
+      const bottom = Math.max(0, Math.min(canvasMaxHeight, bottomPx / effectiveScaleY));
 
       const hits = elements
         .filter((element) => {
@@ -791,8 +793,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           const relativeY = source.y - resizeStart.group!.top;
           return {
             ...el,
-            x: Math.max(0, Math.min(headerMaxWidth, Math.round(originX + relativeX * scaleX))),
-            y: Math.max(0, Math.min(headerMaxHeight, Math.round(originY + relativeY * scaleY))),
+            x: Math.max(0, Math.min(canvasMaxWidth, Math.round(originX + relativeX * scaleX))),
+            y: Math.max(0, Math.min(canvasMaxHeight, Math.round(originY + relativeY * scaleY))),
             width: Math.max(5, Math.round(source.width * scaleX)),
             height: Math.max(5, Math.round(source.height * scaleY)),
           };
@@ -801,8 +803,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       }
 
       updateElement(resizingId, {
-        x: resizingElement ? Math.max(0, Math.min(headerMaxWidth, Math.round(resizingElement.x + shiftX))) : undefined,
-        y: resizingElement ? Math.max(0, Math.min(headerMaxHeight, Math.round(resizingElement.y + shiftY))) : undefined,
+        x: resizingElement ? Math.max(0, Math.min(canvasMaxWidth, Math.round(resizingElement.x + shiftX))) : undefined,
+        y: resizingElement ? Math.max(0, Math.min(canvasMaxHeight, Math.round(resizingElement.y + shiftY))) : undefined,
         width: Math.round(newW),
         height: Math.round(newH),
       }, { recordHistory: false });
@@ -813,8 +815,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const dy = (event.clientY - dragStart.y) / effectiveScaleY;
     const origin = dragStart.origins[dragId];
     if (!origin) return;
-    const nx = Math.max(0, Math.min(headerMaxWidth, origin.x + dx));
-    const ny = Math.max(0, Math.min(headerMaxHeight, origin.y + dy));
+    const nx = Math.max(0, Math.min(canvasMaxWidth, origin.x + dx));
+    const ny = Math.max(0, Math.min(canvasMaxHeight, origin.y + dy));
     const snapped = snapToOtherElements(dragId, nx, ny, elements);
     flashSnapLines(snapped.guides);
     calculateSmartGuideDistances(dragId, snapped.x, snapped.y, elements);
@@ -826,8 +828,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       if (!selectedOrigin) return el;
       return {
         ...el,
-        x: Math.max(0, Math.min(headerMaxWidth, Math.round(selectedOrigin.x + offsetX))),
-        y: Math.max(0, Math.min(headerMaxHeight, Math.round(selectedOrigin.y + offsetY))),
+        x: Math.max(0, Math.min(canvasMaxWidth, Math.round(selectedOrigin.x + offsetX))),
+        y: Math.max(0, Math.min(canvasMaxHeight, Math.round(selectedOrigin.y + offsetY))),
       };
     }), { recordHistory: false });
   };
@@ -894,8 +896,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const pasteClipboardElement = () => {
     if (!clipboardElement) return;
     const source = clipboardElement;
-    const nextX = Math.max(0, Math.min(headerMaxWidth, source.x + 10));
-    const nextY = Math.max(0, Math.min(headerMaxHeight, source.y + 10));
+    const nextX = Math.max(0, Math.min(canvasMaxWidth, source.x + 10));
+    const nextY = Math.max(0, Math.min(canvasMaxHeight, source.y + 10));
     const pasted: HeaderElement = { ...source, id: createElementId(), x: nextX, y: nextY };
     applyElements((prev) => [...prev, pasted]);
     selectOne(pasted.id);
@@ -908,8 +910,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const pasted: HeaderElement = {
       ...source,
       id: createElementId(),
-      x: Math.max(0, Math.min(headerMaxWidth, source.x + 10)),
-      y: Math.max(0, Math.min(headerMaxHeight, source.y + 10)),
+      x: Math.max(0, Math.min(canvasMaxWidth, source.x + 10)),
+      y: Math.max(0, Math.min(canvasMaxHeight, source.y + 10)),
     };
     setClipboardElement({ ...source });
     applyElements((prev) => [...prev, pasted]);
@@ -971,16 +973,16 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const alignSelection = (axis: AlignAxis) => {
     applyElements((prev) => alignElements(prev, axis, {
       selectedElementIds,
-      headerMaxWidth,
-      headerMaxHeight,
+      canvasMaxWidth,
+      canvasMaxHeight,
     }));
   };
 
   const distributeSelection = (axis: DistributeAxis) => {
     applyElements((prev) => distributeElements(prev, axis, {
       selectedElementIds,
-      headerMaxWidth,
-      headerMaxHeight,
+      canvasMaxWidth,
+      canvasMaxHeight,
     }));
   };
 
@@ -1064,8 +1066,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       if (!selectedElementIds.includes(el.id)) return el;
       return {
         ...el,
-        x: Math.max(0, Math.min(headerMaxWidth, el.x + dx)),
-        y: Math.max(0, Math.min(headerMaxHeight, el.y + dy)),
+        x: Math.max(0, Math.min(canvasMaxWidth, el.x + dx)),
+        y: Math.max(0, Math.min(canvasMaxHeight, el.y + dy)),
       };
     }));
   };
@@ -1466,8 +1468,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   {isElementSelected(element.id) && (
                     <div className="mt-2 pt-2 border-t space-y-2">
                       <div className="grid grid-cols-2 gap-2">
-                        <div><Label className="text-xs">X (mm)</Label><Input type="number" value={element.x} onChange={(e) => updateElement(element.id, { x: validatePosition(parseFloat(e.target.value) || 0, headerMaxWidth) })} className="h-7 text-xs" /></div>
-                        <div><Label className="text-xs">Y (mm)</Label><Input type="number" value={element.y} onChange={(e) => updateElement(element.id, { y: validatePosition(parseFloat(e.target.value) || 0, headerMaxHeight) })} className="h-7 text-xs" /></div>
+                        <div><Label className="text-xs">X (mm)</Label><Input type="number" value={element.x} onChange={(e) => updateElement(element.id, { x: validatePosition(parseFloat(e.target.value) || 0, canvasMaxWidth) })} className="h-7 text-xs" /></div>
+                        <div><Label className="text-xs">Y (mm)</Label><Input type="number" value={element.y} onChange={(e) => updateElement(element.id, { y: validatePosition(parseFloat(e.target.value) || 0, canvasMaxHeight) })} className="h-7 text-xs" /></div>
                       </div>
                       {element.type === 'text' && (
                         <>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Edit3, Trash2, Plus, Save, X, Eye, Upload, ImageIcon, GripVertical, Square, Circle, Minus, Undo2, Redo2, Ruler, Crosshair, Copy, ClipboardPaste, CopyPlus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Edit3, Trash2, Plus, Save, X, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,12 +66,6 @@ type TabRect = {
 };
 
 
-interface GalleryImage {
-  name: string;
-  path: string;
-  blobUrl: string;
-  publicUrl: string;
-}
 
 const STORAGE_PATH_PREFIXES = [
   '/storage/v1/object/public/letter-assets/',
@@ -230,89 +224,6 @@ const LetterTemplateManager: React.FC = () => {
         </span>
       </TabsTrigger>
     );
-  };
-
-  const loadGalleryImages = useCallback(async () => {
-    if (!currentTenant?.id) return;
-    setGalleryLoading(true);
-    try {
-      const folderPath = `${currentTenant.id}/header-images`;
-      const { data: files, error } = await supabase.storage.from('letter-assets').list(folderPath);
-      if (error) return;
-
-      const imageFiles = (files || []).filter((file) => file.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(file.name));
-      const loaded: GalleryImage[] = [];
-      const nextMap = new Map<string, string>();
-
-      for (const file of imageFiles) {
-        const filePath = `${folderPath}/${file.name}`;
-        const cached = galleryBlobUrlsRef.current.get(filePath);
-        if (cached) {
-          nextMap.set(filePath, cached);
-          const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(filePath);
-          loaded.push({ name: file.name, path: filePath, blobUrl: cached, publicUrl });
-          continue;
-        }
-
-        try {
-          const { data: blob, error: dlError } = await supabase.storage.from('letter-assets').download(filePath);
-          if (dlError || !blob) continue;
-          const blobUrl = URL.createObjectURL(blob);
-          nextMap.set(filePath, blobUrl);
-          const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(filePath);
-          loaded.push({ name: file.name, path: filePath, blobUrl, publicUrl });
-        } catch (error) {
-          console.error('Error downloading gallery image:', error);
-        }
-      }
-
-      galleryBlobUrlsRef.current.forEach((blobUrl, path) => {
-        if (!nextMap.has(path)) URL.revokeObjectURL(blobUrl);
-      });
-      galleryBlobUrlsRef.current = nextMap;
-      setGalleryImages(loaded);
-    } catch (error) {
-      console.error('Error loading gallery images:', error);
-    } finally {
-      setGalleryLoading(false);
-    }
-  }, [currentTenant?.id]);
-
-  useEffect(() => {
-    if (currentTenant) {
-      fetchTemplates();
-      fetchSenderInfos();
-      fetchInformationBlocks();
-      loadGalleryImages();
-    }
-  }, [currentTenant, loadGalleryImages]);
-
-  useEffect(() => {
-    return () => {
-      galleryBlobUrlsRef.current.forEach((blobUrl) => URL.revokeObjectURL(blobUrl));
-      galleryBlobUrlsRef.current.clear();
-    };
-  }, []);
-
-  const handleSubjectImageUpload = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file || !currentTenant?.id) return;
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${currentTenant.id}/header-images/${fileName}`;
-      const { error } = await supabase.storage.from('letter-assets').upload(filePath, file);
-      if (error) {
-        toast({ title: 'Fehler', description: 'Bild konnte nicht hochgeladen werden', variant: 'destructive' });
-        return;
-      }
-      await loadGalleryImages();
-      toast({ title: 'Bild hochgeladen' });
-    };
-    input.click();
   };
 
   const fetchTemplates = async () => {
@@ -476,440 +387,29 @@ const LetterTemplateManager: React.FC = () => {
     setFormData((prev) => ({ ...prev, layout_settings: updater(prev.layout_settings) }));
   };
 
-  const getBlockItems = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments') => {
+  type BlockEditorKey = 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments' | 'footer';
+
+  const getBlockItems = (blockKey: BlockEditorKey) => {
     const content = ((formData.layout_settings as any).blockContent || {}) as Record<string, any[]>;
     return content[blockKey] || [];
   };
 
-  const setBlockItems = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments', items: any[]) => {
+  const setBlockItems = (blockKey: BlockEditorKey, items: any[]) => {
     updateLayoutSettings((layout) => {
       const current = ((layout as any).blockContent || {}) as Record<string, any[]>;
       return { ...layout, blockContent: { ...current, [blockKey]: items } } as LetterLayoutSettings;
     });
   };
 
-  // Block canvas drag state
-  const [blockDrag, setBlockDrag] = useState<{ blockKey: string; itemId: string; startX: number; startY: number; ox: number; oy: number } | null>(null);
-  const [blockResize, setBlockResize] = useState<{ blockKey: string; itemId: string; startX: number; startY: number; ow: number; oh: number } | null>(null);
-
-  const onBlockCanvasMouseMove = (e: React.MouseEvent, blockKey: string, scale: number) => {
-    if (blockResize && blockResize.blockKey === blockKey) {
-      const dx = (e.clientX - blockResize.startX) / scale;
-      const dy = (e.clientY - blockResize.startY) / scale;
-      const newW = Math.max(5, blockResize.ow + dx);
-      const newH = Math.max(5, blockResize.oh + dy);
-      const items = getBlockItems(blockKey as any);
-      setBlockItems(blockKey as any, items.map((item: any) => item.id === blockResize.itemId ? { ...item, width: Math.round(newW), height: Math.round(newH) } : item));
-      return;
-    }
-    if (blockDrag && blockDrag.blockKey === blockKey) {
-      const dx = (e.clientX - blockDrag.startX) / scale;
-      const dy = (e.clientY - blockDrag.startY) / scale;
-      const newX = Math.max(0, Math.round(blockDrag.ox + dx));
-      const newY = Math.max(0, Math.round(blockDrag.oy + dy));
-      const items = getBlockItems(blockKey as any);
-      setBlockItems(blockKey as any, items.map((item: any) => item.id === blockDrag.itemId ? { ...item, x: newX, y: newY } : item));
-    }
-  };
-
-  const onBlockCanvasMouseUp = () => { setBlockDrag(null); setBlockResize(null); };
-
-  const addImageItemToBlock = (
-    blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments',
-    imageUrl: string,
-    rect: { width: number; height: number },
-    storagePath?: string
-  ) => {
-    const items = getBlockItems(blockKey);
-    const id = Date.now().toString();
-    const defaultW = Math.min(40, Math.max(20, rect.width * 0.35));
-    const defaultH = Math.min(18, Math.max(10, rect.height * 0.7));
-    const x = Math.max(0, Math.round((rect.width - defaultW) / 2));
-    const y = Math.max(0, Math.round((Math.max(rect.height, 25) - defaultH) / 2));
-    setBlockItems(blockKey, [...items, { id, type: 'image', x, y, width: defaultW, height: defaultH, imageUrl, storagePath }]);
-    setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
-  };
-
-  const renderBlockCanvas = (blockKey: 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments', title: string, rect: { top: number; left: number; width: number; height: number }) => {
-    const items = getBlockItems(blockKey);
-    const scale = 2.4;
-    const selectedId = selectedBlockItem[blockKey] || items[0]?.id || null;
-    const selected = items.find((item: any) => item.id === selectedId) || null;
-    const ruler = !!showBlockRuler[blockKey];
-    const showAxes = !!showBlockRuler[`${blockKey}_axes`];
-    const showMargins = showBlockRuler[`${blockKey}_margins`] !== false;
-
-    const updateItem = (id: string, updates: any) => setBlockItems(blockKey, items.map((item: any) => (item.id === id ? { ...item, ...updates } : item)));
-
-    const addItem = (item: any) => {
-      const id = Date.now().toString();
-      setBlockItems(blockKey, [...items, { id, ...item }]);
-      setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: id }));
-    };
-
-    const deleteItem = (id: string) => {
-      setBlockItems(blockKey, items.filter((item: any) => item.id !== id));
-      if (selectedId === id) setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: null }));
-    };
-
-    const duplicateSelectedItem = () => {
-      if (!selected) return;
-      addItem({ ...selected, x: (selected.x || 0) + 2, y: (selected.y || 0) + 2 });
-    };
-
-    const canvasW = rect.width * scale;
-    const canvasH = Math.max(rect.height, 25) * scale;
-    const pageMargins = formData.layout_settings.margins;
-    const pageWidth = formData.layout_settings.pageWidth;
-    const pageHeight = formData.layout_settings.pageHeight;
-
-    const marginGuides = [
-      { key: 'left', orientation: 'vertical' as const, pos: (pageMargins.left - rect.left) * scale, color: '#2563eb', label: 'Links' },
-      { key: 'right', orientation: 'vertical' as const, pos: (pageWidth - pageMargins.right - rect.left) * scale, color: '#2563eb', label: 'Rechts' },
-      { key: 'top', orientation: 'horizontal' as const, pos: (pageMargins.top - rect.top) * scale, color: '#16a34a', label: 'Oben' },
-      { key: 'bottom', orientation: 'horizontal' as const, pos: (pageHeight - pageMargins.bottom - rect.top) * scale, color: '#16a34a', label: 'Unten' },
-    ].filter((guide) => {
-      if (guide.orientation === 'vertical') return guide.pos >= 0 && guide.pos <= canvasW;
-      return guide.pos >= 0 && guide.pos <= canvasH;
-    });
-
-    const variablePlaceholders = [
-      { label: 'Betreff', variable: '{{betreff}}' },
-      { label: 'Datum', variable: '{{datum}}' },
-      { label: 'Empfänger', variable: '{{empfaenger_name}}' },
-      { label: 'Absender', variable: '{{absender_name}}' },
-      { label: 'Adresse', variable: '{{empfaenger_adresse}}' },
-      { label: 'PLZ/Ort', variable: '{{empfaenger_plz_ort}}' },
-    ];
-
-    return (
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_300px] gap-4">
-          <div className="space-y-3 xl:col-start-1">
-            <Card>
-              <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm">Elemente hinzufügen</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 px-4 pb-4">
-            {/* Draggable text tool */}
-            <div draggable onDragStart={(e) => { e.dataTransfer.setData('application/x-block-tool', 'text'); e.dataTransfer.effectAllowed = 'copy'; }} className="rounded border bg-background px-3 py-2 text-sm cursor-grab active:cursor-grabbing flex items-start gap-2">
-              <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5" />
-              <div><div className="font-medium text-xs">Text-Block</div><div className="text-xs text-muted-foreground">Auf Canvas ziehen</div></div>
-            </div>
-            {/* Variablen-Platzhalter */}
-            <div className="space-y-1">
-              <Label className="text-xs uppercase text-muted-foreground">Variablen</Label>
-              <div className="flex flex-wrap gap-1">
-                {variablePlaceholders.map((v) => (
-                  <div
-                    key={v.variable}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', v.variable); e.dataTransfer.setData('application/x-block-tool', 'variable'); e.dataTransfer.effectAllowed = 'copy'; }}
-                    className="px-2 py-1 rounded-full border bg-amber-50 text-amber-800 border-amber-300 text-[11px] cursor-grab active:cursor-grabbing select-none"
-                  >
-                    {v.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* Bilder-Galerie */}
-            <div className="space-y-1">
-              <Label className="text-xs uppercase text-muted-foreground">Bilder</Label>
-              <Button type="button" variant="outline" size="sm" className="w-full text-xs" onClick={handleSubjectImageUpload}>
-                <Upload className="h-3 w-3 mr-1" /> Bild hochladen
-              </Button>
-              {galleryLoading ? (
-                <p className="text-xs text-muted-foreground">Lade Bilder...</p>
-              ) : galleryImages.length > 0 && (
-                <div className="grid grid-cols-4 gap-1">
-                  {galleryImages.map((img) => (
-                    <div
-                      key={img.name}
-                      draggable
-                      onClick={() => setSelectedGalleryImage((prev) => ({ ...prev, [blockKey]: img }))}
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData('application/x-block-tool', 'image');
-                        e.dataTransfer.setData('application/x-block-image-url', img.publicUrl);
-                        e.dataTransfer.setData('application/x-block-image-path', img.path);
-                        e.dataTransfer.effectAllowed = 'copy';
-                      }}
-                      className={`border rounded overflow-hidden cursor-grab active:cursor-grabbing aspect-square bg-muted/30 ${selectedGalleryImage[blockKey]?.path === img.path ? 'ring-2 ring-primary' : ''}`}
-                      title={img.name}
-                    >
-                      <img src={img.blobUrl} alt={img.name} className="w-full h-full object-contain" />
-                    </div>
-                  ))}
-                </div>
-              )}
-              {selectedGalleryImage[blockKey] && (
-                <div className="space-y-2 rounded-md border p-2 bg-muted/30">
-                  <Label className="text-xs uppercase text-muted-foreground">Canvas-Vorschau</Label>
-                  <div className="rounded border bg-white p-2">
-                    <div className="relative h-20 w-full overflow-hidden rounded border border-dashed border-muted-foreground/40 bg-[radial-gradient(circle,_#e5e7eb_1px,_transparent_1px)] bg-[length:10px_10px]">
-                      <img
-                        src={selectedGalleryImage[blockKey]?.blobUrl}
-                        alt={selectedGalleryImage[blockKey]?.name}
-                        className="absolute left-1/2 top-1/2 h-14 w-24 -translate-x-1/2 -translate-y-1/2 object-contain"
-                      />
-                    </div>
-                    <p className="mt-1 truncate text-[11px] text-muted-foreground">{selectedGalleryImage[blockKey]?.name}</p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="w-full text-xs"
-                    onClick={() => addImageItemToBlock(blockKey, selectedGalleryImage[blockKey]!.publicUrl, rect, selectedGalleryImage[blockKey]!.path)}
-                  >
-                    <ImageIcon className="h-3 w-3 mr-1" /> In Canvas einfügen
-                  </Button>
-                </div>
-              )}
-            </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm">Formen</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 grid grid-cols-3 gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => addItem({ type: 'shape', shapeType: 'line', x: 4, y: 4, width: 50, height: 1, strokeColor: '#111827', strokeWidth: 1.5 })}><Minus className="h-4 w-4" /></Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => addItem({ type: 'shape', shapeType: 'rectangle', x: 4, y: 4, width: 24, height: 10, fillColor: '#dbeafe', strokeColor: '#1d4ed8', strokeWidth: 1.2, borderRadius: 0 })}><Square className="h-4 w-4" /></Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => addItem({ type: 'shape', shapeType: 'circle', x: 4, y: 4, width: 16, height: 16, fillColor: '#dcfce7', strokeColor: '#166534', strokeWidth: 1.2 })}><Circle className="h-4 w-4" /></Button>
-            </CardContent>
-          </Card>
-          </div>
-          <div className="space-y-3 xl:col-start-2">
-            <CanvasToolbar
-              showRuler={ruler}
-              onToggleRuler={() => setShowBlockRuler((prev) => ({ ...prev, [blockKey]: !prev[blockKey] }))}
-              showAxes={showAxes}
-              onToggleAxes={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_axes`]: !prev[`${blockKey}_axes`] }))}
-              showMargins={showMargins}
-              onToggleMargins={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_margins`]: !(prev[`${blockKey}_margins`] !== false) }))}
-              canCopy={!!selected}
-              canPaste={false}
-              canDuplicate={!!selected}
-              onDuplicate={duplicateSelectedItem}
-            />
-          {/* Canvas area - centered */}
-          <div className="border rounded-lg p-6 bg-muted/30 overflow-auto flex items-center justify-center min-h-[200px]"
-            onMouseMove={(e) => onBlockCanvasMouseMove(e, blockKey, scale)}
-            onMouseUp={onBlockCanvasMouseUp}
-            onMouseLeave={onBlockCanvasMouseUp}
-          >
-            <div className="relative" style={{ width: canvasW + 24, height: canvasH + 24 }}>
-              {ruler && (
-                <>
-                  <div className="absolute top-0 left-6 right-0 h-6 border rounded bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(rect.width / 10) + 1 }).map((_, i) => <span key={`bx-${i}`} className="absolute" style={{ left: i * 10 * scale }}>{i * 10}</span>)}</div>
-                  <div className="absolute top-6 left-0 bottom-0 w-6 border rounded bg-white/90 text-[9px] text-muted-foreground pointer-events-none">{Array.from({ length: Math.floor(Math.max(rect.height, 25) / 10) + 1 }).map((_, i) => <span key={`by-${i}`} className="absolute" style={{ top: i * 10 * scale }}>{i * 10}</span>)}</div>
-                </>
-              )}
-              <div className="absolute left-6 top-6 relative bg-white border select-none"
-                style={{ width: canvasW, height: canvasH, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: '8px 8px' }}
-                onKeyDown={(e) => {
-                  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) { e.preventDefault(); deleteItem(selectedId); return; }
-                  if (!selectedId) return;
-                  let dx = 0, dy = 0;
-                  if (e.key === 'ArrowLeft') dx = -1;
-                  if (e.key === 'ArrowRight') dx = 1;
-                  if (e.key === 'ArrowUp') dy = -1;
-                  if (e.key === 'ArrowDown') dy = 1;
-                  if (dx || dy) {
-                    e.preventDefault();
-                    const item = items.find((i: any) => i.id === selectedId);
-                    if (item) updateItem(selectedId, { x: Math.max(0, (item.x || 0) + dx), y: Math.max(0, (item.y || 0) + dy) });
-                  }
-                }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const domRect = e.currentTarget.getBoundingClientRect();
-                  const x = Math.round((e.clientX - domRect.left) / scale);
-                  const y = Math.round((e.clientY - domRect.top) / scale);
-                  const tool = e.dataTransfer.getData('application/x-block-tool');
-                  if (tool === 'text') {
-                    addItem({ type: 'text', x, y, width: 60, content: 'Neuer Text', fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' });
-                    return;
-                  }
-                  if (tool === 'variable') {
-                    const varText = e.dataTransfer.getData('text/plain');
-                    if (varText && varText.startsWith('{{')) {
-                      addItem({ type: 'text', x, y, width: 60, content: varText, isVariable: true, fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' });
-                      return;
-                    }
-                  }
-                  if (tool === 'image') {
-                    const imgUrl = e.dataTransfer.getData('application/x-block-image-url');
-                    const imgPath = e.dataTransfer.getData('application/x-block-image-path');
-                    if (imgUrl) {
-                      addItem({ type: 'image', x, y, width: 30, height: 15, imageUrl: imgUrl, storagePath: imgPath || null });
-                      return;
-                    }
-                  }
-                  const textData = e.dataTransfer.getData('text/plain');
-                  if (textData && textData.startsWith('{{')) {
-                    addItem({ type: 'text', x, y, width: 60, content: textData, isVariable: true, fontFamily: 'Arial', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none' });
-                  }
-                }}
-                tabIndex={0}
-              >
-                {/* Center guides */}
-                {showAxes && (
-                  <>
-                    <div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-red-500/80 pointer-events-none z-10" />
-                    <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none z-10" />
-                  </>
-                )}
-                {showMargins && marginGuides.map((guide) => (
-                  <React.Fragment key={guide.key}>
-                    {guide.orientation === 'vertical' ? (
-                      <>
-                        <div className="absolute top-0 bottom-0 border-l border-dashed pointer-events-none z-10" style={{ left: guide.pos, borderColor: guide.color }} />
-                        <Badge variant="secondary" className="absolute top-1 text-[10px] px-1 py-0 h-4 pointer-events-none z-10" style={{ left: Math.min(Math.max(guide.pos + 2, 2), Math.max(canvasW - 42, 2)) }}>{guide.label}</Badge>
-                      </>
-                    ) : (
-                      <>
-                        <div className="absolute left-0 right-0 border-t border-dashed pointer-events-none z-10" style={{ top: guide.pos, borderColor: guide.color }} />
-                        <Badge variant="secondary" className="absolute left-1 text-[10px] px-1 py-0 h-4 pointer-events-none z-10" style={{ top: Math.min(Math.max(guide.pos + 2, 2), Math.max(canvasH - 18, 2)) }}>{guide.label}</Badge>
-                      </>
-                    )}
-                  </React.Fragment>
-                ))}
-                {items.map((item: any) => {
-                  const isSelected = selectedId === item.id;
-                  if (item.type === 'shape') {
-                    return (
-                      <div key={item.id} className={`absolute cursor-move border ${isSelected ? 'border-primary border-dashed border-2' : 'border-transparent'}`} style={{ left: (item.x || 0) * scale, top: (item.y || 0) * scale, width: (item.width || 20) * scale, height: Math.max(1, (item.height || 10) * scale) }} onMouseDown={(e) => { e.stopPropagation(); setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id })); setBlockDrag({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ox: item.x || 0, oy: item.y || 0 }); }}>
-                        <svg width="100%" height="100%" className="pointer-events-none">
-                          {item.shapeType === 'line' && <line x1="0" y1="50%" x2="100%" y2="50%" stroke={item.strokeColor || '#111827'} strokeWidth={item.strokeWidth || 1.5} />}
-                          {item.shapeType === 'rectangle' && <rect x="1" y="1" width="98%" height="98%" fill={item.fillColor || '#dbeafe'} stroke={item.strokeColor || '#1d4ed8'} strokeWidth={item.strokeWidth || 1.2} rx={item.borderRadius || 0} />}
-                          {item.shapeType === 'circle' && <ellipse cx="50%" cy="50%" rx="48%" ry="48%" fill={item.fillColor || '#dcfce7'} stroke={item.strokeColor || '#166534'} strokeWidth={item.strokeWidth || 1.2} />}
-                        </svg>
-                        {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => { e.stopPropagation(); setBlockResize({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ow: item.width || 20, oh: item.height || 10 }); }} />}
-                      </div>
-                    );
-                  }
-                  // Image element
-                  if (item.type === 'image' && item.imageUrl) {
-                    return (
-                      <div
-                        key={item.id}
-                        className={`absolute cursor-move border ${isSelected ? 'border-primary border-dashed border-2' : 'border-transparent'}`}
-                        style={{ left: (item.x || 0) * scale, top: (item.y || 0) * scale, width: (item.width || 30) * scale, height: (item.height || 15) * scale }}
-                        onMouseDown={(e) => { e.stopPropagation(); setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id })); setBlockDrag({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ox: item.x || 0, oy: item.y || 0 }); }}
-                      >
-                        <img src={item.imageUrl} alt="" className="w-full h-full object-contain pointer-events-none" draggable={false} />
-                        {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => { e.stopPropagation(); setBlockResize({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ow: item.width || 30, oh: item.height || 15 }); }} />}
-                      </div>
-                    );
-                  }
-                  // Text element (default)
-                  return (
-                    <div
-                      key={item.id}
-                      onMouseDown={(e) => { e.stopPropagation(); setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id })); setBlockDrag({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ox: item.x || 0, oy: item.y || 0 }); }}
-                      data-block-item
-                      className={`absolute border px-2 py-1 text-xs cursor-move ${isSelected ? 'border-primary bg-primary/15' : 'border-primary/50 bg-primary/10'} ${item.isVariable ? 'bg-amber-50 border-amber-400 text-amber-900' : ''}`}
-                      style={{ left: (item.x || 0) * scale, top: (item.y || 0) * scale, width: (item.width || 50) * scale, fontFamily: item.fontFamily || 'Arial', fontWeight: item.fontWeight || 'normal', fontStyle: item.fontStyle || 'normal', textDecoration: item.textDecoration || 'none' }}
-                    >
-                      {item.isVariable && <span className="text-[9px] text-amber-600 mr-1">⚡</span>}
-                      {item.content || 'Text'}
-                      {isSelected && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary border border-primary-foreground cursor-nwse-resize z-10" style={{ transform: 'translate(50%, 50%)' }} onMouseDown={(e) => { e.stopPropagation(); setBlockResize({ blockKey, itemId: item.id, startX: e.clientX, startY: e.clientY, ow: item.width || 50, oh: item.height || 10 }); }} />}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-          </div>
-
-          <div className="space-y-3 xl:col-start-3">
-            <Card>
-              <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm">Elemente ({items.length})</CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 space-y-2 max-h-[36vh] overflow-auto">
-              {items.map((item: any) => (
-                <div key={item.id} className={`p-2 border rounded cursor-pointer flex items-center justify-between ${selectedId === item.id ? 'border-primary bg-primary/10' : 'border-border'}`} onClick={() => setSelectedBlockItem((prev) => ({ ...prev, [blockKey]: item.id }))}>
-                  <div className="flex items-center gap-1 min-w-0">
-                    {item.isVariable && <span className="text-amber-600 text-[10px]">⚡</span>}
-                    <span className="text-sm truncate">{(item.content || item.shapeType || item.type || 'Element').toString().slice(0, 30)}</span>
-                  </div>
-                  <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} className="h-6 w-6 p-0 shrink-0">
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
-                </div>
-              ))}
-              {items.length === 0 && <p className="text-xs text-muted-foreground">Keine Elemente vorhanden</p>}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm">Bearbeiten</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 px-4 pb-4 max-h-[38vh] overflow-auto">
-            {/* Selected element properties */}
-            {selected ? (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div><Label className="text-xs">X (mm)</Label><Input type="number" value={selected.x || 0} onChange={(e) => updateItem(selected.id, { x: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" /></div>
-                  <div><Label className="text-xs">Y (mm)</Label><Input type="number" value={selected.y || 0} onChange={(e) => updateItem(selected.id, { y: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div><Label className="text-xs">Breite (mm)</Label><Input type="number" value={selected.width || 50} onChange={(e) => updateItem(selected.id, { width: parseFloat(e.target.value) || 50 })} className="h-7 text-xs" /></div>
-                  {selected.height != null && <div><Label className="text-xs">Höhe (mm)</Label><Input type="number" value={selected.height || 10} onChange={(e) => updateItem(selected.id, { height: parseFloat(e.target.value) || 10 })} className="h-7 text-xs" /></div>}
-                </div>
-                {(selected.type === 'text' || !selected.type) && (
-                  <>
-                    <Label className="text-xs">Textinhalt</Label>
-                    <Textarea value={selected.content || ''} onChange={(e) => updateItem(selected.id, { content: e.target.value })} rows={3} className="text-xs" />
-                    <Label className="text-xs">Schriftart</Label>
-                    <Select value={selected.fontFamily || 'Arial'} onValueChange={(value) => updateItem(selected.id, { fontFamily: value })}>
-                      <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Arial">Arial</SelectItem>
-                        <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                        <SelectItem value="Calibri">Calibri</SelectItem>
-                        <SelectItem value="Verdana">Verdana</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="grid grid-cols-3 gap-1">
-                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.fontWeight === 'bold' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontWeight: selected.fontWeight === 'bold' ? 'normal' : 'bold' })}>Fett</Button>
-                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.fontStyle === 'italic' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { fontStyle: selected.fontStyle === 'italic' ? 'normal' : 'italic' })}>Kursiv</Button>
-                      <Button type="button" size="sm" className="h-6 text-xs" variant={selected.textDecoration === 'underline' ? 'default' : 'outline'} onClick={() => updateItem(selected.id, { textDecoration: selected.textDecoration === 'underline' ? 'none' : 'underline' })}>U</Button>
-                    </div>
-                  </>
-                )}
-                {selected.type === 'image' && (
-                  <p className="text-xs text-muted-foreground">Bild-Element. Position und Größe oben anpassen.</p>
-                )}
-                {selected.type === 'shape' && (
-                  <>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-xs">Füllfarbe</Label><Input type="color" value={selected.fillColor || '#dbeafe'} onChange={(e) => updateItem(selected.id, { fillColor: e.target.value })} className="h-7 p-1" /></div>
-                      <div><Label className="text-xs">Randfarbe</Label><Input type="color" value={selected.strokeColor || '#1d4ed8'} onChange={(e) => updateItem(selected.id, { strokeColor: e.target.value })} className="h-7 p-1" /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-xs">Strichstärke</Label><Input type="number" value={selected.strokeWidth || 1.2} onChange={(e) => updateItem(selected.id, { strokeWidth: parseFloat(e.target.value) || 1.2 })} className="h-7 text-xs" /></div>
-                      {selected.shapeType === 'rectangle' && <div><Label className="text-xs">Rundung</Label><Input type="number" value={selected.borderRadius || 0} onChange={(e) => updateItem(selected.id, { borderRadius: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" /></div>}
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">Kein Element ausgewählt.</p>
-            )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const renderSharedElementsEditor = (blockKey: BlockEditorKey, canvasWidthMm: number, canvasHeightMm: number) => (
+    <StructuredHeaderEditor
+      initialElements={getBlockItems(blockKey) as any}
+      onElementsChange={(elements) => setBlockItems(blockKey, elements as any[])}
+      layoutSettings={formData.layout_settings}
+      canvasWidthMm={canvasWidthMm}
+      canvasHeightMm={Math.max(8, canvasHeightMm)}
+    />
+  );
 
   const renderPreview = (template: LetterTemplate) => {
     let previewHtml = '';
@@ -1001,6 +501,10 @@ const LetterTemplateManager: React.FC = () => {
       </TabsContent>
 
       <TabsContent value="footer-designer" className="space-y-4">
+        {renderSharedElementsEditor('footer',
+          formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
+          formData.layout_settings.pageHeight - formData.layout_settings.footer.top - formData.layout_settings.margins.bottom
+        )}
         <StructuredFooterEditor
           initialBlocks={formData.footer_blocks}
           onBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
@@ -1069,44 +573,31 @@ const LetterTemplateManager: React.FC = () => {
       </TabsContent>
 
       <TabsContent value="block-address" className="space-y-4">
-        {renderBlockCanvas('addressField', 'Adressfeld', {
-          top: formData.layout_settings.addressField.top, left: formData.layout_settings.addressField.left,
-          width: formData.layout_settings.addressField.width, height: formData.layout_settings.addressField.height,
-        })}
+        {renderSharedElementsEditor('addressField', formData.layout_settings.addressField.width, formData.layout_settings.addressField.height)}
       </TabsContent>
 
       <TabsContent value="block-return-address" className="space-y-4">
-        {renderBlockCanvas('returnAddress', 'Rücksendeangaben', {
-          top: formData.layout_settings.returnAddress.top, left: formData.layout_settings.returnAddress.left,
-          width: formData.layout_settings.returnAddress.width, height: formData.layout_settings.returnAddress.height,
-        })}
+        {renderSharedElementsEditor('returnAddress', formData.layout_settings.returnAddress.width, formData.layout_settings.returnAddress.height)}
         <div className="border-t pt-4"><SenderInformationManager /></div>
       </TabsContent>
 
       <TabsContent value="block-info" className="space-y-4">
-        {renderBlockCanvas('infoBlock', 'Info-Block', {
-          top: formData.layout_settings.infoBlock.top, left: formData.layout_settings.infoBlock.left,
-          width: formData.layout_settings.infoBlock.width, height: formData.layout_settings.infoBlock.height,
-        })}
+        {renderSharedElementsEditor('infoBlock', formData.layout_settings.infoBlock.width, formData.layout_settings.infoBlock.height)}
         <div className="border-t pt-4"><InformationBlockManager /></div>
       </TabsContent>
 
       <TabsContent value="block-subject" className="space-y-4">
-        {renderBlockCanvas('subject', 'Betreffbereich', {
-          top: formData.layout_settings.subject.top,
-          left: formData.layout_settings.margins.left,
-          width: formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
-          height: Math.max(8, formData.layout_settings.subject.marginBottom + 4),
-        })}
+        {renderSharedElementsEditor('subject',
+          formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
+          Math.max(8, formData.layout_settings.subject.marginBottom + 4)
+        )}
       </TabsContent>
 
       <TabsContent value="block-attachments" className="space-y-4">
-        {renderBlockCanvas('attachments', 'Anlagenbereich', {
-          top: formData.layout_settings.attachments.top,
-          left: formData.layout_settings.margins.left,
-          width: formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
-          height: 20,
-        })}
+        {renderSharedElementsEditor('attachments',
+          formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
+          20
+        )}
       </TabsContent>
 
     </>
