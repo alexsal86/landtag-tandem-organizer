@@ -29,6 +29,7 @@ export const elementRegistry: Record<HeaderElement['type'], ElementRegistryEntry
         if (element.shapeType === 'circle') return <Circle className={DEFAULT_ICON_CLASS} />;
         if (element.shapeType === 'line') return <Minus className={DEFAULT_ICON_CLASS} />;
         if (element.shapeType === 'sunflower') return <Flower2 className={DEFAULT_ICON_CLASS} />;
+        if (element.shapeType === 'wappen') return <img src="/assets/wappen-bw.svg" className={DEFAULT_ICON_CLASS} alt="Wappen" style={{ objectFit: 'contain' }} />;
       }
       return <Square className={DEFAULT_ICON_CLASS} />;
     },
