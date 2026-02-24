@@ -1301,8 +1301,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr_260px] gap-6">
-        <div className="xl:col-start-1 xl:row-start-1 xl:row-span-4 flex flex-col gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[240px_1fr_240px] gap-3">
+        <div className="xl:col-start-1 xl:row-start-1 xl:row-span-4 flex flex-col gap-4">
         {/* Tools */}
         <Card>
           <CardHeader className="py-3 px-4">
@@ -1534,7 +1534,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             <CardTitle className="text-sm">Header-Vorschau</CardTitle>
             <p className="text-xs text-muted-foreground">Doppelklick auf Text/Block zum Bearbeiten. Mit Mausrad + Strg/Cmd zoomen.</p>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-3">
             <div ref={previewContainerRef} className="flex items-start justify-center min-h-[340px] w-full">
           <div className="relative" style={{ paddingLeft: 28, paddingTop: 28 }}>
               <div className={`absolute top-0 left-7 right-0 h-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`}>

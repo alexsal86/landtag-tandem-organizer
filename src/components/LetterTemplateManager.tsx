@@ -1065,26 +1065,22 @@ const LetterTemplateManager: React.FC = () => {
 
       {/* Edit Template - inline card (same as create) */}
       {editingTemplate && !showCreateDialog && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Template bearbeiten: {editingTemplate.name}</CardTitle>
-              <Button variant="ghost" size="sm" onClick={cancelEditing}><X className="h-4 w-4" /></Button>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold tracking-tight">Template bearbeiten: {editingTemplate.name}</h2>
+            <Button variant="ghost" size="sm" onClick={cancelEditing}><X className="h-4 w-4" /></Button>
+          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            {renderTabsList()}
+            {renderCommonTabsContent()}
+          </Tabs>
+          {activeTab !== 'canvas-designer' && activeTab !== 'header-designer' && (
+            <div className="flex justify-end space-x-2 pt-4 border-t">
+              <Button variant="outline" onClick={cancelEditing}><X className="h-4 w-4 mr-2" />Abbrechen</Button>
+              <Button onClick={handleUpdateTemplate}><Save className="h-4 w-4 mr-2" />Speichern</Button>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              {renderTabsList()}
-              {renderCommonTabsContent()}
-            </Tabs>
-            {activeTab !== 'canvas-designer' && activeTab !== 'header-designer' && (
-              <div className="flex justify-end space-x-2 pt-4 border-t">
-                <Button variant="outline" onClick={cancelEditing}><X className="h-4 w-4 mr-2" />Abbrechen</Button>
-                <Button onClick={handleUpdateTemplate}><Save className="h-4 w-4 mr-2" />Speichern</Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </div>
       )}
 
       {templates.length === 0 && !loading && !showCreateDialog && !editingTemplate && (
