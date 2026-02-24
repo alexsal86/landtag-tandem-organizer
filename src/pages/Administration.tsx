@@ -1052,17 +1052,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
         case "letters":
           return (
             <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Briefvorlagen</CardTitle>
-                  <CardDescription>
-                    Öffnen Sie den Canvas- und Template-Designer für Briefvorlagen.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <LetterTemplateManager />
-                </CardContent>
-              </Card>
+              <LetterTemplateManager />
 
               {/* Absenderinformationen und Informationsblöcke sind in den Template-Tabs integriert */}
             </div>
