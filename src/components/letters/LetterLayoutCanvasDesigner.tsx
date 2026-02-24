@@ -301,10 +301,10 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr_260px] gap-4 mt-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[300px_1fr] gap-4 mt-6">
         <div className="space-y-4">
           <div className="border rounded-lg p-3 space-y-2">
-            <Label className="text-xs uppercase text-muted-foreground">Elemente</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Elemente hinzufügen</Label>
             <div className="grid grid-cols-1 gap-2">
               {blocks.map((block) => (
                 <div key={block.key} className="flex items-center gap-2 min-w-0">
@@ -340,6 +340,57 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               ))}
             </div>
           </div>
+
+          <div className="border rounded-lg p-3 space-y-2">
+            <Label className="text-xs uppercase text-muted-foreground">Elemente bearbeiten</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Ausgewählt: {selectedBlockConfig?.label}</Label>
+            {selectedBlockConfig && (
+              <div>
+                <Label>Name</Label>
+                <Input
+                  value={selectedLabel}
+                  onChange={(e) => setSelectedLabel(e.target.value)}
+                  onBlur={() => updateBlockLabel(selected, selectedLabel.trim() || selectedBlockConfig.label)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      updateBlockLabel(selected, selectedLabel.trim() || selectedBlockConfig.label);
+                    }
+                  }}
+                />
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div><Label>X (mm)</Label><Input value={selectedRect.x.toFixed(1)} readOnly /></div>
+              <div><Label>Y (mm)</Label><Input value={selectedRect.y.toFixed(1)} readOnly /></div>
+              <div><Label>Breite</Label><Input value={selectedRect.w.toFixed(1)} readOnly /></div>
+              <div><Label>Höhe</Label><Input value={selectedRect.h.toFixed(1)} readOnly /></div>
+            </div>
+            {selectedBlockConfig && (
+              <div>
+                <Label className="text-xs">Farbe</Label>
+                <Select value={selectedBlockConfig.color} onValueChange={(v) => updateBlockColor(selected, v)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {COLOR_PRESETS.map(c => (
+                      <SelectItem key={c.value} value={c.value}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded ${c.value.split(' ')[0]}`} />
+                          {c.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          {actionButtons && (
+            <div className="border rounded-lg p-3 space-y-2">
+              <Label className="text-xs uppercase text-muted-foreground">Bearbeitung</Label>
+              <div className="grid grid-cols-1 gap-2">{actionButtons}</div>
+            </div>
+          )}
 
         </div>
 
@@ -387,58 +438,6 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               );
               })}
             </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {actionButtons && (
-            <div className="border rounded-lg p-3 space-y-2">
-              <Label className="text-xs uppercase text-muted-foreground">Bearbeitung</Label>
-              <div className="grid grid-cols-1 gap-2">{actionButtons}</div>
-            </div>
-          )}
-
-          <div className="border rounded-lg p-3 space-y-2">
-            <Label className="text-xs uppercase text-muted-foreground">Ausgewählt: {selectedBlockConfig?.label}</Label>
-            {selectedBlockConfig && (
-              <div>
-                <Label>Name</Label>
-                <Input
-                  value={selectedLabel}
-                  onChange={(e) => setSelectedLabel(e.target.value)}
-                  onBlur={() => updateBlockLabel(selected, selectedLabel.trim() || selectedBlockConfig.label)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      updateBlockLabel(selected, selectedLabel.trim() || selectedBlockConfig.label);
-                    }
-                  }}
-                />
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div><Label>X (mm)</Label><Input value={selectedRect.x.toFixed(1)} readOnly /></div>
-              <div><Label>Y (mm)</Label><Input value={selectedRect.y.toFixed(1)} readOnly /></div>
-              <div><Label>Breite</Label><Input value={selectedRect.w.toFixed(1)} readOnly /></div>
-              <div><Label>Höhe</Label><Input value={selectedRect.h.toFixed(1)} readOnly /></div>
-            </div>
-            {selectedBlockConfig && (
-              <div>
-                <Label className="text-xs">Farbe</Label>
-                <Select value={selectedBlockConfig.color} onValueChange={(v) => updateBlockColor(selected, v)}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {COLOR_PRESETS.map(c => (
-                      <SelectItem key={c.value} value={c.value}>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded ${c.value.split(' ')[0]}`} />
-                          {c.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
         </div>
       </div>
