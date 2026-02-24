@@ -1,113 +1,120 @@
 
-# Fix: Header-Editor -- Snapping, Zoom, Lineal und Galerie
 
-## Uebersicht
+# Fix: Header-Canvas Zoom und Groesse an Canvas-Tab angleichen
 
-Vier separate Probleme im Header-Tab des StructuredHeaderEditors werden behoben.
+## Problem
 
----
+Im Canvas-Tab skaliert der Zoom den gesamten Canvas (Hintergrund, Lineal, Elemente) -- der Container waechst und man kann scrollen. Im Header-Tab bleibt der Canvas bei fester Groesse (`previewWidth x previewHeight`), nur die Elemente werden mit `zoom` multipliziert. Dadurch laufen Elemente ueber den Canvas hinaus, aber der weisse Hintergrund bleibt gleich gross.
 
-## 1. Text-Zentrierung / Snapping falsch
+Zusaetzlich ist der Canvas bei 100% zu klein -- er nutzt den verfuegbaren Platz nicht optimal.
 
-**Problem:** Das TextCanvasElement rendert ohne explizite Breite/Hoehe -- es wird allein durch den Textinhalt dimensioniert. Aber das Snapping rechnet mit den in `getElementDimensions` definierten Dimensionen (70x8mm). Dadurch stimmt die visuelle Mitte nicht mit der berechneten Mitte ueberein.
-
-**Loesung:** Dem TextCanvasElement eine explizite `width` und `height` geben (aus dem Element-Datenmodell), damit die visuelle Darstellung deckungsgleich mit der Snapping-Berechnung ist.
-
-### Aenderung in `src/components/letters/elements/canvasElements.tsx`
-
-Den aeusseren `<div>` des TextCanvasElement um `width` und `height` im Style erweitern:
+## Referenz: So funktioniert es im Canvas-Tab
 
 ```text
-style={{
-  left: `${element.x * scaleX}px`,
-  top: `${element.y * scaleY}px`,
-  width: `${(element.width || 70) * scaleX}px`,    // NEU
-  height: `${(element.height || 8) * scaleY}px`,   // NEU
-  fontSize: ...
-}}
+SCALE = BASE_SCALE * zoomLevel;          // z.B. 3.2 * 1.5 = 4.8
+pagePx = { w: pageWidth * SCALE, h: pageHeight * SCALE };
+Container: width = pagePx.w + RULER_SIZE, height = pagePx.h + RULER_SIZE
 ```
 
-Und die `<textarea>` ebenfalls an die Hoehe anpassen (`h-full` statt keine Angabe), sowie `overflow: hidden` auf den Container setzen, damit der Textbereich innerhalb der definierten Dimensionen bleibt.
+Der aeussere Wrapper hat `overflow-auto`, sodass bei Zoom > 100% Scrollbars erscheinen. Lineale werden ebenfalls mit SCALE berechnet. Alles skaliert einheitlich.
 
----
+## Loesung fuer den Header-Tab
 
-## 2. Zoom skaliert nur Elemente, nicht den Canvas
+Gleichen Ansatz uebernehmen: Der Zoom veraendert die Canvas-Container-Groesse, nicht nur die Element-Positionen.
 
-**Problem:** Der Zoom wird ueber `transform: scale(zoom)` auf einen inneren Container angewandt (Zeile 1556). Die aeussere Canvas-Grenze bleibt aber unveraendert bei `previewWidth x previewHeight`, sodass hineingezoomte Elemente abgeschnitten werden.
+### Aenderung 1: Zoom in die Canvas-Groesse integrieren
 
-**Loesung:** Statt den inneren Container zu transformieren, die Canvas-Groesse selbst mit dem Zoom-Faktor skalieren -- aehnlich wie im LetterLayoutCanvasDesigner (`SCALE = BASE_SCALE * zoomLevel`).
+Statt den Zoom nur bei Element-Positionen zu multiplizieren, wird er in die Basis-Skalierung eingerechnet:
 
-### Aenderungen in `StructuredHeaderEditor.tsx`
-
-- `previewScaleX` und `previewScaleY` mit `zoom` multiplizieren
-- Den aeusseren Canvas-Container (`overflow-auto`) auf die gezoomte Groesse setzen
-- Den inneren Transform-Container entfernen -- Elemente werden direkt mit den skalierten Werten positioniert
-- Die Pan-Logik bleibt als Scroll-Offset erhalten oder wird vereinfacht
-
-**Konkret:** Die Berechnung aendern von:
 ```text
+// Vorher:
 const previewScaleX = previewWidth / headerMaxWidth;
+// Element-Positionen: element.x * previewScaleX * zoom
+
+// Nachher:
+const baseScaleX = previewWidth / headerMaxWidth;  // Basis-Skalierung bei 100%
+const effectiveScaleX = baseScaleX * zoom;
+const effectiveScaleY = baseScaleY * zoom;
+const canvasPixelWidth = headerMaxWidth * effectiveScaleX;  // waechst mit Zoom
+const canvasPixelHeight = headerMaxHeight * effectiveScaleY;
 ```
-zu:
+
+### Aenderung 2: Canvas-Container skaliert mit Zoom
+
+Der aeussere Container (`overflow-auto`) bekommt feste Hoehe/Max-Breite. Der innere Canvas-Container (weisser Hintergrund) waechst mit dem Zoom:
+
 ```text
-const effectiveScaleX = (previewWidth / headerMaxWidth) * zoom;
-const effectiveScaleY = (previewHeight / headerMaxHeight) * zoom;
+// Aeusserer Wrapper: feste Groesse, overflow-auto
+<div style={{ maxHeight: '600px' }} className="overflow-auto">
+  // Innerer Canvas + Lineale
+  <div style={{ 
+    width: canvasPixelWidth + RULER_SIZE, 
+    height: canvasPixelHeight + RULER_SIZE 
+  }}>
+    // Lineale mit effectiveScale
+    // Canvas mit canvasPixelWidth x canvasPixelHeight
+  </div>
+</div>
 ```
 
-Der Canvas-Container bekommt dann `width: headerMaxWidth * effectiveScaleX` und `height: headerMaxHeight * effectiveScaleY`. Der innere `transform: scale(zoom)` Wrapper entfaellt -- alle Elemente nutzen direkt `effectiveScaleX/Y`.
+### Aenderung 3: Lineale mitskalieren
 
----
+Die Lineal-Tics und -Labels werden mit `effectiveScaleX/Y` statt `previewScaleX/Y` berechnet, damit sie synchron zum Canvas wachsen:
 
-## 3. Lineal-Toggle verschiebt den Canvas
-
-**Problem:** Beim Einblenden des Lineals wird `previewWidth` um den `rulerOffset` (28px) verkleinert (Zeile 199), was den Canvas umrechnet und verschiebt.
-
-**Loesung:** Den Platz fuer das Lineal immer reservieren (wie der LetterLayoutCanvasDesigner es macht mit `invisible`-Klasse statt Entfernen). Die `previewWidth`-Berechnung wird unabhaengig vom Lineal-Status.
-
-### Aenderungen in `StructuredHeaderEditor.tsx`
-
-- Zeile 198-199: `rulerOffset` nicht mehr von `clientWidth` abziehen:
-  ```text
-  const nextWidth = Math.min(780, Math.max(360, Math.floor(previewContainerRef.current.clientWidth - 16)));
-  ```
-- `showRuler` aus der Dependency-Liste des useEffect entfernen
-- Im JSX das `paddingLeft/paddingTop` immer setzen (nicht abhaengig von `showRuler`)
-- Die Lineal-Elemente mit `invisible`-Klasse statt `{showRuler && ...}` steuern:
-  ```text
-  <div className={`absolute top-0 ... ${showRuler ? '' : 'invisible'}`}>
-  ```
-
----
-
-## 4. Bilder-Galerie mit Vorschau und "In Canvas einfuegen"
-
-**Problem:** Die Galerie zeigt Bilder nur als kleine Thumbnails ohne Auswahlzustand. Es fehlt die Canvas-Vorschau und der "In Canvas einfuegen"-Button (wie in den anderen Tabs).
-
-**Loesung:** Das Galerie-Pattern aus `LetterTemplateManager.tsx` (Zeilen 520-572) uebernehmen:
-
-### Aenderungen in `StructuredHeaderEditor.tsx`
-
-**a) Neuer State:**
 ```text
-const [selectedGalleryImage, setSelectedGalleryImage] = useState<GalleryImage | null>(null);
+// Horizontal-Lineal Ticks:
+const x = (i * canvasPixelWidth) / 210;
+
+// Vertikal-Lineal Ticks:
+const y = (i * canvasPixelHeight) / 45;
 ```
 
-**b) Galerie-UI ueberarbeiten:** Bild-Thumbnails aufteilen in:
-- Upload-Button (volle Breite)
-- Thumbnail-Grid mit Auswahlrahmen (`ring-2 ring-primary` bei Selektion)
-- Canvas-Vorschau-Box mit dem ausgewaehlten Bild (groessere Vorschau, Dateiname, gestrichelte Rahmenlinie)
-- "In Canvas einfuegen"-Button (wie `<ImageIcon /> In Canvas einfuegen`)
+Die Canvas-Elemente (`horizontalRulerRef`, `verticalRulerRef`) bekommen die gezoomte Groesse als `width`/`height`.
 
-**c) Klick auf Thumbnail** setzt `selectedGalleryImage` statt sofort einzufuegen. Drag-and-Drop bleibt unveraendert.
+### Aenderung 4: Element-Positionen vereinfachen
 
-**d) "In Canvas einfuegen"-Button** ruft die bestehende `addImageFromGallery` auf.
+Da `effectiveScaleX/Y` bereits den Zoom enthaelt, entfaellt die separate `* zoom`-Multiplikation:
 
----
+```text
+// Vorher:
+const scaleX = previewScaleX * zoom;
 
-## Zusammenfassung der betroffenen Dateien
+// Nachher:
+const scaleX = effectiveScaleX;  // enthaelt bereits zoom
+const scaleY = effectiveScaleY;
+```
+
+Ebenso fuer Snap-Lines, Smart-Guides, Dot-Grid und alle anderen visuellen Elemente.
+
+### Aenderung 5: Canvas standardmaessig groesser
+
+Die `previewWidth`-Berechnung entfernt die `-28` fuer den Ruler-Offset (der Platz wird ja bereits permanent reserviert) und erhoet ggf. das Maximum:
+
+```text
+// Vorher:
+const nextWidth = Math.min(780, Math.max(360, Math.floor(clientWidth - 16 - 28)));
+
+// Nachher:  
+const nextWidth = Math.min(960, Math.max(360, Math.floor(clientWidth - 16 - 28)));
+```
+
+### Aenderung 6: Dot-Grid mit Zoom skalieren
+
+Das Background-Pattern des Canvas waechst ebenfalls:
+
+```text
+backgroundSize: `${10 * effectiveScaleX}px ${10 * effectiveScaleY}px`
+```
+
+### Aenderung 7: useCanvasViewport Pan-Logik vereinfachen
+
+Da der Zoom jetzt ueber Container-Groesse + Scrolling funktioniert (wie im Canvas-Tab), kann die Pan-Logik aus `useCanvasViewport` vereinfacht oder der manuelle Pan durch nativen Scroll ersetzt werden.
+
+## Zusammenfassung der Aenderungen
 
 | Datei | Aenderung |
 |---|---|
-| `canvasElements.tsx` | Explizite Breite/Hoehe fuer TextCanvasElement |
-| `StructuredHeaderEditor.tsx` | Zoom-Logik, Lineal-Layout, Galerie-UI, State |
+| `StructuredHeaderEditor.tsx` | Canvas-Groesse mit Zoom skalieren, Lineale mitskalieren, previewWidth-Limit erhoehen, Element-Skalierung vereinfachen, Dot-Grid anpassen |
+
+Keine neuen Dateien noetig. Das Verhalten wird 1:1 an den Canvas-Tab angeglichen.
 
