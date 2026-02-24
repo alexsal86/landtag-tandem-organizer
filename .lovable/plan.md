@@ -1,38 +1,38 @@
 
-# Wappen-Form hinzufuegen + Flower2 Build-Fehler beheben
+# Fix: Text-Magnetismus und Ausrichtung im Header-Canvas
 
-## Uebersicht
+## Problem
 
-Fuenf Aenderungen sind noetig, um das Landeswappen Baden-Wuerttemberg als neue Form im Canvas-Designer verfuegbar zu machen und den bestehenden Build-Fehler zu beheben.
+Die Snap-Funktion `snapToOtherElements` verwendet **falsche Fallback-Dimensionen** fuer Textelemente. Sie rechnet mit `width=50, height=10` statt den korrekten typspezifischen Werten aus `getElementDimensions` (Text: 70x8, Block: 45x18). Dadurch werden Mittelpunkte und Kanten falsch berechnet, und Elemente snappen an die falschen Positionen.
 
-## Aenderungen
+Die Funktion `calculateSmartGuideDistances` (fuer die Abstandsanzeige) nutzt `getElementDimensions` bereits korrekt -- nur `snapToOtherElements` ist fehlerhaft.
 
-### 1. SVG-Datei kopieren
-- Kopiere `user-uploads://Grosses_Landeswappen_Baden-Württemberg_sw.svg` nach `public/assets/wappen-bw.svg`
+## Loesung
 
-### 2. ShapeType erweitern (`src/components/canvas-engine/types.ts`)
-- `'wappen'` zur ShapeType-Union hinzufuegen
+In `snapToOtherElements` (Zeile 307-340 in `StructuredHeaderEditor.tsx`) werden die hartkodierten Fallbacks durch `getElementDimensions()` ersetzt:
 
-### 3. Element-Registry erweitern (`src/components/letters/elements/registry.tsx`)
-- Wappen-Fall im `shape`-Abschnitt der `getIcon`-Funktion hinzufuegen (img-Tag mit dem SVG)
+### Aenderung 1: Dimensionen des bewegten Elements (Zeile 311)
 
-### 4. StructuredHeaderEditor.tsx -- Vier Stellen
-
-**a) Import-Fix (Zeile 9):** `Flower2` zum lucide-react Import hinzufuegen (behebt den Build-Fehler)
-
-**b) WappenSVG-Komponente (nach LionSVG, ca. Zeile 95):** Neue Komponente mit `<img>` Tag, die auf `/assets/wappen-bw.svg` verweist
-
-**c) addShapeElement defaults (Zeile 446-452):** Wappen-Eintrag hinzufuegen:
+Vorher:
 ```text
-wappen: { width: 18, height: 10, fillColor: 'transparent', strokeColor: 'transparent', strokeWidth: 0 }
+const w = current.width || 50, h = current.height || 10;
 ```
 
-**d) renderShapeCanvas (nach lion-Branch, Zeile 1190):** Neuen Branch fuer `shapeType === 'wappen'` mit WappenSVG
+Nachher:
+```text
+const { width: w, height: h } = getElementDimensions(current);
+```
 
-**e) Toolbar-Button (nach lion-Button, Zeile 1333):** Neuer Button mit kleinem Wappen-Vorschaubild
+### Aenderung 2: Dimensionen der Ziel-Elemente (Zeile 314)
 
-## Technische Details
+Vorher:
+```text
+const tw = el.width || 50, th = el.height || 10;
+```
 
-- Die SVG-Datei ist zu komplex fuer Inline-Rendering, daher wird ein `<img>`-Tag verwendet (wie vom User vorgegeben)
-- Das Wappen wird im `public/`-Ordner abgelegt, da es ueber einen direkten URL-Pfad referenziert wird
-- Default-Groesse 18x10mm spiegelt das Seitenverhaeltnis des Originals wider (1000:558)
+Nachher:
+```text
+const { width: tw, height: th } = getElementDimensions(el);
+```
+
+Das ist alles -- zwei Zeilen. Die Funktion `getElementDimensions` ist bereits importiert (Zeile 14) und wird an anderen Stellen im selben File korrekt verwendet.
