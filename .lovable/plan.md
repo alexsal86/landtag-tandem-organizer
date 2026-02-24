@@ -1,120 +1,100 @@
 
 
-# Fix: Header-Canvas Zoom und Groesse an Canvas-Tab angleichen
+# Fix: Header-Tab Zoom an Canvas-Tab angleichen
 
 ## Problem
 
-Im Canvas-Tab skaliert der Zoom den gesamten Canvas (Hintergrund, Lineal, Elemente) -- der Container waechst und man kann scrollen. Im Header-Tab bleibt der Canvas bei fester Groesse (`previewWidth x previewHeight`), nur die Elemente werden mit `zoom` multipliziert. Dadurch laufen Elemente ueber den Canvas hinaus, aber der weisse Hintergrund bleibt gleich gross.
+Der Header-Tab hat drei Zoom-Probleme gegenueber dem Canvas-Tab:
 
-Zusaetzlich ist der Canvas bei 100% zu klein -- er nutzt den verfuegbaren Platz nicht optimal.
+1. **Strg+Mausrad funktioniert nicht**: Der Header nutzt Reacts `onWheel` (passiver Event-Listener), der `preventDefault()` nicht ausfuehren kann. Der Canvas-Tab nutzt stattdessen `addEventListener('wheel', handler, { passive: false })` -- das ist der einzig funktionierende Ansatz.
 
-## Referenz: So funktioniert es im Canvas-Tab
+2. **Zoom-Verhalten unterschiedlich**: Der Header nutzt `useCanvasViewport` mit kontinuierlichem Zoom (0.1er-Schritte) und Pan-Offset-Logik (`zoomAtPoint`). Der Canvas-Tab nutzt diskrete `ZOOM_STEPS` (50%, 75%, 100%, 125%, 150%, 200%) und laesst den Container wachsen -- Scrolling uebernimmt natuerlich das Panning.
 
-```text
-SCALE = BASE_SCALE * zoomLevel;          // z.B. 3.2 * 1.5 = 4.8
-pagePx = { w: pageWidth * SCALE, h: pageHeight * SCALE };
-Container: width = pagePx.w + RULER_SIZE, height = pagePx.h + RULER_SIZE
-```
+3. **Canvas zu klein / Scrollbalken**: Bei 100% sollte der Header-Canvas die volle verfuegbare Hoehe nutzen ohne Scrollbalken. Die aktuelle `maxHeight: 600px`-Beschraenkung erzwingt unnoetige Scrollleisten.
 
-Der aeussere Wrapper hat `overflow-auto`, sodass bei Zoom > 100% Scrollbars erscheinen. Lineale werden ebenfalls mit SCALE berechnet. Alles skaliert einheitlich.
+## Loesung
 
-## Loesung fuer den Header-Tab
+Das Zoom-System des Canvas-Tabs 1:1 uebernehmen:
 
-Gleichen Ansatz uebernehmen: Der Zoom veraendert die Canvas-Container-Groesse, nicht nur die Element-Positionen.
+### Aenderung 1: ZOOM_STEPS und zoomIn/zoomOut statt useCanvasViewport
 
-### Aenderung 1: Zoom in die Canvas-Groesse integrieren
-
-Statt den Zoom nur bei Element-Positionen zu multiplizieren, wird er in die Basis-Skalierung eingerechnet:
+Den `useCanvasViewport`-Hook entfernen und durch lokale `zoomLevel`-State + `ZOOM_STEPS` ersetzen (wie im Canvas-Tab):
 
 ```text
-// Vorher:
-const previewScaleX = previewWidth / headerMaxWidth;
-// Element-Positionen: element.x * previewScaleX * zoom
+const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const [zoomLevel, setZoomLevel] = useState(1);
 
-// Nachher:
-const baseScaleX = previewWidth / headerMaxWidth;  // Basis-Skalierung bei 100%
-const effectiveScaleX = baseScaleX * zoom;
-const effectiveScaleY = baseScaleY * zoom;
-const canvasPixelWidth = headerMaxWidth * effectiveScaleX;  // waechst mit Zoom
-const canvasPixelHeight = headerMaxHeight * effectiveScaleY;
+const zoomIn = useCallback(() => {
+  setZoomLevel((z) => {
+    const idx = ZOOM_STEPS.indexOf(z);
+    return idx < ZOOM_STEPS.length - 1 ? ZOOM_STEPS[idx + 1] : z;
+  });
+}, []);
+
+const zoomOut = useCallback(() => {
+  setZoomLevel((z) => {
+    const idx = ZOOM_STEPS.indexOf(z);
+    return idx > 0 ? ZOOM_STEPS[idx - 1] : z;
+  });
+}, []);
 ```
 
-### Aenderung 2: Canvas-Container skaliert mit Zoom
+### Aenderung 2: Native Wheel-Event-Listener
 
-Der aeussere Container (`overflow-auto`) bekommt feste Hoehe/Max-Breite. Der innere Canvas-Container (weisser Hintergrund) waechst mit dem Zoom:
+Den React `onWheel={onPreviewWheel}` ersetzen durch einen nativen `addEventListener` mit `{ passive: false }` auf dem Canvas-Wrapper (wie im Canvas-Tab):
 
 ```text
-// Aeusserer Wrapper: feste Groesse, overflow-auto
-<div style={{ maxHeight: '600px' }} className="overflow-auto">
-  // Innerer Canvas + Lineale
-  <div style={{ 
-    width: canvasPixelWidth + RULER_SIZE, 
-    height: canvasPixelHeight + RULER_SIZE 
-  }}>
-    // Lineale mit effectiveScale
-    // Canvas mit canvasPixelWidth x canvasPixelHeight
-  </div>
-</div>
+useEffect(() => {
+  const el = previewContainerRef.current;
+  if (!el) return;
+  const handler = (e: WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      if (e.deltaY < 0) zoomIn();
+      else zoomOut();
+    }
+  };
+  el.addEventListener('wheel', handler, { passive: false });
+  return () => el.removeEventListener('wheel', handler);
+}, [zoomIn, zoomOut]);
 ```
 
-### Aenderung 3: Lineale mitskalieren
+### Aenderung 3: Skalierung vereinfachen
 
-Die Lineal-Tics und -Labels werden mit `effectiveScaleX/Y` statt `previewScaleX/Y` berechnet, damit sie synchron zum Canvas wachsen:
+Alle Referenzen auf `zoom` durch `zoomLevel` ersetzen. Die `effectiveScaleX/Y`-Berechnung bleibt gleich, nutzt aber `zoomLevel`:
 
 ```text
-// Horizontal-Lineal Ticks:
-const x = (i * canvasPixelWidth) / 210;
-
-// Vertikal-Lineal Ticks:
-const y = (i * canvasPixelHeight) / 45;
+const effectiveScaleX = previewScaleX * zoomLevel;
+const effectiveScaleY = previewScaleY * zoomLevel;
+const canvasPixelWidth = previewWidth * zoomLevel;
+const canvasPixelHeight = previewHeight * zoomLevel;
 ```
 
-Die Canvas-Elemente (`horizontalRulerRef`, `verticalRulerRef`) bekommen die gezoomte Groesse als `width`/`height`.
+### Aenderung 4: maxHeight entfernen, Canvas-Container anpassen
 
-### Aenderung 4: Element-Positionen vereinfachen
+Die `maxHeight: 600px`-Beschraenkung vom aeusseren Container entfernen. Der Container bekommt `overflow-auto` nur fuer den Fall, dass bei hohen Zoom-Stufen gescrollt werden muss, aber bei 100% soll kein Scrollbalken sichtbar sein.
 
-Da `effectiveScaleX/Y` bereits den Zoom enthaelt, entfaellt die separate `* zoom`-Multiplikation:
+### Aenderung 5: Zoom-Buttons anpassen
+
+Die Zoom-Buttons auf diskrete Schritte umstellen (wie im Canvas-Tab):
 
 ```text
-// Vorher:
-const scaleX = previewScaleX * zoom;
-
-// Nachher:
-const scaleX = effectiveScaleX;  // enthaelt bereits zoom
-const scaleY = effectiveScaleY;
+<Button onClick={zoomOut} disabled={zoomLevel <= ZOOM_STEPS[0]}>-</Button>
+<span>{Math.round(zoomLevel * 100)}%</span>
+<Button onClick={zoomIn} disabled={zoomLevel >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}>+</Button>
 ```
 
-Ebenso fuer Snap-Lines, Smart-Guides, Dot-Grid und alle anderen visuellen Elemente.
+Klick auf die Prozentanzeige setzt auf 100% zurueck.
 
-### Aenderung 5: Canvas standardmaessig groesser
+### Aenderung 6: Pan-Logik entfernen
 
-Die `previewWidth`-Berechnung entfernt die `-28` fuer den Ruler-Offset (der Platz wird ja bereits permanent reserviert) und erhoet ggf. das Maximum:
+Da der Canvas-Tab kein manuelles Panning nutzt (er nutzt natuerliches Scrolling ueber `overflow-auto`), wird die `pan`/`setPan`/`getCanvasPoint`/`zoomAtPoint`-Logik aus `useCanvasViewport` nicht mehr benoetigt. Alle Referenzen auf `pan` werden entfernt. Die Maus-Koordinaten-Umrechnung erfolgt direkt ueber `getBoundingClientRect()`.
 
-```text
-// Vorher:
-const nextWidth = Math.min(780, Math.max(360, Math.floor(clientWidth - 16 - 28)));
-
-// Nachher:  
-const nextWidth = Math.min(960, Math.max(360, Math.floor(clientWidth - 16 - 28)));
-```
-
-### Aenderung 6: Dot-Grid mit Zoom skalieren
-
-Das Background-Pattern des Canvas waechst ebenfalls:
-
-```text
-backgroundSize: `${10 * effectiveScaleX}px ${10 * effectiveScaleY}px`
-```
-
-### Aenderung 7: useCanvasViewport Pan-Logik vereinfachen
-
-Da der Zoom jetzt ueber Container-Groesse + Scrolling funktioniert (wie im Canvas-Tab), kann die Pan-Logik aus `useCanvasViewport` vereinfacht oder der manuelle Pan durch nativen Scroll ersetzt werden.
-
-## Zusammenfassung der Aenderungen
+## Zusammenfassung
 
 | Datei | Aenderung |
 |---|---|
-| `StructuredHeaderEditor.tsx` | Canvas-Groesse mit Zoom skalieren, Lineale mitskalieren, previewWidth-Limit erhoehen, Element-Skalierung vereinfachen, Dot-Grid anpassen |
+| `StructuredHeaderEditor.tsx` | useCanvasViewport durch lokalen zoomLevel-State ersetzen, nativer Wheel-Listener, ZOOM_STEPS, maxHeight entfernen, Pan-Logik entfernen |
 
-Keine neuen Dateien noetig. Das Verhalten wird 1:1 an den Canvas-Tab angeglichen.
+Keine neuen Dateien noetig. Das Ergebnis ist identisches Zoom-Verhalten wie im Canvas-Tab.
 
