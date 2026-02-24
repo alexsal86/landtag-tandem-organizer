@@ -855,16 +855,16 @@ const LetterTemplateManager: React.FC = () => {
           onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
           onJumpToTab={setActiveTab as any}
           headerElements={formData.header_elements}
-          actionButtons={
+          actionButtons={editingTemplate ? undefined : (
             <>
-              <Button onClick={editingTemplate ? handleUpdateTemplate : handleCreateTemplate}>
+              <Button onClick={handleCreateTemplate}>
                 <Save className="h-4 w-4 mr-2" />Speichern
               </Button>
-              <Button variant="outline" onClick={editingTemplate ? cancelEditing : () => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>
+              <Button variant="outline" onClick={() => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>
                 <X className="h-4 w-4 mr-2" />Abbrechen
               </Button>
             </>
-          }
+          )}
         />
       </TabsContent>
 
@@ -872,16 +872,16 @@ const LetterTemplateManager: React.FC = () => {
         <StructuredHeaderEditor
           initialElements={formData.header_elements}
           onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
-          actionButtons={
+          actionButtons={editingTemplate ? undefined : (
             <div className="flex flex-col gap-2">
-              <Button onClick={editingTemplate ? handleUpdateTemplate : handleCreateTemplate}>
+              <Button onClick={handleCreateTemplate}>
                 <Save className="h-4 w-4 mr-2" />Speichern
               </Button>
-              <Button variant="outline" onClick={editingTemplate ? cancelEditing : () => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>
+              <Button variant="outline" onClick={() => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>
                 <X className="h-4 w-4 mr-2" />Abbrechen
               </Button>
             </div>
-          }
+          )}
         />
       </TabsContent>
 
@@ -1066,20 +1066,17 @@ const LetterTemplateManager: React.FC = () => {
       {/* Edit Template - inline card (same as create) */}
       {editingTemplate && !showCreateDialog && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-2xl font-semibold tracking-tight">Template bearbeiten: {editingTemplate.name}</h2>
-            <Button variant="ghost" size="sm" onClick={cancelEditing}><X className="h-4 w-4" /></Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={cancelEditing}><X className="h-4 w-4 mr-2" />Abbrechen</Button>
+              <Button onClick={handleUpdateTemplate}><Save className="h-4 w-4 mr-2" />Speichern</Button>
+            </div>
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             {renderTabsList()}
             {renderCommonTabsContent()}
           </Tabs>
-          {activeTab !== 'canvas-designer' && activeTab !== 'header-designer' && (
-            <div className="flex justify-end space-x-2 pt-4 border-t">
-              <Button variant="outline" onClick={cancelEditing}><X className="h-4 w-4 mr-2" />Abbrechen</Button>
-              <Button onClick={handleUpdateTemplate}><Save className="h-4 w-4 mr-2" />Speichern</Button>
-            </div>
-          )}
         </div>
       )}
 

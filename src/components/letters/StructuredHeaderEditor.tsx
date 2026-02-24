@@ -1307,8 +1307,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[240px_1fr_240px] gap-3">
-        <div className="xl:col-start-1 xl:row-start-1 xl:row-span-4 flex flex-col gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-3">
+        <div className="xl:col-start-1 xl:row-start-1 flex flex-col gap-4">
         {/* Tools */}
         <Card>
           <CardHeader className="py-3 px-4">
@@ -1389,7 +1389,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
         </div>
 
-        <div className="xl:col-start-3 xl:row-start-1 xl:row-span-4 flex flex-col gap-6">
+        <div className="xl:col-start-1 xl:row-start-2 flex flex-col gap-6">
           {actionButtons && (
             <Card className="self-start">
               <CardHeader className="py-3 px-4">
@@ -1404,7 +1404,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         {/* Elements list */}
         <Card>
           <CardHeader className="py-3 px-4">
-            <CardTitle className="text-sm">Elemente ({elements.length})</CardTitle>
+            <CardTitle className="text-sm">Elemente bearbeiten ({elements.length})</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-2">
             {elements.length === 0 ? (
