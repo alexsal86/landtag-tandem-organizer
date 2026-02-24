@@ -111,6 +111,32 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
 
   if (element.type === 'shape') {
     const strokeWidth = element.strokeWidth ?? 1;
+
+    if (element.shapeType === 'sunflower') {
+      return (
+        <div
+          key={element.id}
+          style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${Math.max(12, 12 * scale)}px` }}
+        >
+          🌻
+        </div>
+      );
+    }
+
+    if (element.shapeType === 'lion') {
+      return (
+        <div
+          key={element.id}
+          style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${Math.max(12, 12 * scale)}px` }}
+        >
+          🦁
+        </div>
+      );
+    }
+
+    if (element.shapeType === 'wappen') {
+      return <img key={element.id} src="/assets/wappen-bw.svg" alt="Wappen" style={style} className="object-contain" />;
+    }
     if (element.shapeType === 'line') {
       return (
         <svg key={element.id} style={style} viewBox={`0 0 ${width} ${height}`}>
@@ -151,7 +177,11 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
 
   if (element.type === 'block') {
     return (
-      <div key={element.id} style={style} className="border border-gray-400/70 bg-gray-100/50 px-1 py-0.5 text-[10px] text-foreground/80 whitespace-pre-wrap">
+      <div
+        key={element.id}
+        style={{ ...style, fontSize: `${Math.max(9, 10 * scale)}px`, lineHeight: `${1.2}` }}
+        className="border border-gray-400/70 bg-gray-100/50 px-1 py-0.5 text-foreground/80 whitespace-pre-wrap"
+      >
         {element.blockContent || element.content}
       </div>
     );
@@ -162,7 +192,7 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
       key={element.id}
       style={{
         ...style,
-        fontSize: `${(element.fontSize || 11) * (96 / 72)}px`,
+        fontSize: `${(element.fontSize || 11) * (96 / 72) * scale}px`,
         fontFamily: element.fontFamily || 'Arial',
         fontWeight: element.fontWeight || 'normal',
         fontStyle: element.fontStyle || 'normal',
@@ -529,10 +559,10 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const previewText =
                 block.key === 'header'
                   ? headerElements.filter((e) => e.type === 'text').map((e) => e.content).filter(Boolean).join(' · ')
-                  : (blockContent[block.key] || [])[0]?.content;
+                  : blockElements.length > 0 ? '' : (blockContent[block.key] || [])[0]?.content;
               return (
                 <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute border text-[11px] font-medium px-2 py-1 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isLocked ? 'cursor-not-allowed border-amber-500' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
-                  {!previewText && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
+                  {!previewText && blockElements.length === 0 && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
                   {previewText && <div className="mt-1 text-[10px] line-clamp-2">{previewText}</div>}
                   {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                   {block.canResize && !isDisabled && !isLocked && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />}
