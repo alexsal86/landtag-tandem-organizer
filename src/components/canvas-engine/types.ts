@@ -23,6 +23,7 @@ export interface TextElement extends BaseElement {
   textLineHeight?: number;
   textAlign?: 'left' | 'center' | 'right';
   isVariable?: boolean;
+  variablePreviewText?: string;
 }
 
 export interface ImageElement extends BaseElement {

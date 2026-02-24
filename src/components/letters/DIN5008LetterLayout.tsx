@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
+import type { HeaderElement, TextElement } from '@/components/canvas-engine/types';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
@@ -15,6 +16,13 @@ interface DIN5008LetterLayoutProps {
   debugMode?: boolean;
   showPagination?: boolean;
   layoutSettings?: any;
+  // Canvas-based block elements (substituted)
+  addressFieldElements?: HeaderElement[];
+  returnAddressElements?: HeaderElement[];
+  infoBlockElements?: HeaderElement[];
+  subjectElements?: HeaderElement[];
+  attachmentElements?: HeaderElement[];
+  footerTextElements?: HeaderElement[];
 }
 
 export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
@@ -31,6 +39,12 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   debugMode = false,
   showPagination = false,
   layoutSettings,
+  addressFieldElements,
+  returnAddressElements,
+  infoBlockElements,
+  subjectElements,
+  attachmentElements,
+  footerTextElements,
 }) => {
   // Load layout settings from prop, template, or use defaults
   const DEFAULT_LAYOUT = {
@@ -250,6 +264,57 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       </div>
     );
   };
+  /** Render canvas-based block elements positioned in mm coordinates */
+  const renderCanvasBlockElements = (elements: HeaderElement[]) => (
+    <div className="relative w-full h-full">
+      {elements.map((element, index) => {
+        if (element.type === 'text') {
+          const textEl = element as TextElement;
+          return (
+            <div
+              key={element.id || index}
+              className="absolute"
+              style={{
+                left: `${element.x || 0}mm`,
+                top: `${element.y || 0}mm`,
+                width: element.width ? `${element.width}mm` : 'auto',
+                fontSize: `${textEl.fontSize || 10}pt`,
+                fontFamily: textEl.fontFamily || 'Arial, sans-serif',
+                fontWeight: textEl.fontWeight || 'normal',
+                fontStyle: textEl.fontStyle || 'normal',
+                textDecoration: textEl.textDecoration || 'none',
+                color: textEl.color || '#000000',
+                lineHeight: `${textEl.textLineHeight || 1.2}`,
+                textAlign: textEl.textAlign || 'left',
+                whiteSpace: element.width ? 'pre-wrap' : 'nowrap',
+                pointerEvents: 'none',
+              }}
+            >
+              {textEl.content || ''}
+            </div>
+          );
+        }
+        if (element.type === 'image' && (element as any).imageUrl) {
+          return (
+            <img
+              key={element.id || index}
+              src={(element as any).imageUrl}
+              alt=""
+              className="absolute"
+              style={{
+                left: `${element.x || 0}mm`,
+                top: `${element.y || 0}mm`,
+                width: `${element.width || 20}mm`,
+                height: `${element.height || 10}mm`,
+                objectFit: 'contain',
+              }}
+            />
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
 
     return (
     <div className={`din5008-letter bg-white ${className}`} style={{ 
@@ -345,33 +410,44 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             border: debugMode ? '2px dashed red' : 'none',
             padding: '0', // Kein interner Abstand
             marginRight: '10mm',
-            backgroundColor: debugMode ? 'rgba(255,0,0,0.05)' : 'transparent'
+            backgroundColor: debugMode ? 'rgba(255,0,0,0.05)' : 'transparent',
+            position: 'relative',
           }}>
-            {/* Return Address Line at top of address field - 17.7mm height */}
-            {senderInfo?.return_address_line && (
-              <div style={{
-                fontSize: '7pt',
-                borderBottom: '0.5pt solid #000',
-                paddingBottom: '1mm',
-                marginBottom: '3mm',
-                lineHeight: '1.0',
-                maxWidth: '75mm', // Prevent overflow
-                height: '17.7mm', // DIN 5008 Rücksendeangaben-Höhe
-                display: 'flex',
-                alignItems: 'flex-end' // Text am unteren Rand der 17.7mm
-              }}>
-                {senderInfo.return_address_line}
-              </div>
+            {addressFieldElements && addressFieldElements.length > 0 ? (
+              renderCanvasBlockElements(addressFieldElements)
+            ) : (
+              <>
+                {/* Return Address Line at top of address field - 17.7mm height */}
+                {returnAddressElements && returnAddressElements.length > 0 ? (
+                  <div style={{ height: '17.7mm', position: 'relative' }}>
+                    {renderCanvasBlockElements(returnAddressElements)}
+                  </div>
+                ) : senderInfo?.return_address_line ? (
+                  <div style={{
+                    fontSize: '7pt',
+                    borderBottom: '0.5pt solid #000',
+                    paddingBottom: '1mm',
+                    marginBottom: '3mm',
+                    lineHeight: '1.0',
+                    maxWidth: '75mm',
+                    height: '17.7mm',
+                    display: 'flex',
+                    alignItems: 'flex-end'
+                  }}>
+                    {senderInfo.return_address_line}
+                  </div>
+                ) : null}
+                
+                {/* Recipient Address */}
+                <div style={{ 
+                  fontSize: '10pt',
+                  lineHeight: '1.2',
+                  maxWidth: '75mm'
+                }}>
+                  {formatAddress(recipientAddress)}
+                </div>
+              </>
             )}
-            
-            {/* Recipient Address */}
-            <div style={{ 
-              fontSize: '10pt', // Slightly larger for better readability
-              lineHeight: '1.2',
-              maxWidth: '75mm' // Prevent overflow
-            }}>
-              {formatAddress(recipientAddress)}
-            </div>
           </div>
 
           {/* Information Block - DIN 5008 positioned */}
@@ -385,29 +461,39 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             border: debugMode ? '2px dashed blue' : 'none',
             padding: '2mm'
           }}>
-            {renderInformationBlock(informationBlock)}
-            
-            {letterDate && !informationBlock && (
-              <div style={{ marginTop: '8mm' }}>
-                <div className="font-medium" style={{ fontSize: '9pt' }}>Datum</div>
-                <div style={{ fontSize: '9pt' }}>{new Date(letterDate).toLocaleDateString('de-DE')}</div>
-              </div>
+            {infoBlockElements && infoBlockElements.length > 0 ? (
+              renderCanvasBlockElements(infoBlockElements)
+            ) : (
+              <>
+                {renderInformationBlock(informationBlock)}
+                {letterDate && !informationBlock && (
+                  <div style={{ marginTop: '8mm' }}>
+                    <div className="font-medium" style={{ fontSize: '9pt' }}>Datum</div>
+                    <div style={{ fontSize: '9pt' }}>{new Date(letterDate).toLocaleDateString('de-DE')}</div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
 
       {/* Subject Line - positioned at 98.46mm + 3mm from page top (same as PDF) */}
-      {subject && (
+      {(subject || (subjectElements && subjectElements.length > 0)) && (
         <div style={{ 
           position: 'absolute',
-          top: 'calc(98.46mm + 3mm)', // Betreff beginnt unter der Linie
+          top: 'calc(98.46mm + 3mm)',
           left: '25mm',
           right: '20mm',
-          fontWeight: 'bold',
+          fontWeight: subjectElements && subjectElements.length > 0 ? 'normal' : 'bold',
           fontSize: '11pt',
-          backgroundColor: debugMode ? 'rgba(0,255,0,0.05)' : 'transparent'
+          backgroundColor: debugMode ? 'rgba(0,255,0,0.05)' : 'transparent',
+          height: subjectElements && subjectElements.length > 0 ? '12mm' : 'auto',
         }}>
-          {subject}
+          {subjectElements && subjectElements.length > 0 ? (
+            renderCanvasBlockElements(subjectElements)
+          ) : (
+            subject
+          )}
         </div>
       )}
 
