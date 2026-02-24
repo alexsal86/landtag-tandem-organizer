@@ -1281,7 +1281,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, 1)} disabled={!canMoveLayerForward}><ArrowUp className="h-3.5 w-3.5 mr-1" />Ebene hoch</Button>
         <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}><Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts</Button>
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoom((value) => Math.max(0.5, value - 0.1))}>−</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>100%</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>{Math.round(zoom * 100)}%</Button>
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoom((value) => Math.min(3, value + 0.1))}>+</Button>
         <div className="h-7 px-2 text-xs rounded border bg-background/90 flex items-center text-muted-foreground">
           Auswahl: <span className="ml-1 font-semibold text-foreground">{selectedCount}</span>
@@ -1301,21 +1301,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_300px] gap-6">
-        <div className="xl:col-start-3 xl:row-start-1 xl:row-span-4 flex flex-col gap-6">
-          {actionButtons && (
-            <Card className="self-start">
-              <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm">Bearbeitung</CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-3 pt-1 space-y-2">
-                {actionButtons}
-              </CardContent>
-            </Card>
-          )}
-
+      <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr_260px] gap-6">
+        <div className="xl:col-start-1 xl:row-start-1 xl:row-span-4 flex flex-col gap-6">
         {/* Tools */}
-        <Card className="xl:col-start-1 xl:row-start-1">
+        <Card>
           <CardHeader className="py-3 px-4">
             <CardTitle className="text-sm">Elemente hinzufügen</CardTitle>
           </CardHeader>
@@ -1355,7 +1344,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
 
         {/* Image Gallery */}
-        <Card className="xl:col-start-1 xl:row-start-2">
+        <Card>
           <CardHeader className="py-3 px-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-1"><FolderOpen className="h-3.5 w-3.5" /> Bilder-Galerie</CardTitle>
@@ -1379,6 +1368,19 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             )}
           </CardContent>
         </Card>
+        </div>
+
+        <div className="xl:col-start-3 xl:row-start-1 xl:row-span-4 flex flex-col gap-6">
+          {actionButtons && (
+            <Card className="self-start">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm">Bearbeitung</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-3 pt-1 space-y-2">
+                {actionButtons}
+              </CardContent>
+            </Card>
+          )}
 
         {/* Elements list */}
         <Card>
