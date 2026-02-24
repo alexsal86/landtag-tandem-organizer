@@ -55,6 +55,15 @@ interface InformationBlock {
   is_default: boolean;
 }
 
+type MarginKey = 'top' | 'right' | 'bottom' | 'left';
+
+type TabRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 
 interface GalleryImage {
   name: string;
@@ -149,6 +158,78 @@ const LetterTemplateManager: React.FC = () => {
     footer_blocks: [] as any[],
     layout_settings: DEFAULT_DIN5008_LAYOUT as LetterLayoutSettings
   });
+
+  const getMarginsForRect = useCallback((rect: TabRect): MarginKey[] => {
+    const { pageWidth, pageHeight, margins } = formData.layout_settings;
+    const leftEdge = rect.x;
+    const rightEdge = rect.x + rect.width;
+    const topEdge = rect.y;
+    const bottomEdge = rect.y + rect.height;
+
+    return [
+      ...(leftEdge < margins.left ? (['left'] as MarginKey[]) : []),
+      ...(rightEdge > pageWidth - margins.right ? (['right'] as MarginKey[]) : []),
+      ...(topEdge < margins.top ? (['top'] as MarginKey[]) : []),
+      ...(bottomEdge > pageHeight - margins.bottom ? (['bottom'] as MarginKey[]) : []),
+    ];
+  }, [formData.layout_settings]);
+
+  const tabMarginMap: Record<string, MarginKey[]> = {
+    'canvas-designer': ['left', 'right', 'top', 'bottom'],
+    'header-designer': getMarginsForRect({
+      x: 0,
+      y: 0,
+      width: formData.layout_settings.pageWidth,
+      height: formData.layout_settings.header.height,
+    }),
+    'footer-designer': getMarginsForRect({
+      x: 0,
+      y: formData.layout_settings.footer.top,
+      width: formData.layout_settings.pageWidth,
+      height: Math.max(0, formData.layout_settings.pageHeight - formData.layout_settings.footer.top),
+    }),
+    'block-address': getMarginsForRect(formData.layout_settings.addressField),
+    'block-return-address': getMarginsForRect(formData.layout_settings.returnAddress),
+    'block-info': getMarginsForRect(formData.layout_settings.infoBlock),
+    'block-subject': getMarginsForRect({
+      x: 0,
+      y: formData.layout_settings.subject.top,
+      width: formData.layout_settings.pageWidth,
+      height: formData.layout_settings.subject.marginBottom,
+    }),
+    'block-attachments': getMarginsForRect({
+      x: 0,
+      y: formData.layout_settings.attachments.top,
+      width: formData.layout_settings.pageWidth,
+      height: Math.max(0, formData.layout_settings.pageHeight - formData.layout_settings.attachments.top),
+    }),
+    'layout-settings': ['left', 'right', 'top', 'bottom'],
+    'general': [],
+  };
+
+  const marginLabelMap: Record<MarginKey, string> = {
+    top: 'O',
+    right: 'R',
+    bottom: 'U',
+    left: 'L',
+  };
+
+  const renderTabTrigger = (value: string, label: string) => {
+    const margins = tabMarginMap[value] || [];
+
+    return (
+      <TabsTrigger className="shrink-0" value={value}>
+        <span className="inline-flex items-center gap-1">
+          <span>{label}</span>
+          {margins.length > 0 && (
+            <span className="inline-flex items-center gap-0.5 rounded-sm border px-1 py-0.5 text-[10px] leading-none text-muted-foreground" title={`Betroffene Seitenränder: ${margins.join(', ')}`}>
+              {margins.map((margin) => marginLabelMap[margin]).join('·')}
+            </span>
+          )}
+        </span>
+      </TabsTrigger>
+    );
+  };
 
   const loadGalleryImages = useCallback(async () => {
     if (!currentTenant?.id) return;
@@ -833,16 +914,16 @@ const LetterTemplateManager: React.FC = () => {
   // Order: Canvas, Header, Footer, Adressfeld, Rücksende, Info-Block, Betreff, Anlagen, Layout, Allgemein
   const renderTabsList = () => (
     <TabsList className="flex w-full justify-start gap-1 overflow-x-auto whitespace-nowrap">
-      <TabsTrigger className="shrink-0" value="canvas-designer">Canvas</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="header-designer">Header</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="footer-designer">Footer</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="block-address">Adressfeld</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="block-return-address">Rücksende</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="block-info">Info-Block</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="block-subject">Betreff</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="block-attachments">Anlagen</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="layout-settings">Layout</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="general">Allgemein</TabsTrigger>
+      {renderTabTrigger('canvas-designer', 'Canvas')}
+      {renderTabTrigger('header-designer', 'Header')}
+      {renderTabTrigger('footer-designer', 'Footer')}
+      {renderTabTrigger('block-address', 'Adressfeld')}
+      {renderTabTrigger('block-return-address', 'Rücksende')}
+      {renderTabTrigger('block-info', 'Info-Block')}
+      {renderTabTrigger('block-subject', 'Betreff')}
+      {renderTabTrigger('block-attachments', 'Anlagen')}
+      {renderTabTrigger('layout-settings', 'Layout')}
+      {renderTabTrigger('general', 'Allgemein')}
     </TabsList>
   );
 
