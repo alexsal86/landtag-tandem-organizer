@@ -1,177 +1,107 @@
 
 
-# Fix: Header-Editor Text-Anzeige, Zoom-Verhalten, Layout und Text-Breite
+# Fix: Canvas-Text-Groesse, Cursor-Zoom, Textausrichtung, Header-Layout
 
 ## Uebersicht
 
-Vier Probleme im Brief-Template-Editor, die Header- und Canvas-Tabs betreffen.
+Vier Probleme in den Brief-Template-Editor-Tabs (Canvas und Header).
 
 ---
 
-## 1. Text auf dem Canvas-Tab nicht sichtbar
+## 1. Textgroesse im Canvas-Tab stimmt nicht
 
-**Problem:** Im `LetterLayoutCanvasDesigner` (Canvas-Tab) werden Header-Elemente mit der CSS-Klasse `text-foreground/80` gerendert (Zeile 410). Im Dark-Mode ist `text-foreground` weiss/hell -- auf dem weissen Canvas-Hintergrund ergibt das weissen Text auf weissem Grund = unsichtbar. Formen (Layout-Bloecke) sind sichtbar, weil sie eigene Farbklassen (`block.color`) haben.
+**Problem:** In `LetterLayoutCanvasDesigner.tsx` Zeile 195 wird die Schriftgroesse mit `(fontSize || 11) * (96/72) * scale` berechnet. Das ist falsch: `96/72` konvertiert pt zu CSS-px, aber `scale` (= `CSS_PX_PER_MM * zoom`) wandelt mm in px um. Die Formel muss stattdessen pt erst in mm umrechnen (`25.4/72`), dann mm in px (`* scale`).
 
-**Loesung:** Die Header-Element-Vorschau im Canvas-Tab muss eine feste dunkle Textfarbe verwenden, da der Canvas immer weiss ist:
+**Loesung:** In `renderCanvasElementPreview` (Zeile 195) die fontSize-Formel aendern:
 
-### Aenderung in `LetterLayoutCanvasDesigner.tsx`
-
-Zeile 410 aendern:
 ```text
 // Vorher:
-className="absolute text-[10px] text-foreground/80 pointer-events-none"
+fontSize: `${(element.fontSize || 11) * (96 / 72) * scale}px`
 
 // Nachher:
-className="absolute text-[10px] text-gray-700 pointer-events-none"
+fontSize: `${(element.fontSize || 11) * (25.4 / 72) * scale}px`
 ```
 
-Zusaetzlich: Fuer Text-Elemente die tatsaechliche `color`-Eigenschaft verwenden, falls vorhanden:
-```text
-style={{
-  ...existingStyles,
-  color: element.type === 'text' && element.color ? element.color : undefined,
-}}
-```
+Das ist konsistent mit `canvasElements.tsx`, das bereits `(25.4 / 72) * scaleY` verwendet.
 
 ---
 
-## 2. Zoom folgt dem Mauszeiger (wie canva.com)
+## 2. Cursor-zentrierter Zoom funktioniert nicht
 
-**Problem:** Beim Zoomen mit Strg+Mausrad wird immer gleichmaessig gezoomt. Der Zoom sollte auf die Position des Mauszeigers zentriert sein -- wo der Cursor steht, bleibt fixiert, und der Rest skaliert darum herum.
+**Problem:** In beiden Tabs (Canvas und Header) setzt der Wheel-Handler `container.scrollLeft` und `container.scrollTop` nach dem Zoom per `requestAnimationFrame`. Das Problem: Wenn der Container bei 100% keinen Overflow hat (kein Scrollbalken), kann `scrollLeft/scrollTop` nicht gesetzt werden -- die Werte bleiben bei 0. Der Canvas waechst zwar, aber das Scrollen greift erst ab dem Moment, wo der Canvas groesser als der Container ist.
 
-**Loesung:** Beim Wheel-Event die Mausposition relativ zum Scroll-Container merken und nach dem Zoom den Scroll-Offset so anpassen, dass der Punkt unter dem Cursor an derselben Stelle bleibt.
+**Loesung:** Das grundlegende Zoom-Verhalten (Canvas waechst, Scrollbar entsteht) ist korrekt. Damit der Cursor-zentrierte Zoom funktioniert, muss sichergestellt werden, dass die `scrollLeft`/`scrollTop`-Zuweisung nach dem DOM-Update erfolgt. Dafuer in `requestAnimationFrame` ein weiteres `requestAnimationFrame` nesten (double-rAF), da React den State-Update erst im naechsten Frame committed:
 
-### Aenderung in `StructuredHeaderEditor.tsx`
-
-Den nativen Wheel-Handler erweitern:
 ```text
-const handler = (e: WheelEvent) => {
-  if (!e.ctrlKey && !e.metaKey) return;
-  e.preventDefault();
-
-  const container = previewContainerRef.current;
-  if (!container) return;
-
-  // Cursor-Position relativ zum Scroll-Container
-  const rect = container.getBoundingClientRect();
-  const cursorX = e.clientX - rect.left + container.scrollLeft;
-  const cursorY = e.clientY - rect.top + container.scrollTop;
-
-  // Position in mm-Koordinaten (unabhaengig vom Zoom)
-  const currentScale = previewScaleXRef.current * zoomLevelRef.current;
-  const mmX = (cursorX - RULER_SIZE) / currentScale;
-  const mmY = (cursorY - RULER_SIZE) / currentScale;
-
-  // Zoom aendern
-  const nextZoom = e.deltaY < 0 ? zoomInStep(zoomLevelRef.current) : zoomOutStep(zoomLevelRef.current);
-  setZoomLevel(nextZoom);
-
-  // Nach dem Zoom: Scroll so anpassen, dass mmX/mmY wieder unter dem Cursor liegt
+requestAnimationFrame(() => {
   requestAnimationFrame(() => {
-    const newScale = previewScaleXRef.current * nextZoom;
-    const newCursorX = mmX * newScale + RULER_SIZE;
-    const newCursorY = mmY * newScale + RULER_SIZE;
-    container.scrollLeft = newCursorX - (e.clientX - rect.left);
-    container.scrollTop = newCursorY - (e.clientY - rect.top);
+    const newScale = ...;
+    container.scrollLeft = ...;
+    container.scrollTop = ...;
   });
-};
+});
 ```
 
-Da `zoomLevel` ein State ist und im Closure nicht aktuell waere, wird ein `useRef` als Mirror benoetigt:
-```text
-const zoomLevelRef = useRef(zoomLevel);
-useEffect(() => { zoomLevelRef.current = zoomLevel; }, [zoomLevel]);
-const previewScaleXRef = useRef(previewScaleX);
-useEffect(() => { previewScaleXRef.current = previewScaleX; }, [previewScaleX]);
-```
-
-Gleiches Prinzip auch fuer den Canvas-Tab (`LetterLayoutCanvasDesigner.tsx`) implementieren, damit beide Tabs identisches Zoom-Verhalten haben.
+Dies in beiden Tabs (`StructuredHeaderEditor.tsx` und `LetterLayoutCanvasDesigner.tsx`) aendern.
 
 ---
 
-## 3. Canvas im Header-Tab mittig ausrichten, Scrollleiste entfernen
+## 3. Textausrichtung (links, mittig, rechts)
 
-**Problem:** Der Canvas ist links ausgerichtet und hat eine vertikale Scrollleiste auch bei 100% Zoom. Der Canvas-Tab verwendet `mx-auto` (Zeile 398) fuer zentrierte Darstellung.
+**Problem:** Text-Elemente haben keine `textAlign`-Eigenschaft. Der Benutzer kann die Ausrichtung nicht aendern.
 
 **Loesung:**
 
-### Aenderung in `StructuredHeaderEditor.tsx`
+### a) Typ erweitern (`types.ts`)
 
-**a) Canvas zentrieren:** Dem inneren Container `mx-auto` hinzufuegen (wie im Canvas-Tab):
+`TextElement` um `textAlign?: 'left' | 'center' | 'right'` erweitern.
+
+### b) Rendering anpassen (`canvasElements.tsx`)
+
+Im `TextCanvasElement` den `textAlign`-Style hinzufuegen:
 
 ```text
-// Vorher (Zeile 1526):
-<div className="relative inline-block" style={{ ... }}>
-
-// Nachher:
-<div className="relative mx-auto" style={{ ... }}>
+textAlign: element.textAlign || 'left',
 ```
 
-**b) Scrollleiste nur bei Bedarf:** Den aeusseren Container von `overflow-auto` auf `overflow-auto` belassen, aber sicherstellen, dass bei 100% Zoom die Canvas-Hoehe in den Container passt. Die feste Hoehe des Canvas (`canvasPixelHeight`) bei 100% Zoom muss kleiner sein als der verfuegbare Platz.
+### c) Canvas-Tab Rendering (`LetterLayoutCanvasDesigner.tsx`)
 
-Voraussetzung: `previewWidth` wird korrekt berechnet, sodass bei 100% die Proportionen stimmen. Da der Header nur 45mm hoch ist (vs 210mm breit), ist das Seitenverhaeltnis sehr flach -- bei 100% Zoom passt das normalerweise ohne vertikalen Scroll.
+Gleichen Style in `renderCanvasElementPreview` fuer Text-Elemente hinzufuegen.
 
-**c) Container-Overflow anpassen:**
+### d) Sidebar-Controls (`StructuredHeaderEditor.tsx`)
+
+Im Text-Properties-Panel drei Buttons fuer Links/Mitte/Rechts hinzufuegen (neben B/I/U):
+
 ```text
-// aeusserer Wrapper
-<div ref={previewContainerRef} className="w-full overflow-auto">
+<Label className="text-xs">Ausrichtung</Label>
+<div className="grid grid-cols-3 gap-1">
+  <Button size="sm" className="h-6 text-xs" variant={textAlign === 'left' ? 'default' : 'outline'} onClick={() => updateElement(id, { textAlign: 'left' })}>L</Button>
+  <Button size="sm" className="h-6 text-xs" variant={textAlign === 'center' ? 'default' : 'outline'} onClick={() => updateElement(id, { textAlign: 'center' })}>M</Button>
+  <Button size="sm" className="h-6 text-xs" variant={textAlign === 'right' ? 'default' : 'outline'} onClick={() => updateElement(id, { textAlign: 'right' })}>R</Button>
+</div>
 ```
-Kein `maxHeight` setzen -- der natuerliche Platz der Card reicht. Bei hohen Zoom-Stufen entsteht Scrollbedarf automatisch.
 
 ---
 
-## 4. Text-DIV passt sich dem Textinhalt an, ist aber manuell vergroesser-/verkleinerbar
+## 4. Header-Tab: Scrollleiste und ueberbreiter Canvas
 
-**Problem:** Aktuell hat jedes Text-Element eine feste Breite (Default 70mm) und Hoehe (Default 8mm), mit `overflow: hidden`. Der Text wird abgeschnitten. Der Benutzer wuenscht:
-- Ohne manuelle Aenderung: DIV ist so breit wie der Text (auto-fit)
-- Mit manueller Aenderung: Breite ueber Resize-Handles anpassbar
-- Hoehe passt sich dem Inhalt an
+**Problem:** Der Header-Canvas-Container hat `overflow-auto` ohne Hoehenbegrenzung, was bei 200% Zoom dazu fuehrt, dass der aeussere Container (Card) mit waechst und eine Scrollleiste entsteht. Der Canvas ist nicht innerhalb eines begrenzten Bereichs eingeschlossen wie im Canvas-Tab.
 
-**Loesung:**
+**Loesung:** Den Container um den Header-Canvas so gestalten wie im Canvas-Tab:
 
-### Aenderung in `canvasElements.tsx` (TextCanvasElement)
-
-Die `width` und `height` im Style nur setzen, wenn der Benutzer sie explizit geaendert hat. Dafuer ein Flag oder die Dimension `undefined` pruefen:
+### a) Aeusserer Container mit Begrenzung
 
 ```text
-// Wenn width explizit gesetzt: feste Breite + overflow hidden
-// Wenn width nicht gesetzt: auto-fit (whiteSpace: nowrap, width: auto)
-const hasExplicitWidth = element.width !== undefined && element.width !== null;
-const hasExplicitHeight = element.height !== undefined && element.height !== null;
-
-style={{
-  left: ...,
-  top: ...,
-  width: hasExplicitWidth ? `${element.width * scaleX}px` : 'auto',
-  height: hasExplicitHeight ? `${element.height * scaleY}px` : 'auto',
-  whiteSpace: hasExplicitWidth ? 'normal' : 'nowrap',
-  overflow: hasExplicitWidth ? 'hidden' : 'visible',
-  ...fontStyles
-}}
+<div ref={previewContainerRef} 
+     className="border rounded-lg p-4 bg-muted/20 overflow-auto outline-none"
+     style={{ maxHeight: 'calc(100vh - 280px)' }}>
 ```
 
-Die fontSize muss mit dem Scale-Faktor skaliert werden, damit sie im Canvas proportional korrekt ist:
-```text
-// Vorher:
-fontSize: `${(element.fontSize || 12) * (96 / 72)}px`
+So hat der Container eine maximale Hoehe relativ zum Viewport, und bei hohen Zoom-Stufen erscheinen Scrollbalken innerhalb des Containers (nicht des gesamten Layouts). Bei 100% passt der Header (45mm hoch, ca. 170px) problemlos ohne Scrollleiste.
 
-// Nachher -- pt zu mm, dann mm zu px via scale:
-fontSize: `${(element.fontSize || 12) * (25.4 / 72) * scaleY}px`
-```
+### b) Canvas zentrieren
 
-### Aenderung in `StructuredHeaderEditor.tsx`
-
-**a) Neues Text-Element ohne explizite Breite erstellen:**
-```text
-// addTextElement (Zeile 438):
-const el = { ..., width: undefined, height: undefined };
-```
-
-**b) Resize-Handles fuer Text-Elemente aktivieren:** Derzeit haben nur Image-Elemente `renderResizeHandles`. Text-Elemente brauchen zumindest horizontale Resize-Handles (e, w), damit der Benutzer die Breite manuell setzen kann.
-
-Im TextCanvasElement eine optionale `renderResizeHandles`-Prop hinzufuegen und im Container rendern.
-
-**c) Sidebar: Breite/Hoehe-Felder fuer Text:** Im Element-Properties-Panel (Zeile 1431-1458) Felder fuer Breite und Hoehe hinzufuegen, damit der Benutzer die Dimension auch numerisch eingeben kann. Ein "Auto"-Button setzt width/height zurueck auf `undefined`.
+Der innere Canvas-Container behaelt `mx-auto`, damit er bei kleinen Zoom-Stufen mittig steht.
 
 ---
 
@@ -179,7 +109,8 @@ Im TextCanvasElement eine optionale `renderResizeHandles`-Prop hinzufuegen und i
 
 | Datei | Aenderung |
 |---|---|
-| `LetterLayoutCanvasDesigner.tsx` | Text-Farbe auf dunkle Farbe aendern, Cursor-Zoom |
-| `StructuredHeaderEditor.tsx` | Cursor-Zoom, Canvas zentrieren, Scrollleiste, Text-Element ohne feste Breite, Resize-Handles fuer Text, fontSize-Skalierung |
-| `canvasElements.tsx` | Auto-Width fuer Text, fontSize mit Scale skalieren, optionale Resize-Handles |
+| `src/components/canvas-engine/types.ts` | `textAlign` Property zu `TextElement` hinzufuegen |
+| `src/components/letters/LetterLayoutCanvasDesigner.tsx` | fontSize-Formel korrigieren (25.4/72 statt 96/72), textAlign rendern, Double-rAF fuer Cursor-Zoom |
+| `src/components/letters/StructuredHeaderEditor.tsx` | Double-rAF fuer Cursor-Zoom, Container-maxHeight, Textausrichtungs-Buttons in Sidebar |
+| `src/components/letters/elements/canvasElements.tsx` | textAlign Style hinzufuegen |
 
