@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
 import { StructuredFooterEditor } from '@/components/letters/StructuredFooterEditor';
 import { LayoutSettingsEditor } from '@/components/letters/LayoutSettingsEditor';
+import { CanvasToolbar } from '@/components/letters/CanvasToolbar';
 import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCanvasDesigner';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
@@ -54,6 +55,15 @@ interface InformationBlock {
   label: string;
   is_default: boolean;
 }
+
+type MarginKey = 'top' | 'right' | 'bottom' | 'left';
+
+type TabRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
 
 
 interface GalleryImage {
@@ -149,6 +159,78 @@ const LetterTemplateManager: React.FC = () => {
     footer_blocks: [] as any[],
     layout_settings: DEFAULT_DIN5008_LAYOUT as LetterLayoutSettings
   });
+
+  const getMarginsForRect = useCallback((rect: TabRect): MarginKey[] => {
+    const { pageWidth, pageHeight, margins } = formData.layout_settings;
+    const leftEdge = rect.x;
+    const rightEdge = rect.x + rect.width;
+    const topEdge = rect.y;
+    const bottomEdge = rect.y + rect.height;
+
+    return [
+      ...(leftEdge < margins.left ? (['left'] as MarginKey[]) : []),
+      ...(rightEdge > pageWidth - margins.right ? (['right'] as MarginKey[]) : []),
+      ...(topEdge < margins.top ? (['top'] as MarginKey[]) : []),
+      ...(bottomEdge > pageHeight - margins.bottom ? (['bottom'] as MarginKey[]) : []),
+    ];
+  }, [formData.layout_settings]);
+
+  const tabMarginMap: Record<string, MarginKey[]> = {
+    'canvas-designer': ['left', 'right', 'top', 'bottom'],
+    'header-designer': getMarginsForRect({
+      x: 0,
+      y: 0,
+      width: formData.layout_settings.pageWidth,
+      height: formData.layout_settings.header.height,
+    }),
+    'footer-designer': getMarginsForRect({
+      x: 0,
+      y: formData.layout_settings.footer.top,
+      width: formData.layout_settings.pageWidth,
+      height: Math.max(0, formData.layout_settings.pageHeight - formData.layout_settings.footer.top),
+    }),
+    'block-address': getMarginsForRect(formData.layout_settings.addressField),
+    'block-return-address': getMarginsForRect(formData.layout_settings.returnAddress),
+    'block-info': getMarginsForRect(formData.layout_settings.infoBlock),
+    'block-subject': getMarginsForRect({
+      x: 0,
+      y: formData.layout_settings.subject.top,
+      width: formData.layout_settings.pageWidth,
+      height: formData.layout_settings.subject.marginBottom,
+    }),
+    'block-attachments': getMarginsForRect({
+      x: 0,
+      y: formData.layout_settings.attachments.top,
+      width: formData.layout_settings.pageWidth,
+      height: Math.max(0, formData.layout_settings.pageHeight - formData.layout_settings.attachments.top),
+    }),
+    'layout-settings': ['left', 'right', 'top', 'bottom'],
+    'general': [],
+  };
+
+  const marginLabelMap: Record<MarginKey, string> = {
+    top: 'O',
+    right: 'R',
+    bottom: 'U',
+    left: 'L',
+  };
+
+  const renderTabTrigger = (value: string, label: string) => {
+    const margins = tabMarginMap[value] || [];
+
+    return (
+      <TabsTrigger className="shrink-0" value={value}>
+        <span className="inline-flex items-center gap-1">
+          <span>{label}</span>
+          {margins.length > 0 && (
+            <span className="inline-flex items-center gap-0.5 rounded-sm border px-1 py-0.5 text-[10px] leading-none text-muted-foreground" title={`Betroffene Seitenränder: ${margins.join(', ')}`}>
+              {margins.map((margin) => marginLabelMap[margin]).join('·')}
+            </span>
+          )}
+        </span>
+      </TabsTrigger>
+    );
+  };
 
   const loadGalleryImages = useCallback(async () => {
     if (!currentTenant?.id) return;
@@ -455,6 +537,7 @@ const LetterTemplateManager: React.FC = () => {
     const selected = items.find((item: any) => item.id === selectedId) || null;
     const ruler = !!showBlockRuler[blockKey];
     const showAxes = !!showBlockRuler[`${blockKey}_axes`];
+    const showMargins = showBlockRuler[`${blockKey}_margins`] !== false;
 
     const updateItem = (id: string, updates: any) => setBlockItems(blockKey, items.map((item: any) => (item.id === id ? { ...item, ...updates } : item)));
 
@@ -476,6 +559,19 @@ const LetterTemplateManager: React.FC = () => {
 
     const canvasW = rect.width * scale;
     const canvasH = Math.max(rect.height, 25) * scale;
+    const pageMargins = formData.layout_settings.margins;
+    const pageWidth = formData.layout_settings.pageWidth;
+    const pageHeight = formData.layout_settings.pageHeight;
+
+    const marginGuides = [
+      { key: 'left', orientation: 'vertical' as const, pos: (pageMargins.left - rect.left) * scale, color: '#2563eb', label: 'Links' },
+      { key: 'right', orientation: 'vertical' as const, pos: (pageWidth - pageMargins.right - rect.left) * scale, color: '#2563eb', label: 'Rechts' },
+      { key: 'top', orientation: 'horizontal' as const, pos: (pageMargins.top - rect.top) * scale, color: '#16a34a', label: 'Oben' },
+      { key: 'bottom', orientation: 'horizontal' as const, pos: (pageHeight - pageMargins.bottom - rect.top) * scale, color: '#16a34a', label: 'Unten' },
+    ].filter((guide) => {
+      if (guide.orientation === 'vertical') return guide.pos >= 0 && guide.pos <= canvasW;
+      return guide.pos >= 0 && guide.pos <= canvasH;
+    });
 
     const variablePlaceholders = [
       { label: 'Betreff', variable: '{{betreff}}' },
@@ -586,15 +682,18 @@ const LetterTemplateManager: React.FC = () => {
           </Card>
           </div>
           <div className="space-y-3 xl:col-start-2">
-            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-2">
-              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled><Undo2 className="h-3.5 w-3.5 mr-1" />Undo</Button>
-              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled><Redo2 className="h-3.5 w-3.5 mr-1" />Redo</Button>
-              <Button type="button" variant={ruler ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [blockKey]: !prev[blockKey] }))}><Ruler className="h-3.5 w-3.5 mr-1" />Lineal</Button>
-              <Button type="button" variant={showAxes ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_axes`]: !prev[`${blockKey}_axes`] }))}><Crosshair className="h-3.5 w-3.5 mr-1" />Achsen</Button>
-              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={!selected}><Copy className="h-3.5 w-3.5 mr-1" />Kopieren</Button>
-              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled><ClipboardPaste className="h-3.5 w-3.5 mr-1" />Einfügen</Button>
-              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={duplicateSelectedItem} disabled={!selected}><CopyPlus className="h-3.5 w-3.5 mr-1" />Duplizieren</Button>
-            </div>
+            <CanvasToolbar
+              showRuler={ruler}
+              onToggleRuler={() => setShowBlockRuler((prev) => ({ ...prev, [blockKey]: !prev[blockKey] }))}
+              showAxes={showAxes}
+              onToggleAxes={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_axes`]: !prev[`${blockKey}_axes`] }))}
+              showMargins={showMargins}
+              onToggleMargins={() => setShowBlockRuler((prev) => ({ ...prev, [`${blockKey}_margins`]: !(prev[`${blockKey}_margins`] !== false) }))}
+              canCopy={!!selected}
+              canPaste={false}
+              canDuplicate={!!selected}
+              onDuplicate={duplicateSelectedItem}
+            />
           {/* Canvas area - centered */}
           <div className="border rounded-lg p-6 bg-muted/30 overflow-auto flex items-center justify-center min-h-[200px]"
             onMouseMove={(e) => onBlockCanvasMouseMove(e, blockKey, scale)}
@@ -664,6 +763,21 @@ const LetterTemplateManager: React.FC = () => {
                     <div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none z-10" />
                   </>
                 )}
+                {showMargins && marginGuides.map((guide) => (
+                  <React.Fragment key={guide.key}>
+                    {guide.orientation === 'vertical' ? (
+                      <>
+                        <div className="absolute top-0 bottom-0 border-l border-dashed pointer-events-none z-10" style={{ left: guide.pos, borderColor: guide.color }} />
+                        <Badge variant="secondary" className="absolute top-1 text-[10px] px-1 py-0 h-4 pointer-events-none z-10" style={{ left: Math.min(Math.max(guide.pos + 2, 2), Math.max(canvasW - 42, 2)) }}>{guide.label}</Badge>
+                      </>
+                    ) : (
+                      <>
+                        <div className="absolute left-0 right-0 border-t border-dashed pointer-events-none z-10" style={{ top: guide.pos, borderColor: guide.color }} />
+                        <Badge variant="secondary" className="absolute left-1 text-[10px] px-1 py-0 h-4 pointer-events-none z-10" style={{ top: Math.min(Math.max(guide.pos + 2, 2), Math.max(canvasH - 18, 2)) }}>{guide.label}</Badge>
+                      </>
+                    )}
+                  </React.Fragment>
+                ))}
                 {items.map((item: any) => {
                   const isSelected = selectedId === item.id;
                   if (item.type === 'shape') {
@@ -833,16 +947,16 @@ const LetterTemplateManager: React.FC = () => {
   // Order: Canvas, Header, Footer, Adressfeld, Rücksende, Info-Block, Betreff, Anlagen, Layout, Allgemein
   const renderTabsList = () => (
     <TabsList className="flex w-full justify-start gap-1 overflow-x-auto whitespace-nowrap">
-      <TabsTrigger className="shrink-0" value="canvas-designer">Canvas</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="header-designer">Header</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="footer-designer">Footer</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="block-address">Adressfeld</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="block-return-address">Rücksende</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="block-info">Info-Block</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="block-subject">Betreff</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="block-attachments">Anlagen</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="layout-settings">Layout</TabsTrigger>
-      <TabsTrigger className="shrink-0" value="general">Allgemein</TabsTrigger>
+      {renderTabTrigger('canvas-designer', 'Canvas')}
+      {renderTabTrigger('header-designer', 'Header')}
+      {renderTabTrigger('footer-designer', 'Footer')}
+      {renderTabTrigger('block-address', 'Adressfeld')}
+      {renderTabTrigger('block-return-address', 'Rücksende')}
+      {renderTabTrigger('block-info', 'Info-Block')}
+      {renderTabTrigger('block-subject', 'Betreff')}
+      {renderTabTrigger('block-attachments', 'Anlagen')}
+      {renderTabTrigger('layout-settings', 'Layout')}
+      {renderTabTrigger('general', 'Allgemein')}
     </TabsList>
   );
 
@@ -872,6 +986,7 @@ const LetterTemplateManager: React.FC = () => {
         <StructuredHeaderEditor
           initialElements={formData.header_elements}
           onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
+          layoutSettings={formData.layout_settings}
           actionButtons={editingTemplate ? undefined : (
             <div className="flex flex-col gap-2">
               <Button onClick={handleCreateTemplate}>
