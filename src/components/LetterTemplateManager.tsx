@@ -72,7 +72,6 @@ interface GalleryImage {
 }
 
 
-
 const STORAGE_PATH_PREFIXES = [
   '/storage/v1/object/public/letter-assets/',
   '/storage/v1/object/sign/letter-assets/',
@@ -159,6 +158,14 @@ const LetterTemplateManager: React.FC = () => {
     footer_blocks: [] as any[],
     layout_settings: DEFAULT_DIN5008_LAYOUT as LetterLayoutSettings
   });
+
+  useEffect(() => {
+    if (currentTenant) {
+      fetchTemplates();
+      fetchSenderInfos();
+      fetchInformationBlocks();
+    }
+  }, [currentTenant]);
 
   const getMarginsForRect = useCallback((rect: TabRect): MarginKey[] => {
     const { pageWidth, pageHeight, margins } = formData.layout_settings;
