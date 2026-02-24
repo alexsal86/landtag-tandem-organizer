@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ZoomIn, ZoomOut, Trash2, Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 import { CSS_PX_PER_MM } from '@/lib/units';
+import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 
 type BlockKey = 'header' | 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments';
 type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general' | 'block-address' | 'block-return-address' | 'block-info' | 'block-subject' | 'block-content' | 'block-attachments';
@@ -114,22 +115,16 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
 
     if (element.shapeType === 'sunflower') {
       return (
-        <div
-          key={element.id}
-          style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${Math.max(12, 12 * scale)}px` }}
-        >
-          🌻
+        <div key={element.id} style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <SunflowerSVG width={width} height={height} />
         </div>
       );
     }
 
     if (element.shapeType === 'lion') {
       return (
-        <div
-          key={element.id}
-          style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${Math.max(12, 12 * scale)}px` }}
-        >
-          🦁
+        <div key={element.id} style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <LionSVG width={width} height={height} />
         </div>
       );
     }
@@ -187,6 +182,8 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
     );
   }
 
+  const isVariable = (element as any).isVariable === true;
+
   return (
     <div
       key={element.id}
@@ -197,13 +194,17 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
         fontWeight: element.fontWeight || 'normal',
         fontStyle: element.fontStyle || 'normal',
         textDecoration: element.textDecoration || 'none',
-        color: element.color || '#111827',
+        color: isVariable ? '#b45309' : (element.color || '#111827'),
         lineHeight: `${element.textLineHeight || 1.2}`,
         textAlign: (element as any).textAlign || 'left',
         whiteSpace: 'pre-wrap',
+        backgroundColor: isVariable ? 'rgba(251, 191, 36, 0.15)' : undefined,
+        borderRadius: isVariable ? '4px' : undefined,
+        padding: isVariable ? '1px 4px' : undefined,
       }}
       className="text-gray-800"
     >
+      {isVariable && <span className="mr-0.5">⚡</span>}
       {element.content}
     </div>
   );

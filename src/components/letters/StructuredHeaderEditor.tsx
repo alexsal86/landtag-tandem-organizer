@@ -34,7 +34,48 @@ interface StructuredHeaderEditorProps {
   layoutSettings?: LetterLayoutSettings;
   canvasWidthMm?: number;
   canvasHeightMm?: number;
+  blockKey?: string;
 }
+
+const BLOCK_VARIABLES: Record<string, { label: string; value: string }[]> = {
+  header: [
+    { label: 'Absender Name', value: '{{absender_name}}' },
+    { label: 'Organisation', value: '{{absender_organisation}}' },
+  ],
+  addressField: [
+    { label: 'Empfänger Name', value: '{{empfaenger_name}}' },
+    { label: 'Straße', value: '{{empfaenger_strasse}}' },
+    { label: 'PLZ', value: '{{empfaenger_plz}}' },
+    { label: 'Ort', value: '{{empfaenger_ort}}' },
+    { label: 'Land', value: '{{empfaenger_land}}' },
+  ],
+  returnAddress: [
+    { label: 'Absender Name', value: '{{absender_name}}' },
+    { label: 'Organisation', value: '{{absender_organisation}}' },
+    { label: 'Straße', value: '{{absender_strasse}}' },
+    { label: 'PLZ/Ort', value: '{{absender_plz_ort}}' },
+  ],
+  infoBlock: [
+    { label: 'Datum', value: '{{datum}}' },
+    { label: 'Aktenzeichen', value: '{{aktenzeichen}}' },
+    { label: 'Bearbeiter', value: '{{bearbeiter}}' },
+    { label: 'Telefon', value: '{{telefon}}' },
+    { label: 'E-Mail', value: '{{email}}' },
+    { label: 'Unser Zeichen', value: '{{unser_zeichen}}' },
+  ],
+  subject: [
+    { label: 'Betreff', value: '{{betreff}}' },
+  ],
+  attachments: [
+    { label: 'Anlagen-Liste', value: '{{anlagen_liste}}' },
+  ],
+  footer: [
+    { label: 'Absender Name', value: '{{absender_name}}' },
+    { label: 'Organisation', value: '{{absender_organisation}}' },
+    { label: 'Telefon', value: '{{telefon}}' },
+    { label: 'E-Mail', value: '{{email}}' },
+  ],
+};
 
 const createElementId = () => crypto.randomUUID();
 
@@ -44,66 +85,10 @@ const getShapeFillColor = (element: HeaderElement, fallback = '#000000') =>
 const getShapeStrokeColor = (element: HeaderElement, fallback = '#000000') =>
   element.type === 'shape' ? (element.strokeColor ?? element.color ?? fallback) : fallback;
 
-// Sunflower SVG inline component
-const SunflowerSVG: React.FC<{ width: number; height: number; className?: string }> = ({ width, height, className }) => (
-  <svg
-    width={width}
-    height={height}
-    viewBox="0 0 438.44 440.44"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <g id="XMLID_1_">
-      <g>
-        <path fill="#FAE301" d="M438.19,192.22c-1.19,4.48-6.5,4.84-5,12c-7.66,9-20.101,13.23-29.99,20
-          c6.67,11.32,21.85,14.141,26.99,26.99c-9.87,14.8-30.101,19.23-52.99,21c8.72,14.95,31.729,24.26,33,50
-          c-28.34,18.14-64.04-4.79-85.99-15c2.73,22.271,17.36,41.29,18.99,67.99c-33.95-2.37-42.78-29.88-64.99-44
-          c4.32,10.2,11.41,26.26,10,47c-0.79,11.569-7.28,43.109-14,43.99c-4.15,0.55-14.93-17.16-18-20.99
-          c-6.9-8.641-11.95-13.44-16.99-21c-4.81,16.859-8.68,34.649-17,47.99c-7.76,1.239-9.93,8.069-15,12
-          c-8.91-21.41-13.42-47.24-20-70.99c-5.18,9.26-12.32,18.819-18.99,28c-6.25,8.58-11.15,20.55-22,21.99
-          c2.05-19.391,4.7-41.99,3-61.99c-10.52,9.149-22.62,25.37-37,34c-3.54,0.54-2.46-3.54-6-3c-2.16-21.96-5.51-45.66,4-61.99
-          c-17.62,11.37-33.94,24.05-58.99,27.99c-0.57-7.04,5.84-15.38,8-23c-0.35-3.311-5.76-1.57-9-2c3.7-25.63,20.74-37.92,31-56.99
-          c-24.29-3.71-54.67-1.32-70.99-13c3.79-5.53,11.53-7.13,16.99-11c-7.76-8.229-18.7-13.29-26.99-20.99
-          c9.26-6.319,19.59-7.2,28.99-12c13.79-7.04,26.64-13.57,48-14c-27.98-7.35-48.65-22.01-58-47.99c4.23-4.11,14.35-2.32,20-5
-          c-4.93-9.79-14.28-20.31-16-30c7,0,12.31-1.69,20-1c-1.21-3.79-1.93-8.06-4-11c17.83-2.82,35.45,3.21,51.99,5
-          c-8.27-19.05-19.88-34.77-26.99-54.99c24.72,0.28,41.43,8.56,55.99,19c-0.3-20.69,4.41-43.98,11-61c8.62,5.38,14.72,13.28,23,19
-          c2.74-9.92,5-20.33,5-32.99c22.91,14.41,44.17,30.48,50.99,60.99c6.41-31.25,29.82-45.5,51.99-60.99c7.65,14.2,9.75,33.98,8,54.99
-          c15.43-12.23,26.75-28.58,51-32c3.01,11.13-1.78,22.81-1,35c13.71-5.65,24.24-19.7,37.99-22c0.63,35.96-13.66,57-29.99,75.99
-          c27.03-3.96,52.23-9.76,73.99-19c-7.15,33.85-21.891,60.11-55,68C383.41,159.51,418.31,171.48,438.19,192.22z"/>
-      </g>
-    </g>
-    <path fill="#76A837" d="M279.21,160.23c5.41,14.66,18.65-3.82,28,0c-2.08,6.25-10.27,6.4-15,9.99c8.08,2.74,19.04-0.28,27-1
-      c-7.47,6.2-17.81,9.53-21,20c9.49,3.47,21.47-4.51,31-1c-4.14,9.38-24.21-1.72-29,8c0.37,4.63,3.12,6.87,6,9
-      c-0.85,3.16-5.16,2.84-6,6c4.19,5.14,15.73,2.93,19,9c-8.18,0.15-16.31,0.36-21,4c-1.81,12.471,6.46,14.87,11,20.99
-      c-1.84,2.42-5.9-1.37-10,0c5.14,10.25,19.64,16.29,21,27c-11.46,0.58-14.53-15.32-25-19c-2.49-0.15-3.1,1.58-5,2
-      c-0.32,6.99,4.32,9.021,4,16c-4.78-0.89-7.38-3.95-11-6c-15.71,12.31,16.69,25.13,11,37c-8.62-4.72-10.59-16.08-18-22
-      c-2.8,5.49,1.91,12.07,2,18c-5.41-3.26-7.76-9.57-14-12c-2.97,7.32,1.19,16.13,1,24c-6.94-3.84-10.96-18.88-19.99-17
-      c-10.489,2.18-3.47,21.06-5,31c-5.58-4.76-7.1-13.58-8-23c-3.77,1.9-3.739,7.59-5,12c-6.3-4.85-4.989-14.66-13-16
-      c-9.52-1.6-14.05,9.22-19,17c-0.4-15.8-13.38-26.7-23-12c-2.39-4.28-0.19-18.2-6.99-21c-7.95,1.72-11.12,8.21-16,13
-      c-0.32-4.68,6.94-14.57,3-23c-1.71,0.05-2.59-0.74-3-2c-5.58,1.61-10.34,8.75-16,7c1.09-5.24,4.45-8.21,6-13
-      c-12.7-1.64-20.96,14.98-33,14c5.92-11.41,22.76-11.91,31-21c-2.38-2.62-7.51-2.49-11-4c0.13-4.2,3.87-4.79,4-9
-      c-3.87-3.46-14.91,0.25-18-3.99c1.76-3.91,9.46-1.88,13-4c-1.73-3.609-7.22-3.45-8-8c4.67-0.33,7.86-2.149,10-5
-      c-2.54-13.13-16.25-15.08-28-19c10.41-3.59,27.12-0.88,30-12c-3.39-9.28-17.38-7.95-23-15c7.83-1.67,16.46,4.09,24,6
-      c-0.89-5.11-6.74-5.26-7-11c11.85,7.42,24.24-3.18,22-14.99c19.67-0.15,1.43-17.35-3-25c8.39,1.42,10.44,11.88,18,13
-      c11.45,1.69,19.32-11.2,21.99-23c5.5,4.37,14.98,11.87,23,5c-0.4-7.37-3.68-15.71-1-23c5.9,3.77,3.09,16.24,8,21
-      c4.11-0.23,6.18-2.48,8-5c4.16,19.41,22.79,2.25,29.99,0c-1.33,3-1.01,7.65-1,12c10.62,11.15,17.96-7.21,26-11
-      c2.95,9.73-15.6,26.78-1,33c8.45-3.55,14.88-9.12,22-14C293.87,145.56,283.91,152.92,279.21,160.23z"/>
-  </svg>
-);
+// Import shared SVG components
+import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 
-const LionSVG: React.FC<{ width: number; height: number; className?: string }> = ({ width, height, className }) => (
-  <svg width={width} height={height} viewBox="0 0 151.80499 62.099997" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path fill="#ffffff" d="m 33.4,5.7999996 c 0.7,2.3 4.1,1.7 4.2,-0.8 -1.3,-0.2 -3,0 -4.2,0.8 z"/>
-    <path fill="#000000" d="m 28.5,17.5 c 1.2,-0.4 1.3,-1.4 1,-2 -2.3,0.6 -5,1.3 -8.6,0.8 C 17,15.9 16.2,13.8 16.2,12.4 H 16.1 L 16,12.3 v 0.2 c -0.1,0.1 -0.2,0.3 -0.2,0.4 -1,2.2 0,4.9 4.2,5.3 4.5,0.5 7.4,-0.4 8.5,-0.7 z"/>
-    <path fill="#000000" d="m 150,48.200003 c -1.4,-1.4 -3,-2.6 -4.5,-3.5 -2.5,-1.5 -4.6,-2.4 -4.6,-2.4 C 140.7,39.6 139.4,35.3 137.7,31.3 c -1,-2.3 -2.2,-4.5 -3.5,-6.1 l 0.3,0.3 c 4.1,-1 7.1,-5.3 6.8,-10.2 -0.4,-6.1 -6.1,-12.5 -19.7,-9.8000004 -5,1 -9,2.4 -12.9,4.0000004 -4,1.7 -7.9,3.5 -12.499996,5.1 C 91.500004,16.2 87.6,17 84.5,16.7 81.7,16.5 79.6,15.4 78.4,13.6 76.7,11.1 79.2,8.4999996 80.2,7.7999996 82.1,6.5999996 83.8,4.5 82.8,1 c -1.8,0.3 -5,1.4 -7.6,3.4 -2.1,1.5999996 -3.8,3.8999996 -3.8,7 0.1,4.2 3,7.5 7.8,8.6 3.2,0.7 5.8,1 8.8,0.6 4.300004,-0.6 9.700004,-2.5 19.3,-6.1 9,-3.4 14,-4.9 17.9,-5.1 2.5,-0.1 4.4,0.2 6.6,1 1.4,0.5 2.3,1.3 3,2.1 0.8,1 1,2.2 1,3.3 -0.2,2.1 -1.7,4.1 -4,4.6 h -1.7 c -0.7,-0.1 -1.5,-0.2 -2.4,-0.4 -2.6,-0.5 -6.1,-1.1 -11.6,-0.5 -3.3,0.3 -7.3,1.1 -12.2,2.7 C 93.700004,25.5 86,26.8 80.1,27 71.7,27.3 66.8,25.4 63,23.9 62.6,20.2 61.8,17.2 60.7,14.8 59,10.9 56.7,8.3999996 55.2,7.0999996 c 0,0 0.9,-0.5 1.3,-3.4999996 -2.2,-0.4 -5.2,0.8 -5.2,0.8 0,0 -5.6,-3.6 -13.2,-2.3 C 35.2,2.6 33.8,3.4 33,4.7 26.9,6.8999996 26.4,7.2999996 24.9,8.1999996 24,8.8999996 24,9.4 24,9.9 c 0,0.5 0.3,0.8 0.4,0.9 0.2,0.2 0.3,0.4 0.3,0.7 0.1,1.7 0.1,2.3 0.6,3.7 0.2,0.6 0.8,0.5 1.4,0.3 4,-1.5 5.7,0.4 5.7,2.1 0,1.5 -0.8,2.9 -3.7,3.1 h -1.3 c -0.4,0 -0.7,0 -0.7,0.6 0,0.4 0.9,2.7 1,3.1 0.4,1.2 0.7,1.4 1.7,1.4 1.9,0 4.4,-0.5 5.2,-0.7 0,0 -0.1,2.5 0.7,5.8 -6.7,-2.5 -11.8,-3.2 -17.5,-3 -5.6,0.2 -9.4,1.4 -11.9,2.8 -4.5,2.5 -4.9,5.7 -4.9,5.7 0,0 6.5,1.5 9.2,0.8 1.8,-0.6 3,-2.3 3,-2.3 0,0 4.3,0.9 9.9,3.9 2.8,1.5 6,3.500003 9.2,6.300003 0.1,0 7.5,-2.9 7.8,-3 0.2,-0.1 0.4,-0.1 0.6,0.2 0.2,0.2 0.1,0.5 -0.1,0.6 -0.7,0.6 -5.2,3.6 -9.8,6.3 -3,1.8 -6.2,3.7 -9,5.4 -2.2,-0.3 -3.2,-0.3 -5.2,-0.3 -4.4,0.1 -7.3,3.9 -7.3,6.7 h 17 c 0.7,-0.2 7.8,-1.7 15,-3.1 5.2,-1 10.4,-2 13.3,-2.6 1.3,-0.2 1.9,-0.4 2.2,-0.4 0.5,-0.1 0.9,-0.2 1.4,-0.6 0.2,-0.2 0.4,-0.5 0.6,-1 0.1,-0.4 0.7,-2.1 0.7,-2.1 l 3.7,-0.4 c 4.9,-0.4 9.3,-1.4 13.3,-2.7 5.1,-1.6 9.5,-3.7 13.3,-5.5 C 94.500004,40.4 98.400004,38.5 101.7,38.4 c -0.5,3.300003 0.3,5.900003 0.8,8.400003 0.5,2.4 0.8,4.8 -0.5,7.7 -9.899996,0 -8.799996,6.6 -8.799996,6.6 H 110.3 c 0,0 1.2,-3.8 4,-8.2 1.4,-2.1 3.2,-4.4 5.4,-6.4 0.4,-0.4 0.3,-0.8 0.1,-1.1 -1.9,-2.4 -2.9,-6.900003 -3.1,-7.800003 v -0.2 c 0,-0.2 0,-0.5 0.3,-0.5 0.3,-0.1 0.5,0 0.5,0.2 0.1,0.1 0.1,0.2 0.1,0.3 0,0.2 0.2,0.4 0.2,0.6 0.1,0.4 0.4,1 0.8,1.7 0.8,1.400003 1.9,3.000003 3.6,4.600003 2.2,2.1 5,3.7 7.7,5 3.3,1.5 6.6,2.6 9,3.3 2.8,0.8 3.1,1.7 3.1,2 h -1.2 c -1.4,0.2 -3,0.3 -4.9,2.1 -1.9,1.8 -1.5,4.3 -1.5,4.3 h 11.8 c 1.5,0 2.1,-0.9 2.6,-2.6 0.3,-1.1 1.7,-6.7 1.8,-7.1 0.5,-1.7 0,-2.6 -0.6,-3.1 z M 34.4,6.7999996 c 1.2,-0.8 2.9,-1 4.2,-0.8 -0.1,2.5 -3.5,3.1000004 -4.2,0.8 z"/>
-  </svg>
-);
-
-const WappenSVG: React.FC<{ width: number; height: number; className?: string }> = ({ width, height, className }) => (
-  <img src="/assets/wappen-bw.svg" width={width} height={height} className={className} alt="Landeswappen Baden-Württemberg" style={{ objectFit: 'contain' }} />
-);
-
-export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ initialElements = [], onElementsChange, actionButtons, layoutSettings, canvasWidthMm, canvasHeightMm }) => {
+export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ initialElements = [], onElementsChange, actionButtons, layoutSettings, canvasWidthMm, canvasHeightMm, blockKey }) => {
   const { toast } = useToast();
   const { currentTenant } = useTenant();
   const {
@@ -273,8 +258,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
     hCtx.clearRect(0, 0, hCanvas.width, hCanvas.height);
     hCtx.strokeStyle = 'rgba(100, 116, 139, 0.8)';
-    for (let i = 0; i <= 210; i += 1) {
-      const x = (i * canvasPixelWidth) / 210;
+    for (let i = 0; i <= canvasMaxWidth; i += 1) {
+      const x = (i * canvasPixelWidth) / canvasMaxWidth;
       const tickHeight = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
       hCtx.beginPath();
       hCtx.moveTo(x, hCanvas.height);
@@ -284,8 +269,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
     vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
     vCtx.strokeStyle = 'rgba(100, 116, 139, 0.8)';
-    for (let i = 0; i <= 45; i += 1) {
-      const y = (i * canvasPixelHeight) / 45;
+    for (let i = 0; i <= canvasMaxHeight; i += 1) {
+      const y = (i * canvasPixelHeight) / canvasMaxHeight;
       const tickWidth = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
       vCtx.beginPath();
       vCtx.moveTo(vCanvas.width, y);
@@ -577,6 +562,44 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       const el = createBlockElement(Math.round(x), Math.round(y));
       applyElements(prev => [...prev, el]);
       setSelectedElementId(el.id);
+      return;
+    }
+
+    // Variable drop support
+    const variableData = event.dataTransfer.getData('application/x-variable');
+    if (variableData) {
+      const el: HeaderElement = {
+        id: createElementId(),
+        type: 'text',
+        x: Math.round(x),
+        y: Math.round(y),
+        content: variableData,
+        fontSize: 10,
+        fontFamily: 'Arial',
+        isVariable: true,
+      };
+      applyElements(prev => [...prev, el]);
+      setSelectedElementId(el.id);
+      setSelectedElementIds([el.id]);
+      return;
+    }
+
+    // Also detect {{...}} pattern from plain text drop
+    const plainText = event.dataTransfer.getData('text/plain');
+    if (plainText && /^\{\{.+\}\}$/.test(plainText.trim())) {
+      const el: HeaderElement = {
+        id: createElementId(),
+        type: 'text',
+        x: Math.round(x),
+        y: Math.round(y),
+        content: plainText.trim(),
+        fontSize: 10,
+        fontFamily: 'Arial',
+        isVariable: true,
+      };
+      applyElements(prev => [...prev, el]);
+      setSelectedElementId(el.id);
+      setSelectedElementIds([el.id]);
       return;
     }
 
@@ -1580,6 +1603,40 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
         </div>
 
+        {/* Variables Panel */}
+        {(() => {
+          const variables = BLOCK_VARIABLES[blockKey || 'header'] || [];
+          if (variables.length === 0) return null;
+          return (
+            <div className="xl:col-start-1 xl:row-start-3">
+              <Card>
+                <CardHeader className="p-3 pb-2">
+                  <CardTitle className="text-sm">⚡ Variablen</CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-0 space-y-1">
+                  <p className="text-xs text-muted-foreground mb-2">Auf Canvas ziehen zum Einfügen</p>
+                  {variables.map((v) => (
+                    <div
+                      key={v.value}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('application/x-variable', v.value);
+                        e.dataTransfer.setData('text/plain', v.value);
+                        e.dataTransfer.effectAllowed = 'copy';
+                      }}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded border border-amber-300 bg-amber-50 text-amber-800 text-xs cursor-grab hover:bg-amber-100 transition-colors"
+                    >
+                      <span>⚡</span>
+                      <span className="font-medium">{v.label}</span>
+                      <span className="text-amber-500 ml-auto text-[10px]">{v.value}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          );
+        })()}
+
         <CardContent className="xl:col-start-2 xl:row-start-1 xl:row-span-4 min-w-0 space-y-2 p-3 pt-4">
             <h3 className="text-sm font-semibold">Header-Vorschau</h3>
             <p className="text-xs text-muted-foreground">Doppelklick auf Text/Block zum Bearbeiten. Mit Mausrad + Strg/Cmd zoomen.</p>
@@ -1587,11 +1644,11 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           <div className="relative mx-auto" style={{ paddingLeft: 28, paddingTop: 28, width: canvasPixelWidth + 28, height: canvasPixelHeight + 28 }}>
               <div className={`absolute top-0 left-7 h-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ width: canvasPixelWidth }}>
                   <canvas ref={horizontalRulerRef} width={Math.round(canvasPixelWidth)} height={28} className="absolute inset-0 h-full w-full" />
-                  {Array.from({ length: 22 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * canvasPixelWidth) / 21}px` }}>{i * 10}</span>))}
+                  {Array.from({ length: Math.floor(canvasMaxWidth / 10) + 1 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * 10 * canvasPixelWidth) / canvasMaxWidth}px` }}>{i * 10}</span>))}
                 </div>
                 <div className={`absolute top-7 left-0 w-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ height: canvasPixelHeight }}>
                   <canvas ref={verticalRulerRef} width={28} height={Math.round(canvasPixelHeight)} className="absolute inset-0 h-full w-full" />
-                  {Array.from({ length: 5 }).map((_, i) => (<span key={`label-y-${i}`} className="absolute left-0" style={{ top: `${(i * canvasPixelHeight) / 4}px` }}>{i * 10}</span>))}
+                  {Array.from({ length: Math.floor(canvasMaxHeight / 10) + 1 }).map((_, i) => (<span key={`label-y-${i}`} className="absolute left-0" style={{ top: `${(i * 10 * canvasPixelHeight) / canvasMaxHeight}px` }}>{i * 10}</span>))}
                 </div>
 
             <div

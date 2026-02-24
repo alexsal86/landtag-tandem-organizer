@@ -35,10 +35,12 @@ export const TextCanvasElement: React.FC<TextCanvasElementProps> = ({
   const hasExplicitWidth = element.width !== undefined && element.width !== null;
   const hasExplicitHeight = element.height !== undefined && element.height !== null;
 
+  const isVariable = (element as any).isVariable === true;
+
   return (
     <div
       aria-label={ariaLabel}
-      className={`absolute border ${isSelected ? 'border-primary border-dashed bg-primary/5' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
+      className={`absolute border ${isSelected ? 'border-primary border-dashed bg-primary/5' : isVariable ? 'border-amber-500 border-dashed' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
       style={{
         left: `${element.x * scaleX}px`,
         top: `${element.y * scaleY}px`,
@@ -51,9 +53,12 @@ export const TextCanvasElement: React.FC<TextCanvasElementProps> = ({
         fontWeight: element.fontWeight || 'normal',
         fontStyle: element.fontStyle || 'normal',
         textDecoration: element.textDecoration || 'none',
-        color: element.color || '#000000',
+        color: isVariable ? '#b45309' : (element.color || '#000000'),
         lineHeight: `${element.textLineHeight || 1.2}`,
         textAlign: element.textAlign || 'left',
+        backgroundColor: isVariable ? 'rgba(251, 191, 36, 0.15)' : undefined,
+        borderRadius: isVariable ? '4px' : undefined,
+        padding: isVariable ? '1px 4px' : undefined,
       }}
       onMouseDown={(event) => {
         if (isEditing) {
@@ -83,7 +88,12 @@ export const TextCanvasElement: React.FC<TextCanvasElementProps> = ({
             }
           }}
         />
-      ) : (element.content || 'Text')}
+      ) : (
+        <>
+          {isVariable && <span className="mr-1">⚡</span>}
+          {element.content || 'Text'}
+        </>
+      )}
       {renderResizeHandles?.(element)}
     </div>
   );
