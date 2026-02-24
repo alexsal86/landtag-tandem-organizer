@@ -53,6 +53,7 @@ export const TextCanvasElement: React.FC<TextCanvasElementProps> = ({
         textDecoration: element.textDecoration || 'none',
         color: element.color || '#000000',
         lineHeight: `${element.textLineHeight || 1.2}`,
+        textAlign: element.textAlign || 'left',
       }}
       onMouseDown={(event) => {
         if (isEditing) {

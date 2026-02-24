@@ -192,13 +192,14 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
       key={element.id}
       style={{
         ...style,
-        fontSize: `${(element.fontSize || 11) * (96 / 72) * scale}px`,
+        fontSize: `${(element.fontSize || 11) * (25.4 / 72) * scale}px`,
         fontFamily: element.fontFamily || 'Arial',
         fontWeight: element.fontWeight || 'normal',
         fontStyle: element.fontStyle || 'normal',
         textDecoration: element.textDecoration || 'none',
         color: element.color || '#111827',
         lineHeight: `${element.textLineHeight || 1.2}`,
+        textAlign: (element as any).textAlign || 'left',
         whiteSpace: 'pre-wrap',
       }}
       className="text-gray-800"
@@ -284,11 +285,13 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       setZoomLevel(nextZoom);
 
       requestAnimationFrame(() => {
-        const newScale = BASE_SCALE * nextZoom;
-        const newCursorX = mmX * newScale + RULER_SIZE;
-        const newCursorY = mmY * newScale + RULER_SIZE;
-        container.scrollLeft = newCursorX - (e.clientX - rect.left);
-        container.scrollTop = newCursorY - (e.clientY - rect.top);
+        requestAnimationFrame(() => {
+          const newScale = BASE_SCALE * nextZoom;
+          const newCursorX = mmX * newScale + RULER_SIZE;
+          const newCursorY = mmY * newScale + RULER_SIZE;
+          container.scrollLeft = newCursorX - (e.clientX - rect.left);
+          container.scrollTop = newCursorY - (e.clientY - rect.top);
+        });
       });
     };
     el.addEventListener('wheel', handler, { passive: false });
