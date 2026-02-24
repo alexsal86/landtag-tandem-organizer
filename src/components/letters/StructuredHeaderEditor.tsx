@@ -176,7 +176,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const headerMaxWidth = 210;
   const headerMaxHeight = 45;
-  const [previewWidth, setPreviewWidth] = useState(780);
+  const [previewWidth, setPreviewWidth] = useState(960);
   const previewHeight = Math.round((previewWidth * headerMaxHeight) / headerMaxWidth);
   const previewScaleX = previewWidth / headerMaxWidth;
   const previewScaleY = previewHeight / headerMaxHeight;
@@ -196,7 +196,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     if (!previewContainerRef.current) return;
     const updatePreviewSize = () => {
       if (!previewContainerRef.current) return;
-      const nextWidth = Math.min(780, Math.max(360, Math.floor(previewContainerRef.current.clientWidth - 16 - 28)));
+      const nextWidth = Math.min(960, Math.max(360, Math.floor(previewContainerRef.current.clientWidth - 16 - 28)));
       setPreviewWidth(nextWidth);
     };
 
@@ -205,6 +205,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     observer.observe(previewContainerRef.current);
     return () => observer.disconnect();
   }, []);
+
+  // Effective scale includes zoom — drives canvas size, rulers, element positions
+  const canvasPixelWidth = previewWidth * zoom;
+  const canvasPixelHeight = previewHeight * zoom;
+  const effectiveScaleX = previewScaleX * zoom;
+  const effectiveScaleY = previewScaleY * zoom;
 
   useEffect(() => {
     if (!showRuler) return;
@@ -220,7 +226,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     hCtx.clearRect(0, 0, hCanvas.width, hCanvas.height);
     hCtx.strokeStyle = 'rgba(100, 116, 139, 0.8)';
     for (let i = 0; i <= 210; i += 1) {
-      const x = (i * previewWidth) / 210;
+      const x = (i * canvasPixelWidth) / 210;
       const tickHeight = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
       hCtx.beginPath();
       hCtx.moveTo(x, hCanvas.height);
@@ -231,14 +237,14 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
     vCtx.strokeStyle = 'rgba(100, 116, 139, 0.8)';
     for (let i = 0; i <= 45; i += 1) {
-      const y = (i * previewHeight) / 45;
+      const y = (i * canvasPixelHeight) / 45;
       const tickWidth = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
       vCtx.beginPath();
       vCtx.moveTo(vCanvas.width, y);
       vCtx.lineTo(vCanvas.width - tickWidth, y);
       vCtx.stroke();
     }
-  }, [previewHeight, previewWidth, showRuler]);
+  }, [canvasPixelWidth, canvasPixelHeight, showRuler]);
 
   // Resolve blob URL
   const resolveBlobUrl = useCallback(async (storagePath: string): Promise<string | null> => {
@@ -1535,15 +1541,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             <p className="text-xs text-muted-foreground">Doppelklick auf Text/Block zum Bearbeiten. Mit Mausrad + Strg/Cmd zoomen.</p>
           </CardHeader>
           <CardContent className="p-3">
-            <div ref={previewContainerRef} className="flex items-start justify-center min-h-[340px] w-full">
-          <div className="relative" style={{ paddingLeft: 28, paddingTop: 28 }}>
-              <div className={`absolute top-0 left-7 right-0 h-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`}>
-                  <canvas ref={horizontalRulerRef} width={previewWidth} height={28} className="absolute inset-0 h-full w-full" />
-                  {Array.from({ length: 22 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * previewWidth) / 21}px` }}>{i * 10}</span>))}
+            <div ref={previewContainerRef} className="w-full overflow-auto" style={{ maxHeight: '600px' }}>
+          <div className="relative inline-block" style={{ paddingLeft: 28, paddingTop: 28, width: canvasPixelWidth + 28, height: canvasPixelHeight + 28 }}>
+              <div className={`absolute top-0 left-7 h-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ width: canvasPixelWidth }}>
+                  <canvas ref={horizontalRulerRef} width={Math.round(canvasPixelWidth)} height={28} className="absolute inset-0 h-full w-full" />
+                  {Array.from({ length: 22 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * canvasPixelWidth) / 21}px` }}>{i * 10}</span>))}
                 </div>
-                <div className={`absolute top-7 left-0 bottom-0 w-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`}>
-                  <canvas ref={verticalRulerRef} width={28} height={previewHeight} className="absolute inset-0 h-full w-full" />
-                  {Array.from({ length: 5 }).map((_, i) => (<span key={`label-y-${i}`} className="absolute left-0" style={{ top: `${(i * previewHeight) / 4}px` }}>{i * 10}</span>))}
+                <div className={`absolute top-7 left-0 w-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ height: canvasPixelHeight }}>
+                  <canvas ref={verticalRulerRef} width={28} height={Math.round(canvasPixelHeight)} className="absolute inset-0 h-full w-full" />
+                  {Array.from({ length: 5 }).map((_, i) => (<span key={`label-y-${i}`} className="absolute left-0" style={{ top: `${(i * canvasPixelHeight) / 4}px` }}>{i * 10}</span>))}
                 </div>
 
             <div
@@ -1559,10 +1565,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               onMouseMove={onPreviewMouseMove}
               onMouseUp={onPreviewMouseUp}
               onClick={(e) => { if (e.target === e.currentTarget) { clearSelection(); } }}
-              className="border border-gray-300 bg-white relative overflow-auto outline-none"
-              style={{ width: `${previewWidth}px`, height: `${previewHeight}px`, cursor: isPanning || isSpacePressed ? 'grab' : undefined }}>
+              className="border border-gray-300 bg-white relative outline-none"
+              style={{ width: `${canvasPixelWidth}px`, height: `${canvasPixelHeight}px`, cursor: isPanning || isSpacePressed ? 'grab' : undefined }}>
               <span className="sr-only" aria-live="polite">{ariaAnnouncement}</span>
-              <div className="absolute inset-0" style={{ width: `${headerMaxWidth * previewScaleX * zoom}px`, height: `${headerMaxHeight * previewScaleY * zoom}px`, backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: `${10 * zoom}px ${10 * zoom}px` }}>
+              <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: `${10 * effectiveScaleX}px ${10 * effectiveScaleY}px` }}>
               {showCenterGuides && (
                 <>
                   <div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-red-500/80 pointer-events-none" />
@@ -1574,9 +1580,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 <>
                   <div
                     className="absolute top-0 bottom-0 border-l-2 border-emerald-500/90 pointer-events-none animate-pulse"
-                    style={{ left: `${snapLines.x * previewScaleX * zoom}px` }}
+                    style={{ left: `${snapLines.x * effectiveScaleX}px` }}
                   />
-                  <div className="absolute top-1 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white pointer-events-none" style={{ left: `${snapLines.x * previewScaleX * zoom + 2}px` }}>
+                  <div className="absolute top-1 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white pointer-events-none" style={{ left: `${snapLines.x * effectiveScaleX + 2}px` }}>
                     {Math.round(snapLines.x)}mm
                   </div>
                 </>
@@ -1585,9 +1591,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 <>
                   <div
                     className="absolute left-0 right-0 border-t-2 border-emerald-500/90 pointer-events-none animate-pulse"
-                    style={{ top: `${snapLines.y * previewScaleY * zoom}px` }}
+                    style={{ top: `${snapLines.y * effectiveScaleY}px` }}
                   />
-                  <div className="absolute left-1 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white pointer-events-none" style={{ top: `${snapLines.y * previewScaleY * zoom + 2}px` }}>
+                  <div className="absolute left-1 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white pointer-events-none" style={{ top: `${snapLines.y * effectiveScaleY + 2}px` }}>
                     {Math.round(snapLines.y)}mm
                   </div>
                 </>
@@ -1601,8 +1607,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               )}
 
               {elements.map((element) => {
-                const scaleX = previewScaleX * zoom;
-                const scaleY = previewScaleY * zoom;
+                const scaleX = effectiveScaleX;
+                const scaleY = effectiveScaleY;
 
                 if (element.type === 'text') {
                   return (
