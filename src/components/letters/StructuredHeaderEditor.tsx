@@ -1341,7 +1341,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               </Button>
             </div>
 
-          </CardContent>
+        </CardContent>
         </Card>
 
         {/* Image Gallery */}
@@ -1551,12 +1551,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         </Card>
         </div>
 
-        <Card className="xl:col-start-2 xl:row-start-1 xl:row-span-4">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Header-Vorschau</CardTitle>
+        <CardContent className="xl:col-start-2 xl:row-start-1 xl:row-span-4 space-y-2 p-3 pt-4">
+            <h3 className="text-sm font-semibold">Header-Vorschau</h3>
             <p className="text-xs text-muted-foreground">Doppelklick auf Text/Block zum Bearbeiten. Mit Mausrad + Strg/Cmd zoomen.</p>
-          </CardHeader>
-          <CardContent className="p-3">
             <div ref={previewContainerRef} className="border rounded-lg p-4 bg-muted/20 overflow-auto outline-none" style={{ maxHeight: 'calc(100vh - 280px)' }}>
           <div className="relative mx-auto" style={{ paddingLeft: 28, paddingTop: 28, width: canvasPixelWidth + 28, height: canvasPixelHeight + 28 }}>
               <div className={`absolute top-0 left-7 h-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ width: canvasPixelWidth }}>
@@ -1715,7 +1712,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           </div>
           </div>
         </CardContent>
-      </Card>
     </div>
     </div>
   );
