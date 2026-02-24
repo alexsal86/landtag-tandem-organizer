@@ -421,6 +421,7 @@ const LetterTemplateManager: React.FC = () => {
       layoutSettings={formData.layout_settings}
       canvasWidthMm={canvasWidthMm}
       canvasHeightMm={Math.max(8, canvasHeightMm)}
+      blockKey={blockKey}
     />
   );
 
