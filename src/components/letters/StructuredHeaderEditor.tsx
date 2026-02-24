@@ -15,7 +15,6 @@ import { getElementDimensions } from '@/components/canvas-engine/utils/geometry'
 import { alignElements, distributeElements, type AlignAxis, type DistributeAxis } from '@/components/canvas-engine/utils/align';
 import { useCanvasHistory } from '@/components/canvas-engine/hooks/useCanvasHistory';
 import { useCanvasSelection } from '@/components/canvas-engine/hooks/useCanvasSelection';
-import { useCanvasViewport } from '@/components/canvas-engine/hooks/useCanvasViewport';
 import { getElementIconFromRegistry, getElementLabelFromRegistry } from '@/components/letters/elements/registry';
 import { ImageCanvasElement, TextCanvasElement } from '@/components/letters/elements/canvasElements';
 
@@ -134,8 +133,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const [ariaAnnouncement, setAriaAnnouncement] = useState('');
   const [dragStart, setDragStart] = useState<{ x: number; y: number; origins: Record<string, { x: number; y: number }> } | null>(null);
   const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
-  const [isPanning, setIsPanning] = useState(false);
-  const [isSpacePressed, setIsSpacePressed] = useState(false);
   const dragInitialElementsRef = useRef<HeaderElement[] | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
@@ -144,7 +141,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const snapLinesTimeoutRef = useRef<number | null>(null);
   const lastReportedRef = useRef<HeaderElement[]>(initialElements);
   const selectionInitialIdsRef = useRef<string[]>([]);
-  const panStartRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number } | null>(null);
 
   // Resize state
   const [resizingId, setResizingId] = useState<string | null>(null);
@@ -182,15 +178,22 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const previewScaleY = previewHeight / headerMaxHeight;
   const SNAP_MM = 1.5;
 
-  const {
-    zoom,
-    setZoom,
-    pan,
-    setPan,
-    getCanvasPoint,
-    getViewportPoint,
-    zoomAtPoint,
-  } = useCanvasViewport({ previewWidth, previewHeight });
+  const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  const [zoomLevel, setZoomLevel] = useState(1);
+
+  const zoomIn = useCallback(() => {
+    setZoomLevel((z) => {
+      const idx = ZOOM_STEPS.indexOf(z);
+      return idx < ZOOM_STEPS.length - 1 ? ZOOM_STEPS[idx + 1] : z;
+    });
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoomLevel((z) => {
+      const idx = ZOOM_STEPS.indexOf(z);
+      return idx > 0 ? ZOOM_STEPS[idx - 1] : z;
+    });
+  }, []);
 
   useEffect(() => {
     if (!previewContainerRef.current) return;
@@ -206,11 +209,26 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     return () => observer.disconnect();
   }, []);
 
+  // Native wheel listener for Ctrl+Scroll zoom (passive: false required)
+  useEffect(() => {
+    const el = previewContainerRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) zoomIn();
+        else zoomOut();
+      }
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [zoomIn, zoomOut]);
+
   // Effective scale includes zoom — drives canvas size, rulers, element positions
-  const canvasPixelWidth = previewWidth * zoom;
-  const canvasPixelHeight = previewHeight * zoom;
-  const effectiveScaleX = previewScaleX * zoom;
-  const effectiveScaleY = previewScaleY * zoom;
+  const canvasPixelWidth = previewWidth * zoomLevel;
+  const canvasPixelHeight = previewHeight * zoomLevel;
+  const effectiveScaleX = previewScaleX * zoomLevel;
+  const effectiveScaleY = previewScaleY * zoomLevel;
 
   useEffect(() => {
     if (!showRuler) return;
@@ -353,20 +371,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     };
   }, []);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'Space') setIsSpacePressed(true);
-    };
-    const onKeyUp = (event: KeyboardEvent) => {
-      if (event.code === 'Space') setIsSpacePressed(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-    };
-  }, []);
 
   useEffect(() => {
     if (elements !== lastReportedRef.current) {
@@ -533,9 +537,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   const onPreviewDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     if (!previewRef.current) return;
-    const point = getCanvasPoint(previewRef.current, event.clientX, event.clientY);
-    const x = Math.max(0, Math.min(headerMaxWidth, point.x / (previewScaleX * zoom)));
-    const y = Math.max(0, Math.min(headerMaxHeight, point.y / (previewScaleY * zoom)));
+    const rect = previewRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(headerMaxWidth, (event.clientX - rect.left) / effectiveScaleX));
+    const y = Math.max(0, Math.min(headerMaxHeight, (event.clientY - rect.top) / effectiveScaleY));
 
     const tool = event.dataTransfer.getData('application/x-header-tool');
     if (tool === 'text') { addTextElement(Math.round(x), Math.round(y)); return; }
@@ -643,20 +647,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
   const onPreviewMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!previewRef.current) return;
-
-    if (event.button === 1 || (event.button === 0 && isSpacePressed)) {
-      event.preventDefault();
-      setIsPanning(true);
-      panStartRef.current = { clientX: event.clientX, clientY: event.clientY, panX: pan.x, panY: pan.y };
-      return;
-    }
-
     if (event.button !== 0) return;
     if (event.target !== event.currentTarget) return;
 
-    const startPoint = getViewportPoint(previewRef.current, event.clientX, event.clientY);
-    const startX = startPoint.x;
-    const startY = startPoint.y;
+    const rect = previewRef.current.getBoundingClientRect();
+    const startX = Math.max(0, Math.min(canvasPixelWidth, event.clientX - rect.left));
+    const startY = Math.max(0, Math.min(canvasPixelHeight, event.clientY - rect.top));
 
     const appendSelection = isToggleModifierPressed(event);
     selectionInitialIdsRef.current = appendSelection ? selectedElementIds : [];
@@ -668,17 +664,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
   };
 
   const onPreviewMouseMove = (event: React.MouseEvent) => {
-    if (isPanning && panStartRef.current) {
-      const dx = event.clientX - panStartRef.current.clientX;
-      const dy = event.clientY - panStartRef.current.clientY;
-      setPan({ x: panStartRef.current.panX + dx, y: panStartRef.current.panY + dy });
-      return;
-    }
-
     if (selectionBox && previewRef.current) {
-      const currentPoint = getViewportPoint(previewRef.current, event.clientX, event.clientY);
-      const currentX = currentPoint.x;
-      const currentY = currentPoint.y;
+      const rect = previewRef.current.getBoundingClientRect();
+      const currentX = Math.max(0, Math.min(canvasPixelWidth, event.clientX - rect.left));
+      const currentY = Math.max(0, Math.min(canvasPixelHeight, event.clientY - rect.top));
       const nextSelection = { ...selectionBox, currentX, currentY };
       setSelectionBox(nextSelection);
 
@@ -687,10 +676,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       const topPx = Math.min(nextSelection.startY, nextSelection.currentY);
       const bottomPx = Math.max(nextSelection.startY, nextSelection.currentY);
 
-      const left = Math.max(0, Math.min(headerMaxWidth, ((leftPx - pan.x) / zoom) / previewScaleX));
-      const right = Math.max(0, Math.min(headerMaxWidth, ((rightPx - pan.x) / zoom) / previewScaleX));
-      const top = Math.max(0, Math.min(headerMaxHeight, ((topPx - pan.y) / zoom) / previewScaleY));
-      const bottom = Math.max(0, Math.min(headerMaxHeight, ((bottomPx - pan.y) / zoom) / previewScaleY));
+      const left = Math.max(0, Math.min(headerMaxWidth, leftPx / effectiveScaleX));
+      const right = Math.max(0, Math.min(headerMaxWidth, rightPx / effectiveScaleX));
+      const top = Math.max(0, Math.min(headerMaxHeight, topPx / effectiveScaleY));
+      const bottom = Math.max(0, Math.min(headerMaxHeight, bottomPx / effectiveScaleY));
 
       const hits = elements
         .filter((element) => {
@@ -713,8 +702,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
 
     if (resizingId && resizeStart) {
       const resizingElement = elements.find((el) => el.id === resizingId);
-      const dx = (event.clientX - resizeStart.x) / (previewScaleX * zoom);
-      const dy = (event.clientY - resizeStart.y) / (previewScaleY * zoom);
+      const dx = (event.clientX - resizeStart.x) / effectiveScaleX;
+      const dy = (event.clientY - resizeStart.y) / effectiveScaleY;
       let newW = Math.max(5, resizeStart.ow + dx);
       let newH = Math.max(5, resizeStart.oh + dy);
       let shiftX = 0;
@@ -792,8 +781,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       return;
     }
     if (!dragId || !dragStart) return;
-    const dx = (event.clientX - dragStart.x) / (previewScaleX * zoom);
-    const dy = (event.clientY - dragStart.y) / (previewScaleY * zoom);
+    const dx = (event.clientX - dragStart.x) / effectiveScaleX;
+    const dy = (event.clientY - dragStart.y) / effectiveScaleY;
     const origin = dragStart.origins[dragId];
     if (!origin) return;
     const nx = Math.max(0, Math.min(headerMaxWidth, origin.x + dx));
@@ -846,8 +835,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     setSnapLines({});
     setSmartGuideDistance({});
     setSelectionBox(null);
-    setIsPanning(false);
-    panStartRef.current = null;
   };
 
   const cycleSelection = (direction: 1 | -1) => {
@@ -1055,12 +1042,6 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     }));
   };
 
-  const onPreviewWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    if (!event.ctrlKey && !event.metaKey) return;
-    event.preventDefault();
-    const delta = event.deltaY > 0 ? -0.1 : 0.1;
-    zoomAtPoint(previewRef.current, event.clientX, event.clientY, zoom + delta);
-  };
 
   const validatePosition = (value: number, max: number) => Math.max(0, Math.min(value, max));
 
@@ -1286,9 +1267,9 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, -1)} disabled={!canMoveLayerBackward}><ArrowDown className="h-3.5 w-3.5 mr-1" />Ebene runter</Button>
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => selectedElement && moveElementLayer(selectedElement.id, 1)} disabled={!canMoveLayerForward}><ArrowUp className="h-3.5 w-3.5 mr-1" />Ebene hoch</Button>
         <Button variant={showShortcutsHelp ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setShowShortcutsHelp((value) => !value)}><Keyboard className="h-3.5 w-3.5 mr-1" />Shortcuts</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoom((value) => Math.max(0.5, value - 0.1))}>−</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>{Math.round(zoom * 100)}%</Button>
-        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoom((value) => Math.min(3, value + 0.1))}>+</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={zoomOut} disabled={zoomLevel <= ZOOM_STEPS[0]}>−</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setZoomLevel(1)}>{Math.round(zoomLevel * 100)}%</Button>
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={zoomIn} disabled={zoomLevel >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}>+</Button>
         <div className="h-7 px-2 text-xs rounded border bg-background/90 flex items-center text-muted-foreground">
           Auswahl: <span className="ml-1 font-semibold text-foreground">{selectedCount}</span>
         </div>
@@ -1541,7 +1522,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             <p className="text-xs text-muted-foreground">Doppelklick auf Text/Block zum Bearbeiten. Mit Mausrad + Strg/Cmd zoomen.</p>
           </CardHeader>
           <CardContent className="p-3">
-            <div ref={previewContainerRef} className="w-full overflow-auto" style={{ maxHeight: '600px' }}>
+            <div ref={previewContainerRef} className="w-full overflow-auto">
           <div className="relative inline-block" style={{ paddingLeft: 28, paddingTop: 28, width: canvasPixelWidth + 28, height: canvasPixelHeight + 28 }}>
               <div className={`absolute top-0 left-7 h-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ width: canvasPixelWidth }}>
                   <canvas ref={horizontalRulerRef} width={Math.round(canvasPixelWidth)} height={28} className="absolute inset-0 h-full w-full" />
@@ -1560,13 +1541,12 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               onKeyDown={onPreviewKeyDown}
               onDragOver={(e) => e.preventDefault()}
               onMouseDown={onPreviewMouseDown}
-              onWheel={onPreviewWheel}
               onDrop={onPreviewDrop}
               onMouseMove={onPreviewMouseMove}
               onMouseUp={onPreviewMouseUp}
               onClick={(e) => { if (e.target === e.currentTarget) { clearSelection(); } }}
               className="border border-gray-300 bg-white relative outline-none"
-              style={{ width: `${canvasPixelWidth}px`, height: `${canvasPixelHeight}px`, cursor: isPanning || isSpacePressed ? 'grab' : undefined }}>
+              style={{ width: `${canvasPixelWidth}px`, height: `${canvasPixelHeight}px` }}>
               <span className="sr-only" aria-live="polite">{ariaAnnouncement}</span>
               <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: `${10 * effectiveScaleX}px ${10 * effectiveScaleY}px` }}>
               {showCenterGuides && (
@@ -1679,8 +1659,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                     <li><span className="font-medium text-foreground">Shift/Cmd/Ctrl + Klick</span> Mehrfachauswahl</li>
                     <li><span className="font-medium text-foreground">Leere Fläche ziehen</span> Auswahlrechteck</li>
                     <li><span className="font-medium text-foreground">Alt + Ziehen</span> Nur vollständig enthaltene Elemente</li>
-                    <li><span className="font-medium text-foreground">Strg/Cmd + Mausrad</span> Zoom auf Cursor</li>
-                    <li><span className="font-medium text-foreground">Leertaste + Drag / Mittlere Maustaste</span> Canvas verschieben</li>
+                    <li><span className="font-medium text-foreground">Strg/Cmd + Mausrad</span> Zoom</li>
                     <li><span className="font-medium text-foreground">Ausrichten-Leiste</span> Bei Mehrfachauswahl sichtbar</li>
                     <li><span className="font-medium text-foreground">Verteilen</span> Ab 3 selektierten Elementen</li>
                     <li><span className="font-medium text-foreground">Snap-Linien</span> Blitzen beim Einrasten kurz auf</li>
