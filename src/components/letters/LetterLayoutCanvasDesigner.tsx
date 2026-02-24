@@ -17,6 +17,31 @@ interface Rect {
   h: number;
 }
 
+interface CanvasElement {
+  id: string;
+  type: 'text' | 'image' | 'shape' | 'block';
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  content?: string;
+  blockContent?: string;
+  imageUrl?: string;
+  blobUrl?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  fontStyle?: string;
+  textDecoration?: string;
+  color?: string;
+  textLineHeight?: number;
+  shapeType?: 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen';
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+  borderRadius?: number;
+}
+
 interface BlockConfig {
   key: BlockKey;
   label: string;
@@ -31,7 +56,7 @@ interface Props {
   layoutSettings: LetterLayoutSettings;
   onLayoutChange: (settings: LetterLayoutSettings) => void;
   onJumpToTab?: (tab: EditorTab) => void;
-  headerElements?: Array<{ id: string; type: 'text' | 'image' | 'shape' | 'block'; x: number; y: number; width?: number; height?: number; content?: string; blockContent?: string }>;
+  headerElements?: CanvasElement[];
   actionButtons?: React.ReactNode;
 }
 
@@ -64,6 +89,94 @@ const BASE_SCALE = 96 / 25.4;
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const snapMm = (val: number) => Math.round(val);
 const clamp = (val: number, min: number, max: number) => Math.min(max, Math.max(min, val));
+
+const renderCanvasElementPreview = (element: CanvasElement, left: number, top: number, scale: number) => {
+  const width = (element.width || (element.type === 'image' ? 30 : 50)) * scale;
+  const height = (element.height || (element.type === 'text' ? 8 : element.type === 'block' ? 18 : 10)) * scale;
+  const style: React.CSSProperties = {
+    position: 'absolute',
+    left: left + element.x * scale,
+    top: top + element.y * scale,
+    width,
+    height,
+    pointerEvents: 'none',
+    overflow: 'hidden',
+  };
+
+  if (element.type === 'image') {
+    const src = element.imageUrl || element.blobUrl;
+    if (!src) return null;
+    return <img key={element.id} src={src} alt="Bild" style={style} className="object-contain" />;
+  }
+
+  if (element.type === 'shape') {
+    const strokeWidth = element.strokeWidth ?? 1;
+    if (element.shapeType === 'line') {
+      return (
+        <svg key={element.id} style={style} viewBox={`0 0 ${width} ${height}`}>
+          <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke={element.strokeColor || element.color || '#111827'} strokeWidth={strokeWidth} />
+        </svg>
+      );
+    }
+    if (element.shapeType === 'circle') {
+      return (
+        <svg key={element.id} style={style} viewBox={`0 0 ${width} ${height}`}>
+          <ellipse
+            cx={width / 2}
+            cy={height / 2}
+            rx={Math.max(1, width / 2 - strokeWidth)}
+            ry={Math.max(1, height / 2 - strokeWidth)}
+            fill={element.fillColor || '#dcfce7'}
+            stroke={element.strokeColor || element.color || '#166534'}
+            strokeWidth={strokeWidth}
+          />
+        </svg>
+      );
+    }
+    return (
+      <svg key={element.id} style={style} viewBox={`0 0 ${width} ${height}`}>
+        <rect
+          x={strokeWidth / 2}
+          y={strokeWidth / 2}
+          width={Math.max(1, width - strokeWidth)}
+          height={Math.max(1, height - strokeWidth)}
+          rx={element.borderRadius || 0}
+          fill={element.fillColor || '#dbeafe'}
+          stroke={element.strokeColor || element.color || '#1d4ed8'}
+          strokeWidth={strokeWidth}
+        />
+      </svg>
+    );
+  }
+
+  if (element.type === 'block') {
+    return (
+      <div key={element.id} style={style} className="border border-gray-400/70 bg-gray-100/50 px-1 py-0.5 text-[10px] text-foreground/80 whitespace-pre-wrap">
+        {element.blockContent || element.content}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      key={element.id}
+      style={{
+        ...style,
+        fontSize: `${(element.fontSize || 11) * (96 / 72)}px`,
+        fontFamily: element.fontFamily || 'Arial',
+        fontWeight: element.fontWeight || 'normal',
+        fontStyle: element.fontStyle || 'normal',
+        textDecoration: element.textDecoration || 'none',
+        color: element.color || '#111827',
+        lineHeight: `${element.textLineHeight || 1.2}`,
+        whiteSpace: 'pre-wrap',
+      }}
+      className="text-foreground/90"
+    >
+      {element.content}
+    </div>
+  );
+};
 
 const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
   ...layout,
@@ -405,35 +518,23 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
             <div className="absolute bg-white shadow-xl relative select-none" style={{ left: RULER_SIZE, top: RULER_SIZE, width: pagePx.w, height: pagePx.h }}>
               <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />
 
-              {headerElements.map((element) => (
-                <div
-                  key={`h-prev-${element.id}`}
-                  className="absolute text-[10px] text-foreground/80 pointer-events-none"
-                  style={{
-                    left: element.x * SCALE,
-                    top: element.y * SCALE,
-                    width: (element.width || 50) * SCALE,
-                    height: (element.height || (element.type === 'block' ? 18 : 8)) * SCALE,
-                    overflow: 'hidden',
-                  }}
-                >
-                  {element.type === 'text' ? element.content : element.type === 'block' ? element.blockContent : element.type === 'image' ? '🖼️' : '▦'}
-                </div>
-              ))}
+              {headerElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
 
               {blocks.map((block) => {
               const rect = getRect(block.key);
               const isSelected = selected === block.key;
               const isDisabled = disabledBlocks.has(block.key);
               const isLocked = lockedBlocks.has(block.key);
+              const blockElements = (blockContent[block.key] || []) as CanvasElement[];
               const previewText =
                 block.key === 'header'
                   ? headerElements.filter((e) => e.type === 'text').map((e) => e.content).filter(Boolean).join(' · ')
                   : (blockContent[block.key] || [])[0]?.content;
               return (
-                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute border text-[11px] font-medium px-2 py-1 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isLocked ? 'cursor-not-allowed border-amber-500' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE }}>
+                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute border text-[11px] font-medium px-2 py-1 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isLocked ? 'cursor-not-allowed border-amber-500' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
                   {!previewText && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
                   {previewText && <div className="mt-1 text-[10px] line-clamp-2">{previewText}</div>}
+                  {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                   {block.canResize && !isDisabled && !isLocked && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />}
                 </div>
               );
