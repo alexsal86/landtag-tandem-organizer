@@ -1764,6 +1764,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     attachmentElements={substitutedBlocks.canvasBlocks.attachments}
                     footerTextElements={substitutedBlocks.canvasBlocks.footer}
                     addressFieldLines={substitutedBlocks.lineBlocks.addressField}
+                    returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
                     infoBlockLines={substitutedBlocks.lineBlocks.infoBlock}
                   />
                 </div>

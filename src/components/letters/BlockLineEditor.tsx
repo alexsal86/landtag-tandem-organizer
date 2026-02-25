@@ -51,6 +51,13 @@ const ADDRESS_FIELD_VARIABLES: AvailableVariable[] = [
   { key: '{{empfaenger_land}}', label: 'Land', preview: 'Deutschland' },
 ];
 
+const RETURN_ADDRESS_VARIABLES: AvailableVariable[] = [
+  { key: '{{absender_name}}', label: 'Absender Name', preview: 'Alexander Salomon' },
+  { key: '{{absender_organisation}}', label: 'Organisation', preview: 'Fraktion GRÜNE' },
+  { key: '{{absender_strasse}}', label: 'Straße', preview: 'Konrad-Adenauer-Str. 3' },
+  { key: '{{absender_plz_ort}}', label: 'PLZ/Ort', preview: '70173 Stuttgart' },
+];
+
 const DIN5008_INFO_BLOCK_TEMPLATE: BlockLine[] = [
   { id: 'din-1', type: 'label-value', label: 'Ihr Gesprächspartner:', value: '{{bearbeiter}}', isVariable: true, labelBold: true },
   { id: 'din-2', type: 'label-value', label: 'Abteilung:', value: '', labelBold: true },
@@ -69,8 +76,12 @@ const DIN5008_ADDRESS_TEMPLATE: BlockLine[] = [
   { id: 'addr-4', type: 'text-only', value: '{{empfaenger_land}}', isVariable: true },
 ];
 
+const DIN5008_RETURN_ADDRESS_TEMPLATE: BlockLine[] = [
+  { id: 'ret-1', type: 'text-only', value: '{{absender_name}} · {{absender_organisation}} · {{absender_strasse}} · {{absender_plz_ort}}', isVariable: true, fontSize: 7 },
+];
+
 interface BlockLineEditorProps {
-  blockType: 'infoBlock' | 'addressField';
+  blockType: 'infoBlock' | 'addressField' | 'returnAddress';
   lines: BlockLine[];
   onChange: (lines: BlockLine[]) => void;
 }
@@ -79,8 +90,8 @@ let nextId = 1;
 const genId = () => `bl-${Date.now()}-${nextId++}`;
 
 export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lines, onChange }) => {
-  const variables = blockType === 'infoBlock' ? INFO_BLOCK_VARIABLES : ADDRESS_FIELD_VARIABLES;
-  const din5008Template = blockType === 'infoBlock' ? DIN5008_INFO_BLOCK_TEMPLATE : DIN5008_ADDRESS_TEMPLATE;
+  const variables = blockType === 'infoBlock' ? INFO_BLOCK_VARIABLES : blockType === 'returnAddress' ? RETURN_ADDRESS_VARIABLES : ADDRESS_FIELD_VARIABLES;
+  const din5008Template = blockType === 'infoBlock' ? DIN5008_INFO_BLOCK_TEMPLATE : blockType === 'returnAddress' ? DIN5008_RETURN_ADDRESS_TEMPLATE : DIN5008_ADDRESS_TEMPLATE;
 
   const addLine = (type: BlockLine['type']) => {
     const newLine: BlockLine = type === 'spacer'
@@ -123,7 +134,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
   const getPreviewText = (line: BlockLine): string => {
     if (!line.value) return '';
     let text = line.value;
-    const allVars = [...INFO_BLOCK_VARIABLES, ...ADDRESS_FIELD_VARIABLES];
+    const allVars = [...INFO_BLOCK_VARIABLES, ...ADDRESS_FIELD_VARIABLES, ...RETURN_ADDRESS_VARIABLES];
     for (const v of allVars) {
       text = text.split(v.key).join(v.preview);
     }

@@ -9,8 +9,8 @@ import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayo
 import { CSS_PX_PER_MM } from '@/lib/units';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 
-type BlockKey = 'header' | 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments';
-type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general' | 'block-address' | 'block-return-address' | 'block-info' | 'block-subject' | 'block-content' | 'block-attachments';
+type BlockKey = 'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments';
+type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general' | 'block-address' | 'block-info' | 'block-subject' | 'block-content' | 'block-attachments';
 
 interface Rect {
   x: number;
@@ -65,7 +65,6 @@ interface Props {
 const DEFAULT_BLOCKS: BlockConfig[] = [
   { key: 'header', label: 'Header', color: 'bg-cyan-500/20 border-cyan-600 text-cyan-900', jumpTo: 'header-designer' },
   { key: 'addressField', label: 'Adressfeld', color: 'bg-blue-500/20 border-blue-600 text-blue-900', canMoveX: true, canResize: true, jumpTo: 'block-address' },
-  { key: 'returnAddress', label: 'Rücksendeangaben', color: 'bg-indigo-500/20 border-indigo-600 text-indigo-900', canMoveX: true, canResize: true, jumpTo: 'block-return-address' },
   { key: 'infoBlock', label: 'Info-Block', color: 'bg-purple-500/20 border-purple-600 text-purple-900', canMoveX: true, canResize: true, jumpTo: 'block-info' },
   { key: 'subject', label: 'Betreffbereich', color: 'bg-green-500/20 border-green-600 text-green-900', jumpTo: 'block-subject' },
   { key: 'content', label: 'Inhaltsbereich', color: 'bg-orange-500/20 border-orange-600 text-orange-900', canResize: true, jumpTo: 'layout-settings' },
@@ -218,7 +217,6 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
   margins: { ...layout.margins },
   header: { ...layout.header },
   addressField: { ...layout.addressField },
-  returnAddress: { ...layout.returnAddress },
   infoBlock: { ...layout.infoBlock },
   subject: { ...layout.subject },
   content: { ...layout.content },
@@ -314,8 +312,6 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
         return { x: 0, y: 0, w: localLayout.pageWidth, h: localLayout.header.height };
       case 'addressField':
         return { x: localLayout.addressField.left, y: localLayout.addressField.top, w: localLayout.addressField.width, h: localLayout.addressField.height };
-      case 'returnAddress':
-        return { x: localLayout.returnAddress.left, y: localLayout.returnAddress.top, w: localLayout.returnAddress.width, h: localLayout.returnAddress.height };
       case 'infoBlock':
         return { x: localLayout.infoBlock.left, y: localLayout.infoBlock.top, w: localLayout.infoBlock.width, h: localLayout.infoBlock.height };
       case 'subject':
@@ -334,7 +330,6 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       const next = cloneLayout(prev);
       if (key === 'header') next.header.height = clamp(snapMm(rect.h), 20, 70);
       else if (key === 'addressField') Object.assign(next.addressField, { left: snapMm(rect.x), top: snapMm(rect.y), width: snapMm(rect.w), height: snapMm(rect.h) });
-      else if (key === 'returnAddress') Object.assign(next.returnAddress, { left: snapMm(rect.x), top: snapMm(rect.y), width: snapMm(rect.w), height: snapMm(rect.h) });
       else if (key === 'infoBlock') Object.assign(next.infoBlock, { left: snapMm(rect.x), top: snapMm(rect.y), width: snapMm(rect.w), height: snapMm(rect.h) });
       else if (key === 'subject') {
         next.subject.top = snapMm(rect.y);
@@ -589,18 +584,28 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const rawContent = blockContent[block.key];
               const isLineModeBlock = rawContent && typeof rawContent === 'object' && !Array.isArray(rawContent) && (rawContent as any).mode === 'lines';
               const lineData = isLineModeBlock ? ((rawContent as any).lines || []) as { id: string; type: string; label?: string; value?: string; isVariable?: boolean; labelBold?: boolean; valueBold?: boolean; fontSize?: number; spacerHeight?: number }[] : [];
+              
+              // For addressField, also get returnAddress line data
+              const returnAddressRaw = block.key === 'addressField' ? blockContent['returnAddress'] : null;
+              const isReturnLineMode = returnAddressRaw && typeof returnAddressRaw === 'object' && !Array.isArray(returnAddressRaw) && (returnAddressRaw as any).mode === 'lines';
+              const returnLineData = isReturnLineMode ? ((returnAddressRaw as any).lines || []) as typeof lineData : [];
+              const hasReturnData = returnLineData.length > 0;
+              const hasAddressData = isLineModeBlock && lineData.length > 0;
+              
               const blockElements = block.key === 'header'
                 ? headerElements
                 : (Array.isArray(rawContent) ? rawContent : []) as CanvasElement[];
               const previewText =
                 block.key === 'header'
                   ? ''
-                  : (blockElements.length > 0 || isLineModeBlock) ? '' : (blockContent[block.key] || [])[0]?.content;
+                  : (blockElements.length > 0 || isLineModeBlock || hasReturnData) ? '' : (blockContent[block.key] || [])[0]?.content;
               const LINE_VARS: Record<string, string> = {
                 '{{bearbeiter}}': 'Max Mustermann', '{{telefon}}': '040 1234-5678', '{{email}}': 'max@beispiel.de',
                 '{{datum}}': '25. Februar 2026', '{{aktenzeichen}}': 'AZ-2026-001', '{{unser_zeichen}}': 'MM/abc',
                 '{{empfaenger_name}}': 'Erika Mustermann', '{{empfaenger_strasse}}': 'Musterstraße 1',
                 '{{empfaenger_plz}}': '20095', '{{empfaenger_ort}}': 'Hamburg', '{{empfaenger_land}}': 'Deutschland',
+                '{{absender_name}}': 'Alexander Salomon', '{{absender_organisation}}': 'Fraktion GRÜNE',
+                '{{absender_strasse}}': 'Konrad-Adenauer-Str. 3', '{{absender_plz_ort}}': '70173 Stuttgart',
               };
               const resolveLineValue = (val: string | undefined) => {
                 if (!val) return '';
@@ -609,24 +614,45 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                 return text;
               };
               const hasVariablePlaceholder = (val: string | undefined) => val ? /\{\{.*?\}\}/.test(val) : false;
+              
+              const renderLineItems = (lines: typeof lineData) => lines.map((line) => {
+                const fontSizePx = (line.fontSize || 9) * (25.4 / 72) * SCALE;
+                if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE }} />;
+                const resolvedValue = resolveLineValue(line.value);
+                const isVar = hasVariablePlaceholder(line.value || '');
+                return (
+                  <div key={line.id} style={{ fontSize: fontSizePx, lineHeight: '1.3' }} className="truncate flex items-center gap-0.5">
+                    {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
+                    <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
+                    {isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
+                  </div>
+                );
+              });
+              
+              // Render address field with two zones
+              const returnAddressHeightMm = localLayout.addressField.returnAddressHeight || 17.7;
+              
               return (
                 <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute border text-[11px] font-medium px-1 py-0.5 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isLocked ? 'cursor-not-allowed border-amber-500' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
-                  {!previewText && blockElements.length === 0 && !isLineModeBlock && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
-                  {previewText && <div className="mt-1 text-[10px] line-clamp-2">{previewText}</div>}
-                  {isLineModeBlock && lineData.map((line) => {
-                    const fontSizePx = (line.fontSize || 9) * (25.4 / 72) * SCALE;
-                    if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE }} />;
-                    const resolvedValue = resolveLineValue(line.value);
-                    const isVar = hasVariablePlaceholder(line.value || '');
-                    return (
-                      <div key={line.id} style={{ fontSize: fontSizePx, lineHeight: '1.3' }} className="truncate flex items-center gap-0.5">
-                        {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
-                        <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
-                        {isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
+                  {block.key === 'addressField' && (hasReturnData || hasAddressData) ? (
+                    <>
+                      {/* Vermerkzone (return address) */}
+                      <div style={{ height: returnAddressHeightMm * SCALE, borderBottom: '1px dashed rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: 2 }}>
+                        {hasReturnData ? renderLineItems(returnLineData) : <span className="text-[9px] text-muted-foreground italic">Rücksendezeile</span>}
                       </div>
-                    );
-                  })}
-                  {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
+                      {/* Anschriftzone (recipient address) */}
+                      <div style={{ paddingTop: 2 }}>
+                        {hasAddressData ? renderLineItems(lineData) : <span className="text-[9px] text-muted-foreground italic">Anschrift</span>}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {!previewText && blockElements.length === 0 && !isLineModeBlock && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
+                      {previewText && <div className="mt-1 text-[10px] line-clamp-2">{previewText}</div>}
+                      {isLineModeBlock && renderLineItems(lineData)}
+                      {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
+                    </>
+                  )}
                   {block.canResize && !isDisabled && !isLocked && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />}
                 </div>
               );
