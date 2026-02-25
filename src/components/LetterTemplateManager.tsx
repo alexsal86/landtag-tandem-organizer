@@ -288,6 +288,7 @@ const LetterTemplateManager: React.FC = () => {
     if (cleaned.blockContent && typeof cleaned.blockContent === 'object') {
       const cleanedBlocks: any = {};
       for (const [key, items] of Object.entries(cleaned.blockContent)) {
+        if (key === 'header') continue;
         if (Array.isArray(items)) {
           cleanedBlocks[key] = stripBlobUrls(items);
         } else {
@@ -381,16 +382,29 @@ const LetterTemplateManager: React.FC = () => {
       if (typeof (template as any).footer_blocks === 'string') { try { footerBlocks = JSON.parse((template as any).footer_blocks); } catch { footerBlocks = []; } }
       else if (Array.isArray((template as any).footer_blocks)) { footerBlocks = (template as any).footer_blocks; }
     }
+    const normalizedLayoutSettings = normalizeLayoutBlockContentImages(template.layout_settings || DEFAULT_DIN5008_LAYOUT);
+    const legacyHeaderElements = (((normalizedLayoutSettings as any).blockContent || {}).header || []) as any[];
+
+    // Migrate legacy header elements that were stored in layout_settings.blockContent.header
+    const headerSource = headerElements.length > 0
+      ? headerElements
+      : (Array.isArray(legacyHeaderElements) ? legacyHeaderElements : []);
+
     // Normalize images in header/footer elements too
-    const normalizedHeader = headerElements.map(normalizeImageItem);
+    const normalizedHeader = headerSource.map(normalizeImageItem);
     const normalizedFooter = footerBlocks.map(normalizeImageItem);
+    const cleanedBlockContent = { ...(((normalizedLayoutSettings as any).blockContent || {}) as Record<string, any[]>) };
+    delete cleanedBlockContent.header;
     
     setFormData({
       name: template.name, letterhead_html: template.letterhead_html, letterhead_css: template.letterhead_css,
       response_time_days: template.response_time_days, default_sender_id: template.default_sender_id || '',
       default_info_blocks: template.default_info_blocks || [], header_elements: normalizedHeader,
       footer_blocks: normalizedFooter,
-      layout_settings: normalizeLayoutBlockContentImages(template.layout_settings || DEFAULT_DIN5008_LAYOUT)
+      layout_settings: {
+        ...normalizedLayoutSettings,
+        blockContent: cleanedBlockContent,
+      }
     });
   };
 

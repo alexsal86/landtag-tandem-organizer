@@ -587,7 +587,9 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const isSelected = selected === block.key;
               const isDisabled = disabledBlocks.has(block.key);
               const isLocked = lockedBlocks.has(block.key);
-              const blockElements = (blockContent[block.key] || []) as CanvasElement[];
+              const blockElements = block.key === 'header'
+                ? headerElements
+                : ((blockContent[block.key] || []) as CanvasElement[]);
               const previewText =
                 block.key === 'header'
                   ? headerElements.filter((e) => e.type === 'text').map((e) => e.content).filter(Boolean).join(' · ')
