@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1607,7 +1608,19 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                       {element.type === 'block' && (
                         <>
                           <div><Label className="text-xs">Titel</Label><Input value={element.blockTitle || ''} onChange={(e) => updateElement(element.id, { blockTitle: e.target.value })} className="h-7 text-xs" /></div>
-                          <div><Label className="text-xs">Inhalt</Label><Input value={element.blockContent || ''} onChange={(e) => updateElement(element.id, { blockContent: e.target.value })} className="h-7 text-xs" /></div>
+                          <div>
+                            <Label className="text-xs">Inhalt</Label>
+                            <Textarea
+                              value={element.blockContent || ''}
+                              onChange={(e) => updateElement(element.id, { blockContent: e.target.value })}
+                              className="min-h-[84px] text-xs leading-tight"
+                              placeholder="Eine Zeile pro Information, z. B.
+{{datum}}
+{{aktenzeichen}}
+{{telefon}}"
+                            />
+                            <p className="mt-1 text-[10px] text-muted-foreground">Zeilenumbrüche werden in der Vorschau und im Export übernommen.</p>
+                          </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div><Label className="text-xs">Breite (mm)</Label><Input type="number" value={element.width || 45} onChange={(e) => updateElement(element.id, { width: parseFloat(e.target.value) || 45 })} className="h-7 text-xs" /></div>
                             <div><Label className="text-xs">Höhe (mm)</Label><Input type="number" value={element.height || 18} onChange={(e) => updateElement(element.id, { height: parseFloat(e.target.value) || 18 })} className="h-7 text-xs" /></div>
