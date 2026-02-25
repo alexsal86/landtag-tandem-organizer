@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import type { HeaderElement, TextElement } from '@/components/canvas-engine/types';
+import { type BlockLine, type BlockLineData, isLineMode } from '@/components/letters/BlockLineEditor';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
@@ -23,6 +24,9 @@ interface DIN5008LetterLayoutProps {
   subjectElements?: HeaderElement[];
   attachmentElements?: HeaderElement[];
   footerTextElements?: HeaderElement[];
+  // Line-mode block data (substituted)
+  addressFieldLines?: BlockLine[];
+  infoBlockLines?: BlockLine[];
 }
 
 export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
@@ -45,6 +49,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   subjectElements,
   attachmentElements,
   footerTextElements,
+  addressFieldLines,
+  infoBlockLines,
 }) => {
   // Load layout settings from prop, template, or use defaults
   const DEFAULT_LAYOUT = {
@@ -316,6 +322,31 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     </div>
   );
 
+  /** Render line-mode block lines sequentially */
+  const renderBlockLines = (lines: BlockLine[]) => (
+    <div className="space-y-0" style={{ fontFamily: 'Arial, sans-serif' }}>
+      {lines.map((line) => {
+        if (line.type === 'spacer') {
+          return <div key={line.id} style={{ height: `${line.spacerHeight || 2}mm` }} />;
+        }
+        if (line.type === 'text-only') {
+          return (
+            <div key={line.id} style={{ fontSize: `${line.fontSize || 9}pt`, fontWeight: line.valueBold ? 'bold' : 'normal', lineHeight: '1.3' }}>
+              {line.value || '\u00A0'}
+            </div>
+          );
+        }
+        // label-value
+        return (
+          <div key={line.id} className="flex gap-1" style={{ fontSize: `${line.fontSize || 9}pt`, lineHeight: '1.3' }}>
+            <span style={{ fontWeight: line.labelBold !== false ? 'bold' : 'normal' }}>{line.label || ''}</span>
+            <span style={{ fontWeight: line.valueBold ? 'bold' : 'normal' }}>{line.value || ''}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+
     return (
     <div className={`din5008-letter bg-white ${className}`} style={{ 
       minHeight: '297mm', 
@@ -413,7 +444,9 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             backgroundColor: debugMode ? 'rgba(255,0,0,0.05)' : 'transparent',
             position: 'relative',
           }}>
-            {addressFieldElements && addressFieldElements.length > 0 ? (
+            {addressFieldLines && addressFieldLines.length > 0 ? (
+              renderBlockLines(addressFieldLines)
+            ) : addressFieldElements && addressFieldElements.length > 0 ? (
               renderCanvasBlockElements(addressFieldElements)
             ) : (
               <>
@@ -461,7 +494,9 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             border: debugMode ? '2px dashed blue' : 'none',
             padding: '2mm'
           }}>
-            {infoBlockElements && infoBlockElements.length > 0 ? (
+            {infoBlockLines && infoBlockLines.length > 0 ? (
+              renderBlockLines(infoBlockLines)
+            ) : infoBlockElements && infoBlockElements.length > 0 ? (
               renderCanvasBlockElements(infoBlockElements)
             ) : (
               <>
