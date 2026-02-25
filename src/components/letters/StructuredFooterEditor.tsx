@@ -53,11 +53,13 @@ interface SenderInfo {
 interface StructuredFooterEditorProps {
   initialBlocks?: FooterBlock[];
   onBlocksChange: (blocks: FooterBlock[]) => void;
+  footerHeight?: number;
 }
 
 export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
   initialBlocks = [],
-  onBlocksChange
+  onBlocksChange,
+  footerHeight = 18
 }) => {
   const { toast } = useToast();
   const { currentTenant } = useTenant();
@@ -67,7 +69,6 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
   const [showRuler, setShowRuler] = useState(false);
 
   const footerAvailableWidth = 165; // 210mm - 25mm left - 20mm right
-  const footerHeight = 40; // Footer height in mm
 
   useEffect(() => {
     if (currentTenant) {

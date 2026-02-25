@@ -222,7 +222,7 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
   infoBlock: { ...layout.infoBlock },
   subject: { ...layout.subject },
   content: { ...layout.content },
-  footer: { ...layout.footer },
+  footer: { ...layout.footer, height: layout.footer?.height ?? DEFAULT_DIN5008_LAYOUT.footer.height },
   attachments: { ...layout.attachments },
   blockContent: { ...(layout.blockContent || {}) },
   disabledBlocks: [...(layout.disabledBlocks || [])],
@@ -323,7 +323,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       case 'content':
         return { x: localLayout.margins.left, y: localLayout.content.top, w: contentWidth, h: localLayout.content.maxHeight };
       case 'footer':
-        return { x: localLayout.margins.left, y: localLayout.footer.top, w: contentWidth, h: 18 };
+        return { x: localLayout.margins.left, y: localLayout.footer.top, w: contentWidth, h: localLayout.footer.height };
       case 'attachments':
         return { x: localLayout.margins.left, y: localLayout.attachments.top, w: contentWidth, h: 8 };
     }
@@ -342,7 +342,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       } else if (key === 'content') {
         next.content.top = snapMm(rect.y);
         next.content.maxHeight = clamp(snapMm(rect.h), 20, 500);
-      } else if (key === 'footer') next.footer.top = snapMm(rect.y);
+      } else if (key === 'footer') Object.assign(next.footer, { top: snapMm(rect.y), height: clamp(snapMm(rect.h), 8, 80) });
       else if (key === 'attachments') next.attachments.top = snapMm(rect.y);
       return next;
     });

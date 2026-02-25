@@ -56,7 +56,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     infoBlock: { top: 50, left: 125, width: 75, height: 40 },
     subject: { top: 101.46, marginBottom: 8 },
     content: { top: 109.46, maxHeight: 161, lineHeight: 4.5 },
-    footer: { top: 272 },
+    footer: { top: 272, height: 18 },
     attachments: { top: 230 }
   };
   
