@@ -614,15 +614,16 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   {!previewText && blockElements.length === 0 && !isLineModeBlock && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
                   {previewText && <div className="mt-1 text-[10px] line-clamp-2">{previewText}</div>}
                   {isLineModeBlock && lineData.map((line) => {
-                    const fontSize = (line.fontSize || 9) * 0.55 * SCALE;
-                    if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE * 0.6 }} />;
+                    const ptToMm = 25.4 / 72;
+                    const fontSizePx = (line.fontSize || 9) * ptToMm * CSS_PX_PER_MM * SCALE;
+                    if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * CSS_PX_PER_MM * SCALE }} />;
                     const resolvedValue = resolveLineValue(line.value);
                     const isVar = hasVariablePlaceholder(line.value || '');
                     return (
-                      <div key={line.id} style={{ fontSize, lineHeight: '1.25' }} className="truncate flex items-center gap-0.5">
+                      <div key={line.id} style={{ fontSize: fontSizePx, lineHeight: '1.3' }} className="truncate flex items-center gap-0.5">
                         {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
                         <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
-                        {isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSize * 0.75 }}>⚡</span>}
+                        {isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
                       </div>
                     );
                   })}
