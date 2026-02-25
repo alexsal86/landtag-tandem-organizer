@@ -587,17 +587,26 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const isDisabled = disabledBlocks.has(block.key);
               const isLocked = lockedBlocks.has(block.key);
               const rawContent = blockContent[block.key];
+              const isLineModeBlock = rawContent && typeof rawContent === 'object' && !Array.isArray(rawContent) && (rawContent as any).mode === 'lines';
+              const lineData = isLineModeBlock ? ((rawContent as any).lines || []) as { id: string; type: string; label?: string; value?: string; spacerHeight?: number }[] : [];
               const blockElements = block.key === 'header'
                 ? headerElements
                 : (Array.isArray(rawContent) ? rawContent : []) as CanvasElement[];
               const previewText =
                 block.key === 'header'
                   ? ''
-                  : blockElements.length > 0 ? '' : (blockContent[block.key] || [])[0]?.content;
+                  : (blockElements.length > 0 || isLineModeBlock) ? '' : (blockContent[block.key] || [])[0]?.content;
               return (
                 <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute border text-[11px] font-medium px-2 py-1 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isLocked ? 'cursor-not-allowed border-amber-500' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
-                  {!previewText && blockElements.length === 0 && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
+                  {!previewText && blockElements.length === 0 && !isLineModeBlock && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
                   {previewText && <div className="mt-1 text-[10px] line-clamp-2">{previewText}</div>}
+                  {isLineModeBlock && lineData.map((line) => (
+                    <div key={line.id} style={{ fontSize: 8 * SCALE, lineHeight: '1.3' }} className="truncate">
+                      {line.type === 'spacer' ? <div style={{ height: (line.spacerHeight || 2) * SCALE }} /> : (
+                        <span>{line.label ? <span className="font-semibold">{line.label} </span> : null}{line.value || ''}</span>
+                      )}
+                    </div>
+                  ))}
                   {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                   {block.canResize && !isDisabled && !isLocked && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />}
                 </div>
