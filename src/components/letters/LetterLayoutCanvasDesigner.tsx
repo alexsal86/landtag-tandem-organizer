@@ -614,9 +614,8 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   {!previewText && blockElements.length === 0 && !isLineModeBlock && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
                   {previewText && <div className="mt-1 text-[10px] line-clamp-2">{previewText}</div>}
                   {isLineModeBlock && lineData.map((line) => {
-                    const ptToMm = 25.4 / 72;
-                    const fontSizePx = (line.fontSize || 9) * ptToMm * CSS_PX_PER_MM * SCALE;
-                    if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * CSS_PX_PER_MM * SCALE }} />;
+                    const fontSizePx = (line.fontSize || 9) * (25.4 / 72) * SCALE;
+                    if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE }} />;
                     const resolvedValue = resolveLineValue(line.value);
                     const isVar = hasVariablePlaceholder(line.value || '');
                     return (
