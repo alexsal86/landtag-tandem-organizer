@@ -116,3 +116,48 @@ export function substituteVariables(
     };
   });
 }
+
+/**
+ * BlockLine type for line-based block editing (Info-Block, Address Field).
+ */
+export interface BlockLine {
+  id: string;
+  type: 'label-value' | 'spacer' | 'text-only';
+  label?: string;
+  value?: string;
+  isVariable?: boolean;
+  labelBold?: boolean;
+  valueBold?: boolean;
+  fontSize?: number;
+  spacerHeight?: number;
+}
+
+export interface BlockLineData {
+  mode: 'lines';
+  lines: BlockLine[];
+}
+
+/** Check whether stored data is line-mode or legacy canvas */
+export function isLineMode(data: any): data is BlockLineData {
+  return data && typeof data === 'object' && data.mode === 'lines' && Array.isArray(data.lines);
+}
+
+/**
+ * Substitutes variable placeholders in BlockLine[] with real data.
+ * Returns a new array; original lines are not mutated.
+ */
+export function substituteBlockLines(
+  lines: BlockLine[],
+  variableMap: Record<string, string>,
+): BlockLine[] {
+  return lines.map(line => {
+    if (line.type === 'spacer' || !line.value) return line;
+    // Replace all {{...}} occurrences in the value
+    let newValue = line.value;
+    for (const [placeholder, replacement] of Object.entries(variableMap)) {
+      newValue = newValue.split(placeholder).join(replacement);
+    }
+    if (newValue === line.value) return line;
+    return { ...line, value: newValue, isVariable: false };
+  });
+}

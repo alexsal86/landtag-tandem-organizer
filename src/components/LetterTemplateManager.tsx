@@ -21,6 +21,7 @@ import { CanvasToolbar } from '@/components/letters/CanvasToolbar';
 import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCanvasDesigner';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
+import { BlockLineEditor, type BlockLine, type BlockLineData, isLineMode } from '@/components/letters/BlockLineEditor';
 import { InformationBlockManager } from '@/components/administration/InformationBlockManager';
 
 interface LetterTemplate {
@@ -606,7 +607,15 @@ const LetterTemplateManager: React.FC = () => {
       </TabsContent>
 
       <TabsContent value="block-address" className="space-y-4">
-        {renderSharedElementsEditor('addressField', formData.layout_settings.addressField.width, formData.layout_settings.addressField.height)}
+        <BlockLineEditor
+          blockType="addressField"
+          lines={(() => {
+            const raw = getBlockItems('addressField');
+            if (raw && typeof raw === 'object' && (raw as any).mode === 'lines') return (raw as any).lines || [];
+            return Array.isArray(raw) && raw.length > 0 && raw[0]?.type === 'label-value' || raw[0]?.type === 'spacer' || raw[0]?.type === 'text-only' ? raw as BlockLine[] : [];
+          })()}
+          onChange={(newLines) => setBlockItems('addressField', { mode: 'lines', lines: newLines } as any)}
+        />
       </TabsContent>
 
       <TabsContent value="block-return-address" className="space-y-4">
@@ -615,7 +624,15 @@ const LetterTemplateManager: React.FC = () => {
       </TabsContent>
 
       <TabsContent value="block-info" className="space-y-4">
-        {renderSharedElementsEditor('infoBlock', formData.layout_settings.infoBlock.width, formData.layout_settings.infoBlock.height)}
+        <BlockLineEditor
+          blockType="infoBlock"
+          lines={(() => {
+            const raw = getBlockItems('infoBlock');
+            if (raw && typeof raw === 'object' && (raw as any).mode === 'lines') return (raw as any).lines || [];
+            return Array.isArray(raw) && raw.length > 0 && (raw[0]?.type === 'label-value' || raw[0]?.type === 'spacer' || raw[0]?.type === 'text-only') ? raw as BlockLine[] : [];
+          })()}
+          onChange={(newLines) => setBlockItems('infoBlock', { mode: 'lines', lines: newLines } as any)}
+        />
         <div className="border-t pt-4"><InformationBlockManager /></div>
       </TabsContent>
 

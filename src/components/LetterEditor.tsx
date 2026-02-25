@@ -21,8 +21,9 @@ import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
 import { ContactSelector } from './ContactSelector';
-import { buildVariableMap, substituteVariables } from '@/lib/letterVariables';
+import { buildVariableMap, substituteVariables, substituteBlockLines, isLineMode } from '@/lib/letterVariables';
 import type { HeaderElement } from '@/components/canvas-engine/types';
+import type { BlockLine } from '@/components/letters/BlockLineEditor';
 
 interface Letter {
   id: string;
@@ -1090,9 +1091,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
   // Build substituted canvas block elements from template
   const substitutedBlocks = React.useMemo(() => {
-    if (!currentTemplate) return {};
-    const blockContent = (currentTemplate as any)?.layout_settings?.blockContent as Record<string, HeaderElement[]> | undefined;
-    if (!blockContent) return {};
+    if (!currentTemplate) return { canvasBlocks: {}, lineBlocks: {} };
+    const blockContent = (currentTemplate as any)?.layout_settings?.blockContent as Record<string, any> | undefined;
+    if (!blockContent) return { canvasBlocks: {}, lineBlocks: {} };
 
     const sender = senderInfos.find(s => s.id === editedLetter.sender_info_id);
     const contact = contacts.find(c => c.name === editedLetter.recipient_name);
@@ -1120,13 +1121,17 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       attachments,
     );
 
-    const result: Record<string, HeaderElement[]> = {};
-    for (const [key, elements] of Object.entries(blockContent)) {
-      if (Array.isArray(elements) && elements.length > 0) {
-        result[key] = substituteVariables(elements, varMap);
+    const canvasBlocks: Record<string, HeaderElement[]> = {};
+    const lineBlocks: Record<string, BlockLine[]> = {};
+
+    for (const [key, data] of Object.entries(blockContent)) {
+      if (isLineMode(data)) {
+        lineBlocks[key] = substituteBlockLines(data.lines, varMap);
+      } else if (Array.isArray(data) && data.length > 0) {
+        canvasBlocks[key] = substituteVariables(data as HeaderElement[], varMap);
       }
     }
-    return result;
+    return { canvasBlocks, lineBlocks };
   }, [currentTemplate, editedLetter, senderInfos, contacts, informationBlocks, attachments]);
 
   if (!isOpen) return null;
@@ -1752,12 +1757,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     attachments={attachments}
                     showPagination={showPagination}
                     debugMode={showLayoutDebug}
-                    addressFieldElements={substitutedBlocks.addressField}
-                    returnAddressElements={substitutedBlocks.returnAddress}
-                    infoBlockElements={substitutedBlocks.infoBlock}
-                    subjectElements={substitutedBlocks.subject}
-                    attachmentElements={substitutedBlocks.attachments}
-                    footerTextElements={substitutedBlocks.footer}
+                    addressFieldElements={substitutedBlocks.canvasBlocks.addressField}
+                    returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
+                    infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock}
+                    subjectElements={substitutedBlocks.canvasBlocks.subject}
+                    attachmentElements={substitutedBlocks.canvasBlocks.attachments}
+                    footerTextElements={substitutedBlocks.canvasBlocks.footer}
+                    addressFieldLines={substitutedBlocks.lineBlocks.addressField}
+                    infoBlockLines={substitutedBlocks.lineBlocks.infoBlock}
                   />
                 </div>
               </div>
