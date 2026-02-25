@@ -1,101 +1,125 @@
 
-# Tageszettel: Stimmung beim Abschluss + Wochenroutine + Wochenplanung
 
-## 1. "Wie war dein Tag?" nur beim Tagesabschluss anzeigen
+# Zeilenbasierter Editor fuer Info-Block und Adressfeld
 
-**Aktuell:** Die Stimmungsabfrage (Emoji-Auswahl) ist permanent im Footer des Tageszettels sichtbar.
+## Problem
 
-**Aenderung:** Die Stimmungsabfrage wird nur angezeigt, wenn `resolveMode === true` ist -- also genau dann, wenn der Benutzer auf "Tag abschliessen" klickt und die Triage (Zuweisung offener Punkte) durchlaeuft.
+Der Info-Block und das Adressfeld werden aktuell ueber den gleichen Freihand-Canvas-Editor wie der Header bearbeitet. Das fuehrt zu Problemen:
+- Variablen muessen manuell pixelgenau positioniert und uebereinander gestapelt werden
+- Die DIN-5008-Reihenfolge (z.B. Ansprechpartner, Abteilung, Telefon, Datum) kann nicht garantiert werden
+- Es gibt keine vertikale Anordnungslogik -- jede Zeile muss einzeln platziert werden
 
-Konkret wird der Block (Zeilen 1640-1666) in `GlobalDaySlipPanel.tsx` mit `{resolveMode && (...)}` umschlossen. Die Stimmung wird also als letzter Schritt vor dem eigentlichen Abschluss abgefragt.
+## Loesung: Zeilenbasierter Block-Editor
 
----
+Fuer Info-Block und Adressfeld wird ein **zeilenbasierter Editor** eingefuehrt -- eine geordnete Liste von Zeilen, die automatisch untereinander dargestellt werden. Der Canvas-Editor bleibt fuer Header, Footer und andere Bloecke erhalten.
 
-## 2. Wochenroutine in den Einstellungen
+### Konzept
 
-**Aktuell:** Die "Wiederkehrenden Punkte" sind eine einfache Liste mit Wochentag-Zuordnung (ein Punkt = ein Wochentag oder "Jeden Tag"). Das ist funktional, aber nicht uebersichtlich -- man sieht nicht auf einen Blick, wie die ganze Woche aussieht.
-
-**Aenderung:** Die bestehende Einstellungs-Seite im Tageszettel wird um eine visuelle Wochenroutine-Ansicht erweitert:
-
-### a) Wochenroutine-Raster
-
-Oberhalb der bestehenden "Wiederkehrende Punkte"-Liste wird ein kompaktes Raster eingefuegt:
+Statt frei positionierbarer Elemente arbeitet der zeilenbasierte Editor mit einer sortierten Liste:
 
 ```text
-+----------+----------+----------+----------+----------+
-|  Montag  | Dienstag | Mittwoch |Donnerstag|  Freitag |
-+----------+----------+----------+----------+----------+
-| Inbox    | Inbox    | Inbox    | Inbox    | Inbox    |
-| Team-JF  |          | Fokus-   |          | Wochen-  |
-|          |          | block    |          | review   |
-+----------+----------+----------+----------+----------+
+Zeile 1:  Label: "Ihr Gespraechspartner:"  |  Wert: {{bearbeiter}}
+Zeile 2:  Label: "Abteilung:"              |  Wert: "Bearbeitung"     (Freitext)
+Zeile 3:  (Leerzeile / Abstand)
+Zeile 4:  Label: "Telefon:"                |  Wert: {{telefon}}
+Zeile 5:  Label: "Telefax:"                |  Wert: "040 1234-7890"   (Freitext)
+Zeile 6:  Label: "E-Mail:"                 |  Wert: {{email}}
+Zeile 7:  (Leerzeile / Abstand)
+Zeile 8:  Label: "Datum:"                  |  Wert: {{datum}}
 ```
 
-- Jeder Wochentag ist eine Spalte
-- Punkte mit "Jeden Tag" erscheinen in allen Spalten
-- Tagesspezifische Punkte nur in ihrer Spalte
-- Klick auf eine Spalte oeffnet einen Inline-Editor zum schnellen Hinzufuegen
+### Datenstruktur
 
-### b) Datenstruktur
-
-Die bestehende `RecurringTemplate`-Struktur wird wiederverwendet -- keine Aenderung am Datenmodell noetig. Die Wochenansicht ist nur eine andere Darstellung der gleichen Daten.
-
-### c) Drag-and-Drop zwischen Tagen
-
-Punkte koennen zwischen Wochentag-Spalten gezogen werden, was den `weekday` des jeweiligen `RecurringTemplate`-Eintrags aendert.
-
----
-
-## 3. Wochenvorplanung am Montag
-
-**Feature:** Wenn der Benutzer den Tageszettel am Montag oeffnet und die Woche noch nicht vorgeplant ist, wird ein optionaler "Woche vorplanen"-Modus angeboten.
-
-### a) Montags-Banner
-
-Am Montag (oder wenn der aktuelle Tag ein Montag ist) erscheint im Tageszettel ein Banner:
+Neue Zeilen-Typen fuer die Block-Elemente:
 
 ```text
-+---------------------------------------------------+
-| Kalender  Neue Woche starten?                     |
-|           Plane deine Woche vor.      [Planen]    |
-+---------------------------------------------------+
-```
-
-### b) Wochenplanungs-Ansicht
-
-Beim Klick auf "Planen" oeffnet sich eine Ansicht mit:
-- 5 Spalten (Mo-Fr), jede vorab gefuellt mit den wiederkehrenden Punkten des jeweiligen Tages
-- Der Benutzer kann zusaetzliche Punkte pro Tag hinzufuegen, verschieben oder loeschen
-- Ein "Uebernehmen"-Button schreibt die geplanten Punkte als vorbereitete HTML-Eintraege in den jeweiligen Tages-Store (`store[dayKey]`)
-
-### c) Datenstruktur
-
-Neuer localStorage-Key: `day-slip-week-plan-v1`
-
-```text
-WeekPlan = {
-  weekStartKey: string;           // z.B. "2026-02-23" (Montag)
-  applied: boolean;
-  days: Record<string, string[]>; // dayKey -> geplante Zeilen
+BlockLine = {
+  id: string
+  type: 'label-value' | 'spacer' | 'text-only'
+  label?: string           // z.B. "Telefon:"
+  value?: string           // Freitext oder Variable wie "{{telefon}}"
+  isVariable?: boolean     // true wenn value ein {{...}}-Platzhalter ist
+  labelBold?: boolean      // Label fett (Standard: true)
+  valueBold?: boolean      // Wert fett (Standard: false)
+  fontSize?: number        // in pt (Standard: 9)
+  spacerHeight?: number    // nur fuer type='spacer', in mm
 }
 ```
 
-Beim Oeffnen eines geplanten Tages werden die vorbereiteten Zeilen in den Tageszettel injiziert (aehnlich wie `recurringInjected`), mit einem Flag `weekPlanInjected` um Doppelinjektionen zu verhindern.
+Diese Zeilen werden als Array gespeichert -- die Reihenfolge im Array bestimmt die Reihenfolge auf dem Brief.
 
-### d) Dismiss-Moeglichkeit
+### UI: Zeilen-Editor
 
-Das Banner kann mit einem X geschlossen werden. Ein Flag `weekPlanDismissed` im `WeekPlan`-Objekt verhindert, dass das Banner erneut angezeigt wird.
+Der Zeilen-Editor ersetzt den Canvas fuer `infoBlock` und `addressField`:
 
----
+**Oberer Bereich -- Vorschau:**
+- Zeigt die Zeilen in der richtigen Reihenfolge als DIN-5008-Block an
+- Live-Vorschau mit den Variablen-Vorschautexten (z.B. "Max Mustermann" statt {{empfaenger_name}})
+
+**Unterer Bereich -- Zeilenliste:**
+- Jede Zeile hat Drag-Handles (GripVertical) zum Umsortieren
+- Label-Feld (Input) + Wert-Feld (Input oder Variable-Dropdown)
+- Buttons: Zeile hinzufuegen, Leerzeile, Zeile loeschen
+- Variable einfuegen: Dropdown mit den verfuegbaren Variablen des Block-Typs
+- Formatierungsoptionen pro Zeile (Fett, Schriftgroesse)
+
+**DIN-5008-Vorlagen:**
+- Button "DIN 5008 Vorlage laden" fuellt den Info-Block mit der Standardreihenfolge:
+  1. Ihr Gespraechspartner: {{bearbeiter}}
+  2. Abteilung: (Freitext)
+  3. (Abstand)
+  4. Telefon: {{telefon}}
+  5. E-Mail: {{email}}
+  6. (Abstand)
+  7. Datum: {{datum}}
+  8. Unser Zeichen: {{unser_zeichen}}
+
+- Fuer Adressfeld:
+  1. {{empfaenger_name}}
+  2. {{empfaenger_strasse}}
+  3. {{empfaenger_plz}} {{empfaenger_ort}}
+  4. {{empfaenger_land}}
+
+### Speicherung
+
+Die Zeilen werden im gleichen Feld gespeichert wie bisher (z.B. `info_block_elements`, `address_field_elements`), aber mit einem Marker `_lineMode: true` im Array, damit beim Laden erkannt wird, ob es sich um Canvas-Elemente oder Zeilen handelt. Alternativ wird ein Wrapper-Objekt verwendet:
+
+```text
+{ mode: 'lines', lines: BlockLine[] }
+```
+
+vs. bisherig:
+
+```text
+HeaderElement[]   (Canvas-Modus)
+```
+
+### Rendering in DIN5008LetterLayout
+
+Die `renderCanvasBlockElements`-Funktion wird erweitert: Wenn die Daten im Zeilen-Modus vorliegen, werden sie sequentiell untereinander gerendert (einfache div-Zeilen mit Label + Wert), nicht absolut positioniert.
+
+### Kompatibilitaet
+
+- Header, Footer, Betreff, Anlagen behalten den Canvas-Editor
+- Info-Block und Adressfeld verwenden den neuen Zeilen-Editor
+- Bestehende Canvas-Daten in diesen Bloecken werden weiterhin unterstuetzt (Fallback)
+- Der Benutzer kann zwischen Modi wechseln, wenn noetig
 
 ## Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/components/GlobalDaySlipPanel.tsx` | Stimmungsabfrage bedingt anzeigen; Wochenroutine-Raster in Einstellungen; Wochenplanungs-Modus mit Banner und Planungsansicht |
+| `src/components/letters/BlockLineEditor.tsx` | Neu: Zeilenbasierter Editor mit Drag-and-Drop-Sortierung, Vorschau, DIN-5008-Vorlagen |
+| `src/components/LetterTemplateManager.tsx` | Info-Block und Adressfeld nutzen BlockLineEditor statt renderSharedElementsEditor |
+| `src/components/letters/DIN5008LetterLayout.tsx` | Zeilen-Modus-Rendering fuer Info-Block und Adressfeld |
+| `src/lib/letterVariables.ts` | substituteVariables fuer Zeilen-Daten erweitern |
+| `src/components/LetterEditor.tsx` | Zeilen-Modus bei Substitution beruecksichtigen |
 
 ## Technische Reihenfolge
 
-1. Stimmungsabfrage in `resolveMode`-Bedingung wrappen (kleiner Fix)
-2. Wochenroutine-Raster in Settings-View einbauen (Darstellung bestehender Daten)
-3. Wochenplanungs-Modus: localStorage-Struktur, Banner, Planungsansicht, Injektionslogik
+1. Datenstruktur `BlockLine` definieren und Erkennungslogik (Zeilen vs. Canvas)
+2. `BlockLineEditor.tsx` erstellen mit Vorschau, Sortierung, Variable-Dropdown
+3. DIN-5008-Vorlagen fuer Info-Block und Adressfeld
+4. In LetterTemplateManager einbinden (Info-Block + Adressfeld Tabs)
+5. Rendering in DIN5008LetterLayout fuer Zeilen-Modus
+6. Substitution in letterVariables.ts/LetterEditor anpassen
