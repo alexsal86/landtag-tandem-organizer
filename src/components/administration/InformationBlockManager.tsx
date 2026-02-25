@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
@@ -205,14 +206,27 @@ export const InformationBlockManager: React.FC = () => {
           <div className="space-y-4">
             <div>
               <Label htmlFor="custom_content">Inhalt</Label>
-              <Input
+              <Textarea
                 id="custom_content"
                 value={blockData.custom_content || ''}
                 onChange={(e) => setFormData({
                   ...formData, 
-                  block_data: {...blockData, custom_content: e.target.value}
+                  block_data: {
+                    ...blockData,
+                    custom_content: e.target.value,
+                    custom_lines: e.target.value
+                      .split('\n')
+                      .map(line => line.trim())
+                      .filter(Boolean)
+                  }
                 })}
+                className="min-h-[120px]"
+                placeholder="Eine Zeile pro Eintrag, z. B.\nTelefon: {{telefon}}\nE-Mail: {{email}}\nAktenzeichen: {{aktenzeichen}}"
               />
+              <p className="mt-2 text-xs text-muted-foreground">
+                Tipp: Der Informationsblock wird im Brief zeilenbasiert gerendert. Legen Sie hier jede
+                Information in eine eigene Zeile, um ein ruhiges und konsistentes Layout zu erhalten.
+              </p>
             </div>
           </div>
         );

@@ -186,7 +186,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         return (
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
-            <div>{info.block_data.custom_content}</div>
+            <div style={{ whiteSpace: 'pre-line' }}>{info.block_data.custom_content}</div>
           </div>
         );
       default:

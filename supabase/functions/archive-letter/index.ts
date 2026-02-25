@@ -487,9 +487,12 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
         infoYPos -= mmToPoints(4);
         break;
       case 'custom':
-        if (informationBlock.block_data?.custom_content) {
-          const customLines = informationBlock.block_data.custom_content.split('\n');
-          for (const line of customLines) {
+        if (informationBlock.block_data?.custom_content || informationBlock.block_data?.custom_lines) {
+          const customLines = Array.isArray(informationBlock.block_data?.custom_lines)
+            ? informationBlock.block_data.custom_lines
+            : String(informationBlock.block_data?.custom_content || '').split('\n');
+
+          for (const line of customLines.map((entry: string) => entry.trim()).filter(Boolean)) {
             if (infoYPos > pageHeight - addressFieldTop - addressFieldHeight + mmToPoints(5)) {
               page.drawText(line, {
                 x: infoBlockLeft,
