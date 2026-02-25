@@ -182,6 +182,16 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                               className="h-6 flex-1 text-xs"
                               placeholder="Text oder {{variable}}..."
                             />
+                            <Input
+                              type="number"
+                              value={line.fontSize || 9}
+                              onChange={(e) => updateLine(line.id, { fontSize: parseFloat(e.target.value) || 9 })}
+                              className="h-6 w-12 text-xs text-center"
+                              min={5}
+                              max={24}
+                              title="Schriftgröße (pt)"
+                            />
+                            <span className="text-[10px] text-muted-foreground">pt</span>
                             <Select onValueChange={(v) => insertVariable(line.id, v)}>
                               <SelectTrigger className="h-6 w-8 px-1">
                                 <Zap className="h-3 w-3 text-amber-500" />
@@ -208,6 +218,16 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                               className="h-6 flex-1 text-xs"
                               placeholder="Wert oder {{variable}}..."
                             />
+                            <Input
+                              type="number"
+                              value={line.fontSize || 9}
+                              onChange={(e) => updateLine(line.id, { fontSize: parseFloat(e.target.value) || 9 })}
+                              className="h-6 w-12 text-xs text-center"
+                              min={5}
+                              max={24}
+                              title="Schriftgröße (pt)"
+                            />
+                            <span className="text-[10px] text-muted-foreground">pt</span>
                             <Select onValueChange={(v) => insertVariable(line.id, v)}>
                               <SelectTrigger className="h-6 w-8 px-1">
                                 <Zap className="h-3 w-3 text-amber-500" />
