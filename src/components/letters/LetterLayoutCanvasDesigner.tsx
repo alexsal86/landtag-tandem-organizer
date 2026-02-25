@@ -580,17 +580,18 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
             <div className="absolute bg-white shadow-xl relative select-none" style={{ left: RULER_SIZE, top: RULER_SIZE, width: pagePx.w, height: pagePx.h }}>
               <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />
 
-              {headerElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
 
               {blocks.map((block) => {
               const rect = getRect(block.key);
               const isSelected = selected === block.key;
               const isDisabled = disabledBlocks.has(block.key);
               const isLocked = lockedBlocks.has(block.key);
-              const blockElements = (blockContent[block.key] || []) as CanvasElement[];
+              const blockElements = block.key === 'header'
+                ? headerElements
+                : ((blockContent[block.key] || []) as CanvasElement[]);
               const previewText =
                 block.key === 'header'
-                  ? headerElements.filter((e) => e.type === 'text').map((e) => e.content).filter(Boolean).join(' · ')
+                  ? ''
                   : blockElements.length > 0 ? '' : (blockContent[block.key] || [])[0]?.content;
               return (
                 <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute border text-[11px] font-medium px-2 py-1 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isLocked ? 'cursor-not-allowed border-amber-500' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
