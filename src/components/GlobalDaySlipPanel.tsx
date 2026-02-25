@@ -45,6 +45,8 @@ import FloatingTextFormatToolbar from "@/components/FloatingTextFormatToolbar";
 import { DaySlipLineNode, $createDaySlipLineNode } from "@/components/DaySlipLineNode";
 import { LabeledHorizontalRuleNode, $createLabeledHorizontalRuleNode } from "@/components/LabeledHorizontalRuleNode";
 import { cn } from "@/lib/utils";
+import { WeeklyRoutineGrid } from "@/components/dayslip/WeeklyRoutineGrid";
+import { WeekPlanningBanner, getWeekPlanForDay } from "@/components/dayslip/WeekPlanningBanner";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1114,6 +1116,7 @@ export function GlobalDaySlipPanel() {
   };
 
   const [carriedOver, setCarriedOver] = useState(false);
+  const [weekPlanInjected, setWeekPlanInjected] = useState(false);
 
   const carryOverFromYesterday = () => {
     if (yesterdayCarryLines.length === 0) return;
@@ -1270,6 +1273,30 @@ export function GlobalDaySlipPanel() {
     });
   }, [todayData.html, todayData.recurringInjected, recurringItems, todayKey]);
 
+  // ── Week plan injection ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (weekPlanInjected) return;
+    const planned = getWeekPlanForDay(todayKey);
+    if (!planned || planned.length === 0) return;
+    setWeekPlanInjected(true);
+    appendLinesToToday(planned);
+  }, [todayKey, weekPlanInjected, appendLinesToToday]);
+
+  const handleApplyWeekPlan = useCallback((days: Record<string, string[]>) => {
+    // Inject today's items immediately
+    const todayItems = days[todayKey];
+    if (todayItems && todayItems.length > 0) {
+      appendLinesToToday(todayItems);
+    }
+    setWeekPlanInjected(true);
+  }, [todayKey, appendLinesToToday]);
+
+  const handleChangeRecurringWeekday = useCallback((id: string, newWeekday: string) => {
+    setRecurringItems((prev) =>
+      prev.map((item) => item.id === id ? { ...item, weekday: newWeekday as (typeof weekDays)[number] } : item)
+    );
+  }, []);
+
   const switchView = (view: "settings" | "archive" | "default") => {
     setContentTransitioning(true);
     requestAnimationFrame(() => {
@@ -1415,7 +1442,11 @@ export function GlobalDaySlipPanel() {
                   <button type="button" onClick={addRecurringItem} className="rounded border border-border/60 px-2 text-xs hover:bg-muted">
                     Hinzufügen
                   </button>
-                </div>
+              </div>
+              <WeeklyRoutineGrid
+                recurringItems={recurringItems}
+                onChangeWeekday={handleChangeRecurringWeekday}
+              />
 
                 <div className="space-y-2">
                   {recurringItems.length === 0 && (
@@ -1514,6 +1545,11 @@ export function GlobalDaySlipPanel() {
             </div>
           ) : (
             <div className={`flex min-h-0 flex-1 flex-col transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
+              {/* ── Week planning banner ── */}
+              <WeekPlanningBanner
+                recurringItems={recurringItems}
+                onApplyPlan={handleApplyWeekPlan}
+              />
               {/* ── Yesterday banner ── */}
               {yesterdayCarryLines.length > 0 && !carriedOver && (
                 <div className={`border-b border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm text-amber-200 transition-all duration-200 ${contentTransitioning ? "opacity-0" : "opacity-100"}`}>
@@ -1638,6 +1674,7 @@ export function GlobalDaySlipPanel() {
 
               {/* ── Footer ── */}
               <div className="space-y-2 p-3">
+              {resolveMode && (
                 <div className="rounded-lg border border-border/60 px-3 py-2">
                   <p className="mb-1 text-[11px] text-muted-foreground">Wie war dein Tag?</p>
                   <div className="flex items-center justify-between">
@@ -1664,6 +1701,7 @@ export function GlobalDaySlipPanel() {
                     ))}
                   </div>
                 </div>
+              )}
                 <button
                   type="button"
                   onClick={completeDay}
