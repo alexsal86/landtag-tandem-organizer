@@ -91,74 +91,16 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
           </div>
         </div>
 
-        {/* Adressfeld */}
+        {/* Adressfeld (combined: Vermerkzone + Anschriftzone) */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-bold">Adressfeld</h4>
+          <h4 className="font-bold">Adressfeld (inkl. Rücksendezeile)</h4>
           <div className="grid grid-cols-2 gap-3">
             <div><Label htmlFor="address-top">Von oben (mm)</Label><Input id="address-top" type="number" value={layoutSettings.addressField.top} onChange={(e) => updateSetting(['addressField', 'top'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="address-left">Von links (mm)</Label><Input id="address-left" type="number" value={layoutSettings.addressField.left} onChange={(e) => updateSetting(['addressField', 'left'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="address-width">Breite (mm)</Label><Input id="address-width" type="number" value={layoutSettings.addressField.width} onChange={(e) => updateSetting(['addressField', 'width'], parseFloat(e.target.value))} step="0.1" /></div>
-            <div><Label htmlFor="address-height">Höhe (mm)</Label><Input id="address-height" type="number" value={layoutSettings.addressField.height} onChange={(e) => updateSetting(['addressField', 'height'], parseFloat(e.target.value))} step="0.1" /></div>
-          </div>
-        </div>
-
-        {/* Rücksendeangaben */}
-        <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-bold">Rücksendeangaben</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label htmlFor="return-top">Von oben (mm)</Label><Input id="return-top" type="number" value={layoutSettings.returnAddress.top} onChange={(e) => updateSetting(['returnAddress', 'top'], parseFloat(e.target.value))} step="0.1" /></div>
-            <div><Label htmlFor="return-left">Von links (mm)</Label><Input id="return-left" type="number" value={layoutSettings.returnAddress.left} onChange={(e) => updateSetting(['returnAddress', 'left'], parseFloat(e.target.value))} step="0.1" /></div>
-            <div><Label htmlFor="return-width">Breite (mm)</Label><Input id="return-width" type="number" value={layoutSettings.returnAddress.width} onChange={(e) => updateSetting(['returnAddress', 'width'], parseFloat(e.target.value))} step="0.1" /></div>
-            <div><Label htmlFor="return-height">Höhe (mm)</Label><Input id="return-height" type="number" value={layoutSettings.returnAddress.height} onChange={(e) => updateSetting(['returnAddress', 'height'], parseFloat(e.target.value))} step="0.1" /></div>
-          </div>
-        </div>
-
-
-
-        {/* Rücksendeangaben */}
-        <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-bold">Rücksendeangaben</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="return-top">Von oben (mm)</Label>
-              <Input
-                id="return-top"
-                type="number"
-                value={layoutSettings.returnAddress.top}
-                onChange={(e) => updateSetting(['returnAddress', 'top'], parseFloat(e.target.value))}
-                step="0.1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="return-left">Von links (mm)</Label>
-              <Input
-                id="return-left"
-                type="number"
-                value={layoutSettings.returnAddress.left}
-                onChange={(e) => updateSetting(['returnAddress', 'left'], parseFloat(e.target.value))}
-                step="0.1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="return-width">Breite (mm)</Label>
-              <Input
-                id="return-width"
-                type="number"
-                value={layoutSettings.returnAddress.width}
-                onChange={(e) => updateSetting(['returnAddress', 'width'], parseFloat(e.target.value))}
-                step="0.1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="return-height">Höhe (mm)</Label>
-              <Input
-                id="return-height"
-                type="number"
-                value={layoutSettings.returnAddress.height}
-                onChange={(e) => updateSetting(['returnAddress', 'height'], parseFloat(e.target.value))}
-                step="0.1"
-              />
-            </div>
+            <div><Label htmlFor="address-height">Gesamthöhe (mm)</Label><Input id="address-height" type="number" value={layoutSettings.addressField.height} onChange={(e) => updateSetting(['addressField', 'height'], parseFloat(e.target.value))} step="0.1" /></div>
+            <div><Label htmlFor="return-address-height">Vermerkzone (mm)</Label><Input id="return-address-height" type="number" value={layoutSettings.addressField.returnAddressHeight || 17.7} onChange={(e) => updateSetting(['addressField', 'returnAddressHeight'], parseFloat(e.target.value))} step="0.1" /></div>
+            <div><Label htmlFor="address-zone-height">Anschriftzone (mm)</Label><Input id="address-zone-height" type="number" value={layoutSettings.addressField.addressZoneHeight || 27.3} onChange={(e) => updateSetting(['addressField', 'addressZoneHeight'], parseFloat(e.target.value))} step="0.1" /></div>
           </div>
         </div>
 

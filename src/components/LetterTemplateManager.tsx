@@ -202,7 +202,6 @@ const LetterTemplateManager: React.FC = () => {
       height: formData.layout_settings.footer.height,
     }),
     'block-address': getMarginsForRect({ x: formData.layout_settings.addressField.left, y: formData.layout_settings.addressField.top, width: formData.layout_settings.addressField.width, height: formData.layout_settings.addressField.height }),
-    'block-return-address': getMarginsForRect({ x: formData.layout_settings.returnAddress.left, y: formData.layout_settings.returnAddress.top, width: formData.layout_settings.returnAddress.width, height: formData.layout_settings.returnAddress.height }),
     'block-info': getMarginsForRect({ x: formData.layout_settings.infoBlock.left, y: formData.layout_settings.infoBlock.top, width: formData.layout_settings.infoBlock.width, height: formData.layout_settings.infoBlock.height }),
     'block-subject': getMarginsForRect({
       x: 0,
@@ -484,7 +483,6 @@ const LetterTemplateManager: React.FC = () => {
       {renderTabTrigger('header-designer', 'Header')}
       {renderTabTrigger('footer-designer', 'Footer')}
       {renderTabTrigger('block-address', 'Adressfeld')}
-      {renderTabTrigger('block-return-address', 'Rücksende')}
       {renderTabTrigger('block-info', 'Info-Block')}
       {renderTabTrigger('block-subject', 'Betreff')}
       {renderTabTrigger('block-attachments', 'Anlagen')}
@@ -606,20 +604,37 @@ const LetterTemplateManager: React.FC = () => {
         </div>
       </TabsContent>
 
-      <TabsContent value="block-address">
-        <BlockLineEditor
-          blockType="addressField"
-          lines={(() => {
-            const raw = getBlockItems('addressField');
-            if (raw && typeof raw === 'object' && (raw as any).mode === 'lines') return (raw as any).lines || [];
-            return Array.isArray(raw) && raw.length > 0 && raw[0]?.type === 'label-value' || raw[0]?.type === 'spacer' || raw[0]?.type === 'text-only' ? raw as BlockLine[] : [];
-          })()}
-          onChange={(newLines) => setBlockItems('addressField', { mode: 'lines', lines: newLines } as any)}
-        />
-      </TabsContent>
+      <TabsContent value="block-address" className="space-y-6">
+        {/* Rücksendezeile (Vermerkzone - 17.7mm) */}
+        <div>
+          <h4 className="text-sm font-semibold mb-2">Rücksendezeile (Zusatz- und Vermerkzone – {formData.layout_settings.addressField.returnAddressHeight || 17.7}mm)</h4>
+          <BlockLineEditor
+            blockType="returnAddress"
+            lines={(() => {
+              const raw = getBlockItems('returnAddress');
+              if (raw && typeof raw === 'object' && (raw as any).mode === 'lines') return (raw as any).lines || [];
+              return Array.isArray(raw) && raw.length > 0 && (raw[0]?.type === 'label-value' || raw[0]?.type === 'spacer' || raw[0]?.type === 'text-only') ? raw as BlockLine[] : [];
+            })()}
+            onChange={(newLines) => setBlockItems('returnAddress', { mode: 'lines', lines: newLines } as any)}
+          />
+        </div>
 
-      <TabsContent value="block-return-address" className="space-y-4">
-        {renderSharedElementsEditor('returnAddress', formData.layout_settings.returnAddress.width, formData.layout_settings.returnAddress.height)}
+        <div className="border-t" />
+
+        {/* Anschrift (Anschriftzone - 27.3mm) */}
+        <div>
+          <h4 className="text-sm font-semibold mb-2">Empfängeranschrift (Anschriftzone – {formData.layout_settings.addressField.addressZoneHeight || 27.3}mm)</h4>
+          <BlockLineEditor
+            blockType="addressField"
+            lines={(() => {
+              const raw = getBlockItems('addressField');
+              if (raw && typeof raw === 'object' && (raw as any).mode === 'lines') return (raw as any).lines || [];
+              return Array.isArray(raw) && raw.length > 0 && raw[0]?.type === 'label-value' || raw[0]?.type === 'spacer' || raw[0]?.type === 'text-only' ? raw as BlockLine[] : [];
+            })()}
+            onChange={(newLines) => setBlockItems('addressField', { mode: 'lines', lines: newLines } as any)}
+          />
+        </div>
+
         <div className="border-t pt-4"><SenderInformationManager /></div>
       </TabsContent>
 

@@ -26,6 +26,7 @@ interface DIN5008LetterLayoutProps {
   footerTextElements?: HeaderElement[];
   // Line-mode block data (substituted)
   addressFieldLines?: BlockLine[];
+  returnAddressLines?: BlockLine[];
   infoBlockLines?: BlockLine[];
 }
 
@@ -50,6 +51,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   attachmentElements,
   footerTextElements,
   addressFieldLines,
+  returnAddressLines,
   infoBlockLines,
 }) => {
   // Load layout settings from prop, template, or use defaults
@@ -436,42 +438,42 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           
           {/* Recipient Address Field - DIN 5008 exact dimensions */}
           <div style={{ 
-            width: '85mm', // DIN 5008 standard
-            height: '40mm', // DIN 5008 standard
+            width: `${layout.addressField?.width || 85}mm`,
+            height: `${layout.addressField?.height || 45}mm`,
             border: debugMode ? '2px dashed red' : 'none',
-            padding: '0', // Kein interner Abstand
+            padding: '0',
             marginRight: '10mm',
             backgroundColor: debugMode ? 'rgba(255,0,0,0.05)' : 'transparent',
             position: 'relative',
           }}>
-            {addressFieldLines && addressFieldLines.length > 0 ? (
-              renderBlockLines(addressFieldLines)
-            ) : addressFieldElements && addressFieldElements.length > 0 ? (
-              renderCanvasBlockElements(addressFieldElements)
-            ) : (
-              <>
-                {/* Return Address Line at top of address field - 17.7mm height */}
-                {returnAddressElements && returnAddressElements.length > 0 ? (
-                  <div style={{ height: '17.7mm', position: 'relative' }}>
-                    {renderCanvasBlockElements(returnAddressElements)}
-                  </div>
-                ) : senderInfo?.return_address_line ? (
-                  <div style={{
-                    fontSize: '7pt',
-                    borderBottom: '0.5pt solid #000',
-                    paddingBottom: '1mm',
-                    marginBottom: '3mm',
-                    lineHeight: '1.0',
-                    maxWidth: '75mm',
-                    height: '17.7mm',
-                    display: 'flex',
-                    alignItems: 'flex-end'
-                  }}>
-                    {senderInfo.return_address_line}
-                  </div>
-                ) : null}
-                
-                {/* Recipient Address */}
+            {/* Vermerkzone (return address) */}
+            <div style={{ height: `${layout.addressField?.returnAddressHeight || 17.7}mm`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+              {returnAddressLines && returnAddressLines.length > 0 ? (
+                renderBlockLines(returnAddressLines)
+              ) : returnAddressElements && returnAddressElements.length > 0 ? (
+                <div style={{ position: 'relative', height: '100%' }}>
+                  {renderCanvasBlockElements(returnAddressElements)}
+                </div>
+              ) : senderInfo?.return_address_line ? (
+                <div style={{
+                  fontSize: '7pt',
+                  borderBottom: '0.5pt solid #000',
+                  paddingBottom: '1mm',
+                  lineHeight: '1.0',
+                  maxWidth: '75mm',
+                }}>
+                  {senderInfo.return_address_line}
+                </div>
+              ) : null}
+            </div>
+            
+            {/* Anschriftzone (recipient address) */}
+            <div style={{ height: `${layout.addressField?.addressZoneHeight || 27.3}mm` }}>
+              {addressFieldLines && addressFieldLines.length > 0 ? (
+                renderBlockLines(addressFieldLines)
+              ) : addressFieldElements && addressFieldElements.length > 0 ? (
+                renderCanvasBlockElements(addressFieldElements)
+              ) : (
                 <div style={{ 
                   fontSize: '10pt',
                   lineHeight: '1.2',
@@ -479,8 +481,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                 }}>
                   {formatAddress(recipientAddress)}
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Information Block - DIN 5008 positioned */}
