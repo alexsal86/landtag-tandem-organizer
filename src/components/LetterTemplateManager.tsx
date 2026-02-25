@@ -124,6 +124,10 @@ const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSettings)
   // Also normalize header_text_elements and footer_blocks if present in layout_settings
   return {
     ...layoutSettings,
+    footer: {
+      ...layoutSettings.footer,
+      height: layoutSettings.footer?.height ?? DEFAULT_DIN5008_LAYOUT.footer.height,
+    },
     blockContent: normalizedContent,
   } as LetterLayoutSettings;
 };
@@ -194,7 +198,7 @@ const LetterTemplateManager: React.FC = () => {
       x: 0,
       y: formData.layout_settings.footer.top,
       width: formData.layout_settings.pageWidth,
-      height: Math.max(0, formData.layout_settings.pageHeight - formData.layout_settings.footer.top),
+      height: formData.layout_settings.footer.height,
     }),
     'block-address': getMarginsForRect({ x: formData.layout_settings.addressField.left, y: formData.layout_settings.addressField.top, width: formData.layout_settings.addressField.width, height: formData.layout_settings.addressField.height }),
     'block-return-address': getMarginsForRect({ x: formData.layout_settings.returnAddress.left, y: formData.layout_settings.returnAddress.top, width: formData.layout_settings.returnAddress.width, height: formData.layout_settings.returnAddress.height }),
@@ -531,11 +535,12 @@ const LetterTemplateManager: React.FC = () => {
       <TabsContent value="footer-designer" className="space-y-4">
         {renderSharedElementsEditor('footer',
           formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
-          formData.layout_settings.pageHeight - formData.layout_settings.footer.top - formData.layout_settings.margins.bottom
+          formData.layout_settings.footer.height
         )}
         <StructuredFooterEditor
           initialBlocks={formData.footer_blocks}
           onBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
+          footerHeight={formData.layout_settings.footer.height}
         />
       </TabsContent>
 

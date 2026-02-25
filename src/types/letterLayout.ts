@@ -40,6 +40,7 @@ export interface LetterLayoutSettings {
   };
   footer: {
     top: number;
+    height: number;
   };
   attachments: {
     top: number;
@@ -90,7 +91,8 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
     lineHeight: 4.5
   },
   footer: {
-    top: 272
+    top: 272,
+    height: 18
   },
   attachments: {
     top: 230

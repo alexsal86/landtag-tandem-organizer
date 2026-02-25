@@ -58,7 +58,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Seitenformat */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-medium">Seitenformat</h4>
+          <h4 className="font-bold">Seitenformat</h4>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="page-width">Breite (mm)</Label>
@@ -73,7 +73,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
 
         {/* Seitenränder */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-medium">Seitenränder</h4>
+          <h4 className="font-bold">Seitenränder</h4>
           <div className="grid grid-cols-2 gap-3">
             <div><Label htmlFor="margin-left">Links (mm)</Label><Input id="margin-left" type="number" value={layoutSettings.margins.left} onChange={(e) => updateSetting(['margins', 'left'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="margin-right">Rechts (mm)</Label><Input id="margin-right" type="number" value={layoutSettings.margins.right} onChange={(e) => updateSetting(['margins', 'right'], parseFloat(e.target.value))} step="0.1" /></div>
@@ -84,7 +84,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
 
         {/* Header */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-medium">Header</h4>
+          <h4 className="font-bold">Header</h4>
           <div className="grid grid-cols-2 gap-3">
             <div><Label htmlFor="header-height">Höhe (mm)</Label><Input id="header-height" type="number" value={layoutSettings.header.height} onChange={(e) => updateSetting(['header', 'height'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="header-margin-bottom">Abstand unten (mm)</Label><Input id="header-margin-bottom" type="number" value={layoutSettings.header.marginBottom} onChange={(e) => updateSetting(['header', 'marginBottom'], parseFloat(e.target.value))} step="0.1" /></div>
@@ -93,7 +93,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
 
         {/* Adressfeld */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-medium">Adressfeld</h4>
+          <h4 className="font-bold">Adressfeld</h4>
           <div className="grid grid-cols-2 gap-3">
             <div><Label htmlFor="address-top">Von oben (mm)</Label><Input id="address-top" type="number" value={layoutSettings.addressField.top} onChange={(e) => updateSetting(['addressField', 'top'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="address-left">Von links (mm)</Label><Input id="address-left" type="number" value={layoutSettings.addressField.left} onChange={(e) => updateSetting(['addressField', 'left'], parseFloat(e.target.value))} step="0.1" /></div>
@@ -104,7 +104,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
 
         {/* Rücksendeangaben */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-medium">Rücksendeangaben</h4>
+          <h4 className="font-bold">Rücksendeangaben</h4>
           <div className="grid grid-cols-2 gap-3">
             <div><Label htmlFor="return-top">Von oben (mm)</Label><Input id="return-top" type="number" value={layoutSettings.returnAddress.top} onChange={(e) => updateSetting(['returnAddress', 'top'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="return-left">Von links (mm)</Label><Input id="return-left" type="number" value={layoutSettings.returnAddress.left} onChange={(e) => updateSetting(['returnAddress', 'left'], parseFloat(e.target.value))} step="0.1" /></div>
@@ -117,7 +117,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
 
         {/* Rücksendeangaben */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-medium">Rücksendeangaben</h4>
+          <h4 className="font-bold">Rücksendeangaben</h4>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="return-top">Von oben (mm)</Label>
@@ -164,7 +164,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
 
         {/* Infoblock */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-medium">Informationsblock</h4>
+          <h4 className="font-bold">Informationsblock</h4>
           <div className="grid grid-cols-2 gap-3">
             <div><Label htmlFor="info-top">Von oben (mm)</Label><Input id="info-top" type="number" value={layoutSettings.infoBlock.top} onChange={(e) => updateSetting(['infoBlock', 'top'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="info-left">Von links (mm)</Label><Input id="info-left" type="number" value={layoutSettings.infoBlock.left} onChange={(e) => updateSetting(['infoBlock', 'left'], parseFloat(e.target.value))} step="0.1" /></div>
@@ -175,7 +175,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
 
         {/* Betreffzeile */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-medium">Betreffzeile</h4>
+          <h4 className="font-bold">Betreffzeile</h4>
           <div className="grid grid-cols-2 gap-3">
             <div><Label htmlFor="subject-top">Von oben (mm)</Label><Input id="subject-top" type="number" value={layoutSettings.subject.top} onChange={(e) => updateSetting(['subject', 'top'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="subject-margin-bottom">Abstand unten (mm)</Label><Input id="subject-margin-bottom" type="number" value={layoutSettings.subject.marginBottom} onChange={(e) => updateSetting(['subject', 'marginBottom'], parseFloat(e.target.value))} step="0.1" /></div>
@@ -184,7 +184,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
 
         {/* Inhalt */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-medium">Inhalt</h4>
+          <h4 className="font-bold">Inhalt</h4>
           <div className="grid grid-cols-2 gap-3">
             <div><Label htmlFor="content-top">Von oben (mm)</Label><Input id="content-top" type="number" value={layoutSettings.content.top} onChange={(e) => updateSetting(['content', 'top'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="content-max-height">Max. Höhe (mm)</Label><Input id="content-max-height" type="number" value={layoutSettings.content.maxHeight} onChange={(e) => updateSetting(['content', 'maxHeight'], parseFloat(e.target.value))} step="0.1" /></div>
@@ -194,16 +194,22 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
 
         {/* Fußzeile */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-medium">Fußzeile</h4>
-          <div>
-            <Label htmlFor="footer-top">Von oben (mm)</Label>
-            <Input id="footer-top" type="number" value={layoutSettings.footer.top} onChange={(e) => updateSetting(['footer', 'top'], parseFloat(e.target.value))} step="0.1" />
+          <h4 className="font-bold">Fußzeile</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="footer-top">Von oben (mm)</Label>
+              <Input id="footer-top" type="number" value={layoutSettings.footer.top} onChange={(e) => updateSetting(['footer', 'top'], parseFloat(e.target.value))} step="0.1" />
+            </div>
+            <div>
+              <Label htmlFor="footer-height">Höhe (mm)</Label>
+              <Input id="footer-height" type="number" value={layoutSettings.footer.height} onChange={(e) => updateSetting(['footer', 'height'], parseFloat(e.target.value))} step="0.1" />
+            </div>
           </div>
         </div>
 
         {/* Anlagen */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-medium">Anlagen</h4>
+          <h4 className="font-bold">Anlagen</h4>
           <div>
             <Label htmlFor="attachments-top">Von oben (mm)</Label>
             <Input id="attachments-top" type="number" value={layoutSettings.attachments.top} onChange={(e) => updateSetting(['attachments', 'top'], parseFloat(e.target.value))} step="0.1" />
