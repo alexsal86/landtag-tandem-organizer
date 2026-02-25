@@ -589,14 +589,20 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
             infoYPos += 4;
             break;
           case 'custom':
-            if (informationBlock.block_data?.custom_content) {
-              const customLines = informationBlock.block_data.custom_content.split('\n');
-              customLines.forEach(line => {
-                if (infoYPos < addressFieldTop + addressFieldHeight - 5) {
-                  pdf.text(line, infoBlockLeft, infoYPos);
-                  infoYPos += 4;
-                }
-              });
+            if (informationBlock.block_data?.custom_content || informationBlock.block_data?.custom_lines) {
+              const customLines = Array.isArray(informationBlock.block_data?.custom_lines)
+                ? informationBlock.block_data.custom_lines
+                : String(informationBlock.block_data?.custom_content || '').split('\n');
+
+              customLines
+                .map((line: string) => line.trim())
+                .filter((line: string) => line.length > 0)
+                .forEach((line: string) => {
+                  if (infoYPos < addressFieldTop + addressFieldHeight - 5) {
+                    pdf.text(line, infoBlockLeft, infoYPos);
+                    infoYPos += 4;
+                  }
+                });
             }
             break;
         }
