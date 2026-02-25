@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,9 +29,9 @@ export function isLineMode(data: any): data is BlockLineData {
 }
 
 interface AvailableVariable {
-  key: string;       // e.g. '{{bearbeiter}}'
-  label: string;     // e.g. 'Bearbeiter'
-  preview: string;   // e.g. 'Max Mustermann'
+  key: string;
+  label: string;
+  preview: string;
 }
 
 const INFO_BLOCK_VARIABLES: AvailableVariable[] = [
@@ -99,8 +99,13 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
     onChange(lines.filter(l => l.id !== id));
   };
 
-  const setVariable = (lineId: string, varKey: string) => {
-    updateLine(lineId, { value: varKey, isVariable: true });
+  /** Insert variable at the end of the current value (supports multiple vars per line) */
+  const insertVariable = (lineId: string, varKey: string) => {
+    const line = lines.find(l => l.id === lineId);
+    if (!line) return;
+    const currentValue = line.value || '';
+    const newValue = currentValue ? `${currentValue} ${varKey}` : varKey;
+    updateLine(lineId, { value: newValue, isVariable: true });
   };
 
   const onDragEnd = (result: DropResult) => {
@@ -117,164 +122,161 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
 
   const getPreviewText = (line: BlockLine): string => {
     if (!line.value) return '';
-    if (!line.isVariable) return line.value;
-    // Replace each {{...}} placeholder with its preview
     let text = line.value;
-    for (const v of variables) {
+    const allVars = [...INFO_BLOCK_VARIABLES, ...ADDRESS_FIELD_VARIABLES];
+    for (const v of allVars) {
       text = text.split(v.key).join(v.preview);
     }
     return text;
   };
 
+  const hasVariable = (val: string | undefined) => val ? /\{\{.*?\}\}/.test(val) : false;
+
   return (
-    <div className="space-y-4">
-      {/* Preview */}
-      <div className="rounded-lg border bg-white p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">Vorschau</span>
+    <div className="grid grid-cols-2 gap-4">
+      {/* Left: Editor */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Zeilen</span>
           <Button variant="outline" size="sm" onClick={loadTemplate} className="h-7 text-xs">
             <FileText className="mr-1 h-3 w-3" />
             DIN 5008 Vorlage
           </Button>
         </div>
+
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId="block-lines">
+            {(provided) => (
+              <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1">
+                {lines.map((line, index) => (
+                  <Draggable key={line.id} draggableId={line.id} index={index}>
+                    {(prov, snap) => (
+                      <div
+                        ref={prov.innerRef}
+                        {...prov.draggableProps}
+                        className={`flex items-center gap-1 rounded border px-1 py-1 text-xs ${snap.isDragging ? 'bg-accent shadow-md' : 'bg-background'}`}
+                      >
+                        <div {...prov.dragHandleProps} className="cursor-grab text-muted-foreground">
+                          <GripVertical className="h-3.5 w-3.5" />
+                        </div>
+
+                        {line.type === 'spacer' ? (
+                          <div className="flex flex-1 items-center gap-2">
+                            <Badge variant="secondary" className="text-[10px]">Abstand</Badge>
+                            <Input
+                              type="number"
+                              value={line.spacerHeight || 2}
+                              onChange={(e) => updateLine(line.id, { spacerHeight: parseFloat(e.target.value) || 2 })}
+                              className="h-6 w-16 text-xs"
+                              min={1}
+                              max={20}
+                            />
+                            <span className="text-muted-foreground">mm</span>
+                          </div>
+                        ) : line.type === 'text-only' ? (
+                          <div className="flex flex-1 items-center gap-1">
+                            <Badge variant="secondary" className="shrink-0 text-[10px]">Text</Badge>
+                            <Input
+                              value={line.value || ''}
+                              onChange={(e) => updateLine(line.id, { value: e.target.value, isVariable: /\{\{.*?\}\}/.test(e.target.value) })}
+                              className="h-6 flex-1 text-xs"
+                              placeholder="Text oder {{variable}}..."
+                            />
+                            <Select onValueChange={(v) => insertVariable(line.id, v)}>
+                              <SelectTrigger className="h-6 w-8 px-1">
+                                <Zap className="h-3 w-3 text-amber-500" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {variables.map((v) => (
+                                  <SelectItem key={v.key} value={v.key} className="text-xs">{v.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : (
+                          /* label-value */
+                          <div className="flex flex-1 items-center gap-1">
+                            <Input
+                              value={line.label || ''}
+                              onChange={(e) => updateLine(line.id, { label: e.target.value })}
+                              className="h-6 w-28 shrink-0 text-xs font-semibold"
+                              placeholder="Label..."
+                            />
+                            <Input
+                              value={line.value || ''}
+                              onChange={(e) => updateLine(line.id, { value: e.target.value, isVariable: /\{\{.*?\}\}/.test(e.target.value) })}
+                              className="h-6 flex-1 text-xs"
+                              placeholder="Wert oder {{variable}}..."
+                            />
+                            <Select onValueChange={(v) => insertVariable(line.id, v)}>
+                              <SelectTrigger className="h-6 w-8 px-1">
+                                <Zap className="h-3 w-3 text-amber-500" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {variables.map((v) => (
+                                  <SelectItem key={v.key} value={v.key} className="text-xs">{v.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => removeLine(line.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
+
+        {/* Add buttons */}
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addLine('label-value')}>
+            <Plus className="mr-1 h-3 w-3" />Label + Wert
+          </Button>
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addLine('text-only')}>
+            <Plus className="mr-1 h-3 w-3" />Nur Text
+          </Button>
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addLine('spacer')}>
+            <Space className="mr-1 h-3 w-3" />Abstand
+          </Button>
+        </div>
+      </div>
+
+      {/* Right: Preview */}
+      <div className="rounded-lg border bg-white p-4">
+        <span className="text-xs font-medium text-muted-foreground mb-2 block">Vorschau</span>
         <div className="space-y-0 text-[9pt] leading-tight font-[Arial,sans-serif]">
           {lines.map((line) => {
             if (line.type === 'spacer') {
               return <div key={line.id} style={{ height: `${line.spacerHeight || 2}mm` }} />;
             }
+            const previewVal = getPreviewText(line);
+            const isVar = hasVariable(line.value);
             if (line.type === 'text-only') {
               return (
-                <div key={line.id} className={line.valueBold ? 'font-bold' : ''} style={{ fontSize: `${line.fontSize || 9}pt` }}>
-                  {getPreviewText(line) || '\u00A0'}
+                <div key={line.id} className={`flex items-center gap-1 ${line.valueBold ? 'font-bold' : ''}`} style={{ fontSize: `${line.fontSize || 9}pt` }}>
+                  <span>{previewVal || '\u00A0'}</span>
+                  {isVar && <Zap className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
                 </div>
               );
             }
             // label-value
             return (
-              <div key={line.id} className="flex gap-2" style={{ fontSize: `${line.fontSize || 9}pt` }}>
+              <div key={line.id} className="flex items-center gap-1" style={{ fontSize: `${line.fontSize || 9}pt` }}>
                 <span className={line.labelBold !== false ? 'font-bold' : ''}>{line.label || ''}</span>
-                <span className={line.valueBold ? 'font-bold' : ''}>{getPreviewText(line) || ''}</span>
+                <span className={line.valueBold ? 'font-bold' : ''}>{previewVal || ''}</span>
+                {isVar && <Zap className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
               </div>
             );
           })}
           {lines.length === 0 && <div className="text-muted-foreground italic text-xs">Keine Zeilen vorhanden</div>}
         </div>
-      </div>
-
-      {/* Line list */}
-      <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="block-lines">
-          {(provided) => (
-            <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1">
-              {lines.map((line, index) => (
-                <Draggable key={line.id} draggableId={line.id} index={index}>
-                  {(prov, snap) => (
-                    <div
-                      ref={prov.innerRef}
-                      {...prov.draggableProps}
-                      className={`flex items-center gap-1 rounded border px-1 py-1 text-xs ${snap.isDragging ? 'bg-accent shadow-md' : 'bg-background'}`}
-                    >
-                      <div {...prov.dragHandleProps} className="cursor-grab text-muted-foreground">
-                        <GripVertical className="h-3.5 w-3.5" />
-                      </div>
-
-                      {line.type === 'spacer' ? (
-                        <div className="flex flex-1 items-center gap-2">
-                          <Badge variant="secondary" className="text-[10px]">Abstand</Badge>
-                          <Input
-                            type="number"
-                            value={line.spacerHeight || 2}
-                            onChange={(e) => updateLine(line.id, { spacerHeight: parseFloat(e.target.value) || 2 })}
-                            className="h-6 w-16 text-xs"
-                            min={1}
-                            max={20}
-                          />
-                          <span className="text-muted-foreground">mm</span>
-                        </div>
-                      ) : line.type === 'text-only' ? (
-                        <div className="flex flex-1 items-center gap-1">
-                          <Badge variant="secondary" className="shrink-0 text-[10px]">Text</Badge>
-                          {line.isVariable ? (
-                            <Badge variant="outline" className="border-orange-300 bg-orange-50 text-orange-700 text-[10px]">
-                              <Zap className="mr-0.5 h-2.5 w-2.5" />{line.value}
-                            </Badge>
-                          ) : (
-                            <Input
-                              value={line.value || ''}
-                              onChange={(e) => updateLine(line.id, { value: e.target.value, isVariable: false })}
-                              className="h-6 flex-1 text-xs"
-                              placeholder="Freitext..."
-                            />
-                          )}
-                          <Select onValueChange={(v) => setVariable(line.id, v)}>
-                            <SelectTrigger className="h-6 w-8 px-1">
-                              <Zap className="h-3 w-3 text-orange-500" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {variables.map((v) => (
-                                <SelectItem key={v.key} value={v.key} className="text-xs">{v.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      ) : (
-                        /* label-value */
-                        <div className="flex flex-1 items-center gap-1">
-                          <Input
-                            value={line.label || ''}
-                            onChange={(e) => updateLine(line.id, { label: e.target.value })}
-                            className="h-6 w-28 shrink-0 text-xs font-semibold"
-                            placeholder="Label..."
-                          />
-                          {line.isVariable ? (
-                            <Badge variant="outline" className="border-orange-300 bg-orange-50 text-orange-700 text-[10px]">
-                              <Zap className="mr-0.5 h-2.5 w-2.5" />{line.value}
-                            </Badge>
-                          ) : (
-                            <Input
-                              value={line.value || ''}
-                              onChange={(e) => updateLine(line.id, { value: e.target.value, isVariable: false })}
-                              className="h-6 flex-1 text-xs"
-                              placeholder="Wert..."
-                            />
-                          )}
-                          <Select onValueChange={(v) => setVariable(line.id, v)}>
-                            <SelectTrigger className="h-6 w-8 px-1">
-                              <Zap className="h-3 w-3 text-orange-500" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {variables.map((v) => (
-                                <SelectItem key={v.key} value={v.key} className="text-xs">{v.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => removeLine(line.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
-
-      {/* Add buttons */}
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addLine('label-value')}>
-          <Plus className="mr-1 h-3 w-3" />Label + Wert
-        </Button>
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addLine('text-only')}>
-          <Plus className="mr-1 h-3 w-3" />Nur Text
-        </Button>
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addLine('spacer')}>
-          <Space className="mr-1 h-3 w-3" />Abstand
-        </Button>
       </div>
     </div>
   );

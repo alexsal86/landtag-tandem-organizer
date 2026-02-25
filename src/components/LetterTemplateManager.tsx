@@ -22,7 +22,7 @@ import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCan
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
 import { BlockLineEditor, type BlockLine, type BlockLineData, isLineMode } from '@/components/letters/BlockLineEditor';
-import { InformationBlockManager } from '@/components/administration/InformationBlockManager';
+
 
 interface LetterTemplate {
   id: string;
@@ -606,7 +606,7 @@ const LetterTemplateManager: React.FC = () => {
         </div>
       </TabsContent>
 
-      <TabsContent value="block-address" className="space-y-4">
+      <TabsContent value="block-address">
         <BlockLineEditor
           blockType="addressField"
           lines={(() => {
@@ -623,7 +623,7 @@ const LetterTemplateManager: React.FC = () => {
         <div className="border-t pt-4"><SenderInformationManager /></div>
       </TabsContent>
 
-      <TabsContent value="block-info" className="space-y-4">
+      <TabsContent value="block-info">
         <BlockLineEditor
           blockType="infoBlock"
           lines={(() => {
@@ -633,7 +633,6 @@ const LetterTemplateManager: React.FC = () => {
           })()}
           onChange={(newLines) => setBlockItems('infoBlock', { mode: 'lines', lines: newLines } as any)}
         />
-        <div className="border-t pt-4"><InformationBlockManager /></div>
       </TabsContent>
 
       <TabsContent value="block-subject" className="space-y-4">

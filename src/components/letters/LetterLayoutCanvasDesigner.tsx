@@ -588,7 +588,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const isLocked = lockedBlocks.has(block.key);
               const rawContent = blockContent[block.key];
               const isLineModeBlock = rawContent && typeof rawContent === 'object' && !Array.isArray(rawContent) && (rawContent as any).mode === 'lines';
-              const lineData = isLineModeBlock ? ((rawContent as any).lines || []) as { id: string; type: string; label?: string; value?: string; spacerHeight?: number }[] : [];
+              const lineData = isLineModeBlock ? ((rawContent as any).lines || []) as { id: string; type: string; label?: string; value?: string; isVariable?: boolean; labelBold?: boolean; valueBold?: boolean; fontSize?: number; spacerHeight?: number }[] : [];
               const blockElements = block.key === 'header'
                 ? headerElements
                 : (Array.isArray(rawContent) ? rawContent : []) as CanvasElement[];
@@ -596,17 +596,36 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                 block.key === 'header'
                   ? ''
                   : (blockElements.length > 0 || isLineModeBlock) ? '' : (blockContent[block.key] || [])[0]?.content;
+              const LINE_VARS: Record<string, string> = {
+                '{{bearbeiter}}': 'Max Mustermann', '{{telefon}}': '040 1234-5678', '{{email}}': 'max@beispiel.de',
+                '{{datum}}': '25. Februar 2026', '{{aktenzeichen}}': 'AZ-2026-001', '{{unser_zeichen}}': 'MM/abc',
+                '{{empfaenger_name}}': 'Erika Mustermann', '{{empfaenger_strasse}}': 'Musterstraße 1',
+                '{{empfaenger_plz}}': '20095', '{{empfaenger_ort}}': 'Hamburg', '{{empfaenger_land}}': 'Deutschland',
+              };
+              const resolveLineValue = (val: string | undefined) => {
+                if (!val) return '';
+                let text = val;
+                for (const [k, v] of Object.entries(LINE_VARS)) { text = text.split(k).join(v); }
+                return text;
+              };
+              const hasVariablePlaceholder = (val: string | undefined) => val ? /\{\{.*?\}\}/.test(val) : false;
               return (
-                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute border text-[11px] font-medium px-2 py-1 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isLocked ? 'cursor-not-allowed border-amber-500' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
+                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute border text-[11px] font-medium px-1 py-0.5 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isLocked ? 'cursor-not-allowed border-amber-500' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
                   {!previewText && blockElements.length === 0 && !isLineModeBlock && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
                   {previewText && <div className="mt-1 text-[10px] line-clamp-2">{previewText}</div>}
-                  {isLineModeBlock && lineData.map((line) => (
-                    <div key={line.id} style={{ fontSize: 8 * SCALE, lineHeight: '1.3' }} className="truncate">
-                      {line.type === 'spacer' ? <div style={{ height: (line.spacerHeight || 2) * SCALE }} /> : (
-                        <span>{line.label ? <span className="font-semibold">{line.label} </span> : null}{line.value || ''}</span>
-                      )}
-                    </div>
-                  ))}
+                  {isLineModeBlock && lineData.map((line) => {
+                    const fontSize = (line.fontSize || 9) * 0.55 * SCALE;
+                    if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE * 0.6 }} />;
+                    const resolvedValue = resolveLineValue(line.value);
+                    const isVar = hasVariablePlaceholder(line.value || '');
+                    return (
+                      <div key={line.id} style={{ fontSize, lineHeight: '1.25' }} className="truncate flex items-center gap-0.5">
+                        {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
+                        <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
+                        {isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSize * 0.75 }}>⚡</span>}
+                      </div>
+                    );
+                  })}
                   {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                   {block.canResize && !isDisabled && !isLocked && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />}
                 </div>
