@@ -678,7 +678,13 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                             {localLayout.subject.prefixShape === 'wappen' && <img src="/assets/wappen-bw.svg" alt="Wappen" style={{ width: 3.5 * SCALE, height: 3.5 * SCALE, objectFit: 'contain' }} />}
                           </span>
                         )}
-                        <span className="font-bold text-gray-700" style={{ fontSize: `${(localLayout.subject?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>{'{{betreff}}'}</span>
+                        <span className="font-bold text-gray-700" style={{ fontSize: `${(localLayout.subject?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>{(() => {
+                          const sl = localLayout.blockContent?.subjectLine;
+                          if (sl && Array.isArray(sl) && sl.length > 0 && (sl[0] as any).content) {
+                            return (sl[0] as any).content;
+                          }
+                          return '{{betreff}}';
+                        })()}</span>
                       </div>
                       <div style={{ height: (localLayout.subject?.marginBottom || 9) * SCALE }} />
                       <div className="text-gray-500 italic" style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
