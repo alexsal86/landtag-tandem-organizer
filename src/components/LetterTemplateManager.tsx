@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Edit3, Trash2, Plus, Save, X, Eye } from 'lucide-react';
+import { Edit3, Trash2, Plus, Save, X, Eye, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +22,7 @@ import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCan
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
 import { BlockLineEditor, type BlockLine, type BlockLineData, isLineMode } from '@/components/letters/BlockLineEditor';
-
+import { LetterTemplateSettings } from '@/components/letters/LetterTemplateSettings';
 
 interface LetterTemplate {
   id: string;
@@ -149,6 +149,7 @@ const LetterTemplateManager: React.FC = () => {
   const [showBlockRuler, setShowBlockRuler] = useState<Record<string, boolean>>({});
   const [showPreview, setShowPreview] = useState<string | null>(null);
   const [selectedGalleryImage, setSelectedGalleryImage] = useState<Record<string, GalleryImage | null>>({});
+  const [showSettings, setShowSettings] = useState(false);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
   const galleryBlobUrlsRef = useRef<Map<string, string>>(new Map());
@@ -484,7 +485,7 @@ const LetterTemplateManager: React.FC = () => {
       {renderTabTrigger('footer-designer', 'Footer')}
       {renderTabTrigger('block-address', 'Adressfeld')}
       {renderTabTrigger('block-info', 'Info-Block')}
-      {renderTabTrigger('block-subject', 'Betreff')}
+      {renderTabTrigger('block-subject', 'Betreff & Anrede')}
       {renderTabTrigger('block-attachments', 'Anlagen')}
       {renderTabTrigger('layout-settings', 'Layout')}
       {renderTabTrigger('general', 'Allgemein')}
@@ -651,10 +652,68 @@ const LetterTemplateManager: React.FC = () => {
       </TabsContent>
 
       <TabsContent value="block-subject" className="space-y-4">
-        {renderSharedElementsEditor('subject',
-          formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
-          Math.max(8, formData.layout_settings.subject.marginBottom + 4)
-        )}
+        <div className="space-y-4">
+          <div>
+            <h4 className="text-sm font-semibold mb-2">Betreff-Darstellung</h4>
+            <div className="flex items-center gap-4 mb-3">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={formData.layout_settings.subject?.integrated !== false}
+                  onCheckedChange={(checked) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      layout_settings: {
+                        ...prev.layout_settings,
+                        subject: { ...prev.layout_settings.subject, integrated: !!checked }
+                      }
+                    }));
+                  }}
+                />
+                Betreff in Inhaltsbereich integrieren (DIN 5008)
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold mb-2">Anrede-Vorlage</h4>
+            <p className="text-xs text-muted-foreground mb-2">
+              Die Variable {'{{anrede}}'} wird automatisch basierend auf dem Empfänger generiert (Herr/Frau/Damen und Herren).
+            </p>
+            <Select
+              value={formData.layout_settings.salutation?.template || 'Sehr geehrte Damen und Herren,'}
+              onValueChange={(value) => {
+                setFormData(prev => ({
+                  ...prev,
+                  layout_settings: {
+                    ...prev.layout_settings,
+                    salutation: { ...(prev.layout_settings.salutation || { fontSize: 11 }), template: value }
+                  }
+                }));
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="{{anrede}}">Automatisch (basierend auf Empfänger)</SelectItem>
+                <SelectItem value="Sehr geehrte Damen und Herren,">Sehr geehrte Damen und Herren,</SelectItem>
+                <SelectItem value="Guten Tag,">Guten Tag,</SelectItem>
+                <SelectItem value="Liebe Kolleginnen und Kollegen,">Liebe Kolleginnen und Kollegen,</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Canvas elements for subject (legacy/custom) */}
+          {formData.layout_settings.subject?.integrated === false && (
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Betreff als Canvas-Element</h4>
+              {renderSharedElementsEditor('subject',
+                formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
+                Math.max(8, formData.layout_settings.subject.marginBottom + 4)
+              )}
+            </div>
+          )}
+        </div>
       </TabsContent>
 
       <TabsContent value="block-attachments" className="space-y-4">
@@ -667,17 +726,26 @@ const LetterTemplateManager: React.FC = () => {
     </>
   );
 
-  const isFormOpen = showCreateDialog || !!editingTemplate;
+  const isFormOpen = showCreateDialog || !!editingTemplate || showSettings;
 
   return (
     <div className="space-y-6">
-      {!editingTemplate && (
-        <div className="flex justify-end">
+      {!editingTemplate && !showSettings && (
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setShowSettings(true)}>
+            <Settings className="h-4 w-4 mr-2" />
+            Einstellungen
+          </Button>
           <Button onClick={() => { if (showCreateDialog) { setShowCreateDialog(false); resetForm(); } else { setShowCreateDialog(true); resetForm(); setActiveTab('canvas-designer'); } }}>
             <Plus className="h-4 w-4 mr-2" />
             {showCreateDialog ? 'Erstellung schließen' : 'Neues Template'}
           </Button>
         </div>
+      )}
+
+      {/* Settings Page */}
+      {showSettings && (
+        <LetterTemplateSettings onBack={() => setShowSettings(false)} />
       )}
 
       {/* Create Template - inline card */}
@@ -702,7 +770,7 @@ const LetterTemplateManager: React.FC = () => {
       )}
 
       {/* Template list */}
-      {!showCreateDialog && !editingTemplate && (loading ? (
+      {!showCreateDialog && !editingTemplate && !showSettings && (loading ? (
         <div className="text-center py-8">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p className="mt-2 text-muted-foreground">Templates werden geladen...</p>

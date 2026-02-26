@@ -5144,6 +5144,44 @@ export type Database = {
           },
         ]
       }
+      letter_template_settings: {
+        Row: {
+          created_at: string
+          din5008_defaults: Json | null
+          id: string
+          salutation_templates: Json | null
+          tenant_id: string
+          updated_at: string
+          variable_defaults: Json | null
+        }
+        Insert: {
+          created_at?: string
+          din5008_defaults?: Json | null
+          id?: string
+          salutation_templates?: Json | null
+          tenant_id: string
+          updated_at?: string
+          variable_defaults?: Json | null
+        }
+        Update: {
+          created_at?: string
+          din5008_defaults?: Json | null
+          id?: string
+          salutation_templates?: Json | null
+          tenant_id?: string
+          updated_at?: string
+          variable_defaults?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "letter_template_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       letter_templates: {
         Row: {
           address_field_elements: Json | null
