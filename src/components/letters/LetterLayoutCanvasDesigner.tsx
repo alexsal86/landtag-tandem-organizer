@@ -666,20 +666,45 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                       </div>
                       <div style={{ marginTop: 2 * SCALE, fontSize: Math.max(8, 10 * SCALE) }}>
                         {localLayout.subject?.prefixShape && localLayout.subject.prefixShape !== 'none' && (
-                          <span style={{ display: 'inline-block', marginRight: 3, verticalAlign: 'middle' }}>
-                            {localLayout.subject.prefixShape === 'line' && <span style={{ display: 'inline-block', width: 12, height: 2, backgroundColor: '#333', verticalAlign: 'middle' }} />}
-                            {localLayout.subject.prefixShape === 'circle' && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', border: '1px solid #333', verticalAlign: 'middle' }} />}
-                            {localLayout.subject.prefixShape === 'rectangle' && <span style={{ display: 'inline-block', width: 8, height: 8, border: '1px solid #333', verticalAlign: 'middle' }} />}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: 3, verticalAlign: 'middle' }}>
+                            {localLayout.subject.prefixShape === 'line' && <span style={{ display: 'inline-block', width: 5 * SCALE, height: 0.5 * SCALE, backgroundColor: '#333', verticalAlign: 'middle' }} />}
+                            {localLayout.subject.prefixShape === 'circle' && <span style={{ display: 'inline-block', width: 3 * SCALE, height: 3 * SCALE, borderRadius: '50%', border: '1px solid #333', verticalAlign: 'middle' }} />}
+                            {localLayout.subject.prefixShape === 'rectangle' && <span style={{ display: 'inline-block', width: 3 * SCALE, height: 3 * SCALE, border: '1px solid #333', verticalAlign: 'middle' }} />}
+                            {localLayout.subject.prefixShape === 'sunflower' && <SunflowerSVG width={3.5 * SCALE} height={3.5 * SCALE} />}
+                            {localLayout.subject.prefixShape === 'lion' && <LionSVG width={5 * SCALE} height={2.5 * SCALE} />}
+                            {localLayout.subject.prefixShape === 'wappen' && <img src="/assets/wappen-bw.svg" alt="Wappen" style={{ width: 3.5 * SCALE, height: 3.5 * SCALE, objectFit: 'contain' }} />}
                           </span>
                         )}
-                        <span className="font-bold text-gray-700" style={{ fontSize: Math.max(8, 10 * SCALE) }}>{'{{betreff}}'}</span>
+                        <span className="font-bold text-gray-700" style={{ fontSize: `${(localLayout.subject?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>{'{{betreff}}'}</span>
                       </div>
-                      <div style={{ height: 3 * SCALE }} />
-                      <div className="text-gray-500 italic" style={{ fontSize: Math.max(7, 8 * SCALE) }}>
+                      <div style={{ height: (localLayout.subject?.marginBottom || 9) * SCALE }} />
+                      <div className="text-gray-500 italic" style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
                         {localLayout.salutation?.template || 'Sehr geehrte Damen und Herren,'}
                       </div>
-                      <div style={{ height: 2 * SCALE }} />
-                      <div className="text-gray-400 italic" style={{ fontSize: Math.max(7, 8 * SCALE) }}>Inhalt...</div>
+                      <div style={{ height: (localLayout.content?.lineHeight || 4.5) * SCALE }} />
+                      <div className="text-gray-400 italic" style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>Inhalt...</div>
+                      {/* Abschlussformel preview */}
+                      {localLayout.closing?.formula && (
+                        <>
+                          <div style={{ height: (localLayout.content?.lineHeight || 4.5) * 2 * SCALE }} />
+                          <div className="text-gray-500 italic" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
+                            {localLayout.closing.formula}
+                          </div>
+                          {localLayout.closing.signatureName && (
+                            <>
+                              <div style={{ height: (localLayout.content?.lineHeight || 4.5) * 3 * SCALE }} />
+                              <div className="text-gray-600" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
+                                {localLayout.closing.signatureName}
+                              </div>
+                              {localLayout.closing.signatureTitle && (
+                                <div className="text-gray-400" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE * 0.9}px` }}>
+                                  {localLayout.closing.signatureTitle}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
                       {isLineModeBlock && renderLineItems(lineData)}
                       {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                     </>
