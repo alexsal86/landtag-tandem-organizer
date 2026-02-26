@@ -37,7 +37,7 @@ export interface LetterLayoutSettings {
     fontSize?: number;
     fontWeight?: string;
     integrated?: boolean;
-    prefixShape?: 'none' | 'line' | 'circle' | 'rectangle';
+    prefixShape?: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen';
   };
   salutation?: {
     template: string;

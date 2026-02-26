@@ -679,7 +679,7 @@ const LetterTemplateManager: React.FC = () => {
               <Label className="text-xs">Form vor dem Betreff</Label>
               <Select
                 value={formData.layout_settings.subject?.prefixShape || 'none'}
-                onValueChange={(value: 'none' | 'line' | 'circle' | 'rectangle') => {
+                onValueChange={(value: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen') => {
                   setFormData(prev => ({
                     ...prev,
                     layout_settings: {
@@ -697,6 +697,9 @@ const LetterTemplateManager: React.FC = () => {
                   <SelectItem value="line">Linie ─</SelectItem>
                   <SelectItem value="circle">Kreis ○</SelectItem>
                   <SelectItem value="rectangle">Rechteck □</SelectItem>
+                  <SelectItem value="sunflower">Sonnenblume 🌻</SelectItem>
+                  <SelectItem value="lion">Löwe 🦁</SelectItem>
+                  <SelectItem value="wappen">Wappen 🏛️</SelectItem>
                 </SelectContent>
               </Select>
             </div>
