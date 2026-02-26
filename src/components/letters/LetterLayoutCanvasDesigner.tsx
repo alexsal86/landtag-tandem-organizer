@@ -345,7 +345,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   };
 
   const startDrag = (event: React.MouseEvent, key: BlockKey, mode: 'move' | 'resize') => {
-    if (disabledBlocks.has(key) || lockedBlocks.has(key)) return;
+    if (plainPreview || disabledBlocks.has(key) || lockedBlocks.has(key)) return;
     event.preventDefault();
     event.stopPropagation();
     canvasWrapRef.current?.focus();
@@ -432,7 +432,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     if (e.key === 'ArrowDown') dy = 1;
     if (!dx && !dy) return;
     e.preventDefault();
-    if (lockedBlocks.has(selected) || disabledBlocks.has(selected)) return;
+    if (plainPreview || lockedBlocks.has(selected) || disabledBlocks.has(selected)) return;
     const rect = getRect(selected);
     updateByRect(selected, { ...rect, x: rect.x + dx, y: rect.y + dy });
     requestAnimationFrame(() => commitToParent());
@@ -629,7 +629,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   <div key={line.id} style={{ fontSize: fontSizePx, lineHeight: '1.3' }} className="truncate flex items-center gap-0.5">
                     {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
                     <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
-                    {isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
+                    {!plainPreview && isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
                   </div>
                 );
               });
@@ -638,7 +638,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const returnAddressHeightMm = localLayout.addressField.returnAddressHeight || 17.7;
               
               return (
-                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium px-1 py-0.5 ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `cursor-move ${plainPreview ? '' : block.color}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
+                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium px-1 py-0.5 ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
                   {block.key === 'addressField' && (hasReturnData || hasAddressData) ? (
                     <>
                       {/* Vermerkzone (return address) */}
