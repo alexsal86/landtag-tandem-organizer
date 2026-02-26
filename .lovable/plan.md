@@ -1,193 +1,107 @@
 
-# Plan: Canvas-Integration, Paginierung, Ruecksendeunterstreichung, Anrede im Editor und Abschlussformel
+# Plan: Paginierung im Layout, Canvas-Fixes, Standardtext, Unterschrift und Betreff-Zeileneditor
 
 ## Uebersicht
 
-Fuenf zusammenhaengende Aenderungen am Brief-System:
-1. Betreff+Anrede im Canvas-Tab anzeigen (mit optionaler Form vor dem Betreff)
-2. Paginierung im Canvas-Tab und Layout anzeigen
-3. Ruecksendezeile mit Unterstreichung
-4. Anrede im Briefeditor anzeigen und aenderbar machen
-5. Abschlussformel und Unterschrift (Vorlage mit Ueberschreibung + Bild)
+Sechs Aenderungen am Brief-System:
+1. Paginierung im Layout-Tab konfigurierbar machen
+2. Canvas-Inhaltsbereich: Labels nur anzeigen wenn kein Inhalt vorhanden
+3. Standardtext fuer Briefinhalt in den Einstellungen
+4. Kleinerer Abstand bei Abschlussformel ohne Unterschriftsbild
+5. Betreff-Zeile im Tab "Betreff, Anrede und Abschluss" als BlockLineEditor
+6. Unterschriftsbilder hochladen und auswaehlen
 
 ---
 
-## 1. Betreff und Anrede im Canvas-Tab
+## 1. Paginierung im Layout-Tab
 
-### Problem
-Im Canvas-Designer sind "Betreffbereich" und "Inhaltsbereich" getrennte Bloecke. Die Logik soll sein: Betreff (optional mit vorangestellter Form/Symbol) wird im Inhaltsbereich integriert angezeigt.
+**Problem:** Im `LayoutSettingsEditor.tsx` fehlt die Sektion fuer die Paginierung komplett.
 
-### Loesung
-- Den separaten "Betreffbereich"-Block im Canvas entfernen und stattdessen Betreff + Anrede als feste Vorschau oben im "Inhaltsbereich"-Block rendern
-- Im Block-Editor (Tab "Betreff und Anrede") eine Option fuer eine kleine Form (z.B. Linie, Kreis, Quadrat, oder kein Symbol) hinzufuegen, die vor dem Betreff-Text erscheint
-- Darstellung im Canvas:
-  - [optionale Form] **Betreff** (fett)
-  - 2 Leerzeilen (9mm)
-  - Anrede
-  - 1 Leerzeile (4.5mm)
-  - Inhalt...
+**Loesung:** Neue Sektion "Paginierung" in `LayoutSettingsEditor.tsx` hinzufuegen mit den Feldern:
+- Position von oben (mm) -> `pagination.top`
+- Ausrichtung (links/mittig/rechts) -> `pagination.align`
+- Schriftgroesse (pt) -> `pagination.fontSize`
+- Aktiviert (Checkbox) -> `pagination.enabled`
 
-### Aenderungen
-**`src/components/letters/LetterLayoutCanvasDesigner.tsx`:**
-- `DEFAULT_BLOCKS`: "subject" Block entfernen (oder als Teil von "content" integrieren)
-- Im Rendering des "content"-Blocks: Betreff-Variable, Anrede-Variable und Abstaende als Vorschau-Zeilen oben anzeigen
-- Neues Layout-Setting `subject.prefixShape` (none | line | circle | rectangle) im `getRect`/Rendering beruecksichtigen
+Die `updateSetting`-Funktion muss um den `pagination`-Pfad erweitert werden (ggf. mit Initialisierung falls `pagination` undefined ist).
 
-**`src/types/letterLayout.ts`:**
-- `subject` Block erweitern: `prefixShape?: 'none' | 'line' | 'circle' | 'rectangle'`
-
-**`src/components/LetterTemplateManager.tsx`:**
-- Im Tab "Betreff und Anrede": Dropdown fuer Form-Auswahl hinzufuegen (Keine Form, Linie, Kreis, Rechteck)
-
-**`src/components/letters/DIN5008LetterLayout.tsx`:**
-- Im integrierten Modus: Vor dem Betreff-Text die gewaehlte Form rendern (kleines SVG/CSS-Element)
+**Datei:** `src/components/letters/LayoutSettingsEditor.tsx`
 
 ---
 
-## 2. Paginierung im Canvas-Tab
+## 2. Canvas-Inhaltsbereich: Labels bei vorhandenem Inhalt ausblenden
 
-### Problem
-Die Seitenzahlen-Position ist nicht im Canvas sichtbar.
+**Problem:** Im Canvas-Designer zeigt der Inhaltsbereich immer "Inhaltsbereich" und das Badge "98mm" an, selbst wenn Betreff/Anrede/Abschluss-Vorschau gerendert wird (Zeile 664-667).
 
-### Loesung
-- Neuen Block "Paginierung" zum Canvas hinzufuegen, der die Position der Seitenzahl auf der Seite zeigt
-- Position ist konfigurierbar (Standard: rechts unten, oberhalb Footer)
+**Loesung:** Die Labels (Block-Name + Badge) im Content-Block nur anzeigen, wenn keine Inhaltsvorschau vorhanden ist. Aktuell werden die Labels immer gerendert, danach kommt die Vorschau. Die Labels sollten nur angezeigt werden, wenn weder Betreff noch Salutation noch Closing definiert sind.
 
-### Aenderungen
-**`src/types/letterLayout.ts`:**
-- Neues Feld: `pagination?: { enabled: boolean; top: number; align: 'left' | 'center' | 'right'; fontSize?: number }`
-- Default: `{ enabled: true, top: 267.77, align: 'right', fontSize: 8 }`
+Konkret: Die Zeilen 664-667 im `LetterLayoutCanvasDesigner.tsx` so aendern, dass das Label+Badge-div nur gerendert wird, wenn kein integrierter Inhalt vorhanden ist (kein `subject.integrated`, keine `salutation.template`, kein `closing.formula`).
 
-**`src/components/letters/LetterLayoutCanvasDesigner.tsx`:**
-- Neuer Block in `DEFAULT_BLOCKS`: `{ key: 'pagination', label: 'Paginierung', color: 'bg-rose-500/20 ...', jumpTo: 'layout-settings' }`
-- Rendering: Schmaler Block mit Vorschau-Text "Seite 1 von 1"
-- `getRect` und `updateByRect` fuer Paginierung implementieren
-
-**`src/components/letters/DIN5008LetterLayout.tsx`:**
-- Paginierungsposition aus `layout.pagination` lesen statt hartcodiert
+**Datei:** `src/components/letters/LetterLayoutCanvasDesigner.tsx`
 
 ---
 
-## 3. Ruecksendezeile mit Unterstreichung
+## 3. Standardtext fuer Briefinhalt in den Einstellungen
 
-### Problem
-Die Ruecksendeadresse soll am Ende eine Unterstreichung haben, deren Laenge sich am tatsaechlichen Text orientiert.
+**Problem:** In den globalen Briefvorlagen-Einstellungen (`LetterTemplateSettings.tsx`) kann man keinen Standardtext fuer den Briefinhalt voreinstellen.
 
-### Loesung
-- Die Ruecksendezeile(n) mit einer unteren Borderlinie rendern, die nur so breit wie der Text ist (inline/fit-content)
+**Loesung:** 
+- Neue Karte "Standardtext" nach den Variablen hinzufuegen mit einem Textarea-Feld
+- Der Standardtext wird in `variable_defaults` unter dem Schluessel `default_content` gespeichert
+- Alternativ als eigenes Feld in der `letter_template_settings`-Tabelle (JSONB erlaubt das ohne Migration)
 
-### Aenderungen
-**`src/components/letters/DIN5008LetterLayout.tsx`:**
-- Im Vermerkzone-Bereich: Container mit `display: inline-block` und `border-bottom: 0.5pt solid #000` um die Ruecksendezeilen wickeln
-- So passt sich die Unterstreichung der Textlaenge an
-
-**`src/components/letters/LetterLayoutCanvasDesigner.tsx`:**
-- In der Canvas-Vorschau der Ruecksendezeile ebenfalls eine duenne Unterstreichung anzeigen
+**Datei:** `src/components/letters/LetterTemplateSettings.tsx`
 
 ---
 
-## 4. Anrede im Briefeditor anzeigen und aenderbar machen
+## 4. Kleinerer Abstand bei Abschlussformel ohne Unterschrift
 
-### Problem
-Im Briefeditor soll die automatisch generierte Anrede sichtbar sein und manuell geaendert werden koennen.
+**Problem:** In `DIN5008LetterLayout.tsx` (Zeile 593) wird bei fehlender Unterschrift ein fester Abstand von 13.5mm eingefuegt. Wenn es kein Unterschriftsbild gibt, soll der Abstand kleiner sein.
 
-### Loesung
-- Neues Feld `salutation_override` im Letter-Datensatz
-- Im Briefeditor in der Sidebar: Anrede-Feld anzeigen (vorausgefuellt mit `computedSalutation`)
-- Wenn der Nutzer den Wert aendert, wird er als Override gespeichert und an DIN5008LetterLayout weitergegeben
-- Wenn leer -> Fallback auf automatische Anrede
+**Loesung:** 
+- Wenn `signatureImagePath` vorhanden ist: 13.5mm Abstand (Platz fuer Unterschrift)
+- Wenn kein Bild und kein `signatureName`: gar kein Extra-Abstand
+- Wenn kein Bild aber `signatureName`: nur 4.5mm Abstand (eine Leerzeile)
 
-### Aenderungen
-**Datenbank-Migration:**
-```sql
-ALTER TABLE letters ADD COLUMN salutation_override TEXT;
-```
+Gleiche Logik im Canvas-Designer Vorschau anpassen (Zeile 696).
 
-**`src/components/LetterEditor.tsx`:**
-- Neues State-Feld `salutation_override` in `editedLetter`
-- Input-Feld in der Sidebar (neben Betreff): "Anrede" mit dem berechneten Wert als Placeholder und Override als Value
-- Beim Speichern: `salutation_override` mit persisten
-- An `DIN5008LetterLayout` uebergeben: `salutation={editedLetter.salutation_override || computedSalutation}`
+**Dateien:** `src/components/letters/DIN5008LetterLayout.tsx`, `src/components/letters/LetterLayoutCanvasDesigner.tsx`
 
 ---
 
-## 5. Abschlussformel und Unterschrift
+## 5. Betreff als BlockLineEditor im Tab "Betreff, Anrede und Abschluss"
 
-### Problem
-Briefe benoetigen eine Abschlussformel (z.B. "Mit freundlichen Gruessen") und einen Unterschriftsblock (Name, ggf. Bild). Die Vorlage definiert einen Standard, der im Editor ueberschrieben werden kann.
+**Problem:** Der Betreff ist aktuell nur ein Checkbox+Select fuer die Form, aber kein Zeileneditor zum Einfuegen von Variablen wie `{{betreff}}`.
 
-### Loesung
+**Loesung:** Im Tab `block-subject` eine einzelne BlockLineEditor-Zeile einbauen fuer den Betreff. Diese Zeile erlaubt es, den Betreff als Variable `{{betreff}}` einzufuegen und optional eine Form davor zu platzieren. 
 
-**In der Briefvorlage:**
-- Neuer Tab "Abschluss" oder Integration in "Betreff und Anrede" (umbenannt zu "Betreff, Anrede und Abschluss")
-- Felder: Abschlussformel (Text), Unterschrift-Name, Unterschrift-Titel, Unterschriftsbild (Upload aus Galerie)
-- Gespeichert in `layout_settings.closing`
+Technisch: Eine vereinfachte Version des BlockLineEditors oder eine einzelne Zeile mit Variable-Dropdown verwenden. Die Betreff-Zeile wird in `blockContent.subjectLine` als `BlockLineData` gespeichert (eine einzelne Zeile).
 
-**Im Briefeditor:**
-- Die Abschlussformel wird nach dem Inhalt angezeigt (2 Leerzeilen nach Text, dann Formel, dann ggf. Bild, dann Name/Titel)
-- Felder in der Sidebar: Abschlussformel und Unterschriftsname (vorausgefuellt aus Vorlage, ueberschreibbar)
-- Override wird im Letter-Datensatz gespeichert
-
-**In der Briefvorschau (DIN5008LetterLayout):**
-- Nach dem Content: 2 Leerzeilen -> Abschlussformel -> ggf. Unterschriftsbild -> Name -> Titel
-
-### Aenderungen
-
-**`src/types/letterLayout.ts`:**
-```
-closing?: {
-  formula: string;          // z.B. "Mit freundlichen Gruessen"
-  signatureName: string;    // z.B. "Max Mustermann"
-  signatureTitle?: string;  // z.B. "Referent"
-  signatureImagePath?: string; // Storage-Pfad zum Unterschriftsbild
-  fontSize?: number;
-}
-```
-
-**Datenbank-Migration:**
-```sql
-ALTER TABLE letters ADD COLUMN closing_formula TEXT;
-ALTER TABLE letters ADD COLUMN closing_name TEXT;
-```
-
-**`src/components/LetterTemplateManager.tsx`:**
-- Tab "Betreff und Anrede" umbenennen zu "Betreff, Anrede und Abschluss"
-- Neue Sektion: Abschlussformel (Textfeld), Unterschrift-Name, Unterschrift-Titel
-- Unterschriftsbild: Button zum Hochladen in den letter-assets Bucket, Pfad in `layout_settings.closing.signatureImagePath` speichern
-
-**`src/components/letters/DIN5008LetterLayout.tsx`:**
-- Nach dem Content-Block (im integrierten Modus): Abschlussformel rendern
-- Layout: 2 Leerzeilen -> Formel -> 3 Leerzeilen (Platz fuer Unterschrift) -> ggf. Unterschriftsbild -> Name -> Titel
-
-**`src/components/LetterEditor.tsx`:**
-- Neue Felder in Sidebar: "Abschlussformel" und "Unterschrift" (vorausgefuellt aus Template)
-- Overrides speichern in `closing_formula` und `closing_name`
-- An DIN5008LetterLayout uebergeben
+**Datei:** `src/components/LetterTemplateManager.tsx`
 
 ---
 
-## Technischer Ablauf
+## 6. Unterschriftsbilder hochladen und auswaehlen
 
-### Datenbank-Migration
-```sql
--- Anrede-Override und Abschlussformel fuer Briefe
-ALTER TABLE letters ADD COLUMN IF NOT EXISTS salutation_override TEXT;
-ALTER TABLE letters ADD COLUMN IF NOT EXISTS closing_formula TEXT;
-ALTER TABLE letters ADD COLUMN IF NOT EXISTS closing_name TEXT;
-```
+**Problem:** Aktuell ist das Unterschriftsbild nur ein Text-Input fuer den Storage-Pfad (Zeile 792-806 in LetterTemplateManager). Es fehlt ein Upload-Button und eine Bildauswahl.
 
-### Dateien die geaendert werden
-- `src/types/letterLayout.ts` - prefixShape, pagination, closing Typen
-- `src/components/letters/LetterLayoutCanvasDesigner.tsx` - Subject in Content integrieren, Paginierung-Block, Ruecksendeunterstreichung
-- `src/components/letters/DIN5008LetterLayout.tsx` - Betreff-Form, Ruecksendeunterstreichung, Abschlussformel+Unterschrift, Paginierung aus Settings
-- `src/components/LetterTemplateManager.tsx` - Tab-Umbenennung, Form-Dropdown, Abschluss-Felder, Unterschriftsbild-Upload
-- `src/components/LetterEditor.tsx` - Anrede-Feld, Abschlussformel-Felder, Overrides speichern
+**Loesung:**
+- Den Text-Input ersetzen durch: einen Upload-Button (File-Input) + eine Vorschau des aktuellen Bildes + einen "Entfernen"-Button
+- Upload-Logik: Bild in den `letter-assets` Bucket hochladen unter `signatures/[tenant_id]/[filename]`
+- Nach erfolgreichem Upload den Pfad in `closing.signatureImagePath` setzen
+- Die Galerie-Bilder (falls bereits geladen) als Auswahlmoeglichkeit anbieten
+- Vorschau des aktuellen Unterschriftsbilds anzeigen wenn ein Pfad gesetzt ist
 
-### Reihenfolge der Implementierung
-1. DB-Migration (salutation_override, closing_formula, closing_name)
-2. Layout-Typen erweitern (prefixShape, pagination, closing)
-3. Canvas-Designer: Subject in Content integrieren, Paginierung-Block hinzufuegen
-4. Ruecksendezeile: Unterstreichung in Canvas und DIN5008Layout
-5. DIN5008LetterLayout: Betreff-Form, Paginierung aus Settings, Abschlussformel+Unterschrift
-6. LetterTemplateManager: Tab erweitern, Form-Dropdown, Abschluss-Sektion
-7. LetterEditor: Anrede+Abschluss-Felder, Overrides, Weitergabe an Layout
+**Datei:** `src/components/LetterTemplateManager.tsx`
+
+---
+
+## Reihenfolge der Implementierung
+
+1. `LayoutSettingsEditor.tsx` - Paginierung-Sektion hinzufuegen
+2. `LetterLayoutCanvasDesigner.tsx` - Content-Block Labels Fix + Closing-Abstand
+3. `DIN5008LetterLayout.tsx` - Closing-Abstand bei fehlender Unterschrift
+4. `LetterTemplateSettings.tsx` - Standardtext-Feld hinzufuegen
+5. `LetterTemplateManager.tsx` - Betreff BlockLineEditor + Unterschriftsbild Upload/Auswahl
+
+Alle Aenderungen sind reine Frontend-Aenderungen ohne DB-Migrationen.
