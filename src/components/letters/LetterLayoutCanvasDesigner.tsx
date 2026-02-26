@@ -90,7 +90,7 @@ const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const snapMm = (val: number) => Math.round(val);
 const clamp = (val: number, min: number, max: number) => Math.min(max, Math.max(min, val));
 
-const renderCanvasElementPreview = (element: CanvasElement, left: number, top: number, scale: number) => {
+const renderCanvasElementPreview = (element: CanvasElement, left: number, top: number, scale: number, plainPreview = false) => {
   const width = (element.width || (element.type === 'image' ? 30 : 50)) * scale;
   const height = (element.height || (element.type === 'text' ? 8 : element.type === 'block' ? 18 : 10)) * scale;
   const style: React.CSSProperties = {
@@ -174,7 +174,7 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
       <div
         key={element.id}
         style={{ ...style, fontSize: `${Math.max(9, 10 * scale)}px`, lineHeight: `${1.2}` }}
-        className="border border-gray-400/70 bg-gray-100/50 px-1 py-0.5 text-gray-700 whitespace-pre-wrap"
+        className={`px-1 py-0.5 text-gray-700 whitespace-pre-wrap ${plainPreview ? '' : 'border border-gray-400/70 bg-gray-100/50'}`}
       >
         {element.blockContent || element.content}
       </div>
@@ -196,17 +196,17 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
         fontWeight: element.fontWeight || 'normal',
         fontStyle: element.fontStyle || 'normal',
         textDecoration: element.textDecoration || 'none',
-        color: isVariable ? '#b45309' : (element.color || '#111827'),
+        color: plainPreview ? (element.color || '#111827') : (isVariable ? '#b45309' : (element.color || '#111827')),
         lineHeight: `${element.textLineHeight || 1.2}`,
         textAlign: (element as any).textAlign || 'left',
         whiteSpace: 'pre-wrap',
-        backgroundColor: isVariable ? 'rgba(251, 191, 36, 0.15)' : undefined,
-        borderRadius: isVariable ? '4px' : undefined,
-        padding: isVariable ? '1px 4px' : undefined,
+        backgroundColor: !plainPreview && isVariable ? 'rgba(251, 191, 36, 0.15)' : undefined,
+        borderRadius: !plainPreview && isVariable ? '4px' : undefined,
+        padding: !plainPreview && isVariable ? '1px 4px' : undefined,
       }}
       className="text-gray-800"
     >
-      {isVariable && <span className="mr-0.5">⚡</span>}
+      {!plainPreview && isVariable && <span className="mr-0.5">⚡</span>}
       {displayText}
     </div>
   );
@@ -236,6 +236,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   const [dragging, setDragging] = useState<{ key: BlockKey; startX: number; startY: number; orig: Rect; mode: 'move' | 'resize' } | null>(null);
   const [localLayout, setLocalLayout] = useState<LetterLayoutSettings>(() => cloneLayout(layoutSettings));
   const [showRuler, setShowRuler] = useState(false);
+  const [plainPreview, setPlainPreview] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [selectedLabel, setSelectedLabel] = useState('');
   const canvasWrapRef = useRef<HTMLDivElement | null>(null);
@@ -344,7 +345,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   };
 
   const startDrag = (event: React.MouseEvent, key: BlockKey, mode: 'move' | 'resize') => {
-    if (disabledBlocks.has(key) || lockedBlocks.has(key)) return;
+    if (plainPreview || disabledBlocks.has(key) || lockedBlocks.has(key)) return;
     event.preventDefault();
     event.stopPropagation();
     canvasWrapRef.current?.focus();
@@ -431,7 +432,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     if (e.key === 'ArrowDown') dy = 1;
     if (!dx && !dy) return;
     e.preventDefault();
-    if (lockedBlocks.has(selected) || disabledBlocks.has(selected)) return;
+    if (plainPreview || lockedBlocks.has(selected) || disabledBlocks.has(selected)) return;
     const rect = getRect(selected);
     updateByRect(selected, { ...rect, x: rect.x + dx, y: rect.y + dy });
     requestAnimationFrame(() => commitToParent());
@@ -458,6 +459,10 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
             </Button>
           </div>
           <Button variant={showRuler ? 'default' : 'outline'} size="sm" onClick={() => setShowRuler((v) => !v)}>Lineal {showRuler ? 'aus' : 'ein'}</Button>
+          <Button variant={plainPreview ? 'default' : 'outline'} size="sm" onClick={() => setPlainPreview((v) => !v)}>
+            {plainPreview ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+            Vorschau ohne Rahmen
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -573,7 +578,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
             </>
 
             <div className="absolute bg-white shadow-xl relative select-none" style={{ left: RULER_SIZE, top: RULER_SIZE, width: pagePx.w, height: pagePx.h }}>
-              <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />
+              {!plainPreview && <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />}
 
 
               {blocks.map((block) => {
@@ -624,7 +629,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   <div key={line.id} style={{ fontSize: fontSizePx, lineHeight: '1.3' }} className="truncate flex items-center gap-0.5">
                     {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
                     <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
-                    {isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
+                    {!plainPreview && isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
                   </div>
                 );
               });
@@ -633,11 +638,11 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const returnAddressHeightMm = localLayout.addressField.returnAddressHeight || 17.7;
               
               return (
-                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute border text-[11px] font-medium px-1 py-0.5 ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-dashed text-gray-500' : `cursor-move ${block.color}`} ${isLocked ? 'cursor-not-allowed border-amber-500' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
+                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium px-1 py-0.5 ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
                   {block.key === 'addressField' && (hasReturnData || hasAddressData) ? (
                     <>
                       {/* Vermerkzone (return address) */}
-                      <div style={{ height: returnAddressHeightMm * SCALE, borderBottom: '1px dashed rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: 2 }}>
+                      <div style={{ height: returnAddressHeightMm * SCALE, borderBottom: plainPreview ? undefined : '1px dashed rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: 2 }}>
                         {hasReturnData ? renderLineItems(returnLineData) : <span className="text-[9px] text-muted-foreground italic">Rücksendezeile</span>}
                       </div>
                       {/* Anschriftzone (recipient address) */}
@@ -647,13 +652,13 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                     </>
                   ) : (
                     <>
-                      {!previewText && blockElements.length === 0 && !isLineModeBlock && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
+                      {!previewText && blockElements.length === 0 && !isLineModeBlock && !plainPreview && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
                       {previewText && <div className="mt-1 text-[10px] line-clamp-2">{previewText}</div>}
                       {isLineModeBlock && renderLineItems(lineData)}
-                      {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
+                      {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE, plainPreview))}
                     </>
                   )}
-                  {block.canResize && !isDisabled && !isLocked && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />}
+                  {block.canResize && !isDisabled && !isLocked && !plainPreview && <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-nwse-resize" onMouseDown={(e) => startDrag(e, block.key, 'resize')} />}
                 </div>
               );
               })}
