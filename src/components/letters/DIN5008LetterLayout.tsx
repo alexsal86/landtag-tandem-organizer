@@ -17,6 +17,7 @@ interface DIN5008LetterLayoutProps {
   debugMode?: boolean;
   showPagination?: boolean;
   layoutSettings?: any;
+  salutation?: string;
   // Canvas-based block elements (substituted)
   addressFieldElements?: HeaderElement[];
   returnAddressElements?: HeaderElement[];
@@ -44,6 +45,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   debugMode = false,
   showPagination = false,
   layoutSettings,
+  salutation,
   addressFieldElements,
   returnAddressElements,
   infoBlockElements,
@@ -514,41 +516,83 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           </div>
         </div>
 
-      {/* Subject Line - positioned at 98.46mm + 3mm from page top (same as PDF) */}
-      {(subject || (subjectElements && subjectElements.length > 0)) && (
-        <div style={{ 
-          position: 'absolute',
-          top: 'calc(98.46mm + 3mm)',
-          left: '25mm',
-          right: '20mm',
-          fontWeight: subjectElements && subjectElements.length > 0 ? 'normal' : 'bold',
-          fontSize: '11pt',
-          backgroundColor: debugMode ? 'rgba(0,255,0,0.05)' : 'transparent',
-          height: subjectElements && subjectElements.length > 0 ? '12mm' : 'auto',
-        }}>
-          {subjectElements && subjectElements.length > 0 ? (
-            renderCanvasBlockElements(subjectElements)
-          ) : (
-            subject
+      {/* Subject + Salutation + Content - integrated per DIN 5008 */}
+      {layout.subject?.integrated !== false ? (
+        /* Integrated mode: Subject → 2 blank lines → Salutation → 1 blank line → Content */
+        <div 
+          style={{ 
+            position: 'absolute',
+            top: 'calc(98.46mm + 3mm)',
+            left: '25mm',
+            right: '20mm',
+            maxHeight: '161mm',
+            fontSize: '11pt',
+            lineHeight: '1.2',
+            backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Subject line (bold) */}
+          {subject && (
+            <div style={{ 
+              fontWeight: layout.subject?.fontWeight || 'bold', 
+              fontSize: `${layout.subject?.fontSize || 11}pt`,
+              marginBottom: '0'
+            }}>
+              {subject}
+            </div>
           )}
+          {/* 2 blank lines after subject (or start here if no subject) */}
+          {subject && <div style={{ height: '9mm' }} />}
+          {/* Salutation */}
+          {salutation && (
+            <div style={{ fontSize: `${layout.salutation?.fontSize || 11}pt` }}>
+              {salutation}
+            </div>
+          )}
+          {/* 1 blank line after salutation */}
+          {salutation && <div style={{ height: '4.5mm' }} />}
+          {/* Letter content */}
+          <div dangerouslySetInnerHTML={{ __html: content }} />
         </div>
-      )}
+      ) : (
+        <>
+          {/* Legacy mode: separate subject block + content */}
+          {(subject || (subjectElements && subjectElements.length > 0)) && (
+            <div style={{ 
+              position: 'absolute',
+              top: 'calc(98.46mm + 3mm)',
+              left: '25mm',
+              right: '20mm',
+              fontWeight: subjectElements && subjectElements.length > 0 ? 'normal' : 'bold',
+              fontSize: '11pt',
+              backgroundColor: debugMode ? 'rgba(0,255,0,0.05)' : 'transparent',
+              height: subjectElements && subjectElements.length > 0 ? '12mm' : 'auto',
+            }}>
+              {subjectElements && subjectElements.length > 0 ? (
+                renderCanvasBlockElements(subjectElements)
+              ) : (
+                subject
+              )}
+            </div>
+          )}
 
-      {/* Letter Content - starts after subject line (same as PDF) */}
-      <div 
-        style={{ 
-          position: 'absolute',
-          top: subject ? 'calc(98.46mm + 11mm)' : 'calc(98.46mm + 3mm)', // Start below subject or below content line
-          left: '25mm',
-          right: '20mm',
-          maxHeight: '161mm', // Until footer starts at 272mm
-          fontSize: '11pt',
-          lineHeight: '1.2',
-          backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
-          overflow: 'hidden'
-        }}
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
+          <div 
+            style={{ 
+              position: 'absolute',
+              top: subject ? 'calc(98.46mm + 11mm)' : 'calc(98.46mm + 3mm)',
+              left: '25mm',
+              right: '20mm',
+              maxHeight: '161mm',
+              fontSize: '11pt',
+              lineHeight: '1.2',
+              backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
+              overflow: 'hidden'
+            }}
+            dangerouslySetInnerHTML={{ __html: content }}
+          />
+        </>
+      )}
 
       {/* Attachments - positioned after content */}
       {attachments && attachments.length > 0 && (

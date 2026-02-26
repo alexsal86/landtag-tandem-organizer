@@ -1134,6 +1134,34 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     return { canvasBlocks, lineBlocks };
   }, [currentTemplate, editedLetter, senderInfos, contacts, informationBlocks, attachments]);
 
+  // Compute salutation from template settings and variable map
+  const computedSalutation = React.useMemo(() => {
+    const salutationTemplate = (currentTemplate as any)?.layout_settings?.salutation?.template || 'Sehr geehrte Damen und Herren,';
+    
+    if (salutationTemplate === '{{anrede}}') {
+      // Auto-generate based on recipient
+      const contact = contacts.find(c => c.name === editedLetter.recipient_name);
+      const recipientData = contact ? {
+        name: contact.name,
+        gender: (contact as any).gender,
+        last_name: (contact as any).last_name || contact.name?.split(' ').pop(),
+      } : editedLetter.recipient_name ? {
+        name: editedLetter.recipient_name,
+      } : null;
+
+      const varMap = buildVariableMap(
+        { subject: editedLetter.subject },
+        null,
+        recipientData,
+        null,
+        null,
+      );
+      return varMap['{{anrede}}'] || 'Sehr geehrte Damen und Herren,';
+    }
+    
+    return salutationTemplate;
+  }, [currentTemplate, editedLetter.recipient_name, contacts]);
+
   if (!isOpen) return null;
 
   return (
@@ -1757,6 +1785,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     attachments={attachments}
                     showPagination={showPagination}
                     debugMode={showLayoutDebug}
+                    salutation={computedSalutation}
+                    layoutSettings={(currentTemplate as any)?.layout_settings}
                     addressFieldElements={substitutedBlocks.canvasBlocks.addressField}
                     returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
                     infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock}

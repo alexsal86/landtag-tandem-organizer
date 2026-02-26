@@ -34,6 +34,13 @@ export interface LetterLayoutSettings {
   subject: {
     top: number;
     marginBottom: number;
+    fontSize?: number;
+    fontWeight?: string;
+    integrated?: boolean;
+  };
+  salutation?: {
+    template: string;
+    fontSize?: number;
   };
   content: {
     top: number;
@@ -87,7 +94,14 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
   },
   subject: {
     top: 101.46,
-    marginBottom: 8
+    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: 'bold',
+    integrated: true
+  },
+  salutation: {
+    template: 'Sehr geehrte Damen und Herren,',
+    fontSize: 11
   },
   content: {
     top: 109.46,

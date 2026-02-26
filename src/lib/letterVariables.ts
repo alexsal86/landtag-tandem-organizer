@@ -27,6 +27,9 @@ interface RecipientData {
   postal_code?: string;
   city?: string;
   country?: string;
+  gender?: 'm' | 'f' | 'd' | string;
+  title?: string;
+  last_name?: string;
 }
 
 interface InfoBlockData {
@@ -55,12 +58,25 @@ export function buildVariableMap(
     ? format(new Date(letter.letterDate), 'd. MMMM yyyy', { locale: de })
     : format(new Date(), 'd. MMMM yyyy', { locale: de });
 
+  // Build salutation based on recipient gender
+  let salutation = 'Sehr geehrte Damen und Herren,';
+  if (recipient) {
+    const lastName = recipient.last_name || recipient.name?.split(' ').pop() || '';
+    if (recipient.gender === 'm') {
+      salutation = `Sehr geehrter Herr${recipient.title ? ` ${recipient.title}` : ''} ${lastName},`;
+    } else if (recipient.gender === 'f') {
+      salutation = `Sehr geehrte Frau${recipient.title ? ` ${recipient.title}` : ''} ${lastName},`;
+    }
+  }
+
   const map: Record<string, string> = {
     '{{betreff}}': letter.subject || '',
     '{{datum}}': dateStr,
     '{{aktenzeichen}}': letter.referenceNumber || infoBlock?.reference || '',
     '{{bearbeiter}}': infoBlock?.handler || sender?.name || '',
     '{{unser_zeichen}}': infoBlock?.our_reference || '',
+    '{{anrede}}': salutation,
+    '{{anrede_name}}': recipient ? (recipient.gender === 'm' ? 'Herr' : recipient.gender === 'f' ? 'Frau' : '') + ' ' + (recipient.last_name || recipient.name?.split(' ').pop() || '') : '',
   };
 
   // Sender
