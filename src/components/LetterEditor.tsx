@@ -943,6 +943,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           information_block_ids: editedLetter.information_block_ids,
           letter_date: editedLetter.letter_date,
           show_pagination: showPagination,
+          salutation_override: (editedLetter as any).salutation_override || null,
+          closing_formula: (editedLetter as any).closing_formula || null,
+          closing_name: (editedLetter as any).closing_name || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', letter.id);
@@ -1431,6 +1434,51 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                             />
                           </div>
 
+                          {/* Anrede (editable override) */}
+                          <div>
+                            <Label htmlFor="salutation-override">Anrede</Label>
+                            <Input
+                              id="salutation-override"
+                              value={(editedLetter as any).salutation_override || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setEditedLetter(prev => ({ ...prev, salutation_override: value } as any));
+                              }}
+                              disabled={!canEdit}
+                              placeholder={computedSalutation}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">Leer lassen für automatische Anrede</p>
+                          </div>
+
+                          {/* Abschlussformel (editable override) */}
+                          <div>
+                            <Label htmlFor="closing-formula">Abschlussformel</Label>
+                            <Input
+                              id="closing-formula"
+                              value={(editedLetter as any).closing_formula || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setEditedLetter(prev => ({ ...prev, closing_formula: value } as any));
+                              }}
+                              disabled={!canEdit}
+                              placeholder={(currentTemplate as any)?.layout_settings?.closing?.formula || 'Mit freundlichen Grüßen'}
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor="closing-name">Unterschrift</Label>
+                            <Input
+                              id="closing-name"
+                              value={(editedLetter as any).closing_name || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setEditedLetter(prev => ({ ...prev, closing_name: value } as any));
+                              }}
+                              disabled={!canEdit}
+                              placeholder={(currentTemplate as any)?.layout_settings?.closing?.signatureName || 'Name'}
+                            />
+                          </div>
+
                           <div>
                             <Label htmlFor="reference-number">Aktenzeichen</Label>
                             <Input
@@ -1785,8 +1833,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     attachments={attachments}
                     showPagination={showPagination}
                     debugMode={showLayoutDebug}
-                    salutation={computedSalutation}
-                    layoutSettings={(currentTemplate as any)?.layout_settings}
+                    salutation={(editedLetter as any).salutation_override || computedSalutation}
+                    layoutSettings={(() => {
+                      const ls = (currentTemplate as any)?.layout_settings;
+                      if (!ls) return undefined;
+                      // Apply closing overrides from letter
+                      const closingFormula = (editedLetter as any).closing_formula || ls.closing?.formula;
+                      const closingName = (editedLetter as any).closing_name || ls.closing?.signatureName;
+                      if (closingFormula || closingName) {
+                        return { ...ls, closing: { ...(ls.closing || {}), formula: closingFormula || '', signatureName: closingName || '' } };
+                      }
+                      return ls;
+                    })()}
                     addressFieldElements={substitutedBlocks.canvasBlocks.addressField}
                     returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
                     infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock}

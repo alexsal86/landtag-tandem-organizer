@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
 import type { HeaderElement, TextElement } from '@/components/canvas-engine/types';
 import { type BlockLine, type BlockLineData, isLineMode } from '@/components/letters/BlockLineEditor';
 
@@ -451,13 +452,16 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             {/* Vermerkzone (return address) */}
             <div style={{ height: `${layout.addressField?.returnAddressHeight || 17.7}mm`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
               {returnAddressLines && returnAddressLines.length > 0 ? (
-                renderBlockLines(returnAddressLines)
+                <div style={{ display: 'inline-block', borderBottom: '0.5pt solid #000', paddingBottom: '0.5mm' }}>
+                  {renderBlockLines(returnAddressLines)}
+                </div>
               ) : returnAddressElements && returnAddressElements.length > 0 ? (
                 <div style={{ position: 'relative', height: '100%' }}>
                   {renderCanvasBlockElements(returnAddressElements)}
                 </div>
               ) : senderInfo?.return_address_line ? (
                 <div style={{
+                  display: 'inline-block',
                   fontSize: '7pt',
                   borderBottom: '0.5pt solid #000',
                   paddingBottom: '1mm',
@@ -532,13 +536,23 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             overflow: 'hidden'
           }}
         >
-          {/* Subject line (bold) */}
+          {/* Subject line (bold) with optional prefix shape */}
           {subject && (
             <div style={{ 
               fontWeight: layout.subject?.fontWeight || 'bold', 
               fontSize: `${layout.subject?.fontSize || 11}pt`,
-              marginBottom: '0'
+              marginBottom: '0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2mm'
             }}>
+              {layout.subject?.prefixShape && layout.subject.prefixShape !== 'none' && (
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {layout.subject.prefixShape === 'line' && <span style={{ display: 'inline-block', width: '5mm', height: '0.5mm', backgroundColor: '#000' }} />}
+                  {layout.subject.prefixShape === 'circle' && <span style={{ display: 'inline-block', width: '3mm', height: '3mm', borderRadius: '50%', border: '0.3mm solid #000' }} />}
+                  {layout.subject.prefixShape === 'rectangle' && <span style={{ display: 'inline-block', width: '3mm', height: '3mm', border: '0.3mm solid #000' }} />}
+                </span>
+              )}
               {subject}
             </div>
           )}
@@ -554,6 +568,38 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {salutation && <div style={{ height: '4.5mm' }} />}
           {/* Letter content */}
           <div dangerouslySetInnerHTML={{ __html: content }} />
+          {/* Closing formula + signature */}
+          {layout.closing?.formula && (
+            <>
+              <div style={{ height: '9mm' }} />
+              <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt` }}>
+                {layout.closing.formula}
+              </div>
+              {layout.closing.signatureImagePath && (
+                <div style={{ marginTop: '2mm', marginBottom: '2mm' }}>
+                  <img 
+                    src={(() => {
+                      const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(layout.closing.signatureImagePath!);
+                      return publicUrl;
+                    })()}
+                    alt="Unterschrift"
+                    style={{ maxHeight: '15mm', maxWidth: '50mm', objectFit: 'contain' }}
+                  />
+                </div>
+              )}
+              {!layout.closing.signatureImagePath && <div style={{ height: '13.5mm' }} />}
+              {layout.closing.signatureName && (
+                <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt` }}>
+                  {layout.closing.signatureName}
+                </div>
+              )}
+              {layout.closing.signatureTitle && (
+                <div style={{ fontSize: `${(layout.closing?.fontSize || 11) - 1}pt`, color: '#555' }}>
+                  {layout.closing.signatureTitle}
+                </div>
+              )}
+            </>
+          )}
         </div>
       ) : (
         <>
@@ -642,9 +688,11 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       {showPagination && (
         <div style={{
           position: 'absolute',
-          top: '267.77mm', // 297mm - 25mm bottom margin - 4.23mm
-          right: '20mm',
-          fontSize: '8pt',
+          top: `${layout.pagination?.top || 267.77}mm`,
+          left: layout.pagination?.align === 'left' ? '25mm' : undefined,
+          right: layout.pagination?.align !== 'left' ? '20mm' : undefined,
+          textAlign: layout.pagination?.align || 'right',
+          fontSize: `${layout.pagination?.fontSize || 8}pt`,
           color: '#666',
           fontFamily: 'Arial, sans-serif'
         }}>
