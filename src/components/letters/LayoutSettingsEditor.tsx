@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RotateCcw, ChevronDown, ChevronRight } from 'lucide-react';
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -23,11 +25,14 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
     onLayoutChange(DEFAULT_DIN5008_LAYOUT);
   };
 
-  const updateSetting = (path: string[], value: number) => {
+  const updateSetting = (path: string[], value: number | string | boolean) => {
     const newSettings = JSON.parse(JSON.stringify(layoutSettings));
     let current: any = newSettings;
     
     for (let i = 0; i < path.length - 1; i++) {
+      if (!current[path[i]]) {
+        current[path[i]] = {};
+      }
       current = current[path[i]];
     }
     current[path[path.length - 1]] = value;
@@ -155,6 +160,42 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
           <div>
             <Label htmlFor="attachments-top">Von oben (mm)</Label>
             <Input id="attachments-top" type="number" value={layoutSettings.attachments.top} onChange={(e) => updateSetting(['attachments', 'top'], parseFloat(e.target.value))} step="0.1" />
+          </div>
+        </div>
+
+        {/* Paginierung */}
+        <div className="space-y-4 p-4 border rounded-lg">
+          <h4 className="font-bold">Paginierung</h4>
+          <div className="flex items-center gap-2 mb-2">
+            <Checkbox
+              id="pagination-enabled"
+              checked={layoutSettings.pagination?.enabled ?? true}
+              onCheckedChange={(checked) => updateSetting(['pagination', 'enabled'], !!checked)}
+            />
+            <Label htmlFor="pagination-enabled" className="cursor-pointer">Seitenzahlen anzeigen</Label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="pagination-top">Von oben (mm)</Label>
+              <Input id="pagination-top" type="number" value={layoutSettings.pagination?.top ?? 267.77} onChange={(e) => updateSetting(['pagination', 'top'], parseFloat(e.target.value))} step="0.1" />
+            </div>
+            <div>
+              <Label htmlFor="pagination-align">Ausrichtung</Label>
+              <Select value={layoutSettings.pagination?.align || 'right'} onValueChange={(value) => updateSetting(['pagination', 'align'], value)}>
+                <SelectTrigger id="pagination-align">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="left">Links</SelectItem>
+                  <SelectItem value="center">Mittig</SelectItem>
+                  <SelectItem value="right">Rechts</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="pagination-fontSize">Schriftgröße (pt)</Label>
+              <Input id="pagination-fontSize" type="number" value={layoutSettings.pagination?.fontSize ?? 8} onChange={(e) => updateSetting(['pagination', 'fontSize'], parseFloat(e.target.value))} step="0.5" />
+            </div>
           </div>
         </div>
       </div>

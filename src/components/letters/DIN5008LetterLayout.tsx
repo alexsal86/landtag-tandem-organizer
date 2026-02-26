@@ -590,7 +590,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                   />
                 </div>
               )}
-              {!layout.closing.signatureImagePath && <div style={{ height: '13.5mm' }} />}
+              {!layout.closing.signatureImagePath && layout.closing.signatureName && <div style={{ height: '4.5mm' }} />}
+              {!layout.closing.signatureImagePath && !layout.closing.signatureName && null}
               {layout.closing.signatureName && (
                 <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt` }}>
                   {layout.closing.signatureName}
