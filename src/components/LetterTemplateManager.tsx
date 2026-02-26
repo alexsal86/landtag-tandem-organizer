@@ -703,6 +703,65 @@ const LetterTemplateManager: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Subject line with variable insertion */}
+            <div className="mb-3">
+              <Label className="text-xs mb-1 block">Betreffzeile</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={(() => {
+                    const subjectLine = formData.layout_settings.blockContent?.subjectLine;
+                    if (subjectLine && Array.isArray(subjectLine) && subjectLine.length > 0) {
+                      return (subjectLine[0] as any).content || '{{betreff}}';
+                    }
+                    return '{{betreff}}';
+                  })()}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      layout_settings: {
+                        ...prev.layout_settings,
+                        blockContent: {
+                          ...(prev.layout_settings.blockContent || {}),
+                          subjectLine: [{ id: 'subject-1', type: 'text', content: e.target.value }]
+                        }
+                      }
+                    }));
+                  }}
+                  placeholder="z.B. {{betreff}}"
+                  className="font-mono text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const currentVal = (() => {
+                      const subjectLine = formData.layout_settings.blockContent?.subjectLine;
+                      if (subjectLine && Array.isArray(subjectLine) && subjectLine.length > 0) {
+                        return (subjectLine[0] as any).content || '';
+                      }
+                      return '';
+                    })();
+                    const newVal = currentVal ? currentVal + ' {{betreff}}' : '{{betreff}}';
+                    setFormData(prev => ({
+                      ...prev,
+                      layout_settings: {
+                        ...prev.layout_settings,
+                        blockContent: {
+                          ...(prev.layout_settings.blockContent || {}),
+                          subjectLine: [{ id: 'subject-1', type: 'text', content: newVal }]
+                        }
+                      }
+                    }));
+                  }}
+                  className="whitespace-nowrap"
+                >
+                  {'{{betreff}}'} einfügen
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Verwenden Sie {'{{betreff}}'} als Variable für den dynamischen Betreff des Briefes.</p>
+            </div>
           </div>
 
           <div>
@@ -789,21 +848,71 @@ const LetterTemplateManager: React.FC = () => {
                 />
               </div>
               <div>
-                <Label>Unterschriftsbild (Storage-Pfad)</Label>
-                <Input
-                  value={formData.layout_settings.closing?.signatureImagePath || ''}
-                  onChange={(e) => {
-                    setFormData(prev => ({
-                      ...prev,
-                      layout_settings: {
-                        ...prev.layout_settings,
-                        closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureImagePath: e.target.value }
-                      }
-                    }));
-                  }}
-                  placeholder="z.B. signatures/unterschrift.png"
-                />
-                <p className="text-xs text-muted-foreground mt-1">Pfad zum Bild im letter-assets Bucket</p>
+                <Label>Unterschriftsbild</Label>
+                {formData.layout_settings.closing?.signatureImagePath && (
+                  <div className="mb-2 p-2 border rounded-lg bg-muted/30">
+                    <img
+                      src={(() => {
+                        const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(formData.layout_settings.closing.signatureImagePath!);
+                        return publicUrl;
+                      })()}
+                      alt="Unterschrift"
+                      className="max-h-16 max-w-[200px] object-contain"
+                    />
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = async (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (!file || !currentTenant) return;
+                        const filePath = `signatures/${currentTenant.id}/${Date.now()}-${file.name}`;
+                        const { error } = await supabase.storage.from('letter-assets').upload(filePath, file);
+                        if (error) {
+                          toast({ title: 'Upload fehlgeschlagen', description: error.message, variant: 'destructive' });
+                          return;
+                        }
+                        setFormData(prev => ({
+                          ...prev,
+                          layout_settings: {
+                            ...prev.layout_settings,
+                            closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureImagePath: filePath }
+                          }
+                        }));
+                        toast({ title: 'Unterschriftsbild hochgeladen' });
+                      };
+                      input.click();
+                    }}
+                  >
+                    Bild hochladen
+                  </Button>
+                  {formData.layout_settings.closing?.signatureImagePath && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          layout_settings: {
+                            ...prev.layout_settings,
+                            closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureImagePath: '' }
+                          }
+                        }));
+                      }}
+                    >
+                      Entfernen
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Laden Sie ein Bild Ihrer Unterschrift hoch (PNG, JPG).</p>
               </div>
             </div>
           </div>

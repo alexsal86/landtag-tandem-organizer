@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Save, RotateCcw } from 'lucide-react';
@@ -258,6 +259,24 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* Standardtext */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Standardtext für Briefinhalt</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Dieser Text wird als Standardinhalt für neue Briefe vorausgefüllt.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={variableDefaults['default_content'] || ''}
+            onChange={(e) => setVariableDefaults(prev => ({ ...prev, default_content: e.target.value }))}
+            placeholder="Standardtext für neue Briefe eingeben..."
+            rows={6}
+          />
         </CardContent>
       </Card>
 

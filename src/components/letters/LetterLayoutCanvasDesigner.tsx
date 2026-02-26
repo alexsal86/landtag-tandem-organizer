@@ -661,10 +661,12 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   ) : block.key === 'content' ? (
                     <>
                       {/* Betreff + Anrede preview inside content block */}
-                      <div className="flex items-center gap-1">
-                        <span className="text-[9px] text-muted-foreground">{block.label}</span>
-                        <Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge>
-                      </div>
+                      {!(localLayout.subject?.integrated || localLayout.salutation?.template || localLayout.closing?.formula) && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px] text-muted-foreground">{block.label}</span>
+                          <Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge>
+                        </div>
+                      )}
                       <div style={{ marginTop: 2 * SCALE, fontSize: Math.max(8, 10 * SCALE) }}>
                         {localLayout.subject?.prefixShape && localLayout.subject.prefixShape !== 'none' && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: 3, verticalAlign: 'middle' }}>
@@ -693,7 +695,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                           </div>
                           {localLayout.closing.signatureName && (
                             <>
-                              <div style={{ height: (localLayout.content?.lineHeight || 4.5) * 3 * SCALE }} />
+                              <div style={{ height: (localLayout.content?.lineHeight || 4.5) * (localLayout.closing.signatureImagePath ? 3 : 1) * SCALE }} />
                               <div className="text-gray-600" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
                                 {localLayout.closing.signatureName}
                               </div>
