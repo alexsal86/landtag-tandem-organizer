@@ -9,7 +9,7 @@ import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayo
 import { CSS_PX_PER_MM } from '@/lib/units';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 
-type BlockKey = 'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments';
+type BlockKey = 'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments' | 'pagination';
 type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general' | 'block-address' | 'block-info' | 'block-subject' | 'block-content' | 'block-attachments';
 
 interface Rect {
@@ -66,9 +66,9 @@ const DEFAULT_BLOCKS: BlockConfig[] = [
   { key: 'header', label: 'Header', color: 'bg-cyan-500/20 border-cyan-600 text-cyan-900', jumpTo: 'header-designer' },
   { key: 'addressField', label: 'Adressfeld', color: 'bg-blue-500/20 border-blue-600 text-blue-900', canMoveX: true, canResize: true, jumpTo: 'block-address' },
   { key: 'infoBlock', label: 'Info-Block', color: 'bg-purple-500/20 border-purple-600 text-purple-900', canMoveX: true, canResize: true, jumpTo: 'block-info' },
-  { key: 'subject', label: 'Betreffbereich', color: 'bg-green-500/20 border-green-600 text-green-900', jumpTo: 'block-subject' },
   { key: 'content', label: 'Inhaltsbereich', color: 'bg-orange-500/20 border-orange-600 text-orange-900', canResize: true, jumpTo: 'layout-settings' },
   { key: 'attachments', label: 'Anlagen', color: 'bg-amber-500/20 border-amber-600 text-amber-900', jumpTo: 'block-attachments' },
+  { key: 'pagination', label: 'Paginierung', color: 'bg-rose-500/20 border-rose-600 text-rose-900', jumpTo: 'layout-settings' },
   { key: 'footer', label: 'Footer', color: 'bg-pink-500/20 border-pink-600 text-pink-900', jumpTo: 'footer-designer' },
 ];
 
@@ -222,6 +222,8 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
   content: { ...layout.content },
   footer: { ...layout.footer, height: layout.footer?.height ?? DEFAULT_DIN5008_LAYOUT.footer.height },
   attachments: { ...layout.attachments },
+  pagination: layout.pagination ? { ...layout.pagination } : { enabled: true, top: 267.77, align: 'right', fontSize: 8 },
+  closing: layout.closing ? { ...layout.closing } : undefined,
   blockContent: { ...(layout.blockContent || {}) },
   disabledBlocks: [...(layout.disabledBlocks || [])],
   lockedBlocks: [...(layout.lockedBlocks || [])],
@@ -308,6 +310,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   const blockContent = localLayout.blockContent || {};
 
   const getRect = (key: BlockKey): Rect => {
+    const pag = localLayout.pagination || { enabled: true, top: 267.77, align: 'right', fontSize: 8 };
     switch (key) {
       case 'header':
         return { x: 0, y: 0, w: localLayout.pageWidth, h: localLayout.header.height };
@@ -323,6 +326,8 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
         return { x: localLayout.margins.left, y: localLayout.footer.top, w: contentWidth, h: localLayout.footer.height };
       case 'attachments':
         return { x: localLayout.margins.left, y: localLayout.attachments.top, w: contentWidth, h: 8 };
+      case 'pagination':
+        return { x: localLayout.margins.left, y: pag.top, w: contentWidth, h: 5 };
     }
   };
 
@@ -340,6 +345,9 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
         next.content.maxHeight = clamp(snapMm(rect.h), 20, 500);
       } else if (key === 'footer') Object.assign(next.footer, { top: snapMm(rect.y), height: clamp(snapMm(rect.h), 8, 80) });
       else if (key === 'attachments') next.attachments.top = snapMm(rect.y);
+      else if (key === 'pagination') {
+        next.pagination = { ...(next.pagination || { enabled: true, align: 'right', fontSize: 8, top: 267.77 }), top: snapMm(rect.y) };
+      }
       return next;
     });
   };
@@ -650,6 +658,62 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                         {hasAddressData ? renderLineItems(lineData) : <span className="text-[9px] text-muted-foreground italic">Anschrift</span>}
                       </div>
                     </>
+                  ) : block.key === 'content' ? (
+                    <>
+                      {/* Betreff + Anrede preview inside content block */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[9px] text-muted-foreground">{block.label}</span>
+                        <Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge>
+                      </div>
+                      <div style={{ marginTop: 2 * SCALE, fontSize: Math.max(8, 10 * SCALE) }}>
+                        {localLayout.subject?.prefixShape && localLayout.subject.prefixShape !== 'none' && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: 3, verticalAlign: 'middle' }}>
+                            {localLayout.subject.prefixShape === 'line' && <span style={{ display: 'inline-block', width: 5 * SCALE, height: 0.5 * SCALE, backgroundColor: '#333', verticalAlign: 'middle' }} />}
+                            {localLayout.subject.prefixShape === 'circle' && <span style={{ display: 'inline-block', width: 3 * SCALE, height: 3 * SCALE, borderRadius: '50%', border: '1px solid #333', verticalAlign: 'middle' }} />}
+                            {localLayout.subject.prefixShape === 'rectangle' && <span style={{ display: 'inline-block', width: 3 * SCALE, height: 3 * SCALE, border: '1px solid #333', verticalAlign: 'middle' }} />}
+                            {localLayout.subject.prefixShape === 'sunflower' && <SunflowerSVG width={3.5 * SCALE} height={3.5 * SCALE} />}
+                            {localLayout.subject.prefixShape === 'lion' && <LionSVG width={5 * SCALE} height={2.5 * SCALE} />}
+                            {localLayout.subject.prefixShape === 'wappen' && <img src="/assets/wappen-bw.svg" alt="Wappen" style={{ width: 3.5 * SCALE, height: 3.5 * SCALE, objectFit: 'contain' }} />}
+                          </span>
+                        )}
+                        <span className="font-bold text-gray-700" style={{ fontSize: `${(localLayout.subject?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>{'{{betreff}}'}</span>
+                      </div>
+                      <div style={{ height: (localLayout.subject?.marginBottom || 9) * SCALE }} />
+                      <div className="text-gray-500 italic" style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
+                        {localLayout.salutation?.template || 'Sehr geehrte Damen und Herren,'}
+                      </div>
+                      <div style={{ height: (localLayout.content?.lineHeight || 4.5) * SCALE }} />
+                      <div className="text-gray-400 italic" style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>Inhalt...</div>
+                      {/* Abschlussformel preview */}
+                      {localLayout.closing?.formula && (
+                        <>
+                          <div style={{ height: (localLayout.content?.lineHeight || 4.5) * 2 * SCALE }} />
+                          <div className="text-gray-500 italic" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
+                            {localLayout.closing.formula}
+                          </div>
+                          {localLayout.closing.signatureName && (
+                            <>
+                              <div style={{ height: (localLayout.content?.lineHeight || 4.5) * 3 * SCALE }} />
+                              <div className="text-gray-600" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
+                                {localLayout.closing.signatureName}
+                              </div>
+                              {localLayout.closing.signatureTitle && (
+                                <div className="text-gray-400" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE * 0.9}px` }}>
+                                  {localLayout.closing.signatureTitle}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
+                      {isLineModeBlock && renderLineItems(lineData)}
+                      {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
+                    </>
+                  ) : block.key === 'pagination' ? (
+                    <div className="flex items-center justify-between h-full">
+                      <span className="text-[9px]">{block.label}</span>
+                      <span className="text-[9px] text-gray-500 italic" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
+                    </div>
                   ) : (
                     <>
                       {!previewText && blockElements.length === 0 && !isLineModeBlock && !plainPreview && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}

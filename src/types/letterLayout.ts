@@ -37,6 +37,7 @@ export interface LetterLayoutSettings {
     fontSize?: number;
     fontWeight?: string;
     integrated?: boolean;
+    prefixShape?: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen';
   };
   salutation?: {
     template: string;
@@ -53,6 +54,19 @@ export interface LetterLayoutSettings {
   };
   attachments: {
     top: number;
+  };
+  pagination?: {
+    enabled: boolean;
+    top: number;
+    align: 'left' | 'center' | 'right';
+    fontSize?: number;
+  };
+  closing?: {
+    formula: string;
+    signatureName: string;
+    signatureTitle?: string;
+    signatureImagePath?: string;
+    fontSize?: number;
   };
   blockContent?: Record<string, Array<{ id: string; type?: string; content?: string; x?: number; y?: number; width?: number; height?: number }>>;
   disabledBlocks?: Array<'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
@@ -114,5 +128,18 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
   },
   attachments: {
     top: 230
+  },
+  pagination: {
+    enabled: true,
+    top: 267.77,
+    align: 'right',
+    fontSize: 8
+  },
+  closing: {
+    formula: 'Mit freundlichen Grüßen',
+    signatureName: '',
+    signatureTitle: '',
+    signatureImagePath: '',
+    fontSize: 11
   }
 };

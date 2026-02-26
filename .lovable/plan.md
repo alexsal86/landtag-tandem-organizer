@@ -1,128 +1,193 @@
 
-
-# Plan: Briefvorlagen-Einstellungen, Betreff-Integration und Vorlagen-Anbindung
+# Plan: Canvas-Integration, Paginierung, Ruecksendeunterstreichung, Anrede im Editor und Abschlussformel
 
 ## Uebersicht
 
-Drei zusammenhaengende Aenderungen am Brief-System:
-1. Einstellungsseite fuer Briefvorlagen (Variablen, DIN 5008 Werte)
-2. Betreff in den Inhaltsbereich integrieren (mit Anrede-Logik)
-3. Briefvorlagen in der Briefvorschau (Akten/Dokumente/Briefe) nutzen
+Fuenf zusammenhaengende Aenderungen am Brief-System:
+1. Betreff+Anrede im Canvas-Tab anzeigen (mit optionaler Form vor dem Betreff)
+2. Paginierung im Canvas-Tab und Layout anzeigen
+3. Ruecksendezeile mit Unterstreichung
+4. Anrede im Briefeditor anzeigen und aenderbar machen
+5. Abschlussformel und Unterschrift (Vorlage mit Ueberschreibung + Bild)
 
 ---
 
-## 1. Einstellungsseite fuer Briefvorlagen
+## 1. Betreff und Anrede im Canvas-Tab
 
-**Ziel:** Button "Einstellungen" auf der Briefvorlagen-Seite, der zu einer Konfigurationsseite fuehrt.
+### Problem
+Im Canvas-Designer sind "Betreffbereich" und "Inhaltsbereich" getrennte Bloecke. Die Logik soll sein: Betreff (optional mit vorangestellter Form/Symbol) wird im Inhaltsbereich integriert angezeigt.
 
-**Neue Datei:** `src/components/letters/LetterTemplateSettings.tsx`
+### Loesung
+- Den separaten "Betreffbereich"-Block im Canvas entfernen und stattdessen Betreff + Anrede als feste Vorschau oben im "Inhaltsbereich"-Block rendern
+- Im Block-Editor (Tab "Betreff und Anrede") eine Option fuer eine kleine Form (z.B. Linie, Kreis, Quadrat, oder kein Symbol) hinzufuegen, die vor dem Betreff-Text erscheint
+- Darstellung im Canvas:
+  - [optionale Form] **Betreff** (fett)
+  - 2 Leerzeilen (9mm)
+  - Anrede
+  - 1 Leerzeile (4.5mm)
+  - Inhalt...
 
-Inhalte der Seite:
-- **Variablen-Uebersicht:** Tabelle aller verfuegbaren Variablen (z.B. `{{bearbeiter}}`, `{{datum}}`, `{{telefon}}`) mit ihren aktuellen Standardwerten. Werte koennen bearbeitet werden und werden in den `sender_information` bzw. als tenant-spezifische Einstellungen gespeichert.
-- **DIN 5008 Masse:** Editierbare Felder fuer alle Layout-Werte aus `DEFAULT_DIN5008_LAYOUT` (Seitenraender, Header-Hoehe, Adressfeld-Position/Masse, Info-Block-Position/Masse, Betreff-Position, Inhalt-Bereich, Footer-Position/Hoehe). Aenderungen wirken als Basis-Defaults fuer neue Templates.
+### Aenderungen
+**`src/components/letters/LetterLayoutCanvasDesigner.tsx`:**
+- `DEFAULT_BLOCKS`: "subject" Block entfernen (oder als Teil von "content" integrieren)
+- Im Rendering des "content"-Blocks: Betreff-Variable, Anrede-Variable und Abstaende als Vorschau-Zeilen oben anzeigen
+- Neues Layout-Setting `subject.prefixShape` (none | line | circle | rectangle) im `getRect`/Rendering beruecksichtigen
 
-**Aenderungen in `LetterTemplateManager.tsx`:**
-- Settings-Icon-Button neben "Neues Template" einfuegen
-- State `showSettings` steuert Anzeige der Settings-Komponente (ersetzt Template-Liste)
+**`src/types/letterLayout.ts`:**
+- `subject` Block erweitern: `prefixShape?: 'none' | 'line' | 'circle' | 'rectangle'`
 
-**Datenbank:** Neue Tabelle `letter_template_settings` mit Spalten:
-- `id`, `tenant_id`, `variable_defaults` (JSONB), `din5008_defaults` (JSONB), `created_at`, `updated_at`
+**`src/components/LetterTemplateManager.tsx`:**
+- Im Tab "Betreff und Anrede": Dropdown fuer Form-Auswahl hinzufuegen (Keine Form, Linie, Kreis, Rechteck)
 
----
-
-## 2. Betreff in den Inhaltsbereich integrieren
-
-**Ziel:** Betreff ist laut DIN 5008 der oberste Punkt im Inhaltsbereich, gefolgt von 2 Leerzeilen, dann Anrede, dann 1 Leerzeile, dann Brieftext.
-
-### Aenderungen am Layout-Typ (`src/types/letterLayout.ts`):
-- `subject`-Block erhaelt neue Felder: `fontSize`, `fontWeight`, `integrated: boolean` (ob in Content integriert)
-- Neuer Block `salutation` wird hinzugefuegt: `{ template: string, fontSize: number }` mit Default `"Sehr geehrte Damen und Herren,"`
-
-### Neue Variablen fuer Anrede (`src/lib/letterVariables.ts`):
-- `{{anrede}}` - automatisch generiert basierend auf Empfaenger-Geschlecht/Titel
-- `{{anrede_name}}` - "Herr/Frau Nachname"
-- Logik: Wenn Kontakt maennlich -> "Sehr geehrter Herr [Name],", weiblich -> "Sehr geehrte Frau [Name],", unbekannt -> "Sehr geehrte Damen und Herren,"
-
-### Aenderungen in `DIN5008LetterLayout.tsx`:
-- Betreff wird als erster Block im Content-Bereich gerendert (Position 98.46mm)
-- Danach 2 Leerzeilen (ca. 9mm bei 11pt)
-- Dann Anrede-Zeile aus Template-Variable
-- Dann 1 Leerzeile (ca. 4.5mm)
-- Dann der eigentliche Briefinhalt
-- Der separate Subject-Block bleibt als Fallback fuer Templates ohne Integration
-
-### Aenderungen im Tab-System (`LetterTemplateManager.tsx`):
-- "Betreff"-Tab wird umbenannt zu "Betreff und Anrede"
-- Neue Eingabefelder: Anrede-Template (Dropdown mit Vorlagen + Freitext)
-- Option: "Betreff als Canvas-Element" vs. "Betreff als Textzeile im Inhalt"
-
-### Aenderungen in `LetterEditor.tsx`:
-- Der Betreff-Input in der Sidebar bleibt bestehen
-- Bei der Vorschau wird der Betreff + Anrede automatisch vor dem Content eingefuegt
-- Der Content-Editor startet nach der Anrede
+**`src/components/letters/DIN5008LetterLayout.tsx`:**
+- Im integrierten Modus: Vor dem Betreff-Text die gewaehlte Form rendern (kleines SVG/CSS-Element)
 
 ---
 
-## 3. Briefvorlagen in der Briefvorschau integrieren
+## 2. Paginierung im Canvas-Tab
 
-**Ziel:** Wenn ein Brief ueber den Wizard oder direkt erstellt wird, werden die Template-Daten (Header, Footer, Adressfeld-Lines, Info-Block-Lines, Betreff, Anrede) automatisch in die DIN 5008 Vorschau geladen.
+### Problem
+Die Seitenzahlen-Position ist nicht im Canvas sichtbar.
 
-### Aktuelle Situation:
-Die Integration existiert bereits teilweise - `LetterEditor.tsx` hat `substitutedBlocks` (Zeilen 1093-1135), die `blockContent` aus dem Template liest und Variablen substituiert. Diese werden an `DIN5008LetterLayout` uebergeben.
+### Loesung
+- Neuen Block "Paginierung" zum Canvas hinzufuegen, der die Position der Seitenzahl auf der Seite zeigt
+- Position ist konfigurierbar (Standard: rechts unten, oberhalb Footer)
 
-### Was fehlt / verbessert werden muss:
+### Aenderungen
+**`src/types/letterLayout.ts`:**
+- Neues Feld: `pagination?: { enabled: boolean; top: number; align: 'left' | 'center' | 'right'; fontSize?: number }`
+- Default: `{ enabled: true, top: 267.77, align: 'right', fontSize: 8 }`
 
-**a) Vollstaendige Template-Daten laden (`LetterEditor.tsx`):**
-- `fetchCurrentTemplate` laedt bereits das Template inkl. `layout_settings`
-- Sicherstellen, dass `layout_settings` an `DIN5008LetterLayout` weitergereicht wird (bereits der Fall ueber `layoutSettings` prop)
-- Sicherstellen, dass Header-Elemente aus `header_text_elements` korrekt gerendert werden
+**`src/components/letters/LetterLayoutCanvasDesigner.tsx`:**
+- Neuer Block in `DEFAULT_BLOCKS`: `{ key: 'pagination', label: 'Paginierung', color: 'bg-rose-500/20 ...', jumpTo: 'layout-settings' }`
+- Rendering: Schmaler Block mit Vorschau-Text "Seite 1 von 1"
+- `getRect` und `updateByRect` fuer Paginierung implementieren
 
-**b) Anrede-Integration in die Vorschau:**
-- `buildVariableMap` um `{{anrede}}` erweitern
-- In `DIN5008LetterLayout` die Anrede zwischen Betreff und Content einbauen
-- Template-Einstellung fuer Anrede-Muster beruecksichtigen
+**`src/components/letters/DIN5008LetterLayout.tsx`:**
+- Paginierungsposition aus `layout.pagination` lesen statt hartcodiert
 
-**c) Wizard-Anbindung (`LetterWizard.tsx`):**
-- Der Wizard gibt bereits `templateId` zurueck
-- Sicherstellen, dass der LetterEditor nach Wizard-Abschluss das Template vollstaendig laedt und anwendet
-- Die `applyTemplateDefaults`-Funktion erweitern um Anrede-Template
+---
+
+## 3. Ruecksendezeile mit Unterstreichung
+
+### Problem
+Die Ruecksendeadresse soll am Ende eine Unterstreichung haben, deren Laenge sich am tatsaechlichen Text orientiert.
+
+### Loesung
+- Die Ruecksendezeile(n) mit einer unteren Borderlinie rendern, die nur so breit wie der Text ist (inline/fit-content)
+
+### Aenderungen
+**`src/components/letters/DIN5008LetterLayout.tsx`:**
+- Im Vermerkzone-Bereich: Container mit `display: inline-block` und `border-bottom: 0.5pt solid #000` um die Ruecksendezeilen wickeln
+- So passt sich die Unterstreichung der Textlaenge an
+
+**`src/components/letters/LetterLayoutCanvasDesigner.tsx`:**
+- In der Canvas-Vorschau der Ruecksendezeile ebenfalls eine duenne Unterstreichung anzeigen
+
+---
+
+## 4. Anrede im Briefeditor anzeigen und aenderbar machen
+
+### Problem
+Im Briefeditor soll die automatisch generierte Anrede sichtbar sein und manuell geaendert werden koennen.
+
+### Loesung
+- Neues Feld `salutation_override` im Letter-Datensatz
+- Im Briefeditor in der Sidebar: Anrede-Feld anzeigen (vorausgefuellt mit `computedSalutation`)
+- Wenn der Nutzer den Wert aendert, wird er als Override gespeichert und an DIN5008LetterLayout weitergegeben
+- Wenn leer -> Fallback auf automatische Anrede
+
+### Aenderungen
+**Datenbank-Migration:**
+```sql
+ALTER TABLE letters ADD COLUMN salutation_override TEXT;
+```
+
+**`src/components/LetterEditor.tsx`:**
+- Neues State-Feld `salutation_override` in `editedLetter`
+- Input-Feld in der Sidebar (neben Betreff): "Anrede" mit dem berechneten Wert als Placeholder und Override als Value
+- Beim Speichern: `salutation_override` mit persisten
+- An `DIN5008LetterLayout` uebergeben: `salutation={editedLetter.salutation_override || computedSalutation}`
+
+---
+
+## 5. Abschlussformel und Unterschrift
+
+### Problem
+Briefe benoetigen eine Abschlussformel (z.B. "Mit freundlichen Gruessen") und einen Unterschriftsblock (Name, ggf. Bild). Die Vorlage definiert einen Standard, der im Editor ueberschrieben werden kann.
+
+### Loesung
+
+**In der Briefvorlage:**
+- Neuer Tab "Abschluss" oder Integration in "Betreff und Anrede" (umbenannt zu "Betreff, Anrede und Abschluss")
+- Felder: Abschlussformel (Text), Unterschrift-Name, Unterschrift-Titel, Unterschriftsbild (Upload aus Galerie)
+- Gespeichert in `layout_settings.closing`
+
+**Im Briefeditor:**
+- Die Abschlussformel wird nach dem Inhalt angezeigt (2 Leerzeilen nach Text, dann Formel, dann ggf. Bild, dann Name/Titel)
+- Felder in der Sidebar: Abschlussformel und Unterschriftsname (vorausgefuellt aus Vorlage, ueberschreibbar)
+- Override wird im Letter-Datensatz gespeichert
+
+**In der Briefvorschau (DIN5008LetterLayout):**
+- Nach dem Content: 2 Leerzeilen -> Abschlussformel -> ggf. Unterschriftsbild -> Name -> Titel
+
+### Aenderungen
+
+**`src/types/letterLayout.ts`:**
+```
+closing?: {
+  formula: string;          // z.B. "Mit freundlichen Gruessen"
+  signatureName: string;    // z.B. "Max Mustermann"
+  signatureTitle?: string;  // z.B. "Referent"
+  signatureImagePath?: string; // Storage-Pfad zum Unterschriftsbild
+  fontSize?: number;
+}
+```
+
+**Datenbank-Migration:**
+```sql
+ALTER TABLE letters ADD COLUMN closing_formula TEXT;
+ALTER TABLE letters ADD COLUMN closing_name TEXT;
+```
+
+**`src/components/LetterTemplateManager.tsx`:**
+- Tab "Betreff und Anrede" umbenennen zu "Betreff, Anrede und Abschluss"
+- Neue Sektion: Abschlussformel (Textfeld), Unterschrift-Name, Unterschrift-Titel
+- Unterschriftsbild: Button zum Hochladen in den letter-assets Bucket, Pfad in `layout_settings.closing.signatureImagePath` speichern
+
+**`src/components/letters/DIN5008LetterLayout.tsx`:**
+- Nach dem Content-Block (im integrierten Modus): Abschlussformel rendern
+- Layout: 2 Leerzeilen -> Formel -> 3 Leerzeilen (Platz fuer Unterschrift) -> ggf. Unterschriftsbild -> Name -> Titel
+
+**`src/components/LetterEditor.tsx`:**
+- Neue Felder in Sidebar: "Abschlussformel" und "Unterschrift" (vorausgefuellt aus Template)
+- Overrides speichern in `closing_formula` und `closing_name`
+- An DIN5008LetterLayout uebergeben
 
 ---
 
 ## Technischer Ablauf
 
-### Datenbankschema
+### Datenbank-Migration
 ```sql
-CREATE TABLE letter_template_settings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id),
-  variable_defaults JSONB DEFAULT '{}',
-  din5008_defaults JSONB DEFAULT '{}',
-  salutation_templates JSONB DEFAULT '[]',
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(tenant_id)
-);
-ALTER TABLE letter_template_settings ENABLE ROW LEVEL SECURITY;
+-- Anrede-Override und Abschlussformel fuer Briefe
+ALTER TABLE letters ADD COLUMN IF NOT EXISTS salutation_override TEXT;
+ALTER TABLE letters ADD COLUMN IF NOT EXISTS closing_formula TEXT;
+ALTER TABLE letters ADD COLUMN IF NOT EXISTS closing_name TEXT;
 ```
 
-### Dateien die erstellt werden
-- `src/components/letters/LetterTemplateSettings.tsx` - Einstellungsseite
-
 ### Dateien die geaendert werden
-- `src/components/LetterTemplateManager.tsx` - Settings-Button, Tab-Umbenennung
-- `src/types/letterLayout.ts` - Salutation-Block, Subject-Integration-Flag
-- `src/lib/letterVariables.ts` - Anrede-Variable
-- `src/components/letters/DIN5008LetterLayout.tsx` - Betreff+Anrede im Content
-- `src/components/LetterEditor.tsx` - Anrede-Logik, Template-Defaults erweitern
-- `src/components/letters/BlockLineEditor.tsx` - Anrede-Variablen
+- `src/types/letterLayout.ts` - prefixShape, pagination, closing Typen
+- `src/components/letters/LetterLayoutCanvasDesigner.tsx` - Subject in Content integrieren, Paginierung-Block, Ruecksendeunterstreichung
+- `src/components/letters/DIN5008LetterLayout.tsx` - Betreff-Form, Ruecksendeunterstreichung, Abschlussformel+Unterschrift, Paginierung aus Settings
+- `src/components/LetterTemplateManager.tsx` - Tab-Umbenennung, Form-Dropdown, Abschluss-Felder, Unterschriftsbild-Upload
+- `src/components/LetterEditor.tsx` - Anrede-Feld, Abschlussformel-Felder, Overrides speichern
 
 ### Reihenfolge der Implementierung
-1. DB-Migration fuer `letter_template_settings`
-2. `LetterTemplateSettings.tsx` erstellen
-3. Settings-Button in `LetterTemplateManager.tsx` einfuegen
-4. Layout-Typ erweitern (salutation)
-5. Variablen-System um Anrede erweitern
-6. DIN5008LetterLayout um Betreff+Anrede im Content erweitern
-7. LetterEditor Anrede-Logik und Template-Integration finalisieren
-
+1. DB-Migration (salutation_override, closing_formula, closing_name)
+2. Layout-Typen erweitern (prefixShape, pagination, closing)
+3. Canvas-Designer: Subject in Content integrieren, Paginierung-Block hinzufuegen
+4. Ruecksendezeile: Unterstreichung in Canvas und DIN5008Layout
+5. DIN5008LetterLayout: Betreff-Form, Paginierung aus Settings, Abschlussformel+Unterschrift
+6. LetterTemplateManager: Tab erweitern, Form-Dropdown, Abschluss-Sektion
+7. LetterEditor: Anrede+Abschluss-Felder, Overrides, Weitergabe an Layout
