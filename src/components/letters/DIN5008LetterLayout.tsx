@@ -526,7 +526,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         <div 
           style={{ 
             position: 'absolute',
-            top: 'calc(98.46mm + 3mm)',
+            top: `${layout.subject?.top || 101.46}mm`,
             left: '25mm',
             right: '20mm',
             maxHeight: '161mm',
