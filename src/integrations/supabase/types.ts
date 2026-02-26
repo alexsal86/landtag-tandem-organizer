@@ -5316,6 +5316,8 @@ export type Database = {
           approved_by: string | null
           archived_document_id: string | null
           attachments_list: string[] | null
+          closing_formula: string | null
+          closing_name: string | null
           contact_id: string | null
           content: string
           content_html: string
@@ -5330,6 +5332,7 @@ export type Database = {
           recipient_address: string | null
           recipient_name: string | null
           reference_number: string | null
+          salutation_override: string | null
           sender_info_id: string | null
           sender_information_id: string | null
           sent_at: string | null
@@ -5354,6 +5357,8 @@ export type Database = {
           approved_by?: string | null
           archived_document_id?: string | null
           attachments_list?: string[] | null
+          closing_formula?: string | null
+          closing_name?: string | null
           contact_id?: string | null
           content?: string
           content_html?: string
@@ -5368,6 +5373,7 @@ export type Database = {
           recipient_address?: string | null
           recipient_name?: string | null
           reference_number?: string | null
+          salutation_override?: string | null
           sender_info_id?: string | null
           sender_information_id?: string | null
           sent_at?: string | null
@@ -5392,6 +5398,8 @@ export type Database = {
           approved_by?: string | null
           archived_document_id?: string | null
           attachments_list?: string[] | null
+          closing_formula?: string | null
+          closing_name?: string | null
           contact_id?: string | null
           content?: string
           content_html?: string
@@ -5406,6 +5414,7 @@ export type Database = {
           recipient_address?: string | null
           recipient_name?: string | null
           reference_number?: string | null
+          salutation_override?: string | null
           sender_info_id?: string | null
           sender_information_id?: string | null
           sent_at?: string | null

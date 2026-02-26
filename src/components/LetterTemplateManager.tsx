@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -485,7 +486,7 @@ const LetterTemplateManager: React.FC = () => {
       {renderTabTrigger('footer-designer', 'Footer')}
       {renderTabTrigger('block-address', 'Adressfeld')}
       {renderTabTrigger('block-info', 'Info-Block')}
-      {renderTabTrigger('block-subject', 'Betreff & Anrede')}
+      {renderTabTrigger('block-subject', 'Betreff, Anrede & Abschluss')}
       {renderTabTrigger('block-attachments', 'Anlagen')}
       {renderTabTrigger('layout-settings', 'Layout')}
       {renderTabTrigger('general', 'Allgemein')}
@@ -672,6 +673,33 @@ const LetterTemplateManager: React.FC = () => {
                 Betreff in Inhaltsbereich integrieren (DIN 5008)
               </label>
             </div>
+            
+            {/* Prefix Shape Selection */}
+            <div className="mb-3">
+              <Label className="text-xs">Form vor dem Betreff</Label>
+              <Select
+                value={formData.layout_settings.subject?.prefixShape || 'none'}
+                onValueChange={(value: 'none' | 'line' | 'circle' | 'rectangle') => {
+                  setFormData(prev => ({
+                    ...prev,
+                    layout_settings: {
+                      ...prev.layout_settings,
+                      subject: { ...prev.layout_settings.subject, prefixShape: value }
+                    }
+                  }));
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Keine Form</SelectItem>
+                  <SelectItem value="line">Linie ─</SelectItem>
+                  <SelectItem value="circle">Kreis ○</SelectItem>
+                  <SelectItem value="rectangle">Rechteck □</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div>
@@ -701,6 +729,80 @@ const LetterTemplateManager: React.FC = () => {
                 <SelectItem value="Liebe Kolleginnen und Kollegen,">Liebe Kolleginnen und Kollegen,</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <Separator />
+
+          {/* Abschlussformel und Unterschrift */}
+          <div>
+            <h4 className="text-sm font-semibold mb-2">Abschlussformel & Unterschrift</h4>
+            <div className="space-y-3">
+              <div>
+                <Label>Abschlussformel</Label>
+                <Input
+                  value={formData.layout_settings.closing?.formula || ''}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      layout_settings: {
+                        ...prev.layout_settings,
+                        closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), formula: e.target.value }
+                      }
+                    }));
+                  }}
+                  placeholder="z.B. Mit freundlichen Grüßen"
+                />
+              </div>
+              <div>
+                <Label>Unterschrift-Name</Label>
+                <Input
+                  value={formData.layout_settings.closing?.signatureName || ''}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      layout_settings: {
+                        ...prev.layout_settings,
+                        closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureName: e.target.value }
+                      }
+                    }));
+                  }}
+                  placeholder="z.B. Max Mustermann"
+                />
+              </div>
+              <div>
+                <Label>Unterschrift-Titel</Label>
+                <Input
+                  value={formData.layout_settings.closing?.signatureTitle || ''}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      layout_settings: {
+                        ...prev.layout_settings,
+                        closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureTitle: e.target.value }
+                      }
+                    }));
+                  }}
+                  placeholder="z.B. Referent"
+                />
+              </div>
+              <div>
+                <Label>Unterschriftsbild (Storage-Pfad)</Label>
+                <Input
+                  value={formData.layout_settings.closing?.signatureImagePath || ''}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      layout_settings: {
+                        ...prev.layout_settings,
+                        closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureImagePath: e.target.value }
+                      }
+                    }));
+                  }}
+                  placeholder="z.B. signatures/unterschrift.png"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Pfad zum Bild im letter-assets Bucket</p>
+              </div>
+            </div>
           </div>
 
           {/* Canvas elements for subject (legacy/custom) */}
