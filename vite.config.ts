@@ -46,5 +46,16 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+          'vendor-editor': ['lexical'],
+          'vendor-matrix': ['matrix-js-sdk', 'yjs', 'y-websocket', 'y-indexeddb'],
+          'vendor-pdf': ['pdfjs-dist', 'jspdf', 'docx'],
+          'vendor-charts-maps': ['recharts', 'leaflet', 'react-leaflet', 'proj4'],
+        },
+      },
+    },
   },
 }));

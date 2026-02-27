@@ -27,7 +27,6 @@ import AppointmentPreparationDetail from "./pages/AppointmentPreparationDetail";
 
 import NotificationsPage from "./pages/NotificationsPage";
 import EmployeeMeetingDetail from "./pages/EmployeeMeetingDetail";
-import MapsView from "./pages/MapsView";
 
 import { TaskArchiveView } from "./components/TaskArchiveView";
 import Auth from "./pages/Auth";
@@ -79,9 +78,8 @@ const AppContent = () => {
           <Route path="/tasks/archive" element={<TaskArchiveView />} />
           <Route path="/contacts/import" element={<ImportContacts />} />
           
-          <Route path="/maps" element={<MapsView />} />
-            
-            
+          <Route path="/maps" element={<Navigate to="/karten" replace />} />
+
           <Route path="/profile/edit" element={<Navigate to="/profile-edit" replace />} />
           <Route path="/poll-guest/:pollId" element={<PollGuest />} />
           <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
