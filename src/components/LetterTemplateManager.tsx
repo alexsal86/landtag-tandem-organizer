@@ -137,6 +137,16 @@ const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSettings)
       align: settings.pagination?.align || 'right',
       fontSize: settings.pagination?.fontSize ?? 8,
     },
+    foldHoleMarks: {
+      enabled: settings.foldHoleMarks?.enabled ?? true,
+      left: settings.foldHoleMarks?.left ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.left ?? 3,
+      strokeWidthPt: settings.foldHoleMarks?.strokeWidthPt ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.strokeWidthPt ?? 1,
+      foldMarkWidth: settings.foldHoleMarks?.foldMarkWidth ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.foldMarkWidth ?? 5,
+      holeMarkWidth: settings.foldHoleMarks?.holeMarkWidth ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.holeMarkWidth ?? 8,
+      topMarkY: settings.foldHoleMarks?.topMarkY ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.topMarkY ?? 105,
+      holeMarkY: settings.foldHoleMarks?.holeMarkY ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.holeMarkY ?? 148.5,
+      bottomMarkY: settings.foldHoleMarks?.bottomMarkY ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.bottomMarkY ?? 210,
+    },
   });
 
   const blockContent = ((layoutSettings as any).blockContent || {}) as Record<string, any[]>;

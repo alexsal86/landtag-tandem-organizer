@@ -225,6 +225,9 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
   content: { ...layout.content },
   footer: { ...layout.footer, height: layout.footer?.height ?? DEFAULT_DIN5008_LAYOUT.footer.height },
   attachments: { ...layout.attachments },
+  foldHoleMarks: layout.foldHoleMarks
+    ? { ...layout.foldHoleMarks }
+    : { ...DEFAULT_DIN5008_LAYOUT.foldHoleMarks! },
   pagination: layout.pagination ? { ...layout.pagination } : { enabled: true, top: 263.77, align: 'right', fontSize: 8 },
   closing: layout.closing ? { ...layout.closing } : undefined,
   blockContent: { ...(layout.blockContent || {}) },
@@ -524,6 +527,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               next.content = { ...next.content, top: defaults.content.top, maxHeight: defaults.content.maxHeight, lineHeight: defaults.content.lineHeight };
               next.footer = { ...next.footer, top: defaults.footer.top, height: defaults.footer.height };
               next.attachments = { ...next.attachments, top: defaults.attachments.top };
+              next.foldHoleMarks = { ...defaults.foldHoleMarks! };
               if (next.pagination) {
                 next.pagination = { ...next.pagination, top: defaults.pagination?.top || 263.77 };
               }
@@ -638,6 +642,27 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
 
             <div className="absolute bg-white shadow-xl relative select-none" style={{ left: RULER_SIZE, top: RULER_SIZE, width: pagePx.w, height: pagePx.h }}>
               {!plainPreview && <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />}
+
+              {(localLayout.foldHoleMarks?.enabled ?? true) && (
+                <>
+                  {[
+                    { y: localLayout.foldHoleMarks?.topMarkY ?? 105, width: localLayout.foldHoleMarks?.foldMarkWidth ?? 5, key: 'fold-top' },
+                    { y: localLayout.foldHoleMarks?.holeMarkY ?? 148.5, width: localLayout.foldHoleMarks?.holeMarkWidth ?? 8, key: 'hole' },
+                    { y: localLayout.foldHoleMarks?.bottomMarkY ?? 210, width: localLayout.foldHoleMarks?.foldMarkWidth ?? 5, key: 'fold-bottom' },
+                  ].map((mark) => (
+                    <div
+                      key={mark.key}
+                      className="absolute bg-gray-600 pointer-events-none"
+                      style={{
+                        left: `${(localLayout.foldHoleMarks?.left ?? 3) * SCALE}px`,
+                        top: `${mark.y * SCALE}px`,
+                        width: `${mark.width * SCALE}px`,
+                        height: `${Math.max(0.5, ((localLayout.foldHoleMarks?.strokeWidthPt ?? 1) * 0.3528) * SCALE)}px`,
+                      }}
+                    />
+                  ))}
+                </>
+              )}
 
 
               {blocks.map((block) => {
