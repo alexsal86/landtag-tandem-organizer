@@ -58,6 +58,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   returnAddressLines,
   infoBlockLines,
 }) => {
+  const contentTextStyle = {
+    color: '#000',
+  } as const;
+
   // Load layout settings from prop, template, or use defaults
   const DEFAULT_LAYOUT = {
     pageWidth: 210,
@@ -77,7 +81,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   const paginationHeightMm = 4;
   const contentTopMm = Number(layout.content?.top ?? 98.46);
   const footerTopMm = Number(layout.footer?.top ?? 272);
-  const paginationTopMm = Number(layout.pagination?.top ?? (footerTopMm - paginationGapMm - paginationHeightMm));
+  const paginationTopMm = 263.77;
   const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
   const contentMaxHeightMm = paginationEnabled
     ? Math.max(20, paginationTopMm - paginationGapMm - contentTopMm)
@@ -646,9 +650,17 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               overflow: 'hidden'
             }}
             dangerouslySetInnerHTML={{ __html: content }}
+            className="din5008-content-text"
           />
         </>
       )}
+
+      <style>{`
+        .din5008-content-text,
+        .din5008-content-text * {
+          color: #000 !important;
+        }
+      `}</style>
 
       {/* Attachments - positioned after content */}
       {attachments && attachments.length > 0 && (

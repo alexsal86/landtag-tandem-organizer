@@ -316,7 +316,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.text("Unterer Rand: 7mm", 5, footerBottom + 3);
         
         // Pagination position (4.23mm above footer)
-        const paginationY = footerTop - paginationGap - paginationHeight;
+        const paginationY = 263.77;
         pdf.setDrawColor(255, 0, 255); // Magenta
         pdf.rect(leftMargin, paginationY - 2, pageWidth - leftMargin - rightMargin, 4);
         pdf.setTextColor(255, 0, 255);
@@ -683,7 +683,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           
           lines.forEach((line, lineIndex) => {
             // Check if we need a new page - DIN 5008 content end depends on pagination
-            const paginationTop = footerTop - paginationGap - paginationHeight;
+            const paginationTop = 263.77;
             const contentBottom = shouldShowPagination
               ? paginationTop - paginationGap
               : Math.min(contentTop + 165, footerTop - paginationGap);
@@ -954,7 +954,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.setPage(page);
         
         // Pagination top so that its bottom edge is 4.23mm above footer (272mm - 8.23mm = 263.77mm)
-        const paginationY = footerTop - paginationGap - paginationHeight;
+        const paginationY = 263.77;
         
         // Debug box around pagination
         if (true) { // Force debug mode ON

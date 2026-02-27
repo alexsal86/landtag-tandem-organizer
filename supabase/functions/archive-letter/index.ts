@@ -339,7 +339,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
   const paginationHeightMm = 4;
   const footerTopMm = Number(layout.footer?.top ?? 272);
   const contentTopMm = Number(layout.content?.top ?? 98.46);
-  const paginationTopMm = Number(layout.pagination?.top ?? (footerTopMm - paginationGapMm - paginationHeightMm));
+  const paginationTopMm = 263.77;
   const contentBottomMm = hasPagination
     ? paginationTopMm - paginationGapMm
     : Math.min(contentTopMm + 165, footerTopMm - paginationGapMm);
