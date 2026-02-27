@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
 
 interface Letter {
   id: string;
@@ -293,16 +294,10 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       const availableWidth = 165;
       let currentX = leftMargin;
 
-      const rawFooter = template.footer_blocks as any;
-      const isLineBlocksMode = rawFooter && typeof rawFooter === 'object' && rawFooter.mode === 'line-blocks' && Array.isArray(rawFooter.blocks);
-      const footerBlocks = isLineBlocksMode ? rawFooter.blocks : (Array.isArray(rawFooter) ? rawFooter : []);
-      const sortedBlocks = [...footerBlocks].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+      const sortedBlocks = buildFooterBlocksFromStored(template.footer_blocks);
 
       sortedBlocks.forEach((block: any) => {
-        const blockWidth = isLineBlocksMode
-          ? (block.widthUnit === 'cm' ? Math.max(1, (block.widthValue || 1) * 10) : Math.max(1, ((block.widthValue || 25) * availableWidth) / 100))
-          : ((block.widthPercent || 25) * availableWidth / 100);
-
+        const blockWidth = resolveBlockWidthMm(block.widthUnit || 'percent', Number(block.widthValue) || 25, availableWidth);
         let blockY = footerY;
 
         if (block.title) {
@@ -318,46 +313,29 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
           blockY += 0.8;
         }
 
-        if (isLineBlocksMode && Array.isArray(block.lines)) {
-          block.lines.forEach((line: any) => {
-            if (line.type === 'spacer') {
-              blockY += Math.max(0.8, Number(line.spacerHeight) || 1.2);
-              return;
-            }
+        (block.lines || []).forEach((line: any) => {
+          if (line.type === 'spacer') {
+            blockY += Math.max(0.8, Number(line.spacerHeight) || 1.2);
+            return;
+          }
 
-            const fontSize = Math.max(6, Math.min(12, Number(line.fontSize) || 8));
-            pdf.setFontSize(fontSize);
-            pdf.setFont('helvetica', line.valueBold || line.labelBold ? 'bold' : 'normal');
-
-            const text = line.type === 'label-value'
-              ? `${line.label || ''} ${line.value || ''}`.trim()
-              : (line.value || '');
-            if (!text) return;
-
-            const wrappedLines = pdf.splitTextToSize(text, blockWidth - 2);
-            wrappedLines.forEach((wrappedLine: string) => {
-              if (blockY <= 290) {
-                pdf.text(wrappedLine, currentX + 1, blockY);
-                blockY += fontSize * 0.35;
-              }
-            });
-          });
-        } else {
-          const fontSize = Math.max(6, Math.min(14, block.fontSize || 8));
-          const lineHeight = (block.lineHeight || 0.8) <= 0.8 ? fontSize * 0.4 : fontSize * (block.lineHeight || 1) * 0.5;
+          const fontSize = Math.max(6, Math.min(12, Number(line.fontSize) || 8));
           pdf.setFontSize(fontSize);
-          pdf.setFont('helvetica', block.fontWeight === 'bold' ? 'bold' : 'normal');
+          pdf.setFont('helvetica', line.valueBold || line.labelBold ? 'bold' : 'normal');
 
-          String(block.content || '').split('\n').forEach((line: string) => {
-            const wrappedLines = pdf.splitTextToSize(line, blockWidth - 2);
-            wrappedLines.forEach((wrappedLine: string) => {
-              if (blockY <= 290) {
-                pdf.text(wrappedLine, currentX + 1, blockY);
-                blockY += lineHeight;
-              }
-            });
+          const text = line.type === 'label-value'
+            ? `${line.label || ''} ${line.value || ''}`.trim()
+            : (line.value || '');
+          if (!text) return;
+
+          const wrappedLines = pdf.splitTextToSize(text, blockWidth - 2);
+          wrappedLines.forEach((wrappedLine: string) => {
+            if (blockY <= 290) {
+              pdf.text(wrappedLine, currentX + 1, blockY);
+              blockY += fontSize * 0.35;
+            }
           });
-        }
+        });
 
         currentX += blockWidth;
       });

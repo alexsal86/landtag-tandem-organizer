@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 
 export interface BlockLine {
   id: string;
-  type: 'label-value' | 'spacer' | 'text-only';
+  type: 'label-value' | 'spacer' | 'text-only' | 'block-start' | 'block-end';
   label?: string;
   value?: string;
   isVariable?: boolean;
@@ -16,6 +16,8 @@ export interface BlockLine {
   valueBold?: boolean;
   fontSize?: number;
   spacerHeight?: number;
+  widthUnit?: 'percent' | 'cm';
+  widthValue?: number;
 }
 
 export interface BlockLineData {
@@ -116,7 +118,11 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
       ? { id: genId(), type: 'spacer', spacerHeight: 2 }
       : type === 'text-only'
         ? { id: genId(), type: 'text-only', value: '' }
-        : { id: genId(), type: 'label-value', label: '', value: '', labelBold: true };
+        : type === 'block-start'
+          ? { id: genId(), type: 'block-start', label: '', widthUnit: 'percent', widthValue: 25 }
+          : type === 'block-end'
+            ? { id: genId(), type: 'block-end' }
+            : { id: genId(), type: 'label-value', label: '', value: '', labelBold: true };
     onChange([...lines, newLine]);
   };
 
@@ -202,6 +208,39 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                             />
                             <span className="text-muted-foreground">mm</span>
                           </div>
+                        ) : line.type === 'block-start' ? (
+                          <div className="flex flex-1 items-center gap-2">
+                            <Badge variant="secondary" className="text-[10px]">Block Anfang</Badge>
+                            <Input
+                              value={line.label || ''}
+                              onChange={(e) => updateLine(line.id, { label: e.target.value })}
+                              className="h-6 w-44 text-xs"
+                              placeholder="Titel (optional)"
+                            />
+                            <Select
+                              value={line.widthUnit || 'percent'}
+                              onValueChange={(value: 'percent' | 'cm') => updateLine(line.id, { widthUnit: value })}
+                            >
+                              <SelectTrigger className="h-6 w-20 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="percent">%</SelectItem>
+                                <SelectItem value="cm">cm</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              type="number"
+                              step={line.widthUnit === 'cm' ? '0.1' : '1'}
+                              value={line.widthValue || 25}
+                              onChange={(e) => updateLine(line.id, { widthValue: Math.max(1, parseFloat(e.target.value) || 1) })}
+                              className="h-6 w-20 text-xs"
+                              min={1}
+                            />
+                          </div>
+                        ) : line.type === 'block-end' ? (
+                          <div className="flex flex-1 items-center gap-2">
+                            <Badge variant="secondary" className="text-[10px]">Block Ende</Badge>
+                            <span className="text-[11px] text-muted-foreground">Schließt den aktuellen Footer-Block</span>
+                          </div>
                         ) : line.type === 'text-only' ? (
                           <div className="flex flex-1 items-center gap-1">
                             <Badge variant="secondary" className="shrink-0 text-[10px]">Text</Badge>
@@ -284,7 +323,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
         </DragDropContext>
 
         {/* Add buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addLine('label-value')}>
             <Plus className="mr-1 h-3 w-3" />Label + Wert
           </Button>
@@ -294,6 +333,16 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addLine('spacer')}>
             <Space className="mr-1 h-3 w-3" />Abstand
           </Button>
+          {blockType === 'footer' && (
+            <>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addLine('block-start')}>
+                <Plus className="mr-1 h-3 w-3" />Block Anfang
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addLine('block-end')}>
+                <Plus className="mr-1 h-3 w-3" />Block Ende
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -304,6 +353,12 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
           {lines.map((line) => {
             if (line.type === 'spacer') {
               return <div key={line.id} style={{ height: `${line.spacerHeight || 2}mm` }} />;
+            }
+            if (line.type === 'block-start') {
+              return <div key={line.id} className="text-[10px] font-semibold text-muted-foreground border-t pt-1 mt-1">[Block Anfang] {line.label || ''}</div>;
+            }
+            if (line.type === 'block-end') {
+              return <div key={line.id} className="text-[10px] text-muted-foreground border-b pb-1 mb-1">[Block Ende]</div>;
             }
             const previewVal = getPreviewText(line);
             const isVar = hasVariable(line.value);

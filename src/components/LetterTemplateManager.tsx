@@ -23,8 +23,7 @@ import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayo
 import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
 import { BlockLineEditor, type BlockLine, type BlockLineData, isLineMode } from '@/components/letters/BlockLineEditor';
 import { LetterTemplateSettings } from '@/components/letters/LetterTemplateSettings';
-import { FooterBlockLineEditor } from '@/components/letters/FooterBlockLineEditor';
-import { parseFooterBlocksForEditor, toFooterLineBlocksData } from '@/components/letters/footerBlockUtils';
+import { parseFooterLinesForEditor, toFooterLineData } from '@/components/letters/footerBlockUtils';
 
 interface LetterTemplate {
   id: string;
@@ -408,7 +407,7 @@ const LetterTemplateManager: React.FC = () => {
       if (typeof (template as any).footer_blocks === 'string') { try { rawFooterBlocks = JSON.parse((template as any).footer_blocks); } catch { rawFooterBlocks = []; } }
       else { rawFooterBlocks = (template as any).footer_blocks; }
     }
-    const footerBlocks = parseFooterBlocksForEditor(rawFooterBlocks);
+    const footerLines = parseFooterLinesForEditor(rawFooterBlocks);
     const normalizedLayoutSettings = normalizeLayoutBlockContentImages(template.layout_settings || DEFAULT_DIN5008_LAYOUT);
     const legacyHeaderElements = (((normalizedLayoutSettings as any).blockContent || {}).header || []) as any[];
 
@@ -419,7 +418,7 @@ const LetterTemplateManager: React.FC = () => {
 
     // Normalize images in header/footer elements too
     const normalizedHeader = headerSource.map(normalizeImageItem);
-    const normalizedFooter = footerBlocks.map(normalizeImageItem);
+    const normalizedFooter = footerLines.map(normalizeImageItem);
     const cleanedBlockContent = { ...(((normalizedLayoutSettings as any).blockContent || {}) as Record<string, any[]>) };
     delete cleanedBlockContent.header;
     
@@ -555,10 +554,10 @@ const LetterTemplateManager: React.FC = () => {
       </TabsContent>
 
       <TabsContent value="footer-designer" className="space-y-4">
-        <FooterBlockLineEditor
-          blocks={parseFooterBlocksForEditor(formData.footer_blocks)}
-          onChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: toFooterLineBlocksData(blocks) as any }))}
-          availableWidthMm={formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right}
+        <BlockLineEditor
+          blockType="footer"
+          lines={parseFooterLinesForEditor(formData.footer_blocks)}
+          onChange={(newLines) => setFormData(prev => ({ ...prev, footer_blocks: toFooterLineData(newLines) as any }))}
         />
       </TabsContent>
 

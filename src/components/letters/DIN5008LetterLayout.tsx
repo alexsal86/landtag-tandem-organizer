@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import type { HeaderElement, TextElement } from '@/components/canvas-engine/types';
 import { type BlockLine, type BlockLineData, isLineMode } from '@/components/letters/BlockLineEditor';
+import { buildFooterBlocksFromStored } from '@/components/letters/footerBlockUtils';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
@@ -209,10 +210,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   const renderFooterBlocks = () => {
     if (!template?.footer_blocks) return null;
 
-    const rawFooter = template.footer_blocks as any;
-    const isLineBlocksMode = rawFooter && typeof rawFooter === 'object' && rawFooter.mode === 'line-blocks' && Array.isArray(rawFooter.blocks);
-    const footerBlocks = isLineBlocksMode ? rawFooter.blocks : (Array.isArray(rawFooter) ? rawFooter : []);
-    const sortedBlocks = [...footerBlocks].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    const sortedBlocks = buildFooterBlocksFromStored(template.footer_blocks);
 
     return (
       <div
@@ -228,46 +226,28 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         }}
       >
         {sortedBlocks.map((block: any, index: number) => {
-          const blockWidth = isLineBlocksMode
-            ? (block.widthUnit === 'cm' ? `${Math.max(1, Number(block.widthValue) || 1)}cm` : `${Math.max(1, Number(block.widthValue) || 25)}%`)
-            : `${block.widthPercent || 25}%`;
+          const blockWidth = block.widthUnit === 'cm'
+            ? `${Math.max(1, Number(block.widthValue) || 1)}cm`
+            : `${Math.max(1, Number(block.widthValue) || 25)}%`;
 
           return (
             <div
-              key={index}
-              style={{
-                width: blockWidth,
-                paddingRight: '2mm',
-                fontSize: '8pt',
-                lineHeight: 1,
-              }}
+              key={block.id || index}
+              style={{ width: blockWidth, paddingRight: '2mm', fontSize: '8pt', lineHeight: 1 }}
             >
-              {block.title && (
-                <div style={{ fontWeight: 'bold', marginBottom: '1mm' }}>
-                  {block.title}
-                </div>
-              )}
-
-              {isLineBlocksMode && Array.isArray(block.lines) ? (
-                <div>
-                  {block.lines.map((line: any, lineIndex: number) => {
-                    if (line.type === 'spacer') {
-                      return <div key={lineIndex} style={{ height: `${Math.max(0.5, Number(line.spacerHeight) || 1)}mm` }} />;
-                    }
-                    const content = line.type === 'label-value'
-                      ? `${line.label || ''} ${line.value || ''}`.trim()
-                      : (line.value || '');
-                    if (!content) return null;
-                    return (
-                      <div key={lineIndex} style={{ fontSize: `${Math.max(6, Math.min(12, Number(line.fontSize) || 8))}pt` }}>
-                        {content}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={{ whiteSpace: 'pre-line' }}>{block.content || ''}</div>
-              )}
+              {block.title && <div style={{ fontWeight: 'bold', marginBottom: '1mm' }}>{block.title}</div>}
+              <div>
+                {(block.lines || []).map((line: any, lineIndex: number) => {
+                  if (line.type === 'spacer') {
+                    return <div key={lineIndex} style={{ height: `${Math.max(0.5, Number(line.spacerHeight) || 1)}mm` }} />;
+                  }
+                  const content = line.type === 'label-value'
+                    ? `${line.label || ''} ${line.value || ''}`.trim()
+                    : (line.value || '');
+                  if (!content) return null;
+                  return <div key={lineIndex} style={{ fontSize: `${Math.max(6, Math.min(12, Number(line.fontSize) || 8))}pt` }}>{content}</div>;
+                })}
+              </div>
             </div>
           );
         })}
