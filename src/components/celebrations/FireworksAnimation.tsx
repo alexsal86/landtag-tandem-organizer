@@ -1,18 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { getCelebrationDuration } from './speed';
 
 interface FireworksAnimationProps {
   speed?: 'slow' | 'normal' | 'fast';
   size?: 'small' | 'medium' | 'large';
   onComplete?: () => void;
 }
-
-const getSpeedDuration = (speed: string): number => {
-  switch (speed) {
-    case 'slow': return 4000;
-    case 'fast': return 2000;
-    default: return 3000;
-  }
-};
 
 const getExplosionCount = (size: string): number => {
   switch (size) {
@@ -56,7 +49,7 @@ export function FireworksAnimation({ speed = 'normal', size = 'medium', onComple
   const [shouldRender, setShouldRender] = useState(true);
   const animationRef = useRef<number>();
   const startTimeRef = useRef<number>(0);
-  const duration = getSpeedDuration(speed);
+  const duration = getCelebrationDuration(speed);
   const explosionCount = getExplosionCount(size);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,12 @@ const ANIMATION_OPTIONS = [
 export function CelebrationSettingsCard() {
   const { settings, loading, updateSettings } = useCelebrationSettings();
   const [showPreview, setShowPreview] = useState(false);
+  const [previewKey, setPreviewKey] = useState(0);
+
+  const handlePreview = () => {
+    setPreviewKey((prev) => prev + 1);
+    setShowPreview(true);
+  };
 
   if (loading) {
     return (
@@ -158,7 +164,7 @@ export function CelebrationSettingsCard() {
           {/* Vorschau */}
           <Button 
             variant="outline" 
-            onClick={() => setShowPreview(true)}
+            onClick={handlePreview}
             className="w-full"
           >
             <Eye className="mr-2 h-4 w-4" />
@@ -169,8 +175,11 @@ export function CelebrationSettingsCard() {
 
       {/* Preview Animation */}
       <CelebrationAnimationSystem 
+        key={previewKey}
         isVisible={showPreview} 
         onAnimationComplete={() => setShowPreview(false)} 
+        settingsOverride={settings}
+        forceAnimation
       />
     </>
   );
