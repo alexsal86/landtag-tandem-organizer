@@ -709,91 +709,88 @@ const LetterTemplateManager: React.FC = () => {
               </label>
             </div>
             
-            {/* Prefix Shape Selection */}
-            <div className="mb-3">
-              <Label className="text-xs">Form vor dem Betreff</Label>
-              <Select
-                value={formData.layout_settings.subject?.prefixShape || 'none'}
-                onValueChange={(value: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen') => {
-                  setFormData(prev => ({
-                    ...prev,
-                    layout_settings: {
-                      ...prev.layout_settings,
-                      subject: { ...prev.layout_settings.subject, prefixShape: value }
-                    }
-                  }));
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Keine Form</SelectItem>
-                  <SelectItem value="line">Linie ─</SelectItem>
-                  <SelectItem value="circle">Kreis ○</SelectItem>
-                  <SelectItem value="rectangle">Rechteck □</SelectItem>
-                  <SelectItem value="sunflower">Sonnenblume 🌻</SelectItem>
-                  <SelectItem value="lion">Löwe 🦁</SelectItem>
-                  <SelectItem value="wappen">Wappen 🏛️</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Subject line with variable insertion */}
+            {/* Subject line editor with prefix shape selection */}
             <div className="mb-3">
               <Label className="text-xs mb-1 block">Betreffzeile</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={(() => {
-                    const subjectLine = formData.layout_settings.blockContent?.subjectLine;
-                    if (subjectLine && Array.isArray(subjectLine) && subjectLine.length > 0) {
-                      return (subjectLine[0] as any).content || '{{betreff}}';
-                    }
-                    return '{{betreff}}';
-                  })()}
-                  onChange={(e) => {
-                    setFormData(prev => ({
-                      ...prev,
-                      layout_settings: {
-                        ...prev.layout_settings,
-                        blockContent: {
-                          ...(prev.layout_settings.blockContent || {}),
-                          subjectLine: [{ id: 'subject-1', type: 'text', content: e.target.value }]
+              <div className="rounded-md border bg-background p-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={formData.layout_settings.subject?.prefixShape || 'none'}
+                    onValueChange={(value: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen') => {
+                      setFormData(prev => ({
+                        ...prev,
+                        layout_settings: {
+                          ...prev.layout_settings,
+                          subject: { ...prev.layout_settings.subject, prefixShape: value }
                         }
-                      }
-                    }));
-                  }}
-                  placeholder="z.B. {{betreff}}"
-                  className="font-mono text-sm"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const currentVal = (() => {
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[180px]">
+                      <SelectValue placeholder="Form auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Keine Form</SelectItem>
+                      <SelectItem value="line">Linie ─</SelectItem>
+                      <SelectItem value="circle">Kreis ○</SelectItem>
+                      <SelectItem value="rectangle">Rechteck □</SelectItem>
+                      <SelectItem value="sunflower">Sonnenblume 🌻</SelectItem>
+                      <SelectItem value="lion">Löwe 🦁</SelectItem>
+                      <SelectItem value="wappen">Wappen 🏛️</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={(() => {
                       const subjectLine = formData.layout_settings.blockContent?.subjectLine;
                       if (subjectLine && Array.isArray(subjectLine) && subjectLine.length > 0) {
-                        return (subjectLine[0] as any).content || '';
+                        return (subjectLine[0] as any).content || '{{betreff}}';
                       }
-                      return '';
-                    })();
-                    const newVal = currentVal ? currentVal + ' {{betreff}}' : '{{betreff}}';
-                    setFormData(prev => ({
-                      ...prev,
-                      layout_settings: {
-                        ...prev.layout_settings,
-                        blockContent: {
-                          ...(prev.layout_settings.blockContent || {}),
-                          subjectLine: [{ id: 'subject-1', type: 'text', content: newVal }]
+                      return '{{betreff}}';
+                    })()}
+                    onChange={(e) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        layout_settings: {
+                          ...prev.layout_settings,
+                          blockContent: {
+                            ...(prev.layout_settings.blockContent || {}),
+                            subjectLine: [{ id: 'subject-1', type: 'text', content: e.target.value }]
+                          }
                         }
-                      }
-                    }));
-                  }}
-                  className="whitespace-nowrap"
-                >
-                  {'{{betreff}}'} einfügen
-                </Button>
+                      }));
+                    }}
+                    placeholder="z.B. {{betreff}}"
+                    className="h-8 min-w-[280px] flex-1 font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const currentVal = (() => {
+                        const subjectLine = formData.layout_settings.blockContent?.subjectLine;
+                        if (subjectLine && Array.isArray(subjectLine) && subjectLine.length > 0) {
+                          return (subjectLine[0] as any).content || '';
+                        }
+                        return '';
+                      })();
+                      const newVal = currentVal ? currentVal + ' {{betreff}}' : '{{betreff}}';
+                      setFormData(prev => ({
+                        ...prev,
+                        layout_settings: {
+                          ...prev.layout_settings,
+                          blockContent: {
+                            ...(prev.layout_settings.blockContent || {}),
+                            subjectLine: [{ id: 'subject-1', type: 'text', content: newVal }]
+                          }
+                        }
+                      }));
+                    }}
+                    className="h-8 whitespace-nowrap"
+                  >
+                    {'{{betreff}}'} einfügen
+                  </Button>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">Verwenden Sie {'{{betreff}}'} als Variable für den dynamischen Betreff des Briefes.</p>
             </div>
