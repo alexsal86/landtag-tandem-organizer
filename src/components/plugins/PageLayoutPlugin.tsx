@@ -58,21 +58,24 @@ function mmToPx(mm: number): number {
 
 /**
  * Berechnet welche Nodes über eine Seitengrenze hinausgehen.
- * afterKey zeigt auf den Node VOR dem der Break eingefügt wird,
- * d.h. der überschreitende Node rutscht auf die nächste Seite.
+ * Returns:
+ *  - breakPositions: where to insert PageBreakNodes (between elements only)
+ *  - totalPages: total page count (includes pages spanned by single tall elements)
  */
 function findPageBreakPositions(
   editor: LexicalEditor,
   editorRoot: HTMLElement,
   contentHeightPx: number,
-): Array<{ afterKey: string; pageNumber: number }> {
-  const results: Array<{ afterKey: string; pageNumber: number }> = [];
+): { breakPositions: Array<{ afterKey: string; pageNumber: number }>; totalPages: number } {
+  const breakPositions: Array<{ afterKey: string; pageNumber: number }> = [];
 
   const nodeMap = new Map<string, Element>();
   editorRoot.querySelectorAll<Element>('[data-lexical-key]').forEach((el) => {
     const key = el.getAttribute('data-lexical-key');
     if (key) nodeMap.set(key, el);
   });
+
+  let totalPages = 1;
 
   editor.getEditorState().read(() => {
     const root = $getRoot();
@@ -84,7 +87,7 @@ function findPageBreakPositions(
 
     for (const child of children) {
       if ($isPageBreakNode(child)) {
-        continue; // skip existing breaks during calculation
+        continue;
       }
 
       const domEl = nodeMap.get(child.getKey());
@@ -98,18 +101,26 @@ function findPageBreakPositions(
         currentPageHeight > 0 &&
         prevNonBreakKey
       ) {
-        results.push({ afterKey: prevNonBreakKey, pageNumber: currentPage + 1 });
+        breakPositions.push({ afterKey: prevNonBreakKey, pageNumber: currentPage + 1 });
         currentPage++;
         currentPageHeight = elHeight;
       } else {
         currentPageHeight += elHeight;
       }
 
+      // Track pages spanned by single tall elements (no visual break possible)
+      while (currentPageHeight > contentHeightPx) {
+        currentPage++;
+        currentPageHeight -= contentHeightPx;
+      }
+
       prevNonBreakKey = child.getKey();
     }
+
+    totalPages = currentPage;
   });
 
-  return results;
+  return { breakPositions, totalPages };
 }
 
 // ── Hauptplugin ─────────────────────────────────────────────────────────────
@@ -158,7 +169,7 @@ export function PageLayoutPlugin({
       return;
     }
 
-    const breakPositions = findPageBreakPositions(editor, editorRoot, contentHeightPx);
+    const { breakPositions, totalPages } = findPageBreakPositions(editor, editorRoot, contentHeightPx);
 
     isUpdatingRef.current = true;
 
@@ -181,10 +192,9 @@ export function PageLayoutPlugin({
           }
         });
 
-        const newPageCount = breakPositions.length + 1;
-        if (lastPageCountRef.current !== newPageCount) {
-          lastPageCountRef.current = newPageCount;
-          Promise.resolve().then(() => onPageCountChange?.(newPageCount));
+        if (lastPageCountRef.current !== totalPages) {
+          lastPageCountRef.current = totalPages;
+          Promise.resolve().then(() => onPageCountChange?.(totalPages));
         }
       },
       { onUpdate: () => { isUpdatingRef.current = false; } },
