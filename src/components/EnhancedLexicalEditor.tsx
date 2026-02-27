@@ -35,6 +35,7 @@ import { TRANSFORMERS } from '@lexical/markdown';
 import { ImageNode } from './nodes/ImageNode';
 import { MentionNode } from './nodes/MentionNode';
 import { TrackInsertNode, TrackDeleteNode } from './nodes/TrackChangeNode';
+import { PageBreakSpacerNode } from './nodes/PageBreakSpacerNode';
 
 // UI
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
@@ -46,6 +47,7 @@ import { CommentPlugin, CommentMarkNode } from './plugins/CommentPlugin';
 import { MentionsPlugin } from './plugins/MentionsPlugin';
 import { TrackChangesPlugin } from './plugins/TrackChangesPlugin';
 import { TrackChangesToolbar } from './plugins/TrackChangesToolbar';
+import { PageBreakPlugin, type PageBreakConfig } from './plugins/PageBreakPlugin';
 
 // AutoLink matchers
 const URL_REGEX =
@@ -81,6 +83,10 @@ interface EnhancedLexicalEditorProps {
   reviewerId?: string;
   /** Show accept/reject buttons for tracked changes */
   showAcceptReject?: boolean;
+  /** Enable automatic page break spacers */
+  enablePageBreaks?: boolean;
+  /** Config for page break calculations */
+  pageBreakConfig?: PageBreakConfig;
   // Legacy props - kept for API compatibility
   enableCollaboration?: boolean;
   useYjsCollaboration?: boolean;
@@ -186,6 +192,8 @@ export default function EnhancedLexicalEditor({
   reviewerName = '',
   reviewerId = '',
   showAcceptReject = false,
+  enablePageBreaks = false,
+  pageBreakConfig,
 }: EnhancedLexicalEditorProps) {
   const initialConfig = useMemo(() => ({
     namespace: 'EnhancedEditor',
@@ -211,6 +219,7 @@ export default function EnhancedLexicalEditor({
       CommentMarkNode,
       TrackInsertNode,
       TrackDeleteNode,
+      PageBreakSpacerNode,
     ],
     onError: (error: Error) => {
       console.error('Lexical error:', error);
@@ -297,6 +306,9 @@ export default function EnhancedLexicalEditor({
               authorId={reviewerId}
               authorName={reviewerName}
             />
+          )}
+          {enablePageBreaks && pageBreakConfig && (
+            <PageBreakPlugin config={pageBreakConfig} />
           )}
         </div>
       </LexicalComposer>

@@ -540,6 +540,13 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                   reviewerName={reviewerName}
                   reviewerId={reviewerId}
                   showAcceptReject={showAcceptReject}
+                  enablePageBreaks={true}
+                  pageBreakConfig={{
+                    editorTopMm,
+                    footerTopMm,
+                    pageHeightMm: PAGE_HEIGHT_MM,
+                    followupTopMarginMm: FOLLOWUP_TOP_MARGIN_MM,
+                  }}
                 />
                 <style>{`
                   .letter-canvas-editor > .relative {
