@@ -666,6 +666,12 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               };
               const subjectTemplate = (() => {
                 const sl = localLayout.blockContent?.subjectLine;
+                if (sl && typeof sl === 'object' && !Array.isArray(sl) && (sl as any).mode === 'lines') {
+                  const firstTextLine = ((sl as any).lines || []).find((line: any) => line.type === 'text-only' || line.type === 'label-value');
+                  if (firstTextLine?.value) {
+                    return firstTextLine.value as string;
+                  }
+                }
                 if (sl && Array.isArray(sl) && sl.length > 0 && (sl[0] as any).content) {
                   return (sl[0] as any).content as string;
                 }
@@ -708,7 +714,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const returnAddressHeightMm = localLayout.addressField.returnAddressHeight || 17.7;
               
               return (
-                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium px-1 py-0.5 ${plainPreview ? 'text-gray-900' : ''} ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
+                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium ${plainPreview ? 'p-0 text-gray-900' : 'px-1 py-0.5'} ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
                   {block.key === 'addressField' && (hasReturnData || hasAddressData) ? (
                     <>
                       {/* Vermerkzone (return address) */}
@@ -729,7 +735,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                           <Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge>
                         </div>
                       )}
-                      <div style={{ marginTop: 2 * SCALE, fontSize: Math.max(8, 10 * SCALE) }}>
+                      <div style={{ marginTop: 0, fontSize: Math.max(8, 10 * SCALE) }}>
                         {localLayout.subject?.prefixShape && localLayout.subject.prefixShape !== 'none' && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: 3, verticalAlign: 'middle' }}>
                             {localLayout.subject.prefixShape === 'line' && <span style={{ display: 'inline-block', width: 5 * SCALE, height: 0.5 * SCALE, backgroundColor: '#333', verticalAlign: 'middle' }} />}
