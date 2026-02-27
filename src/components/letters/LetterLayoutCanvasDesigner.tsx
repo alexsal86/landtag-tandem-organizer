@@ -8,6 +8,8 @@ import { ZoomIn, ZoomOut, Trash2, Eye, EyeOff, Lock, Unlock } from 'lucide-react
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 import { CSS_PX_PER_MM } from '@/lib/units';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/hooks/useTenant';
 
 type BlockKey = 'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments' | 'pagination';
 type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general' | 'block-address' | 'block-info' | 'block-subject' | 'block-content' | 'block-attachments';
@@ -87,6 +89,7 @@ const COLOR_PRESETS = [
 
 const BASE_SCALE = CSS_PX_PER_MM;
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const PAGINATION_PREVIEW_WIDTH_MM = 18;
 const snapMm = (val: number) => Math.round(val);
 const clamp = (val: number, min: number, max: number) => Math.min(max, Math.max(min, val));
 
@@ -233,10 +236,12 @@ const getDisabled = (layout: LetterLayoutSettings): BlockKey[] => (layout.disabl
 const getLocked = (layout: LetterLayoutSettings): BlockKey[] => (layout.lockedBlocks || []) as BlockKey[];
 
 export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJumpToTab, headerElements = [], actionButtons }: Props) {
+  const { currentTenant } = useTenant();
   const [blocks, setBlocks] = useState<BlockConfig[]>(() => [...DEFAULT_BLOCKS]);
   const [selected, setSelected] = useState<BlockKey>('addressField');
   const [dragging, setDragging] = useState<{ key: BlockKey; startX: number; startY: number; orig: Rect; mode: 'move' | 'resize' } | null>(null);
   const [localLayout, setLocalLayout] = useState<LetterLayoutSettings>(() => cloneLayout(layoutSettings));
+  const [templateDefaults, setTemplateDefaults] = useState<Record<string, string>>({});
   const [showRuler, setShowRuler] = useState(false);
   const [plainPreview, setPlainPreview] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -247,6 +252,25 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   const SCALE = BASE_SCALE * zoomLevel;
 
   useEffect(() => setLocalLayout(cloneLayout(layoutSettings)), [layoutSettings]);
+
+  useEffect(() => {
+    const fetchTemplateDefaults = async () => {
+      if (!currentTenant?.id) {
+        setTemplateDefaults({});
+        return;
+      }
+
+      const { data } = await supabase
+        .from('letter_template_settings' as any)
+        .select('variable_defaults')
+        .eq('tenant_id', currentTenant.id)
+        .maybeSingle();
+
+      setTemplateDefaults(((data as any)?.variable_defaults || {}) as Record<string, string>);
+    };
+
+    fetchTemplateDefaults();
+  }, [currentTenant?.id]);
 
   const zoomIn = useCallback(() => {
     setZoomLevel((z) => {
@@ -326,8 +350,12 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
         return { x: localLayout.margins.left, y: localLayout.footer.top, w: contentWidth, h: localLayout.footer.height };
       case 'attachments':
         return { x: localLayout.margins.left, y: localLayout.attachments.top, w: contentWidth, h: 8 };
-      case 'pagination':
-        return { x: localLayout.margins.left, y: pag.top, w: contentWidth, h: 5 };
+      case 'pagination': {
+        const x = pag.align === 'left'
+          ? localLayout.margins.left
+          : localLayout.pageWidth - localLayout.margins.right - PAGINATION_PREVIEW_WIDTH_MM;
+        return { x, y: pag.top, w: PAGINATION_PREVIEW_WIDTH_MM, h: 4 };
+      }
     }
   };
 
@@ -636,6 +664,15 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                 '{{absender_name}}': 'Alexander Salomon', '{{absender_organisation}}': 'Fraktion GRÜNE',
                 '{{absender_strasse}}': 'Konrad-Adenauer-Str. 3', '{{absender_plz_ort}}': '70173 Stuttgart',
               };
+              const subjectTemplate = (() => {
+                const sl = localLayout.blockContent?.subjectLine;
+                if (sl && Array.isArray(sl) && sl.length > 0 && (sl[0] as any).content) {
+                  return (sl[0] as any).content as string;
+                }
+                return '{{betreff}}';
+              })();
+              const subjectPreview = subjectTemplate.replaceAll('{{betreff}}', templateDefaults['{{betreff}}'] || 'Betreff').trim() || 'Betreff';
+              const contentPreview = (templateDefaults['default_content'] || 'Inhalt...').trim() || 'Inhalt...';
               const resolveLineValue = (val: string | undefined) => {
                 if (!val) return '';
                 let text = val;
@@ -644,30 +681,39 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               };
               const hasVariablePlaceholder = (val: string | undefined) => val ? /\{\{.*?\}\}/.test(val) : false;
               
-              const renderLineItems = (lines: typeof lineData) => lines.map((line) => {
-                const fontSizePx = (line.fontSize || 9) * (25.4 / 72) * SCALE;
-                if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE }} />;
-                const resolvedValue = resolveLineValue(line.value);
-                const isVar = hasVariablePlaceholder(line.value || '');
-                return (
-                  <div key={line.id} style={{ fontSize: fontSizePx, lineHeight: '1.3' }} className="truncate flex items-center gap-0.5">
-                    {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
-                    <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
-                    {!plainPreview && isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
-                  </div>
-                );
-              });
+              const renderLineItems = (lines: typeof lineData, options?: { underlineLastContentLine?: boolean }) => {
+                const lastContentIndex = options?.underlineLastContentLine
+                  ? [...lines].map((line, index) => ({ line, index })).reverse().find((entry) => entry.line.type !== 'spacer')?.index ?? -1
+                  : -1;
+
+                return lines.map((line, index) => {
+                  const fontSizePx = (line.fontSize || 9) * (25.4 / 72) * SCALE;
+                  if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE }} />;
+                  const resolvedValue = resolveLineValue(line.value);
+                  const isVar = hasVariablePlaceholder(line.value || '');
+                  const underlineThisLine = index === lastContentIndex;
+                  return (
+                    <div key={line.id} style={{ fontSize: fontSizePx, lineHeight: '1.3' }}>
+                      <span className="inline-flex items-center gap-0.5" style={underlineThisLine ? { borderBottom: '1px solid #000' } : undefined}>
+                        {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
+                        <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
+                        {!plainPreview && isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
+                      </span>
+                    </div>
+                  );
+                });
+              };
               
               // Render address field with two zones
               const returnAddressHeightMm = localLayout.addressField.returnAddressHeight || 17.7;
               
               return (
-                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium px-1 py-0.5 ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
+                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium px-1 py-0.5 ${plainPreview ? 'text-gray-900' : ''} ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
                   {block.key === 'addressField' && (hasReturnData || hasAddressData) ? (
                     <>
                       {/* Vermerkzone (return address) */}
                       <div style={{ height: returnAddressHeightMm * SCALE, borderBottom: plainPreview ? undefined : '1px dashed rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: 2 }}>
-                        {hasReturnData ? renderLineItems(returnLineData) : <span className="text-[9px] text-muted-foreground italic">Rücksendezeile</span>}
+                        {hasReturnData ? renderLineItems(returnLineData, { underlineLastContentLine: true }) : <span className="text-[9px] text-muted-foreground italic">Rücksendezeile</span>}
                       </div>
                       {/* Anschriftzone (recipient address) */}
                       <div style={{ paddingTop: 2 }}>
@@ -694,20 +740,14 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                             {localLayout.subject.prefixShape === 'wappen' && <img src="/assets/wappen-bw.svg" alt="Wappen" style={{ width: 3.5 * SCALE, height: 3.5 * SCALE, objectFit: 'contain' }} />}
                           </span>
                         )}
-                        <span className="font-bold" style={{ fontSize: `${(localLayout.subject?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>{(() => {
-                          const sl = localLayout.blockContent?.subjectLine;
-                          if (sl && Array.isArray(sl) && sl.length > 0 && (sl[0] as any).content) {
-                            return (sl[0] as any).content;
-                          }
-                          return 'Betreff';
-                        })()}</span>
+                        <span className="font-bold" style={{ fontSize: `${(localLayout.subject?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>{subjectPreview}</span>
                       </div>
                       <div style={{ height: (localLayout.subject?.marginBottom || 9) * SCALE }} />
                       <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>
                         {localLayout.salutation?.template || 'Sehr geehrte Damen und Herren,'}
                       </div>
                       <div style={{ height: (localLayout.content?.lineHeight || 4.5) * SCALE }} />
-                      <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#666' }}>Inhalt...</div>
+                      <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#666' }}>{contentPreview}</div>
                       {/* Abschlussformel preview */}
                       {localLayout.closing?.formula && (
                          <>
@@ -734,9 +774,8 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                       {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                     </>
                   ) : block.key === 'pagination' ? (
-                    <div className="flex items-center justify-between h-full">
-                      <span className="text-[9px]">{block.label}</span>
-                      <span className="text-[9px] text-gray-500 italic" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
+                    <div className="flex items-center h-full">
+                      <span className="text-[9px] text-gray-500 italic w-full" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
                     </div>
                   ) : block.key === 'footer' && isLineModeBlock ? (
                     (() => {
