@@ -675,6 +675,12 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               };
               const subjectTemplate = (() => {
                 const sl = localLayout.blockContent?.subjectLine;
+                if (sl && typeof sl === 'object' && !Array.isArray(sl) && (sl as any).mode === 'lines') {
+                  const firstTextLine = ((sl as any).lines || []).find((line: any) => line.type === 'text-only' || line.type === 'label-value');
+                  if (firstTextLine?.value) {
+                    return firstTextLine.value as string;
+                  }
+                }
                 if (sl && Array.isArray(sl) && sl.length > 0 && (sl[0] as any).content) {
                   return (sl[0] as any).content as string;
                 }
