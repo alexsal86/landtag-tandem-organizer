@@ -811,12 +811,19 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                         </>
                       )}
                       {/* Anlagen preview integrated into content area */}
-                      <div style={{ marginTop: (localLayout.closing?.formula ? 4.5 : 13.5) * SCALE, fontSize: `${Math.max(7, 9 * SCALE)}px`, color: '#000' }}>
-                        <div style={{ fontWeight: 700 }}>Anlagen</div>
-                        <div style={{ marginTop: 1 * SCALE }}>- Antrag_2026-02-15.pdf</div>
-                        <div style={{ marginTop: 0.5 * SCALE }}>- Stellungnahme_Verkehrsausschuss.docx</div>
-                        <div style={{ marginTop: 0.5 * SCALE }}>- Anlagenverzeichnis.xlsx</div>
-                      </div>
+                      {(() => {
+                        const hasClosing = Boolean(localLayout.closing?.signatureName);
+                        const lineSpacing = hasClosing ? 1 : 3;
+                        const anlagenFontSize = (localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE;
+                        return (
+                          <div style={{ marginTop: (localLayout.content?.lineHeight || 4.5) * lineSpacing * SCALE, color: '#000' }}>
+                            <div style={{ fontWeight: 700, fontSize: anlagenFontSize }}>Anlagen</div>
+                            <div style={{ marginTop: 1 * SCALE, paddingLeft: 4 * SCALE, fontSize: anlagenFontSize }}>- Antrag_2026-02-15.pdf</div>
+                            <div style={{ marginTop: 0.5 * SCALE, paddingLeft: 4 * SCALE, fontSize: anlagenFontSize }}>- Stellungnahme_Verkehrsausschuss.docx</div>
+                            <div style={{ marginTop: 0.5 * SCALE, paddingLeft: 4 * SCALE, fontSize: anlagenFontSize }}>- Anlagenverzeichnis.xlsx</div>
+                          </div>
+                        );
+                      })()}
                       {isLineModeBlock && renderLineItems(lineData)}
                       {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                     </>
