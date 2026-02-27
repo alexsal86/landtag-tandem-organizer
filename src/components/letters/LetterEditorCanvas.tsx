@@ -460,6 +460,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                   editable={canEdit}
                   onMentionInsert={onMentionInsert}
                   renderToolbarPortal={toolbarPortalRef}
+                  defaultFontSize={`${contentFontSizePt}pt`}
                 />
                 <style>{`
                   .letter-canvas-editor > .relative {

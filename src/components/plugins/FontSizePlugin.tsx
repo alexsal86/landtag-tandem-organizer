@@ -5,7 +5,6 @@ import {
   $isRangeSelection,
   SELECTION_CHANGE_COMMAND,
   COMMAND_PRIORITY_CRITICAL,
-  $createTextNode,
   $isTextNode
 } from 'lexical';
 import { $patchStyleText } from '@lexical/selection';
@@ -20,33 +19,47 @@ import {
 import { Type, ChevronDown } from 'lucide-react';
 
 const FONT_SIZE_OPTIONS = [
-  { label: '8px', value: '8px' },
-  { label: '9px', value: '9px' },
-  { label: '10px', value: '10px' },
-  { label: '11px', value: '11px' },
-  { label: '12px', value: '12px' },
-  { label: '14px', value: '14px' },
-  { label: '16px', value: '16px' },
-  { label: '18px', value: '18px' },
-  { label: '20px', value: '20px' },
-  { label: '24px', value: '24px' },
-  { label: '28px', value: '28px' },
-  { label: '32px', value: '32px' },
-  { label: '36px', value: '36px' },
-  { label: '48px', value: '48px' },
-  { label: '60px', value: '60px' },
-  { label: '72px', value: '72px' }
+  { label: '8', value: '8pt' },
+  { label: '9', value: '9pt' },
+  { label: '10', value: '10pt' },
+  { label: '11', value: '11pt' },
+  { label: '12', value: '12pt' },
+  { label: '14', value: '14pt' },
+  { label: '16', value: '16pt' },
+  { label: '18', value: '18pt' },
+  { label: '20', value: '20pt' },
+  { label: '24', value: '24pt' },
+  { label: '28', value: '28pt' },
+  { label: '32', value: '32pt' },
+  { label: '36', value: '36pt' },
+  { label: '48', value: '48pt' },
 ];
+
+/** Extract a readable display label from a font-size value (e.g. "11pt" → "11") */
+const toDisplayLabel = (value: string): string => {
+  const m = value.match(/^([\d.]+)/);
+  return m ? m[1] : value;
+};
 
 interface FontSizePluginProps {
   disabled?: boolean;
+  /** Default font size used when no explicit style is set on a node (e.g. "11pt") */
+  defaultFontSize?: string;
 }
 
-export function FontSizePlugin({ disabled = false }: FontSizePluginProps) {
+export function FontSizePlugin({ disabled = false, defaultFontSize = '11pt' }: FontSizePluginProps) {
   const [editor] = useLexicalComposerContext();
-  const [fontSize, setFontSize] = useState<string>('16px');
+  const [fontSize, setFontSize] = useState<string>(defaultFontSize);
   const [customSize, setCustomSize] = useState<string>('');
   const [isCustomInputVisible, setIsCustomInputVisible] = useState<boolean>(false);
+
+  // Keep default in sync when prop changes
+  useEffect(() => {
+    setFontSize(prev => {
+      // Only update if the current value was the old default (i.e. user hasn't changed it)
+      return prev === defaultFontSize ? prev : prev;
+    });
+  }, [defaultFontSize]);
 
   const updateFontSizeInSelection = useCallback((newFontSize: string) => {
     editor.update(() => {
@@ -66,11 +79,10 @@ export function FontSizePlugin({ disabled = false }: FontSizePluginProps) {
         const nodes = selection.getNodes();
         
         if (nodes.length === 0) {
-          setFontSize('16px');
+          setFontSize(defaultFontSize);
           return;
         }
 
-        // Get font size from first text node
         const firstNode = nodes[0];
         if ($isTextNode(firstNode)) {
           const style = firstNode.getStyle();
@@ -78,14 +90,15 @@ export function FontSizePlugin({ disabled = false }: FontSizePluginProps) {
           if (fontSizeMatch) {
             setFontSize(fontSizeMatch[1].trim());
           } else {
-            setFontSize('16px');
+            // No explicit font-size → use template default
+            setFontSize(defaultFontSize);
           }
         } else {
-          setFontSize('16px');
+          setFontSize(defaultFontSize);
         }
       }
     });
-  }, [editor]);
+  }, [editor, defaultFontSize]);
 
   useEffect(() => {
     return editor.registerCommand(
@@ -110,9 +123,15 @@ export function FontSizePlugin({ disabled = false }: FontSizePluginProps) {
   }, [updateFontSizeInSelection]);
 
   const handleCustomSizeApply = useCallback(() => {
-    if (customSize && customSize.match(/^\d+(?:px|pt|em|rem|%)$/)) {
-      setFontSize(customSize);
-      updateFontSizeInSelection(customSize);
+    if (!customSize) return;
+    // Accept plain numbers as pt, or explicit units
+    let value = customSize.trim();
+    if (/^\d+(\.\d+)?$/.test(value)) {
+      value = value + 'pt';
+    }
+    if (value.match(/^\d+(?:\.\d+)?(?:px|pt|em|rem|%)$/)) {
+      setFontSize(value);
+      updateFontSizeInSelection(value);
       setIsCustomInputVisible(false);
       setCustomSize('');
     }
@@ -136,23 +155,23 @@ export function FontSizePlugin({ disabled = false }: FontSizePluginProps) {
             variant="ghost"
             size="sm"
             disabled={disabled}
-            className="h-8 min-w-[80px] justify-between px-2"
+            className="h-8 min-w-[70px] justify-between px-2"
           >
             <div className="flex items-center gap-1">
               <Type className="h-4 w-4" />
-              <span className="text-xs">{fontSize}</span>
+              <span className="text-xs">{toDisplayLabel(fontSize)} pt</span>
             </div>
             <ChevronDown className="h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-32 max-h-64 overflow-y-auto">
+        <DropdownMenuContent className="w-28 max-h-64 overflow-y-auto">
           {FONT_SIZE_OPTIONS.map((option) => (
             <DropdownMenuItem
               key={option.value}
               onClick={() => handleFontSizeChange(option.value)}
               className={fontSize === option.value ? 'bg-accent' : ''}
             >
-              <span style={{ fontSize: option.value }}>{option.label}</span>
+              {option.label} pt
             </DropdownMenuItem>
           ))}
           <DropdownMenuItem
@@ -168,13 +187,14 @@ export function FontSizePlugin({ disabled = false }: FontSizePluginProps) {
         <div className="flex items-center gap-1 ml-2">
           <Input
             type="text"
-            placeholder="z.B. 20px"
+            placeholder="z.B. 12"
             value={customSize}
             onChange={(e) => setCustomSize(e.target.value)}
             onKeyDown={handleCustomSizeKeyDown}
-            className="h-8 w-20 text-xs"
+            className="h-8 w-16 text-xs"
             autoFocus
           />
+          <span className="text-xs text-muted-foreground">pt</span>
           <Button
             size="sm"
             onClick={handleCustomSizeApply}
