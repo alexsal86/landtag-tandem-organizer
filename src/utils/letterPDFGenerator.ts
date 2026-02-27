@@ -49,6 +49,12 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         topMarkY: 105,
         holeMarkY: 148.5,
         bottomMarkY: 210,
+      },
+      pagination: {
+        enabled: true,
+        top: 263.77,
+        align: 'right' as const,
+        fontSize: 8,
       }
     };
     

@@ -5335,6 +5335,9 @@ export type Database = {
           recipient_address: string | null
           recipient_name: string | null
           reference_number: string | null
+          revision_comment: string | null
+          revision_requested_at: string | null
+          revision_requested_by: string | null
           salutation_override: string | null
           sender_info_id: string | null
           sender_information_id: string | null
@@ -5376,6 +5379,9 @@ export type Database = {
           recipient_address?: string | null
           recipient_name?: string | null
           reference_number?: string | null
+          revision_comment?: string | null
+          revision_requested_at?: string | null
+          revision_requested_by?: string | null
           salutation_override?: string | null
           sender_info_id?: string | null
           sender_information_id?: string | null
@@ -5417,6 +5423,9 @@ export type Database = {
           recipient_address?: string | null
           recipient_name?: string | null
           reference_number?: string | null
+          revision_comment?: string | null
+          revision_requested_at?: string | null
+          revision_requested_by?: string | null
           salutation_override?: string | null
           sender_info_id?: string | null
           sender_information_id?: string | null

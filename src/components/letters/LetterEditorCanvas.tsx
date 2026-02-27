@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContactSelector } from '@/components/ContactSelector';
 import { DIN5008LetterLayout } from './DIN5008LetterLayout';
+import { supabase } from '@/integrations/supabase/client';
 import { EditableCanvasOverlay } from './EditableCanvasOverlay';
 import EnhancedLexicalEditor from '@/components/EnhancedLexicalEditor';
 import type { HeaderElement } from '@/components/canvas-engine/types';
@@ -158,14 +159,10 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   const editorTopMm = subjectTopMm + subjectLineMm + gapAfterSubjectMm + salutationLineMm + gapAfterSalutationMm;
 
-  // Footer/pagination constraints
+  // Footer/pagination constraints  
   const paginationTopMm = 263.77;
   const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
   const footerTopMm = layout.footer?.top || 272;
-
-  const closingHeightMm = closingFormula ? 20 : 0;
-  const attachmentHeightMm = (attachments?.length || 0) > 0 ? ((attachments?.length || 0) * 5 + 10) : 0;
-  const maxEditorHeightMm = Math.max(40, (paginationEnabled ? paginationTopMm - 4.23 : footerTopMm) - editorTopMm - closingHeightMm - attachmentHeightMm);
 
   // Layout positions for overlays
   const addressFieldTop = 50; // DIN 5008
@@ -244,7 +241,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               lineHeight: '1.2',
             }}
           >
-            {/* Render the full DIN5008 letter layout */}
+            {/* Render the full DIN5008 letter layout - closing hidden, rendered dynamically below editor */}
             <DIN5008LetterLayout
               template={template}
               senderInfo={senderInfo}
@@ -258,6 +255,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               showPagination={showPagination}
               layoutSettings={layoutSettings}
               salutation={salutation}
+              hideClosing={true}
               addressFieldElements={addressFieldElements}
               returnAddressElements={returnAddressElements}
               infoBlockElements={infoBlockElements}
@@ -418,14 +416,13 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </EditableCanvasOverlay>
             )}
 
-            {/* Overlay: Lexical Editor positioned in content area */}
+            {/* Overlay: Lexical Editor positioned in content area - no maxHeight, grows freely */}
             <div
               style={{
                 position: 'absolute',
                 top: `${editorTopMm}mm`,
                 left: '25mm',
                 right: '20mm',
-                maxHeight: `${maxEditorHeightMm}mm`,
                 zIndex: 10,
               }}
             >
@@ -486,6 +483,78 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             </div>
             </div>
+
+            {/* Dynamic closing block rendered below editor content */}
+            {closingFormula && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: `${editorTopMm + 60}mm`, // Will be repositioned by content height via CSS
+                  left: '25mm',
+                  right: '20mm',
+                  zIndex: 5,
+                  pointerEvents: 'none',
+                }}
+                className="letter-closing-block"
+              >
+                <div style={{ height: '9mm' }} />
+                <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
+                  {closingFormula}
+                </div>
+                {layout.closing?.signatureImagePath && (() => {
+                  const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(layout.closing.signatureImagePath!);
+                  return (
+                    <div style={{ marginTop: '2mm', marginBottom: '2mm' }}>
+                      <img
+                        src={publicUrl}
+                        alt="Unterschrift"
+                        style={{ maxHeight: '15mm', maxWidth: '50mm', objectFit: 'contain' }}
+                      />
+                    </div>
+                  );
+                })()}
+                {!layout.closing?.signatureImagePath && layout.closing?.signatureName && <div style={{ height: '4.5mm' }} />}
+                {layout.closing?.signatureName && (
+                  <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
+                    {layout.closing.signatureName}
+                  </div>
+                )}
+                {layout.closing?.signatureTitle && (
+                  <div style={{ fontSize: `${(layout.closing?.fontSize || 11) - 1}pt`, color: '#555' }}>
+                    {layout.closing.signatureTitle}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Page break indicators at 297mm intervals */}
+            {[1, 2, 3].map((page) => (
+              <div
+                key={`page-break-${page}`}
+                style={{
+                  position: 'absolute',
+                  top: `${297 * page}mm`,
+                  left: 0,
+                  right: 0,
+                  height: '1px',
+                  borderTop: '2px dashed rgba(0,0,0,0.15)',
+                  zIndex: 20,
+                  pointerEvents: 'none',
+                }}
+              >
+                <span style={{
+                  position: 'absolute',
+                  right: '5mm',
+                  top: '-10px',
+                  fontSize: '8pt',
+                  color: 'rgba(0,0,0,0.3)',
+                  backgroundColor: 'white',
+                  padding: '0 4px',
+                }}>
+                  Seite {page + 1}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

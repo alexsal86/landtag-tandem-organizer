@@ -21,6 +21,7 @@ interface DIN5008LetterLayoutProps {
   showPagination?: boolean;
   layoutSettings?: any;
   salutation?: string;
+  hideClosing?: boolean;
   // Canvas-based block elements (substituted)
   addressFieldElements?: HeaderElement[];
   returnAddressElements?: HeaderElement[];
@@ -49,6 +50,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   showPagination = false,
   layoutSettings,
   salutation,
+  hideClosing = false,
   addressFieldElements,
   returnAddressElements,
   infoBlockElements,
@@ -736,7 +738,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* Letter content */}
           <div className="din5008-content-text" style={contentTextStyle} dangerouslySetInnerHTML={{ __html: content }} />
           {/* Closing formula + signature */}
-          {layout.closing?.formula && (
+          {!hideClosing && layout.closing?.formula && (
             <>
               <div style={{ height: '9mm' }} />
               <div className="din5008-content-text" style={{ fontSize: `${layout.closing?.fontSize || 11}pt` }}>

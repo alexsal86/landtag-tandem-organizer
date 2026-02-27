@@ -39,7 +39,7 @@ interface Letter {
   sender_info_id?: string;
   information_block_ids?: string[];
   letter_date?: string;
-  status: 'draft' | 'review' | 'approved' | 'sent';
+  status: 'draft' | 'review' | 'approved' | 'sent' | 'pending_approval' | 'revision_requested';
   sent_date?: string;
   sent_method?: 'post' | 'email' | 'both';
   expected_response_date?: string;
@@ -155,37 +155,44 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const latestContentRef = useRef<{content: string, contentNodes?: any}>({ content: '' });
   const pendingMentionsRef = useRef<Set<string>>(new Set());
 
-  const statusLabels = {
+  const statusLabels: Record<string, string> = {
     draft: 'Entwurf',
-    review: 'Zur Prüfung',
-    approved: 'Genehmigt',
+    review: 'Zur Freigabe',
+    pending_approval: 'Zur Freigabe',
+    approved: 'Freigegeben',
+    revision_requested: 'Überarbeitung',
     sent: 'Versendet'
   };
 
-  const statusIcons = {
+  const statusIcons: Record<string, any> = {
     draft: Edit3,
     review: Clock,
+    pending_approval: Clock,
     approved: CheckCircle,
+    revision_requested: RotateCcw,
     sent: Send
   };
 
   const getNextStatus = (currentStatus: string) => {
-    const statusFlow = {
-      draft: 'review',
-      review: 'approved',
+    const statusFlow: Record<string, string> = {
+      draft: 'pending_approval',
+      pending_approval: 'approved',
+      revision_requested: 'pending_approval',
       approved: 'sent'
     };
-    return statusFlow[currentStatus as keyof typeof statusFlow];
+    return statusFlow[currentStatus];
   };
 
   const canTransitionStatus = (fromStatus: string, toStatus: string) => {
-    const allowedTransitions = {
-      draft: ['review'],
-      review: ['draft', 'approved'],
-      approved: ['review', 'sent'],
-      sent: ['approved']
+    const allowedTransitions: Record<string, string[]> = {
+      draft: ['pending_approval'],
+      review: ['approved', 'revision_requested'], // legacy
+      pending_approval: ['approved', 'revision_requested'],
+      revision_requested: ['pending_approval'],
+      approved: ['sent'],
+      sent: []
     };
-    return allowedTransitions[fromStatus as keyof typeof allowedTransitions]?.includes(toStatus) || false;
+    return allowedTransitions[fromStatus]?.includes(toStatus) || false;
   };
 
   const sentMethodLabels = {
@@ -197,11 +204,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   // Determine if current user can edit
   const isCreator = user?.id === letter?.created_by;
   const isReviewer = collaborators.some(c => c.user_id === user?.id);
-  const isInReviewByOthers = editedLetter.status === 'review' && !isCreator && !isReviewer;
-  const canEdit = !letter || editedLetter.status !== 'sent' && (
-    isCreator && editedLetter.status !== 'review' ||
-    isReviewer && editedLetter.status === 'review'
-  );
+  const currentStatus = editedLetter.status || 'draft';
+  const isInReviewByOthers = (currentStatus === 'review' || currentStatus === 'pending_approval') && !isCreator && !isReviewer;
+  const canEdit = !letter || (currentStatus !== 'sent' && (
+    (isCreator && (currentStatus === 'draft' || currentStatus === 'revision_requested')) ||
+    (isReviewer && (currentStatus === 'review' || currentStatus === 'pending_approval'))
+  ));
   
   console.log('=== LETTEREDITOR RENDER ===');
   console.log('LetterEditor props:', { letter, isOpen });
