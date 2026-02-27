@@ -789,9 +789,13 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                       {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                     </>
                   ) : block.key === 'pagination' ? (
-                    <div className="flex items-center justify-between h-full">
-                      <span className="text-[9px]">{block.label}</span>
-                      <span className="text-[9px] text-gray-500" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
+                    <div className="flex items-center h-full w-full">
+                      <span
+                        className="text-[9px] text-gray-500 w-full"
+                        style={{ textAlign: (localLayout.pagination?.align || 'right') }}
+                      >
+                        Seite 1 von 1
+                      </span>
                     </div>
                   ) : block.key === 'footer' && isLineModeBlock ? (
                     (() => {
