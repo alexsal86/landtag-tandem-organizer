@@ -343,7 +343,16 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         const availableWidth = 165; // 210mm - 25mm left - 20mm right margin
         let currentX = leftMargin;
         
-        const footerBlocks = Array.isArray(template.footer_blocks) ? template.footer_blocks : [];
+        const rawFooter = template.footer_blocks as any;
+        const footerBlocks = rawFooter && typeof rawFooter === 'object' && rawFooter.mode === 'line-blocks' && Array.isArray(rawFooter.blocks)
+          ? rawFooter.blocks.map((block: any) => ({
+              ...block,
+              widthPercent: block.widthUnit === 'cm' ? ((Math.max(1, Number(block.widthValue) || 1) * 10) / 165) * 100 : Math.max(1, Number(block.widthValue) || 25),
+              content: Array.isArray(block.lines)
+                ? block.lines.map((line: any) => line.type === 'spacer' ? '' : (line.type === 'label-value' ? `${line.label || ''} ${line.value || ''}`.trim() : (line.value || ''))).join('\n')
+                : (block.content || ''),
+            }))
+          : (Array.isArray(rawFooter) ? rawFooter : []);
         const sortedBlocks = footerBlocks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
         
         sortedBlocks.forEach((block: any) => {
@@ -693,7 +702,16 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           const availableWidth = 165; // 210mm - 25mm left - 20mm right margin
           let currentX = leftMargin;
           
-          const footerBlocks = Array.isArray(template.footer_blocks) ? template.footer_blocks : [];
+          const rawFooter = template.footer_blocks as any;
+          const footerBlocks = rawFooter && typeof rawFooter === 'object' && rawFooter.mode === 'line-blocks' && Array.isArray(rawFooter.blocks)
+            ? rawFooter.blocks.map((block: any) => ({
+                ...block,
+                widthPercent: block.widthUnit === 'cm' ? ((Math.max(1, Number(block.widthValue) || 1) * 10) / 165) * 100 : Math.max(1, Number(block.widthValue) || 25),
+                content: Array.isArray(block.lines)
+                  ? block.lines.map((line: any) => line.type === 'spacer' ? '' : (line.type === 'label-value' ? `${line.label || ''} ${line.value || ''}`.trim() : (line.value || ''))).join('\n')
+                  : (block.content || ''),
+              }))
+            : (Array.isArray(rawFooter) ? rawFooter : []);
           const sortedBlocks = footerBlocks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
           
           sortedBlocks.forEach((block: any) => {
