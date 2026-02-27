@@ -121,6 +121,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const subjectTopMm = layout.subject?.top || 98.46;
   const subjectFontSizePt = layout.subject?.fontSize || 11;
   const salutationFontSizePt = layout.salutation?.fontSize || 11;
+  const contentFontSizePt = layout.content?.fontSize || salutationFontSizePt || 11;
 
   const lineHeightMm = layout.content?.lineHeight || 4.5;
   const subjectLineMm = subject ? (subjectFontSizePt * 0.3528 * 1.2) : 0;
@@ -212,7 +213,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               minHeight: '297mm',
               boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
               fontFamily: 'Arial, sans-serif',
-              fontSize: '11pt',
+              fontSize: `${contentFontSizePt}pt`,
               lineHeight: '1.2',
             }}
           >
@@ -436,7 +437,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                     padding: 0 !important;
                     background: transparent !important;
                     font-family: Arial, sans-serif !important;
-                    font-size: 11pt !important;
+                    font-size: ${contentFontSizePt}pt !important;
                     line-height: 1.2 !important;
                     color: #000 !important;
                   }
