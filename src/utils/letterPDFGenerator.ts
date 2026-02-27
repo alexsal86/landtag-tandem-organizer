@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
 
 interface Letter {
   id: string;
@@ -288,154 +289,60 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     // Footer content from template
     const renderFooterBlocks = () => {
       if (!template?.footer_blocks) return;
-      
+
       const footerY = 272 + 3;
-      const availableWidth = 165; // 210mm - 25mm left - 20mm right margin
+      const availableWidth = 165;
       let currentX = leftMargin;
-      
-      const footerBlocks = Array.isArray(template.footer_blocks) ? template.footer_blocks : [];
-      const sortedBlocks = footerBlocks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-      
+
+      const sortedBlocks = buildFooterBlocksFromStored(template.footer_blocks);
+
       sortedBlocks.forEach((block: any) => {
-        if (!block.content) return;
-        
-        // Calculate width in mm from percentage
-        const blockWidth = (block.widthPercent || 25) * availableWidth / 100;
-        
-        // Set font properties with proper size handling
-        const fontSize = Math.max(6, Math.min(14, block.fontSize || 8)); // Clamp font size
-        // For tight spacing in footer, use minimal line height
-        const lineHeightMultiplier = block.lineHeight || 0.8;
-        // Direct calculation: tight spacing should be around 3-4pt for 8pt font
-        const lineHeight = lineHeightMultiplier <= 0.8 ? fontSize * 0.4 : fontSize * lineHeightMultiplier * 0.5;
-        pdf.setFontSize(fontSize);
-        
-        // Set font weight
-        const fontWeight = block.fontWeight === 'bold' ? 'bold' : 'normal';
-        pdf.setFont('helvetica', fontWeight);
-        
-        // Set color if specified
-        if (block.color && block.color.startsWith('#')) {
-          try {
-            const hex = block.color.substring(1);
-            const r = parseInt(hex.substr(0, 2), 16);
-            const g = parseInt(hex.substr(2, 2), 16);
-            const b = parseInt(hex.substr(4, 2), 16);
-            pdf.setTextColor(r, g, b);
-          } catch (e) {
-            pdf.setTextColor(0, 0, 0); // Fallback to black
-          }
-        } else {
-          pdf.setTextColor(0, 0, 0);
-        }
-        
+        const blockWidth = resolveBlockWidthMm(block.widthUnit || 'percent', Number(block.widthValue) || 25, availableWidth);
         let blockY = footerY;
-        
-        // Render block title with highlighting support
+
         if (block.title) {
-          if (block.titleHighlight) {
-            // Use highlighted title settings
-            const titleFontSize = Math.max(8, Math.min(20, block.titleFontSize || 13));
-            const titleFontWeight = block.titleFontWeight || 'bold';
-            const titleColor = block.titleColor || '#107030';
-            
-            pdf.setFont('helvetica', titleFontWeight);
-            pdf.setFontSize(titleFontSize);
-            
-            // Set title color
-            if (titleColor.startsWith('#')) {
-              try {
-                const hex = titleColor.substring(1);
-                const r = parseInt(hex.substr(0, 2), 16);
-                const g = parseInt(hex.substr(2, 2), 16);
-                const b = parseInt(hex.substr(4, 2), 16);
-                pdf.setTextColor(r, g, b);
-              } catch (e) {
-                pdf.setTextColor(16, 112, 48); // Fallback to RGB 16,112,48
-              }
-            } else {
-              pdf.setTextColor(16, 112, 48);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(8);
+          const wrappedTitle = pdf.splitTextToSize(block.title, blockWidth - 2);
+          wrappedTitle.forEach((titleLine: string) => {
+            if (blockY <= 290) {
+              pdf.text(titleLine, currentX + 1, blockY);
+              blockY += 3.2;
             }
-            
-            const wrappedTitle = pdf.splitTextToSize(block.title, blockWidth - 2);
-            const titleLineHeight = titleFontSize * 0.4; // Tight spacing for title
-            wrappedTitle.forEach((titleLine: string) => {
-              if (blockY <= 290) {
-                pdf.text(titleLine, currentX + 1, blockY);
-                blockY += titleLineHeight;
-              }
-            });
-            blockY += 2; // Extra gap after highlighted title
-            
-            // Reset font size and color for content
-            pdf.setFontSize(fontSize);
-            pdf.setTextColor(0, 0, 0);
-          } else {
-            // Regular title formatting
-            pdf.setFont('helvetica', 'bold');
-            const wrappedTitle = pdf.splitTextToSize(block.title, blockWidth - 2);
-            wrappedTitle.forEach((titleLine: string) => {
-              if (blockY <= 290) {
-                pdf.text(titleLine, currentX + 1, blockY);
-                blockY += lineHeight;
-              }
-            });
-            blockY += 1; // Small gap after title
-          }
-          
-          // Reset to original font weight for content
-          pdf.setFont('helvetica', fontWeight);
+          });
+          blockY += 0.8;
         }
-        
-        // Split content into lines and render within block width
-        const lines = block.content.split('\n');
-        
-        lines.forEach((line: string) => {
-          if (blockY > 290) return; // Don't go beyond page bounds
-          
-          // Apply footer formatting rules
-          let formattedLine = line;
-          
-          // Remove "Tel: " prefix from phone numbers
-          if (formattedLine.startsWith('Tel: ')) {
-            formattedLine = formattedLine.replace('Tel: ', '');
+
+        (block.lines || []).forEach((line: any) => {
+          if (line.type === 'spacer') {
+            blockY += Math.max(0.8, Number(line.spacerHeight) || 1.2);
+            return;
           }
-          
-          // Remove "Web: " prefix and clean website URLs
-          if (formattedLine.startsWith('Web: ')) {
-            formattedLine = formattedLine.replace('Web: ', '').replace(/^https?:\/\/(www\.)?/, '');
-          }
-          
-          // Add line break after @ in email addresses
-          if (formattedLine.includes('@') && !formattedLine.startsWith('@')) {
-            formattedLine = formattedLine.replace('@', '@\n');
-          }
-          
-          // Replace social media text with @ symbol
-          if (formattedLine.startsWith('Instagram: ')) {
-            formattedLine = formattedLine.replace('Instagram: ', '@ ');
-          }
-          if (formattedLine.startsWith('Facebook: ')) {
-            formattedLine = formattedLine.replace('Facebook: ', '@ ');
-          }
-          
-          // Use jsPDF's text wrapping for better word breaks
-          const wrappedLines = pdf.splitTextToSize(formattedLine, blockWidth - 2);
+
+          const fontSize = Math.max(6, Math.min(12, Number(line.fontSize) || 8));
+          pdf.setFontSize(fontSize);
+          pdf.setFont('helvetica', line.valueBold || line.labelBold ? 'bold' : 'normal');
+
+          const text = line.type === 'label-value'
+            ? `${line.label || ''} ${line.value || ''}`.trim()
+            : (line.value || '');
+          if (!text) return;
+
+          const wrappedLines = pdf.splitTextToSize(text, blockWidth - 2);
           wrappedLines.forEach((wrappedLine: string) => {
             if (blockY <= 290) {
               pdf.text(wrappedLine, currentX + 1, blockY);
-              blockY += lineHeight;
+              blockY += fontSize * 0.35;
             }
           });
         });
-        
+
         currentX += blockWidth;
       });
-      
-      // Reset text color
+
       pdf.setTextColor(0, 0, 0);
     };
-    
+
     renderFooterBlocks();
     
     // Reset colors for content

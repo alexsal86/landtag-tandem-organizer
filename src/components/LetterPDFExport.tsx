@@ -7,6 +7,7 @@ import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { HeaderRenderer } from '@/services/headerRenderer';
+import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
 
 interface Letter {
   id: string;
@@ -343,14 +344,16 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         const availableWidth = 165; // 210mm - 25mm left - 20mm right margin
         let currentX = leftMargin;
         
-        const footerBlocks = Array.isArray(template.footer_blocks) ? template.footer_blocks : [];
-        const sortedBlocks = footerBlocks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+        const sortedBlocks = buildFooterBlocksFromStored(template.footer_blocks);
         
         sortedBlocks.forEach((block: any) => {
-          if (!block.content) return;
+          const blockContent = Array.isArray(block.lines)
+            ? block.lines.map((line: any) => line.type === 'spacer' ? '' : (line.type === 'label-value' ? `${line.label || ''} ${line.value || ''}`.trim() : (line.value || ''))).join('\n')
+            : (block.content || '');
+          if (!blockContent) return;
           
           // Calculate width in mm from percentage
-          const blockWidth = (block.widthPercent || 25) * availableWidth / 100;
+          const blockWidth = resolveBlockWidthMm(block.widthUnit || 'percent', Number(block.widthValue) || 25, availableWidth);
           
           // Set font properties with proper size handling
           const fontSize = Math.max(6, Math.min(14, block.fontSize || 8)); // Clamp font size
@@ -438,7 +441,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           }
           
           // Split content into lines and render within block width
-          const lines = block.content.split('\n');
+          const lines = blockContent.split('\n');
           
           lines.forEach((line: string) => {
             if (blockY > 290) return; // Don't go beyond page bounds
@@ -693,14 +696,16 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           const availableWidth = 165; // 210mm - 25mm left - 20mm right margin
           let currentX = leftMargin;
           
-          const footerBlocks = Array.isArray(template.footer_blocks) ? template.footer_blocks : [];
-          const sortedBlocks = footerBlocks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+          const sortedBlocks = buildFooterBlocksFromStored(template.footer_blocks);
           
           sortedBlocks.forEach((block: any) => {
-            if (!block.content) return;
+            const blockContent = Array.isArray(block.lines)
+            ? block.lines.map((line: any) => line.type === 'spacer' ? '' : (line.type === 'label-value' ? `${line.label || ''} ${line.value || ''}`.trim() : (line.value || ''))).join('\n')
+            : (block.content || '');
+          if (!blockContent) return;
             
             // Calculate width in mm from percentage
-            const blockWidth = (block.widthPercent || 25) * availableWidth / 100;
+            const blockWidth = resolveBlockWidthMm(block.widthUnit || 'percent', Number(block.widthValue) || 25, availableWidth);
             
             // Set font properties with proper size handling
             const fontSize = Math.max(6, Math.min(14, block.fontSize || 8)); // Clamp font size
@@ -726,7 +731,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
             }
             
             // Split content into lines and render within block width
-            const lines = block.content.split('\n');
+            const lines = blockContent.split('\n');
             let blockY = footerY;
             
             lines.forEach((line: string) => {

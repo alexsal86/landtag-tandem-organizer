@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import type { HeaderElement, TextElement } from '@/components/canvas-engine/types';
 import { type BlockLine, type BlockLineData, isLineMode } from '@/components/letters/BlockLineEditor';
+import { buildFooterBlocksFromStored } from '@/components/letters/footerBlockUtils';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
@@ -208,66 +209,44 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   // Footer blocks rendering (identical to PDF logic)
   const renderFooterBlocks = () => {
     if (!template?.footer_blocks) return null;
-    
-    const footerBlocks = Array.isArray(template.footer_blocks) ? template.footer_blocks : [];
-    const sortedBlocks = footerBlocks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-    
+
+    const sortedBlocks = buildFooterBlocksFromStored(template.footer_blocks);
+
     return (
-      <div 
-        className="flex" 
-        style={{ 
+      <div
+        className="flex"
+        style={{
           position: 'absolute',
-          top: '272mm', // DIN 5008 footer position (exact as PDF)
+          top: '272mm',
           left: '25mm',
           right: '20mm',
-          height: '18mm', // Footer area height
+          height: '18mm',
           fontSize: '8pt',
           backgroundColor: debugMode ? 'rgba(128,0,128,0.05)' : 'transparent'
         }}
       >
         {sortedBlocks.map((block: any, index: number) => {
-          if (!block.content) return null;
-          
-          const blockWidth = `${block.widthPercent || 25}%`;
-          const fontSize = Math.max(6, Math.min(14, block.fontSize || 8)) + 'pt';
-          const lineHeight = block.lineHeight || 0.8;
-          const fontWeight = block.fontWeight === 'bold' ? 'bold' : 'normal';
-          const color = block.color || '#000000';
-          
+          const blockWidth = block.widthUnit === 'cm'
+            ? `${Math.max(1, Number(block.widthValue) || 1)}cm`
+            : `${Math.max(1, Number(block.widthValue) || 25)}%`;
+
           return (
-            <div 
-              key={index}
-              style={{ 
-                width: blockWidth,
-                fontSize: fontSize,
-                fontWeight: fontWeight,
-                color: color,
-                lineHeight: lineHeight,
-                paddingRight: '2mm'
-              }}
+            <div
+              key={block.id || index}
+              style={{ width: blockWidth, paddingRight: '2mm', fontSize: '8pt', lineHeight: 1 }}
             >
-              {/* Block title with highlight support */}
-              {block.title && (
-                <div style={{
-                  fontWeight: block.titleHighlight ? (block.titleFontWeight || 'bold') : 'bold',
-                  fontSize: block.titleHighlight ? Math.max(8, Math.min(20, block.titleFontSize || 13)) + 'pt' : fontSize,
-                  color: block.titleHighlight ? (block.titleColor || '#107030') : color,
-                  marginBottom: '1mm'
-                }}>
-                  {block.title}
-                </div>
-              )}
-              
-              {/* Block content with formatting */}
-              <div style={{ whiteSpace: 'pre-line' }}>
-                {block.content
-                  .replace(/^Tel: /, '') // Remove "Tel: " prefix
-                  .replace(/^Web: /, '') // Remove "Web: " prefix
-                  .replace(/^https?:\/\/(www\.)?/, '') // Clean URLs
-                  .replace(/@/, '@\n') // Line break after @
-                  .replace(/^Instagram: /, '@ ') // Replace social media prefixes
-                  .replace(/^Facebook: /, '@ ')
-                }
+              {block.title && <div style={{ fontWeight: 'bold', marginBottom: '1mm' }}>{block.title}</div>}
+              <div>
+                {(block.lines || []).map((line: any, lineIndex: number) => {
+                  if (line.type === 'spacer') {
+                    return <div key={lineIndex} style={{ height: `${Math.max(0.5, Number(line.spacerHeight) || 1)}mm` }} />;
+                  }
+                  const content = line.type === 'label-value'
+                    ? `${line.label || ''} ${line.value || ''}`.trim()
+                    : (line.value || '');
+                  if (!content) return null;
+                  return <div key={lineIndex} style={{ fontSize: `${Math.max(6, Math.min(12, Number(line.fontSize) || 8))}pt` }}>{content}</div>;
+                })}
               </div>
             </div>
           );
