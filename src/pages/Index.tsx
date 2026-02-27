@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
@@ -64,6 +64,15 @@ const Index = () => {
   
   // Dialog state management
   const [showCreateAppointmentDialog, setShowCreateAppointmentDialog] = useState(false);
+
+  const navGroups = useMemo(() => getNavigationGroups(), []);
+  const activeGroup = useMemo(() =>
+    navGroups.find(g =>
+      g.subItems?.some(item => item.id === activeSection) ||
+      (g.route && g.route.slice(1) === activeSection) ||
+      g.id === activeSection
+    ),
+  [navGroups, activeSection]);
   
   // Check URL parameters for dialog state
   useEffect(() => {
@@ -216,48 +225,24 @@ const Index = () => {
           <div className="hidden md:block sticky top-0 z-40">
             <AppHeader />
             {/* Sekundäre Navigation für aktive Gruppe */}
-            {(() => {
-              const navGroups = getNavigationGroups();
-              const activeGroup = navGroups.find(g => 
-                g.subItems?.some(item => item.id === activeSection) ||
-                (g.route && g.route.slice(1) === activeSection) ||
-                g.id === activeSection
-              );
-              
-              if (activeGroup?.subItems && activeGroup.subItems.length > 1) {
-                return (
-                  <SubNavigation
-                    items={activeGroup.subItems}
-                    activeItem={activeSection}
-                    onItemChange={handleSectionChange}
-                  />
-                );
-              }
-              return null;
-            })()}
+            {activeGroup?.subItems && activeGroup.subItems.length > 1 ? (
+              <SubNavigation
+                items={activeGroup.subItems}
+                activeItem={activeSection}
+                onItemChange={handleSectionChange}
+              />
+            ) : null}
           </div>
           <MobileHeader />
           {/* Mobile Sub-Navigation */}
           <div className="md:hidden">
-            {(() => {
-              const navGroups = getNavigationGroups();
-              const activeGroup = navGroups.find(g => 
-                g.subItems?.some(item => item.id === activeSection) ||
-                (g.route && g.route.slice(1) === activeSection) ||
-                g.id === activeSection
-              );
-              
-              if (activeGroup?.subItems && activeGroup.subItems.length > 1) {
-                return (
-                  <MobileSubNavigation
-                    items={activeGroup.subItems}
-                    activeItem={activeSection}
-                    onItemChange={handleSectionChange}
-                  />
-                );
-              }
-              return null;
-            })()}
+            {activeGroup?.subItems && activeGroup.subItems.length > 1 ? (
+              <MobileSubNavigation
+                items={activeGroup.subItems}
+                activeItem={activeSection}
+                onItemChange={handleSectionChange}
+              />
+            ) : null}
           </div>
           <main id="main-content" className="flex-1 bg-gradient-to-b from-background to-muted/20" tabIndex={-1}>
             <ErrorBoundary>
