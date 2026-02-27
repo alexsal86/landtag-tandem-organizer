@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, PanelLeft, PanelLeftClose, Settings, Wifi, WifiOff, Activity, Ruler } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, Settings, Wifi, WifiOff, Activity, Ruler } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -146,7 +145,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [attachments, setAttachments] = useState<any[]>([]);
   const [userProfiles, setUserProfiles] = useState<{[key: string]: {display_name: string, avatar_url?: string}}>({});
   const [previewZoom, setPreviewZoom] = useState(1.0);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showPagination, setShowPagination] = useState(true);
   const [showLayoutDebug, setShowLayoutDebug] = useState(false);
   
@@ -1249,30 +1247,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         )}
       </div>
 
-      {/* Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Briefdetails Sidebar */}
-        <Collapsible 
-          open={!sidebarCollapsed} 
-          onOpenChange={(open) => setSidebarCollapsed(!open)}
-          className="border-r bg-card/30"
-        >
-          <div className={`${sidebarCollapsed ? 'w-12' : 'w-80'} transition-all duration-200 flex flex-col h-full`}>
-            {/* Toggle Button */}
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="self-end m-2 p-2 flex-shrink-0"
-                title={sidebarCollapsed ? "Briefdetails öffnen" : "Briefdetails schließen"}
-              >
-                {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-              </Button>
-            </CollapsibleTrigger>
-            
-            <CollapsibleContent className="flex-1 min-h-0">
-              <div className="h-full overflow-y-auto p-4 space-y-4">
-                <Card>
+      <div className="border-b bg-card/30 p-4 overflow-y-auto max-h-[45vh]">
+        <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileText className="h-4 w-4" />
@@ -1698,14 +1674,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       </div>
                     )}
                   </CardContent>
-                </Card>
+        </Card>
 
-                {/* ... keep existing code (workflow tracking, proofreading comments) */}
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
+      </div>
 
+      {/* Content */}
+      <div className="flex-1 flex overflow-hidden">
         {/* Main Editor - Always shows letter canvas */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {showDINPreview ? (
