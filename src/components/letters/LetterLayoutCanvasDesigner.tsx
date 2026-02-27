@@ -647,19 +647,28 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               };
               const hasVariablePlaceholder = (val: string | undefined) => val ? /\{\{.*?\}\}/.test(val) : false;
               
-              const renderLineItems = (lines: typeof lineData) => lines.map((line) => {
-                const fontSizePx = (line.fontSize || 9) * (25.4 / 72) * SCALE;
-                if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE }} />;
-                const resolvedValue = resolveLineValue(line.value);
-                const isVar = hasVariablePlaceholder(line.value || '');
-                return (
-                  <div key={line.id} style={{ fontSize: fontSizePx, lineHeight: '1.3' }} className="truncate flex items-center gap-0.5">
-                    {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
-                    <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
-                    {!plainPreview && isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
-                  </div>
-                );
-              });
+              const renderLineItems = (lines: typeof lineData, options?: { underlineLastContentLine?: boolean }) => {
+                const lastContentIndex = options?.underlineLastContentLine
+                  ? [...lines].map((line, index) => ({ line, index })).reverse().find((entry) => entry.line.type !== 'spacer')?.index ?? -1
+                  : -1;
+
+                return lines.map((line, index) => {
+                  const fontSizePx = (line.fontSize || 9) * (25.4 / 72) * SCALE;
+                  if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE }} />;
+                  const resolvedValue = resolveLineValue(line.value);
+                  const isVar = hasVariablePlaceholder(line.value || '');
+                  const underlineThisLine = index === lastContentIndex;
+                  return (
+                    <div key={line.id} style={{ fontSize: fontSizePx, lineHeight: '1.3' }}>
+                      <span className="inline-flex items-center gap-0.5" style={underlineThisLine ? { borderBottom: '1px solid #000' } : undefined}>
+                        {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
+                        <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
+                        {!plainPreview && isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
+                      </span>
+                    </div>
+                  );
+                });
+              };
               
               // Render address field with two zones
               const returnAddressHeightMm = localLayout.addressField.returnAddressHeight || 17.7;
@@ -670,7 +679,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                     <>
                       {/* Vermerkzone (return address) */}
                       <div style={{ height: returnAddressHeightMm * SCALE, borderBottom: plainPreview ? undefined : '1px dashed rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: 2 }}>
-                        {hasReturnData ? renderLineItems(returnLineData) : <span className="text-[9px] text-muted-foreground italic">Rücksendezeile</span>}
+                        {hasReturnData ? renderLineItems(returnLineData, { underlineLastContentLine: true }) : <span className="text-[9px] text-muted-foreground italic">Rücksendezeile</span>}
                       </div>
                       {/* Anschriftzone (recipient address) */}
                       <div style={{ paddingTop: 2 }}>
