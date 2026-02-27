@@ -24,7 +24,7 @@ const createFooterBlock = (): FooterLineBlock => ({
 });
 
 export const FooterBlockLineEditor: React.FC<FooterBlockLineEditorProps> = ({ blocks, onChange, availableWidthMm }) => {
-  const totalWidthMm = blocks.reduce((sum, block) => sum + resolveBlockWidthMm(block, availableWidthMm), 0);
+  const totalWidthMm = blocks.reduce((sum, block) => sum + resolveBlockWidthMm(block.widthUnit, block.widthValue, availableWidthMm), 0);
 
   const updateBlock = (id: string, updates: Partial<FooterLineBlock>) => {
     onChange(blocks.map((block) => (block.id === id ? { ...block, ...updates } : block)));
@@ -88,7 +88,7 @@ export const FooterBlockLineEditor: React.FC<FooterBlockLineEditorProps> = ({ bl
                   className="h-8"
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Effektiv: {resolveBlockWidthMm(block, availableWidthMm).toFixed(1)}mm
+                  Effektiv: {resolveBlockWidthMm(block.widthUnit, block.widthValue, availableWidthMm).toFixed(1)}mm
                 </p>
               </div>
             </div>

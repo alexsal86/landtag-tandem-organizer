@@ -66,8 +66,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     header: { height: 45, marginBottom: 8.46 },
     addressField: { top: 46, left: 25, width: 85, height: 40 },
     infoBlock: { top: 50, left: 125, width: 75, height: 40 },
-    subject: { top: 101.46, marginBottom: 8 },
-    content: { top: 109.46, maxHeight: 161, lineHeight: 4.5 },
+    subject: { top: 98.64, marginBottom: 8 },
+    content: { top: 106.64, maxHeight: 161, lineHeight: 4.5 },
     footer: { top: 272, height: 18 },
     attachments: { top: 230 }
   };
@@ -245,7 +245,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                     ? `${line.label || ''} ${line.value || ''}`.trim()
                     : (line.value || '');
                   if (!content) return null;
-                  return <div key={lineIndex} style={{ fontSize: `${Math.max(6, Math.min(12, Number(line.fontSize) || 8))}pt` }}>{content}</div>;
+                  return <div key={lineIndex} style={{ fontSize: `${Math.max(6, Math.min(12, Number(line.fontSize) || 8))}pt`, fontWeight: line.valueBold ? 'bold' : 'normal', color: line.color || undefined }}>{content}</div>;
                 })}
               </div>
             </div>
@@ -505,7 +505,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         <div 
           style={{ 
             position: 'absolute',
-            top: `${layout.subject?.top || 101.46}mm`,
+            top: `${layout.subject?.top || 98.64}mm`,
             left: '25mm',
             right: '20mm',
             maxHeight: '161mm',
@@ -590,7 +590,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {(subject || (subjectElements && subjectElements.length > 0)) && (
             <div style={{ 
               position: 'absolute',
-              top: 'calc(98.46mm + 3mm)',
+              top: 'calc(98.64mm + 3mm)',
               left: '25mm',
               right: '20mm',
               fontWeight: subjectElements && subjectElements.length > 0 ? 'normal' : 'bold',
@@ -609,7 +609,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           <div 
             style={{ 
               position: 'absolute',
-              top: subject ? 'calc(98.46mm + 11mm)' : 'calc(98.46mm + 3mm)',
+              top: subject ? 'calc(98.64mm + 11mm)' : 'calc(98.64mm + 3mm)',
               left: '25mm',
               right: '20mm',
               maxHeight: '161mm',

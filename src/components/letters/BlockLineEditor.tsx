@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { GripVertical, Plus, Trash2, Space, Zap, FileText } from 'lucide-react';
+import { GripVertical, Plus, Trash2, Space, Zap, FileText, Bold } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export interface BlockLine {
@@ -18,6 +18,7 @@ export interface BlockLine {
   spacerHeight?: number;
   widthUnit?: 'percent' | 'cm';
   widthValue?: number;
+  color?: string;
 }
 
 export interface BlockLineData {
@@ -82,6 +83,37 @@ const DIN5008_RETURN_ADDRESS_TEMPLATE: BlockLine[] = [
   { id: 'ret-1', type: 'text-only', value: '{{absender_name}} · {{absender_organisation}} · {{absender_strasse}} · {{absender_plz_ort}}', isVariable: true, fontSize: 7 },
 ];
 
+const DIN5008_FOOTER_TEMPLATE: BlockLine[] = [
+  // Block 1: Name & Partei
+  { id: 'ft-1', type: 'block-start', label: '', widthUnit: 'percent', widthValue: 25 },
+  { id: 'ft-2', type: 'text-only', value: 'Alexander Salomon MdL', fontSize: 8, valueBold: true, color: '#4a8c3f' },
+  { id: 'ft-3', type: 'text-only', value: 'Fraktion GRÜNE im', fontSize: 7 },
+  { id: 'ft-4', type: 'text-only', value: 'Landtag von', fontSize: 7 },
+  { id: 'ft-5', type: 'text-only', value: 'Baden-Württemberg', fontSize: 7 },
+  { id: 'ft-6', type: 'block-end' },
+  // Block 2: Für Sie im Landtag
+  { id: 'ft-7', type: 'block-start', label: '', widthUnit: 'percent', widthValue: 25 },
+  { id: 'ft-8', type: 'text-only', value: 'Für Sie im Landtag', fontSize: 8, valueBold: true },
+  { id: 'ft-9', type: 'text-only', value: 'Konrad-Adenauer-Str. 3', fontSize: 7 },
+  { id: 'ft-10', type: 'text-only', value: '70173 Stuttgart', fontSize: 7 },
+  { id: 'ft-11', type: 'text-only', value: 'T 0711 / 2063-623', fontSize: 7 },
+  { id: 'ft-12', type: 'block-end' },
+  // Block 3: Für Sie in Karlsruhe
+  { id: 'ft-13', type: 'block-start', label: '', widthUnit: 'percent', widthValue: 25 },
+  { id: 'ft-14', type: 'text-only', value: 'Für Sie in Karlsruhe', fontSize: 8, valueBold: true },
+  { id: 'ft-15', type: 'text-only', value: 'Markgrafenstr. 16', fontSize: 7 },
+  { id: 'ft-16', type: 'text-only', value: '76131 Karlsruhe', fontSize: 7 },
+  { id: 'ft-17', type: 'text-only', value: 'T 0721 / 98507-24', fontSize: 7 },
+  { id: 'ft-18', type: 'block-end' },
+  // Block 4: Politik direkt
+  { id: 'ft-19', type: 'block-start', label: '', widthUnit: 'percent', widthValue: 25 },
+  { id: 'ft-20', type: 'text-only', value: 'Politik direkt', fontSize: 8, valueBold: true },
+  { id: 'ft-21', type: 'text-only', value: 'alexander-salomon.de', fontSize: 7 },
+  { id: 'ft-22', type: 'text-only', value: 'alexander.salomon@', fontSize: 7 },
+  { id: 'ft-23', type: 'text-only', value: 'gruene.landtag-bw.de', fontSize: 7 },
+  { id: 'ft-24', type: 'block-end' },
+];
+
 interface BlockLineEditorProps {
   blockType: 'infoBlock' | 'addressField' | 'returnAddress' | 'footer';
   lines: BlockLine[];
@@ -110,7 +142,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
     : blockType === 'returnAddress'
       ? DIN5008_RETURN_ADDRESS_TEMPLATE
       : blockType === 'footer'
-        ? []
+        ? DIN5008_FOOTER_TEMPLATE
         : DIN5008_ADDRESS_TEMPLATE;
 
   const addLine = (type: BlockLine['type']) => {
@@ -250,6 +282,22 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                               className="h-6 flex-1 text-xs"
                               placeholder="Text oder {{variable}}..."
                             />
+                            <Button
+                              variant={line.valueBold ? 'default' : 'ghost'}
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => updateLine(line.id, { valueBold: !line.valueBold })}
+                              title="Fett"
+                            >
+                              <Bold className="h-3 w-3" />
+                            </Button>
+                            <Input
+                              type="color"
+                              value={line.color || '#000000'}
+                              onChange={(e) => updateLine(line.id, { color: e.target.value === '#000000' ? undefined : e.target.value })}
+                              className="h-6 w-6 p-0 border-0 cursor-pointer"
+                              title="Textfarbe"
+                            />
                             <Input
                               type="number"
                               value={line.fontSize || 9}
@@ -285,6 +333,22 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                               onChange={(e) => updateLine(line.id, { value: e.target.value, isVariable: /\{\{.*?\}\}/.test(e.target.value) })}
                               className="h-6 flex-1 text-xs"
                               placeholder="Wert oder {{variable}}..."
+                            />
+                            <Button
+                              variant={line.valueBold ? 'default' : 'ghost'}
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => updateLine(line.id, { valueBold: !line.valueBold })}
+                              title="Wert fett"
+                            >
+                              <Bold className="h-3 w-3" />
+                            </Button>
+                            <Input
+                              type="color"
+                              value={line.color || '#000000'}
+                              onChange={(e) => updateLine(line.id, { color: e.target.value === '#000000' ? undefined : e.target.value })}
+                              className="h-6 w-6 p-0 border-0 cursor-pointer"
+                              title="Textfarbe"
                             />
                             <Input
                               type="number"
@@ -349,6 +413,40 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
       {/* Right: Preview */}
       <div className="rounded-lg border bg-white p-4">
         <span className="text-xs font-medium text-muted-foreground mb-2 block">Vorschau</span>
+        {blockType === 'footer' ? (
+          /* Footer preview: render blocks as horizontal columns */
+          <div className="flex text-[7pt] leading-tight font-[Arial,sans-serif]" style={{ gap: '2mm' }}>
+            {(() => {
+              const columns: { label: string; widthValue: number; widthUnit: string; items: BlockLine[] }[] = [];
+              let current: typeof columns[0] | null = null;
+              lines.forEach((line) => {
+                if (line.type === 'block-start') {
+                  if (current) columns.push(current);
+                  current = { label: line.label || '', widthValue: line.widthValue || 25, widthUnit: line.widthUnit || 'percent', items: [] };
+                } else if (line.type === 'block-end') {
+                  if (current) { columns.push(current); current = null; }
+                } else if (current) {
+                  current.items.push(line);
+                }
+              });
+              if (current) columns.push(current);
+              if (columns.length === 0) return <div className="text-muted-foreground italic text-xs">Keine Footer-Blöcke</div>;
+              return columns.map((col, ci) => (
+                <div key={ci} style={{ width: col.widthUnit === 'cm' ? `${col.widthValue}cm` : `${col.widthValue}%` }}>
+                  {col.items.map((line) => {
+                    if (line.type === 'spacer') return <div key={line.id} style={{ height: `${line.spacerHeight || 2}mm` }} />;
+                    const previewVal = getPreviewText(line);
+                    return (
+                      <div key={line.id} style={{ fontSize: `${line.fontSize || 8}pt`, fontWeight: line.valueBold ? 'bold' : 'normal', color: line.color || '#000' }}>
+                        {line.type === 'label-value' ? `${line.label || ''} ${previewVal}`.trim() : (previewVal || '\u00A0')}
+                      </div>
+                    );
+                  })}
+                </div>
+              ));
+            })()}
+          </div>
+        ) : (
         <div className="space-y-0 text-[9pt] leading-tight font-[Arial,sans-serif]">
           {lines.map((line) => {
             if (line.type === 'spacer') {
@@ -364,7 +462,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
             const isVar = hasVariable(line.value);
             if (line.type === 'text-only') {
               return (
-                <div key={line.id} className={`flex items-center gap-1 ${line.valueBold ? 'font-bold' : ''}`} style={{ fontSize: `${line.fontSize || 9}pt` }}>
+                <div key={line.id} className={`flex items-center gap-1 ${line.valueBold ? 'font-bold' : ''}`} style={{ fontSize: `${line.fontSize || 9}pt`, color: line.color || undefined }}>
                   <span>{previewVal || '\u00A0'}</span>
                   {isVar && <Zap className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
                 </div>
@@ -372,7 +470,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
             }
             // label-value
             return (
-              <div key={line.id} className="flex items-center gap-1" style={{ fontSize: `${line.fontSize || 9}pt` }}>
+              <div key={line.id} className="flex items-center gap-1" style={{ fontSize: `${line.fontSize || 9}pt`, color: line.color || undefined }}>
                 <span className={line.labelBold !== false ? 'font-bold' : ''}>{line.label || ''}</span>
                 <span className={line.valueBold ? 'font-bold' : ''}>{previewVal || ''}</span>
                 {isVar && <Zap className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
@@ -381,6 +479,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
           })}
           {lines.length === 0 && <div className="text-muted-foreground italic text-xs">Keine Zeilen vorhanden</div>}
         </div>
+        )}
       </div>
     </div>
   );
