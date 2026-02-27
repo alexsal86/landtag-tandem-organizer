@@ -1956,6 +1956,7 @@ export type Database = {
           first_name: string | null
           founding_date: string | null
           gdpr_consent_date: string | null
+          gender: string | null
           geocoded_at: string | null
           geocoding_source: string | null
           iban: string | null
@@ -2064,6 +2065,7 @@ export type Database = {
           first_name?: string | null
           founding_date?: string | null
           gdpr_consent_date?: string | null
+          gender?: string | null
           geocoded_at?: string | null
           geocoding_source?: string | null
           iban?: string | null
@@ -2172,6 +2174,7 @@ export type Database = {
           first_name?: string | null
           founding_date?: string | null
           gdpr_consent_date?: string | null
+          gender?: string | null
           geocoded_at?: string | null
           geocoding_source?: string | null
           iban?: string | null

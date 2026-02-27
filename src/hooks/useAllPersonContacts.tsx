@@ -22,7 +22,7 @@ export const useAllPersonContacts = () => {
       
       const { data: contacts, error } = await supabase
         .from('contacts')
-        .select('id, contact_type, name, role, organization, organization_id, email, phone, location, address, birthday, website, linkedin, twitter, facebook, instagram, xing, category, priority, last_contact, avatar_url, notes, additional_info, is_favorite, legal_form, industry, main_contact_person, business_description, tags, business_street, business_house_number, business_postal_code, business_city, business_country')
+        .select('id, contact_type, name, role, organization, organization_id, email, phone, location, address, birthday, website, linkedin, twitter, facebook, instagram, xing, category, priority, last_contact, avatar_url, notes, additional_info, is_favorite, gender, legal_form, industry, main_contact_person, business_description, tags, business_street, business_house_number, business_postal_code, business_city, business_country')
         .eq('tenant_id', currentTenant.id)
         .eq('contact_type', 'person')
         .neq('name', 'Archivierter Kontakt')

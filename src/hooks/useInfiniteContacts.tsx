@@ -30,6 +30,7 @@ export interface Contact {
   notes?: string;
   additional_info?: string;
   is_favorite?: boolean;
+  gender?: string;
   legal_form?: string;
   industry?: string;
   main_contact_person?: string;
@@ -77,7 +78,7 @@ export const useInfiniteContacts = ({
   const buildQuery = useCallback((offset: number, limit: number) => {
     let query = supabase
       .from('contacts')
-      .select('id, contact_type, name, role, organization, organization_id, email, phone, location, address, birthday, website, linkedin, twitter, facebook, instagram, xing, category, priority, last_contact, avatar_url, notes, additional_info, is_favorite, legal_form, industry, main_contact_person, business_description, tags, business_street, business_house_number, business_postal_code, business_city, business_country', { count: 'planned' })
+      .select('id, contact_type, name, role, organization, organization_id, email, phone, location, address, birthday, website, linkedin, twitter, facebook, instagram, xing, category, priority, last_contact, avatar_url, notes, additional_info, is_favorite, gender, legal_form, industry, main_contact_person, business_description, tags, business_street, business_house_number, business_postal_code, business_city, business_country', { count: 'planned' })
       .eq('tenant_id', currentTenant?.id || '');
 
     // Filter by tab
@@ -221,6 +222,7 @@ export const useInfiniteContacts = ({
         main_contact_person: contact.main_contact_person,
         business_description: contact.business_description,
         is_favorite: contact.is_favorite,
+        gender: (contact as any).gender,
         tags: contact.tags || [],
       })) || [];
 
@@ -267,6 +269,7 @@ export const useInfiniteContacts = ({
                 main_contact_person: contact.main_contact_person,
                 business_description: contact.business_description,
                 is_favorite: contact.is_favorite,
+                gender: (contact as any).gender,
                 tags: contact.tags || [],
               }));
               setContacts(newFormattedContacts);

@@ -49,6 +49,7 @@ interface Contact {
   business_postal_code?: string;
   business_city?: string;
   business_country?: string;
+  gender?: string;
 }
 
 interface ContactEditFormProps {
@@ -541,6 +542,21 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
           {formData.contact_type === "person" && (
             <>
+              <div>
+                <Label htmlFor="gender">Anrede</Label>
+                <Select value={formData.gender || 'none'} onValueChange={(value) => handleChange('gender', value === 'none' ? '' : value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Anrede wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Keine Angabe</SelectItem>
+                    <SelectItem value="m">Herr</SelectItem>
+                    <SelectItem value="f">Frau</SelectItem>
+                    <SelectItem value="d">Divers</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div>
                 <Label htmlFor="role">Rolle/Position</Label>
                 <Input

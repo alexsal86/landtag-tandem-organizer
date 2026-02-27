@@ -75,6 +75,8 @@ interface Contact {
   id: string;
   name: string;
   organization?: string;
+  gender?: string;
+  last_name?: string;
   private_street?: string;
   private_house_number?: string;
   private_postal_code?: string;
@@ -357,7 +359,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     try {
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, name, organization, private_street, private_house_number, private_postal_code, private_city, private_country, business_street, business_house_number, business_postal_code, business_city, business_country')
+        .select('id, name, organization, gender, last_name, private_street, private_house_number, private_postal_code, private_city, private_country, business_street, business_house_number, business_postal_code, business_city, business_country')
         .eq('tenant_id', currentTenant.id)
         .order('name');
 
@@ -1144,8 +1146,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       const contact = contacts.find(c => c.name === editedLetter.recipient_name);
       const recipientData = contact ? {
         name: contact.name,
-        gender: (contact as any).gender,
-        last_name: (contact as any).last_name || contact.name?.split(' ').pop(),
+        gender: contact.gender,
+        last_name: contact.last_name || contact.name?.split(' ').pop(),
       } : editedLetter.recipient_name ? {
         name: editedLetter.recipient_name,
       } : null;

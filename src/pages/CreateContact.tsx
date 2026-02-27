@@ -17,6 +17,7 @@ import { TagInput } from "@/components/ui/tag-input";
 
 interface ContactFormData {
   contact_type: "person" | "organization";
+  gender: string;
   name: string;
   role: string;
   organization_id: string;
@@ -53,6 +54,7 @@ export function CreateContact() {
 
   const [formData, setFormData] = useState<ContactFormData>({
     contact_type: "person",
+    gender: "",
     name: "",
     role: "",
     organization_id: "",
@@ -233,6 +235,7 @@ export function CreateContact() {
         address: formData.address || null,
         category: formData.category as any,
         priority: formData.priority as any,
+        gender: formData.gender || null,
         notes: formData.notes || null,
         tags: formData.tags.length > 0 ? formData.tags : null,
         industry: formData.industry || null,
@@ -317,6 +320,21 @@ export function CreateContact() {
                   </div>
 
                   {formData.contact_type === "person" && (
+                    <>
+                    <div>
+                      <Label htmlFor="gender">Anrede</Label>
+                      <Select onValueChange={(value) => handleInputChange("gender", value === "none" ? "" : value)} value={formData.gender || "none"}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Anrede wählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Keine Angabe</SelectItem>
+                          <SelectItem value="m">Herr</SelectItem>
+                          <SelectItem value="f">Frau</SelectItem>
+                          <SelectItem value="d">Divers</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div>
                       <Label htmlFor="organization_id">Organisation (optional)</Label>
                       <Select onValueChange={(value) => handleInputChange("organization_id", value)}>
@@ -332,6 +350,7 @@ export function CreateContact() {
                         </SelectContent>
                       </Select>
                     </div>
+                    </>
                   )}
 
                   {formData.contact_type === "organization" && (
