@@ -42,13 +42,14 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SubNavigation } from "@/components/layout/SubNavigation";
 import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
+import CreateContact from "./CreateContact";
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
   const location = useLocation();
-  const { documentId } = useParams();
+  const { subId } = useParams();
   
   // Wait for both auth AND tenant to be loaded before rendering
   const loading = authLoading || (user && tenantLoading);
@@ -156,6 +157,10 @@ const Index = () => {
       case "calendar":
         return <CalendarView />;
       case "contacts":
+        if (subId === "new") {
+          return <CreateContact />;
+        }
+
         return <ContactsView />;
       case "tasks":
         return <TasksView />;

@@ -13,7 +13,6 @@ import { GlobalSearchCommand } from "@/components/GlobalSearchCommand";
 import { GlobalQuickNoteDialog } from "@/components/GlobalQuickNoteDialog";
 import { GlobalDaySlipPanel } from "@/components/GlobalDaySlipPanel";
 import Index from "./pages/Index";
-import CreateContact from "./pages/CreateContact";
 import CreateTask from "./pages/CreateTask";
 import ContactDetail from "./pages/ContactDetail";
 import EditContact from "./pages/EditContact";
@@ -71,7 +70,6 @@ const AppContent = () => {
         <Routes>
           <Route path="/" element={<Navigate to="/mywork" replace />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/contacts/new" element={<CreateContact />} />
           <Route path="/contacts/:id" element={<ContactDetail />} />
           <Route path="/contacts/:id/edit" element={<EditContact />} />
           <Route path="/tasks/new" element={<CreateTask />} />
