@@ -247,7 +247,7 @@ export function CreateContact() {
         title: "Kontakt erstellt",
         description: `${formData.name} wurde erfolgreich hinzugefügt.`,
       });
-      navigate("/");
+      navigate("/contacts");
     } catch {
       toast({
         title: "Fehler",
@@ -265,9 +265,9 @@ export function CreateContact() {
       <div className="bg-card border-b border-border p-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
-            <Button variant="outline" size="sm" onClick={() => navigate("/")} className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate("/contacts")} className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Zurück zum Dashboard
+              Zurück zu Kontakten
             </Button>
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Neuen Kontakt anlegen</h1>
@@ -479,7 +479,7 @@ export function CreateContact() {
                     <Save className="h-4 w-4" />
                     {isSubmitting ? "Wird gespeichert..." : "Kontakt speichern"}
                   </Button>
-                  <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/")}>
+                  <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/contacts")}>
                     Abbrechen
                   </Button>
                 </CardContent>
