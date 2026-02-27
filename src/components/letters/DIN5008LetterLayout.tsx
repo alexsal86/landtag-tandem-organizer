@@ -73,16 +73,34 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     subject: { top: 98.46, marginBottom: 8 },
     content: { top: 98.46, maxHeight: 165, lineHeight: 4.5 },
     footer: { top: 272, height: 18 },
-    attachments: { top: 230 }
+    attachments: { top: 230 },
+    foldHoleMarks: {
+      enabled: true,
+      left: 3,
+      strokeWidthPt: 1,
+      foldMarkWidth: 5,
+      holeMarkWidth: 8,
+      topMarkY: 105,
+      holeMarkY: 148.5,
+      bottomMarkY: 210,
+    },
   };
   
   const layout = layoutSettings || template?.layout_settings || DEFAULT_LAYOUT;
+  const attachmentList = (attachments || [])
+    .map((attachment) => (typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name || '')))
+    .filter(Boolean);
+  const hasSignatureName = Boolean(layout.closing?.signatureName);
   const paginationGapMm = 4.23;
   const paginationHeightMm = 4;
   const contentTopMm = Number(layout.content?.top ?? 98.46);
   const footerTopMm = Number(layout.footer?.top ?? 272);
   const paginationTopMm = 263.77;
   const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
+  const foldHoleMarks = {
+    ...DEFAULT_LAYOUT.foldHoleMarks,
+    ...(layout.foldHoleMarks || {}),
+  };
   const contentMaxHeightMm = paginationEnabled
     ? Math.max(20, paginationTopMm - paginationGapMm - contentTopMm)
     : 165;
@@ -372,6 +390,28 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       lineHeight: '1.2',
       position: 'relative'
     }}>
+      {(foldHoleMarks.enabled ?? true) && (
+        <>
+          {[
+            { y: foldHoleMarks.topMarkY, width: foldHoleMarks.foldMarkWidth, key: 'fold-top' },
+            { y: foldHoleMarks.holeMarkY, width: foldHoleMarks.holeMarkWidth, key: 'hole' },
+            { y: foldHoleMarks.bottomMarkY, width: foldHoleMarks.foldMarkWidth, key: 'fold-bottom' },
+          ].map((mark) => (
+            <div
+              key={mark.key}
+              style={{
+                position: 'absolute',
+                left: `${foldHoleMarks.left}mm`,
+                top: `${mark.y}mm`,
+                width: `${mark.width}mm`,
+                height: `${Math.max(0.1, (foldHoleMarks.strokeWidthPt || 1) * 0.3528)}mm`,
+                backgroundColor: '#111',
+                pointerEvents: 'none',
+              }}
+            />
+          ))}
+        </>
+      )}
       {/* Template Header */}
       {template && (
         <div 
@@ -613,6 +653,18 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               )}
             </>
           )}
+
+          {/* Attachments integrated into content area */}
+          {attachmentList.length > 0 && (
+            <div style={{ marginTop: hasSignatureName ? '4.5mm' : '13.5mm', fontWeight: 700, fontSize: '10pt' }}>
+              <div>Anlagen</div>
+              {attachmentList.map((attachmentName, index) => (
+                <div key={`${attachmentName}-${index}`} style={{ marginTop: '1mm' }}>
+                  - {attachmentName}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -666,21 +718,19 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       {attachments && attachments.length > 0 && (
         <div style={{ 
           position: 'absolute',
-          top: '230mm', // Below main content area
+          top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignatureName ? 4.5 : 13.5}mm)`,
           left: '25mm',
           right: '20mm',
+          fontWeight: 700,
+          fontSize: '10pt',
           backgroundColor: debugMode ? 'rgba(128,128,128,0.05)' : 'transparent'
         }}>
-          <div className="font-medium" style={{ marginBottom: '2mm', fontSize: '10pt' }}>
-            Anlagen:
-          </div>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '10pt' }}>
-            {attachments.map((attachment, index) => (
-              <li key={index} style={{ marginBottom: '1mm' }}>
-                - {typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name)}
-              </li>
-            ))}
-          </ul>
+          <div>Anlagen</div>
+          {attachmentList.map((attachmentName, index) => (
+            <div key={`${attachmentName}-${index}`} style={{ marginTop: '1mm' }}>
+              - {attachmentName}
+            </div>
+          ))}
         </div>
       )}
 
