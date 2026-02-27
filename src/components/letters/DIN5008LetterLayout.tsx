@@ -66,13 +66,18 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     header: { height: 45, marginBottom: 8.46 },
     addressField: { top: 46, left: 25, width: 85, height: 40 },
     infoBlock: { top: 50, left: 125, width: 75, height: 40 },
-    subject: { top: 98.64, marginBottom: 8 },
-    content: { top: 106.64, maxHeight: 161, lineHeight: 4.5 },
+    subject: { top: 98.46, marginBottom: 8 },
+    content: { top: 98.46, maxHeight: 165, lineHeight: 4.5 },
     footer: { top: 272, height: 18 },
     attachments: { top: 230 }
   };
   
   const layout = layoutSettings || template?.layout_settings || DEFAULT_LAYOUT;
+  const contentTopMm = Number(layout.content?.top ?? 98.46);
+  const footerTopMm = Number(layout.footer?.top ?? 272);
+  const contentMaxHeightMm = showPagination
+    ? Math.max(20, footerTopMm - 4.23 - contentTopMm)
+    : 165;
   const formatAddress = (address: any) => {
     if (!address) return '';
     
@@ -505,10 +510,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         <div 
           style={{ 
             position: 'absolute',
-            top: `${layout.subject?.top || 98.64}mm`,
+            top: `${layout.subject?.top || 98.46}mm`,
             left: '25mm',
             right: '20mm',
-            maxHeight: '161mm',
+            maxHeight: `${contentMaxHeightMm}mm`,
             fontSize: '11pt',
             lineHeight: '1.2',
             backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
@@ -590,7 +595,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {(subject || (subjectElements && subjectElements.length > 0)) && (
             <div style={{ 
               position: 'absolute',
-              top: 'calc(98.64mm + 3mm)',
+              top: `calc(${contentTopMm}mm + 3mm)`,
               left: '25mm',
               right: '20mm',
               fontWeight: subjectElements && subjectElements.length > 0 ? 'normal' : 'bold',
@@ -609,10 +614,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           <div 
             style={{ 
               position: 'absolute',
-              top: subject ? 'calc(98.64mm + 11mm)' : 'calc(98.64mm + 3mm)',
+              top: subject ? `calc(${contentTopMm}mm + 11mm)` : `calc(${contentTopMm}mm + 3mm)`,
               left: '25mm',
               right: '20mm',
-              maxHeight: '161mm',
+              maxHeight: `${contentMaxHeightMm}mm`,
               fontSize: '11pt',
               lineHeight: '1.2',
               backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
@@ -671,7 +676,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       {showPagination && (
         <div style={{
           position: 'absolute',
-          top: `${layout.pagination?.top || 267.77}mm`,
+          top: `${layout.pagination?.top ?? ((layout.footer?.top ?? 272) - 4.23)}mm`,
           left: layout.pagination?.align === 'left' ? '25mm' : undefined,
           right: layout.pagination?.align !== 'left' ? '20mm' : undefined,
           textAlign: layout.pagination?.align || 'right',

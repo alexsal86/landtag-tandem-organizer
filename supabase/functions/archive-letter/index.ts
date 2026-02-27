@@ -309,8 +309,8 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
     header: { height: 45, marginBottom: 8.46 },
     addressField: { top: 46, left: 25, width: 85, height: 40 },
     infoBlock: { top: 50, left: 125, width: 75, height: 40 },
-    subject: { top: 101.46, marginBottom: 8 },
-    content: { top: 109.46, maxHeight: 161, lineHeight: 4.5 },
+    subject: { top: 98.46, marginBottom: 8 },
+    content: { top: 98.46, maxHeight: 165, lineHeight: 4.5 },
     footer: { top: 272 },
     attachments: { top: 230 }
   };
@@ -334,6 +334,13 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
   const infoBlockWidth = mmToPoints(layout.infoBlock.width);
   const contentTop = mmToPoints(layout.content.top);
   const lineHeight = mmToPoints(layout.content.lineHeight);
+  const hasPagination = letter.show_pagination ?? false;
+  const footerTopMm = Number(layout.footer?.top ?? 272);
+  const contentTopMm = Number(layout.content?.top ?? 98.46);
+  const contentBottomMm = hasPagination
+    ? footerTopMm - 4.23
+    : Math.min(contentTopMm + 165, footerTopMm - 4.23);
+  const firstPageMinY = mmToPoints(layout.pageHeight - contentBottomMm);
   
   // Add first page
   let page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -567,7 +574,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       
       if (testLine.length > maxCharsPerLine && currentLine) {
         // Check if we need a new page
-        if (currentY - lineHeight < mmToPoints(40)) {
+        if (currentY - lineHeight < firstPageMinY) {
           page = pdfDoc.addPage([pageWidth, pageHeight]);
           currentY = pageHeight - mmToPoints(30);
         }
@@ -590,7 +597,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
     // Draw remaining text in line
     if (currentLine) {
       // Check if we need a new page
-      if (currentY - lineHeight < mmToPoints(40)) {
+      if (currentY - lineHeight < firstPageMinY) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
         currentY = pageHeight - mmToPoints(30);
       }
@@ -652,11 +659,11 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
     });
     
     // Add page numbers (only to letter pages, not attachments)
-    if (i < pages.length) { // Assuming all pages are letter pages for now
+    if (hasPagination && i < pages.length) { // Assuming all pages are letter pages for now
       const pageText = `Seite ${i + 1} von ${pages.length}`;
       const textWidth = helveticaFont.widthOfTextAtSize(pageText, 10);
       const pageTextX = (pageWidth - textWidth) / 2;
-      const paginationY = mmToPoints(267.77);
+      const paginationY = mmToPoints(layout.pagination?.top ?? (footerTopMm - 4.23));
       
       currentPage.drawText(pageText, {
         x: pageTextX,
