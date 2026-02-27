@@ -1,105 +1,94 @@
 
 
-# Fix: Seitenumbruch mit Spacer-Injection
+# Fix: Zweiphasiger PageBreak-Algorithmus
 
-## Problem
+## Das Problem
 
-Der Editor ist ein einziges, durchgehendes Lexical-Element. Die Seitentrenner sind nur visuelle Overlays (z-index 25), aber der Text (z-index 10) fließt ununterbrochen darunter hindurch. Es fehlt ein Mechanismus, der den Text an Seitenumbruch-Stellen ueber die "tote Zone" (Footer + Seitenrand der Folgeseite) hinweg schiebt.
+Der aktuelle `PageBreakPlugin` hat einen kritischen Timing-Bug:
 
-## Loesung: PageBreak-Spacer im Editor
+1. Er entfernt alle Spacer-Nodes im `editor.update()` Callback
+2. Direkt danach versucht er, die Positionen der verbleibenden Nodes per `getBoundingClientRect()` zu messen
+3. **Aber**: Innerhalb von `editor.update()` wurde das DOM noch nicht neu gerendert -- die gemessenen Positionen sind falsch (sie spiegeln noch das alte Layout mit Spacern wider)
+4. Dadurch werden Spacer an falschen Stellen eingefuegt oder gar nicht
 
-Anstatt den Text per CSS-Clipping auf mehrere Viewports zu verteilen (was mit einem interaktiven Editor extrem komplex ist), wird ein **Spacer-basierter Ansatz** verwendet:
+## Die Loesung: Zwei-Phasen-Ansatz
 
-1. Ein neues **Lexical DecoratorNode** (`PageBreakSpacerNode`) wird erstellt, das als unsichtbarer Platzhalter mit exakter Hoehe gerendert wird
-2. Ein neues **Lexical Plugin** (`PageBreakPlugin`) misst laufend die Positionen der Editor-Inhalte und fuegt Spacer-Nodes an den richtigen Stellen ein
-3. Die Spacer-Hoehe entspricht genau der "toten Zone": `(PAGE_HEIGHT - footerTop) + FOLLOWUP_TOP_MARGIN = (297 - 272) + 25 = 50mm`
-4. Dadurch wird nachfolgender Text automatisch auf die naechste Seite geschoben
+Der Algorithmus wird in zwei getrennte Schritte aufgeteilt:
 
-### Wie es funktioniert
+**Phase 1 -- Spacer entfernen:**
+- Alle bestehenden `PageBreakSpacerNode`s werden entfernt
+- Der `onUpdate` Callback signalisiert, dass das DOM aktualisiert wurde
+
+**Phase 2 -- Messen und einfuegen:**
+- Erst nach `requestAnimationFrame` (DOM ist tatsaechlich aktualisiert)
+- Positionen aller Nodes per `getBoundingClientRect()` messen
+- Kumulative Hoehe berechnen und Spacer an den richtigen Stellen einfuegen
+- Keine weitere DOM-Messung noetig, da die Hoehen der Content-Nodes sich durch das Spacer-Einfuegen nicht aendern
+
+## Zusaetzliche Verbesserung: Hoehe des Spacers dynamisch berechnen
+
+Aktuell ist die Spacer-Hoehe fix `deadZoneMm`. Aber der Spacer muss den **Rest der aktuellen Seite** plus die tote Zone ueberbruecken, nicht nur die tote Zone selbst. Das heisst:
 
 ```text
-Ohne Spacer:                    Mit Spacer:
-┌─────────────┐                 ┌─────────────┐
-│ Seite 1     │                 │ Seite 1     │
-│ Text...     │                 │ Text...     │
-│ Text...     │                 │ Text...     │
-│ Footer      │ <- Text laeuft  │ Footer      │ <- kein Text hier
-├─────────────┤    drueber      ├─────────────┤
-│ Seite 2     │                 │ [SPACER]    │ <- 50mm unsichtbar
-│ Text...     │ <- versetzt     │ Seite 2     │
-│             │                 │ Text...     │ <- korrekt positioniert
-└─────────────┘                 └─────────────┘
+spacerHeight = (pageBottom - nodeTop) + deadZone
 ```
+
+Wobei `pageBottom` die aktuelle Seitengrenze ist und `nodeTop` die Position des Nodes der die Grenze ueberschreitet. So wird der naechste Node genau an den Anfang der Folgeseite geschoben.
+
+Nein -- eigentlich ist der Spacer korrekt wenn er genau die "tote Zone" ueberbrueckt (Footer-Bereich + oberer Rand der naechsten Seite). Der nachfolgende Inhalt wird dadurch automatisch verschoben. Das Problem war nur das falsche Messen. Korrektur: die Spacer-Hoehe sollte dynamisch sein = `(currentPageBottom - cumHeight) + deadZonePx` in Pixel, umgerechnet in mm. So fuellt der Spacer exakt den Rest der Seite bis zum naechsten Inhaltsbereich.
 
 ## Technische Umsetzung
 
-### 1. Neues DecoratorNode: `PageBreakSpacerNode`
+### Datei: `src/components/plugins/PageBreakPlugin.tsx` (ueberarbeiten)
 
-**Datei:** `src/components/nodes/PageBreakSpacerNode.tsx`
+Komplett ueberarbeiteter Algorithmus:
 
-- Erweitert `DecoratorNode` von Lexical
-- Rendert ein leeres `div` mit dynamischer Hoehe (in mm)
-- Ist nicht editierbar, nicht selektierbar (wird vom Benutzer nicht bemerkt)
-- Serialisiert sich als `{ type: 'page-break-spacer', height: number }`
-- Wird beim PDF-Export herausgefiltert (soll nicht im PDF erscheinen)
+1. `registerUpdateListener` reagiert auf Aenderungen (wie bisher, debounced 200ms)
+2. Phase 1: `editor.update()` entfernt alle bestehenden Spacer
+3. In `onUpdate` Callback: `requestAnimationFrame` aufrufen
+4. Phase 2 (im rAF): `editor.update()` liest die echten DOM-Positionen und fuegt Spacer ein
+5. Spacer-Hoehe = `remainingPageMm + deadZoneMm` wobei `remainingPageMm` der Abstand vom Node bis zur Seitenunterkante ist (in mm umgerechnet)
+6. `isUpdatingRef` schuetzt beide Phasen, wird erst nach Phase 2 zurueckgesetzt
 
-### 2. Neues Plugin: `PageBreakPlugin`
+Kernalgorithmus fuer Phase 2:
 
-**Datei:** `src/components/plugins/PageBreakPlugin.tsx`
+```text
+cumHeightPx = 0
+pageBottomPx = page1HeightPx
 
-- Empfaengt Props: `editorTopMm`, `footerTopMm`, `pageHeightMm`, `followupTopMarginMm`
-- Berechnet verfuegbaren Platz pro Seite:
-  - Seite 1: `footerTopMm - editorTopMm` (ca. 166mm)
-  - Seite 2+: `footerTopMm - followupTopMarginMm` (ca. 247mm)
-- Berechnet "tote Zone" Hoehe: `(pageHeightMm - footerTopMm) + followupTopMarginMm` (ca. 50mm)
-- Verwendet einen `MutationListener` auf dem Editor, um bei Aenderungen die Positionen der Absaetze zu pruefen
-- Wenn ein Absatz die Seitengrenze ueberschreiten wuerde, wird **vor** diesem Absatz ein `PageBreakSpacerNode` eingefuegt
-- Wenn sich der Inhalt verkuerzt und ein Spacer ueberfluessig wird, wird er wieder entfernt
-- Debounced (200ms), um Performance zu schuetzen
+fuer jedes Kind (ohne Spacer):
+  dom = editor.getElementByKey(key)
+  heightPx = dom.getBoundingClientRect().height
+  nodeBottomPx = cumHeightPx + heightPx
+  
+  wenn nodeBottomPx > pageBottomPx:
+    restOfPageMm = (pageBottomPx - cumHeightPx) / PX_PER_MM
+    spacerHeightMm = restOfPageMm + deadZoneMm
+    spacer einfuegen vor diesem Kind (Hoehe = spacerHeightMm)
+    cumHeightPx = pageBottomPx + deadZonePx
+    pageBottomPx = cumHeightPx + followupHeightPx
+    cumHeightPx += heightPx
+  sonst:
+    cumHeightPx = nodeBottomPx
+```
 
-**Algorithmus:**
-1. Alle Top-Level-Nodes im Editor durchgehen
-2. Ihre kumulierte Hoehe tracken (via `getBoundingClientRect` der DOM-Elemente)
-3. Wenn die kumulierte Hoehe die Seitengrenze ueberschreitet, vor dem aktuellen Node einen Spacer einfuegen
-4. Nach dem Spacer die kumulierte Hoehe auf den Beginn der naechsten Seite zuruecksetzen
+### Datei: `src/components/nodes/PageBreakSpacerNode.tsx` (keine Aenderung)
 
-### 3. Integration in EnhancedLexicalEditor
+Bleibt wie bisher -- das DecoratorNode mit dynamischer Hoehe funktioniert korrekt.
 
-**Datei:** `src/components/EnhancedLexicalEditor.tsx`
+### Datei: `src/components/EnhancedLexicalEditor.tsx` (keine Aenderung)
 
-- `PageBreakSpacerNode` zur Node-Liste hinzufuegen
-- `PageBreakPlugin` als optionales Plugin einbinden
-- Neue Props: `enablePageBreaks?: boolean`, `pageBreakConfig?: { editorTopMm, footerTopMm, pageHeightMm, followupTopMarginMm }`
+Integration ist bereits vorhanden.
 
-### 4. Integration in LetterEditorCanvas
+### Datei: `src/components/letters/LetterEditorCanvas.tsx` (keine Aenderung)
 
-**Datei:** `src/components/letters/LetterEditorCanvas.tsx`
+Config wird bereits korrekt durchgereicht.
 
-- Die berechneten Werte (`editorTopMm`, `footerTopMm`, `PAGE_HEIGHT_MM`, `FOLLOWUP_TOP_MARGIN_MM`) an den `EnhancedLexicalEditor` als `pageBreakConfig` weitergeben
-- `enablePageBreaks={true}` setzen
-- Die Seitentrenner-Overlays bleiben wie sie sind (sie markieren jetzt korrekt die Stellen, an denen die Spacer den Inhalt umbrechen)
+## Zusammenfassung
 
-### 5. PDF-Export-Anpassung
-
-**Datei:** `src/utils/letterPDFGenerator.ts`
-
-- Beim Generieren des PDFs muessen `PageBreakSpacerNode`-Elemente aus dem HTML gefiltert werden
-- Stattdessen wird ein `doc.addPage()` an diesen Stellen ausgefuehrt
-
-## Dateien-Uebersicht
-
-| Datei | Aktion |
+| Datei | Aenderung |
 |---|---|
-| `src/components/nodes/PageBreakSpacerNode.tsx` | Neu erstellen |
-| `src/components/plugins/PageBreakPlugin.tsx` | Neu erstellen |
-| `src/components/EnhancedLexicalEditor.tsx` | Erweitern (Node + Plugin + Props) |
-| `src/components/letters/LetterEditorCanvas.tsx` | pageBreakConfig Props durchreichen |
-| `src/utils/letterPDFGenerator.ts` | Spacer-Nodes beim Export filtern |
+| `src/components/plugins/PageBreakPlugin.tsx` | Zweiphasiger Algorithmus mit rAF-basierter DOM-Messung |
 
-## Reihenfolge
+Eine einzige Datei muss geaendert werden. Der Fix behebt den Timing-Bug durch saubere Trennung von DOM-Mutation (Spacer entfernen) und DOM-Messung (Positionen lesen).
 
-1. `PageBreakSpacerNode` erstellen (DecoratorNode mit dynamischer Hoehe)
-2. `PageBreakPlugin` erstellen (Mess-Logik + Spacer-Injection)
-3. In `EnhancedLexicalEditor` integrieren (Node registrieren, Plugin einbinden)
-4. In `LetterEditorCanvas` die Config-Werte uebergeben
-5. PDF-Generator anpassen (Spacer filtern, Seitenumbruch einfuegen)
