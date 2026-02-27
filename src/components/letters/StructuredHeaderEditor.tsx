@@ -510,7 +510,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const el: HeaderElement = {
       id: createElementId(), type: 'block', x, y, width: 45, height: 18,
       blockTitle: `Block ${blockNumber}`,
-      blockContent: '', blockFontSize: 9, blockFontFamily: 'Arial', blockFontWeight: 'normal', blockColor: '#000000', blockLineHeight: 1,
+      blockContent: '', blockFontSize: 9, blockFontFamily: 'Calibri', blockFontWeight: 'normal', blockColor: '#000000', blockLineHeight: 1,
     };
     return el;
   };
@@ -1301,7 +1301,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         key={element.id}
         aria-label={getElementAriaLabel(element)}
         className={`absolute cursor-move border overflow-hidden ${isSelected ? 'border-primary border-dashed border-2 bg-primary/5' : 'border-gray-300 bg-gray-50/50'}`}
-        style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${w}px`, height: `${h}px`, fontSize: `${fontSize}px`, fontFamily: element.blockFontFamily || 'Arial', fontWeight: element.blockFontWeight || 'normal', color: element.blockColor || '#000', lineHeight: `${element.blockLineHeight || 1}` }}
+        style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${w}px`, height: `${h}px`, fontSize: `${fontSize}px`, fontFamily: element.blockFontFamily || 'Calibri', fontWeight: element.blockFontWeight || 'normal', color: element.blockColor || '#000', lineHeight: `${element.blockLineHeight || 1}` }}
         onMouseDown={(e) => onElementMouseDown(e, element)}
         onDoubleClick={(e) => { e.stopPropagation(); startEditingBlock(element); }}
       >
@@ -1628,6 +1628,15 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                           <div className="grid grid-cols-2 gap-2">
                             <div><Label className="text-xs">Schriftgröße</Label><Input type="number" value={element.blockFontSize || 9} onChange={(e) => updateElement(element.id, { blockFontSize: parseInt(e.target.value) || 9 })} className="h-7 text-xs" /></div>
                             {renderColorInput('Farbe', element.blockColor || '#000000', (blockColor) => updateElement(element.id, { blockColor }))}
+                          </div>
+                          <div><Label className="text-xs">Schriftart</Label>
+                            <Select value={element.blockFontFamily || 'Calibri'} onValueChange={(value) => updateElement(element.id, { blockFontFamily: value })}>
+                              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Calibri">Calibri</SelectItem>
+                                <SelectItem value="Cambria">Cambria</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div><Label className="text-xs">Zeilenabstand</Label><Input type="number" step="0.1" min="0.8" value={element.blockLineHeight || 1} onChange={(e) => updateElement(element.id, { blockLineHeight: parseFloat(e.target.value) || 1 })} className="h-7 text-xs" /></div>
                         </>

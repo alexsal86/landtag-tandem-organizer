@@ -239,7 +239,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               width: '210mm',
               minHeight: '297mm',
               boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
-              fontFamily: 'Arial, sans-serif',
+              fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
               fontSize: `${contentFontSizePt}pt`,
               lineHeight: '1.2',
             }}

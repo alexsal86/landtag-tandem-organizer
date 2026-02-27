@@ -15,12 +15,15 @@ export interface BlockLine {
   labelBold?: boolean;
   valueBold?: boolean;
   fontSize?: number;
+  fontFamily?: 'Calibri' | 'Cambria';
   spacerHeight?: number;
   widthUnit?: 'percent' | 'cm';
   widthValue?: number;
   color?: string;
   prefixShape?: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen';
 }
+
+export type BlockLineFontFamily = 'Calibri' | 'Cambria';
 
 export interface BlockLineData {
   mode: 'lines';
@@ -133,6 +136,20 @@ const SUBJECT_PREFIX_SHAPES: Array<{ value: 'none' | 'line' | 'circle' | 'rectan
   { value: 'wappen', label: 'Wappen 🏛️' },
 ];
 
+
+
+const LINE_FONT_OPTIONS: BlockLineFontFamily[] = ['Calibri', 'Cambria'];
+
+const normalizeLineFontFamily = (fontFamily?: string): BlockLineFontFamily => (
+  fontFamily === 'Cambria' ? 'Cambria' : 'Calibri'
+);
+
+export const getBlockLineFontStack = (fontFamily?: string): string => (
+  normalizeLineFontFamily(fontFamily) === 'Cambria'
+    ? 'Cambria, "Times New Roman", Times, serif'
+    : 'Calibri, Carlito, "Segoe UI", Arial, sans-serif'
+);
+
 let nextId = 1;
 const genId = () => `bl-${Date.now()}-${nextId++}`;
 
@@ -166,12 +183,12 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
     const newLine: BlockLine = type === 'spacer'
       ? { id: genId(), type: 'spacer', spacerHeight: 2 }
       : type === 'text-only'
-        ? { id: genId(), type: 'text-only', value: '' }
+        ? { id: genId(), type: 'text-only', value: '', fontFamily: 'Calibri' }
         : type === 'block-start'
           ? { id: genId(), type: 'block-start', label: '', widthUnit: 'percent', widthValue: 25 }
           : type === 'block-end'
             ? { id: genId(), type: 'block-end' }
-            : { id: genId(), type: 'label-value', label: '', value: '', labelBold: true };
+            : { id: genId(), type: 'label-value', label: '', value: '', labelBold: true, fontFamily: 'Calibri' };
     onChange([...lines, newLine]);
   };
 
@@ -352,6 +369,17 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                               title="Schriftgröße (pt)"
                             />
                             <span className="text-[10px] text-muted-foreground">pt</span>
+                            <Select
+                              value={normalizeLineFontFamily(line.fontFamily)}
+                              onValueChange={(value: BlockLineFontFamily) => updateLine(line.id, { fontFamily: value })}
+                            >
+                              <SelectTrigger className="h-6 w-24 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {LINE_FONT_OPTIONS.map((font) => (
+                                  <SelectItem key={font} value={font} className="text-xs">{font}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <Select onValueChange={(v) => insertVariable(line.id, v)}>
                               <SelectTrigger className="h-6 w-8 px-1">
                                 <Zap className="h-3 w-3 text-amber-500" />
@@ -404,6 +432,17 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                               title="Schriftgröße (pt)"
                             />
                             <span className="text-[10px] text-muted-foreground">pt</span>
+                            <Select
+                              value={normalizeLineFontFamily(line.fontFamily)}
+                              onValueChange={(value: BlockLineFontFamily) => updateLine(line.id, { fontFamily: value })}
+                            >
+                              <SelectTrigger className="h-6 w-24 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {LINE_FONT_OPTIONS.map((font) => (
+                                  <SelectItem key={font} value={font} className="text-xs">{font}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <Select onValueChange={(v) => insertVariable(line.id, v)}>
                               <SelectTrigger className="h-6 w-8 px-1">
                                 <Zap className="h-3 w-3 text-amber-500" />
@@ -460,7 +499,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
         <span className="text-xs font-medium text-muted-foreground mb-2 block">Vorschau</span>
         {blockType === 'footer' ? (
           /* Footer preview: render blocks as horizontal columns */
-          <div className="flex text-[7pt] leading-tight font-[Arial,sans-serif]" style={{ gap: '2mm' }}>
+          <div className="flex text-[7pt] leading-tight" style={{ gap: '2mm' }}>
             {(() => {
               const columns: { label: string; widthValue: number; widthUnit: string; items: BlockLine[] }[] = [];
               let current: typeof columns[0] | null = null;
@@ -482,7 +521,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                     if (line.type === 'spacer') return <div key={line.id} style={{ height: `${line.spacerHeight || 2}mm` }} />;
                     const previewVal = getPreviewText(line);
                     return (
-                      <div key={line.id} style={{ fontSize: `${line.fontSize || 8}pt`, fontWeight: line.valueBold ? 'bold' : 'normal', color: line.color || '#000' }}>
+                      <div key={line.id} style={{ fontSize: `${line.fontSize || 8}pt`, fontFamily: getBlockLineFontStack(line.fontFamily), fontWeight: line.valueBold ? 'bold' : 'normal', color: line.color || '#000' }}>
                         {line.type === 'label-value' ? `${line.label || ''} ${previewVal}`.trim() : (previewVal || '\u00A0')}
                       </div>
                     );
@@ -492,7 +531,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
             })()}
           </div>
         ) : (
-        <div className="space-y-0 text-[9pt] leading-tight font-[Arial,sans-serif]">
+        <div className="space-y-0 text-[9pt] leading-tight">
           {lines.map((line) => {
             if (line.type === 'spacer') {
               return <div key={line.id} style={{ height: `${line.spacerHeight || 2}mm` }} />;
@@ -507,7 +546,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
             const isVar = hasVariable(line.value);
             if (line.type === 'text-only') {
               return (
-                <div key={line.id} className={`flex items-center gap-1 ${line.valueBold ? 'font-bold' : ''}`} style={{ fontSize: `${line.fontSize || 9}pt`, color: line.color || undefined }}>
+                <div key={line.id} className={`flex items-center gap-1 ${line.valueBold ? 'font-bold' : ''}`} style={{ fontSize: `${line.fontSize || 9}pt`, fontFamily: getBlockLineFontStack(line.fontFamily), color: line.color || undefined }}>
                   <span>{previewVal || '\u00A0'}</span>
                   {isVar && <Zap className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
                 </div>
@@ -515,7 +554,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
             }
             // label-value
             return (
-              <div key={line.id} className="flex items-center gap-1" style={{ fontSize: `${line.fontSize || 9}pt`, color: line.color || undefined }}>
+              <div key={line.id} className="flex items-center gap-1" style={{ fontSize: `${line.fontSize || 9}pt`, fontFamily: getBlockLineFontStack(line.fontFamily), color: line.color || undefined }}>
                 <span className={line.labelBold !== false ? 'font-bold' : ''}>{line.label || ''}</span>
                 <span className={line.valueBold ? 'font-bold' : ''}>{previewVal || ''}</span>
                 {isVar && <Zap className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
