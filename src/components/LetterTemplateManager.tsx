@@ -290,6 +290,14 @@ const LetterTemplateManager: React.FC = () => {
       return elements.map(({ blobUrl, ...rest }) => rest);
     }
 
+    // Handle { mode: 'lines', lines: [...] } format
+    if (elements && typeof elements === 'object' && (elements as any).mode === 'lines' && Array.isArray((elements as any).lines)) {
+      return {
+        ...elements,
+        lines: (elements as any).lines.map(({ blobUrl, ...rest }: any) => rest),
+      };
+    }
+
     if (elements && typeof elements === 'object' && Array.isArray((elements as any).blocks)) {
       return {
         ...elements,
@@ -422,14 +430,15 @@ const LetterTemplateManager: React.FC = () => {
     const cleanedBlockContent = { ...(((normalizedLayoutSettings as any).blockContent || {}) as Record<string, any[]>) };
     delete cleanedBlockContent.header;
     
+    const footerData = toFooterLineData(normalizedFooter);
     setFormData({
       name: template.name, letterhead_html: template.letterhead_html, letterhead_css: template.letterhead_css,
       response_time_days: template.response_time_days, default_sender_id: template.default_sender_id || '',
       default_info_blocks: template.default_info_blocks || [], header_elements: normalizedHeader,
-      footer_blocks: normalizedFooter,
+      footer_blocks: footerData as any,
       layout_settings: {
         ...normalizedLayoutSettings,
-        blockContent: cleanedBlockContent,
+        blockContent: { ...cleanedBlockContent, footer: footerData } as any,
       }
     });
   };
@@ -557,7 +566,17 @@ const LetterTemplateManager: React.FC = () => {
         <BlockLineEditor
           blockType="footer"
           lines={parseFooterLinesForEditor(formData.footer_blocks)}
-          onChange={(newLines) => setFormData(prev => ({ ...prev, footer_blocks: toFooterLineData(newLines) as any }))}
+          onChange={(newLines) => {
+            const footerData = toFooterLineData(newLines);
+            setFormData(prev => ({
+              ...prev,
+              footer_blocks: footerData as any,
+              layout_settings: {
+                ...prev.layout_settings,
+                blockContent: { ...((prev.layout_settings as any).blockContent || {}), footer: footerData },
+              } as LetterLayoutSettings
+            }));
+          }}
         />
       </TabsContent>
 
