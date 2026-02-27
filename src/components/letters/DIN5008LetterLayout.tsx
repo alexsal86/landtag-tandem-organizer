@@ -656,10 +656,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
 
           {/* Attachments integrated into content area */}
           {attachmentList.length > 0 && (
-            <div style={{ marginTop: hasSignature ? '4.5mm' : '13.5mm', fontWeight: 700, fontSize: '10pt' }}>
-              <div>Anlagen</div>
+            <div style={{ marginTop: hasSignature ? '4.5mm' : '13.5mm', fontSize: `${layout.salutation?.fontSize || 11}pt` }}>
+              <div style={{ fontWeight: 700 }}>Anlagen</div>
               {attachmentList.map((attachmentName, index) => (
-                <div key={`${attachmentName}-${index}`} style={{ marginTop: '1mm' }}>
+                <div key={`${attachmentName}-${index}`} style={{ marginTop: '1mm', paddingLeft: '5mm' }}>
                   - {attachmentName}
                 </div>
               ))}
