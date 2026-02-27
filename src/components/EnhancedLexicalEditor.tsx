@@ -42,7 +42,6 @@ import { EnhancedLexicalToolbar } from './EnhancedLexicalToolbar';
 // Plugins
 import { ImagePlugin } from './plugins/ImagePlugin';
 import { CommentPlugin, CommentMarkNode } from './plugins/CommentPlugin';
-import { VersionHistoryPlugin } from './plugins/VersionHistoryPlugin';
 import { MentionsPlugin } from './plugins/MentionsPlugin';
 
 // AutoLink matchers
@@ -272,7 +271,6 @@ export default function EnhancedLexicalEditor({
           <ImagePlugin />
           <MentionsPlugin onMentionInsert={onMentionInsert} />
           <CommentPlugin documentId={documentId} />
-          <VersionHistoryPlugin documentId={documentId} />
         </div>
       </LexicalComposer>
     </div>
