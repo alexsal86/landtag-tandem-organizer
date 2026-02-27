@@ -12,7 +12,7 @@ const corsHeaders = {
 
 interface DecisionEmailRequest {
   decisionId: string;
-  taskId: string;
+  taskId?: string | null;
   participantIds: string[];
   decisionTitle: string;
   decisionDescription?: string;
@@ -48,13 +48,29 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Tenant ID:", tenantId);
     console.log("=== END DEBUG INFO ===");
 
+    // Determine effective tenant from payload or decision record
+    let effectiveTenantId = tenantId;
+    if (!effectiveTenantId) {
+      const { data: decisionData, error: decisionError } = await supabase
+        .from('task_decisions')
+        .select('tenant_id')
+        .eq('id', decisionId)
+        .maybeSingle();
+
+      if (decisionError) {
+        console.error("Error getting decision tenant:", decisionError);
+      }
+
+      effectiveTenantId = decisionData?.tenant_id || undefined;
+    }
+
     // Get email template from administration settings - filter by tenant_id if provided
     let templateQuery = supabase
       .from('decision_email_templates')
       .select('*');
     
-    if (tenantId) {
-      templateQuery = templateQuery.eq('tenant_id', tenantId);
+    if (effectiveTenantId) {
+      templateQuery = templateQuery.eq('tenant_id', effectiveTenantId);
     }
     
     const { data: templates, error: templateError } = await templateQuery
@@ -80,18 +96,24 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Using email template:", {
       subject: emailTemplate.subject,
-      hasCustomTemplate: !!template
+      hasCustomTemplate: !!template,
+      effectiveTenantId: effectiveTenantId || null,
     });
 
     // Get task info
-    const { data: taskData, error: taskError } = await supabase
-      .from('tasks')
-      .select('title, user_id')
-      .eq('id', taskId)
-      .maybeSingle();
+    let taskData: { title: string | null; user_id: string | null } | null = null;
+    if (taskId) {
+      const { data, error: taskError } = await supabase
+        .from('tasks')
+        .select('title, user_id')
+        .eq('id', taskId)
+        .maybeSingle();
 
-    if (taskError) {
-      console.error("Error getting task data:", taskError);
+      if (taskError) {
+        console.error("Error getting task data:", taskError);
+      }
+
+      taskData = data;
     }
 
     const taskTitle = taskData?.title || 'Aufgabe';
