@@ -1,102 +1,87 @@
 
+# Mehrseitige Brief-Darstellung mit echtem Seitenumbruch
 
-# Track Changes und Kommentare im Pruefschritt
+## Problem
 
-## Ziel
+Der Lexical-Editor waechst unbegrenzt nach unten und ueberlaeuft den Footer, die Paginierung und den Seitenrand. Es fehlt eine echte seitenbasierte Darstellung wie in Word.
 
-Wenn der Abgeordnete einen Brief im Status "Zur Freigabe" bearbeitet, sollen seine Aenderungen farblich markiert werden (Track Changes) und er soll Kommentare hinterlassen koennen. Der Mitarbeiter sieht nach einer Zurueckweisung genau, was geaendert und kommentiert wurde.
+## Loesung
 
----
+Den Canvas von einem einzigen wachsenden DIV in eine **mehrseitige Darstellung** umbauen, bei der jede Seite ein eigenes A4-Blatt ist. Der Lexical-Editor bleibt ein einzelner Editor, aber sein Inhalt wird per **CSS-Clipping** auf die einzelnen Seiten verteilt.
 
-## Konzept
+### Kernprinzip
 
-### Track Changes (Aenderungsverfolgung)
+1. Ein `ResizeObserver` misst die tatsaechliche Hoehe des Editor-Inhalts
+2. Daraus wird berechnet, wie viele Seiten benoetigt werden
+3. Fuer jede Seite wird ein eigenes A4-Blatt gerendert
+4. Der Editor-Inhalt wird per `clip-path` und negativem `top`-Offset so verschoben, dass auf jeder Seite nur der passende Ausschnitt sichtbar ist
+5. Seite 1 hat Header, Adressfeld, Info-Block, Betreff, Anrede + Inhalt bis zum Seitenende
+6. Folgeseiten haben nur Seitenraender + fortlaufenden Inhalt
+7. Der Closing-Block (Grussformel/Unterschrift) wird auf der letzten Seite nach dem Inhalt angezeigt
+8. Footer und Seitenzahlen erscheinen auf jeder Seite
 
-- Wenn der Editor im **Pruefmodus** ist (Status `pending_approval` und der aktuelle Benutzer ist der Reviewer), wird ein neues `TrackChangesPlugin` aktiviert.
-- Dieses Plugin ueberwacht alle Text-Aenderungen im Editor:
-  - **Eingefuegter Text**: Wird gruen hinterlegt markiert
-  - **Geloeschter Text**: Wird rot und durchgestrichen dargestellt (Text bleibt sichtbar, wird aber als geloescht markiert)
-- Die Aenderungen werden als spezielle Lexical-Nodes (`TrackInsertNode`, `TrackDeleteNode`) gespeichert, die beim Serialisieren erhalten bleiben.
-- Ein Banner oberhalb des Editors zeigt an: "Pruefmodus aktiv - Aenderungen werden nachverfolgt"
+### Seitenlayout (in mm)
 
-### Kommentare (bereits vorhanden)
+```text
+Seite 1:
+  - Verfuegbare Inhaltshoehe: footerTop (272mm) - editorTopMm (~106mm) = ~166mm
+  - Inhalt wird bei 272mm abgeschnitten
 
-- Das bestehende `CommentPlugin` ist bereits im `EnhancedLexicalEditor` integriert. Dieses wird im Pruefmodus weiterhin verfuegbar sein, sodass der Abgeordnete Textpassagen markieren und kommentieren kann.
-
-### Aenderungen akzeptieren/ablehnen
-
-- Der Mitarbeiter sieht bei "Ueberarbeitung" alle markierten Aenderungen.
-- Buttons "Alle Aenderungen annehmen" und "Alle Aenderungen ablehnen" ermoeglichen die Uebernahme oder Verwerfung.
-- Optional: Einzelne Aenderungen koennen per Rechtsklick/Hover akzeptiert oder abgelehnt werden.
-
----
+Seite 2+:
+  - Inhalt beginnt bei top-Margin (25mm)
+  - Verfuegbare Inhaltshoehe: 272mm - 25mm = 247mm
+  - Gleicher Footer/Paginierung wie Seite 1
+```
 
 ## Technische Umsetzung
 
-### 1. Neuer TrackChangesNode (ElementNode)
+### Datei: `src/components/letters/LetterEditorCanvas.tsx`
 
-**Datei:** `src/components/nodes/TrackChangeNode.ts`
+**Aenderungen:**
 
-- Zwei Node-Typen: `TrackInsertNode` und `TrackDeleteNode`
-- Beide erweitern `ElementNode` von Lexical
-- `TrackInsertNode`: Rendert mit gruenem Hintergrund (`background: #dcfce7; text-decoration: none`)
-- `TrackDeleteNode`: Rendert mit rotem Hintergrund und Durchstreichung (`background: #fecaca; text-decoration: line-through`)
-- Beide speichern Metadaten: `authorId`, `authorName`, `timestamp`
-- Serialisierung/Deserialisierung ueber `importJSON`/`exportJSON`
+1. **State hinzufuegen**: `editorContentHeight` (number) und `editorRef` (RefObject)
+2. **ResizeObserver**: Beobachtet die tatsaechliche Hoehe des `.editor-input` Elements
+3. **Seitenberechnung**:
+   - `page1ContentHeight = footerTopMm - editorTopMm` (verfuegbarer Platz auf Seite 1)
+   - `followupPageHeight = footerTopMm - 25` (verfuegbarer Platz auf Folgeseiten)
+   - `totalPages = 1 + ceil((editorContentHeight - page1ContentHeight) / followupPageHeight)` (wenn > 1 Seite noetig)
+4. **Rendering-Struktur umbauen**:
+   - Statt einem einzelnen 210x297mm-DIV werden `totalPages` A4-Blaetter gerendert
+   - Seite 1: Enthaelt `DIN5008LetterLayout` (Header, Adressfeld, etc.) + Editor-Inhalt (geclippt auf page1ContentHeight)
+   - Seite 2+: Enthaelt nur Editor-Inhalt (geclippt auf den jeweiligen Seitenausschnitt) + Footer
+   - Der Editor wird nur einmal auf Seite 1 gerendert, mit `overflow: hidden` und `maxHeight: page1ContentHeight`
+   - Fuer Folgeseiten: Ein readonly-Klon (oder CSS `clip-path` Technik) zeigt den uebergelaufenen Inhalt
+5. **Closing-Block**: Wird auf der letzten Seite nach dem letzten Inhalts-Ausschnitt positioniert
+6. **Editable Overlays**: Bleiben nur auf Seite 1
 
-### 2. TrackChangesPlugin
+**Praktischer Ansatz (einfacher als CSS-Clipping):**
 
-**Datei:** `src/components/plugins/TrackChangesPlugin.tsx`
+Da CSS-Clipping mit einem interaktiven Editor komplex ist, wird stattdessen ein einfacherer Ansatz verwendet:
+- Der Editor bleibt ein einzelnes, frei wachsendes Element auf Seite 1
+- Wenn der Inhalt die Seite 1 ueberlaeuft, wird die Canvas-Hoehe auf `totalPages * 297mm` erweitert
+- Zwischen den Seiten werden visuelle Seitentrenner (weisser Balken + Schatten) eingefuegt, die den Eindruck separater Blaetter erzeugen
+- Footer und Seitenzahl werden auf jeder "Seite" wiederholt (absolute Positionierung bei `pageIndex * 297 + 272mm`)
+- Der Closing-Block folgt dynamisch dem Editor-Inhalt (per ResizeObserver gemessene Hoehe)
 
-- Wird nur aktiviert, wenn `isReviewMode={true}` uebergeben wird
-- Registriert Listener fuer:
-  - **Text-Eingabe**: Neue Text-Nodes werden automatisch in einen `TrackInsertNode` gewrappt
-  - **Text-Loeschung**: Statt den Text zu loeschen, wird er in einen `TrackDeleteNode` gewrappt (Override von DELETE/BACKSPACE Commands)
-- Props: `authorId`, `authorName`, `isReviewMode`
+### Konkrete Schritte
 
-### 3. TrackChangesToolbar
+1. `useRef` und `ResizeObserver` fuer den Editor-Container hinzufuegen
+2. `editorContentHeight` State tracken
+3. `totalPages` berechnen basierend auf Inhaltshoehe vs. verfuegbarem Platz
+4. Canvas-Container auf `totalPages * 297mm` Hoehe setzen
+5. Fuer jede Seite > 1: Seitentrenner-Element rendern (horizontaler weisser Balken mit Schatten, der den Eindruck eines neuen Blattes erzeugt)
+6. Footer + Seitenzahl auf jeder Seite wiederholen
+7. Closing-Block-Position per `editorTopMm + gemesseneHoehe + 9mm` berechnen statt hardcoded `+60mm`
+8. Sicherstellen, dass der Closing-Block nicht in den Footer-Bereich ragt (ggf. auf naechste Seite verschieben)
 
-**Datei:** `src/components/plugins/TrackChangesToolbar.tsx`
+### Datei: `src/components/letters/DIN5008LetterLayout.tsx`
 
-- Zeigt im Pruefmodus ein Banner: "Pruefmodus - Aenderungen werden nachverfolgt"
-- Zeigt im Ueberarbeitungsmodus Buttons:
-  - "Alle annehmen" - Entfernt alle Track-Nodes und behaelt den eingefuegten Text / entfernt geloeschten Text
-  - "Alle ablehnen" - Entfernt alle Track-Nodes und verwirft eingefuegten Text / stellt geloeschten Text wieder her
-  - Zaehler: "X Aenderungen"
+Keine grossen Aenderungen noetig - die Komponente rendert bereits nur Seite-1-Elemente.
 
-### 4. Integration in EnhancedLexicalEditor
+## Reihenfolge
 
-**Datei:** `src/components/EnhancedLexicalEditor.tsx`
-
-- Neue Props: `isReviewMode?: boolean`, `reviewerName?: string`, `reviewerId?: string`
-- `TrackInsertNode` und `TrackDeleteNode` zur Node-Liste hinzufuegen
-- `TrackChangesPlugin` als Plugin einbinden (nur aktiv wenn `isReviewMode`)
-- `TrackChangesToolbar` unterhalb der Haupt-Toolbar rendern
-
-### 5. Integration in LetterEditorCanvas
-
-**Datei:** `src/components/letters/LetterEditorCanvas.tsx`
-
-- Neuer Prop `isReviewMode` durchreichen an den `EnhancedLexicalEditor`
-
-### 6. Integration in LetterEditor
-
-**Datei:** `src/components/LetterEditor.tsx`
-
-- Pruefmodus erkennen: `isReviewMode = isReviewer && (currentStatus === 'pending_approval' || currentStatus === 'review')`
-- `isReviewMode`, `reviewerName` und `reviewerId` an `LetterEditorCanvas` weitergeben
-- Im Status `revision_requested` (Ueberarbeitung): Die TrackChangesToolbar mit "Annehmen/Ablehnen"-Buttons anzeigen
-
----
-
-## Dateien-Uebersicht
-
-| Datei | Aktion |
-|---|---|
-| `src/components/nodes/TrackChangeNode.ts` | Neu erstellen |
-| `src/components/plugins/TrackChangesPlugin.tsx` | Neu erstellen |
-| `src/components/plugins/TrackChangesToolbar.tsx` | Neu erstellen |
-| `src/components/EnhancedLexicalEditor.tsx` | Erweitern (Props, Nodes, Plugin) |
-| `src/components/letters/LetterEditorCanvas.tsx` | Erweitern (Prop durchreichen) |
-| `src/components/LetterEditor.tsx` | Erweitern (Pruefmodus-Logik) |
-
+1. ResizeObserver + editorContentHeight State hinzufuegen
+2. Closing-Block dynamisch positionieren (statt hardcoded +60mm)
+3. Seitenberechnung implementieren
+4. Canvas-Hoehe dynamisch setzen
+5. Seitentrenner und wiederholte Footer/Seitenzahlen rendern
