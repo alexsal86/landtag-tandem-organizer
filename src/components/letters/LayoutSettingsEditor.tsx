@@ -22,7 +22,47 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const handleResetToDefault = () => {
-    onLayoutChange(DEFAULT_DIN5008_LAYOUT);
+    // Only reset layout positions/sizes, preserve content-related settings
+    const defaults = DEFAULT_DIN5008_LAYOUT;
+    const nextSettings: LetterLayoutSettings = {
+      ...layoutSettings,
+      pageWidth: defaults.pageWidth,
+      pageHeight: defaults.pageHeight,
+      margins: { ...defaults.margins },
+      header: { ...defaults.header },
+      addressField: { ...defaults.addressField },
+      infoBlock: { ...defaults.infoBlock },
+      returnAddress: { ...defaults.returnAddress },
+      subject: {
+        ...layoutSettings.subject,
+        top: defaults.subject.top,
+        marginBottom: defaults.subject.marginBottom,
+      },
+      content: {
+        ...layoutSettings.content,
+        top: defaults.content.top,
+        maxHeight: defaults.content.maxHeight,
+        lineHeight: defaults.content.lineHeight,
+      },
+      footer: {
+        ...layoutSettings.footer,
+        top: defaults.footer.top,
+        height: defaults.footer.height,
+      },
+      attachments: {
+        ...layoutSettings.attachments,
+        top: defaults.attachments.top,
+      },
+    };
+
+    if (layoutSettings.pagination) {
+      nextSettings.pagination = {
+        ...layoutSettings.pagination,
+        top: defaults.pagination?.top ?? layoutSettings.pagination.top,
+      };
+    }
+
+    onLayoutChange(nextSettings);
   };
 
   const updateSetting = (path: string[], value: number | string | boolean) => {
