@@ -166,6 +166,23 @@ const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSettings)
   } as LetterLayoutSettings;
 };
 
+
+const DEFAULT_ATTACHMENT_PREVIEW_LINES = ['- Antrag_2026-02-15.pdf', '- Stellungnahme_Verkehrsausschuss.docx', '- Anlagenverzeichnis.xlsx'];
+const createDefaultAttachmentElements = () => ([{
+  id: `attachments-default-${Date.now()}`,
+  type: 'text',
+  x: 0,
+  y: 0,
+  content: '{{anlagen_liste}}',
+  isVariable: true,
+  variablePreviewText: DEFAULT_ATTACHMENT_PREVIEW_LINES.join('\n'),
+  fontSize: 10,
+  fontFamily: 'Arial',
+  fontWeight: 'bold',
+  color: '#000000',
+  textLineHeight: 1.2,
+}] as any[]);
+
 const LetterTemplateManager: React.FC = () => {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
@@ -431,7 +448,23 @@ const LetterTemplateManager: React.FC = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', letterhead_html: '', letterhead_css: '', response_time_days: 21, default_sender_id: '', default_info_blocks: [], header_elements: [], footer_blocks: [], layout_settings: DEFAULT_DIN5008_LAYOUT });
+    setFormData({
+      name: '',
+      letterhead_html: '',
+      letterhead_css: '',
+      response_time_days: 21,
+      default_sender_id: '',
+      default_info_blocks: [],
+      header_elements: [],
+      footer_blocks: [],
+      layout_settings: {
+        ...DEFAULT_DIN5008_LAYOUT,
+        blockContent: {
+          ...((DEFAULT_DIN5008_LAYOUT as any).blockContent || {}),
+          attachments: createDefaultAttachmentElements(),
+        },
+      } as any,
+    });
   };
 
   const startEditing = (template: LetterTemplate) => {
@@ -461,7 +494,10 @@ const LetterTemplateManager: React.FC = () => {
     const normalizedFooter = footerLines.map(normalizeImageItem);
     const cleanedBlockContent = { ...(((normalizedLayoutSettings as any).blockContent || {}) as Record<string, any[]>) };
     delete cleanedBlockContent.header;
-    
+    if (!Array.isArray(cleanedBlockContent.attachments) || cleanedBlockContent.attachments.length === 0) {
+      cleanedBlockContent.attachments = createDefaultAttachmentElements();
+    }
+
     const footerData = toFooterLineData(normalizedFooter);
     setFormData({
       name: template.name, letterhead_html: template.letterhead_html, letterhead_css: template.letterhead_css,
@@ -506,6 +542,9 @@ const LetterTemplateManager: React.FC = () => {
     />
   );
 
+  const previewAttachments = DEFAULT_ATTACHMENT_PREVIEW_LINES.map((line) => line.replace(/^-\s*/, ''));
+  const previewContent = `<div style="margin-top: 20px; padding: 20px; border: 1px dashed #ccc; font-size: 11pt; line-height: 1.4;"><p><em>Hier würde der Briefinhalt stehen...</em></p><div style="height: 13.5mm;"></div><div style="font-weight: 700;">Anlagen</div>${previewAttachments.map((name) => `<div style=\"font-weight: 700; margin-top: 1mm;\">- ${name}</div>`).join('')}</div>`;
+
   const renderPreview = (template: LetterTemplate) => {
     let previewHtml = '';
     let headerElements: any[] = [];
@@ -522,11 +561,11 @@ const LetterTemplateManager: React.FC = () => {
         }
         return '';
       }).join('');
-      previewHtml = `<div style="position: relative; width: 100%; height: 200px; background: white; border: 1px solid #e0e0e0; margin-bottom: 20px;">${structuredElements}</div><div style="margin-top: 20px; padding: 20px; border: 1px dashed #ccc;"><p><em>Hier würde der Briefinhalt stehen...</em></p></div>`;
+      previewHtml = `<div style="position: relative; width: 100%; height: 200px; background: white; border: 1px solid #e0e0e0; margin-bottom: 20px;">${structuredElements}</div>${previewContent}`;
     } else if (template.letterhead_html) {
-      previewHtml = `<style>${template.letterhead_css || ''}</style>${template.letterhead_html}<div style="margin-top: 20px; padding: 20px; border: 1px dashed #ccc;"><p><em>Hier würde der Briefinhalt stehen...</em></p></div>`;
+      previewHtml = `<style>${template.letterhead_css || ''}</style>${template.letterhead_html}${previewContent}`;
     } else {
-      previewHtml = `<div style="padding: 20px; text-align: center; color: #666;"><p>Kein Header definiert</p></div>`;
+      previewHtml = `<div style="padding: 20px; text-align: center; color: #666;"><p>Kein Header definiert</p></div>${previewContent}`;
     }
     return (
       <Dialog open={showPreview === template.id} onOpenChange={(open) => !open && setShowPreview(null)}>

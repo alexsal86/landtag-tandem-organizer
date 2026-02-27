@@ -87,6 +87,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   };
   
   const layout = layoutSettings || template?.layout_settings || DEFAULT_LAYOUT;
+  const attachmentList = (attachments || [])
+    .map((attachment) => (typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name || '')))
+    .filter(Boolean);
+  const hasSignature = Boolean(layout.closing?.signatureName || layout.closing?.signatureImagePath);
   const paginationGapMm = 4.23;
   const paginationHeightMm = 4;
   const contentTopMm = Number(layout.content?.top ?? 98.46);
@@ -649,6 +653,18 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               )}
             </>
           )}
+
+          {/* Attachments integrated into content area */}
+          {attachmentList.length > 0 && (
+            <div style={{ marginTop: hasSignature ? '4.5mm' : '13.5mm', fontWeight: 700, fontSize: '10pt' }}>
+              <div>Anlagen</div>
+              {attachmentList.map((attachmentName, index) => (
+                <div key={`${attachmentName}-${index}`} style={{ marginTop: '1mm' }}>
+                  - {attachmentName}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -698,25 +714,23 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         }
       `}</style>
 
-      {/* Attachments - positioned after content */}
-      {attachments && attachments.length > 0 && (
-        <div style={{ 
+      {/* Attachments in legacy mode */}
+      {layout.subject?.integrated === false && attachmentList.length > 0 && (
+        <div style={{
           position: 'absolute',
-          top: '230mm', // Below main content area
+          top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignature ? 4.5 : 13.5}mm)`,
           left: '25mm',
           right: '20mm',
+          fontWeight: 700,
+          fontSize: '10pt',
           backgroundColor: debugMode ? 'rgba(128,128,128,0.05)' : 'transparent'
         }}>
-          <div className="font-medium" style={{ marginBottom: '2mm', fontSize: '10pt' }}>
-            Anlagen:
-          </div>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '10pt' }}>
-            {attachments.map((attachment, index) => (
-              <li key={index} style={{ marginBottom: '1mm' }}>
-                - {typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name)}
-              </li>
-            ))}
-          </ul>
+          <div>Anlagen</div>
+          {attachmentList.map((attachmentName, index) => (
+            <div key={`${attachmentName}-${index}`} style={{ marginTop: '1mm' }}>
+              - {attachmentName}
+            </div>
+          ))}
         </div>
       )}
 
