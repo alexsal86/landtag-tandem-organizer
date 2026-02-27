@@ -363,7 +363,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                               type="number"
                               value={line.fontSize || 9}
                               onChange={(e) => updateLine(line.id, { fontSize: parseFloat(e.target.value) || 9 })}
-                              className="h-6 w-12 text-xs text-center"
+                              className="h-6 w-14 text-xs text-center"
                               min={5}
                               max={24}
                               title="Schriftgröße (pt)"
@@ -426,7 +426,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                               type="number"
                               value={line.fontSize || 9}
                               onChange={(e) => updateLine(line.id, { fontSize: parseFloat(e.target.value) || 9 })}
-                              className="h-6 w-12 text-xs text-center"
+                              className="h-6 w-14 text-xs text-center"
                               min={5}
                               max={24}
                               title="Schriftgröße (pt)"
