@@ -619,12 +619,12 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* 1 blank line after salutation */}
           {salutation && <div style={{ height: '4.5mm' }} />}
           {/* Letter content */}
-          <div style={{ color: '#000' }} dangerouslySetInnerHTML={{ __html: content }} />
+          <div className="din5008-content-text" style={contentTextStyle} dangerouslySetInnerHTML={{ __html: content }} />
           {/* Closing formula + signature */}
           {layout.closing?.formula && (
             <>
               <div style={{ height: '9mm' }} />
-              <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt` }}>
+              <div className="din5008-content-text" style={{ fontSize: `${layout.closing?.fontSize || 11}pt` }}>
                 {layout.closing.formula}
               </div>
               {layout.closing.signatureImagePath && (
@@ -642,7 +642,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               {!layout.closing.signatureImagePath && layout.closing.signatureName && <div style={{ height: '4.5mm' }} />}
               {!layout.closing.signatureImagePath && !layout.closing.signatureName && null}
               {layout.closing.signatureName && (
-                <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
+                <div className="din5008-content-text" style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
                   {layout.closing.signatureName}
                 </div>
               )}
@@ -714,9 +714,9 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         }
       `}</style>
 
-      {/* Attachments in legacy mode */}
-      {layout.subject?.integrated === false && attachmentList.length > 0 && (
-        <div style={{
+      {/* Attachments - positioned after content */}
+      {attachments && attachments.length > 0 && (
+        <div style={{ 
           position: 'absolute',
           top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignatureName ? 4.5 : 13.5}mm)`,
           left: '25mm',
