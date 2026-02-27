@@ -62,6 +62,7 @@ const Index = () => {
   };
   
   const [activeSection, setActiveSection] = useState(() => getActiveSectionFromPath(location.pathname));
+  const isCreateContactRoute = activeSection === "contacts" && new URLSearchParams(location.search).get("action") === "new";
   
   // Dialog state management
   const [showCreateAppointmentDialog, setShowCreateAppointmentDialog] = useState(false);
@@ -157,7 +158,7 @@ const Index = () => {
       case "calendar":
         return <CalendarView />;
       case "contacts":
-        if (subId === "new") {
+        if (subId === "new" || isCreateContactRoute) {
           return <CreateContact />;
         }
 
