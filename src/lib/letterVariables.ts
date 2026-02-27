@@ -105,7 +105,7 @@ export function buildVariableMap(
       .map((a) => `- ${a.display_name || a.file_name || ''}`)
       .join('\n');
   } else {
-    map['{{anlagen_liste}}'] = '';
+    map['{{anlagen_liste}}'] = '- Antrag_2026-02-15.pdf\n- Stellungnahme_Verkehrsausschuss.docx\n- Anlagenverzeichnis.xlsx';
   }
 
   return map;

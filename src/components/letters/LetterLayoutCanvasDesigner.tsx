@@ -748,7 +748,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const returnAddressHeightMm = localLayout.addressField.returnAddressHeight || 17.7;
               
               return (
-                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium ${plainPreview ? 'p-0 text-gray-900' : 'px-1 py-0.5'} ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
+                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium ${(plainPreview || block.key === 'content') ? 'p-0 text-gray-900' : 'px-1 py-0.5'} ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
                   {block.key === 'addressField' && (hasReturnData || hasAddressData) ? (
                     <>
                       {/* Vermerkzone (return address) */}
@@ -787,7 +787,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                         {localLayout.salutation?.template || 'Sehr geehrte Damen und Herren,'}
                       </div>
                       <div style={{ height: (localLayout.content?.lineHeight || 4.5) * SCALE }} />
-                      <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#666' }}>{contentPreview}</div>
+                      <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>{contentPreview}</div>
                       {/* Abschlussformel preview */}
                       {localLayout.closing?.formula && (
                          <>
@@ -798,7 +798,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                           {localLayout.closing.signatureName && (
                             <>
                               <div style={{ height: (localLayout.content?.lineHeight || 4.5) * (localLayout.closing.signatureImagePath ? 3 : 1) * SCALE }} />
-                              <div className="text-gray-600" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
+                              <div style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>
                                 {localLayout.closing.signatureName}
                               </div>
                               {localLayout.closing.signatureTitle && (
