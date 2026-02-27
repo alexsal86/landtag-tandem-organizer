@@ -301,7 +301,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                     ? `${line.label || ''} ${line.value || ''}`.trim()
                     : (line.value || '');
                   if (!content) return null;
-                  return <div key={lineIndex} style={{ fontSize: `${Math.max(6, Math.min(12, Number(line.fontSize) || 8))}pt`, fontWeight: line.valueBold ? 'bold' : 'normal', color: line.color || undefined }}>{content}</div>;
+                  return <div key={lineIndex} style={{ fontSize: `${Math.max(6, Math.min(12, Number(line.fontSize) || 8))}pt`, fontFamily: line.fontFamily || 'Calibri', fontWeight: line.valueBold ? 'bold' : 'normal', color: line.color || undefined }}>{content}</div>;
                 })}
               </div>
             </div>
@@ -418,7 +418,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       : -1;
 
     return (
-      <div className="space-y-0" style={{ fontFamily: 'Arial, sans-serif' }}>
+      <div className="space-y-0">
         {lines.map((line, index) => {
           if (line.type === 'spacer') {
             return <div key={line.id} style={{ height: `${line.spacerHeight || 2}mm` }} />;
@@ -432,7 +432,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           if (line.type === 'text-only') {
             return (
               <div key={line.id} style={{ lineHeight: '1.3' }}>
-                <span style={{ ...lineWrapperStyle, fontSize: `${line.fontSize || 9}pt`, fontWeight: line.valueBold ? 'bold' : 'normal' }}>
+                <span style={{ ...lineWrapperStyle, fontSize: `${line.fontSize || 9}pt`, fontFamily: line.fontFamily || 'Calibri', fontWeight: line.valueBold ? 'bold' : 'normal' }}>
                   {line.value || '\u00A0'}
                 </span>
               </div>
@@ -442,7 +442,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           // label-value
           return (
             <div key={line.id} style={{ lineHeight: '1.3' }}>
-              <span style={{ ...lineWrapperStyle, fontSize: `${line.fontSize || 9}pt` }}>
+              <span style={{ ...lineWrapperStyle, fontSize: `${line.fontSize || 9}pt`, fontFamily: line.fontFamily || 'Calibri' }}>
                 <span style={{ fontWeight: line.labelBold !== false ? 'bold' : 'normal' }}>{line.label || ''}</span>
                 <span style={{ fontWeight: line.valueBold ? 'bold' : 'normal' }}>{line.value || ''}</span>
               </span>
