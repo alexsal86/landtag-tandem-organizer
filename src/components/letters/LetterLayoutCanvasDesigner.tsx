@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 
 type BlockKey = 'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments' | 'pagination';
-type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general' | 'block-address' | 'block-info' | 'block-subject' | 'block-content' | 'block-attachments';
+type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general' | 'block-address' | 'block-info' | 'block-subject' | 'block-content';
 
 interface Rect {
   x: number;
@@ -69,7 +69,7 @@ const DEFAULT_BLOCKS: BlockConfig[] = [
   { key: 'addressField', label: 'Adressfeld', color: 'bg-blue-500/20 border-blue-600 text-blue-900', canMoveX: true, canResize: true, jumpTo: 'block-address' },
   { key: 'infoBlock', label: 'Info-Block', color: 'bg-purple-500/20 border-purple-600 text-purple-900', canMoveX: true, canResize: true, jumpTo: 'block-info' },
   { key: 'content', label: 'Inhaltsbereich', color: 'bg-orange-500/20 border-orange-600 text-orange-900', canResize: true, jumpTo: 'layout-settings' },
-  { key: 'attachments', label: 'Anlagen', color: 'bg-amber-500/20 border-amber-600 text-amber-900', jumpTo: 'block-attachments' },
+  { key: 'attachments', label: 'Anlagen', color: 'bg-amber-500/20 border-amber-600 text-amber-900', jumpTo: 'layout-settings' },
   { key: 'pagination', label: 'Paginierung', color: 'bg-rose-500/20 border-rose-600 text-rose-900', jumpTo: 'layout-settings' },
   { key: 'footer', label: 'Footer', color: 'bg-pink-500/20 border-pink-600 text-pink-900', jumpTo: 'footer-designer' },
 ];

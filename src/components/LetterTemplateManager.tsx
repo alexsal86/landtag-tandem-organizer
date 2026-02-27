@@ -167,7 +167,7 @@ const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSettings)
 };
 
 
-const DEFAULT_ATTACHMENT_PREVIEW_LINES = ['- Antrag_2026-02-15.pdf', '- Stellungnahme_Verkehrsausschuss.docx', '- Anlagenverzeichnis.xlsx'];
+const DEFAULT_ATTACHMENT_PREVIEW_LINES = ['- Dokumentenname.pdf'];
 const createDefaultAttachmentElements = () => ([{
   id: `attachments-default-${Date.now()}`,
   type: 'text',
@@ -259,12 +259,6 @@ const LetterTemplateManager: React.FC = () => {
       y: formData.layout_settings.subject.top,
       width: formData.layout_settings.pageWidth,
       height: formData.layout_settings.subject.marginBottom,
-    }),
-    'block-attachments': getMarginsForRect({
-      x: 0,
-      y: formData.layout_settings.attachments.top,
-      width: formData.layout_settings.pageWidth,
-      height: Math.max(0, formData.layout_settings.pageHeight - formData.layout_settings.attachments.top),
     }),
     'layout-settings': ['left', 'right', 'top', 'bottom'],
     'general': [],
@@ -578,7 +572,7 @@ const LetterTemplateManager: React.FC = () => {
   };
 
   // Consolidated tab list - used by both create and edit
-  // Order: Canvas, Header, Footer, Adressfeld, Rücksende, Info-Block, Betreff, Anlagen, Layout, Allgemein
+  // Order: Canvas, Header, Footer, Adressfeld, Rücksende, Info-Block, Betreff, Layout, Allgemein
   const renderTabsList = () => (
     <TabsList className="flex w-full justify-start gap-1 overflow-x-auto whitespace-nowrap">
       {renderTabTrigger('canvas-designer', 'Canvas')}
@@ -587,7 +581,6 @@ const LetterTemplateManager: React.FC = () => {
       {renderTabTrigger('block-address', 'Adressfeld')}
       {renderTabTrigger('block-info', 'Info-Block')}
       {renderTabTrigger('block-subject', 'Betreff, Anrede & Abschluss')}
-      {renderTabTrigger('block-attachments', 'Anlagen')}
       {renderTabTrigger('layout-settings', 'Layout')}
       {renderTabTrigger('general', 'Allgemein')}
     </TabsList>
@@ -994,14 +987,6 @@ const LetterTemplateManager: React.FC = () => {
           )}
         </div>
       </TabsContent>
-
-      <TabsContent value="block-attachments" className="space-y-4">
-        {renderSharedElementsEditor('attachments',
-          formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
-          20
-        )}
-      </TabsContent>
-
     </>
   );
 
