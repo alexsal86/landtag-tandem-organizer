@@ -1,87 +1,105 @@
 
-# Mehrseitige Brief-Darstellung mit echtem Seitenumbruch
+
+# Fix: Seitenumbruch mit Spacer-Injection
 
 ## Problem
 
-Der Lexical-Editor waechst unbegrenzt nach unten und ueberlaeuft den Footer, die Paginierung und den Seitenrand. Es fehlt eine echte seitenbasierte Darstellung wie in Word.
+Der Editor ist ein einziges, durchgehendes Lexical-Element. Die Seitentrenner sind nur visuelle Overlays (z-index 25), aber der Text (z-index 10) fließt ununterbrochen darunter hindurch. Es fehlt ein Mechanismus, der den Text an Seitenumbruch-Stellen ueber die "tote Zone" (Footer + Seitenrand der Folgeseite) hinweg schiebt.
 
-## Loesung
+## Loesung: PageBreak-Spacer im Editor
 
-Den Canvas von einem einzigen wachsenden DIV in eine **mehrseitige Darstellung** umbauen, bei der jede Seite ein eigenes A4-Blatt ist. Der Lexical-Editor bleibt ein einzelner Editor, aber sein Inhalt wird per **CSS-Clipping** auf die einzelnen Seiten verteilt.
+Anstatt den Text per CSS-Clipping auf mehrere Viewports zu verteilen (was mit einem interaktiven Editor extrem komplex ist), wird ein **Spacer-basierter Ansatz** verwendet:
 
-### Kernprinzip
+1. Ein neues **Lexical DecoratorNode** (`PageBreakSpacerNode`) wird erstellt, das als unsichtbarer Platzhalter mit exakter Hoehe gerendert wird
+2. Ein neues **Lexical Plugin** (`PageBreakPlugin`) misst laufend die Positionen der Editor-Inhalte und fuegt Spacer-Nodes an den richtigen Stellen ein
+3. Die Spacer-Hoehe entspricht genau der "toten Zone": `(PAGE_HEIGHT - footerTop) + FOLLOWUP_TOP_MARGIN = (297 - 272) + 25 = 50mm`
+4. Dadurch wird nachfolgender Text automatisch auf die naechste Seite geschoben
 
-1. Ein `ResizeObserver` misst die tatsaechliche Hoehe des Editor-Inhalts
-2. Daraus wird berechnet, wie viele Seiten benoetigt werden
-3. Fuer jede Seite wird ein eigenes A4-Blatt gerendert
-4. Der Editor-Inhalt wird per `clip-path` und negativem `top`-Offset so verschoben, dass auf jeder Seite nur der passende Ausschnitt sichtbar ist
-5. Seite 1 hat Header, Adressfeld, Info-Block, Betreff, Anrede + Inhalt bis zum Seitenende
-6. Folgeseiten haben nur Seitenraender + fortlaufenden Inhalt
-7. Der Closing-Block (Grussformel/Unterschrift) wird auf der letzten Seite nach dem Inhalt angezeigt
-8. Footer und Seitenzahlen erscheinen auf jeder Seite
-
-### Seitenlayout (in mm)
+### Wie es funktioniert
 
 ```text
-Seite 1:
-  - Verfuegbare Inhaltshoehe: footerTop (272mm) - editorTopMm (~106mm) = ~166mm
-  - Inhalt wird bei 272mm abgeschnitten
-
-Seite 2+:
-  - Inhalt beginnt bei top-Margin (25mm)
-  - Verfuegbare Inhaltshoehe: 272mm - 25mm = 247mm
-  - Gleicher Footer/Paginierung wie Seite 1
+Ohne Spacer:                    Mit Spacer:
+┌─────────────┐                 ┌─────────────┐
+│ Seite 1     │                 │ Seite 1     │
+│ Text...     │                 │ Text...     │
+│ Text...     │                 │ Text...     │
+│ Footer      │ <- Text laeuft  │ Footer      │ <- kein Text hier
+├─────────────┤    drueber      ├─────────────┤
+│ Seite 2     │                 │ [SPACER]    │ <- 50mm unsichtbar
+│ Text...     │ <- versetzt     │ Seite 2     │
+│             │                 │ Text...     │ <- korrekt positioniert
+└─────────────┘                 └─────────────┘
 ```
 
 ## Technische Umsetzung
 
-### Datei: `src/components/letters/LetterEditorCanvas.tsx`
+### 1. Neues DecoratorNode: `PageBreakSpacerNode`
 
-**Aenderungen:**
+**Datei:** `src/components/nodes/PageBreakSpacerNode.tsx`
 
-1. **State hinzufuegen**: `editorContentHeight` (number) und `editorRef` (RefObject)
-2. **ResizeObserver**: Beobachtet die tatsaechliche Hoehe des `.editor-input` Elements
-3. **Seitenberechnung**:
-   - `page1ContentHeight = footerTopMm - editorTopMm` (verfuegbarer Platz auf Seite 1)
-   - `followupPageHeight = footerTopMm - 25` (verfuegbarer Platz auf Folgeseiten)
-   - `totalPages = 1 + ceil((editorContentHeight - page1ContentHeight) / followupPageHeight)` (wenn > 1 Seite noetig)
-4. **Rendering-Struktur umbauen**:
-   - Statt einem einzelnen 210x297mm-DIV werden `totalPages` A4-Blaetter gerendert
-   - Seite 1: Enthaelt `DIN5008LetterLayout` (Header, Adressfeld, etc.) + Editor-Inhalt (geclippt auf page1ContentHeight)
-   - Seite 2+: Enthaelt nur Editor-Inhalt (geclippt auf den jeweiligen Seitenausschnitt) + Footer
-   - Der Editor wird nur einmal auf Seite 1 gerendert, mit `overflow: hidden` und `maxHeight: page1ContentHeight`
-   - Fuer Folgeseiten: Ein readonly-Klon (oder CSS `clip-path` Technik) zeigt den uebergelaufenen Inhalt
-5. **Closing-Block**: Wird auf der letzten Seite nach dem letzten Inhalts-Ausschnitt positioniert
-6. **Editable Overlays**: Bleiben nur auf Seite 1
+- Erweitert `DecoratorNode` von Lexical
+- Rendert ein leeres `div` mit dynamischer Hoehe (in mm)
+- Ist nicht editierbar, nicht selektierbar (wird vom Benutzer nicht bemerkt)
+- Serialisiert sich als `{ type: 'page-break-spacer', height: number }`
+- Wird beim PDF-Export herausgefiltert (soll nicht im PDF erscheinen)
 
-**Praktischer Ansatz (einfacher als CSS-Clipping):**
+### 2. Neues Plugin: `PageBreakPlugin`
 
-Da CSS-Clipping mit einem interaktiven Editor komplex ist, wird stattdessen ein einfacherer Ansatz verwendet:
-- Der Editor bleibt ein einzelnes, frei wachsendes Element auf Seite 1
-- Wenn der Inhalt die Seite 1 ueberlaeuft, wird die Canvas-Hoehe auf `totalPages * 297mm` erweitert
-- Zwischen den Seiten werden visuelle Seitentrenner (weisser Balken + Schatten) eingefuegt, die den Eindruck separater Blaetter erzeugen
-- Footer und Seitenzahl werden auf jeder "Seite" wiederholt (absolute Positionierung bei `pageIndex * 297 + 272mm`)
-- Der Closing-Block folgt dynamisch dem Editor-Inhalt (per ResizeObserver gemessene Hoehe)
+**Datei:** `src/components/plugins/PageBreakPlugin.tsx`
 
-### Konkrete Schritte
+- Empfaengt Props: `editorTopMm`, `footerTopMm`, `pageHeightMm`, `followupTopMarginMm`
+- Berechnet verfuegbaren Platz pro Seite:
+  - Seite 1: `footerTopMm - editorTopMm` (ca. 166mm)
+  - Seite 2+: `footerTopMm - followupTopMarginMm` (ca. 247mm)
+- Berechnet "tote Zone" Hoehe: `(pageHeightMm - footerTopMm) + followupTopMarginMm` (ca. 50mm)
+- Verwendet einen `MutationListener` auf dem Editor, um bei Aenderungen die Positionen der Absaetze zu pruefen
+- Wenn ein Absatz die Seitengrenze ueberschreiten wuerde, wird **vor** diesem Absatz ein `PageBreakSpacerNode` eingefuegt
+- Wenn sich der Inhalt verkuerzt und ein Spacer ueberfluessig wird, wird er wieder entfernt
+- Debounced (200ms), um Performance zu schuetzen
 
-1. `useRef` und `ResizeObserver` fuer den Editor-Container hinzufuegen
-2. `editorContentHeight` State tracken
-3. `totalPages` berechnen basierend auf Inhaltshoehe vs. verfuegbarem Platz
-4. Canvas-Container auf `totalPages * 297mm` Hoehe setzen
-5. Fuer jede Seite > 1: Seitentrenner-Element rendern (horizontaler weisser Balken mit Schatten, der den Eindruck eines neuen Blattes erzeugt)
-6. Footer + Seitenzahl auf jeder Seite wiederholen
-7. Closing-Block-Position per `editorTopMm + gemesseneHoehe + 9mm` berechnen statt hardcoded `+60mm`
-8. Sicherstellen, dass der Closing-Block nicht in den Footer-Bereich ragt (ggf. auf naechste Seite verschieben)
+**Algorithmus:**
+1. Alle Top-Level-Nodes im Editor durchgehen
+2. Ihre kumulierte Hoehe tracken (via `getBoundingClientRect` der DOM-Elemente)
+3. Wenn die kumulierte Hoehe die Seitengrenze ueberschreitet, vor dem aktuellen Node einen Spacer einfuegen
+4. Nach dem Spacer die kumulierte Hoehe auf den Beginn der naechsten Seite zuruecksetzen
 
-### Datei: `src/components/letters/DIN5008LetterLayout.tsx`
+### 3. Integration in EnhancedLexicalEditor
 
-Keine grossen Aenderungen noetig - die Komponente rendert bereits nur Seite-1-Elemente.
+**Datei:** `src/components/EnhancedLexicalEditor.tsx`
+
+- `PageBreakSpacerNode` zur Node-Liste hinzufuegen
+- `PageBreakPlugin` als optionales Plugin einbinden
+- Neue Props: `enablePageBreaks?: boolean`, `pageBreakConfig?: { editorTopMm, footerTopMm, pageHeightMm, followupTopMarginMm }`
+
+### 4. Integration in LetterEditorCanvas
+
+**Datei:** `src/components/letters/LetterEditorCanvas.tsx`
+
+- Die berechneten Werte (`editorTopMm`, `footerTopMm`, `PAGE_HEIGHT_MM`, `FOLLOWUP_TOP_MARGIN_MM`) an den `EnhancedLexicalEditor` als `pageBreakConfig` weitergeben
+- `enablePageBreaks={true}` setzen
+- Die Seitentrenner-Overlays bleiben wie sie sind (sie markieren jetzt korrekt die Stellen, an denen die Spacer den Inhalt umbrechen)
+
+### 5. PDF-Export-Anpassung
+
+**Datei:** `src/utils/letterPDFGenerator.ts`
+
+- Beim Generieren des PDFs muessen `PageBreakSpacerNode`-Elemente aus dem HTML gefiltert werden
+- Stattdessen wird ein `doc.addPage()` an diesen Stellen ausgefuehrt
+
+## Dateien-Uebersicht
+
+| Datei | Aktion |
+|---|---|
+| `src/components/nodes/PageBreakSpacerNode.tsx` | Neu erstellen |
+| `src/components/plugins/PageBreakPlugin.tsx` | Neu erstellen |
+| `src/components/EnhancedLexicalEditor.tsx` | Erweitern (Node + Plugin + Props) |
+| `src/components/letters/LetterEditorCanvas.tsx` | pageBreakConfig Props durchreichen |
+| `src/utils/letterPDFGenerator.ts` | Spacer-Nodes beim Export filtern |
 
 ## Reihenfolge
 
-1. ResizeObserver + editorContentHeight State hinzufuegen
-2. Closing-Block dynamisch positionieren (statt hardcoded +60mm)
-3. Seitenberechnung implementieren
-4. Canvas-Hoehe dynamisch setzen
-5. Seitentrenner und wiederholte Footer/Seitenzahlen rendern
+1. `PageBreakSpacerNode` erstellen (DecoratorNode mit dynamischer Hoehe)
+2. `PageBreakPlugin` erstellen (Mess-Logik + Spacer-Injection)
+3. In `EnhancedLexicalEditor` integrieren (Node registrieren, Plugin einbinden)
+4. In `LetterEditorCanvas` die Config-Werte uebergeben
+5. PDF-Generator anpassen (Spacer filtern, Seitenumbruch einfuegen)
