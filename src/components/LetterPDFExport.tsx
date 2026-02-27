@@ -513,14 +513,26 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       // Return address line in address field - 17.7mm height
       let addressYPos = addressFieldTop + 17.7;
       if (senderInfo?.return_address_line) {
-        pdf.setFontSize(7);
+        const returnAddressFontSize = 7;
+        const returnAddressMaxWidth = Math.max(10, addressFieldWidth - 10);
+
+        pdf.setFontSize(returnAddressFontSize);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(senderInfo.return_address_line, addressFieldLeft, addressYPos - 2);
+
+        const returnAddressLines = pdf.splitTextToSize(senderInfo.return_address_line, returnAddressMaxWidth);
+        const returnAddressStartY = addressYPos - 2;
+        const lineHeightMm = (pdf.getLineHeightFactor() * returnAddressFontSize) / pdf.internal.scaleFactor;
+        const lastLineBaselineY = returnAddressStartY + (returnAddressLines.length - 1) * lineHeightMm;
+
+        pdf.text(returnAddressLines, addressFieldLeft, returnAddressStartY);
         
-        // Underline for return address
-        const textWidth = pdf.getTextWidth(senderInfo.return_address_line);
-        pdf.line(addressFieldLeft, addressYPos - 1, addressFieldLeft + textWidth, addressYPos - 1);
-        addressYPos += 3;
+        // Underline as long as the last rendered line of the return address
+        const lastLine = returnAddressLines[returnAddressLines.length - 1] || '';
+        const lastLineWidth = pdf.getTextWidth(lastLine);
+        const underlineY = lastLineBaselineY + 0.6;
+        pdf.line(addressFieldLeft, underlineY, addressFieldLeft + lastLineWidth, underlineY);
+
+        addressYPos = underlineY + 2.2;
       }
       
       // Recipient address
