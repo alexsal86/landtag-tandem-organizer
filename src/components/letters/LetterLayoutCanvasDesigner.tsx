@@ -787,7 +787,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                         {localLayout.salutation?.template || 'Sehr geehrte Damen und Herren,'}
                       </div>
                       <div style={{ height: (localLayout.content?.lineHeight || 4.5) * SCALE }} />
-                      <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#666' }}>{contentPreview}</div>
+                      <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>{contentPreview}</div>
                       {/* Abschlussformel preview */}
                       {localLayout.closing?.formula && (
                          <>
@@ -798,7 +798,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                           {localLayout.closing.signatureName && (
                             <>
                               <div style={{ height: (localLayout.content?.lineHeight || 4.5) * (localLayout.closing.signatureImagePath ? 3 : 1) * SCALE }} />
-                              <div className="text-gray-600" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
+                              <div style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>
                                 {localLayout.closing.signatureName}
                               </div>
                               {localLayout.closing.signatureTitle && (
