@@ -91,7 +91,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
         <div>
           <h3 className="text-lg font-semibold">Layout-Einstellungen</h3>
           <p className="text-sm text-muted-foreground">
-            Konfigurieren Sie alle Abstände und Positionen für dieses Template (alle Werte in mm)
+            Konfigurieren Sie alle Abstände, Positionen und Standardschriftgrößen für dieses Template (Werte in mm/pt)
           </p>
         </div>
         <Button
@@ -151,6 +151,8 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
             <div><Label htmlFor="address-height">Gesamthöhe (mm)</Label><Input id="address-height" type="number" value={layoutSettings.addressField.height} onChange={(e) => updateSetting(['addressField', 'height'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="return-address-height">Vermerkzone (mm)</Label><Input id="return-address-height" type="number" value={layoutSettings.addressField.returnAddressHeight || 17.7} onChange={(e) => updateSetting(['addressField', 'returnAddressHeight'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="address-zone-height">Anschriftzone (mm)</Label><Input id="address-zone-height" type="number" value={layoutSettings.addressField.addressZoneHeight || 27.3} onChange={(e) => updateSetting(['addressField', 'addressZoneHeight'], parseFloat(e.target.value))} step="0.1" /></div>
+            <div><Label htmlFor="return-address-font-size">Schrift Rücksendezeile (pt)</Label><Input id="return-address-font-size" type="number" value={layoutSettings.addressField.returnAddressFontSize || 8} onChange={(e) => updateSetting(['addressField', 'returnAddressFontSize'], parseFloat(e.target.value))} step="0.5" /></div>
+            <div><Label htmlFor="recipient-font-size">Schrift Empfängeranschrift (pt)</Label><Input id="recipient-font-size" type="number" value={layoutSettings.addressField.recipientFontSize || 10} onChange={(e) => updateSetting(['addressField', 'recipientFontSize'], parseFloat(e.target.value))} step="0.5" /></div>
           </div>
         </div>
 
@@ -171,6 +173,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
           <div className="grid grid-cols-2 gap-3">
             <div><Label htmlFor="subject-top">Von oben (mm)</Label><Input id="subject-top" type="number" value={layoutSettings.subject.top} onChange={(e) => updateSetting(['subject', 'top'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="subject-margin-bottom">Abstand unten (mm)</Label><Input id="subject-margin-bottom" type="number" value={layoutSettings.subject.marginBottom} onChange={(e) => updateSetting(['subject', 'marginBottom'], parseFloat(e.target.value))} step="0.1" /></div>
+            <div><Label htmlFor="subject-font-size">Schriftgröße (pt)</Label><Input id="subject-font-size" type="number" value={layoutSettings.subject.fontSize || 13} onChange={(e) => updateSetting(['subject', 'fontSize'], parseFloat(e.target.value))} step="0.5" /></div>
           </div>
         </div>
 
@@ -181,6 +184,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
             <div><Label htmlFor="content-top">Von oben (mm)</Label><Input id="content-top" type="number" value={layoutSettings.content.top} onChange={(e) => updateSetting(['content', 'top'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="content-max-height">Max. Höhe (mm)</Label><Input id="content-max-height" type="number" value={layoutSettings.content.maxHeight} onChange={(e) => updateSetting(['content', 'maxHeight'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="content-line-height">Zeilenhöhe (mm)</Label><Input id="content-line-height" type="number" value={layoutSettings.content.lineHeight} onChange={(e) => updateSetting(['content', 'lineHeight'], parseFloat(e.target.value))} step="0.1" /></div>
+            <div><Label htmlFor="content-font-size">Schriftgröße (pt)</Label><Input id="content-font-size" type="number" value={layoutSettings.content.fontSize || 11} onChange={(e) => updateSetting(['content', 'fontSize'], parseFloat(e.target.value))} step="0.5" /></div>
           </div>
         </div>
 
