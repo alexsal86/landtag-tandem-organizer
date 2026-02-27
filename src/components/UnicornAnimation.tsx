@@ -28,13 +28,13 @@ export function UnicornAnimation({ isVisible, onAnimationComplete }: UnicornAnim
       <style>{`
         @keyframes unicornRun {
           0% {
-            transform: translateX(-250px) translateY(50vh);
+            transform: translateX(-250px) translateY(0);
           }
           50% {
-            transform: translateX(50vw) translateY(50vh);
+            transform: translateX(50vw) translateY(0);
           }
           100% {
-            transform: translateX(calc(100vw + 50px)) translateY(50vh);
+            transform: translateX(calc(100vw + 50px)) translateY(0);
           }
         }
         
@@ -55,7 +55,7 @@ export function UnicornAnimation({ isVisible, onAnimationComplete }: UnicornAnim
         
         .unicorn-container {
           position: absolute;
-          top: 0;
+          bottom: 0;
           left: 0;
           width: 200px;
           height: 150px;
