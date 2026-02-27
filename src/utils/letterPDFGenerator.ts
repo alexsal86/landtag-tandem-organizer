@@ -20,6 +20,7 @@ interface Letter {
   status: string;
   sent_date?: string;
   created_at: string;
+  show_pagination?: boolean;
 }
 
 export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; filename: string } | null> => {
@@ -35,8 +36,8 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       header: { height: 45, marginBottom: 8.46 },
       addressField: { top: 46, left: 25, width: 85, height: 40 },
       infoBlock: { top: 50, left: 125, width: 75, height: 40 },
-      subject: { top: 101.46, marginBottom: 8 },
-      content: { top: 109.46, maxHeight: 161, lineHeight: 4.5 },
+      subject: { top: 98.46, marginBottom: 8 },
+      content: { top: 98.46, maxHeight: 165, lineHeight: 4.5 },
       footer: { top: 272, height: 18 },
       attachments: { top: 230 }
     };
@@ -175,6 +176,14 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     const infoBlockLeft = layoutSettings.infoBlock.left;
     const infoBlockWidth = layoutSettings.infoBlock.width;
     const contentTop = layoutSettings.content.top;
+    const footerTop = layoutSettings.footer.top;
+    const paginationGap = 4.23;
+    const paginationHeight = 4;
+    const hasPagination = letter.show_pagination ?? false;
+    const paginationTop = layoutSettings.pagination?.top ?? (footerTop - paginationGap - paginationHeight);
+    const contentBottom = hasPagination
+      ? paginationTop - paginationGap
+      : Math.min(contentTop + 165, footerTop - paginationGap);
     
     // Debug helper function for consistent styling across all pages
     const drawDebugGuides = (pageNum: number) => {
@@ -264,12 +273,12 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       pdf.text("Unterer Rand: 7mm", 5, footerBottom + 3);
       
       // Pagination position (4.23mm above footer)
-      const paginationY = footerTop - 4.23;
+      const paginationY = paginationTop;
       pdf.setDrawColor(255, 0, 255); // Magenta
       pdf.rect(leftMargin, paginationY - 2, pageWidth - leftMargin - rightMargin, 4);
       pdf.setTextColor(255, 0, 255);
       pdf.setFontSize(6);
-      pdf.text("Paginierung: 4.23mm über Fußzeile", leftMargin + 2, paginationY + 1);
+      pdf.text("Paginierung: Unterkante 4.23mm über Fußzeile", leftMargin + 2, paginationY + 1);
       
       // Page dimensions box
       pdf.setDrawColor(0, 0, 0);
@@ -553,7 +562,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         
         lines.forEach((line: string, lineIndex: number) => {
           // Check if we need a new page (keep space for footer and pagination)
-          if (currentY > 260) { // Changed from 250 to 260 for more content space
+          if (currentY > contentBottom) {
             pdf.addPage();
             letterPages++;
             currentPage++;
@@ -591,15 +600,16 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       contentStartY += 8;
     }
     
-    const finalY = renderContentText(contentText, contentStartY);
+    renderContentText(contentText, contentStartY);
     
     // Add pagination to all pages
+    if (hasPagination) {
     for (let page = 1; page <= letterPages; page++) {
       if (page > 1) {
         pdf.setPage(page);
       }
       
-      const paginationY = 272 - 4.23;
+      const paginationY = paginationTop;
       
       // Debug pagination box
       pdf.setFontSize(6);
@@ -622,6 +632,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       const pageTextXFinal = pageWidth - rightMargin - pageTextWidthFinal; // Right aligned
       pdf.text(pageTextFinal, pageTextXFinal, paginationY);
       pdf.setTextColor(0, 0, 0);
+    }
     }
 
     // Generate filename and return blob

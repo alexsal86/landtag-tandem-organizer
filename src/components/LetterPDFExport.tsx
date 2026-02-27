@@ -224,6 +224,9 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       const infoBlockLeft = 125;
       const infoBlockWidth = 75;
       const contentTop = 98.46;
+      const footerTop = 272;
+      const paginationGap = 4.23;
+      const paginationHeight = 4;
       
       // Debug helper function for consistent styling across all pages
       const drawDebugGuides = (pageNum: number) => {
@@ -313,12 +316,12 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.text("Unterer Rand: 7mm", 5, footerBottom + 3);
         
         // Pagination position (4.23mm above footer)
-        const paginationY = footerTop - 4.23;
+        const paginationY = footerTop - paginationGap - paginationHeight;
         pdf.setDrawColor(255, 0, 255); // Magenta
         pdf.rect(leftMargin, paginationY - 2, pageWidth - leftMargin - rightMargin, 4);
         pdf.setTextColor(255, 0, 255);
         pdf.setFontSize(6);
-        pdf.text("Paginierung: 4.23mm über Fußzeile", leftMargin + 2, paginationY + 1);
+        pdf.text("Paginierung: Unterkante 4.23mm über Fußzeile", leftMargin + 2, paginationY + 1);
         
         // Page dimensions box
         pdf.setDrawColor(0, 0, 0);
@@ -667,19 +670,13 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           const lines = pdf.splitTextToSize(paragraph.trim(), currentMaxWidth);
           
           lines.forEach((line, lineIndex) => {
-            // Check if we need a new page - adjust available height based on pagination setting
-            const footerHeight = 40; // Base space for footer
-            const paginationHeight = shouldShowPagination ? 15 : 0; // Additional space only when pagination is enabled
-            const totalBottomMargin = footerHeight + paginationHeight;
-            const availableHeight = pageHeight - totalBottomMargin;
+            // Check if we need a new page - DIN 5008 content end depends on pagination
+            const paginationTop = footerTop - paginationGap - paginationHeight;
+            const contentBottom = shouldShowPagination
+              ? paginationTop - paginationGap
+              : Math.min(contentTop + 165, footerTop - paginationGap);
             
-            console.log('=== PAGE HEIGHT CALCULATION ===');
-            console.log('pageHeight:', pageHeight);
-            console.log('footerHeight:', footerHeight);
-            console.log('paginationHeight:', paginationHeight);
-            console.log('availableHeight:', availableHeight);
-            
-            if (currentY + lineHeight > availableHeight) {
+            if (currentY + lineHeight > contentBottom) {
               pdf.addPage();
               letterPages++;
               currentPage++;
@@ -944,8 +941,8 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         for (let page = 1; page <= totalLetterPages; page++) {
         pdf.setPage(page);
         
-        // Pagination 4.23mm above footer (272mm - 4.23mm = 267.77mm)
-        const paginationY = 267.77;
+        // Pagination top so that its bottom edge is 4.23mm above footer (272mm - 8.23mm = 263.77mm)
+        const paginationY = footerTop - paginationGap - paginationHeight;
         
         // Debug box around pagination
         if (true) { // Force debug mode ON
@@ -957,7 +954,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           pdf.rect(pageTextX - 2, paginationY - 3, pageTextWidth + 4, 5);
           pdf.setTextColor(255, 0, 255);
           pdf.setFontSize(6);
-          pdf.text("Pagination: 4.23mm über Fußzeile", pageTextX, paginationY - 4);
+          pdf.text("Pagination: Unterkante 4.23mm über Fußzeile", pageTextX, paginationY - 4);
         }
         
         // Add page number at right edge with 9pt font size
