@@ -78,7 +78,7 @@ export interface LetterLayoutSettings {
     signatureImagePath?: string;
     fontSize?: number;
   };
-  blockContent?: Record<string, Array<{ id: string; type?: string; content?: string; x?: number; y?: number; width?: number; height?: number }>>;
+  blockContent?: Record<string, any>;
   disabledBlocks?: Array<'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
   lockedBlocks?: Array<'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
 }

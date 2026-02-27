@@ -69,7 +69,6 @@ const DEFAULT_BLOCKS: BlockConfig[] = [
   { key: 'addressField', label: 'Adressfeld', color: 'bg-blue-500/20 border-blue-600 text-blue-900', canMoveX: true, canResize: true, jumpTo: 'block-address' },
   { key: 'infoBlock', label: 'Info-Block', color: 'bg-purple-500/20 border-purple-600 text-purple-900', canMoveX: true, canResize: true, jumpTo: 'block-info' },
   { key: 'content', label: 'Inhaltsbereich', color: 'bg-orange-500/20 border-orange-600 text-orange-900', canResize: true, jumpTo: 'layout-settings' },
-  { key: 'attachments', label: 'Anlagen', color: 'bg-amber-500/20 border-amber-600 text-amber-900', jumpTo: 'block-attachments' },
   { key: 'pagination', label: 'Paginierung', color: 'bg-rose-500/20 border-rose-600 text-rose-900', jumpTo: 'layout-settings' },
   { key: 'footer', label: 'Footer', color: 'bg-pink-500/20 border-pink-600 text-pink-900', jumpTo: 'footer-designer' },
 ];
@@ -361,7 +360,8 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       case 'footer':
         return { x: localLayout.margins.left, y: localLayout.footer.top, w: contentWidth, h: localLayout.footer.height };
       case 'attachments':
-        return { x: localLayout.margins.left, y: localLayout.attachments.top, w: contentWidth, h: 8 };
+        // Attachments are now integrated into the content block
+        return { x: localLayout.margins.left, y: localLayout.content.top + getEffectiveContentHeight() - 8, w: contentWidth, h: 8 };
       case 'pagination': {
         const x = pag.align === 'left'
           ? localLayout.margins.left
@@ -711,7 +711,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                 }
                 return '{{betreff}}';
               })();
-              const subjectPreview = subjectTemplate.replaceAll('{{betreff}}', templateDefaults['{{betreff}}'] || 'Betreff').trim() || 'Betreff';
+              const subjectPreview = subjectTemplate.split('{{betreff}}').join(templateDefaults['{{betreff}}'] || 'Betreff').trim() || 'Betreff';
               const contentPreview = (templateDefaults['default_content'] || 'Inhalt...').trim() || 'Inhalt...';
               const resolveLineValue = (val: string | undefined) => {
                 if (!val) return '';
@@ -769,12 +769,12 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                           <Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge>
                         </div>
                       )}
-                      <div style={{ marginTop: 0, fontSize: Math.max(8, 10 * SCALE) }}>
+                      <div style={{ marginTop: 0, fontSize: Math.max(8, 10 * SCALE), display: 'flex', alignItems: 'center', gap: 3 }}>
                         {localLayout.subject?.prefixShape && localLayout.subject.prefixShape !== 'none' && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: 3, verticalAlign: 'middle' }}>
-                            {localLayout.subject.prefixShape === 'line' && <span style={{ display: 'inline-block', width: 5 * SCALE, height: 0.5 * SCALE, backgroundColor: '#333', verticalAlign: 'middle' }} />}
-                            {localLayout.subject.prefixShape === 'circle' && <span style={{ display: 'inline-block', width: 3 * SCALE, height: 3 * SCALE, borderRadius: '50%', border: '1px solid #333', verticalAlign: 'middle' }} />}
-                            {localLayout.subject.prefixShape === 'rectangle' && <span style={{ display: 'inline-block', width: 3 * SCALE, height: 3 * SCALE, border: '1px solid #333', verticalAlign: 'middle' }} />}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+                            {localLayout.subject.prefixShape === 'line' && <span style={{ display: 'inline-block', width: 5 * SCALE, height: 0.5 * SCALE, backgroundColor: '#333' }} />}
+                            {localLayout.subject.prefixShape === 'circle' && <span style={{ display: 'inline-block', width: 3 * SCALE, height: 3 * SCALE, borderRadius: '50%', border: '1px solid #333' }} />}
+                            {localLayout.subject.prefixShape === 'rectangle' && <span style={{ display: 'inline-block', width: 3 * SCALE, height: 3 * SCALE, border: '1px solid #333' }} />}
                             {localLayout.subject.prefixShape === 'sunflower' && <SunflowerSVG width={3.5 * SCALE} height={3.5 * SCALE} />}
                             {localLayout.subject.prefixShape === 'lion' && <LionSVG width={5 * SCALE} height={2.5 * SCALE} />}
                             {localLayout.subject.prefixShape === 'wappen' && <img src="/assets/wappen-bw.svg" alt="Wappen" style={{ width: 3.5 * SCALE, height: 3.5 * SCALE, objectFit: 'contain' }} />}
@@ -810,6 +810,13 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                           )}
                         </>
                       )}
+                      {/* Anlagen preview integrated into content area */}
+                      <div style={{ marginTop: (localLayout.closing?.formula ? 4.5 : 13.5) * SCALE, fontSize: `${Math.max(7, 9 * SCALE)}px`, color: '#000' }}>
+                        <div style={{ fontWeight: 700 }}>Anlagen</div>
+                        <div style={{ marginTop: 1 * SCALE }}>- Antrag_2026-02-15.pdf</div>
+                        <div style={{ marginTop: 0.5 * SCALE }}>- Stellungnahme_Verkehrsausschuss.docx</div>
+                        <div style={{ marginTop: 0.5 * SCALE }}>- Anlagenverzeichnis.xlsx</div>
+                      </div>
                       {isLineModeBlock && renderLineItems(lineData)}
                       {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                     </>

@@ -39,7 +39,17 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       subject: { top: 98.46, marginBottom: 8 },
       content: { top: 98.46, maxHeight: 165, lineHeight: 4.5 },
       footer: { top: 272, height: 18 },
-      attachments: { top: 230 }
+      attachments: { top: 230 },
+      foldHoleMarks: {
+        enabled: true,
+        left: 3,
+        strokeWidthPt: 1,
+        foldMarkWidth: 5,
+        holeMarkWidth: 8,
+        topMarkY: 105,
+        holeMarkY: 148.5,
+        bottomMarkY: 210,
+      }
     };
     
     let template: any = null;
