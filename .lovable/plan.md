@@ -1,107 +1,117 @@
 
-# Plan: Paginierung im Layout, Canvas-Fixes, Standardtext, Unterschrift und Betreff-Zeileneditor
+# Plan: Build-Fix, Footer-Verbesserungen, Canvas-Korrekturen und diverse Fixes
 
 ## Uebersicht
 
-Sechs Aenderungen am Brief-System:
-1. Paginierung im Layout-Tab konfigurierbar machen
-2. Canvas-Inhaltsbereich: Labels nur anzeigen wenn kein Inhalt vorhanden
-3. Standardtext fuer Briefinhalt in den Einstellungen
-4. Kleinerer Abstand bei Abschlussformel ohne Unterschriftsbild
-5. Betreff-Zeile im Tab "Betreff, Anrede und Abschluss" als BlockLineEditor
-6. Unterschriftsbilder hochladen und auswaehlen
+Sechs Aenderungen plus ein kritischer Build-Fix:
+
+0. Build-Error in `FooterBlockLineEditor.tsx` beheben
+1. Footer-Standard-Template basierend auf dem Bild + Fett/Farbe-Support
+2. Footer-Vorschau im Tab Footer verbessern
+3. Footer im Canvas korrekt anzeigen
+4. "DIN 5008 zuruecksetzen" nur Positionen zuruecksetzen, Inhalte beibehalten
+5. Inhaltsbereich auf 98.64mm aendern + Text-Styling-Fixes im Canvas
+6. Betreff als Text anzeigen statt Variable, Standard-Betreff definieren
 
 ---
 
-## 1. Paginierung im Layout-Tab
+## 0. Build-Error beheben
 
-**Problem:** Im `LayoutSettingsEditor.tsx` fehlt die Sektion fuer die Paginierung komplett.
+**Problem:** `resolveBlockWidthMm` erwartet 3 Argumente `(widthUnit, widthValue, availableWidthMm)`, wird aber in `FooterBlockLineEditor.tsx` mit 2 Argumenten aufgerufen `(block, availableWidthMm)`.
 
-**Loesung:** Neue Sektion "Paginierung" in `LayoutSettingsEditor.tsx` hinzufuegen mit den Feldern:
-- Position von oben (mm) -> `pagination.top`
-- Ausrichtung (links/mittig/rechts) -> `pagination.align`
-- Schriftgroesse (pt) -> `pagination.fontSize`
-- Aktiviert (Checkbox) -> `pagination.enabled`
+**Loesung:** Die Aufrufe in Zeile 27 und 91 aendern zu `resolveBlockWidthMm(block.widthUnit, block.widthValue, availableWidthMm)`.
 
-Die `updateSetting`-Funktion muss um den `pagination`-Pfad erweitert werden (ggf. mit Initialisierung falls `pagination` undefined ist).
-
-**Datei:** `src/components/letters/LayoutSettingsEditor.tsx`
+**Datei:** `src/components/letters/FooterBlockLineEditor.tsx` (Zeile 27, 91)
 
 ---
 
-## 2. Canvas-Inhaltsbereich: Labels bei vorhandenem Inhalt ausblenden
+## 1. Footer-Standard-Template und Fett/Farbe-Support
 
-**Problem:** Im Canvas-Designer zeigt der Inhaltsbereich immer "Inhaltsbereich" und das Badge "98mm" an, selbst wenn Betreff/Anrede/Abschluss-Vorschau gerendert wird (Zeile 664-667).
-
-**Loesung:** Die Labels (Block-Name + Badge) im Content-Block nur anzeigen, wenn keine Inhaltsvorschau vorhanden ist. Aktuell werden die Labels immer gerendert, danach kommt die Vorschau. Die Labels sollten nur angezeigt werden, wenn weder Betreff noch Salutation noch Closing definiert sind.
-
-Konkret: Die Zeilen 664-667 im `LetterLayoutCanvasDesigner.tsx` so aendern, dass das Label+Badge-div nur gerendert wird, wenn kein integrierter Inhalt vorhanden ist (kein `subject.integrated`, keine `salutation.template`, kein `closing.formula`).
-
-**Datei:** `src/components/letters/LetterLayoutCanvasDesigner.tsx`
-
----
-
-## 3. Standardtext fuer Briefinhalt in den Einstellungen
-
-**Problem:** In den globalen Briefvorlagen-Einstellungen (`LetterTemplateSettings.tsx`) kann man keinen Standardtext fuer den Briefinhalt voreinstellen.
-
-**Loesung:** 
-- Neue Karte "Standardtext" nach den Variablen hinzufuegen mit einem Textarea-Feld
-- Der Standardtext wird in `variable_defaults` unter dem Schluessel `default_content` gespeichert
-- Alternativ als eigenes Feld in der `letter_template_settings`-Tabelle (JSONB erlaubt das ohne Migration)
-
-**Datei:** `src/components/letters/LetterTemplateSettings.tsx`
-
----
-
-## 4. Kleinerer Abstand bei Abschlussformel ohne Unterschrift
-
-**Problem:** In `DIN5008LetterLayout.tsx` (Zeile 593) wird bei fehlender Unterschrift ein fester Abstand von 13.5mm eingefuegt. Wenn es kein Unterschriftsbild gibt, soll der Abstand kleiner sein.
-
-**Loesung:** 
-- Wenn `signatureImagePath` vorhanden ist: 13.5mm Abstand (Platz fuer Unterschrift)
-- Wenn kein Bild und kein `signatureName`: gar kein Extra-Abstand
-- Wenn kein Bild aber `signatureName`: nur 4.5mm Abstand (eine Leerzeile)
-
-Gleiche Logik im Canvas-Designer Vorschau anpassen (Zeile 696).
-
-**Dateien:** `src/components/letters/DIN5008LetterLayout.tsx`, `src/components/letters/LetterLayoutCanvasDesigner.tsx`
-
----
-
-## 5. Betreff als BlockLineEditor im Tab "Betreff, Anrede und Abschluss"
-
-**Problem:** Der Betreff ist aktuell nur ein Checkbox+Select fuer die Form, aber kein Zeileneditor zum Einfuegen von Variablen wie `{{betreff}}`.
-
-**Loesung:** Im Tab `block-subject` eine einzelne BlockLineEditor-Zeile einbauen fuer den Betreff. Diese Zeile erlaubt es, den Betreff als Variable `{{betreff}}` einzufuegen und optional eine Form davor zu platzieren. 
-
-Technisch: Eine vereinfachte Version des BlockLineEditors oder eine einzelne Zeile mit Variable-Dropdown verwenden. Die Betreff-Zeile wird in `blockContent.subjectLine` als `BlockLineData` gespeichert (eine einzelne Zeile).
-
-**Datei:** `src/components/LetterTemplateManager.tsx`
-
----
-
-## 6. Unterschriftsbilder hochladen und auswaehlen
-
-**Problem:** Aktuell ist das Unterschriftsbild nur ein Text-Input fuer den Storage-Pfad (Zeile 792-806 in LetterTemplateManager). Es fehlt ein Upload-Button und eine Bildauswahl.
+**Problem:** Zu viele leere Bloecke als Standard. Das Bild des Nutzers zeigt 4 Bloecke:
+- Block 1: "Alexander Salomon MdL" (fett, gruen), "Fraktion GRUENE im Landtag von Baden-Wuerttemberg"
+- Block 2: "Fuer Sie im Landtag" (fett), Adresse, Telefon
+- Block 3: "Fuer Sie in Karlsruhe" (fett), Adresse, Telefon
+- Block 4: "Politik direkt" (fett), Webseite, E-Mail
 
 **Loesung:**
-- Den Text-Input ersetzen durch: einen Upload-Button (File-Input) + eine Vorschau des aktuellen Bildes + einen "Entfernen"-Button
-- Upload-Logik: Bild in den `letter-assets` Bucket hochladen unter `signatures/[tenant_id]/[filename]`
-- Nach erfolgreichem Upload den Pfad in `closing.signatureImagePath` setzen
-- Die Galerie-Bilder (falls bereits geladen) als Auswahlmoeglichkeit anbieten
-- Vorschau des aktuellen Unterschriftsbilds anzeigen wenn ein Pfad gesetzt ist
+- `BlockLine` Interface erweitern um `color?: string` (Textfarbe)
+- `BlockLineEditor` anpassen: Fett-Toggle und Farb-Picker pro Zeile hinzufuegen
+- Standard-Footer-Template als DIN5008-Vorlage im Footer-Editor definieren
+- `DIN5008LetterLayout.tsx`: `color` und `fontWeight`/`bold` beim Rendern der Footer-Zeilen beruecksichtigen
 
-**Datei:** `src/components/LetterTemplateManager.tsx`
+**Dateien:**
+- `src/components/letters/BlockLineEditor.tsx` - `color` zu BlockLine, Fett-Toggle + Farb-Input in der UI
+- `src/components/letters/DIN5008LetterLayout.tsx` - `color` und `labelBold`/`valueBold` beim Footer-Rendering beachten
+
+---
+
+## 2. Footer-Vorschau im Tab verbessern
+
+**Problem:** Die Vorschau im Footer-Tab zeigt die Bloecke nicht wie im fertigen Brief (nebeneinander als Spalten).
+
+**Loesung:** Die Vorschau im `BlockLineEditor` fuer `blockType="footer"` als horizontale Spalten-Darstellung rendern. Die Block-Start/Block-Ende-Zeilen werden als visuelle Spalten-Container dargestellt, wobei jeder Block seine konfigurierte Breite bekommt.
+
+**Datei:** `src/components/letters/BlockLineEditor.tsx` - Preview-Bereich fuer Footer anpassen
+
+---
+
+## 3. Footer im Canvas korrekt anzeigen
+
+**Problem:** Im Canvas-Tab wird der Footer-Block nicht mit den konfigurierten Spalten angezeigt.
+
+**Loesung:** Im `LetterLayoutCanvasDesigner.tsx` beim Rendering des Footer-Blocks die `blockContent.footer`-Daten lesen und die Bloecke als Spalten nebeneinander anzeigen (aehnlich wie in `DIN5008LetterLayout.tsx`). Die Bloecke werden aus den Block-Start/Block-Ende-Markierungen in den Zeilen extrahiert.
+
+**Datei:** `src/components/letters/LetterLayoutCanvasDesigner.tsx` - Footer-Block Rendering
+
+---
+
+## 4. "DIN 5008 zuruecksetzen" nur Positionen
+
+**Problem:** Der Reset-Button (Zeile 474-484) setzt `cloneLayout(DEFAULT_DIN5008_LAYOUT)` als neuen Zustand, was auch `blockContent`, `closing`, `salutation` etc. ueberschreibt.
+
+**Loesung:** Beim Reset nur die Positionsfelder aus `DEFAULT_DIN5008_LAYOUT` uebernehmen (`margins`, `header`, `addressField`, `infoBlock`, `subject.top`/`marginBottom`, `content.top`/`maxHeight`, `footer.top`/`height`, `attachments.top`, `pagination.top`), aber `blockContent`, `closing`, `salutation`, `subject.prefixShape`, `subject.fontSize`, `disabledBlocks`, `lockedBlocks` etc. aus dem aktuellen Layout beibehalten.
+
+**Datei:** `src/components/letters/LetterLayoutCanvasDesigner.tsx` (Zeile 474-484)
+
+---
+
+## 5. Inhaltsbereich auf 98.64mm + Text-Styling-Fixes
+
+**Problem:**
+- Der Inhaltsbereich beginnt bei 101.46mm statt 98.64mm
+- Betreff-Text im Canvas ist grau (`text-gray-700`) statt schwarz
+- Anrede und Abschlussformel sind kursiv (`italic`) und grau statt normal und schwarz
+
+**Loesung:**
+- `DEFAULT_DIN5008_LAYOUT` aendern: `subject.top` von 101.46 auf 98.64, `content.top` von 109.46 auf 106.64
+- Canvas-Designer: `text-gray-700` entfernen beim Betreff, `text-gray-500 italic` entfernen bei Anrede und Abschlussformel, stattdessen `text-black` verwenden
+- `DIN5008LetterLayout.tsx`: Hartcodierte 101.46mm-Fallbacks ebenfalls auf 98.64mm aendern
+
+**Dateien:**
+- `src/types/letterLayout.ts` (DEFAULT_DIN5008_LAYOUT)
+- `src/components/letters/LetterLayoutCanvasDesigner.tsx` (CSS-Klassen)
+- `src/components/letters/DIN5008LetterLayout.tsx` (Fallback-Werte)
+
+---
+
+## 6. Betreff als Text statt Variable + Standard-Betreff
+
+**Problem:** Im Canvas-Designer wird der Betreff als `{{betreff}}` angezeigt wenn kein `subjectLine` konfiguriert ist. Es sollte ein Standard-Betreff-Text angezeigt werden.
+
+**Loesung:**
+- Im `DEFAULT_DIN5008_LAYOUT` einen Standard-subjectLine definieren mit dem Text "Betreff" als Platzhalter
+- Im Canvas-Designer den Fallback von `'{{betreff}}'` auf den konfigurierten Betreff-Text aendern
+- Sicherstellen, dass der Betreff als resolverter Text dargestellt wird, nicht als Variable
+
+**Dateien:**
+- `src/components/letters/LetterLayoutCanvasDesigner.tsx` (Fallback-Text)
 
 ---
 
 ## Reihenfolge der Implementierung
 
-1. `LayoutSettingsEditor.tsx` - Paginierung-Sektion hinzufuegen
-2. `LetterLayoutCanvasDesigner.tsx` - Content-Block Labels Fix + Closing-Abstand
-3. `DIN5008LetterLayout.tsx` - Closing-Abstand bei fehlender Unterschrift
-4. `LetterTemplateSettings.tsx` - Standardtext-Feld hinzufuegen
-5. `LetterTemplateManager.tsx` - Betreff BlockLineEditor + Unterschriftsbild Upload/Auswahl
-
-Alle Aenderungen sind reine Frontend-Aenderungen ohne DB-Migrationen.
+1. Build-Fix in `FooterBlockLineEditor.tsx`
+2. `BlockLine` um `color` erweitern + UI in `BlockLineEditor.tsx`
+3. `letterLayout.ts` - Default-Werte anpassen (98.64mm)
+4. `LetterLayoutCanvasDesigner.tsx` - Reset-Logik, Footer-Rendering, Text-Styling, Betreff-Fallback
+5. `DIN5008LetterLayout.tsx` - Footer-Farbe/Fett, Fallback-Werte
