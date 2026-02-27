@@ -222,7 +222,7 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
   content: { ...layout.content },
   footer: { ...layout.footer, height: layout.footer?.height ?? DEFAULT_DIN5008_LAYOUT.footer.height },
   attachments: { ...layout.attachments },
-  pagination: layout.pagination ? { ...layout.pagination } : { enabled: true, top: 267.77, align: 'right', fontSize: 8 },
+  pagination: layout.pagination ? { ...layout.pagination } : { enabled: true, top: 263.77, align: 'right', fontSize: 8 },
   closing: layout.closing ? { ...layout.closing } : undefined,
   blockContent: { ...(layout.blockContent || {}) },
   disabledBlocks: [...(layout.disabledBlocks || [])],
@@ -308,9 +308,18 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   const contentWidth = localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right;
   const pagePx = { w: localLayout.pageWidth * SCALE, h: localLayout.pageHeight * SCALE };
   const blockContent = localLayout.blockContent || {};
+  const paginationGapMm = 4.23;
+  const getEffectiveContentHeight = () => {
+    const pag = localLayout.pagination || { enabled: true, top: 263.77, align: 'right', fontSize: 8 };
+    const paginationEnabled = pag.enabled ?? true;
+    if (!paginationEnabled) return localLayout.content.maxHeight;
+
+    const contentBottom = pag.top - paginationGapMm;
+    return Math.max(20, Math.min(localLayout.content.maxHeight, contentBottom - localLayout.content.top));
+  };
 
   const getRect = (key: BlockKey): Rect => {
-    const pag = localLayout.pagination || { enabled: true, top: 267.77, align: 'right', fontSize: 8 };
+    const pag = localLayout.pagination || { enabled: true, top: 263.77, align: 'right', fontSize: 8 };
     switch (key) {
       case 'header':
         return { x: 0, y: 0, w: localLayout.pageWidth, h: localLayout.header.height };
@@ -321,7 +330,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       case 'subject':
         return { x: localLayout.margins.left, y: localLayout.subject.top, w: contentWidth, h: Math.max(8, localLayout.subject.marginBottom + 4) };
       case 'content':
-        return { x: localLayout.margins.left, y: localLayout.content.top, w: contentWidth, h: localLayout.content.maxHeight };
+        return { x: localLayout.margins.left, y: localLayout.content.top, w: contentWidth, h: getEffectiveContentHeight() };
       case 'footer':
         return { x: localLayout.margins.left, y: localLayout.footer.top, w: contentWidth, h: localLayout.footer.height };
       case 'attachments':
@@ -346,7 +355,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       } else if (key === 'footer') Object.assign(next.footer, { top: snapMm(rect.y), height: clamp(snapMm(rect.h), 8, 80) });
       else if (key === 'attachments') next.attachments.top = snapMm(rect.y);
       else if (key === 'pagination') {
-        next.pagination = { ...(next.pagination || { enabled: true, align: 'right', fontSize: 8, top: 267.77 }), top: snapMm(rect.y) };
+        next.pagination = { ...(next.pagination || { enabled: true, align: 'right', fontSize: 8, top: 263.77 }), top: snapMm(rect.y) };
       }
       return next;
     });
@@ -488,7 +497,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               next.footer = { ...next.footer, top: defaults.footer.top, height: defaults.footer.height };
               next.attachments = { ...next.attachments, top: defaults.attachments.top };
               if (next.pagination) {
-                next.pagination = { ...next.pagination, top: defaults.pagination?.top || 267.77 };
+                next.pagination = { ...next.pagination, top: defaults.pagination?.top || 263.77 };
               }
               setLocalLayout(next);
               onLayoutChange(next);
@@ -608,6 +617,8 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const isSelected = selected === block.key;
               const isDisabled = disabledBlocks.has(block.key);
               const isLocked = lockedBlocks.has(block.key);
+              const isPaginationVisible = block.key !== 'pagination' || (localLayout.pagination?.enabled ?? true);
+              if (!isPaginationVisible) return null;
               const rawContent = blockContent[block.key];
               const isLineModeBlock = rawContent && typeof rawContent === 'object' && !Array.isArray(rawContent) && (rawContent as any).mode === 'lines';
               const lineData = isLineModeBlock ? ((rawContent as any).lines || []) as { id: string; type: string; label?: string; value?: string; isVariable?: boolean; labelBold?: boolean; valueBold?: boolean; fontSize?: number; spacerHeight?: number }[] : [];
@@ -734,7 +745,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   ) : block.key === 'pagination' ? (
                     <div className="flex items-center justify-between h-full">
                       <span className="text-[9px]">{block.label}</span>
-                      <span className="text-[9px] text-gray-500 italic" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
+                      <span className="text-[9px] text-gray-500" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
                     </div>
                   ) : block.key === 'footer' && isLineModeBlock ? (
                     (() => {
