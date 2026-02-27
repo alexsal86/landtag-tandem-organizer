@@ -536,6 +536,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             maxHeight: `${contentMaxHeightMm}mm`,
             fontSize: '11pt',
             lineHeight: '1.2',
+            color: '#000',
             backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
             overflow: 'hidden'
           }}
@@ -574,7 +575,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* 1 blank line after salutation */}
           {salutation && <div style={{ height: '4.5mm' }} />}
           {/* Letter content */}
-          <div dangerouslySetInnerHTML={{ __html: content }} />
+          <div style={{ color: '#000' }} dangerouslySetInnerHTML={{ __html: content }} />
           {/* Closing formula + signature */}
           {layout.closing?.formula && (
             <>
@@ -597,7 +598,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               {!layout.closing.signatureImagePath && layout.closing.signatureName && <div style={{ height: '4.5mm' }} />}
               {!layout.closing.signatureImagePath && !layout.closing.signatureName && null}
               {layout.closing.signatureName && (
-                <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt` }}>
+                <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
                   {layout.closing.signatureName}
                 </div>
               )}
@@ -640,6 +641,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               maxHeight: `${contentMaxHeightMm}mm`,
               fontSize: '11pt',
               lineHeight: '1.2',
+              color: '#000',
               backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
               overflow: 'hidden'
             }}
