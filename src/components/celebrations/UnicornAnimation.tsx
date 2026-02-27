@@ -47,8 +47,8 @@ export function UnicornAnimation({ speed = 'normal', size = 'medium', onComplete
     <>
       <style>{`
         @keyframes unicornRunAcross {
-          from { transform: translateX(calc(100vw + 120px)) translateY(50vh) scale(${scale}); }
-          to { transform: translateX(-980px) translateY(50vh) scale(${scale}); }
+          from { transform: translateX(calc(100vw + 120px)) translateY(0) scale(${scale}); }
+          to { transform: translateX(-980px) translateY(0) scale(${scale}); }
         }
 
         .celebration-unicorn-overlay {
@@ -61,11 +61,11 @@ export function UnicornAnimation({ speed = 'normal', size = 'medium', onComplete
 
         .celebration-unicorn-wrapper {
           position: absolute;
-          top: 0;
+          bottom: 0;
           left: 0;
           width: 840px;
           height: 620px;
-          transform-origin: top left;
+          transform-origin: bottom left;
           animation: unicornRunAcross ${duration}ms linear forwards;
         }
 
