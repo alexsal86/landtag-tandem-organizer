@@ -131,7 +131,7 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
   },
   pagination: {
     enabled: true,
-    top: 267.77,
+    top: 263.54,
     align: 'right',
     fontSize: 8
   },

@@ -223,7 +223,7 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
   content: { ...layout.content },
   footer: { ...layout.footer, height: layout.footer?.height ?? DEFAULT_DIN5008_LAYOUT.footer.height },
   attachments: { ...layout.attachments },
-  pagination: layout.pagination ? { ...layout.pagination } : { enabled: true, top: 267.77, align: 'right', fontSize: 8 },
+  pagination: layout.pagination ? { ...layout.pagination } : { enabled: true, top: 263.54, align: 'right', fontSize: 8 },
   closing: layout.closing ? { ...layout.closing } : undefined,
   blockContent: { ...(layout.blockContent || {}) },
   disabledBlocks: [...(layout.disabledBlocks || [])],
@@ -311,7 +311,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   const blockContent = localLayout.blockContent || {};
 
   const getRect = (key: BlockKey): Rect => {
-    const pag = localLayout.pagination || { enabled: true, top: 267.77, align: 'right', fontSize: 8 };
+    const pag = localLayout.pagination || { enabled: true, top: 263.54, align: 'right', fontSize: 8 };
     switch (key) {
       case 'header':
         return { x: 0, y: 0, w: localLayout.pageWidth, h: localLayout.header.height };
@@ -351,7 +351,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       } else if (key === 'footer') Object.assign(next.footer, { top: snapMm(rect.y), height: clamp(snapMm(rect.h), 8, 80) });
       else if (key === 'attachments') next.attachments.top = snapMm(rect.y);
       else if (key === 'pagination') {
-        next.pagination = { ...(next.pagination || { enabled: true, align: 'right', fontSize: 8, top: 267.77 }), top: snapMm(rect.y) };
+        next.pagination = { ...(next.pagination || { enabled: true, align: 'right', fontSize: 8, top: 263.54 }), top: snapMm(rect.y) };
       }
       return next;
     });
@@ -493,7 +493,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               next.footer = { ...next.footer, top: defaults.footer.top, height: defaults.footer.height };
               next.attachments = { ...next.attachments, top: defaults.attachments.top };
               if (next.pagination) {
-                next.pagination = { ...next.pagination, top: defaults.pagination?.top || 267.77 };
+                next.pagination = { ...next.pagination, top: defaults.pagination?.top || 263.54 };
               }
               setLocalLayout(next);
               onLayoutChange(next);

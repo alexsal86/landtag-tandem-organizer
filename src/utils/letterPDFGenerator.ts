@@ -177,10 +177,13 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     const infoBlockWidth = layoutSettings.infoBlock.width;
     const contentTop = layoutSettings.content.top;
     const footerTop = layoutSettings.footer.top;
+    const paginationGap = 4.23;
+    const paginationHeight = 4.23;
     const hasPagination = letter.show_pagination ?? false;
+    const paginationTop = layoutSettings.pagination?.top ?? (footerTop - paginationGap - paginationHeight);
     const contentBottom = hasPagination
-      ? footerTop - 4.23
-      : Math.min(contentTop + 165, footerTop - 4.23);
+      ? paginationTop - paginationGap
+      : Math.min(contentTop + 165, footerTop - paginationGap);
     
     // Debug helper function for consistent styling across all pages
     const drawDebugGuides = (pageNum: number) => {
@@ -270,12 +273,12 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       pdf.text("Unterer Rand: 7mm", 5, footerBottom + 3);
       
       // Pagination position (4.23mm above footer)
-      const paginationY = footerTop - 4.23;
+      const paginationY = paginationTop;
       pdf.setDrawColor(255, 0, 255); // Magenta
       pdf.rect(leftMargin, paginationY - 2, pageWidth - leftMargin - rightMargin, 4);
       pdf.setTextColor(255, 0, 255);
       pdf.setFontSize(6);
-      pdf.text("Paginierung: 4.23mm über Fußzeile", leftMargin + 2, paginationY + 1);
+      pdf.text("Paginierung: Unterkante 4.23mm über Fußzeile", leftMargin + 2, paginationY + 1);
       
       // Page dimensions box
       pdf.setDrawColor(0, 0, 0);
@@ -606,7 +609,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         pdf.setPage(page);
       }
       
-      const paginationY = (layoutSettings.pagination?.top ?? (footerTop - 4.23));
+      const paginationY = paginationTop;
       
       // Debug pagination box
       pdf.setFontSize(6);

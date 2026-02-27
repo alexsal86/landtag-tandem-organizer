@@ -335,11 +335,14 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
   const contentTop = mmToPoints(layout.content.top);
   const lineHeight = mmToPoints(layout.content.lineHeight);
   const hasPagination = letter.show_pagination ?? false;
+  const paginationGapMm = 4.23;
+  const paginationHeightMm = 4.23;
   const footerTopMm = Number(layout.footer?.top ?? 272);
   const contentTopMm = Number(layout.content?.top ?? 98.46);
+  const paginationTopMm = Number(layout.pagination?.top ?? (footerTopMm - paginationGapMm - paginationHeightMm));
   const contentBottomMm = hasPagination
-    ? footerTopMm - 4.23
-    : Math.min(contentTopMm + 165, footerTopMm - 4.23);
+    ? paginationTopMm - paginationGapMm
+    : Math.min(contentTopMm + 165, footerTopMm - paginationGapMm);
   const firstPageMinY = mmToPoints(layout.pageHeight - contentBottomMm);
   
   // Add first page
@@ -663,7 +666,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       const pageText = `Seite ${i + 1} von ${pages.length}`;
       const textWidth = helveticaFont.widthOfTextAtSize(pageText, 10);
       const pageTextX = (pageWidth - textWidth) / 2;
-      const paginationY = mmToPoints(layout.pagination?.top ?? (footerTopMm - 4.23));
+      const paginationY = mmToPoints(paginationTopMm);
       
       currentPage.drawText(pageText, {
         x: pageTextX,
