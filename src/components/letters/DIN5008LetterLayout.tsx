@@ -88,6 +88,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   };
   
   const layout = layoutSettings || template?.layout_settings || DEFAULT_LAYOUT;
+  const contentFontSizePt = Number(layout.content?.fontSize ?? layout.salutation?.fontSize ?? 11);
   const attachmentList = (attachments || [])
     .map((attachment) => (typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name || '')))
     .filter(Boolean);
@@ -666,7 +667,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             left: '25mm',
             right: '20mm',
             maxHeight: `${contentMaxHeightMm}mm`,
-            fontSize: '11pt',
+            fontSize: `${contentFontSizePt}pt`,
             lineHeight: '1.2',
             color: '#000',
             backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
@@ -783,7 +784,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               left: '25mm',
               right: '20mm',
               maxHeight: `${contentMaxHeightMm}mm`,
-              fontSize: '11pt',
+              fontSize: `${contentFontSizePt}pt`,
               lineHeight: '1.2',
               color: '#000',
               backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
