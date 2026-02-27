@@ -1,9 +1,10 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import type { HeaderElement, TextElement } from '@/components/canvas-engine/types';
+import type { HeaderElement, TextElement, ShapeElement } from '@/components/canvas-engine/types';
 import { type BlockLine, type BlockLineData, isLineMode } from '@/components/letters/BlockLineEditor';
 import { buildFooterBlocksFromStored } from '@/components/letters/footerBlockUtils';
+import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
@@ -333,7 +334,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           );
         }
         if (element.type === 'shape') {
-          const shapeEl = element as import('@/components/canvas-engine/types').ShapeElement;
+          const shapeEl = element as ShapeElement;
           const w = shapeEl.width || 20;
           const h = shapeEl.height || 10;
           const rotation = shapeEl.rotation || 0;
@@ -352,15 +353,12 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           };
 
           if (shapeEl.shapeType === 'sunflower') {
-            const { SunflowerSVG } = require('@/components/letters/elements/shapeSVGs');
             return <div key={shapeEl.id || index} style={wrapperStyle}><SunflowerSVG width={w * 3.7795} height={h * 3.7795} /></div>;
           }
           if (shapeEl.shapeType === 'lion') {
-            const { LionSVG } = require('@/components/letters/elements/shapeSVGs');
             return <div key={shapeEl.id || index} style={wrapperStyle}><LionSVG width={w * 3.7795} height={h * 3.7795} /></div>;
           }
           if (shapeEl.shapeType === 'wappen') {
-            const { WappenSVG } = require('@/components/letters/elements/shapeSVGs');
             return <div key={shapeEl.id || index} style={wrapperStyle}><WappenSVG width={w * 3.7795} height={h * 3.7795} /></div>;
           }
 
@@ -522,7 +520,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                     />
                   )}
                   {element.type === 'shape' && (() => {
-                    const shapeEl = element as import('@/components/canvas-engine/types').ShapeElement;
+                    const shapeEl = element as ShapeElement;
                     const w = shapeEl.width || 20;
                     const h = shapeEl.height || 10;
                     const rotation = shapeEl.rotation || 0;
@@ -539,15 +537,12 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                       pointerEvents: 'none',
                     };
                     if (shapeEl.shapeType === 'sunflower') {
-                      const { SunflowerSVG } = require('@/components/letters/elements/shapeSVGs');
                       return <div style={style}><SunflowerSVG width={w * 3.7795} height={h * 3.7795} /></div>;
                     }
                     if (shapeEl.shapeType === 'lion') {
-                      const { LionSVG } = require('@/components/letters/elements/shapeSVGs');
                       return <div style={style}><LionSVG width={w * 3.7795} height={h * 3.7795} /></div>;
                     }
                     if (shapeEl.shapeType === 'wappen') {
-                      const { WappenSVG } = require('@/components/letters/elements/shapeSVGs');
                       return <div style={style}><WappenSVG width={w * 3.7795} height={h * 3.7795} /></div>;
                     }
                     const pxW = w * 3.7795;

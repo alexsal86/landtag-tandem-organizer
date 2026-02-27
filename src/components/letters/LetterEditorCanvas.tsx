@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Layout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -109,6 +109,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   onZoomChange,
 }) => {
   const [internalZoom, setInternalZoom] = useState(0.75);
+  const toolbarPortalRef = useRef<HTMLDivElement>(null);
   const zoom = externalZoom ?? internalZoom;
   const setZoom = onZoomChange ?? setInternalZoom;
 
@@ -152,10 +153,11 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     <div className="flex flex-col h-full">
       {/* Toolbar above canvas */}
       <div className="flex-none flex items-center justify-between gap-2 p-2 border-b bg-muted/30">
-        {/* Left: Template indicator */}
-        <div className="flex items-center gap-2">
+        {/* Left: Lexical toolbar portal target + Template indicator */}
+        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
+          <div ref={toolbarPortalRef} className="flex items-center" />
           {templateName && (
-            <Badge variant="outline" className="text-xs gap-1">
+            <Badge variant="outline" className="text-xs gap-1 shrink-0">
               <Layout className="h-3 w-3" />
               {templateName}
             </Badge>
@@ -420,6 +422,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                   showToolbar={canEdit}
                   editable={canEdit}
                   onMentionInsert={onMentionInsert}
+                  renderToolbarPortal={toolbarPortalRef}
                 />
                 <style>{`
                   .letter-canvas-editor > .relative {

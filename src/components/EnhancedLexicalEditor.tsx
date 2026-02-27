@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { $getRoot, EditorState, $createParagraphNode, $createTextNode } from 'lexical';
 import { $generateHtmlFromNodes } from '@lexical/html';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
@@ -66,6 +67,8 @@ interface EnhancedLexicalEditorProps {
   showToolbar?: boolean;
   editable?: boolean;
   onMentionInsert?: (userId: string, displayName: string) => void;
+  /** Ref to a DOM element where the toolbar should be portaled. When set, toolbar is not rendered inline. */
+  renderToolbarPortal?: React.RefObject<HTMLDivElement | null>;
   // Legacy props - kept for API compatibility
   enableCollaboration?: boolean;
   useYjsCollaboration?: boolean;
@@ -105,6 +108,14 @@ function ContentPlugin({ content, contentNodes }: { content: string; contentNode
   }, [editor]);
 
   return null;
+}
+
+// Portal helper: renders children into an external DOM container via ref
+function ToolbarPortalRenderer({ target, children }: { target: React.RefObject<HTMLDivElement | null>; children: React.ReactNode }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  if (!mounted || !target.current) return null;
+  return createPortal(children, target.current);
 }
 
 const editorTheme = {
@@ -157,6 +168,7 @@ export default function EnhancedLexicalEditor({
   showToolbar = true,
   editable = true,
   onMentionInsert,
+  renderToolbarPortal,
 }: EnhancedLexicalEditorProps) {
   const initialConfig = useMemo(() => ({
     namespace: 'EnhancedEditor',
@@ -209,11 +221,17 @@ export default function EnhancedLexicalEditor({
     });
   }, [onChange]);
 
+  const toolbarElement = showToolbar ? <EnhancedLexicalToolbar documentId={documentId} /> : null;
+
   return (
     <div className="relative min-h-[200px] border rounded-md overflow-hidden">
       <LexicalComposer initialConfig={initialConfig}>
+        {/* Portal toolbar to external container if provided */}
+        {renderToolbarPortal && toolbarElement ? (
+          <ToolbarPortalRenderer target={renderToolbarPortal}>{toolbarElement}</ToolbarPortalRenderer>
+        ) : null}
         <div className="editor-inner relative">
-          {showToolbar && <EnhancedLexicalToolbar documentId={documentId} />}
+          {!renderToolbarPortal && toolbarElement}
 
           <div className="relative">
             <RichTextPlugin
