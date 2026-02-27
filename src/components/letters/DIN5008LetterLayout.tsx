@@ -91,10 +91,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     pageHeight: 297,
     margins: { left: 25, right: 20, top: 45, bottom: 25 },
     header: { height: 45, marginBottom: 8.46 },
-    addressField: { top: 46, left: 25, width: 85, height: 40 },
+    addressField: { top: 46, left: 25, width: 85, height: 40, returnAddressFontSize: 8, recipientFontSize: 10 },
     infoBlock: { top: 50, left: 125, width: 75, height: 40 },
-    subject: { top: 98.46, marginBottom: 8 },
-    content: { top: 98.46, maxHeight: 165, lineHeight: 4.5 },
+    subject: { top: 98.46, marginBottom: 8, fontSize: 13 },
+    content: { top: 98.46, maxHeight: 165, lineHeight: 4.5, fontSize: 11 },
     footer: { top: 272, height: 18 },
     attachments: { top: 230 },
     foldHoleMarks: {
@@ -112,6 +112,9 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   const layout = layoutSettings || template?.layout_settings || DEFAULT_LAYOUT;
   const salutationFontSizePt = toFontSizePt(layout.salutation?.fontSize, 11);
   const contentFontSizePt = toFontSizePt(layout.content?.fontSize, salutationFontSizePt);
+  const returnAddressFontSizePt = toFontSizePt(layout.addressField?.returnAddressFontSize, 8);
+  const recipientFontSizePt = toFontSizePt(layout.addressField?.recipientFontSize, 10);
+  const subjectFontSizePt = toFontSizePt(layout.subject?.fontSize, 13);
   const attachmentList = (attachments || [])
     .map((attachment) => (typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name || '')))
     .filter(Boolean);
@@ -621,7 +624,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                   {renderCanvasBlockElements(returnAddressElements)}
                 </div>
               ) : senderInfo?.return_address_line ? (
-                <div style={{ fontSize: '7pt', lineHeight: '1.0', maxWidth: '75mm' }}>
+                <div style={{ fontSize: `${returnAddressFontSizePt}pt`, lineHeight: '1.0', maxWidth: '75mm' }}>
                   {senderInfo.return_address_line.split('\n').filter((line) => line.trim()).map((line, index, arr) => (
                     <div key={`${line}-${index}`}>
                       <span style={index === arr.length - 1 ? { display: 'inline-block', borderBottom: '0.5pt solid #000', paddingBottom: '0.3mm' } : { display: 'inline-block' }}>
@@ -641,7 +644,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                 renderCanvasBlockElements(addressFieldElements)
               ) : (
                 <div style={{ 
-                  fontSize: '10pt',
+                  fontSize: `${recipientFontSizePt}pt`,
                   lineHeight: '1.2',
                   maxWidth: '75mm'
                 }}>
@@ -701,7 +704,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {subject && (
             <div style={{ 
               fontWeight: layout.subject?.fontWeight || 'bold', 
-              fontSize: `${layout.subject?.fontSize || 11}pt`,
+              fontSize: `${subjectFontSizePt}pt`,
               marginBottom: '0',
               display: 'flex',
               alignItems: 'center',
@@ -788,7 +791,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               left: '25mm',
               right: '20mm',
               fontWeight: subjectElements && subjectElements.length > 0 ? 'normal' : 'bold',
-              fontSize: '11pt',
+              fontSize: `${subjectFontSizePt}pt`,
               backgroundColor: debugMode ? 'rgba(0,255,0,0.05)' : 'transparent',
               height: subjectElements && subjectElements.length > 0 ? '12mm' : 'auto',
             }}>

@@ -34,10 +34,10 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       pageHeight: 297,
       margins: { left: 25, right: 20, top: 45, bottom: 25 },
       header: { height: 45, marginBottom: 8.46 },
-      addressField: { top: 46, left: 25, width: 85, height: 40 },
+      addressField: { top: 46, left: 25, width: 85, height: 40, returnAddressFontSize: 8, recipientFontSize: 10 },
       infoBlock: { top: 50, left: 125, width: 75, height: 40 },
-      subject: { top: 98.46, marginBottom: 8 },
-      content: { top: 98.46, maxHeight: 165, lineHeight: 4.5 },
+      subject: { top: 98.46, marginBottom: 8, fontSize: 13 },
+      content: { top: 98.46, maxHeight: 165, lineHeight: 4.5, fontSize: 11 },
       footer: { top: 272, height: 18 },
       attachments: { top: 230 },
       foldHoleMarks: {
@@ -190,6 +190,16 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     const paginationGap = 4.23;
     const paginationHeight = 4;
     const hasPagination = letter.show_pagination ?? false;
+
+    const resolveFontSizePt = (value: unknown, fallback: number) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+    };
+
+    const returnAddressFontSize = resolveFontSizePt((layoutSettings as any).addressField?.returnAddressFontSize, 8);
+    const recipientFontSize = resolveFontSizePt((layoutSettings as any).addressField?.recipientFontSize, 10);
+    const subjectFontSize = resolveFontSizePt((layoutSettings as any).subject?.fontSize, 13);
+    const contentFontSize = resolveFontSizePt((layoutSettings as any).content?.fontSize, 11);
     const paginationTop = 263.77;
     const foldHoleMarks = {
       enabled: layoutSettings.foldHoleMarks?.enabled ?? true,
@@ -453,7 +463,6 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     // Return address line in address field - 17.7mm height
     let addressYPos = addressFieldTop + 17.7;
     if (senderInfo?.return_address_line) {
-      const returnAddressFontSize = 7;
       const returnAddressMaxWidth = Math.max(10, addressFieldWidth - 10);
 
       pdf.setFontSize(returnAddressFontSize);
@@ -477,7 +486,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     
     // Recipient address
     if (letter.recipient_name || letter.recipient_address) {
-      pdf.setFontSize(9);
+      pdf.setFontSize(recipientFontSize);
       pdf.setFont('helvetica', 'normal');
       
       if (letter.recipient_name) {
@@ -576,14 +585,14 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     
     // Subject line
     if (letter.subject || letter.title) {
-      pdf.setFontSize(11);
+      pdf.setFontSize(subjectFontSize);
       pdf.setFont('helvetica', 'bold');
       const subjectText = letter.subject || letter.title;
       pdf.text(subjectText, leftMargin, contentTop + 3);
     }
     
     // Letter content
-    pdf.setFontSize(11);
+    pdf.setFontSize(contentFontSize);
     pdf.setFont('helvetica', 'normal');
     
     const contentText = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content;
@@ -619,7 +628,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
             renderFooterBlocks();
             
             // Reset text settings for content
-            pdf.setFontSize(11);
+            pdf.setFontSize(contentFontSize);
             pdf.setFont('helvetica', 'normal');
             pdf.setTextColor(0, 0, 0);
             
@@ -668,8 +677,8 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       pdf.setFontSize(6);
       pdf.text("Pagination: 4.23mm über Fußzeile", pageTextX, paginationY - 4);
       
-      // Add page number at right edge with 9pt font size
-      pdf.setFontSize(9);
+      // Add page number at right edge with configured pagination font size
+      pdf.setFontSize(layoutSettings.pagination?.fontSize ?? 8);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(100, 100, 100);
       const pageTextFinal = `Seite ${page} von ${letterPages}`;

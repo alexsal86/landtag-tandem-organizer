@@ -66,7 +66,7 @@ function htmlToText(html: string): string {
 }
 
 // Parse content into paragraphs
-function parseContentToParagraphs(content: string): Paragraph[] {
+function parseContentToParagraphs(content: string, fontSizeHalfPt = 22): Paragraph[] {
   const text = htmlToText(content);
   const paragraphs: Paragraph[] = [];
   
@@ -77,7 +77,7 @@ function parseContentToParagraphs(content: string): Paragraph[] {
     if (line.trim() === '') {
       if (currentParagraph.trim()) {
         paragraphs.push(new Paragraph({
-          children: [new TextRun(currentParagraph.trim())],
+          children: [new TextRun({ text: currentParagraph.trim(), size: fontSizeHalfPt })],
           spacing: { after: 200 }
         }));
         currentParagraph = '';
@@ -92,7 +92,7 @@ function parseContentToParagraphs(content: string): Paragraph[] {
   
   if (currentParagraph.trim()) {
     paragraphs.push(new Paragraph({
-      children: [new TextRun(currentParagraph.trim())],
+      children: [new TextRun({ text: currentParagraph.trim(), size: fontSizeHalfPt })],
       spacing: { after: 200 }
     }));
   }
@@ -108,15 +108,16 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
       pageHeight: 297,
       margins: { left: 25, right: 20, top: 45, bottom: 25 },
       header: { height: 45, marginBottom: 8.46 },
-      addressField: { top: 46, left: 25, width: 85, height: 40 },
+      addressField: { top: 46, left: 25, width: 85, height: 40, returnAddressFontSize: 8, recipientFontSize: 10 },
       infoBlock: { top: 50, left: 125, width: 75, height: 40 },
-      subject: { top: 101.46, marginBottom: 8 },
-      content: { top: 109.46, maxHeight: 161, lineHeight: 4.5 },
+      subject: { top: 101.46, marginBottom: 8, fontSize: 13 },
+      content: { top: 109.46, maxHeight: 161, lineHeight: 4.5, fontSize: 11 },
       footer: { top: 272, height: 18 },
       attachments: { top: 230 }
     };
     
     let layoutSettings = DEFAULT_LAYOUT;
+
     
     // Fetch template data
     let template: LetterTemplate | null = null;
@@ -209,7 +210,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
     if (letter.recipient_name || letter.recipient_address) {
       documentChildren.push(
         new Paragraph({
-          children: [new TextRun({ text: "An:", bold: true, size: 22 })],
+          children: [new TextRun({ text: "An:", bold: true, size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
           spacing: { after: 100 }
         })
       );
@@ -217,7 +218,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
       if (letter.recipient_name) {
         documentChildren.push(
           new Paragraph({
-            children: [new TextRun({ text: letter.recipient_name, size: 22 })],
+            children: [new TextRun({ text: letter.recipient_name, size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
             spacing: { after: 50 }
           })
         );
@@ -229,7 +230,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
           if (line.trim()) {
             documentChildren.push(
               new Paragraph({
-                children: [new TextRun({ text: line.trim(), size: 22 })],
+                children: [new TextRun({ text: line.trim(), size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
                 spacing: { after: 50 }
               })
             );
@@ -239,7 +240,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
 
       documentChildren.push(
         new Paragraph({
-          children: [new TextRun({ text: "", size: 22 })],
+          children: [new TextRun({ text: "", size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
           spacing: { after: 300 }
         })
       );
@@ -253,7 +254,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
         
         documentChildren.push(
           new Paragraph({
-            children: [new TextRun({ text: formattedDate, size: 22 })],
+            children: [new TextRun({ text: formattedDate, size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
             alignment: AlignmentType.RIGHT,
             spacing: { after: 100 }
           })
@@ -275,7 +276,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
     // Add spacing before subject
     documentChildren.push(
       new Paragraph({
-        children: [new TextRun({ text: "", size: 22 })],
+        children: [new TextRun({ text: "", size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
         spacing: { after: 200 }
       })
     );
@@ -285,8 +286,8 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
       documentChildren.push(
         new Paragraph({
           children: [
-            new TextRun({ text: "Betreff: ", bold: true, size: 22 }),
-            new TextRun({ text: letter.subject, bold: true, size: 22 })
+            new TextRun({ text: "Betreff: ", bold: true, size: Math.round(((layoutSettings as any).subject?.fontSize || 13) * 2) }),
+            new TextRun({ text: letter.subject, bold: true, size: Math.round(((layoutSettings as any).subject?.fontSize || 13) * 2) })
           ],
           spacing: { after: 300 }
         })
@@ -294,28 +295,28 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
     }
 
     // Letter content
-    const contentParagraphs = parseContentToParagraphs(letter.content || letter.content_html || '');
+    const contentParagraphs = parseContentToParagraphs(letter.content || letter.content_html || '', Math.round(((layoutSettings as any).content?.fontSize || 11) * 2));
     documentChildren.push(...contentParagraphs);
 
     // Footer with sender information
     if (senderInfo) {
       documentChildren.push(
         new Paragraph({
-          children: [new TextRun({ text: "", size: 22 })],
+          children: [new TextRun({ text: "", size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
           spacing: { after: 400 }
         })
       );
 
       documentChildren.push(
         new Paragraph({
-          children: [new TextRun({ text: "Mit freundlichen Grüßen", size: 22 })],
+          children: [new TextRun({ text: "Mit freundlichen Grüßen", size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
           spacing: { after: 300 }
         })
       );
 
       documentChildren.push(
         new Paragraph({
-          children: [new TextRun({ text: senderInfo.name, bold: true, size: 22 })],
+          children: [new TextRun({ text: senderInfo.name, bold: true, size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
           spacing: { after: 200 }
         })
       );

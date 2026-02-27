@@ -18,6 +18,8 @@ export interface LetterLayoutSettings {
     height: number;
     returnAddressHeight?: number;
     addressZoneHeight?: number;
+    returnAddressFontSize?: number;
+    recipientFontSize?: number;
   };
   infoBlock: {
     top: number;
@@ -47,6 +49,7 @@ export interface LetterLayoutSettings {
     top: number;
     maxHeight: number;
     lineHeight: number;
+    fontSize?: number;
   };
   footer: {
     top: number;
@@ -102,7 +105,9 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
     width: 85,
     height: 45,
     returnAddressHeight: 17.7,
-    addressZoneHeight: 27.3
+    addressZoneHeight: 27.3,
+    returnAddressFontSize: 8,
+    recipientFontSize: 10
   },
   infoBlock: {
     top: 50,
@@ -119,7 +124,7 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
   subject: {
     top: 98.46,
     marginBottom: 8,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 'bold',
     integrated: true
   },
@@ -130,7 +135,8 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
   content: {
     top: 98.46,
     maxHeight: 165,
-    lineHeight: 4.5
+    lineHeight: 4.5,
+    fontSize: 11
   },
   footer: {
     top: 272,
