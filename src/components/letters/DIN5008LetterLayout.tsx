@@ -714,9 +714,9 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         }
       `}</style>
 
-      {/* Attachments - positioned after content */}
-      {attachments && attachments.length > 0 && (
-        <div style={{ 
+      {/* Attachments in legacy mode */}
+      {layout.subject?.integrated === false && attachmentList.length > 0 && (
+        <div style={{
           position: 'absolute',
           top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignature ? 4.5 : 13.5}mm)`,
           left: '25mm',
