@@ -59,6 +59,28 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   returnAddressLines,
   infoBlockLines,
 }) => {
+  const toFontSizePt = (value: unknown, fallback: number): number => {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim().toLowerCase();
+      const match = trimmed.match(/([0-9]+(?:\.[0-9]+)?)/);
+      if (match) {
+        const parsed = Number(match[1]);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          if (trimmed.includes('px')) {
+            return parsed * 0.75;
+          }
+          return parsed;
+        }
+      }
+    }
+
+    return fallback;
+  };
+
   const contentTextStyle = {
     color: '#000',
   } as const;
@@ -88,7 +110,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   };
   
   const layout = layoutSettings || template?.layout_settings || DEFAULT_LAYOUT;
-  const contentFontSizePt = Number(layout.content?.fontSize ?? layout.salutation?.fontSize ?? 11);
+  const salutationFontSizePt = toFontSizePt(layout.salutation?.fontSize, 11);
+  const contentFontSizePt = toFontSizePt(layout.content?.fontSize, salutationFontSizePt);
   const attachmentList = (attachments || [])
     .map((attachment) => (typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name || '')))
     .filter(Boolean);

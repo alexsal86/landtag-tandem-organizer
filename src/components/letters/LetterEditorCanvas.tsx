@@ -113,6 +113,28 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   zoom: externalZoom,
   onZoomChange,
 }) => {
+  const toFontSizePt = (value: unknown, fallback: number): number => {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim().toLowerCase();
+      const match = trimmed.match(/([0-9]+(?:\.[0-9]+)?)/);
+      if (match) {
+        const parsed = Number(match[1]);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          if (trimmed.includes('px')) {
+            return parsed * 0.75;
+          }
+          return parsed;
+        }
+      }
+    }
+
+    return fallback;
+  };
+
   const [internalZoom, setInternalZoom] = useState(0.75);
   const toolbarPortalRef = useRef<HTMLDivElement>(null);
   const zoom = externalZoom ?? internalZoom;
@@ -124,9 +146,9 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   // Compute content top position (after subject + salutation)
   const subjectTopMm = layout.subject?.top || 98.46;
-  const subjectFontSizePt = layout.subject?.fontSize || 11;
-  const salutationFontSizePt = layout.salutation?.fontSize || 11;
-  const contentFontSizePt = layout.content?.fontSize || salutationFontSizePt || 11;
+  const subjectFontSizePt = toFontSizePt(layout.subject?.fontSize, 11);
+  const salutationFontSizePt = toFontSizePt(layout.salutation?.fontSize, 11);
+  const contentFontSizePt = toFontSizePt(layout.content?.fontSize, salutationFontSizePt);
 
   const lineHeightMm = layout.content?.lineHeight || 4.5;
   const subjectLineMm = subject ? (subjectFontSizePt * 0.3528 * 1.2) : 0;
