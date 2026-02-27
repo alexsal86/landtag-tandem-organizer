@@ -68,7 +68,7 @@ const BLOCK_VARIABLES: Record<string, { label: string; value: string; previewTex
     { label: 'Betreff', value: '{{betreff}}', previewText: 'Ihr Schreiben vom 15. Januar 2026 – Stellungnahme' },
   ],
   attachments: [
-    { label: 'Anlagen-Liste', value: '{{anlagen_liste}}', previewText: '1. Stellungnahme\n2. Gutachten Prof. Dr. Müller' },
+    { label: 'Anlagen-Liste', value: '{{anlagen_liste}}', previewText: '- Antrag_2026-02-15.pdf\n- Stellungnahme_Verkehrsausschuss.docx\n- Anlagenverzeichnis.xlsx' },
   ],
   footer: [
     { label: 'Absender Name', value: '{{absender_name}}', previewText: 'Alexander Salomon' },
