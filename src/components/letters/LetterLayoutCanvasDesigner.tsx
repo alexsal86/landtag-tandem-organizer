@@ -742,7 +742,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   const isVar = hasVariablePlaceholder(line.value || '');
                   const underlineThisLine = index === lastContentIndex;
                   return (
-                    <div key={line.id} style={{ fontSize: fontSizePx, fontFamily: getBlockLineFontStack(line.fontFamily), lineHeight: '1.3' }}>
+                    <div key={line.id} style={{ fontSize: fontSizePx, fontFamily: getBlockLineFontStack((line as any).fontFamily), lineHeight: '1.3' }}>
                       <span className="inline-flex items-center gap-0.5" style={underlineThisLine ? { borderBottom: '1px solid #000' } : undefined}>
                         {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
                         <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
@@ -874,7 +874,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                                 if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE }} />;
                                 const rv = resolveLineValue(line.value);
                                 return (
-                                  <div key={line.id} className="truncate" style={{ fontSize: fPx, fontFamily: getBlockLineFontStack(line.fontFamily), lineHeight: '1.3', fontWeight: line.valueBold ? 'bold' : 'normal', color: (line as any).color || undefined }}>
+                                  <div key={line.id} className="truncate" style={{ fontSize: fPx, fontFamily: getBlockLineFontStack((line as any).fontFamily), lineHeight: '1.3', fontWeight: line.valueBold ? 'bold' : 'normal', color: (line as any).color || undefined }}>
                                     {line.type === 'label-value' ? `${line.label || ''} ${rv}`.trim() : (rv || '\u00A0')}
                                   </div>
                                 );

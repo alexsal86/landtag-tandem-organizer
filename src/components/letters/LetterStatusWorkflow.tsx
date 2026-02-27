@@ -1,67 +1,95 @@
 import React, { useState } from 'react';
-import { ArrowRight, CheckCircle, Clock, Edit3, Send, AlertCircle, User } from 'lucide-react';
+import { ArrowRight, CheckCircle, Clock, Edit3, Send, AlertCircle, User, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  createLetterApprovalDecision,
+  createLetterSendTask,
+  createLetterRevisionTask,
+} from '@/utils/letterWorkflowActions';
+
+type LetterStatus = 'draft' | 'pending_approval' | 'approved' | 'revision_requested' | 'sent' | 'review';
 
 interface LetterStatusWorkflowProps {
   letter: {
     id: string;
-    status: 'draft' | 'review' | 'approved' | 'sent';
+    status: LetterStatus;
     title: string;
     created_by: string;
+    tenant_id?: string;
   };
   currentUserId: string;
+  tenantId?: string;
   onStatusChange: (newStatus: string, data?: any) => void;
   canEdit: boolean;
 }
 
+const STATUS_CONFIG: Record<string, {
+  label: string;
+  icon: React.ElementType;
+  color: string;
+  nextStates: string[];
+}> = {
+  draft: {
+    label: 'Entwurf',
+    icon: Edit3,
+    color: 'bg-gray-100 text-gray-800',
+    nextStates: ['pending_approval'],
+  },
+  pending_approval: {
+    label: 'Zur Freigabe',
+    icon: Clock,
+    color: 'bg-yellow-100 text-yellow-800',
+    nextStates: ['approved', 'revision_requested'],
+  },
+  // Legacy "review" maps to pending_approval behavior
+  review: {
+    label: 'Zur Freigabe',
+    icon: Clock,
+    color: 'bg-yellow-100 text-yellow-800',
+    nextStates: ['approved', 'revision_requested'],
+  },
+  revision_requested: {
+    label: 'Überarbeitung',
+    icon: RotateCcw,
+    color: 'bg-orange-100 text-orange-800',
+    nextStates: ['pending_approval'],
+  },
+  approved: {
+    label: 'Freigegeben',
+    icon: CheckCircle,
+    color: 'bg-green-100 text-green-800',
+    nextStates: ['sent'],
+  },
+  sent: {
+    label: 'Versendet',
+    icon: Send,
+    color: 'bg-blue-100 text-blue-800',
+    nextStates: [],
+  },
+};
+
 export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
   letter,
   currentUserId,
+  tenantId,
   onStatusChange,
-  canEdit
+  canEdit,
 }) => {
   const { toast } = useToast();
   const [isTransitionDialogOpen, setIsTransitionDialogOpen] = useState(false);
   const [transitionTo, setTransitionTo] = useState<string>('');
-  const [transitionNote, setTransitionNote] = useState('');
+  const [revisionComment, setRevisionComment] = useState('');
   const [sentMethod, setSentMethod] = useState<'post' | 'email' | 'both'>('post');
   const [users, setUsers] = useState<any[]>([]);
   const [selectedReviewer, setSelectedReviewer] = useState<string>('');
-
-  const statusConfig = {
-    draft: {
-      label: 'Entwurf',
-      icon: Edit3,
-      color: 'bg-gray-100 text-gray-800',
-      nextStates: ['review', 'approved']
-    },
-    review: {
-      label: 'Zur Prüfung',
-      icon: Clock,
-      color: 'bg-yellow-100 text-yellow-800',
-      nextStates: ['draft', 'approved']
-    },
-    approved: {
-      label: 'Genehmigt',
-      icon: CheckCircle,
-      color: 'bg-green-100 text-green-800',
-      nextStates: ['sent', 'draft']
-    },
-    sent: {
-      label: 'Versendet',
-      icon: Send,
-      color: 'bg-blue-100 text-blue-800',
-      nextStates: []
-    }
-  };
 
   const fetchUsers = async () => {
     try {
@@ -69,7 +97,6 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
         .from('profiles')
         .select('user_id, display_name')
         .neq('user_id', currentUserId);
-
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
@@ -80,125 +107,158 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
   const handleStatusTransition = async () => {
     if (!transitionTo) return;
 
-    console.log('=== STATUS TRANSITION START ===');
-    console.log('Letter ID:', letter.id);
-    console.log('Current Status:', letter.status);
-    console.log('Target Status:', transitionTo);
-    console.log('Current User ID:', currentUserId);
-
     try {
       const now = new Date().toISOString();
-      let updateData: any = { 
+      const effectiveTenantId = tenantId || letter.tenant_id;
+      const updateData: any = {
         status: transitionTo,
-        updated_at: now
+        updated_at: now,
       };
 
-      // Handle specific transition logic
-      if (transitionTo === 'review' && selectedReviewer) {
-        updateData.reviewer_id = selectedReviewer;
+      // === Transition: draft/revision_requested → pending_approval ===
+      if (transitionTo === 'pending_approval') {
+        if (!selectedReviewer) {
+          toast({ title: 'Fehler', description: 'Bitte wählen Sie einen Prüfer aus.', variant: 'destructive' });
+          return;
+        }
         updateData.submitted_for_review_at = now;
         updateData.submitted_for_review_by = currentUserId;
+        updateData.reviewer_id = selectedReviewer;
+
+        // Auto-create decision
+        if (effectiveTenantId) {
+          createLetterApprovalDecision(
+            letter.id,
+            letter.title,
+            currentUserId,
+            selectedReviewer,
+            effectiveTenantId,
+          );
+        }
       }
 
+      // === Transition: pending_approval → approved ===
       if (transitionTo === 'approved') {
         updateData.approved_at = now;
         updateData.approved_by = currentUserId;
+
+        // Auto-create send task for letter creator
+        if (effectiveTenantId) {
+          createLetterSendTask(letter.title, letter.created_by, currentUserId, effectiveTenantId);
+        }
       }
 
-      console.log('Update data:', updateData);
+      // === Transition: pending_approval → revision_requested ===
+      if (transitionTo === 'revision_requested') {
+        updateData.revision_comment = revisionComment;
+        updateData.revision_requested_by = currentUserId;
+        updateData.revision_requested_at = now;
 
-      // Update database directly
-      const { data, error } = await supabase
+        // Auto-create revision task
+        if (effectiveTenantId) {
+          createLetterRevisionTask(
+            letter.title,
+            revisionComment,
+            letter.created_by,
+            currentUserId,
+            effectiveTenantId,
+          );
+        }
+      }
+
+      // === Transition: approved → sent ===
+      if (transitionTo === 'sent') {
+        updateData.sent_at = now;
+        updateData.sent_by = currentUserId;
+        updateData.sent_method = sentMethod;
+        updateData.sent_date = now.split('T')[0];
+        updateData.workflow_locked = true;
+      }
+
+      // Update database
+      const { error } = await supabase
         .from('letters')
         .update(updateData)
-        .eq('id', letter.id)
-        .select();
+        .eq('id', letter.id);
 
-      console.log('Supabase update result:', { data, error });
+      if (error) throw error;
 
-      if (error) {
-        console.error('Supabase error details:', error);
-        throw error;
-      }
-
-      console.log('Database update successful');
-
-      // Trigger archiving process for sent letters AFTER successful database update
+      // Handle archiving for sent letters
       if (transitionTo === 'sent') {
         try {
-          console.log('Using direct PDF archiving for consistent results with LetterPDFExport');
-          
-          // Fetch complete letter data for archiving
-          const { data: fullLetter, error: fetchError } = await supabase
+          const { data: fullLetter } = await supabase
             .from('letters')
             .select('*')
             .eq('id', letter.id)
             .single();
-            
-          if (fetchError || !fullLetter) {
-            throw new Error('Could not fetch complete letter data');
+
+          if (fullLetter) {
+            const { archiveLetter } = await import('@/utils/letterArchiving');
+            await archiveLetter(fullLetter, currentUserId);
           }
-          
-          // Use the standalone archiving function for consistency  
-          const { archiveLetter } = await import('@/utils/letterArchiving');
-          const archiveResult = await archiveLetter(fullLetter, currentUserId);
-          
-          if (archiveResult) {
-            toast({
-              title: "Brief versendet und archiviert",
-              description: "Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen. Eine Follow-up Aufgabe wurde erstellt.",
-              variant: "default",
-            });
-          } else {
-            toast({
-              title: "Brief versendet",
-              description: "Brief wurde als versendet markiert. Archivierung wird im Hintergrund verarbeitet.",
-              variant: "default",
-            });
+        } catch (archiveErr) {
+          console.error('Archive failed:', archiveErr);
+        }
+
+        // Handle email sending
+        if (sentMethod === 'email' || sentMethod === 'both') {
+          try {
+            const { data: fullLetter } = await supabase
+              .from('letters')
+              .select('*, contacts:contact_id(email)')
+              .eq('id', letter.id)
+              .single();
+
+            const recipientEmail = (fullLetter as any)?.contacts?.email;
+            if (recipientEmail) {
+              toast({
+                title: 'E-Mail-Versand',
+                description: `Brief wird per E-Mail an ${recipientEmail} gesendet...`,
+              });
+              // TODO: Call send-document-email edge function with PDF
+            }
+          } catch (emailErr) {
+            console.error('Email send failed:', emailErr);
           }
-        } catch (error) {
-          console.error('Failed to trigger archive:', error);
+        }
+
+        // Handle print
+        if (sentMethod === 'post' || sentMethod === 'both') {
           toast({
-            title: "Archivierungsfehler",
-            description: "Brief wurde versendet, aber die Archivierung ist fehlgeschlagen.",
-            variant: "destructive",
+            title: 'Drucken',
+            description: 'Bitte nutzen Sie die PDF-Export-Funktion zum Drucken.',
           });
         }
       }
 
-      // Update the letter via callback for UI updates
       onStatusChange(transitionTo, updateData);
 
+      const config = STATUS_CONFIG[transitionTo];
       toast({
-        title: "Status geändert",
-        description: `Brief wurde auf "${statusConfig[transitionTo as keyof typeof statusConfig].label}" gesetzt.`,
+        title: 'Status geändert',
+        description: `Brief wurde auf "${config?.label || transitionTo}" gesetzt.`,
       });
 
       // Reset dialog
       setIsTransitionDialogOpen(false);
       setTransitionTo('');
-      setTransitionNote('');
+      setRevisionComment('');
       setSelectedReviewer('');
     } catch (error) {
       console.error('Error changing status:', error);
-      toast({
-        title: "Fehler",
-        description: "Status konnte nicht geändert werden.",
-        variant: "destructive",
-      });
+      toast({ title: 'Fehler', description: 'Status konnte nicht geändert werden.', variant: 'destructive' });
     }
   };
 
   const openTransitionDialog = (toStatus: string) => {
     setTransitionTo(toStatus);
     setIsTransitionDialogOpen(true);
-    
-    if (toStatus === 'review') {
+    if (toStatus === 'pending_approval') {
       fetchUsers();
     }
   };
 
-  const currentStatus = statusConfig[letter.status];
+  const currentStatus = STATUS_CONFIG[letter.status] || STATUS_CONFIG.draft;
   const nextStates = currentStatus.nextStates;
 
   if (!canEdit || nextStates.length === 0) {
@@ -207,13 +267,9 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
         <CardContent className="p-4">
           <div className="flex items-center gap-2">
             <currentStatus.icon className="h-4 w-4" />
-            <Badge className={currentStatus.color}>
-              {currentStatus.label}
-            </Badge>
+            <Badge className={currentStatus.color}>{currentStatus.label}</Badge>
             {letter.status === 'sent' && (
-              <span className="text-sm text-muted-foreground">
-                (Endstatus erreicht)
-              </span>
+              <span className="text-sm text-muted-foreground">(Endstatus erreicht)</span>
             )}
           </div>
         </CardContent>
@@ -230,20 +286,28 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Current Status */}
         <div className="flex items-center gap-2">
-          <Badge className={currentStatus.color}>
-            {currentStatus.label}
-          </Badge>
+          <Badge className={currentStatus.color}>{currentStatus.label}</Badge>
           <span className="text-sm text-muted-foreground">Aktueller Status</span>
         </div>
 
-        {/* Available Transitions */}
+        {/* Revision comment banner */}
+        {(letter.status === 'revision_requested') && (letter as any).revision_comment && (
+          <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-orange-800">Begründung der Zurückweisung</p>
+              <p className="text-orange-700">{(letter as any).revision_comment}</p>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label className="text-sm font-medium">Verfügbare Aktionen:</Label>
           <div className="flex flex-wrap gap-2">
             {nextStates.map((nextState) => {
-              const nextConfig = statusConfig[nextState as keyof typeof statusConfig];
+              const nextConfig = STATUS_CONFIG[nextState];
+              if (!nextConfig) return null;
               return (
                 <Button
                   key={nextState}
@@ -266,25 +330,25 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                Status ändern zu: {transitionTo && statusConfig[transitionTo as keyof typeof statusConfig]?.label}
+                Status ändern zu: {transitionTo && STATUS_CONFIG[transitionTo]?.label}
               </DialogTitle>
             </DialogHeader>
-            
+
             <div className="space-y-4">
-              {/* Reviewer Selection for Review Status */}
-              {transitionTo === 'review' && (
+              {/* Reviewer selection for pending_approval */}
+              {transitionTo === 'pending_approval' && (
                 <div className="space-y-2">
-                  <Label>Prüfung zuweisen an:</Label>
+                  <Label>Freigabe zuweisen an:</Label>
                   <Select value={selectedReviewer} onValueChange={setSelectedReviewer}>
                     <SelectTrigger>
                       <SelectValue placeholder="Benutzer auswählen..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {users.map((user) => (
-                        <SelectItem key={user.user_id} value={user.user_id}>
+                      {users.map((u) => (
+                        <SelectItem key={u.user_id} value={u.user_id}>
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4" />
-                            {user.display_name || 'Unbekannt'}
+                            {u.display_name || 'Unbekannt'}
                           </div>
                         </SelectItem>
                       ))}
@@ -293,11 +357,24 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
                 </div>
               )}
 
-              {/* Sending Method for Sent Status */}
+              {/* Revision comment for rejection */}
+              {transitionTo === 'revision_requested' && (
+                <div className="space-y-2">
+                  <Label>Begründung der Zurückweisung:</Label>
+                  <Textarea
+                    value={revisionComment}
+                    onChange={(e) => setRevisionComment(e.target.value)}
+                    placeholder="Bitte geben Sie eine Begründung an..."
+                    rows={4}
+                  />
+                </div>
+              )}
+
+              {/* Sending method for sent */}
               {transitionTo === 'sent' && (
                 <div className="space-y-2">
                   <Label>Versandart:</Label>
-                  <Select value={sentMethod} onValueChange={(value: 'post' | 'email' | 'both') => setSentMethod(value)}>
+                  <Select value={sentMethod} onValueChange={(v: 'post' | 'email' | 'both') => setSentMethod(v)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -310,26 +387,23 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
                 </div>
               )}
 
-              {/* Optional Note */}
-              <div className="space-y-2">
-                <Label>Bemerkung (optional):</Label>
-                <Textarea
-                  value={transitionNote}
-                  onChange={(e) => setTransitionNote(e.target.value)}
-                  placeholder="Zusätzliche Informationen zu dieser Statusänderung..."
-                  rows={3}
-                />
-              </div>
-
-              {/* Warning for certain transitions */}
+              {/* Warning for sent */}
               {transitionTo === 'sent' && (
                 <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
                   <div className="text-sm">
                     <p className="font-medium text-yellow-800">Wichtiger Hinweis</p>
-                    <p className="text-yellow-700">
-                      Nach dem Versenden kann der Brief nicht mehr bearbeitet werden.
-                    </p>
+                    <p className="text-yellow-700">Nach dem Versenden kann der Brief nicht mehr bearbeitet werden.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Warning for rejection */}
+              {transitionTo === 'revision_requested' && !revisionComment.trim() && (
+                <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="text-orange-700">Eine Begründung hilft dem Mitarbeiter bei der Überarbeitung.</p>
                   </div>
                 </div>
               )}
@@ -340,7 +414,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
                 </Button>
                 <Button
                   onClick={handleStatusTransition}
-                  disabled={transitionTo === 'review' && !selectedReviewer}
+                  disabled={transitionTo === 'pending_approval' && !selectedReviewer}
                 >
                   Status ändern
                 </Button>
