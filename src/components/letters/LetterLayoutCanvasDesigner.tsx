@@ -8,6 +8,8 @@ import { ZoomIn, ZoomOut, Trash2, Eye, EyeOff, Lock, Unlock } from 'lucide-react
 import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 import { CSS_PX_PER_MM } from '@/lib/units';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/hooks/useTenant';
 
 type BlockKey = 'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments' | 'pagination';
 type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general' | 'block-address' | 'block-info' | 'block-subject' | 'block-content' | 'block-attachments';
@@ -234,10 +236,12 @@ const getDisabled = (layout: LetterLayoutSettings): BlockKey[] => (layout.disabl
 const getLocked = (layout: LetterLayoutSettings): BlockKey[] => (layout.lockedBlocks || []) as BlockKey[];
 
 export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJumpToTab, headerElements = [], actionButtons }: Props) {
+  const { currentTenant } = useTenant();
   const [blocks, setBlocks] = useState<BlockConfig[]>(() => [...DEFAULT_BLOCKS]);
   const [selected, setSelected] = useState<BlockKey>('addressField');
   const [dragging, setDragging] = useState<{ key: BlockKey; startX: number; startY: number; orig: Rect; mode: 'move' | 'resize' } | null>(null);
   const [localLayout, setLocalLayout] = useState<LetterLayoutSettings>(() => cloneLayout(layoutSettings));
+  const [templateDefaults, setTemplateDefaults] = useState<Record<string, string>>({});
   const [showRuler, setShowRuler] = useState(false);
   const [plainPreview, setPlainPreview] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -248,6 +252,25 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   const SCALE = BASE_SCALE * zoomLevel;
 
   useEffect(() => setLocalLayout(cloneLayout(layoutSettings)), [layoutSettings]);
+
+  useEffect(() => {
+    const fetchTemplateDefaults = async () => {
+      if (!currentTenant?.id) {
+        setTemplateDefaults({});
+        return;
+      }
+
+      const { data } = await supabase
+        .from('letter_template_settings' as any)
+        .select('variable_defaults')
+        .eq('tenant_id', currentTenant.id)
+        .maybeSingle();
+
+      setTemplateDefaults(((data as any)?.variable_defaults || {}) as Record<string, string>);
+    };
+
+    fetchTemplateDefaults();
+  }, [currentTenant?.id]);
 
   const zoomIn = useCallback(() => {
     setZoomLevel((z) => {
@@ -639,6 +662,15 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                 '{{absender_name}}': 'Alexander Salomon', '{{absender_organisation}}': 'Fraktion GRÜNE',
                 '{{absender_strasse}}': 'Konrad-Adenauer-Str. 3', '{{absender_plz_ort}}': '70173 Stuttgart',
               };
+              const subjectTemplate = (() => {
+                const sl = localLayout.blockContent?.subjectLine;
+                if (sl && Array.isArray(sl) && sl.length > 0 && (sl[0] as any).content) {
+                  return (sl[0] as any).content as string;
+                }
+                return '{{betreff}}';
+              })();
+              const subjectPreview = subjectTemplate.replaceAll('{{betreff}}', templateDefaults['{{betreff}}'] || 'Betreff').trim() || 'Betreff';
+              const contentPreview = (templateDefaults['default_content'] || 'Inhalt...').trim() || 'Inhalt...';
               const resolveLineValue = (val: string | undefined) => {
                 if (!val) return '';
                 let text = val;
@@ -697,20 +729,14 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                             {localLayout.subject.prefixShape === 'wappen' && <img src="/assets/wappen-bw.svg" alt="Wappen" style={{ width: 3.5 * SCALE, height: 3.5 * SCALE, objectFit: 'contain' }} />}
                           </span>
                         )}
-                        <span className="font-bold" style={{ fontSize: `${(localLayout.subject?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>{(() => {
-                          const sl = localLayout.blockContent?.subjectLine;
-                          if (sl && Array.isArray(sl) && sl.length > 0 && (sl[0] as any).content) {
-                            return (sl[0] as any).content;
-                          }
-                          return 'Betreff';
-                        })()}</span>
+                        <span className="font-bold" style={{ fontSize: `${(localLayout.subject?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>{subjectPreview}</span>
                       </div>
                       <div style={{ height: (localLayout.subject?.marginBottom || 9) * SCALE }} />
                       <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>
                         {localLayout.salutation?.template || 'Sehr geehrte Damen und Herren,'}
                       </div>
                       <div style={{ height: (localLayout.content?.lineHeight || 4.5) * SCALE }} />
-                      <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#666' }}>Inhalt...</div>
+                      <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#666' }}>{contentPreview}</div>
                       {/* Abschlussformel preview */}
                       {localLayout.closing?.formula && (
                          <>
