@@ -69,7 +69,17 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     subject: { top: 98.46, marginBottom: 8 },
     content: { top: 98.46, maxHeight: 165, lineHeight: 4.5 },
     footer: { top: 272, height: 18 },
-    attachments: { top: 230 }
+    attachments: { top: 230 },
+    foldHoleMarks: {
+      enabled: true,
+      left: 3,
+      strokeWidthPt: 1,
+      foldMarkWidth: 5,
+      holeMarkWidth: 8,
+      topMarkY: 105,
+      holeMarkY: 148.5,
+      bottomMarkY: 210,
+    },
   };
   
   const layout = layoutSettings || template?.layout_settings || DEFAULT_LAYOUT;
@@ -79,6 +89,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   const footerTopMm = Number(layout.footer?.top ?? 272);
   const paginationTopMm = 263.77;
   const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
+  const foldHoleMarks = {
+    ...DEFAULT_LAYOUT.foldHoleMarks,
+    ...(layout.foldHoleMarks || {}),
+  };
   const contentMaxHeightMm = paginationEnabled
     ? Math.max(20, paginationTopMm - paginationGapMm - contentTopMm)
     : 165;
@@ -368,6 +382,28 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       lineHeight: '1.2',
       position: 'relative'
     }}>
+      {(foldHoleMarks.enabled ?? true) && (
+        <>
+          {[
+            { y: foldHoleMarks.topMarkY, width: foldHoleMarks.foldMarkWidth, key: 'fold-top' },
+            { y: foldHoleMarks.holeMarkY, width: foldHoleMarks.holeMarkWidth, key: 'hole' },
+            { y: foldHoleMarks.bottomMarkY, width: foldHoleMarks.foldMarkWidth, key: 'fold-bottom' },
+          ].map((mark) => (
+            <div
+              key={mark.key}
+              style={{
+                position: 'absolute',
+                left: `${foldHoleMarks.left}mm`,
+                top: `${mark.y}mm`,
+                width: `${mark.width}mm`,
+                height: `${Math.max(0.1, (foldHoleMarks.strokeWidthPt || 1) * 0.3528)}mm`,
+                backgroundColor: '#111',
+                pointerEvents: 'none',
+              }}
+            />
+          ))}
+        </>
+      )}
       {/* Template Header */}
       {template && (
         <div 
