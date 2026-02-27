@@ -1109,6 +1109,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       postal_code: contact.private_postal_code || contact.business_postal_code || '',
       city: contact.private_city || contact.business_city || '',
       country: contact.private_country || contact.business_country || '',
+      gender: contact.gender || '',
+      last_name: contact.last_name || contact.name?.split(' ').pop() || '',
     } : editedLetter.recipient_name ? {
       name: editedLetter.recipient_name,
       street: '',
