@@ -215,13 +215,25 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
           <Droppable droppableId="block-lines">
             {(provided) => (
               <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1">
-                {lines.map((line, index) => (
+                {lines.map((line, index) => {
+                  // Determine indentation: lines between block-start and block-end
+                  const isInsideBlock = (() => {
+                    if (line.type === 'block-start' || line.type === 'block-end') return false;
+                    let depth = 0;
+                    for (let i = 0; i < index; i++) {
+                      if (lines[i].type === 'block-start') depth++;
+                      if (lines[i].type === 'block-end') depth--;
+                    }
+                    return depth > 0;
+                  })();
+                  return (
                   <Draggable key={line.id} draggableId={line.id} index={index}>
                     {(prov, snap) => (
                       <div
                         ref={prov.innerRef}
                         {...prov.draggableProps}
                         className={`flex items-center gap-1 rounded border px-1 py-1 text-xs ${snap.isDragging ? 'bg-accent shadow-md' : 'bg-background'}`}
+                        style={{ ...prov.draggableProps.style, marginLeft: isInsideBlock ? 24 : 0 }}
                       >
                         <div {...prov.dragHandleProps} className="cursor-grab text-muted-foreground">
                           <GripVertical className="h-3.5 w-3.5" />
@@ -379,7 +391,8 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                       </div>
                     )}
                   </Draggable>
-                ))}
+                  );
+                })}
                 {provided.placeholder}
               </div>
             )}
