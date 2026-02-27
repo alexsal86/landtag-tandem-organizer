@@ -74,11 +74,12 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   
   const layout = layoutSettings || template?.layout_settings || DEFAULT_LAYOUT;
   const paginationGapMm = 4.23;
-  const paginationHeightMm = 4.23;
+  const paginationHeightMm = 4;
   const contentTopMm = Number(layout.content?.top ?? 98.46);
   const footerTopMm = Number(layout.footer?.top ?? 272);
   const paginationTopMm = Number(layout.pagination?.top ?? (footerTopMm - paginationGapMm - paginationHeightMm));
-  const contentMaxHeightMm = showPagination
+  const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
+  const contentMaxHeightMm = paginationEnabled
     ? Math.max(20, paginationTopMm - paginationGapMm - contentTopMm)
     : 165;
   const formatAddress = (address: any) => {
@@ -692,7 +693,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       )}
 
       {/* Pagination Footer */}
-      {showPagination && (
+      {paginationEnabled && (
         <div style={{
           position: 'absolute',
           top: `${paginationTopMm}mm`,
@@ -853,7 +854,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* Pagination position indicator */}
           <div style={{
             position: 'absolute',
-            top: 'calc(272mm - 8.46mm)',
+            top: 'calc(272mm - 8.23mm)',
             left: '25mm',
             right: '20mm',
             height: '4.23mm',

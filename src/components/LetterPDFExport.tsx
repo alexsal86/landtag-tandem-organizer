@@ -226,7 +226,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       const contentTop = 98.46;
       const footerTop = 272;
       const paginationGap = 4.23;
-      const paginationHeight = 4.23;
+      const paginationHeight = 4;
       
       // Debug helper function for consistent styling across all pages
       const drawDebugGuides = (pageNum: number) => {
@@ -953,7 +953,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         for (let page = 1; page <= totalLetterPages; page++) {
         pdf.setPage(page);
         
-        // Pagination top so that its bottom edge is 4.23mm above footer (272mm - 8.46mm = 263.54mm)
+        // Pagination top so that its bottom edge is 4.23mm above footer (272mm - 8.23mm = 263.77mm)
         const paginationY = footerTop - paginationGap - paginationHeight;
         
         // Debug box around pagination

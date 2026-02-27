@@ -336,7 +336,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
   const lineHeight = mmToPoints(layout.content.lineHeight);
   const hasPagination = letter.show_pagination ?? false;
   const paginationGapMm = 4.23;
-  const paginationHeightMm = 4.23;
+  const paginationHeightMm = 4;
   const footerTopMm = Number(layout.footer?.top ?? 272);
   const contentTopMm = Number(layout.content?.top ?? 98.46);
   const paginationTopMm = Number(layout.pagination?.top ?? (footerTopMm - paginationGapMm - paginationHeightMm));
