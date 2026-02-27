@@ -169,15 +169,6 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   const editorTopMm = subjectTopMm + subjectLineMm + gapAfterSubjectMm + salutationLineMm + gapAfterSalutationMm;
 
-  // Compute usable content area height for PageLayoutPlugin
-  const computeContentAreaHeightMm = (): number => {
-    const ftMm = layout.footer?.top ?? 272;
-    const closingReservedMm = layout.closing?.formula ? 40 : 0;
-    const availableMm = ftMm - editorTopMm - closingReservedMm;
-    return Math.max(50, Math.min(220, availableMm));
-  };
-  const contentAreaHeightMm = computeContentAreaHeightMm();
-
   // Footer/pagination constraints  
   const paginationTopMm = 263.77;
   const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
@@ -481,8 +472,6 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                   reviewerName={reviewerName}
                   reviewerId={reviewerId}
                   showAcceptReject={showAcceptReject}
-                  enablePagination={showPagination}
-                  pageContentHeightMm={contentAreaHeightMm}
                 />
                 <style>{`
                   .letter-canvas-editor > .relative {
@@ -499,26 +488,10 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                     font-size: ${contentFontSizePt}pt !important;
                     line-height: 1.2 !important;
                     color: #000 !important;
-                    overflow: visible !important;
                   }
                   .letter-canvas-editor .editor-placeholder {
                     left: 0 !important;
                     top: 0 !important;
-                  }
-                  .letter-canvas-editor [data-page-break] {
-                    display: block;
-                    width: calc(100% + 45mm);
-                    margin-left: -25mm;
-                    height: 28px;
-                    pointer-events: none;
-                    user-select: none;
-                    position: relative;
-                    margin-top: 6mm;
-                    margin-bottom: 6mm;
-                  }
-                  .letter-canvas-editor [data-page-break-visual] {
-                    cursor: default !important;
-                    pointer-events: none !important;
                   }
                 `}</style>
               </div>
@@ -568,7 +541,34 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             )}
 
-            {/* Page breaks now rendered by PageLayoutPlugin inside the editor */}
+            {/* Page break indicators at 297mm intervals */}
+            {[1, 2, 3].map((page) => (
+              <div
+                key={`page-break-${page}`}
+                style={{
+                  position: 'absolute',
+                  top: `${297 * page}mm`,
+                  left: 0,
+                  right: 0,
+                  height: '1px',
+                  borderTop: '2px dashed rgba(0,0,0,0.15)',
+                  zIndex: 20,
+                  pointerEvents: 'none',
+                }}
+              >
+                <span style={{
+                  position: 'absolute',
+                  right: '5mm',
+                  top: '-10px',
+                  fontSize: '8pt',
+                  color: 'rgba(0,0,0,0.3)',
+                  backgroundColor: 'white',
+                  padding: '0 4px',
+                }}>
+                  Seite {page + 1}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
