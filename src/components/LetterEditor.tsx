@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, PanelLeft, PanelLeftClose, Mail, Settings, Wifi, WifiOff, Activity, Ruler } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, PanelLeft, PanelLeftClose, Settings, Wifi, WifiOff, Activity, Ruler } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +21,6 @@ import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
 import { LetterEditorCanvas } from './letters/LetterEditorCanvas';
-import { ContactSelector } from './ContactSelector';
 import { buildVariableMap, substituteVariables, substituteBlockLines, isLineMode } from '@/lib/letterVariables';
 import type { HeaderElement } from '@/components/canvas-engine/types';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
@@ -1349,69 +1348,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     </div>
 
                      {/* Accordion Groups */}
-                    <Accordion type="multiple" defaultValue={["adressat"]} className="w-full">
-                      {/* 1. Adressat */}
-                      <AccordionItem value="adressat">
-                        <AccordionTrigger className="flex items-center gap-2">
-                          <Mail className="h-4 w-4" />
-                          <span>Adressat</span>
-                        </AccordionTrigger>
-                        <AccordionContent className="space-y-4">
-                          {/* Enhanced Contact Selection */}
-                          <div>
-                            <Label>Aus Kontakten wählen</Label>
-                            <ContactSelector
-                              onSelect={(contact) => {
-                                setEditedLetter(prev => ({
-                                  ...prev,
-                                  contact_id: contact.id,
-                                  recipient_name: contact.name,
-                                  recipient_address: (contact as any).formatted_address || contact.address || ''
-                                }));
-                                broadcastContentChange('contact_id', contact.id);
-                                broadcastContentChange('recipient_name', contact.name);
-                                broadcastContentChange('recipient_address', (contact as any).formatted_address || contact.address || '');
-                              }}
-                              selectedContactId={editedLetter.contact_id}
-                              placeholder="Kontakt aus Adressbuch wählen..."
-                            />
-                          </div>
-
-                          {/* Manual Recipient Entry */}
-                          <div>
-                            <Label htmlFor="recipient-name">Name</Label>
-                            <Input
-                              id="recipient-name"
-                              value={editedLetter.recipient_name || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                setEditedLetter(prev => ({ ...prev, recipient_name: value }));
-                                broadcastContentChange('recipient_name', value);
-                              }}
-                              disabled={!canEdit}
-                              placeholder="Empfängername"
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor="recipient-address">Adresse</Label>
-                            <Textarea
-                              id="recipient-address"
-                              value={editedLetter.recipient_address || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                setEditedLetter(prev => ({ ...prev, recipient_address: value }));
-                                broadcastContentChange('recipient_address', value);
-                              }}
-                              disabled={!canEdit}
-                              placeholder="Straße, Hausnummer&#10;PLZ Ort&#10;Land"
-                              rows={4}
-                            />
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      {/* 2. Basisinformationen */}
+                    <Accordion type="multiple" defaultValue={["basisinformationen"]} className="w-full">
+                      {/* 1. Basisinformationen */}
                       <AccordionItem value="basisinformationen">
                         <AccordionTrigger className="flex items-center gap-2">
                           <FileText className="h-4 w-4" />
@@ -1906,6 +1844,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 setEditedLetter(prev => ({ ...prev, recipient_address: value }));
                 broadcastContentChange('recipient_address', value);
               }}
+              onRecipientContactSelect={(contact) => {
+                const recipientAddress = (contact as any).formatted_address || contact.address || '';
+                setEditedLetter(prev => ({
+                  ...prev,
+                  contact_id: contact.id,
+                  recipient_name: contact.name,
+                  recipient_address: recipientAddress
+                }));
+                broadcastContentChange('contact_id', contact.id);
+                broadcastContentChange('recipient_name', contact.name);
+                broadcastContentChange('recipient_address', recipientAddress);
+              }}
               onSenderChange={(value) => {
                 const senderInfoId = value || undefined;
                 setEditedLetter(prev => ({ ...prev, sender_info_id: senderInfoId }));
@@ -1918,6 +1868,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               senderInfos={senderInfos}
               informationBlocks={informationBlocks}
               selectedSenderId={editedLetter.sender_info_id}
+              selectedRecipientContactId={editedLetter.contact_id}
               selectedInfoBlockIds={editedLetter.information_block_ids || []}
               templateName={currentTemplate?.name}
               zoom={previewZoom}
