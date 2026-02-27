@@ -177,7 +177,7 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="pagination-top">Von oben (mm)</Label>
-              <Input id="pagination-top" type="number" value={layoutSettings.pagination?.top ?? 267.77} onChange={(e) => updateSetting(['pagination', 'top'], parseFloat(e.target.value))} step="0.1" />
+              <Input id="pagination-top" type="number" value={layoutSettings.pagination?.top ?? 263.77} onChange={(e) => updateSetting(['pagination', 'top'], parseFloat(e.target.value))} step="0.1" />
             </div>
             <div>
               <Label htmlFor="pagination-align">Ausrichtung</Label>
