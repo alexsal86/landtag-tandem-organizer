@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, Settings, Wifi, WifiOff, Activity, Ruler } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, Settings, Wifi, WifiOff, Activity, Ruler, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -1214,6 +1215,31 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               Druckvorschau
             </Button>
 
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Anlagen
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[420px] p-3">
+                {letter?.id ? (
+                  <LetterAttachmentManager
+                    letterId={letter.id}
+                    attachments={attachments}
+                    onAttachmentUpdate={fetchAttachments}
+                    readonly={!canEdit}
+                  />
+                ) : (
+                  <div className="p-4 text-center text-muted-foreground border border-dashed rounded-lg">
+                    <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="font-medium">Anlagen verfügbar nach dem Speichern</p>
+                    <p className="text-sm">Speichern Sie den Brief zuerst, um Anlagen hinzufügen zu können.</p>
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
 
             {/* Proofreading Mode Toggle - nur bei draft/review */}
             {editedLetter.status !== 'approved' && editedLetter.status !== 'sent' && (
@@ -1603,29 +1629,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                         </AccordionContent>
                       </AccordionItem>
 
-                      {/* 4. Anlagen */}
-                      <AccordionItem value="anlagen">
-                        <AccordionTrigger className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          <span>Anlagen</span>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          {letter?.id ? (
-                            <LetterAttachmentManager
-                              letterId={letter.id}
-                              attachments={attachments}
-                              onAttachmentUpdate={fetchAttachments}
-                              readonly={!canEdit}
-                            />
-                          ) : (
-                            <div className="p-4 text-center text-muted-foreground border border-dashed rounded-lg">
-                              <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p className="font-medium">Anlagen verfügbar nach dem Speichern</p>
-                              <p className="text-sm">Speichern Sie den Brief zuerst, um Anlagen hinzufügen zu können.</p>
-                            </div>
-                          )}
-                        </AccordionContent>
-                      </AccordionItem>
                     </Accordion>
 
                     {/* Sending Details - only show for approved/sent letters */}
