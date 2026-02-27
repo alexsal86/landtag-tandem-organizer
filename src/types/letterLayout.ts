@@ -107,7 +107,7 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
     height: 17.7
   },
   subject: {
-    top: 98.64,
+    top: 98.46,
     marginBottom: 8,
     fontSize: 11,
     fontWeight: 'bold',
@@ -118,8 +118,8 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
     fontSize: 11
   },
   content: {
-    top: 106.64,
-    maxHeight: 161,
+    top: 98.46,
+    maxHeight: 165,
     lineHeight: 4.5
   },
   footer: {
@@ -131,7 +131,7 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
   },
   pagination: {
     enabled: true,
-    top: 267.77,
+    top: 263.54,
     align: 'right',
     fontSize: 8
   },
