@@ -450,6 +450,7 @@ export const TaskDecisionCreator = ({
               participantIds: validSelectedUsers,
               decisionTitle: title.trim(),
               decisionDescription: description.trim() || null,
+              tenantId: tenantData.tenant_id,
             },
           });
 
