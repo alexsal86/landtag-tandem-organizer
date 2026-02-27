@@ -141,6 +141,11 @@ interface ParentTaskOption {
 
 export function DocumentsView() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const initialTabParam = searchParams.get('tab');
+  const initialTab: 'documents' | 'letters' | 'emails' | 'press' =
+    initialTabParam === 'letters' || initialTabParam === 'emails' || initialTabParam === 'press'
+      ? initialTabParam
+      : 'documents';
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -162,7 +167,7 @@ export function DocumentsView() {
   const [selectedLetter, setSelectedLetter] = useState<Letter | undefined>(undefined);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
-  const [activeTab, setActiveTab] = useState<'documents' | 'letters' | 'emails' | 'press'>('documents');
+  const [activeTab, setActiveTab] = useState<'documents' | 'letters' | 'emails' | 'press'>(initialTab);
   const [showPressEditor, setShowPressEditor] = useState(false);
   const [selectedPressReleaseId, setSelectedPressReleaseId] = useState<string | null>(null);
   const [emailSubTab, setEmailSubTab] = useState<'compose' | 'history' | 'templates' | 'settings'>('compose');
@@ -274,6 +279,21 @@ export function DocumentsView() {
       setEmailSubTab('compose');
     }
   }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const currentTabParam = searchParams.get('tab');
+    const desiredTabParam = activeTab === 'documents' ? null : activeTab;
+
+    if (currentTabParam === desiredTabParam) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    if (desiredTabParam) {
+      nextParams.set('tab', desiredTabParam);
+    } else {
+      nextParams.delete('tab');
+    }
+    setSearchParams(nextParams, { replace: true });
+  }, [activeTab, searchParams, setSearchParams]);
 
   useEffect(() => {
     const letterId = searchParams.get('letter');
