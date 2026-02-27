@@ -1891,6 +1891,35 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               onMentionInsert={(userId) => {
                 pendingMentionsRef.current.add(userId);
               }}
+              onSubjectChange={(value) => {
+                setEditedLetter(prev => ({ ...prev, subject: value, title: value }));
+                broadcastContentChange('subject', value);
+              }}
+              onSalutationChange={(value) => {
+                setEditedLetter(prev => ({ ...prev, salutation_override: value } as any));
+              }}
+              onRecipientNameChange={(value) => {
+                setEditedLetter(prev => ({ ...prev, recipient_name: value }));
+                broadcastContentChange('recipient_name', value);
+              }}
+              onRecipientAddressChange={(value) => {
+                setEditedLetter(prev => ({ ...prev, recipient_address: value }));
+                broadcastContentChange('recipient_address', value);
+              }}
+              onSenderChange={(value) => {
+                const senderInfoId = value || undefined;
+                setEditedLetter(prev => ({ ...prev, sender_info_id: senderInfoId }));
+                broadcastContentChange('sender_info_id', senderInfoId || '');
+              }}
+              onInfoBlockChange={(newIds) => {
+                setEditedLetter(prev => ({ ...prev, information_block_ids: newIds }));
+                broadcastContentChange('information_block_ids', JSON.stringify(newIds));
+              }}
+              senderInfos={senderInfos}
+              informationBlocks={informationBlocks}
+              selectedSenderId={editedLetter.sender_info_id}
+              selectedInfoBlockIds={editedLetter.information_block_ids || []}
+              templateName={currentTemplate?.name}
               zoom={previewZoom}
               onZoomChange={setPreviewZoom}
             />
