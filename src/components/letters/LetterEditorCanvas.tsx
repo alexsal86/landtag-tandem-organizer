@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Layout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -147,9 +147,45 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   };
 
   const [internalZoom, setInternalZoom] = useState(0.75);
+  const [editorContentHeightMm, setEditorContentHeightMm] = useState(0);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
   const toolbarPortalRef = useRef<HTMLDivElement>(null);
   const zoom = externalZoom ?? internalZoom;
   const setZoom = onZoomChange ?? setInternalZoom;
+
+  // ResizeObserver to measure editor content height
+  useEffect(() => {
+    const container = editorContainerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Convert px to mm (1mm ≈ 3.7795px)
+        const heightPx = entry.contentRect.height;
+        const heightMm = heightPx / 3.7795;
+        setEditorContentHeightMm(heightMm);
+      }
+    });
+
+    // Observe the .editor-input element inside the container
+    const editorInput = container.querySelector('.editor-input');
+    if (editorInput) {
+      observer.observe(editorInput);
+    } else {
+      // Fallback: observe container itself and retry when child appears
+      const mutObs = new MutationObserver(() => {
+        const input = container.querySelector('.editor-input');
+        if (input) {
+          observer.observe(input);
+          mutObs.disconnect();
+        }
+      });
+      mutObs.observe(container, { childList: true, subtree: true });
+      return () => { mutObs.disconnect(); observer.disconnect(); };
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   const layout = layoutSettings || template?.layout_settings || {};
   const closingFormula = layout.closing?.formula;
@@ -173,6 +209,37 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const paginationTopMm = 263.77;
   const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
   const footerTopMm = layout.footer?.top || 272;
+
+  // Multi-page calculation
+  const PAGE_HEIGHT_MM = 297;
+  const FOLLOWUP_TOP_MARGIN_MM = 25;
+  const page1ContentHeightMm = footerTopMm - editorTopMm; // available content space on page 1
+  const followupPageHeightMm = footerTopMm - FOLLOWUP_TOP_MARGIN_MM; // available on page 2+
+
+  // Closing block height estimate (formula + signature + name + title)
+  const closingHeightMm = closingFormula ? (9 + 5 + (hasSignature ? 20 : 5) + (layout.closing?.signatureTitle ? 5 : 0)) : 0;
+
+  // Total content that needs to fit = editor content + closing block
+  const totalContentMm = editorContentHeightMm + closingHeightMm;
+
+  // Calculate total pages needed
+  let totalPages = 1;
+  if (totalContentMm > page1ContentHeightMm) {
+    const overflow = totalContentMm - page1ContentHeightMm;
+    totalPages = 1 + Math.ceil(overflow / followupPageHeightMm);
+  }
+
+  // Dynamic closing block position (relative to canvas top)
+  const closingTopMm = editorTopMm + editorContentHeightMm + 9; // 9mm gap after content
+
+  // Check if closing block fits on its current page, if not push to next
+  const getPageForPosition = (posMm: number) => {
+    if (posMm <= footerTopMm) return 0;
+    return Math.floor((posMm - footerTopMm) / (PAGE_HEIGHT_MM - FOLLOWUP_TOP_MARGIN_MM - (PAGE_HEIGHT_MM - footerTopMm))) + 1;
+  };
+
+  // Canvas total height
+  const canvasHeightMm = totalPages * PAGE_HEIGHT_MM;
 
   // Layout positions for overlays
   const addressFieldTop = 50; // DIN 5008
@@ -237,14 +304,14 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           style={{
             transform: `scale(${zoom})`,
             transformOrigin: 'top center',
-            marginBottom: `${(zoom - 1) * 297}mm`,
+            marginBottom: `${(zoom - 1) * canvasHeightMm}mm`,
           }}
         >
           <div
             className="mx-auto bg-white relative"
             style={{
               width: '210mm',
-              minHeight: '297mm',
+              minHeight: `${canvasHeightMm}mm`,
               boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
               fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
               fontSize: `${contentFontSizePt}pt`,
@@ -426,8 +493,9 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </EditableCanvasOverlay>
             )}
 
-            {/* Overlay: Lexical Editor positioned in content area - no maxHeight, grows freely */}
+            {/* Overlay: Lexical Editor positioned in content area */}
             <div
+              ref={editorContainerRef}
               style={{
                 position: 'absolute',
                 top: `${editorTopMm}mm`,
@@ -499,11 +567,11 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             </div>
 
             {/* Dynamic closing block rendered below editor content */}
-            {closingFormula && (
+            {closingFormula && editorContentHeightMm > 0 && (
               <div
                 style={{
                   position: 'absolute',
-                  top: `${editorTopMm + 60}mm`, // Will be repositioned by content height via CSS
+                  top: `${closingTopMm}mm`,
                   left: '25mm',
                   right: '20mm',
                   zIndex: 5,
@@ -511,7 +579,6 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                 }}
                 className="letter-closing-block"
               >
-                <div style={{ height: '9mm' }} />
                 <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
                   {closingFormula}
                 </div>
@@ -541,34 +608,131 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             )}
 
-            {/* Page break indicators at 297mm intervals */}
-            {[1, 2, 3].map((page) => (
+            {/* Fallback closing block when content hasn't been measured yet */}
+            {closingFormula && editorContentHeightMm === 0 && (
               <div
-                key={`page-break-${page}`}
                 style={{
                   position: 'absolute',
-                  top: `${297 * page}mm`,
-                  left: 0,
-                  right: 0,
-                  height: '1px',
-                  borderTop: '2px dashed rgba(0,0,0,0.15)',
-                  zIndex: 20,
+                  top: `${editorTopMm + 60}mm`,
+                  left: '25mm',
+                  right: '20mm',
+                  zIndex: 5,
                   pointerEvents: 'none',
                 }}
               >
-                <span style={{
-                  position: 'absolute',
-                  right: '5mm',
-                  top: '-10px',
-                  fontSize: '8pt',
-                  color: 'rgba(0,0,0,0.3)',
-                  backgroundColor: 'white',
-                  padding: '0 4px',
-                }}>
-                  Seite {page + 1}
-                </span>
+                <div style={{ height: '9mm' }} />
+                <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
+                  {closingFormula}
+                </div>
               </div>
-            ))}
+            )}
+
+            {/* Page separators and repeated footers/pagination for multi-page */}
+            {Array.from({ length: totalPages - 1 }, (_, i) => i + 1).map((pageIndex) => {
+              const pageBreakY = PAGE_HEIGHT_MM * pageIndex;
+              return (
+                <React.Fragment key={`page-sep-${pageIndex}`}>
+                  {/* Visual page separator - gray gap between pages */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: `${pageBreakY - 0.5}mm`,
+                      left: '-4mm',
+                      right: '-4mm',
+                      height: '12mm',
+                      background: 'hsl(var(--muted) / 0.7)',
+                      zIndex: 25,
+                      pointerEvents: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: '4mm',
+                      right: '4mm',
+                      height: '1px',
+                      boxShadow: '0 -4px 8px rgba(0,0,0,0.1)',
+                    }} />
+                    <span style={{
+                      fontSize: '8pt',
+                      color: 'hsl(var(--muted-foreground))',
+                      backgroundColor: 'hsl(var(--muted))',
+                      padding: '1px 8px',
+                      borderRadius: '4px',
+                    }}>
+                      Seite {pageIndex + 1}
+                    </span>
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: '4mm',
+                      right: '4mm',
+                      height: '1px',
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                    }} />
+                  </div>
+
+                  {/* Repeated pagination on previous page (bottom of page pageIndex) */}
+                  {paginationEnabled && (
+                    <div style={{
+                      position: 'absolute',
+                      top: `${(pageIndex - 1) * PAGE_HEIGHT_MM + paginationTopMm}mm`,
+                      left: layout.pagination?.align === 'left' ? '25mm' : undefined,
+                      right: layout.pagination?.align !== 'left' ? '20mm' : undefined,
+                      textAlign: layout.pagination?.align || 'right',
+                      fontSize: `${layout.pagination?.fontSize || 8}pt`,
+                      color: '#666',
+                      fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
+                      zIndex: 15,
+                      pointerEvents: 'none',
+                    }}>
+                      Seite {pageIndex} von {totalPages}
+                    </div>
+                  )}
+
+                  {/* Pagination on last page */}
+                  {paginationEnabled && pageIndex === totalPages - 1 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: `${pageIndex * PAGE_HEIGHT_MM + paginationTopMm}mm`,
+                      left: layout.pagination?.align === 'left' ? '25mm' : undefined,
+                      right: layout.pagination?.align !== 'left' ? '20mm' : undefined,
+                      textAlign: layout.pagination?.align || 'right',
+                      fontSize: `${layout.pagination?.fontSize || 8}pt`,
+                      color: '#666',
+                      fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
+                      zIndex: 15,
+                      pointerEvents: 'none',
+                    }}>
+                      Seite {pageIndex + 1} von {totalPages}
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+
+            {/* Update page 1 pagination to show correct total */}
+            {paginationEnabled && totalPages > 1 && (
+              <div style={{
+                position: 'absolute',
+                top: `${paginationTopMm}mm`,
+                left: layout.pagination?.align === 'left' ? '25mm' : undefined,
+                right: layout.pagination?.align !== 'left' ? '20mm' : undefined,
+                textAlign: layout.pagination?.align || 'right',
+                fontSize: `${layout.pagination?.fontSize || 8}pt`,
+                color: '#666',
+                fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
+                zIndex: 26,
+                pointerEvents: 'none',
+                backgroundColor: 'white',
+                padding: '0 2px',
+              }}>
+                Seite 1 von {totalPages}
+              </div>
+            )}
           </div>
         </div>
       </div>
