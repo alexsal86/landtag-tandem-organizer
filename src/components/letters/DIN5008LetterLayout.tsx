@@ -90,7 +90,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   const attachmentList = (attachments || [])
     .map((attachment) => (typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name || '')))
     .filter(Boolean);
-  const hasSignatureName = Boolean(layout.closing?.signatureName);
+  const hasSignature = Boolean(layout.closing?.signatureName || layout.closing?.signatureImagePath);
   const paginationGapMm = 4.23;
   const paginationHeightMm = 4;
   const contentTopMm = Number(layout.content?.top ?? 98.46);
@@ -656,7 +656,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
 
           {/* Attachments integrated into content area */}
           {attachmentList.length > 0 && (
-            <div style={{ marginTop: hasSignatureName ? '4.5mm' : '13.5mm', fontWeight: 700, fontSize: '10pt' }}>
+            <div style={{ marginTop: hasSignature ? '4.5mm' : '13.5mm', fontWeight: 700, fontSize: '10pt' }}>
               <div>Anlagen</div>
               {attachmentList.map((attachmentName, index) => (
                 <div key={`${attachmentName}-${index}`} style={{ marginTop: '1mm' }}>
@@ -714,11 +714,11 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         }
       `}</style>
 
-      {/* Attachments - positioned after content */}
-      {attachments && attachments.length > 0 && (
-        <div style={{ 
+      {/* Attachments in legacy mode */}
+      {layout.subject?.integrated === false && attachmentList.length > 0 && (
+        <div style={{
           position: 'absolute',
-          top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignatureName ? 4.5 : 13.5}mm)`,
+          top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignature ? 4.5 : 13.5}mm)`,
           left: '25mm',
           right: '20mm',
           fontWeight: 700,
