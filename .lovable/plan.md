@@ -1,109 +1,79 @@
 
 
-# Brief-Editor: Interaktive Bereiche und Toolbar-Optimierung
+# Geschlecht/Anrede-Feld fuer Kontakte
 
 ## Uebersicht
 
-Der Brief-Editor wird interaktiver gestaltet: Bereiche wie Ruecksendezeile, Adressfeld, Info-Block und Anrede werden direkt auf dem Brief editierbar. Die Lexical-Toolbar wandert ueber den Brief (wie in Word), und ein Floating-Popup erscheint beim Markieren von Text. Formen (Shapes) werden korrekt im Header gerendert.
+Es wird eine neue Spalte `gender` (Werte: `m`, `f`, `d`) zur `contacts`-Tabelle hinzugefuegt. Das Feld wird im Erstell- und Bearbeitungsformular angezeigt und fuer die automatische Anrede-Generierung in Briefen genutzt (was im Code bereits vorbereitet ist, aber mangels Daten nicht funktioniert).
 
----
+## Bestehende Kontakte aufarbeiten
 
-## 1. Formen (Shapes) im Header und in Bloecken korrekt rendern
+Es gibt **1.016 Personen-Kontakte** mit Vornamen. Die meisten deutschen Vornamen lassen sich eindeutig zuordnen. Strategie:
 
-**Problem:** `renderCanvasBlockElements()` in `DIN5008LetterLayout.tsx` behandelt nur `text` und `image` Elemente -- `shape` Elemente werden ignoriert (return null).
+1. **Automatisch per SQL**: Ein grosses Name-Mapping (ca. 200 haeufige deutsche Vornamen) wird als UPDATE-Statement ausgefuehrt, das `gender` anhand von `first_name` setzt.
+2. **Uebrig gebliebene manuell**: Kontakte, bei denen `gender` nach dem Mapping noch NULL ist, koennen ueber eine Filter-Ansicht in der Kontaktliste nachgepflegt werden (bestehendes UI mit neuem Filter "Geschlecht: nicht gesetzt").
 
-**Loesung:** Shape-Rendering analog zu `StructuredHeaderEditor.renderShapeCanvas()` hinzufuegen, aber in mm-Koordinaten statt px:
+## Aenderungen
 
-| Datei | Aenderung |
-|---|---|
-| `src/components/letters/DIN5008LetterLayout.tsx` | `renderCanvasBlockElements()` erweitern: neuen `if (element.type === 'shape')` Block mit SVG-Rendering fuer line, circle, rectangle, sunflower, lion, wappen |
+### 1. Datenbank-Migration
 
-Auch im Header-Rendering (Zeile 434ff) fehlt Shape-Support -- dort ebenfalls ergaenzen.
+Neue Spalte `gender` (text, nullable) auf `contacts`:
 
----
-
-## 2. Editierbare Bereiche auf dem Brief-Canvas
-
-### Konzept: Hover-Overlay mit Schnellbearbeitung
-
-Fuer Ruecksendezeile, Adressfeld, Info-Block und Anrede wird jeweils ein **Hover-Overlay** ueber den entsprechenden Bereich im `LetterEditorCanvas` gelegt:
-
-- **Hover**: Dezenter blauer Rahmen + kleines Edit-Icon oben rechts
-- **Klick auf den Bereich**: Oeffnet ein **Popover** (Radix Popover) direkt am Bereich, in dem die relevanten Eingabefelder angezeigt werden
-- **Popover-Inhalt je nach Bereich:**
-  - **Ruecksendezeile**: Auswahl des Absenders (Dropdown), Text-Override
-  - **Adressfeld**: Name + Adresse Textarea, Kontakt-Auswahl
-  - **Info-Block**: Auswahl der Informationsbloecke (Checkboxen)
-  - **Anrede**: Textfeld fuer Anrede-Override
-  - **Betreff**: Textfeld fuer Betreff
-
-### Technische Umsetzung
-
-| Datei | Aenderung |
-|---|---|
-| `src/components/letters/LetterEditorCanvas.tsx` | Neue Props fuer onChange-Callbacks: `onSubjectChange`, `onSalutationChange`, `onRecipientChange`, `onSenderChange`, `onInfoBlockChange`. Hover-Overlays mit Popover ueber den DIN5008-Bereichen platzieren (absolute Positionierung ueber den bekannten mm-Koordinaten). |
-| `src/components/LetterEditor.tsx` | Die neuen Callbacks an LetterEditorCanvas durchreichen, die die gleiche Logik wie die bisherigen Sidebar-Inputs nutzen |
-
-### Interaktionsablauf
-
-```text
-Benutzer hovert ueber Adressfeld
-  -> Blauer gestrichelter Rahmen erscheint + Stift-Icon
-  -> Klick oeffnet Popover mit:
-     [Kontakt auswaehlen v]
-     Name: [____________]
-     Adresse:
-     [________________]
-     [________________]
-     [Uebernehmen]
+```sql
+ALTER TABLE contacts ADD COLUMN gender text;
 ```
 
----
+### 2. Backfill-Migration (Daten-Update)
 
-## 3. Lexical-Toolbar ueber dem Brief (wie Word)
+Ein SQL-Statement, das die haeufigsten deutschen Vornamen mappt:
 
-**Aktuell:** Die Toolbar ist im EnhancedLexicalEditor eingebettet und erscheint innerhalb des Briefblatts.
+```sql
+UPDATE contacts SET gender = 'm' WHERE contact_type = 'person' AND gender IS NULL
+  AND first_name IN ('Martin','Peter','Klaus','Thomas','Michael','Andreas',
+    'Juergen','Wolfgang','Christian','Oliver','Markus','Stefan','Manfred',
+    'Alexander','Tobias','Frank','Felix','Joachim','Bernd','Daniel',
+    'Roland','Guenter','Matthias','Dieter','Norbert','Ulrich','Georg',
+    'Rainer','Werner','Helmut','Uwe','Volker','Hans','Karl','Friedrich',
+    'Armin','Florian','Arnd','Eckart','Jan','Joerg', ...);
 
-**Neu:** Die Toolbar wird aus dem Brief herausgeloest und in die Zoom-Toolbar-Leiste integriert, die bereits ueber dem Canvas sitzt. So hat der Benutzer die volle Briefflaeche fuer den Text.
+UPDATE contacts SET gender = 'f' WHERE contact_type = 'person' AND gender IS NULL
+  AND first_name IN ('Sabine','Barbara','Gabriele','Ingrid','Kirsten',
+    'Bettina','Elisabeth','Monika','Christine','Andrea','Petra','Susanne',
+    'Claudia','Renate','Ursula','Karin','Birgit','Heike','Martina',
+    'Angelika','Gundelinde','Dagmar', ...);
+```
+
+### 3. UI: Kontakt erstellen (`src/pages/CreateContact.tsx`)
+
+- `gender` Feld zum `ContactFormData` Interface hinzufuegen (default: `""`)
+- Select-Dropdown "Anrede" mit Optionen: Herr / Frau / Divers
+- Nur bei `contact_type === 'person'` anzeigen
+- Beim Speichern mit uebermitteln
+
+### 4. UI: Kontakt bearbeiten (`src/components/ContactEditForm.tsx`)
+
+- `gender` zum `Contact` Interface hinzufuegen
+- Gleiches Select-Dropdown wie bei Erstellen
+- Nur bei `contact_type === 'person'` anzeigen
+
+### 5. Brief-Editor (`src/components/LetterEditor.tsx`)
+
+- Den Cast `(contact as any).gender` durch typisiertes Feld ersetzen
+- `gender` in die Kontakt-Abfrage aufnehmen (falls nicht bereits in Select-Spalten)
+
+### 6. TypeScript-Typen
+
+- `gender` in allen relevanten Kontakt-Interfaces ergaenzen (`Contact` in `useInfiniteContacts`, `ContactEditForm`, `CreateContact`, etc.)
+
+## Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/components/letters/LetterEditorCanvas.tsx` | `showToolbar={false}` an EnhancedLexicalEditor uebergeben. Stattdessen die `EnhancedLexicalToolbar` in den Toolbar-Bereich ueber dem Canvas rendern. Dafuer muss der LexicalComposer-Context nach oben gehoben werden oder die Toolbar per Ref/Callback angebunden werden. |
-| `src/components/EnhancedLexicalEditor.tsx` | Option ergaenzen, um die Toolbar extern zu rendern (z.B. `renderToolbar` Prop oder `editorRef` fuer externen Zugriff) |
-
-### Floating-Format-Toolbar bei Textmarkierung
-
-Der bestehende `FloatingTextFormatToolbar` wird bereits im EnhancedLexicalEditor eingebunden. Dieser bleibt aktiv und erscheint automatisch, wenn Text markiert wird -- genau das gewuenschte Verhalten fuer schnelle Formatierungen (Fett, Kursiv, Unterstrichen etc.).
-
----
-
-## 4. Anrede direkt auf dem Brief aenderbar
-
-Die Anrede wird wie die anderen Bereiche (Punkt 2) als Hover-editierbarer Bereich behandelt:
-
-- Hover zeigt blauen Rahmen
-- Klick oeffnet Popover mit Textfeld fuer Anrede-Override
-- Aenderungen werden sofort im Brief sichtbar
-
-Dies wird als Teil der Hover-Overlay-Implementierung in `LetterEditorCanvas.tsx` umgesetzt.
-
----
-
-## 5. Besserer Workflow: Briefvorlage zu Brief
-
-Um den Uebergang von der Vorlage zum fertigen Brief zu verbessern:
-
-- **Vorlage-Indikatoren**: Oben im Canvas wird ein dezenter Hinweis gezeigt, welches Template aktiv ist, mit Link zum schnellen Wechsel
-- **Template-Schnellwechsel**: Ein kleines Badge/Button im Toolbar-Bereich zeigt den Template-Namen und oeffnet bei Klick die Template-Auswahl
-
----
-
-## Zusammenfassung der Datei-Aenderungen
-
-| Datei | Art | Beschreibung |
-|---|---|---|
-| `src/components/letters/DIN5008LetterLayout.tsx` | Bearbeiten | Shape-Rendering in `renderCanvasBlockElements()` und Header ergaenzen |
-| `src/components/letters/LetterEditorCanvas.tsx` | Bearbeiten | Hover-Overlays mit Popovers fuer alle editierbaren Bereiche; Toolbar nach oben verschieben; neue Props fuer onChange-Callbacks |
-| `src/components/LetterEditor.tsx` | Bearbeiten | Neue Callbacks an LetterEditorCanvas durchreichen |
-| `src/components/EnhancedLexicalEditor.tsx` | Bearbeiten | Option fuer externe Toolbar-Positionierung |
+| Migration (SQL) | `ALTER TABLE contacts ADD COLUMN gender text` + Backfill-Update |
+| `src/pages/CreateContact.tsx` | Gender-Feld im Formular |
+| `src/components/ContactEditForm.tsx` | Gender-Feld im Formular |
+| `src/components/LetterEditor.tsx` | Typisierung `gender` statt `any`-Cast |
+| `src/hooks/useInfiniteContacts.tsx` | `gender` in Select-Spalten |
+| `src/hooks/useAllPersonContacts.tsx` | `gender` in Select-Spalten |
+| `src/lib/letterVariables.ts` | Keine Aenderung noetig (nutzt `gender` bereits korrekt) |
 
