@@ -180,7 +180,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     const paginationGap = 4.23;
     const paginationHeight = 4;
     const hasPagination = letter.show_pagination ?? false;
-    const paginationTop = layoutSettings.pagination?.top ?? (footerTop - paginationGap - paginationHeight);
+    const paginationTop = 263.77;
     const contentBottom = hasPagination
       ? paginationTop - paginationGap
       : Math.min(contentTop + 165, footerTop - paginationGap);
