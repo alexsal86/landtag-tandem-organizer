@@ -11,6 +11,12 @@ import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 
+const getBlockLineFontStack = (fontFamily?: string): string => (
+  fontFamily === 'Cambria'
+    ? 'Cambria, "Times New Roman", Times, serif'
+    : 'Calibri, Carlito, "Segoe UI", Arial, sans-serif'
+);
+
 type BlockKey = 'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments' | 'pagination';
 type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general' | 'block-address' | 'block-info' | 'block-subject' | 'block-content' | 'block-attachments';
 
@@ -642,7 +648,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
 
             <div
               className="absolute bg-white shadow-xl relative select-none"
-              style={{ left: RULER_SIZE, top: RULER_SIZE, width: pagePx.w, height: pagePx.h, fontFamily: 'Arial, sans-serif' }}
+              style={{ left: RULER_SIZE, top: RULER_SIZE, width: pagePx.w, height: pagePx.h, fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif' }}
             >
               {!plainPreview && <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />}
 
@@ -736,7 +742,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   const isVar = hasVariablePlaceholder(line.value || '');
                   const underlineThisLine = index === lastContentIndex;
                   return (
-                    <div key={line.id} style={{ fontSize: fontSizePx, fontFamily: line.fontFamily || 'Calibri', lineHeight: '1.3' }}>
+                    <div key={line.id} style={{ fontSize: fontSizePx, fontFamily: getBlockLineFontStack(line.fontFamily), lineHeight: '1.3' }}>
                       <span className="inline-flex items-center gap-0.5" style={underlineThisLine ? { borderBottom: '1px solid #000' } : undefined}>
                         {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
                         <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
@@ -836,7 +842,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                         className="text-gray-500 w-full"
                         style={{
                           textAlign: (localLayout.pagination?.align || 'right'),
-                          fontFamily: 'Arial, sans-serif',
+                          fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
                           fontSize: `${((localLayout.pagination?.fontSize || 8) * (25.4 / 72) * SCALE).toFixed(2)}px`,
                         }}
                       >
@@ -868,7 +874,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                                 if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE }} />;
                                 const rv = resolveLineValue(line.value);
                                 return (
-                                  <div key={line.id} className="truncate" style={{ fontSize: fPx, fontFamily: line.fontFamily || 'Calibri', lineHeight: '1.3', fontWeight: line.valueBold ? 'bold' : 'normal', color: (line as any).color || undefined }}>
+                                  <div key={line.id} className="truncate" style={{ fontSize: fPx, fontFamily: getBlockLineFontStack(line.fontFamily), lineHeight: '1.3', fontWeight: line.valueBold ? 'bold' : 'normal', color: (line as any).color || undefined }}>
                                     {line.type === 'label-value' ? `${line.label || ''} ${rv}`.trim() : (rv || '\u00A0')}
                                   </div>
                                 );

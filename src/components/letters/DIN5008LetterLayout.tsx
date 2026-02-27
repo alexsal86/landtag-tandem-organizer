@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import type { HeaderElement, TextElement, ShapeElement } from '@/components/canvas-engine/types';
-import { type BlockLine, type BlockLineData, isLineMode } from '@/components/letters/BlockLineEditor';
+import { type BlockLine, type BlockLineData, getBlockLineFontStack, isLineMode } from '@/components/letters/BlockLineEditor';
 import { buildFooterBlocksFromStored } from '@/components/letters/footerBlockUtils';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 
@@ -301,7 +301,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                     ? `${line.label || ''} ${line.value || ''}`.trim()
                     : (line.value || '');
                   if (!content) return null;
-                  return <div key={lineIndex} style={{ fontSize: `${Math.max(6, Math.min(12, Number(line.fontSize) || 8))}pt`, fontFamily: line.fontFamily || 'Calibri', fontWeight: line.valueBold ? 'bold' : 'normal', color: line.color || undefined }}>{content}</div>;
+                  return <div key={lineIndex} style={{ fontSize: `${Math.max(6, Math.min(12, Number(line.fontSize) || 8))}pt`, fontFamily: getBlockLineFontStack(line.fontFamily), fontWeight: line.valueBold ? 'bold' : 'normal', color: line.color || undefined }}>{content}</div>;
                 })}
               </div>
             </div>
@@ -432,7 +432,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           if (line.type === 'text-only') {
             return (
               <div key={line.id} style={{ lineHeight: '1.3' }}>
-                <span style={{ ...lineWrapperStyle, fontSize: `${line.fontSize || 9}pt`, fontFamily: line.fontFamily || 'Calibri', fontWeight: line.valueBold ? 'bold' : 'normal' }}>
+                <span style={{ ...lineWrapperStyle, fontSize: `${line.fontSize || 9}pt`, fontFamily: getBlockLineFontStack(line.fontFamily), fontWeight: line.valueBold ? 'bold' : 'normal' }}>
                   {line.value || '\u00A0'}
                 </span>
               </div>
@@ -442,7 +442,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           // label-value
           return (
             <div key={line.id} style={{ lineHeight: '1.3' }}>
-              <span style={{ ...lineWrapperStyle, fontSize: `${line.fontSize || 9}pt`, fontFamily: line.fontFamily || 'Calibri' }}>
+              <span style={{ ...lineWrapperStyle, fontSize: `${line.fontSize || 9}pt`, fontFamily: getBlockLineFontStack(line.fontFamily) }}>
                 <span style={{ fontWeight: line.labelBold !== false ? 'bold' : 'normal' }}>{line.label || ''}</span>
                 <span style={{ fontWeight: line.valueBold ? 'bold' : 'normal' }}>{line.value || ''}</span>
               </span>
@@ -459,7 +459,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       width: '210mm', 
       margin: '0 auto',
       padding: '0',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
       fontSize: '11pt',
       lineHeight: '1.2',
       position: 'relative'
@@ -878,7 +878,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           textAlign: layout.pagination?.align || 'right',
           fontSize: `${layout.pagination?.fontSize || 8}pt`,
           color: '#666',
-          fontFamily: 'Arial, sans-serif'
+          fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif'
         }}>
           Seite 1 von 1
         </div>
