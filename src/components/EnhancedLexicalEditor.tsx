@@ -34,6 +34,7 @@ import { TRANSFORMERS } from '@lexical/markdown';
 // Custom nodes
 import { ImageNode } from './nodes/ImageNode';
 import { MentionNode } from './nodes/MentionNode';
+import { TrackInsertNode, TrackDeleteNode } from './nodes/TrackChangeNode';
 
 // UI
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
@@ -43,6 +44,8 @@ import { EnhancedLexicalToolbar } from './EnhancedLexicalToolbar';
 import { ImagePlugin } from './plugins/ImagePlugin';
 import { CommentPlugin, CommentMarkNode } from './plugins/CommentPlugin';
 import { MentionsPlugin } from './plugins/MentionsPlugin';
+import { TrackChangesPlugin } from './plugins/TrackChangesPlugin';
+import { TrackChangesToolbar } from './plugins/TrackChangesToolbar';
 
 // AutoLink matchers
 const URL_REGEX =
@@ -70,6 +73,14 @@ interface EnhancedLexicalEditorProps {
   renderToolbarPortal?: React.RefObject<HTMLDivElement | null>;
   /** Default font size for the toolbar's FontSizePlugin (e.g. "11pt") */
   defaultFontSize?: string;
+  /** Track Changes: review mode active */
+  isReviewMode?: boolean;
+  /** Track Changes: reviewer display name */
+  reviewerName?: string;
+  /** Track Changes: reviewer user id */
+  reviewerId?: string;
+  /** Show accept/reject buttons for tracked changes */
+  showAcceptReject?: boolean;
   // Legacy props - kept for API compatibility
   enableCollaboration?: boolean;
   useYjsCollaboration?: boolean;
@@ -171,6 +182,10 @@ export default function EnhancedLexicalEditor({
   onMentionInsert,
   renderToolbarPortal,
   defaultFontSize,
+  isReviewMode = false,
+  reviewerName = '',
+  reviewerId = '',
+  showAcceptReject = false,
 }: EnhancedLexicalEditorProps) {
   const initialConfig = useMemo(() => ({
     namespace: 'EnhancedEditor',
@@ -194,6 +209,8 @@ export default function EnhancedLexicalEditor({
       ImageNode,
       MentionNode,
       CommentMarkNode,
+      TrackInsertNode,
+      TrackDeleteNode,
     ],
     onError: (error: Error) => {
       console.error('Lexical error:', error);
@@ -235,6 +252,9 @@ export default function EnhancedLexicalEditor({
         <div className="editor-inner relative">
           {!renderToolbarPortal && toolbarElement}
 
+          {/* Track Changes banner / accept-reject bar */}
+          <TrackChangesToolbar isReviewMode={isReviewMode} showAcceptReject={showAcceptReject} />
+
           <div className="relative">
             <RichTextPlugin
               contentEditable={
@@ -271,6 +291,13 @@ export default function EnhancedLexicalEditor({
           <ImagePlugin />
           <MentionsPlugin onMentionInsert={onMentionInsert} />
           <CommentPlugin documentId={documentId} />
+          {isReviewMode && (
+            <TrackChangesPlugin
+              isReviewMode={isReviewMode}
+              authorId={reviewerId}
+              authorName={reviewerName}
+            />
+          )}
         </div>
       </LexicalComposer>
     </div>

@@ -49,6 +49,12 @@ interface LetterEditorCanvasProps {
   onContentChange: (content: string, contentNodes?: string, contentHtml?: string) => void;
   onMentionInsert?: (userId: string, displayName: string) => void;
 
+  // Track Changes / Review mode
+  isReviewMode?: boolean;
+  reviewerName?: string;
+  reviewerId?: string;
+  showAcceptReject?: boolean;
+
   // Editable field callbacks
   onSubjectChange?: (subject: string) => void;
   onSalutationChange?: (salutation: string) => void;
@@ -97,6 +103,10 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   canEdit = true,
   documentId,
   onContentChange,
+  isReviewMode = false,
+  reviewerName = '',
+  reviewerId = '',
+  showAcceptReject = false,
   onMentionInsert,
   onSubjectChange,
   onSalutationChange,
@@ -458,6 +468,10 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                   onMentionInsert={onMentionInsert}
                   renderToolbarPortal={toolbarPortalRef}
                   defaultFontSize={`${contentFontSizePt}pt`}
+                  isReviewMode={isReviewMode}
+                  reviewerName={reviewerName}
+                  reviewerId={reviewerId}
+                  showAcceptReject={showAcceptReject}
                 />
                 <style>{`
                   .letter-canvas-editor > .relative {

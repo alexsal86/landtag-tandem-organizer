@@ -1837,6 +1837,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               infoBlockLines={substitutedBlocks.lineBlocks.infoBlock}
               canEdit={canEdit}
               documentId={letter?.id}
+              isReviewMode={isReviewer && (currentStatus === 'pending_approval' || currentStatus === 'review')}
+              reviewerName={user?.id ? (userProfiles[user.id]?.display_name || user.email || '') : ''}
+              reviewerId={user?.id || ''}
+              showAcceptReject={isCreator && currentStatus === 'revision_requested'}
               onContentChange={(content, contentNodes) => {
                 if (isUpdatingFromRemoteRef.current || !canEdit) return;
                 
