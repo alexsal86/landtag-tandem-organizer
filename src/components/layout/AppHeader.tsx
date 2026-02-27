@@ -118,6 +118,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
 
   // Get mywork tab from URL
   const myworkTab = new URLSearchParams(location.search).get('tab');
+  const isLetterManagement = currentSection === 'documents' && myworkTab === 'letters';
   
   // Determine quick action - check mywork tabs first
   const getQuickAction = () => {
@@ -159,7 +160,12 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
   };
 
   return (
-    <header className="h-14 border-b bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.1)] flex items-center justify-between px-4 sticky top-0 z-40">
+    <header
+      className={cn(
+        'h-14 bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] flex items-center justify-between px-4 sticky top-0 z-40',
+        !isLetterManagement && 'border-b border-[hsl(var(--nav-foreground)/0.1)]',
+      )}
+    >
       {/* Left: Quick Action + Search */}
       <div className="hidden md:flex items-center gap-4">
         {/* Quick Action Button */}
@@ -333,4 +339,3 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
     </header>
   );
 };
-
