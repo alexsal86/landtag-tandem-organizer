@@ -87,6 +87,7 @@ const COLOR_PRESETS = [
 
 const BASE_SCALE = CSS_PX_PER_MM;
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const PAGINATION_PREVIEW_WIDTH_MM = 18;
 const snapMm = (val: number) => Math.round(val);
 const clamp = (val: number, min: number, max: number) => Math.min(max, Math.max(min, val));
 
@@ -326,8 +327,12 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
         return { x: localLayout.margins.left, y: localLayout.footer.top, w: contentWidth, h: localLayout.footer.height };
       case 'attachments':
         return { x: localLayout.margins.left, y: localLayout.attachments.top, w: contentWidth, h: 8 };
-      case 'pagination':
-        return { x: localLayout.margins.left, y: pag.top, w: contentWidth, h: 5 };
+      case 'pagination': {
+        const x = pag.align === 'left'
+          ? localLayout.margins.left
+          : localLayout.pageWidth - localLayout.margins.right - PAGINATION_PREVIEW_WIDTH_MM;
+        return { x, y: pag.top, w: PAGINATION_PREVIEW_WIDTH_MM, h: 4 };
+      }
     }
   };
 
@@ -732,9 +737,8 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                       {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                     </>
                   ) : block.key === 'pagination' ? (
-                    <div className="flex items-center justify-between h-full">
-                      <span className="text-[9px]">{block.label}</span>
-                      <span className="text-[9px] text-gray-500 italic" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
+                    <div className="flex items-center h-full">
+                      <span className="text-[9px] text-gray-500 italic w-full" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
                     </div>
                   ) : block.key === 'footer' && isLineModeBlock ? (
                     (() => {
