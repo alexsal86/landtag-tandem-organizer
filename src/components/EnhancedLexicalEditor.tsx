@@ -35,6 +35,7 @@ import { TRANSFORMERS } from '@lexical/markdown';
 import { ImageNode } from './nodes/ImageNode';
 import { MentionNode } from './nodes/MentionNode';
 import { TrackInsertNode, TrackDeleteNode } from './nodes/TrackChangeNode';
+import { PageBreakNode } from './nodes/PageBreakNode';
 
 // UI
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
@@ -46,6 +47,7 @@ import { CommentPlugin, CommentMarkNode } from './plugins/CommentPlugin';
 import { MentionsPlugin } from './plugins/MentionsPlugin';
 import { TrackChangesPlugin } from './plugins/TrackChangesPlugin';
 import { TrackChangesToolbar } from './plugins/TrackChangesToolbar';
+import { PageLayoutPlugin } from './plugins/PageLayoutPlugin';
 
 // AutoLink matchers
 const URL_REGEX =
@@ -81,6 +83,12 @@ interface EnhancedLexicalEditorProps {
   reviewerId?: string;
   /** Show accept/reject buttons for tracked changes */
   showAcceptReject?: boolean;
+  /** Enable page break simulation */
+  enablePagination?: boolean;
+  /** Callback when page count changes */
+  onPageCountChange?: (count: number) => void;
+  /** Usable page content height in mm (default: A4 DIN5008) */
+  pageContentHeightMm?: number;
   // Legacy props - kept for API compatibility
   enableCollaboration?: boolean;
   useYjsCollaboration?: boolean;
@@ -186,6 +194,9 @@ export default function EnhancedLexicalEditor({
   reviewerName = '',
   reviewerId = '',
   showAcceptReject = false,
+  enablePagination = false,
+  onPageCountChange,
+  pageContentHeightMm,
 }: EnhancedLexicalEditorProps) {
   const initialConfig = useMemo(() => ({
     namespace: 'EnhancedEditor',
@@ -211,6 +222,7 @@ export default function EnhancedLexicalEditor({
       CommentMarkNode,
       TrackInsertNode,
       TrackDeleteNode,
+      PageBreakNode,
     ],
     onError: (error: Error) => {
       console.error('Lexical error:', error);
@@ -298,6 +310,11 @@ export default function EnhancedLexicalEditor({
               authorName={reviewerName}
             />
           )}
+          <PageLayoutPlugin
+            enabled={enablePagination}
+            contentHeightMm={pageContentHeightMm}
+            onPageCountChange={onPageCountChange}
+          />
         </div>
       </LexicalComposer>
     </div>
