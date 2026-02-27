@@ -332,6 +332,15 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   const contentWidth = localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right;
   const pagePx = { w: localLayout.pageWidth * SCALE, h: localLayout.pageHeight * SCALE };
   const blockContent = localLayout.blockContent || {};
+  const paginationGapMm = 4.23;
+  const getEffectiveContentHeight = () => {
+    const pag = localLayout.pagination || { enabled: true, top: 263.77, align: 'right', fontSize: 8 };
+    const paginationEnabled = pag.enabled ?? true;
+    if (!paginationEnabled) return localLayout.content.maxHeight;
+
+    const contentBottom = pag.top - paginationGapMm;
+    return Math.max(20, Math.min(localLayout.content.maxHeight, contentBottom - localLayout.content.top));
+  };
 
   const getRect = (key: BlockKey): Rect => {
     const pag = localLayout.pagination || { enabled: true, top: 263.77, align: 'right', fontSize: 8 };
@@ -345,7 +354,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       case 'subject':
         return { x: localLayout.margins.left, y: localLayout.subject.top, w: contentWidth, h: Math.max(8, localLayout.subject.marginBottom + 4) };
       case 'content':
-        return { x: localLayout.margins.left, y: localLayout.content.top, w: contentWidth, h: localLayout.content.maxHeight };
+        return { x: localLayout.margins.left, y: localLayout.content.top, w: contentWidth, h: getEffectiveContentHeight() };
       case 'footer':
         return { x: localLayout.margins.left, y: localLayout.footer.top, w: contentWidth, h: localLayout.footer.height };
       case 'attachments':
@@ -774,8 +783,9 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                       {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                     </>
                   ) : block.key === 'pagination' ? (
-                    <div className="flex items-center h-full">
-                      <span className="text-[9px] text-gray-500 italic w-full" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
+                    <div className="flex items-center justify-between h-full">
+                      <span className="text-[9px]">{block.label}</span>
+                      <span className="text-[9px] text-gray-500" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
                     </div>
                   ) : block.key === 'footer' && isLineModeBlock ? (
                     (() => {
