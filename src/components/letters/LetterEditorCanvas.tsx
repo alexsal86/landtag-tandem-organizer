@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ContactSelector } from '@/components/ContactSelector';
 import { DIN5008LetterLayout } from './DIN5008LetterLayout';
 import { EditableCanvasOverlay } from './EditableCanvasOverlay';
 import EnhancedLexicalEditor from '@/components/EnhancedLexicalEditor';
@@ -52,6 +53,7 @@ interface LetterEditorCanvasProps {
   onSalutationChange?: (salutation: string) => void;
   onRecipientNameChange?: (name: string) => void;
   onRecipientAddressChange?: (address: string) => void;
+  onRecipientContactSelect?: (contact: any) => void;
   onSenderChange?: (senderId: string) => void;
   onInfoBlockChange?: (blockIds: string[]) => void;
 
@@ -59,6 +61,7 @@ interface LetterEditorCanvasProps {
   senderInfos?: any[];
   informationBlocks?: any[];
   selectedSenderId?: string;
+  selectedRecipientContactId?: string;
   selectedInfoBlockIds?: string[];
   templateName?: string;
 
@@ -98,11 +101,13 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   onSalutationChange,
   onRecipientNameChange,
   onRecipientAddressChange,
+  onRecipientContactSelect,
   onSenderChange,
   onInfoBlockChange,
   senderInfos = [],
   informationBlocks = [],
   selectedSenderId,
+  selectedRecipientContactId,
   selectedInfoBlockIds = [],
   templateName,
   zoom: externalZoom,
@@ -283,6 +288,15 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               canEdit={canEdit && !!(onRecipientNameChange || onRecipientAddressChange)}
             >
               <div className="space-y-2">
+                <div>
+                  <Label className="text-xs">Aus Kontakten wählen</Label>
+                  <ContactSelector
+                    onSelect={(contact) => onRecipientContactSelect?.(contact)}
+                    selectedContactId={selectedRecipientContactId}
+                    placeholder="Kontakt aus Adressbuch wählen..."
+                    className="text-xs"
+                  />
+                </div>
                 <div>
                   <Label className="text-xs">Name</Label>
                   <Input
