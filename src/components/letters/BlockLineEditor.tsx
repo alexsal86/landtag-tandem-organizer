@@ -81,7 +81,7 @@ const DIN5008_RETURN_ADDRESS_TEMPLATE: BlockLine[] = [
 ];
 
 interface BlockLineEditorProps {
-  blockType: 'infoBlock' | 'addressField' | 'returnAddress';
+  blockType: 'infoBlock' | 'addressField' | 'returnAddress' | 'footer';
   lines: BlockLine[];
   onChange: (lines: BlockLine[]) => void;
 }
@@ -90,8 +90,26 @@ let nextId = 1;
 const genId = () => `bl-${Date.now()}-${nextId++}`;
 
 export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lines, onChange }) => {
-  const variables = blockType === 'infoBlock' ? INFO_BLOCK_VARIABLES : blockType === 'returnAddress' ? RETURN_ADDRESS_VARIABLES : ADDRESS_FIELD_VARIABLES;
-  const din5008Template = blockType === 'infoBlock' ? DIN5008_INFO_BLOCK_TEMPLATE : blockType === 'returnAddress' ? DIN5008_RETURN_ADDRESS_TEMPLATE : DIN5008_ADDRESS_TEMPLATE;
+  const footerVariables: AvailableVariable[] = [
+    ...RETURN_ADDRESS_VARIABLES,
+    { key: '{{telefon}}', label: 'Telefon', preview: '0711 / 2063-623' },
+    { key: '{{email}}', label: 'E-Mail', preview: 'alexander.salomon@gruene.landtag-bw.de' },
+    { key: '{{webseite}}', label: 'Webseite', preview: 'alexander-salomon.de' },
+  ];
+  const variables = blockType === 'infoBlock'
+    ? INFO_BLOCK_VARIABLES
+    : blockType === 'returnAddress'
+      ? RETURN_ADDRESS_VARIABLES
+      : blockType === 'footer'
+        ? footerVariables
+        : ADDRESS_FIELD_VARIABLES;
+  const din5008Template = blockType === 'infoBlock'
+    ? DIN5008_INFO_BLOCK_TEMPLATE
+    : blockType === 'returnAddress'
+      ? DIN5008_RETURN_ADDRESS_TEMPLATE
+      : blockType === 'footer'
+        ? []
+        : DIN5008_ADDRESS_TEMPLATE;
 
   const addLine = (type: BlockLine['type']) => {
     const newLine: BlockLine = type === 'spacer'

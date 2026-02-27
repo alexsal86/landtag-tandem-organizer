@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -1112,26 +1112,6 @@ export function EmployeesView() {
     }
   };
 
-  const totals = useMemo(() => {
-    const init = {
-      employees: employees.length,
-      sick: 0,
-      vacation: 0,
-      other: 0,
-      pending: 0,
-    };
-    return employees.reduce((acc, e) => {
-      const a = leaves[e.user_id];
-      if (a) {
-        acc.sick += a.counts.sick;
-        acc.vacation += a.counts.vacation;
-        acc.other += a.counts.other;
-        acc.pending += a.pending.sick + a.pending.vacation + a.pending.other;
-      }
-      return acc;
-    }, init);
-  }, [employees, leaves]);
-
   if (!isAdmin) {
     const pendingCount =
       (selfLeaveAgg?.pending.sick ?? 0) +
@@ -1340,7 +1320,7 @@ export function EmployeesView() {
         </div>
       </header>
 
-      <Tabs defaultValue="overview" className="px-4 sm:px-6">
+      <Tabs defaultValue="overview" className="mt-4">
         <TabsList className="mb-4">
           <TabsTrigger value="overview">
             <Calendar className="h-4 w-4 mr-2" />
@@ -1353,43 +1333,8 @@ export function EmployeesView() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Mitarbeiter</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-semibold">{totals.employees}</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Krank (gesamt)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-semibold">{totals.sick}</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Urlaub (gesamt)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-semibold">{totals.vacation}</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Offene Anträge</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-semibold">{totals.pending}</div>}
-          </CardContent>
-        </Card>
-      </section>
-
       {pendingLeaves.length > 0 && (
-        <section className="px-4 sm:px-6">
+        <section>
           <Card>
             <CardHeader>
               <CardTitle>Offene Urlaubsanträge ({pendingLeaves.length})</CardTitle>
@@ -1497,7 +1442,7 @@ export function EmployeesView() {
         </section>
       )}
 
-      <section className="p-4 sm:p-6">
+      <section>
         <Card>
           <CardHeader>
             <CardTitle>Mitarbeiterliste</CardTitle>
@@ -1573,7 +1518,7 @@ export function EmployeesView() {
                                   updateHours(e.user_id, newValue);
                                 }
                               }}
-                              className="w-20"
+                              className="w-24 h-10 rounded-lg border-slate-200 bg-slate-50/80 font-medium"
                               min="1"
                               max="39.5"
                             />
@@ -1596,7 +1541,7 @@ export function EmployeesView() {
                                 updateDaysPerWeek(e.user_id, newValue);
                               }
                             }}
-                            className="w-20"
+                            className="w-24 h-10 rounded-lg border-slate-200 bg-slate-50/80 font-medium"
                             min="1"
                             max="5"
                           />
@@ -1614,7 +1559,7 @@ export function EmployeesView() {
                                 updateVacationDays(e.user_id, newValue);
                               }
                             }}
-                            className="w-20"
+                            className="w-24 h-10 rounded-lg border-slate-200 bg-slate-50/80 font-medium"
                             min="0"
                             max="50"
                           />
@@ -1630,7 +1575,7 @@ export function EmployeesView() {
                               ));
                               updateStartDate(e.user_id, newValue);
                             }}
-                            className="w-40"
+                            className="w-44 h-10 rounded-lg border-slate-200 bg-slate-50/80 font-medium"
                           />
                         </TableCell>
                         <TableCell>

@@ -16,7 +16,6 @@ import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
-import { StructuredFooterEditor } from '@/components/letters/StructuredFooterEditor';
 import { LayoutSettingsEditor } from '@/components/letters/LayoutSettingsEditor';
 import { CanvasToolbar } from '@/components/letters/CanvasToolbar';
 import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCanvasDesigner';
@@ -24,6 +23,8 @@ import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayo
 import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
 import { BlockLineEditor, type BlockLine, type BlockLineData, isLineMode } from '@/components/letters/BlockLineEditor';
 import { LetterTemplateSettings } from '@/components/letters/LetterTemplateSettings';
+import { FooterBlockLineEditor } from '@/components/letters/FooterBlockLineEditor';
+import { parseFooterBlocksForEditor, toFooterLineBlocksData } from '@/components/letters/footerBlockUtils';
 
 interface LetterTemplate {
   id: string;
@@ -285,8 +286,23 @@ const LetterTemplateManager: React.FC = () => {
   };
 
   // Strip blobUrl from elements before persisting - blobUrls are runtime-only
-  const stripBlobUrls = (elements: any[]): any[] =>
-    elements.map(({ blobUrl, ...rest }) => rest);
+  const stripBlobUrls = (elements: any): any => {
+    if (Array.isArray(elements)) {
+      return elements.map(({ blobUrl, ...rest }) => rest);
+    }
+
+    if (elements && typeof elements === 'object' && Array.isArray((elements as any).blocks)) {
+      return {
+        ...elements,
+        blocks: (elements as any).blocks.map((block: any) => ({
+          ...block,
+          lines: Array.isArray(block?.lines) ? block.lines.map(({ blobUrl, ...rest }: any) => rest) : [],
+        })),
+      };
+    }
+
+    return elements;
+  };
 
   const stripBlobUrlsFromLayoutSettings = (settings: any): any => {
     if (!settings || typeof settings !== 'object') return settings;
@@ -319,7 +335,9 @@ const LetterTemplateManager: React.FC = () => {
         default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
         header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
         header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
-        footer_blocks: cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null,
+        footer_blocks: Array.isArray(cleanedFooterBlocks)
+          ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null)
+          : cleanedFooterBlocks,
         layout_settings: cleanedLayoutSettings as any
       });
       if (error) throw error;
@@ -346,7 +364,9 @@ const LetterTemplateManager: React.FC = () => {
         default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
         header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
         header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
-        footer_blocks: cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null,
+        footer_blocks: Array.isArray(cleanedFooterBlocks)
+          ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null)
+          : cleanedFooterBlocks,
         layout_settings: cleanedLayoutSettings as any, updated_at: new Date().toISOString()
       }).eq('id', editingTemplate.id);
       if (error) throw error;
@@ -383,11 +403,12 @@ const LetterTemplateManager: React.FC = () => {
       if (typeof template.header_text_elements === 'string') { try { headerElements = JSON.parse(template.header_text_elements); } catch { headerElements = []; } }
       else if (Array.isArray(template.header_text_elements)) { headerElements = template.header_text_elements; }
     }
-    let footerBlocks: any[] = [];
+    let rawFooterBlocks: any = [];
     if ((template as any).footer_blocks) {
-      if (typeof (template as any).footer_blocks === 'string') { try { footerBlocks = JSON.parse((template as any).footer_blocks); } catch { footerBlocks = []; } }
-      else if (Array.isArray((template as any).footer_blocks)) { footerBlocks = (template as any).footer_blocks; }
+      if (typeof (template as any).footer_blocks === 'string') { try { rawFooterBlocks = JSON.parse((template as any).footer_blocks); } catch { rawFooterBlocks = []; } }
+      else { rawFooterBlocks = (template as any).footer_blocks; }
     }
+    const footerBlocks = parseFooterBlocksForEditor(rawFooterBlocks);
     const normalizedLayoutSettings = normalizeLayoutBlockContentImages(template.layout_settings || DEFAULT_DIN5008_LAYOUT);
     const legacyHeaderElements = (((normalizedLayoutSettings as any).blockContent || {}).header || []) as any[];
 
@@ -534,14 +555,10 @@ const LetterTemplateManager: React.FC = () => {
       </TabsContent>
 
       <TabsContent value="footer-designer" className="space-y-4">
-        {renderSharedElementsEditor('footer',
-          formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right,
-          formData.layout_settings.footer.height
-        )}
-        <StructuredFooterEditor
-          initialBlocks={formData.footer_blocks}
-          onBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
-          footerHeight={formData.layout_settings.footer.height}
+        <FooterBlockLineEditor
+          blocks={parseFooterBlocksForEditor(formData.footer_blocks)}
+          onChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: toFooterLineBlocksData(blocks) as any }))}
+          availableWidthMm={formData.layout_settings.pageWidth - formData.layout_settings.margins.left - formData.layout_settings.margins.right}
         />
       </TabsContent>
 
