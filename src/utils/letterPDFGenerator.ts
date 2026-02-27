@@ -180,7 +180,17 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     const paginationGap = 4.23;
     const paginationHeight = 4;
     const hasPagination = letter.show_pagination ?? false;
-    const paginationTop = layoutSettings.pagination?.top ?? (footerTop - paginationGap - paginationHeight);
+    const paginationTop = 263.77;
+    const foldHoleMarks = {
+      enabled: layoutSettings.foldHoleMarks?.enabled ?? true,
+      left: layoutSettings.foldHoleMarks?.left ?? 3,
+      strokeWidthPt: layoutSettings.foldHoleMarks?.strokeWidthPt ?? 1,
+      foldMarkWidth: layoutSettings.foldHoleMarks?.foldMarkWidth ?? 5,
+      holeMarkWidth: layoutSettings.foldHoleMarks?.holeMarkWidth ?? 8,
+      topMarkY: layoutSettings.foldHoleMarks?.topMarkY ?? 105,
+      holeMarkY: layoutSettings.foldHoleMarks?.holeMarkY ?? 148.5,
+      bottomMarkY: layoutSettings.foldHoleMarks?.bottomMarkY ?? 210,
+    };
     const contentBottom = hasPagination
       ? paginationTop - paginationGap
       : Math.min(contentTop + 165, footerTop - paginationGap);
@@ -291,9 +301,21 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       pdf.text("Font: Arial", pageWidth - 48, 20);
       pdf.text("Size: 11pt", pageWidth - 48, 25);
     };
+
+    const drawFoldAndHoleMarks = () => {
+      if (!foldHoleMarks.enabled) return;
+      const strokeMm = Math.max(0.1, foldHoleMarks.strokeWidthPt * 0.3528);
+
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setLineWidth(strokeMm);
+      pdf.line(foldHoleMarks.left, foldHoleMarks.topMarkY, foldHoleMarks.left + foldHoleMarks.foldMarkWidth, foldHoleMarks.topMarkY);
+      pdf.line(foldHoleMarks.left, foldHoleMarks.holeMarkY, foldHoleMarks.left + foldHoleMarks.holeMarkWidth, foldHoleMarks.holeMarkY);
+      pdf.line(foldHoleMarks.left, foldHoleMarks.bottomMarkY, foldHoleMarks.left + foldHoleMarks.foldMarkWidth, foldHoleMarks.bottomMarkY);
+    };
     
     // Draw debug guides for page 1 (ALWAYS ENABLED for testing)
     drawDebugGuides(1);
+    drawFoldAndHoleMarks();
     
     // Footer content from template
     const renderFooterBlocks = () => {
@@ -581,6 +603,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
             
             // Draw debug guides for new pages
             drawDebugGuides(currentPage);
+            drawFoldAndHoleMarks();
             
             // Add footer for new page using template footer blocks
             renderFooterBlocks();

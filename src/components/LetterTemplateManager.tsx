@@ -115,6 +115,40 @@ const normalizeImageItem = (item: any): any => {
 };
 
 const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSettings) => {
+  const enforceDIN5008Metrics = (settings: LetterLayoutSettings): LetterLayoutSettings => ({
+    ...settings,
+    footer: {
+      ...settings.footer,
+      top: 272,
+      height: settings.footer?.height ?? DEFAULT_DIN5008_LAYOUT.footer.height,
+    },
+    subject: {
+      ...settings.subject,
+      top: 98.46,
+    },
+    content: {
+      ...settings.content,
+      top: 98.46,
+      maxHeight: 165,
+    },
+    pagination: {
+      enabled: settings.pagination?.enabled ?? true,
+      top: 263.77,
+      align: settings.pagination?.align || 'right',
+      fontSize: settings.pagination?.fontSize ?? 8,
+    },
+    foldHoleMarks: {
+      enabled: settings.foldHoleMarks?.enabled ?? true,
+      left: settings.foldHoleMarks?.left ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.left ?? 3,
+      strokeWidthPt: settings.foldHoleMarks?.strokeWidthPt ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.strokeWidthPt ?? 1,
+      foldMarkWidth: settings.foldHoleMarks?.foldMarkWidth ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.foldMarkWidth ?? 5,
+      holeMarkWidth: settings.foldHoleMarks?.holeMarkWidth ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.holeMarkWidth ?? 8,
+      topMarkY: settings.foldHoleMarks?.topMarkY ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.topMarkY ?? 105,
+      holeMarkY: settings.foldHoleMarks?.holeMarkY ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.holeMarkY ?? 148.5,
+      bottomMarkY: settings.foldHoleMarks?.bottomMarkY ?? DEFAULT_DIN5008_LAYOUT.foldHoleMarks?.bottomMarkY ?? 210,
+    },
+  });
+
   const blockContent = ((layoutSettings as any).blockContent || {}) as Record<string, any[]>;
   const normalizedContent = Object.fromEntries(
     Object.entries(blockContent).map(([key, items]) => {
@@ -124,12 +158,10 @@ const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSettings)
   );
 
   // Also normalize header_text_elements and footer_blocks if present in layout_settings
+  const normalizedLayout = enforceDIN5008Metrics(layoutSettings);
+
   return {
-    ...layoutSettings,
-    footer: {
-      ...layoutSettings.footer,
-      height: layoutSettings.footer?.height ?? DEFAULT_DIN5008_LAYOUT.footer.height,
-    },
+    ...normalizedLayout,
     blockContent: normalizedContent,
   } as LetterLayoutSettings;
 };
@@ -333,7 +365,7 @@ const LetterTemplateManager: React.FC = () => {
     if (!currentTenant || !user || !formData.name.trim()) return;
     const cleanedHeaderElements = stripBlobUrls(formData.header_elements);
     const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
-    const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(formData.layout_settings);
+    const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
     try {
       const { error } = await supabase.from('letter_templates').insert({
         name: formData.name.trim(), letterhead_html: formData.letterhead_html, letterhead_css: formData.letterhead_css,
@@ -363,7 +395,7 @@ const LetterTemplateManager: React.FC = () => {
     if (!editingTemplate) return;
     const cleanedHeaderElements = stripBlobUrls(formData.header_elements);
     const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
-    const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(formData.layout_settings);
+    const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
     try {
       const { error } = await supabase.from('letter_templates').update({
         name: formData.name.trim(), letterhead_html: formData.letterhead_html, letterhead_css: formData.letterhead_css,

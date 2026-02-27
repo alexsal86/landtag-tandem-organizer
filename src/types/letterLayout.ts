@@ -55,6 +55,16 @@ export interface LetterLayoutSettings {
   attachments: {
     top: number;
   };
+  foldHoleMarks?: {
+    enabled: boolean;
+    left: number;
+    strokeWidthPt: number;
+    foldMarkWidth: number;
+    holeMarkWidth: number;
+    topMarkY: number;
+    holeMarkY: number;
+    bottomMarkY: number;
+  };
   pagination?: {
     enabled: boolean;
     top: number;
@@ -128,6 +138,16 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
   },
   attachments: {
     top: 230
+  },
+  foldHoleMarks: {
+    enabled: true,
+    left: 3,
+    strokeWidthPt: 1,
+    foldMarkWidth: 5,
+    holeMarkWidth: 8,
+    topMarkY: 105,
+    holeMarkY: 148.5,
+    bottomMarkY: 210
   },
   pagination: {
     enabled: true,

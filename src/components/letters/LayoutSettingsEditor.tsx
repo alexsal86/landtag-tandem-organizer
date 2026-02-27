@@ -62,6 +62,11 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
       };
     }
 
+    nextSettings.foldHoleMarks = {
+      ...(layoutSettings.foldHoleMarks || defaults.foldHoleMarks),
+      ...(defaults.foldHoleMarks || {}),
+    };
+
     onLayoutChange(nextSettings);
   };
 
@@ -235,6 +240,49 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
             <div>
               <Label htmlFor="pagination-fontSize">Schriftgröße (pt)</Label>
               <Input id="pagination-fontSize" type="number" value={layoutSettings.pagination?.fontSize ?? 8} onChange={(e) => updateSetting(['pagination', 'fontSize'], parseFloat(e.target.value))} step="0.5" />
+            </div>
+          </div>
+        </div>
+
+        {/* Loch- und Falzmarken */}
+        <div className="space-y-4 p-4 border rounded-lg md:col-span-2">
+          <h4 className="font-bold">Loch- und Falzmarken (DIN 5008 Form B)</h4>
+          <div className="flex items-center gap-2 mb-2">
+            <Checkbox
+              id="fold-hole-enabled"
+              checked={layoutSettings.foldHoleMarks?.enabled ?? true}
+              onCheckedChange={(checked) => updateSetting(['foldHoleMarks', 'enabled'], !!checked)}
+            />
+            <Label htmlFor="fold-hole-enabled" className="cursor-pointer">Marken anzeigen</Label>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <Label htmlFor="mark-left">Abstand links (mm)</Label>
+              <Input id="mark-left" type="number" value={layoutSettings.foldHoleMarks?.left ?? 3} onChange={(e) => updateSetting(['foldHoleMarks', 'left'], parseFloat(e.target.value))} step="0.1" />
+            </div>
+            <div>
+              <Label htmlFor="mark-stroke">Strichstärke (pt)</Label>
+              <Input id="mark-stroke" type="number" value={layoutSettings.foldHoleMarks?.strokeWidthPt ?? 1} onChange={(e) => updateSetting(['foldHoleMarks', 'strokeWidthPt'], parseFloat(e.target.value))} step="0.1" />
+            </div>
+            <div>
+              <Label htmlFor="mark-fold-width">Falzmarke Breite (mm)</Label>
+              <Input id="mark-fold-width" type="number" value={layoutSettings.foldHoleMarks?.foldMarkWidth ?? 5} onChange={(e) => updateSetting(['foldHoleMarks', 'foldMarkWidth'], parseFloat(e.target.value))} step="0.1" />
+            </div>
+            <div>
+              <Label htmlFor="mark-hole-width">Lochmarke Breite (mm)</Label>
+              <Input id="mark-hole-width" type="number" value={layoutSettings.foldHoleMarks?.holeMarkWidth ?? 8} onChange={(e) => updateSetting(['foldHoleMarks', 'holeMarkWidth'], parseFloat(e.target.value))} step="0.1" />
+            </div>
+            <div>
+              <Label htmlFor="mark-top-y">Obere Falzmarke Y (mm)</Label>
+              <Input id="mark-top-y" type="number" value={layoutSettings.foldHoleMarks?.topMarkY ?? 105} onChange={(e) => updateSetting(['foldHoleMarks', 'topMarkY'], parseFloat(e.target.value))} step="0.1" />
+            </div>
+            <div>
+              <Label htmlFor="mark-hole-y">Lochmarke Y (mm)</Label>
+              <Input id="mark-hole-y" type="number" value={layoutSettings.foldHoleMarks?.holeMarkY ?? 148.5} onChange={(e) => updateSetting(['foldHoleMarks', 'holeMarkY'], parseFloat(e.target.value))} step="0.1" />
+            </div>
+            <div>
+              <Label htmlFor="mark-bottom-y">Untere Falzmarke Y (mm)</Label>
+              <Input id="mark-bottom-y" type="number" value={layoutSettings.foldHoleMarks?.bottomMarkY ?? 210} onChange={(e) => updateSetting(['foldHoleMarks', 'bottomMarkY'], parseFloat(e.target.value))} step="0.1" />
             </div>
           </div>
         </div>
