@@ -19,6 +19,7 @@ export interface BlockLine {
   widthUnit?: 'percent' | 'cm';
   widthValue?: number;
   color?: string;
+  prefixShape?: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen';
 }
 
 export interface BlockLineData {
@@ -115,10 +116,20 @@ const DIN5008_FOOTER_TEMPLATE: BlockLine[] = [
 ];
 
 interface BlockLineEditorProps {
-  blockType: 'infoBlock' | 'addressField' | 'returnAddress' | 'footer';
+  blockType: 'infoBlock' | 'addressField' | 'returnAddress' | 'footer' | 'subject';
   lines: BlockLine[];
   onChange: (lines: BlockLine[]) => void;
 }
+
+const SUBJECT_PREFIX_SHAPES: Array<{ value: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen'; label: string }> = [
+  { value: 'none', label: 'Keine Form' },
+  { value: 'line', label: 'Linie ─' },
+  { value: 'circle', label: 'Kreis ○' },
+  { value: 'rectangle', label: 'Rechteck □' },
+  { value: 'sunflower', label: 'Sonnenblume 🌻' },
+  { value: 'lion', label: 'Löwe 🦁' },
+  { value: 'wappen', label: 'Wappen 🏛️' },
+];
 
 let nextId = 1;
 const genId = () => `bl-${Date.now()}-${nextId++}`;
@@ -136,13 +147,17 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
       ? RETURN_ADDRESS_VARIABLES
       : blockType === 'footer'
         ? footerVariables
+        : blockType === 'subject'
+          ? [{ key: '{{betreff}}', label: 'Betreff', preview: 'Ihr Anliegen vom 08. März 2026' }]
         : ADDRESS_FIELD_VARIABLES;
   const din5008Template = blockType === 'infoBlock'
     ? DIN5008_INFO_BLOCK_TEMPLATE
     : blockType === 'returnAddress'
       ? DIN5008_RETURN_ADDRESS_TEMPLATE
-      : blockType === 'footer'
-        ? DIN5008_FOOTER_TEMPLATE
+    : blockType === 'footer'
+      ? DIN5008_FOOTER_TEMPLATE
+      : blockType === 'subject'
+        ? [{ id: 'subject-1', type: 'text-only', value: '{{betreff}}', isVariable: true } as BlockLine]
         : DIN5008_ADDRESS_TEMPLATE;
 
   const addLine = (type: BlockLine['type']) => {
@@ -288,6 +303,21 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                         ) : line.type === 'text-only' ? (
                           <div className="flex flex-1 items-center gap-1">
                             <Badge variant="secondary" className="shrink-0 text-[10px]">Text</Badge>
+                            {blockType === 'subject' && (
+                              <Select
+                                value={(line as any).prefixShape || 'none'}
+                                onValueChange={(value: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen') => updateLine(line.id, { prefixShape: value } as any)}
+                              >
+                                <SelectTrigger className="h-6 w-36 text-xs">
+                                  <SelectValue placeholder="Form" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {SUBJECT_PREFIX_SHAPES.map((shape) => (
+                                    <SelectItem key={shape.value} value={shape.value} className="text-xs">{shape.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
                             <Input
                               value={line.value || ''}
                               onChange={(e) => updateLine(line.id, { value: e.target.value, isVariable: /\{\{.*?\}\}/.test(e.target.value) })}
