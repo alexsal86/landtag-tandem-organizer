@@ -74,11 +74,14 @@ import { Input } from '@/components/ui/input';
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
   documentId?: string;
+  /** Default font size for the FontSizePlugin (e.g. "11pt") */
+  defaultFontSize?: string;
 }
 
 export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   showFloatingToolbar = false,
-  documentId
+  documentId,
+  defaultFontSize,
 }) => {
   const [editor] = useLexicalComposerContext();
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
@@ -259,7 +262,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
 
         {/* Font controls */}
         <FontFamilyPlugin />
-        <FontSizePlugin />
+        <FontSizePlugin defaultFontSize={defaultFontSize} />
 
         <Separator orientation="vertical" className="h-6 mx-1" />
 

@@ -372,6 +372,13 @@ export function ContactsView() {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };
 
+  const getGenderLabel = (gender?: string) => {
+    if (gender === "m") return "Herr";
+    if (gender === "f") return "Frau";
+    if (gender === "d") return "Divers";
+    return "";
+  };
+
   const SortableTableHead = ({ children, sortKey, className = "" }: { 
     children: React.ReactNode; 
     sortKey: string; 
@@ -835,7 +842,9 @@ export function ContactsView() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-14">Avatar</TableHead>
+                <SortableTableHead sortKey="gender">Anrede</SortableTableHead>
                 <SortableTableHead sortKey="name">Name</SortableTableHead>
+                <SortableTableHead sortKey="gender">Anrede</SortableTableHead>
                 <SortableTableHead sortKey="organization">Organisation/Rolle</SortableTableHead>
                 <SortableTableHead sortKey="email">Kontakt</SortableTableHead>
                 <SortableTableHead sortKey="address">Adresse</SortableTableHead>
@@ -879,7 +888,9 @@ export function ContactsView() {
                       </Button>
                     </div>
                   </TableCell>
+                  <TableCell>{getGenderLabel(contact.gender)}</TableCell>
                   <TableCell className="font-medium">{contact.name}</TableCell>
+                  <TableCell>{getGenderLabel(contact.gender)}</TableCell>
                   <TableCell>
                     {contact.contact_type === "organization" 
                       ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
