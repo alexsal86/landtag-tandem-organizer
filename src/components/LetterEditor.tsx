@@ -20,6 +20,7 @@ import { useTenant } from '@/hooks/useTenant';
 import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
+import { LetterEditorCanvas } from './letters/LetterEditorCanvas';
 import { ContactSelector } from './ContactSelector';
 import { buildVariableMap, substituteVariables, substituteBlockLines, isLineMode } from '@/lib/letterVariables';
 import type { HeaderElement } from '@/components/canvas-engine/types';
@@ -1204,14 +1205,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               </Badge>
             )}
             
-            {/* DIN 5008 Preview Toggle */}
+            {/* Print Preview Button - opens DIN5008 in modal */}
             <Button
               variant={showDINPreview ? "default" : "outline"}
               size="sm"
               onClick={() => setShowDINPreview(!showDINPreview)}
             >
-              <Layout className="h-4 w-4 mr-2" />
-              Vorschau Brief
+              <Eye className="h-4 w-4 mr-2" />
+              Druckvorschau
             </Button>
 
 
@@ -1767,165 +1768,132 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           </div>
         </Collapsible>
 
-        {/* Main Editor */}
-        <div className="flex-1 p-6 overflow-auto">
+        {/* Main Editor - Always shows letter canvas */}
+        <div className="flex-1 flex flex-col overflow-hidden">
           {showDINPreview ? (
-            /* Enhanced DIN 5008 Preview with Zoom Controls */
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">DIN 5008 Vorschau</h3>
+            /* Print Preview Modal-like view */
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-none flex items-center justify-between p-3 border-b bg-muted/30">
+                <h3 className="text-sm font-medium">Druckvorschau (schreibgeschützt)</h3>
                 <div className="flex items-center gap-2">
                   <Button
                     variant={showLayoutDebug ? "default" : "outline"}
                     size="sm"
+                    className="h-7"
                     onClick={() => setShowLayoutDebug(!showLayoutDebug)}
-                    title="Layout-Abstände anzeigen"
                   >
-                    <Ruler className="h-4 w-4 mr-2" />
-                    Layout anzeigen
+                    <Ruler className="h-3.5 w-3.5 mr-1" />
+                    Layout
                   </Button>
-                  <Separator orientation="vertical" className="h-6" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPreviewZoom(Math.max(0.3, previewZoom - 0.1))}
-                  >
-                    -
-                  </Button>
-                  <span className="text-sm px-2 min-w-[60px] text-center">
-                    {Math.round(previewZoom * 100)}%
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPreviewZoom(Math.min(1.2, previewZoom + 0.1))}
-                  >
-                    +
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPreviewZoom(1.0)}
-                  >
-                    Reset
-                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setPreviewZoom(Math.max(0.3, previewZoom - 0.1))}>-</Button>
+                  <span className="text-xs min-w-[40px] text-center">{Math.round(previewZoom * 100)}%</span>
+                  <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setPreviewZoom(Math.min(1.2, previewZoom + 0.1))}>+</Button>
+                  <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setPreviewZoom(0.75)}>Reset</Button>
                 </div>
               </div>
-              
-              <div className="border rounded-lg p-4 bg-white overflow-auto">
-                <div style={{ 
-                  transform: `scale(${previewZoom})`, 
-                  transformOrigin: 'top left',
-                  width: `${100 / previewZoom}%`
-                }}>
-                  <DIN5008LetterLayout
-                    template={currentTemplate}
-                    senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
-                    informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))}
-                    recipientAddress={editedLetter.recipient_address ? {
-                      name: editedLetter.recipient_name,
-                      address: editedLetter.recipient_address
-                    } : null}
-                    subject={editedLetter.subject}
-                    letterDate={editedLetter.letter_date}
-                    referenceNumber={editedLetter.reference_number}
-                    content={editedLetter.content || ''}
-                    attachments={attachments}
-                    showPagination={showPagination}
-                    debugMode={showLayoutDebug}
-                    salutation={(editedLetter as any).salutation_override || computedSalutation}
-                    layoutSettings={(() => {
-                      const ls = (currentTemplate as any)?.layout_settings;
-                      if (!ls) return undefined;
-                      // Apply closing overrides from letter
-                      const closingFormula = (editedLetter as any).closing_formula || ls.closing?.formula;
-                      const closingName = (editedLetter as any).closing_name || ls.closing?.signatureName;
-                      if (closingFormula || closingName) {
-                        return { ...ls, closing: { ...(ls.closing || {}), formula: closingFormula || '', signatureName: closingName || '' } };
-                      }
-                      return ls;
-                    })()}
-                    addressFieldElements={substitutedBlocks.canvasBlocks.addressField}
-                    returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
-                    infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock}
-                    subjectElements={substitutedBlocks.canvasBlocks.subject}
-                    attachmentElements={substitutedBlocks.canvasBlocks.attachments}
-                    footerTextElements={substitutedBlocks.canvasBlocks.footer}
-                    addressFieldLines={substitutedBlocks.lineBlocks.addressField}
-                    returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
-                    infoBlockLines={substitutedBlocks.lineBlocks.infoBlock}
-                  />
+              <div className="flex-1 overflow-auto bg-muted/50 p-6">
+                <div style={{ transform: `scale(${previewZoom})`, transformOrigin: 'top center', marginBottom: `${(previewZoom - 1) * 297}mm` }}>
+                  <div className="mx-auto" style={{ width: '210mm', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}>
+                    <DIN5008LetterLayout
+                      template={currentTemplate}
+                      senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+                      informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))}
+                      recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : null}
+                      subject={editedLetter.subject}
+                      letterDate={editedLetter.letter_date}
+                      referenceNumber={editedLetter.reference_number}
+                      content={editedLetter.content_html || editedLetter.content || ''}
+                      attachments={attachments}
+                      showPagination={showPagination}
+                      debugMode={showLayoutDebug}
+                      salutation={(editedLetter as any).salutation_override || computedSalutation}
+                      layoutSettings={(() => {
+                        const ls = (currentTemplate as any)?.layout_settings;
+                        if (!ls) return undefined;
+                        const closingFormula = (editedLetter as any).closing_formula || ls.closing?.formula;
+                        const closingName = (editedLetter as any).closing_name || ls.closing?.signatureName;
+                        if (closingFormula || closingName) {
+                          return { ...ls, closing: { ...(ls.closing || {}), formula: closingFormula || '', signatureName: closingName || '' } };
+                        }
+                        return ls;
+                      })()}
+                      addressFieldElements={substitutedBlocks.canvasBlocks.addressField}
+                      returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
+                      infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock}
+                      subjectElements={substitutedBlocks.canvasBlocks.subject}
+                      attachmentElements={substitutedBlocks.canvasBlocks.attachments}
+                      footerTextElements={substitutedBlocks.canvasBlocks.footer}
+                      addressFieldLines={substitutedBlocks.lineBlocks.addressField}
+                      returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
+                      infoBlockLines={substitutedBlocks.lineBlocks.infoBlock}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
-            /* Regular Editor */
-            <div className="max-w-full space-y-6">
-              {/* Title */}
-              <div>
-                <Input
-                  value={editedLetter.title || ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setEditedLetter(prev => ({ ...prev, title: value, subject: value }));
-                    // Broadcasting disabled - Yjs handles synchronization
-                  }}
-                  disabled={!canEdit}
-                  className="text-2xl font-bold border-none px-0 focus-visible:ring-0 bg-transparent"
-                  placeholder="Briefbetreff"
-                />
-              </div>
-
-              {/* Enhanced Lexical Editor with Collaboration */}
-              <div className="relative">
-                <EnhancedLexicalEditor
-                  content={editedLetter.content || ''}
-                  contentNodes={editedLetter.content_nodes}
-                  onMentionInsert={(userId, displayName) => {
-                    pendingMentionsRef.current.add(userId);
-                  }}
-                   onChange={(content, contentNodes) => {
-                     if (isUpdatingFromRemoteRef.current || !canEdit) return;
-                     
-                     console.log('📝 [LetterEditor] Content changed:', { 
-                       plainTextLength: content?.length, 
-                       hasJsonContent: !!contentNodes,
-                       jsonLength: contentNodes?.length,
-                       contentPreview: content?.slice(0, 50),
-                       jsonPreview: contentNodes?.slice(0, 100) || 'null'
-                     });
-                     
-                     // Validate content before processing to prevent corruption
-                     if (content && content.includes('{"root":{"children"') && content.split('{"root":{"children"').length > 2) {
-                       console.error('🚨 Rejected corrupted content in onChange handler');
-                       return;
-                     }
-                     
-                     const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
-                     
-                     // Update the ref with latest content for immediate access
-                     latestContentRef.current = {
-                       content: content?.trim() || '',
-                       contentNodes: processedContentNodes
-                     };
-                     
-                     setEditedLetter(prev => ({
-                       ...prev,
-                       content: content?.trim() || '',
-                       content_nodes: processedContentNodes
-                     }));
-                     
-                      // NOTE: Content synchronization is handled by Yjs in real-time
-                      // Auto-save to DB happens in background (every 3s) as backup
-                      // No need for immediate DB save here - Yjs is the primary sync mechanism
-                   }}
-                  placeholder="Hier können Sie Ihren Brief verfassen..."
-                  documentId={letter?.id}
-                  showToolbar={true}
-                />
-              </div>
-
-            </div>
+            /* Letter Editor Canvas - WYSIWYG editing directly in letter */
+            <LetterEditorCanvas
+              subject={editedLetter.subject}
+              salutation={(editedLetter as any).salutation_override || computedSalutation}
+              content={editedLetter.content || ''}
+              contentNodes={editedLetter.content_nodes}
+              recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : null}
+              letterDate={editedLetter.letter_date}
+              referenceNumber={editedLetter.reference_number}
+              attachments={attachments}
+              showPagination={showPagination}
+              template={currentTemplate}
+              layoutSettings={(() => {
+                const ls = (currentTemplate as any)?.layout_settings;
+                if (!ls) return undefined;
+                const closingFormula = (editedLetter as any).closing_formula || ls.closing?.formula;
+                const closingName = (editedLetter as any).closing_name || ls.closing?.signatureName;
+                if (closingFormula || closingName) {
+                  return { ...ls, closing: { ...(ls.closing || {}), formula: closingFormula || '', signatureName: closingName || '' } };
+                }
+                return ls;
+              })()}
+              senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+              informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))}
+              addressFieldElements={substitutedBlocks.canvasBlocks.addressField}
+              returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
+              infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock}
+              subjectElements={substitutedBlocks.canvasBlocks.subject}
+              attachmentElements={substitutedBlocks.canvasBlocks.attachments}
+              footerTextElements={substitutedBlocks.canvasBlocks.footer}
+              addressFieldLines={substitutedBlocks.lineBlocks.addressField}
+              returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
+              infoBlockLines={substitutedBlocks.lineBlocks.infoBlock}
+              canEdit={canEdit}
+              documentId={letter?.id}
+              onContentChange={(content, contentNodes) => {
+                if (isUpdatingFromRemoteRef.current || !canEdit) return;
+                
+                if (content && content.includes('{"root":{"children"') && content.split('{"root":{"children"').length > 2) {
+                  console.error('🚨 Rejected corrupted content in onChange handler');
+                  return;
+                }
+                
+                const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
+                
+                latestContentRef.current = {
+                  content: content?.trim() || '',
+                  contentNodes: processedContentNodes
+                };
+                
+                setEditedLetter(prev => ({
+                  ...prev,
+                  content: content?.trim() || '',
+                  content_nodes: processedContentNodes
+                }));
+              }}
+              onMentionInsert={(userId) => {
+                pendingMentionsRef.current.add(userId);
+              }}
+              zoom={previewZoom}
+              onZoomChange={setPreviewZoom}
+            />
           )}
         </div>
       </div>
