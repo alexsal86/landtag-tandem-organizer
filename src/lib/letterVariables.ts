@@ -102,7 +102,7 @@ export function buildVariableMap(
   // Attachments
   if (attachments && attachments.length > 0) {
     map['{{anlagen_liste}}'] = attachments
-      .map((a, i) => `${i + 1}. ${a.display_name || a.file_name || ''}`)
+      .map((a) => `- ${a.display_name || a.file_name || ''}`)
       .join('\n');
   } else {
     map['{{anlagen_liste}}'] = '';
