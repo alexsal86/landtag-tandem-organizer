@@ -475,7 +475,21 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
             variant="outline"
             size="sm"
             onClick={() => {
-              const next = cloneLayout(DEFAULT_DIN5008_LAYOUT);
+              // Only reset positions, preserve content
+              const defaults = DEFAULT_DIN5008_LAYOUT;
+              const next = cloneLayout(localLayout);
+              next.margins = { ...defaults.margins };
+              next.header = { ...defaults.header };
+              next.addressField = { ...defaults.addressField };
+              next.infoBlock = { ...defaults.infoBlock };
+              next.returnAddress = { ...defaults.returnAddress };
+              next.subject = { ...next.subject, top: defaults.subject.top, marginBottom: defaults.subject.marginBottom };
+              next.content = { ...next.content, top: defaults.content.top, maxHeight: defaults.content.maxHeight, lineHeight: defaults.content.lineHeight };
+              next.footer = { ...next.footer, top: defaults.footer.top, height: defaults.footer.height };
+              next.attachments = { ...next.attachments, top: defaults.attachments.top };
+              if (next.pagination) {
+                next.pagination = { ...next.pagination, top: defaults.pagination?.top || 267.77 };
+              }
               setLocalLayout(next);
               onLayoutChange(next);
             }}
@@ -678,25 +692,25 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                             {localLayout.subject.prefixShape === 'wappen' && <img src="/assets/wappen-bw.svg" alt="Wappen" style={{ width: 3.5 * SCALE, height: 3.5 * SCALE, objectFit: 'contain' }} />}
                           </span>
                         )}
-                        <span className="font-bold text-gray-700" style={{ fontSize: `${(localLayout.subject?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>{(() => {
+                        <span className="font-bold" style={{ fontSize: `${(localLayout.subject?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>{(() => {
                           const sl = localLayout.blockContent?.subjectLine;
                           if (sl && Array.isArray(sl) && sl.length > 0 && (sl[0] as any).content) {
                             return (sl[0] as any).content;
                           }
-                          return '{{betreff}}';
+                          return 'Betreff';
                         })()}</span>
                       </div>
                       <div style={{ height: (localLayout.subject?.marginBottom || 9) * SCALE }} />
-                      <div className="text-gray-500 italic" style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
+                      <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>
                         {localLayout.salutation?.template || 'Sehr geehrte Damen und Herren,'}
                       </div>
                       <div style={{ height: (localLayout.content?.lineHeight || 4.5) * SCALE }} />
-                      <div className="text-gray-400 italic" style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>Inhalt...</div>
+                      <div style={{ fontSize: `${(localLayout.salutation?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#666' }}>Inhalt...</div>
                       {/* Abschlussformel preview */}
                       {localLayout.closing?.formula && (
-                        <>
+                         <>
                           <div style={{ height: (localLayout.content?.lineHeight || 4.5) * 2 * SCALE }} />
-                          <div className="text-gray-500 italic" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE}px` }}>
+                          <div style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE}px`, color: '#000' }}>
                             {localLayout.closing.formula}
                           </div>
                           {localLayout.closing.signatureName && (
@@ -722,6 +736,41 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                       <span className="text-[9px]">{block.label}</span>
                       <span className="text-[9px] text-gray-500 italic" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
                     </div>
+                  ) : block.key === 'footer' && isLineModeBlock ? (
+                    (() => {
+                      const columns: { label: string; widthValue: number; widthUnit: string; items: typeof lineData }[] = [];
+                      let cur: typeof columns[0] | null = null;
+                      lineData.forEach((line) => {
+                        if (line.type === 'block-start') {
+                          if (cur) columns.push(cur);
+                          cur = { label: (line as any).label || '', widthValue: (line as any).widthValue || 25, widthUnit: (line as any).widthUnit || 'percent', items: [] };
+                        } else if (line.type === 'block-end') {
+                          if (cur) { columns.push(cur); cur = null; }
+                        } else if (cur) {
+                          cur.items.push(line);
+                        }
+                      });
+                      if (cur) columns.push(cur);
+                      if (columns.length === 0) return <>{renderLineItems(lineData)}</>;
+                      return (
+                        <div className="flex h-full" style={{ gap: 2 * SCALE }}>
+                          {columns.map((col, ci) => (
+                            <div key={ci} style={{ width: `${col.widthValue}%` }}>
+                              {col.items.map((line) => {
+                                const fPx = ((line.fontSize || 8) * (25.4 / 72) * SCALE);
+                                if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE }} />;
+                                const rv = resolveLineValue(line.value);
+                                return (
+                                  <div key={line.id} className="truncate" style={{ fontSize: fPx, lineHeight: '1.3', fontWeight: line.valueBold ? 'bold' : 'normal', color: (line as any).color || undefined }}>
+                                    {line.type === 'label-value' ? `${line.label || ''} ${rv}`.trim() : (rv || '\u00A0')}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()
                   ) : (
                     <>
                       {!previewText && blockElements.length === 0 && !isLineModeBlock && !plainPreview && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}

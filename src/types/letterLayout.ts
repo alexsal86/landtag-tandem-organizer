@@ -107,7 +107,7 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
     height: 17.7
   },
   subject: {
-    top: 101.46,
+    top: 98.64,
     marginBottom: 8,
     fontSize: 11,
     fontWeight: 'bold',
@@ -118,7 +118,7 @@ export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
     fontSize: 11
   },
   content: {
-    top: 109.46,
+    top: 106.64,
     maxHeight: 161,
     lineHeight: 4.5
   },
