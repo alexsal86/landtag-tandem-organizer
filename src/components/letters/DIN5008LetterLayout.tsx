@@ -316,29 +316,46 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   );
 
   /** Render line-mode block lines sequentially */
-  const renderBlockLines = (lines: BlockLine[]) => (
-    <div className="space-y-0" style={{ fontFamily: 'Arial, sans-serif' }}>
-      {lines.map((line) => {
-        if (line.type === 'spacer') {
-          return <div key={line.id} style={{ height: `${line.spacerHeight || 2}mm` }} />;
-        }
-        if (line.type === 'text-only') {
+  const renderBlockLines = (lines: BlockLine[], options?: { underlineLastContentLine?: boolean }) => {
+    const lastContentIndex = options?.underlineLastContentLine
+      ? [...lines].map((line, index) => ({ line, index })).reverse().find((entry) => entry.line.type !== 'spacer')?.index ?? -1
+      : -1;
+
+    return (
+      <div className="space-y-0" style={{ fontFamily: 'Arial, sans-serif' }}>
+        {lines.map((line, index) => {
+          if (line.type === 'spacer') {
+            return <div key={line.id} style={{ height: `${line.spacerHeight || 2}mm` }} />;
+          }
+
+          const underlineThisLine = index === lastContentIndex;
+          const lineWrapperStyle: React.CSSProperties = underlineThisLine
+            ? { display: 'inline-block', borderBottom: '0.5pt solid #000', paddingBottom: '0.3mm' }
+            : { display: 'inline-block' };
+
+          if (line.type === 'text-only') {
+            return (
+              <div key={line.id} style={{ lineHeight: '1.3' }}>
+                <span style={{ ...lineWrapperStyle, fontSize: `${line.fontSize || 9}pt`, fontWeight: line.valueBold ? 'bold' : 'normal' }}>
+                  {line.value || '\u00A0'}
+                </span>
+              </div>
+            );
+          }
+
+          // label-value
           return (
-            <div key={line.id} style={{ fontSize: `${line.fontSize || 9}pt`, fontWeight: line.valueBold ? 'bold' : 'normal', lineHeight: '1.3' }}>
-              {line.value || '\u00A0'}
+            <div key={line.id} style={{ lineHeight: '1.3' }}>
+              <span style={{ ...lineWrapperStyle, fontSize: `${line.fontSize || 9}pt` }}>
+                <span style={{ fontWeight: line.labelBold !== false ? 'bold' : 'normal' }}>{line.label || ''}</span>
+                <span style={{ fontWeight: line.valueBold ? 'bold' : 'normal' }}>{line.value || ''}</span>
+              </span>
             </div>
           );
-        }
-        // label-value
-        return (
-          <div key={line.id} className="flex gap-1" style={{ fontSize: `${line.fontSize || 9}pt`, lineHeight: '1.3' }}>
-            <span style={{ fontWeight: line.labelBold !== false ? 'bold' : 'normal' }}>{line.label || ''}</span>
-            <span style={{ fontWeight: line.valueBold ? 'bold' : 'normal' }}>{line.value || ''}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
+        })}
+      </div>
+    );
+  };
 
     return (
     <div className={`din5008-letter bg-white ${className}`} style={{ 
@@ -440,23 +457,22 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             {/* Vermerkzone (return address) */}
             <div style={{ height: `${layout.addressField?.returnAddressHeight || 17.7}mm`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
               {returnAddressLines && returnAddressLines.length > 0 ? (
-                <div style={{ display: 'inline-block', borderBottom: '0.5pt solid #000', paddingBottom: '0.5mm' }}>
-                  {renderBlockLines(returnAddressLines)}
+                <div>
+                  {renderBlockLines(returnAddressLines, { underlineLastContentLine: true })}
                 </div>
               ) : returnAddressElements && returnAddressElements.length > 0 ? (
                 <div style={{ position: 'relative', height: '100%' }}>
                   {renderCanvasBlockElements(returnAddressElements)}
                 </div>
               ) : senderInfo?.return_address_line ? (
-                <div style={{
-                  display: 'inline-block',
-                  fontSize: '7pt',
-                  borderBottom: '0.5pt solid #000',
-                  paddingBottom: '1mm',
-                  lineHeight: '1.0',
-                  maxWidth: '75mm',
-                }}>
-                  {senderInfo.return_address_line}
+                <div style={{ fontSize: '7pt', lineHeight: '1.0', maxWidth: '75mm' }}>
+                  {senderInfo.return_address_line.split('\n').filter((line) => line.trim()).map((line, index, arr) => (
+                    <div key={`${line}-${index}`}>
+                      <span style={index === arr.length - 1 ? { display: 'inline-block', borderBottom: '0.5pt solid #000', paddingBottom: '0.3mm' } : { display: 'inline-block' }}>
+                        {line}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               ) : null}
             </div>
@@ -520,6 +536,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             maxHeight: `${contentMaxHeightMm}mm`,
             fontSize: '11pt',
             lineHeight: '1.2',
+            color: '#000',
             backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
             overflow: 'hidden'
           }}
@@ -558,7 +575,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* 1 blank line after salutation */}
           {salutation && <div style={{ height: '4.5mm' }} />}
           {/* Letter content */}
-          <div dangerouslySetInnerHTML={{ __html: content }} />
+          <div style={{ color: '#000' }} dangerouslySetInnerHTML={{ __html: content }} />
           {/* Closing formula + signature */}
           {layout.closing?.formula && (
             <>
@@ -581,7 +598,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               {!layout.closing.signatureImagePath && layout.closing.signatureName && <div style={{ height: '4.5mm' }} />}
               {!layout.closing.signatureImagePath && !layout.closing.signatureName && null}
               {layout.closing.signatureName && (
-                <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt` }}>
+                <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
                   {layout.closing.signatureName}
                 </div>
               )}
@@ -624,6 +641,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               maxHeight: `${contentMaxHeightMm}mm`,
               fontSize: '11pt',
               lineHeight: '1.2',
+              color: '#000',
               backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
               overflow: 'hidden'
             }}
