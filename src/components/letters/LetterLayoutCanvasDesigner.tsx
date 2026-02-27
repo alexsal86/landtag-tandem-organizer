@@ -640,7 +640,10 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               <div className={`absolute top-6 left-0 bottom-0 w-6 border bg-white/90 text-[9px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`}>{Array.from({ length: Math.floor(localLayout.pageHeight / 10) + 1 }).map((_, i) => <span key={`ry-${i}`} className="absolute" style={{ top: i * 10 * SCALE }}>{i * 10}</span>)}</div>
             </>
 
-            <div className="absolute bg-white shadow-xl relative select-none" style={{ left: RULER_SIZE, top: RULER_SIZE, width: pagePx.w, height: pagePx.h }}>
+            <div
+              className="absolute bg-white shadow-xl relative select-none"
+              style={{ left: RULER_SIZE, top: RULER_SIZE, width: pagePx.w, height: pagePx.h, fontFamily: 'Arial, sans-serif' }}
+            >
               {!plainPreview && <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />}
 
               {(localLayout.foldHoleMarks?.enabled ?? true) && (
@@ -830,8 +833,12 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   ) : block.key === 'pagination' ? (
                     <div className="flex items-center h-full w-full">
                       <span
-                        className="text-[9px] text-gray-500 w-full"
-                        style={{ textAlign: (localLayout.pagination?.align || 'right') }}
+                        className="text-gray-500 w-full"
+                        style={{
+                          textAlign: (localLayout.pagination?.align || 'right'),
+                          fontFamily: 'Arial, sans-serif',
+                          fontSize: `${((localLayout.pagination?.fontSize || 8) * (25.4 / 72) * SCALE).toFixed(2)}px`,
+                        }}
                       >
                         Seite 1 von 1
                       </span>
