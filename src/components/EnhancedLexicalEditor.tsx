@@ -69,6 +69,8 @@ interface EnhancedLexicalEditorProps {
   onMentionInsert?: (userId: string, displayName: string) => void;
   /** Ref to a DOM element where the toolbar should be portaled. When set, toolbar is not rendered inline. */
   renderToolbarPortal?: React.RefObject<HTMLDivElement | null>;
+  /** Default font size for the toolbar's FontSizePlugin (e.g. "11pt") */
+  defaultFontSize?: string;
   // Legacy props - kept for API compatibility
   enableCollaboration?: boolean;
   useYjsCollaboration?: boolean;
@@ -169,6 +171,7 @@ export default function EnhancedLexicalEditor({
   editable = true,
   onMentionInsert,
   renderToolbarPortal,
+  defaultFontSize,
 }: EnhancedLexicalEditorProps) {
   const initialConfig = useMemo(() => ({
     namespace: 'EnhancedEditor',
@@ -221,7 +224,7 @@ export default function EnhancedLexicalEditor({
     });
   }, [onChange]);
 
-  const toolbarElement = showToolbar ? <EnhancedLexicalToolbar documentId={documentId} /> : null;
+  const toolbarElement = showToolbar ? <EnhancedLexicalToolbar documentId={documentId} defaultFontSize={defaultFontSize} /> : null;
 
   return (
     <div className="relative min-h-[200px] border rounded-md overflow-hidden">
