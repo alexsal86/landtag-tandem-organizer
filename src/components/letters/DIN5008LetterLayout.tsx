@@ -332,6 +332,58 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             />
           );
         }
+        if (element.type === 'shape') {
+          const shapeEl = element as import('@/components/canvas-engine/types').ShapeElement;
+          const w = shapeEl.width || 20;
+          const h = shapeEl.height || 10;
+          const rotation = shapeEl.rotation || 0;
+          const fillColor = shapeEl.fillColor ?? shapeEl.color ?? '#000000';
+          const strokeColor = shapeEl.strokeColor ?? shapeEl.color ?? '#000000';
+          const strokeWidth = shapeEl.strokeWidth ?? 1;
+
+          const wrapperStyle: React.CSSProperties = {
+            position: 'absolute',
+            left: `${shapeEl.x || 0}mm`,
+            top: `${shapeEl.y || 0}mm`,
+            width: `${w}mm`,
+            height: `${h}mm`,
+            transform: rotation ? `rotate(${rotation}deg)` : undefined,
+            pointerEvents: 'none',
+          };
+
+          if (shapeEl.shapeType === 'sunflower') {
+            const { SunflowerSVG } = require('@/components/letters/elements/shapeSVGs');
+            return <div key={shapeEl.id || index} style={wrapperStyle}><SunflowerSVG width={w * 3.7795} height={h * 3.7795} /></div>;
+          }
+          if (shapeEl.shapeType === 'lion') {
+            const { LionSVG } = require('@/components/letters/elements/shapeSVGs');
+            return <div key={shapeEl.id || index} style={wrapperStyle}><LionSVG width={w * 3.7795} height={h * 3.7795} /></div>;
+          }
+          if (shapeEl.shapeType === 'wappen') {
+            const { WappenSVG } = require('@/components/letters/elements/shapeSVGs');
+            return <div key={shapeEl.id || index} style={wrapperStyle}><WappenSVG width={w * 3.7795} height={h * 3.7795} /></div>;
+          }
+
+          // SVG shapes (line, circle, rectangle)
+          // Convert mm to px for SVG viewBox (1mm ≈ 3.7795px)
+          const pxW = w * 3.7795;
+          const pxH = h * 3.7795;
+          return (
+            <div key={shapeEl.id || index} style={wrapperStyle}>
+              <svg width="100%" height="100%" viewBox={`0 0 ${pxW} ${pxH}`} preserveAspectRatio="none">
+                {shapeEl.shapeType === 'line' && (
+                  <line x1="0" y1={pxH / 2} x2={pxW} y2={pxH / 2} stroke={strokeColor} strokeWidth={strokeWidth} />
+                )}
+                {shapeEl.shapeType === 'circle' && (
+                  <ellipse cx={pxW / 2} cy={pxH / 2} rx={pxW / 2 - strokeWidth} ry={pxH / 2 - strokeWidth} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+                )}
+                {shapeEl.shapeType === 'rectangle' && (
+                  <rect x={strokeWidth / 2} y={strokeWidth / 2} width={pxW - strokeWidth} height={pxH - strokeWidth} rx={shapeEl.borderRadius ?? 0} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+                )}
+              </svg>
+            </div>
+          );
+        }
         return null;
       })}
     </div>
@@ -469,6 +521,47 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                       }}
                     />
                   )}
+                  {element.type === 'shape' && (() => {
+                    const shapeEl = element as import('@/components/canvas-engine/types').ShapeElement;
+                    const w = shapeEl.width || 20;
+                    const h = shapeEl.height || 10;
+                    const rotation = shapeEl.rotation || 0;
+                    const fillColor = shapeEl.fillColor ?? shapeEl.color ?? '#000000';
+                    const strokeColor = shapeEl.strokeColor ?? shapeEl.color ?? '#000000';
+                    const strokeWidth = shapeEl.strokeWidth ?? 1;
+                    const style: React.CSSProperties = {
+                      position: 'absolute',
+                      left: `${shapeEl.x || 0}mm`,
+                      top: `${shapeEl.y || 0}mm`,
+                      width: `${w}mm`,
+                      height: `${h}mm`,
+                      transform: rotation ? `rotate(${rotation}deg)` : undefined,
+                      pointerEvents: 'none',
+                    };
+                    if (shapeEl.shapeType === 'sunflower') {
+                      const { SunflowerSVG } = require('@/components/letters/elements/shapeSVGs');
+                      return <div style={style}><SunflowerSVG width={w * 3.7795} height={h * 3.7795} /></div>;
+                    }
+                    if (shapeEl.shapeType === 'lion') {
+                      const { LionSVG } = require('@/components/letters/elements/shapeSVGs');
+                      return <div style={style}><LionSVG width={w * 3.7795} height={h * 3.7795} /></div>;
+                    }
+                    if (shapeEl.shapeType === 'wappen') {
+                      const { WappenSVG } = require('@/components/letters/elements/shapeSVGs');
+                      return <div style={style}><WappenSVG width={w * 3.7795} height={h * 3.7795} /></div>;
+                    }
+                    const pxW = w * 3.7795;
+                    const pxH = h * 3.7795;
+                    return (
+                      <div style={style}>
+                        <svg width="100%" height="100%" viewBox={`0 0 ${pxW} ${pxH}`} preserveAspectRatio="none">
+                          {shapeEl.shapeType === 'line' && <line x1="0" y1={pxH / 2} x2={pxW} y2={pxH / 2} stroke={strokeColor} strokeWidth={strokeWidth} />}
+                          {shapeEl.shapeType === 'circle' && <ellipse cx={pxW / 2} cy={pxH / 2} rx={pxW / 2 - strokeWidth} ry={pxH / 2 - strokeWidth} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />}
+                          {shapeEl.shapeType === 'rectangle' && <rect x={strokeWidth / 2} y={strokeWidth / 2} width={pxW - strokeWidth} height={pxH - strokeWidth} rx={shapeEl.borderRadius ?? 0} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />}
+                        </svg>
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
