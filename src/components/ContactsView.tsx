@@ -842,6 +842,7 @@ export function ContactsView() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-14">Avatar</TableHead>
+                <SortableTableHead sortKey="gender">Anrede</SortableTableHead>
                 <SortableTableHead sortKey="name">Name</SortableTableHead>
                 <SortableTableHead sortKey="gender">Anrede</SortableTableHead>
                 <SortableTableHead sortKey="organization">Organisation/Rolle</SortableTableHead>
@@ -887,6 +888,7 @@ export function ContactsView() {
                       </Button>
                     </div>
                   </TableCell>
+                  <TableCell>{getGenderLabel(contact.gender)}</TableCell>
                   <TableCell className="font-medium">{contact.name}</TableCell>
                   <TableCell>{getGenderLabel(contact.gender)}</TableCell>
                   <TableCell>
