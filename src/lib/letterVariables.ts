@@ -93,6 +93,9 @@ export function buildVariableMap(
   // Recipient
   if (recipient) {
     map['{{empfaenger_name}}'] = recipient.name || '';
+    map['{{empfaenger_anrede}}'] = recipient.gender === 'm' ? 'Herrn' : recipient.gender === 'f' ? 'Frau' : '';
+    map['{{empfaenger_briefanrede}}'] = recipient.gender === 'm' ? 'Herr' : recipient.gender === 'f' ? 'Frau' : '';
+    map['{{empfaenger_nachname}}'] = recipient.last_name || recipient.name?.split(' ').pop() || '';
     map['{{empfaenger_strasse}}'] = recipient.street || '';
     map['{{empfaenger_plz}}'] = recipient.postal_code || '';
     map['{{empfaenger_ort}}'] = recipient.city || '';
