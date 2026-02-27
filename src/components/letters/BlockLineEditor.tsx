@@ -48,7 +48,9 @@ const INFO_BLOCK_VARIABLES: AvailableVariable[] = [
 ];
 
 const ADDRESS_FIELD_VARIABLES: AvailableVariable[] = [
+  { key: '{{empfaenger_anrede}}', label: 'Anrede (Herrn/Frau)', preview: 'Herrn' },
   { key: '{{empfaenger_name}}', label: 'Empfänger Name', preview: 'Erika Mustermann' },
+  { key: '{{empfaenger_nachname}}', label: 'Nachname', preview: 'Mustermann' },
   { key: '{{empfaenger_strasse}}', label: 'Straße', preview: 'Musterstraße 1' },
   { key: '{{empfaenger_plz}}', label: 'PLZ', preview: '20095' },
   { key: '{{empfaenger_ort}}', label: 'Ort', preview: 'Hamburg' },
