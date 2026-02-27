@@ -1,18 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { getCelebrationDuration } from './speed';
 
 interface ThumbsUpAnimationProps {
   speed?: 'slow' | 'normal' | 'fast';
   size?: 'small' | 'medium' | 'large';
   onComplete?: () => void;
 }
-
-const getSpeedDuration = (speed: string): number => {
-  switch (speed) {
-    case 'slow': return 3500;
-    case 'fast': return 1800;
-    default: return 2500;
-  }
-};
 
 const getSizeValue = (size: string): number => {
   switch (size) {
@@ -24,7 +17,7 @@ const getSizeValue = (size: string): number => {
 
 export function ThumbsUpAnimation({ speed = 'normal', size = 'medium', onComplete }: ThumbsUpAnimationProps) {
   const [shouldRender, setShouldRender] = useState(true);
-  const duration = getSpeedDuration(speed);
+  const duration = getCelebrationDuration(speed);
   const sizeValue = getSizeValue(size);
 
   useEffect(() => {

@@ -1,21 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getCelebrationDuration } from './speed';
 
 interface UnicornAnimationProps {
   speed?: 'slow' | 'normal' | 'fast';
   size?: 'small' | 'medium' | 'large';
   onComplete?: () => void;
 }
-
-const getSpeedDuration = (speed: string): number => {
-  switch (speed) {
-    case 'slow':
-      return 4000;
-    case 'fast':
-      return 2000;
-    default:
-      return 2800;
-  }
-};
 
 const getScale = (size: string): number => {
   switch (size) {
@@ -30,7 +20,7 @@ const getScale = (size: string): number => {
 
 export function UnicornAnimation({ speed = 'normal', size = 'medium', onComplete }: UnicornAnimationProps) {
   const [shouldRender, setShouldRender] = useState(true);
-  const duration = getSpeedDuration(speed);
+  const duration = getCelebrationDuration(speed);
   const scale = getScale(size);
 
   const bodyGradientId = React.useId();

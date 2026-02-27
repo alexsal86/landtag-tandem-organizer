@@ -1,18 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { getCelebrationDuration } from './speed';
 
 interface StarsAnimationProps {
   speed?: 'slow' | 'normal' | 'fast';
   size?: 'small' | 'medium' | 'large';
   onComplete?: () => void;
 }
-
-const getSpeedDuration = (speed: string): number => {
-  switch (speed) {
-    case 'slow': return 4000;
-    case 'fast': return 2000;
-    default: return 3000;
-  }
-};
 
 const getStarCount = (size: string): number => {
   switch (size) {
@@ -42,7 +35,7 @@ export function StarsAnimation({ speed = 'normal', size = 'medium', onComplete }
   const [shouldRender, setShouldRender] = useState(true);
   const animationRef = useRef<number>();
   const startTimeRef = useRef<number>(0);
-  const duration = getSpeedDuration(speed);
+  const duration = getCelebrationDuration(speed);
   const starCount = getStarCount(size);
 
   useEffect(() => {

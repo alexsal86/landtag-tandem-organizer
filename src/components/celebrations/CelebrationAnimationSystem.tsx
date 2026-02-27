@@ -19,19 +19,31 @@ export interface CelebrationSettings {
 interface CelebrationAnimationSystemProps {
   isVisible: boolean;
   onAnimationComplete?: () => void;
+  settingsOverride?: CelebrationSettings;
+  forceAnimation?: boolean;
 }
 
 const AVAILABLE_ANIMATIONS = ['unicorn', 'confetti', 'fireworks', 'stars', 'thumbsup'];
 
 let sequentialIndex = 0;
 
-export function CelebrationAnimationSystem({ isVisible, onAnimationComplete }: CelebrationAnimationSystemProps) {
+export function CelebrationAnimationSystem({
+  isVisible,
+  onAnimationComplete,
+  settingsOverride,
+  forceAnimation = false,
+}: CelebrationAnimationSystemProps) {
   const { user } = useAuth();
   const [settings, setSettings] = useState<CelebrationSettings | null>(null);
   const [currentAnimation, setCurrentAnimation] = useState<string | null>(null);
   const [shouldRender, setShouldRender] = useState(false);
 
   useEffect(() => {
+    if (settingsOverride) {
+      setSettings(settingsOverride);
+      return;
+    }
+
     if (user) {
       loadSettings();
     } else {
@@ -45,7 +57,7 @@ export function CelebrationAnimationSystem({ isVisible, onAnimationComplete }: C
         size: 'medium'
       });
     }
-  }, [user]);
+  }, [user, settingsOverride]);
 
   const loadSettings = async () => {
     if (!user) return;
@@ -123,14 +135,14 @@ export function CelebrationAnimationSystem({ isVisible, onAnimationComplete }: C
 
   useEffect(() => {
     if (isVisible && settings?.enabled) {
-      const shouldAnimate = shouldShowAnimation(settings.frequency);
+      const shouldAnimate = forceAnimation || shouldShowAnimation(settings.frequency);
       if (shouldAnimate) {
         const animKey = selectAnimation(settings);
         setCurrentAnimation(animKey);
         setShouldRender(true);
       }
     }
-  }, [isVisible, settings, shouldShowAnimation, selectAnimation]);
+  }, [isVisible, settings, forceAnimation, shouldShowAnimation, selectAnimation]);
 
   const handleComplete = useCallback(() => {
     setShouldRender(false);
