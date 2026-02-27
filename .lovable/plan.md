@@ -1,94 +1,102 @@
 
 
-# Fix: Zweiphasiger PageBreak-Algorithmus
+# Track Changes und Kommentare im Pruefschritt
 
-## Das Problem
+## Ziel
 
-Der aktuelle `PageBreakPlugin` hat einen kritischen Timing-Bug:
+Wenn der Abgeordnete einen Brief im Status "Zur Freigabe" bearbeitet, sollen seine Aenderungen farblich markiert werden (Track Changes) und er soll Kommentare hinterlassen koennen. Der Mitarbeiter sieht nach einer Zurueckweisung genau, was geaendert und kommentiert wurde.
 
-1. Er entfernt alle Spacer-Nodes im `editor.update()` Callback
-2. Direkt danach versucht er, die Positionen der verbleibenden Nodes per `getBoundingClientRect()` zu messen
-3. **Aber**: Innerhalb von `editor.update()` wurde das DOM noch nicht neu gerendert -- die gemessenen Positionen sind falsch (sie spiegeln noch das alte Layout mit Spacern wider)
-4. Dadurch werden Spacer an falschen Stellen eingefuegt oder gar nicht
+---
 
-## Die Loesung: Zwei-Phasen-Ansatz
+## Konzept
 
-Der Algorithmus wird in zwei getrennte Schritte aufgeteilt:
+### Track Changes (Aenderungsverfolgung)
 
-**Phase 1 -- Spacer entfernen:**
-- Alle bestehenden `PageBreakSpacerNode`s werden entfernt
-- Der `onUpdate` Callback signalisiert, dass das DOM aktualisiert wurde
+- Wenn der Editor im **Pruefmodus** ist (Status `pending_approval` und der aktuelle Benutzer ist der Reviewer), wird ein neues `TrackChangesPlugin` aktiviert.
+- Dieses Plugin ueberwacht alle Text-Aenderungen im Editor:
+  - **Eingefuegter Text**: Wird gruen hinterlegt markiert
+  - **Geloeschter Text**: Wird rot und durchgestrichen dargestellt (Text bleibt sichtbar, wird aber als geloescht markiert)
+- Die Aenderungen werden als spezielle Lexical-Nodes (`TrackInsertNode`, `TrackDeleteNode`) gespeichert, die beim Serialisieren erhalten bleiben.
+- Ein Banner oberhalb des Editors zeigt an: "Pruefmodus aktiv - Aenderungen werden nachverfolgt"
 
-**Phase 2 -- Messen und einfuegen:**
-- Erst nach `requestAnimationFrame` (DOM ist tatsaechlich aktualisiert)
-- Positionen aller Nodes per `getBoundingClientRect()` messen
-- Kumulative Hoehe berechnen und Spacer an den richtigen Stellen einfuegen
-- Keine weitere DOM-Messung noetig, da die Hoehen der Content-Nodes sich durch das Spacer-Einfuegen nicht aendern
+### Kommentare (bereits vorhanden)
 
-## Zusaetzliche Verbesserung: Hoehe des Spacers dynamisch berechnen
+- Das bestehende `CommentPlugin` ist bereits im `EnhancedLexicalEditor` integriert. Dieses wird im Pruefmodus weiterhin verfuegbar sein, sodass der Abgeordnete Textpassagen markieren und kommentieren kann.
 
-Aktuell ist die Spacer-Hoehe fix `deadZoneMm`. Aber der Spacer muss den **Rest der aktuellen Seite** plus die tote Zone ueberbruecken, nicht nur die tote Zone selbst. Das heisst:
+### Aenderungen akzeptieren/ablehnen
 
-```text
-spacerHeight = (pageBottom - nodeTop) + deadZone
-```
+- Der Mitarbeiter sieht bei "Ueberarbeitung" alle markierten Aenderungen.
+- Buttons "Alle Aenderungen annehmen" und "Alle Aenderungen ablehnen" ermoeglichen die Uebernahme oder Verwerfung.
+- Optional: Einzelne Aenderungen koennen per Rechtsklick/Hover akzeptiert oder abgelehnt werden.
 
-Wobei `pageBottom` die aktuelle Seitengrenze ist und `nodeTop` die Position des Nodes der die Grenze ueberschreitet. So wird der naechste Node genau an den Anfang der Folgeseite geschoben.
-
-Nein -- eigentlich ist der Spacer korrekt wenn er genau die "tote Zone" ueberbrueckt (Footer-Bereich + oberer Rand der naechsten Seite). Der nachfolgende Inhalt wird dadurch automatisch verschoben. Das Problem war nur das falsche Messen. Korrektur: die Spacer-Hoehe sollte dynamisch sein = `(currentPageBottom - cumHeight) + deadZonePx` in Pixel, umgerechnet in mm. So fuellt der Spacer exakt den Rest der Seite bis zum naechsten Inhaltsbereich.
+---
 
 ## Technische Umsetzung
 
-### Datei: `src/components/plugins/PageBreakPlugin.tsx` (ueberarbeiten)
+### 1. Neuer TrackChangesNode (ElementNode)
 
-Komplett ueberarbeiteter Algorithmus:
+**Datei:** `src/components/nodes/TrackChangeNode.ts`
 
-1. `registerUpdateListener` reagiert auf Aenderungen (wie bisher, debounced 200ms)
-2. Phase 1: `editor.update()` entfernt alle bestehenden Spacer
-3. In `onUpdate` Callback: `requestAnimationFrame` aufrufen
-4. Phase 2 (im rAF): `editor.update()` liest die echten DOM-Positionen und fuegt Spacer ein
-5. Spacer-Hoehe = `remainingPageMm + deadZoneMm` wobei `remainingPageMm` der Abstand vom Node bis zur Seitenunterkante ist (in mm umgerechnet)
-6. `isUpdatingRef` schuetzt beide Phasen, wird erst nach Phase 2 zurueckgesetzt
+- Zwei Node-Typen: `TrackInsertNode` und `TrackDeleteNode`
+- Beide erweitern `ElementNode` von Lexical
+- `TrackInsertNode`: Rendert mit gruenem Hintergrund (`background: #dcfce7; text-decoration: none`)
+- `TrackDeleteNode`: Rendert mit rotem Hintergrund und Durchstreichung (`background: #fecaca; text-decoration: line-through`)
+- Beide speichern Metadaten: `authorId`, `authorName`, `timestamp`
+- Serialisierung/Deserialisierung ueber `importJSON`/`exportJSON`
 
-Kernalgorithmus fuer Phase 2:
+### 2. TrackChangesPlugin
 
-```text
-cumHeightPx = 0
-pageBottomPx = page1HeightPx
+**Datei:** `src/components/plugins/TrackChangesPlugin.tsx`
 
-fuer jedes Kind (ohne Spacer):
-  dom = editor.getElementByKey(key)
-  heightPx = dom.getBoundingClientRect().height
-  nodeBottomPx = cumHeightPx + heightPx
-  
-  wenn nodeBottomPx > pageBottomPx:
-    restOfPageMm = (pageBottomPx - cumHeightPx) / PX_PER_MM
-    spacerHeightMm = restOfPageMm + deadZoneMm
-    spacer einfuegen vor diesem Kind (Hoehe = spacerHeightMm)
-    cumHeightPx = pageBottomPx + deadZonePx
-    pageBottomPx = cumHeightPx + followupHeightPx
-    cumHeightPx += heightPx
-  sonst:
-    cumHeightPx = nodeBottomPx
-```
+- Wird nur aktiviert, wenn `isReviewMode={true}` uebergeben wird
+- Registriert Listener fuer:
+  - **Text-Eingabe**: Neue Text-Nodes werden automatisch in einen `TrackInsertNode` gewrappt
+  - **Text-Loeschung**: Statt den Text zu loeschen, wird er in einen `TrackDeleteNode` gewrappt (Override von DELETE/BACKSPACE Commands)
+- Props: `authorId`, `authorName`, `isReviewMode`
 
-### Datei: `src/components/nodes/PageBreakSpacerNode.tsx` (keine Aenderung)
+### 3. TrackChangesToolbar
 
-Bleibt wie bisher -- das DecoratorNode mit dynamischer Hoehe funktioniert korrekt.
+**Datei:** `src/components/plugins/TrackChangesToolbar.tsx`
 
-### Datei: `src/components/EnhancedLexicalEditor.tsx` (keine Aenderung)
+- Zeigt im Pruefmodus ein Banner: "Pruefmodus - Aenderungen werden nachverfolgt"
+- Zeigt im Ueberarbeitungsmodus Buttons:
+  - "Alle annehmen" - Entfernt alle Track-Nodes und behaelt den eingefuegten Text / entfernt geloeschten Text
+  - "Alle ablehnen" - Entfernt alle Track-Nodes und verwirft eingefuegten Text / stellt geloeschten Text wieder her
+  - Zaehler: "X Aenderungen"
 
-Integration ist bereits vorhanden.
+### 4. Integration in EnhancedLexicalEditor
 
-### Datei: `src/components/letters/LetterEditorCanvas.tsx` (keine Aenderung)
+**Datei:** `src/components/EnhancedLexicalEditor.tsx`
 
-Config wird bereits korrekt durchgereicht.
+- Neue Props: `isReviewMode?: boolean`, `reviewerName?: string`, `reviewerId?: string`
+- `TrackInsertNode` und `TrackDeleteNode` zur Node-Liste hinzufuegen
+- `TrackChangesPlugin` als Plugin einbinden (nur aktiv wenn `isReviewMode`)
+- `TrackChangesToolbar` unterhalb der Haupt-Toolbar rendern
 
-## Zusammenfassung
+### 5. Integration in LetterEditorCanvas
 
-| Datei | Aenderung |
+**Datei:** `src/components/letters/LetterEditorCanvas.tsx`
+
+- Neuer Prop `isReviewMode` durchreichen an den `EnhancedLexicalEditor`
+
+### 6. Integration in LetterEditor
+
+**Datei:** `src/components/LetterEditor.tsx`
+
+- Pruefmodus erkennen: `isReviewMode = isReviewer && (currentStatus === 'pending_approval' || currentStatus === 'review')`
+- `isReviewMode`, `reviewerName` und `reviewerId` an `LetterEditorCanvas` weitergeben
+- Im Status `revision_requested` (Ueberarbeitung): Die TrackChangesToolbar mit "Annehmen/Ablehnen"-Buttons anzeigen
+
+---
+
+## Dateien-Uebersicht
+
+| Datei | Aktion |
 |---|---|
-| `src/components/plugins/PageBreakPlugin.tsx` | Zweiphasiger Algorithmus mit rAF-basierter DOM-Messung |
-
-Eine einzige Datei muss geaendert werden. Der Fix behebt den Timing-Bug durch saubere Trennung von DOM-Mutation (Spacer entfernen) und DOM-Messung (Positionen lesen).
+| `src/components/nodes/TrackChangeNode.ts` | Neu erstellen |
+| `src/components/plugins/TrackChangesPlugin.tsx` | Neu erstellen |
+| `src/components/plugins/TrackChangesToolbar.tsx` | Neu erstellen |
+| `src/components/EnhancedLexicalEditor.tsx` | Erweitern (Props, Nodes, Plugin) |
+| `src/components/letters/LetterEditorCanvas.tsx` | Erweitern (Prop durchreichen) |
+| `src/components/LetterEditor.tsx` | Erweitern (Pruefmodus-Logik) |
 

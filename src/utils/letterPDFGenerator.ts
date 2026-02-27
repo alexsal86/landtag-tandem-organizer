@@ -126,9 +126,6 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       
       const temp = document.createElement('div');
       temp.innerHTML = html;
-
-      // Remove page-break-spacer elements before processing
-      temp.querySelectorAll('[data-page-break-spacer]').forEach(el => el.remove());
       
       const processElement = (element: Element): string => {
         let text = '';
