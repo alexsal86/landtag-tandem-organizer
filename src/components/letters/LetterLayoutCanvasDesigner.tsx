@@ -225,6 +225,9 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
   content: { ...layout.content },
   footer: { ...layout.footer, height: layout.footer?.height ?? DEFAULT_DIN5008_LAYOUT.footer.height },
   attachments: { ...layout.attachments },
+  foldHoleMarks: layout.foldHoleMarks
+    ? { ...layout.foldHoleMarks }
+    : { ...DEFAULT_DIN5008_LAYOUT.foldHoleMarks! },
   pagination: layout.pagination ? { ...layout.pagination } : { enabled: true, top: 263.77, align: 'right', fontSize: 8 },
   closing: layout.closing ? { ...layout.closing } : undefined,
   blockContent: { ...(layout.blockContent || {}) },
@@ -524,6 +527,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               next.content = { ...next.content, top: defaults.content.top, maxHeight: defaults.content.maxHeight, lineHeight: defaults.content.lineHeight };
               next.footer = { ...next.footer, top: defaults.footer.top, height: defaults.footer.height };
               next.attachments = { ...next.attachments, top: defaults.attachments.top };
+              next.foldHoleMarks = { ...defaults.foldHoleMarks! };
               if (next.pagination) {
                 next.pagination = { ...next.pagination, top: defaults.pagination?.top || 263.77 };
               }
@@ -639,6 +643,27 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
             <div className="absolute bg-white shadow-xl relative select-none" style={{ left: RULER_SIZE, top: RULER_SIZE, width: pagePx.w, height: pagePx.h }}>
               {!plainPreview && <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />}
 
+              {(localLayout.foldHoleMarks?.enabled ?? true) && (
+                <>
+                  {[
+                    { y: localLayout.foldHoleMarks?.topMarkY ?? 105, width: localLayout.foldHoleMarks?.foldMarkWidth ?? 5, key: 'fold-top' },
+                    { y: localLayout.foldHoleMarks?.holeMarkY ?? 148.5, width: localLayout.foldHoleMarks?.holeMarkWidth ?? 8, key: 'hole' },
+                    { y: localLayout.foldHoleMarks?.bottomMarkY ?? 210, width: localLayout.foldHoleMarks?.foldMarkWidth ?? 5, key: 'fold-bottom' },
+                  ].map((mark) => (
+                    <div
+                      key={mark.key}
+                      className="absolute bg-gray-600 pointer-events-none"
+                      style={{
+                        left: `${(localLayout.foldHoleMarks?.left ?? 3) * SCALE}px`,
+                        top: `${mark.y * SCALE}px`,
+                        width: `${mark.width * SCALE}px`,
+                        height: `${Math.max(0.5, ((localLayout.foldHoleMarks?.strokeWidthPt ?? 1) * 0.3528) * SCALE)}px`,
+                      }}
+                    />
+                  ))}
+                </>
+              )}
+
 
               {blocks.map((block) => {
               const rect = getRect(block.key);
@@ -723,7 +748,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const returnAddressHeightMm = localLayout.addressField.returnAddressHeight || 17.7;
               
               return (
-                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium px-1 py-0.5 ${plainPreview ? 'text-gray-900' : ''} ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
+                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium ${(plainPreview || block.key === 'content') ? 'p-0 text-gray-900' : 'px-1 py-0.5'} ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
                   {block.key === 'addressField' && (hasReturnData || hasAddressData) ? (
                     <>
                       {/* Vermerkzone (return address) */}
@@ -744,7 +769,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                           <Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge>
                         </div>
                       )}
-                      <div style={{ marginTop: 2 * SCALE, fontSize: Math.max(8, 10 * SCALE) }}>
+                      <div style={{ marginTop: 0, fontSize: Math.max(8, 10 * SCALE) }}>
                         {localLayout.subject?.prefixShape && localLayout.subject.prefixShape !== 'none' && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: 3, verticalAlign: 'middle' }}>
                             {localLayout.subject.prefixShape === 'line' && <span style={{ display: 'inline-block', width: 5 * SCALE, height: 0.5 * SCALE, backgroundColor: '#333', verticalAlign: 'middle' }} />}
@@ -789,9 +814,13 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                       {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE))}
                     </>
                   ) : block.key === 'pagination' ? (
-                    <div className="flex items-center justify-between h-full">
-                      <span className="text-[9px]">{block.label}</span>
-                      <span className="text-[9px] text-gray-500" style={{ textAlign: (localLayout.pagination?.align || 'right') }}>Seite 1 von 1</span>
+                    <div className="flex items-center h-full w-full">
+                      <span
+                        className="text-[9px] text-gray-500 w-full"
+                        style={{ textAlign: (localLayout.pagination?.align || 'right') }}
+                      >
+                        Seite 1 von 1
+                      </span>
                     </div>
                   ) : block.key === 'footer' && isLineModeBlock ? (
                     (() => {
