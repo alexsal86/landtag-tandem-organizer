@@ -730,94 +730,53 @@ const LetterTemplateManager: React.FC = () => {
                 Betreff in Inhaltsbereich integrieren (DIN 5008)
               </label>
             </div>
-            
-            {/* Prefix Shape Selection */}
+
             <div className="mb-3">
-              <Label className="text-xs">Form vor dem Betreff</Label>
-              <Select
-                value={formData.layout_settings.subject?.prefixShape || 'none'}
-                onValueChange={(value: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen') => {
+              <Label className="text-xs mb-1 block">Betreffzeile</Label>
+              <BlockLineEditor
+                blockType="subject"
+                lines={(() => {
+                  const subjectLine = (formData.layout_settings as any)?.blockContent?.subjectLine;
+                  const configuredShape = (formData.layout_settings as any)?.subject?.prefixShape || 'none';
+
+                  if (subjectLine && typeof subjectLine === 'object' && (subjectLine as any).mode === 'lines') {
+                    return ((subjectLine as any).lines || []).map((line: any) => ({
+                      ...line,
+                      prefixShape: line.prefixShape || configuredShape,
+                    })) as BlockLine[];
+                  }
+
+                  if (Array.isArray(subjectLine) && subjectLine.length > 0) {
+                    return [{
+                      id: 'subject-1',
+                      type: 'text-only',
+                      value: (subjectLine[0] as any)?.content || '{{betreff}}',
+                      isVariable: true,
+                      prefixShape: configuredShape,
+                    } as BlockLine];
+                  }
+
+                  return [{ id: 'subject-1', type: 'text-only', value: '{{betreff}}', isVariable: true, prefixShape: configuredShape } as BlockLine];
+                })()}
+                onChange={(newLines) => {
+                  const firstShape = newLines.find((line) => line.type === 'text-only')?.prefixShape || 'none';
                   setFormData(prev => ({
                     ...prev,
                     layout_settings: {
                       ...prev.layout_settings,
-                      subject: { ...prev.layout_settings.subject, prefixShape: value }
-                    }
+                      subject: {
+                        ...prev.layout_settings.subject,
+                        prefixShape: firstShape,
+                      },
+                      blockContent: {
+                        ...(prev.layout_settings.blockContent || {}),
+                        subjectLine: { mode: 'lines', lines: newLines },
+                      },
+                    },
                   }));
                 }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Keine Form</SelectItem>
-                  <SelectItem value="line">Linie ─</SelectItem>
-                  <SelectItem value="circle">Kreis ○</SelectItem>
-                  <SelectItem value="rectangle">Rechteck □</SelectItem>
-                  <SelectItem value="sunflower">Sonnenblume 🌻</SelectItem>
-                  <SelectItem value="lion">Löwe 🦁</SelectItem>
-                  <SelectItem value="wappen">Wappen 🏛️</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Subject line with variable insertion */}
-            <div className="mb-3">
-              <Label className="text-xs mb-1 block">Betreffzeile</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={(() => {
-                    const subjectLine = formData.layout_settings.blockContent?.subjectLine;
-                    if (subjectLine && Array.isArray(subjectLine) && subjectLine.length > 0) {
-                      return (subjectLine[0] as any).content || '{{betreff}}';
-                    }
-                    return '{{betreff}}';
-                  })()}
-                  onChange={(e) => {
-                    setFormData(prev => ({
-                      ...prev,
-                      layout_settings: {
-                        ...prev.layout_settings,
-                        blockContent: {
-                          ...(prev.layout_settings.blockContent || {}),
-                          subjectLine: [{ id: 'subject-1', type: 'text', content: e.target.value }]
-                        }
-                      }
-                    }));
-                  }}
-                  placeholder="z.B. {{betreff}}"
-                  className="font-mono text-sm"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const currentVal = (() => {
-                      const subjectLine = formData.layout_settings.blockContent?.subjectLine;
-                      if (subjectLine && Array.isArray(subjectLine) && subjectLine.length > 0) {
-                        return (subjectLine[0] as any).content || '';
-                      }
-                      return '';
-                    })();
-                    const newVal = currentVal ? currentVal + ' {{betreff}}' : '{{betreff}}';
-                    setFormData(prev => ({
-                      ...prev,
-                      layout_settings: {
-                        ...prev.layout_settings,
-                        blockContent: {
-                          ...(prev.layout_settings.blockContent || {}),
-                          subjectLine: [{ id: 'subject-1', type: 'text', content: newVal }]
-                        }
-                      }
-                    }));
-                  }}
-                  className="whitespace-nowrap"
-                >
-                  {'{{betreff}}'} einfügen
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Verwenden Sie {'{{betreff}}'} als Variable für den dynamischen Betreff des Briefes.</p>
+              />
+              <p className="text-xs text-muted-foreground mt-1">Verwenden Sie {'{{betreff}}'} als Variable für den dynamischen Betreff des Briefes. Formen können direkt pro Zeile gewählt werden.</p>
             </div>
           </div>
 
