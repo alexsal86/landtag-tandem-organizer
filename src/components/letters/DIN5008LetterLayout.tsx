@@ -58,6 +58,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   returnAddressLines,
   infoBlockLines,
 }) => {
+  const contentTextStyle = {
+    color: '#000',
+  } as const;
+
   // Load layout settings from prop, template, or use defaults
   const DEFAULT_LAYOUT = {
     pageWidth: 210,
@@ -575,7 +579,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* 1 blank line after salutation */}
           {salutation && <div style={{ height: '4.5mm' }} />}
           {/* Letter content */}
-          <div style={{ color: '#000' }} dangerouslySetInnerHTML={{ __html: content }} />
+          <div className="din5008-content-text" style={contentTextStyle} dangerouslySetInnerHTML={{ __html: content }} />
           {/* Closing formula + signature */}
           {layout.closing?.formula && (
             <>
@@ -646,9 +650,17 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               overflow: 'hidden'
             }}
             dangerouslySetInnerHTML={{ __html: content }}
+            className="din5008-content-text"
           />
         </>
       )}
+
+      <style>{`
+        .din5008-content-text,
+        .din5008-content-text * {
+          color: #000 !important;
+        }
+      `}</style>
 
       {/* Attachments - positioned after content */}
       {attachments && attachments.length > 0 && (
