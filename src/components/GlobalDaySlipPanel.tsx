@@ -1154,6 +1154,26 @@ export function GlobalDaySlipPanel() {
     if (yesterdayCarryLines.length === 0) return;
     const linesToAppend = yesterdayCarryLines.map((line) => line.text);
     appendLinesToToday(linesToAppend);
+    const carriedLineIds = new Set(yesterdayCarryLines.map((line) => line.id));
+    setStore((prev) => {
+      const yesterdayData = prev[yesterdayKey];
+      if (!yesterdayData) return prev;
+
+      const existingStruck = yesterdayData.struckLineIds ?? yesterdayData.struckLines ?? [];
+      const struck = new Set(existingStruck);
+      carriedLineIds.forEach((lineId) => struck.add(lineId));
+
+      return {
+        ...prev,
+        [yesterdayKey]: {
+          ...yesterdayData,
+          struckLineIds: Array.from(struck),
+          resolved: (yesterdayData.resolved ?? []).filter(
+            (item) => !(item.target === "snoozed" && carriedLineIds.has(item.lineId)),
+          ),
+        },
+      };
+    });
     setCarriedOver(true);
   };
 
