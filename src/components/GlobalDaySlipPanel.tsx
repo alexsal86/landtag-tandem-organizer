@@ -1552,17 +1552,17 @@ export function GlobalDaySlipPanel() {
               />
               {/* ── Yesterday banner ── */}
               {yesterdayCarryLines.length > 0 && !carriedOver && (
-                <div className={`border-b border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm text-amber-200 transition-all duration-200 ${contentTransitioning ? "opacity-0" : "opacity-100"}`}>
+                <div className={`border-b border-amber-300/60 bg-amber-50 px-4 py-2 text-sm text-amber-900 transition-all duration-200 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200 ${contentTransitioning ? "opacity-0" : "opacity-100"}`}>
                   <span className="font-semibold">Gestern noch offen:</span>{" "}
                   &ldquo;{yesterdayCarryLines[0].text}&rdquo;
                   {yesterdayCarryLines.length > 1
                     ? ` +${yesterdayCarryLines.length - 1}`
                     : ""}
-                  <div className="mt-1 flex items-center justify-between gap-2 text-xs text-amber-100/80">
+                  <div className="mt-1 flex items-center justify-between gap-2 text-xs text-amber-700 dark:text-amber-100/80">
                     <span>Es werden offene und gesnoozte Punkte von gestern angeboten.</span>
                     <button
                       type="button"
-                      className="rounded border border-amber-300/40 px-2 py-0.5 hover:bg-amber-400/10"
+                      className="rounded border border-amber-300/80 px-2 py-0.5 hover:bg-amber-100 dark:border-amber-300/40 dark:hover:bg-amber-400/10"
                       onClick={carryOverFromYesterday}
                     >
                       In heute übernehmen
@@ -1598,14 +1598,14 @@ export function GlobalDaySlipPanel() {
                   </div>
                   <div className="h-full space-y-2 overflow-y-auto p-4">
                     {unresolvedCount === 0 && (
-                      <p className="rounded border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                      <p className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200">
                         ✓ Alle offenen Punkte wurden zugewiesen. Mit dem Button unten wird der Tag abgeschlossen.
                       </p>
                     )}
                     {triageEntries.map(({ id, text }) => {
                       const activeTarget = resolvedByLineId.get(id);
                       const buttonClass = (target: ResolveTarget) =>
-                        `rounded p-1 transition-colors ${activeTarget === target ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/50" : "hover:bg-muted"}`;
+                        `rounded p-1 transition-colors ${activeTarget === target ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-200 dark:ring-emerald-400/50" : "hover:bg-muted"}`;
                       const stamp = todayData.lineTimestamps?.[id];
                       const isHighPriority = /^!!\s*/.test(text);
                       const isPriority = !isHighPriority && /^!\s*/.test(text);
@@ -1705,7 +1705,7 @@ export function GlobalDaySlipPanel() {
                 <button
                   type="button"
                   onClick={completeDay}
-                  className="flex h-10 w-full items-center justify-between rounded-lg border border-emerald-300/40 bg-emerald-500/10 px-3 text-sm font-medium text-emerald-200"
+                  className="flex h-10 w-full items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-sm font-medium text-emerald-800 dark:border-emerald-300/40 dark:bg-emerald-500/10 dark:text-emerald-200"
                 >
                   <span>{completeButtonLabel}</span>
                   <span className="text-xs opacity-70">{completeButtonHint}</span>
@@ -1737,7 +1737,7 @@ export function GlobalDaySlipPanel() {
       )}
 
       {completionMessage && (
-        <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-100 shadow-lg backdrop-blur">
+        <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-800 shadow-lg backdrop-blur dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-100">
           {completionMessage}
         </div>
       )}
@@ -1749,7 +1749,7 @@ export function GlobalDaySlipPanel() {
         aria-label="Tageszettel öffnen (Strg+Alt+J)"
         onClick={() => setOpen((prev) => !prev)}
       >
-        {showCompletePulse ? <Check className="h-5 w-5 text-emerald-300" /> : <ClipboardPen className="h-5 w-5" />}
+        {showCompletePulse ? <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-300" /> : <ClipboardPen className="h-5 w-5" />}
         {unresolvedCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
             {unresolvedCount}
