@@ -20,7 +20,6 @@ import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Lock, Users, Globe } from "lucide-react";
 import { CaseFile } from "@/hooks/useCaseFiles";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
 
 interface CaseFileCreateDialogProps {
   open: boolean;
@@ -37,7 +36,6 @@ interface Profile {
 export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFileCreateDialogProps) {
   const { createCaseFile } = useCaseFiles();
   const { caseFileTypes } = useCaseFileTypes();
-  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CaseFileFormData>({
     title: "",
@@ -101,28 +99,16 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
         visibility,
       };
 
-      const result = await createCaseFile(submitData);
+      const participants = visibility === 'shared'
+        ? selectedParticipantIds.map((userId) => ({
+            user_id: userId,
+            role: participantRoles[userId] || 'viewer',
+          }))
+        : [];
+
+      const result = await createCaseFile(submitData, participants);
 
       if (!result) return;
-
-      // Save participants if shared
-      if (visibility === 'shared' && selectedParticipantIds.length > 0) {
-        const participants = selectedParticipantIds.map(userId => ({
-          case_file_id: result.id,
-          user_id: userId,
-          role: participantRoles[userId] || 'viewer',
-        }));
-
-        const { error } = await supabase.from('case_file_participants').insert(participants);
-        if (error) {
-          console.error('Error saving case file participants:', error);
-          toast({
-            title: "Akte erstellt, Teilnehmer nicht gespeichert",
-            description: "Die FallAkte wurde angelegt, aber die Teilnehmer konnten nicht hinzugefügt werden.",
-            variant: "destructive",
-          });
-        }
-      }
 
       // Reset form
       setFormData({
