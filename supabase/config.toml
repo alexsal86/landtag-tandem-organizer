@@ -136,13 +136,17 @@ schedule = "0 6 * * *"
 verify_jwt = false
 
 [functions.manage-tenant-user]
-verify_jwt = false
+verify_jwt = true
 
 [functions.publish-to-ghost]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-event-invitation]
 verify_jwt = true
 
+
+[functions.force-resync-calendar]
+verify_jwt = true
+
 [functions.global-logout]
-verify_jwt = false
+verify_jwt = true

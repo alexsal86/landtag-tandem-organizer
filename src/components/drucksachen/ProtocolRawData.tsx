@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 
 interface ProtocolRawDataProps {
   structuredData: any;
@@ -14,6 +15,16 @@ export function ProtocolRawData({ structuredData }: ProtocolRawDataProps) {
 
   const formatJSON = (obj: any): string => {
     return JSON.stringify(obj, null, 2);
+  };
+
+
+  const escapeHtml = (value: string): string => {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   };
 
   const copyToClipboard = async () => {
@@ -28,7 +39,9 @@ export function ProtocolRawData({ structuredData }: ProtocolRawDataProps) {
   };
 
   const highlightJSON = (json: string): string => {
-    return json
+    const safeJson = escapeHtml(json);
+
+    return safeJson
       .replace(/"([^"]+)":/g, '<span class="protocol-json-key">"$1"</span>:')
       .replace(/: "([^"]*)"/g, ': <span class="protocol-json-string">"$1"</span>')
       .replace(/: (\d+)/g, ': <span class="protocol-json-number">$1</span>')
@@ -63,7 +76,7 @@ export function ProtocolRawData({ structuredData }: ProtocolRawDataProps) {
           <div 
             className="protocol-json-preview"
             dangerouslySetInnerHTML={{ 
-              __html: highlightJSON(formatJSON(structuredData)) 
+              __html: sanitizeRichHtml(highlightJSON(formatJSON(structuredData))) 
             }}
           />
         </ScrollArea>
