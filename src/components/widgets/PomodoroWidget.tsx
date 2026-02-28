@@ -41,8 +41,8 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
   const [todaySessions, setTodaySessions] = useState<PomodoroSession[]>([]);
   const [workSessionsCompleted, setWorkSessionsCompleted] = useState(0);
   
-  const intervalRef = useRef<NodeJS.Timeout>();
-  const audioRef = useRef<HTMLAudioElement>();
+  const intervalRef = useRef<NodeJS.Timeout>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const {
     notifications = true,

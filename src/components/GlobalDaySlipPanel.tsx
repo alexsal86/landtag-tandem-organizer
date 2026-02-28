@@ -557,7 +557,7 @@ export function GlobalDaySlipPanel() {
   const [editorReadyVersion, setEditorReadyVersion] = useState(0);
 
   // Debounce ref for localStorage writes
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   const todayKey = toDayKey(new Date());
   const todayData = store[todayKey] ?? {

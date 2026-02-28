@@ -70,11 +70,11 @@ export const useYjsCollaboration = ({
   const [userProfiles, setUserProfiles] = useState<Record<string, any>>({});
   
   // Yjs document and text
-  const ydoc = useRef<Y.Doc>();
-  const ytext = useRef<Y.Text>();
-  const provider = useRef<any>();
-  const awareness = useRef<any>();
-  const supabaseChannel = useRef<any>();
+  const ydoc = useRef<Y.Doc>(null);
+  const ytext = useRef<Y.Text>(null);
+  const provider = useRef<any>(null);
+  const awareness = useRef<any>(null);
+  const supabaseChannel = useRef<any>(null);
 
   // Initialize Yjs document
   useEffect(() => {

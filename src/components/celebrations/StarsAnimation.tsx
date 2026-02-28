@@ -33,7 +33,7 @@ const COLORS = ['#ffd700', '#ffed4e', '#fff8dc', '#c0c0c0', '#e6e6fa'];
 export function StarsAnimation({ speed = 'normal', size = 'medium', onComplete }: StarsAnimationProps) {
   const [stars, setStars] = useState<Star[]>([]);
   const [shouldRender, setShouldRender] = useState(true);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number>(null);
   const startTimeRef = useRef<number>(0);
   const duration = getCelebrationDuration(speed);
   const starCount = getStarCount(size);
