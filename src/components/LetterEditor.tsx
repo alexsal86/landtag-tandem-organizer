@@ -1862,6 +1862,16 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       <h3 className="text-sm font-medium">Brieftext</h3>
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Live</Badge>
                     </div>
+                    <Button 
+                      size="sm" 
+                      variant="default" 
+                      className="h-7 px-2"
+                      disabled={!canEdit || saving}
+                      onClick={() => handleManualSave(latestContentRef.current.content, latestContentRef.current.contentNodes)}
+                    >
+                      <Save className="h-3.5 w-3.5 mr-1" />
+                      Speichern
+                    </Button>
                     <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}>
                       <X className="h-3.5 w-3.5" />
                     </Button>
