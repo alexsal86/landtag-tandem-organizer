@@ -33,6 +33,9 @@ interface DIN5008LetterLayoutProps {
   addressFieldLines?: BlockLine[];
   returnAddressLines?: BlockLine[];
   infoBlockLines?: BlockLine[];
+  // Multi-page support
+  allowContentOverflow?: boolean;
+  contentRef?: React.Ref<HTMLDivElement>;
 }
 
 export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
@@ -48,6 +51,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   className = "",
   debugMode = false,
   showPagination = false,
+  allowContentOverflow = false,
+  contentRef,
   layoutSettings,
   salutation,
   hideClosing = false,
@@ -690,17 +695,17 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       {layout.subject?.integrated !== false ? (
         /* Integrated mode: Subject → 2 blank lines → Salutation → 1 blank line → Content */
         <div 
+          ref={contentRef}
           style={{ 
             position: 'absolute',
             top: `${layout.subject?.top || 98.46}mm`,
             left: '25mm',
             right: '20mm',
-            maxHeight: `${contentMaxHeightMm}mm`,
+            ...(allowContentOverflow ? {} : { maxHeight: `${contentMaxHeightMm}mm`, overflow: 'hidden' }),
             fontSize: `${contentFontSizePt}pt`,
             lineHeight: '1.2',
             color: '#000',
             backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
-            overflow: 'hidden'
           }}
         >
           {/* Subject line (bold) with optional prefix shape */}
