@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Layout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +47,9 @@ interface LetterEditorCanvasProps {
   canEdit?: boolean;
   documentId?: string;
   onContentChange: (content: string, contentNodes?: string, contentHtml?: string) => void;
+  enableInlineContentEditing?: boolean;
+  onRequestContentEdit?: () => void;
+  displayContentHtml?: string;
   onMentionInsert?: (userId: string, displayName: string) => void;
 
   // Track Changes / Review mode
@@ -103,6 +106,9 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   canEdit = true,
   documentId,
   onContentChange,
+  enableInlineContentEditing = true,
+  onRequestContentEdit,
+  displayContentHtml,
   isReviewMode = false,
   reviewerName = '',
   reviewerId = '',
@@ -148,8 +154,10 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   const [internalZoom, setInternalZoom] = useState(0.75);
   const toolbarPortalRef = useRef<HTMLDivElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
   const zoom = externalZoom ?? internalZoom;
   const setZoom = onZoomChange ?? setInternalZoom;
+  const [measuredEditorHeightMm, setMeasuredEditorHeightMm] = useState(80);
 
   const layout = layoutSettings || template?.layout_settings || {};
   const closingFormula = layout.closing?.formula;
@@ -169,10 +177,54 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   const editorTopMm = subjectTopMm + subjectLineMm + gapAfterSubjectMm + salutationLineMm + gapAfterSalutationMm;
 
-  // Footer/pagination constraints  
-  const paginationTopMm = 263.77;
-  const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
-  const footerTopMm = layout.footer?.top || 272;
+  // Keep page-break helpers aligned with real Lexical content growth.
+  useEffect(() => {
+    const container = editorContainerRef.current;
+    if (!container) return;
+
+    const pxToMm = (px: number) => px * (25.4 / 96);
+
+    const updateHeight = () => {
+      const editorInput = container.querySelector<HTMLElement>('.editor-input');
+      const measuredPx = editorInput?.scrollHeight ?? container.scrollHeight;
+      const measuredMm = Math.max(30, pxToMm(measuredPx));
+      setMeasuredEditorHeightMm((prev) => (Math.abs(prev - measuredMm) < 0.5 ? prev : measuredMm));
+    };
+
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(container);
+    const editorInput = container.querySelector<HTMLElement>('.editor-input');
+    if (editorInput) {
+      observer.observe(editorInput);
+    }
+
+    return () => observer.disconnect();
+  }, [content, contentNodes, contentFontSizePt]);
+
+  // Footer/pagination constraints
+  const footerTopMm = Number(layout.footer?.top || 272);
+  const footerHeightMm = Number(layout.footer?.height || 18);
+
+  const baseClosingHeightMm = closingFormula ? (hasSignature ? 32 : 20) : 0;
+  const estimatedContentBottomMm = editorTopMm + Math.max(60, measuredEditorHeightMm) + baseClosingHeightMm;
+  const totalPages = Math.max(1, Math.ceil((estimatedContentBottomMm + 10) / 297));
+  const canvasHeightMm = Math.max(297, totalPages * 297);
+
+
+  const escapeHtml = (value: string) => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const previewContentHtml = displayContentHtml
+    ?? (content
+      ? `<p>${escapeHtml(content).replace(/
+/g, '<br/>')}</p>`
+      : '<p></p>');
 
   // Layout positions for overlays
   const addressFieldTop = 50; // DIN 5008
@@ -237,14 +289,14 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           style={{
             transform: `scale(${zoom})`,
             transformOrigin: 'top center',
-            marginBottom: `${(zoom - 1) * 297}mm`,
+            marginBottom: `${(zoom - 1) * canvasHeightMm}mm`,
           }}
         >
           <div
             className="mx-auto bg-white relative"
             style={{
               width: '210mm',
-              minHeight: '297mm',
+              minHeight: `${canvasHeightMm}mm`,
               boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
               fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
               fontSize: `${contentFontSizePt}pt`,
@@ -260,12 +312,12 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               subject={subject}
               letterDate={letterDate}
               referenceNumber={referenceNumber}
-              content="" 
+              content={previewContentHtml} 
               attachments={attachments}
               showPagination={showPagination}
               layoutSettings={layoutSettings}
               salutation={salutation}
-              hideClosing={true}
+              hideClosing={enableInlineContentEditing}
               addressFieldElements={addressFieldElements}
               returnAddressElements={returnAddressElements}
               infoBlockElements={infoBlockElements}
@@ -427,6 +479,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             )}
 
             {/* Overlay: Lexical Editor positioned in content area - no maxHeight, grows freely */}
+            {enableInlineContentEditing ? (
             <div
               style={{
                 position: 'absolute',
@@ -456,7 +509,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                   }
                 }}
               >
-              <div className="letter-canvas-editor">
+              <div ref={editorContainerRef} className="letter-canvas-editor">
                 <EnhancedLexicalEditor
                   content={content}
                   contentNodes={contentNodes}
@@ -497,9 +550,28 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             </div>
             </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onRequestContentEdit?.()}
+                className="absolute border border-dashed border-muted-foreground/40 rounded-sm text-left hover:border-primary/60 hover:bg-primary/5 transition-colors"
+                style={{
+                  top: `${editorTopMm}mm`,
+                  left: '25mm',
+                  right: '20mm',
+                  minHeight: '60mm',
+                  zIndex: 10,
+                  background: 'transparent',
+                }}
+              >
+                <span className="block text-xs text-muted-foreground px-2 py-1">
+                  Brieftext bearbeiten (öffnet Editor im Splitscreen)
+                </span>
+              </button>
+            )}
 
             {/* Dynamic closing block rendered below editor content */}
-            {closingFormula && (
+            {enableInlineContentEditing && closingFormula && (
               <div
                 style={{
                   position: 'absolute',
@@ -541,8 +613,25 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             )}
 
+            {/* Clip only the true footer stripe per page to avoid visual overlap without hiding large text areas */}
+            {Array.from({ length: totalPages }, (_, index) => index).map((pageIndex) => (
+              <div
+                key={`footer-clip-${pageIndex}`}
+                style={{
+                  position: 'absolute',
+                  top: `${(pageIndex * 297) + footerTopMm}mm`,
+                  left: '25mm',
+                  right: '20mm',
+                  height: `${footerHeightMm}mm`,
+                  backgroundColor: '#fff',
+                  zIndex: 14,
+                  pointerEvents: 'none',
+                }}
+              />
+            ))}
+
             {/* Page break indicators at 297mm intervals */}
-            {[1, 2, 3].map((page) => (
+            {Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 1).map((page) => (
               <div
                 key={`page-break-${page}`}
                 style={{

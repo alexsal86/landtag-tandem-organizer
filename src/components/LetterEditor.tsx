@@ -149,11 +149,39 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [previewZoom, setPreviewZoom] = useState(1.0);
   const [showPagination, setShowPagination] = useState(true);
   const [showLayoutDebug, setShowLayoutDebug] = useState(false);
+  const [showTextSplitEditor, setShowTextSplitEditor] = useState(false);
+  const [draftContent, setDraftContent] = useState('');
+  const [draftContentNodes, setDraftContentNodes] = useState<any>(null);
+  const [draftContentHtml, setDraftContentHtml] = useState<string | null>(null);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const isUpdatingFromRemoteRef = useRef(false);
   const latestContentRef = useRef<{content: string, contentNodes?: any}>({ content: '' });
   const pendingMentionsRef = useRef<Set<string>>(new Set());
+
+
+  const openTextSplitEditor = () => {
+    setDraftContent(editedLetter.content || '');
+    setDraftContentNodes(editedLetter.content_nodes || null);
+    setDraftContentHtml(editedLetter.content_html || null);
+    setShowTextSplitEditor(true);
+  };
+
+  const applyDraftToPreview = () => {
+    if (!canEdit) return;
+
+    latestContentRef.current = {
+      content: draftContent?.trim() || '',
+      contentNodes: draftContentNodes || null,
+    };
+
+    setEditedLetter((prev) => ({
+      ...prev,
+      content: draftContent?.trim() || '',
+      content_nodes: draftContentNodes || null,
+      content_html: draftContentHtml || undefined,
+    }));
+  };
 
   const statusLabels: Record<string, string> = {
     draft: 'Entwurf',
@@ -1802,7 +1830,45 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               </div>
             </div>
           ) : (
-            /* Letter Editor Canvas - WYSIWYG editing directly in letter */
+            /* Split mode: optional text editor + letter canvas preview */
+            <div className="flex-1 flex overflow-hidden">
+              {showTextSplitEditor && (
+                <div className="w-[42%] min-w-[340px] border-r bg-background flex flex-col">
+                  <div className="flex items-center justify-between gap-2 p-2 border-b bg-muted/20">
+                    <h3 className="text-sm font-medium">Brieftext-Editor</h3>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={applyDraftToPreview} disabled={!canEdit}>
+                        Vorschau aktualisieren
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setShowTextSplitEditor(false)}>
+                        Schließen
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-auto p-3">
+                    <EnhancedLexicalEditor
+                      content={draftContent}
+                      contentNodes={draftContentNodes}
+                      onChange={(nextContent, nextNodes, nextHtml) => {
+                        setDraftContent(nextContent || '');
+                        setDraftContentNodes(nextNodes && nextNodes.trim() !== '' ? nextNodes : null);
+                        setDraftContentHtml(nextHtml || null);
+                      }}
+                      placeholder="Brieftext hier eingeben..."
+                      documentId={letter?.id}
+                      showToolbar={canEdit}
+                      editable={canEdit}
+                      onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)}
+                      defaultFontSize="11pt"
+                      isReviewMode={isReviewer && (currentStatus === 'pending_approval' || currentStatus === 'review')}
+                      reviewerName={user?.id ? (userProfiles[user.id]?.display_name || user.email || '') : ''}
+                      reviewerId={user?.id || ''}
+                      showAcceptReject={isCreator && currentStatus === 'revision_requested'}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex-1 flex flex-col overflow-hidden">
             <LetterEditorCanvas
               subject={editedLetter.subject}
               salutation={(editedLetter as any).salutation_override || computedSalutation}
@@ -1841,27 +1907,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               reviewerName={user?.id ? (userProfiles[user.id]?.display_name || user.email || '') : ''}
               reviewerId={user?.id || ''}
               showAcceptReject={isCreator && currentStatus === 'revision_requested'}
-              onContentChange={(content, contentNodes) => {
-                if (isUpdatingFromRemoteRef.current || !canEdit) return;
-                
-                if (content && content.includes('{"root":{"children"') && content.split('{"root":{"children"').length > 2) {
-                  console.error('🚨 Rejected corrupted content in onChange handler');
-                  return;
-                }
-                
-                const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
-                
-                latestContentRef.current = {
-                  content: content?.trim() || '',
-                  contentNodes: processedContentNodes
-                };
-                
-                setEditedLetter(prev => ({
-                  ...prev,
-                  content: content?.trim() || '',
-                  content_nodes: processedContentNodes
-                }));
-              }}
+              onContentChange={() => {}}
+              enableInlineContentEditing={false}
+              onRequestContentEdit={openTextSplitEditor}
+              displayContentHtml={editedLetter.content_html || undefined}
               onMentionInsert={(userId) => {
                 pendingMentionsRef.current.add(userId);
               }}
@@ -1910,6 +1959,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               zoom={previewZoom}
               onZoomChange={setPreviewZoom}
             />
+              </div>
+            </div>
           )}
         </div>
       </div>
