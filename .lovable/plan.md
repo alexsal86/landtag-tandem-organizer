@@ -1,81 +1,48 @@
 
+# Fix: Drei Probleme im Briefeditor
 
-# Fix: Mehrseitige Vorschau, Inhaltsbereich Seite 2ff, und Build-Fehler
+## Problem 1: Letzte Zeile von Seite 1 wird auf Seite 2 wiederholt
 
-## Ubersicht
-Drei zusammenhangende Probleme werden gelost:
-1. **Build-Fehler** in `LetterTemplateManager.tsx` (fehlende `mobileLabel`-Property)
-2. **Seite 2+ zeigt falscherweise Header/Footer** -- soll nur den Inhaltsbereich zeigen
-3. **Zeilen werden zerschnitten** durch das Viewport/Offset-Modell, weil `translateY` pixelgenau verschiebt und Zeilen auf der Grenze liegen konnen
-4. **Fehlende Template-Einstellungen** fur den Inhaltsbereich auf Folgeseiten (Beginn/Ende)
+**Ursache**: Die `page1BodyMm` und `pageNBodyMm` werden mit `snapToLine()` abgerundet. Dadurch ist `page1BodyMm` kleiner als der tatsaechliche Body-Bereich. Der Offset fuer Seite 2 ist `page1BodyMm`, aber die Fensterhoehe auf Seite 1 ist `contentBottomMm - contentStartMm` (ungerundet, Zeile 323). Die Fensterhoehe ist also groesser als `page1BodyMm` -- Seite 1 zeigt mehr Text als der Offset fuer Seite 2 ueberspringt.
+
+**Fix in `LetterEditorCanvas.tsx`**: Die `bodyHeightMm` in `renderPage` muss ebenfalls die gesnapte Hoehe verwenden, nicht die rohe:
+- Zeile 323-324: `bodyHeightMm` fuer Seite 1 auf `page1BodyMm` setzen (bereits gesnapt), fuer Seite 2+ auf `pageNBodyMm`
+
+## Problem 2: Editortext verschwindet nach Navigation
+
+**Ursache**: `draftInitializedRef` (Zeile 173) wird beim Verlassen der Seite nie zurueckgesetzt. Wenn der Benutzer zurueckkehrt, wird `editedLetter` korrekt aus der DB geladen (Zeile 287-291), aber `draftInitializedRef.current` ist noch `true`, daher werden `draftContent`/`draftContentNodes`/`draftContentHtml` nicht aktualisiert. Der Lexical-Editor bekommt leere/veraltete Werte.
+
+**Fix in `LetterEditor.tsx`**:
+- Beim Laden eines neuen Briefes (im `useEffect` bei Zeile 278): `draftInitializedRef.current = false` zuruecksetzen
+- Alternativ/zusaetzlich: Wenn `letter` sich aendert, die Draft-States direkt aus dem neuen `letter`-Objekt initialisieren
+
+## Problem 3: Kuenstlicher Platz nach Schlussformel erzeugt leere Seiten
+
+**Ursache**: `renderClosing()` hat einen festen `<div style={{ height: '9mm' }} />` Abstand VOR der Grussformel (Zeile 256). Nach dem Namen/Titel gibt es keinen weiteren Spacer, ABER im Mess-Container wird dieser 9mm-Abstand mitgemessen. Wenn der Content fast die Seite fuellt, reichen diese 9mm aus, um `flowHeightMm > page1BodyMm` zu erzeugen, was eine zweite (fast leere) Seite generiert. Zudem: Wenn keine Anlagen vorhanden sind, braucht nach dem Namen nichts mehr zu kommen -- aber die 9mm VOR der Grussformel bleiben.
+
+**Fix in `LetterEditorCanvas.tsx`**:
+- Den Abstand vor der Grussformel von `9mm` auf einen kleineren Wert reduzieren (z.B. `4.5mm`) -- dies muss aber zur PDF-Ausgabe passen
+- Alternativ (robuster): Die `totalPages`-Berechnung um einen Schwellwert ergaenzen: Wenn der Ueberhang kleiner als eine Zeilenhoehe ist, keine weitere Seite erzeugen
 
 ## Betroffene Dateien
 
-### 1. `src/types/letterLayout.ts` -- Neue Felder fur Seite 2+
-Neue optionale Felder im `LetterLayoutSettings`-Interface:
-- `content.page2TopMm` (number, default: `margins.top`) -- wo der Inhaltsbereich auf Seite 2ff beginnt
-- `content.page2BottomMm` (number, default: `footer.top`) -- wo der Inhaltsbereich auf Seite 2ff endet
+### `src/components/letters/LetterEditorCanvas.tsx`
+1. **Zeile 322-324** (`renderPage`): `bodyHeightMm` auf gesnapte Werte umstellen:
+   ```
+   const bodyHeightMm = isFirst ? page1BodyMm : pageNBodyMm;
+   ```
+2. **Zeile 236-240** (`totalPages`): Schwellwert einfuegen, um Mikro-Ueberlaeufe zu ignorieren:
+   ```
+   if (flowHeightMm <= page1BodyMm + lineHeightMm * 0.5) return 1;
+   ```
 
-### 2. `src/components/letters/LayoutSettingsEditor.tsx` -- UI fur die neuen Felder
-Im Abschnitt "Inhalt" zwei neue Eingabefelder hinzufugen:
-- "Seite 2+ Beginn (mm)" -- fur `content.page2TopMm`
-- "Seite 2+ Ende (mm)" -- fur `content.page2BottomMm`
+### `src/components/LetterEditor.tsx`
+3. **Zeile 278-291** (letter-Lade-Effekt): `draftInitializedRef.current = false` setzen, wenn ein neuer Brief geladen wird, damit die Draft-States korrekt reinitialisiert werden:
+   ```
+   draftInitializedRef.current = false;
+   ```
 
-### 3. `src/components/letters/LetterEditorCanvas.tsx` -- Kernlogik-Anpassungen
-
-**a) Seite 2+ ohne Header/Footer rendern:**
-- Im `renderPage(pageIndex)` fur `pageIndex > 0`: Keinen `DIN5008LetterLayout` mehr rendern (kein Header, kein Footer, keine Adresszonen)
-- Nur den Body-Viewport und ggf. Paginierung anzeigen
-
-**b) Neue Layout-Felder berucksichtigen:**
-- `page2TopMm` aus `layout.content.page2TopMm ?? layout.margins?.top ?? 25` lesen
-- `contentBottomMm` fur Seite 2+ aus `layout.content.page2BottomMm ?? footerTopMm` lesen (kein Footer = mehr Platz)
-- `pageNBodyMm` entsprechend neu berechnen
-
-**c) Zeilen-Zerschneidung vermeiden:**
-Das Problem entsteht, weil `translateY(-offsetMm)` den Content pixelgenau verschiebt und eine Textzeile genau auf der oberen Kante des Viewports liegen kann. Losung:
-- Die Zeilenhohe in mm berechnen: `lineHeightMm = contentFontSizePt * 0.3528 * 1.2` (pt zu mm, mal line-height 1.2)
-- Den Offset pro Seite auf ein Vielfaches der Zeilenhohe abrunden: `offsetMm = Math.floor(rawOffset / lineHeightMm) * lineHeightMm`
-- Dadurch beginnt jede Seite immer am Anfang einer Zeile
-- Die `page1BodyMm` und `pageNBodyMm` werden ebenfalls auf Vielfache der Zeilenhohe abgerundet, damit die Fensterhohen konsistent bleiben
-
-**d) Paginierung im Inhaltsbereich beachten:**
-- Wenn Paginierung aktiv: `contentBottomMm` bereits korrekt berechnet (min von footerTop und paginationTop minus Gap)
-- Fur Seite 2+: Paginierung reduziert ebenfalls den verfugbaren Raum, also `page2BottomMm` wird gegen `paginationTopMm - paginationGapMm` geclampt
-
-### 4. `src/components/LetterTemplateManager.tsx` -- Build-Fehler beheben
-Zeile 582-592: `mobileLabel` fehlt bei einigen Tab-Definitionen. Fix: `mobileLabel` als optionales Feld in der Nutzung behandeln. Die drei Stellen (Zeile 603, 607, 614) nutzen `tab.mobileLabel`, obwohl nicht alle Tabs dieses Feld haben.
-- Option: `(tab as any).mobileLabel ?? tab.label` oder besser: den Typ der `tabDefinitions` anpassen, sodass alle Eintraege `mobileLabel?: string` haben.
-- Einfachster Fix: Das Array mit explizitem Typ annotieren statt `as const`, oder alle Eintraege mit `mobileLabel` versehen.
-
-## Technische Details
-
-```text
-Seite 1 (wie bisher):
-+--Header, Adresse, Info--+
-| Betreff, Anrede         |
-| Inhalt (Fenster 1)      |
-| Paginierung             |
-| Footer                  |
-+--------------------------+
-
-Seite 2+ (NEU -- kein Header/Footer):
-+--------------------------+
-| (page2TopMm)             |
-| Inhalt (Fenster N)       |
-| Paginierung (wenn aktiv) |
-| (page2BottomMm)          |
-+--------------------------+
-
-Zeilen-Alignment:
-rawOffset = page1BodyMm + (i-1) * pageNBodyMm
-alignedOffset = floor(rawOffset / lineHeightMm) * lineHeightMm
---> Keine halben Zeilen am oberen Rand
-```
-
-## Reihenfolge
-1. Build-Fehler in `LetterTemplateManager.tsx` beheben
-2. Neue Felder in `letterLayout.ts` + Defaults
-3. UI-Felder in `LayoutSettingsEditor.tsx`
-4. Renderlogik in `LetterEditorCanvas.tsx` anpassen (kein Header/Footer auf Seite 2+, Zeilen-Alignment, neue Layout-Felder)
-
+## Zusammenfassung
+- Bug 1 (Zeilenwiederholung): Fensterhoehe und Offset muessen identische (gesnapte) Werte nutzen
+- Bug 2 (Text weg): Draft-Initialisierungs-Flag muss beim Briefwechsel zurueckgesetzt werden
+- Bug 3 (Leere Seiten): Schwellwert bei totalPages verhindert, dass minimale Ueberlaeufe eine neue Seite erzeugen
