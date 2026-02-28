@@ -22,6 +22,10 @@ interface DIN5008LetterLayoutProps {
   layoutSettings?: any;
   salutation?: string;
   hideClosing?: boolean;
+  /** Page number (1-based). Pages > 1 get reduced header, no address/info/subject */
+  pageNumber?: number;
+  /** Total page count for pagination display */
+  totalPages?: number;
   // Canvas-based block elements (substituted)
   addressFieldElements?: HeaderElement[];
   returnAddressElements?: HeaderElement[];
@@ -51,6 +55,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   layoutSettings,
   salutation,
   hideClosing = false,
+  pageNumber = 1,
+  totalPages = 1,
   addressFieldElements,
   returnAddressElements,
   infoBlockElements,
@@ -61,6 +67,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   returnAddressLines,
   infoBlockLines,
 }) => {
+  const isFollowPage = pageNumber > 1;
+
   const toFontSizePt = (value: unknown, fallback: number): number => {
     if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
       return value;
@@ -491,8 +499,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           ))}
         </>
       )}
-      {/* Template Header */}
-      {template && (
+      {/* Template Header - full on page 1, reduced on follow pages */}
+      {template && !isFollowPage && (
         <div 
           className="letter-header"
           style={{ 
@@ -594,11 +602,28 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           ) : null}
         </div>
       )}
+      {/* Reduced header on follow pages */}
+      {isFollowPage && template && (
+        <div 
+          className="letter-header-reduced"
+          style={{ 
+            height: '15mm',
+            borderBottom: '1px solid #e0e0e0',
+            display: 'flex',
+            alignItems: 'center',
+            paddingLeft: '25mm',
+            fontSize: '9pt',
+            color: '#666',
+          }}
+        >
+          {senderInfo?.organization || senderInfo?.name || template?.name || ''}
+        </div>
+      )}
 
       {/* All elements positioned absolutely to page - exactly like PDF */}
       
-      {/* Main Address and Info Block Container - positioned at 50mm from top (same as PDF) */}
-      <div className="flex" style={{ 
+      {/* Main Address and Info Block Container - only on page 1 */}
+      {!isFollowPage && <div className="flex" style={{ 
         position: 'absolute',
         top: '50mm', // DIN 5008 position from page top
         left: '25mm',
@@ -683,10 +708,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               </>
             )}
           </div>
-        </div>
+        </div>}
 
-      {/* Subject + Salutation + Content - integrated per DIN 5008 */}
-      {layout.subject?.integrated !== false ? (
+      {/* Subject + Salutation + Content - integrated per DIN 5008 (page 1 only) */}
+      {!isFollowPage && (layout.subject?.integrated !== false ? (
         /* Integrated mode: Subject → 2 blank lines → Salutation → 1 blank line → Content */
         <div 
           style={{ 
@@ -822,7 +847,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             className="din5008-content-text"
           />
         </>
-      )}
+      ))}
 
       <style>{`
         .din5008-content-text,
@@ -831,8 +856,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         }
       `}</style>
 
-      {/* Attachments in legacy mode */}
-      {layout.subject?.integrated === false && attachmentList.length > 0 && (
+      {/* Attachments in legacy mode (page 1 only) */}
+      {!isFollowPage && layout.subject?.integrated === false && attachmentList.length > 0 && (
         <div style={{
           position: 'absolute',
           top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignature ? 4.5 : 13.5}mm)`,
@@ -885,7 +910,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           color: '#666',
           fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif'
         }}>
-          Seite 1 von 1
+          Seite {pageNumber} von {totalPages}
         </div>
       )}
 
