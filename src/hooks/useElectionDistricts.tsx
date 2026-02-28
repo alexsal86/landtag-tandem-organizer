@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useTenant } from "./useTenant";
@@ -52,70 +53,72 @@ export interface ElectionDistrictNote {
 }
 
 export function useElectionDistricts() {
-  const [districts, setDistricts] = useState<ElectionDistrict[]>([]);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchDistricts = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("election_districts")
-        .select(`
-          *,
-          representatives:election_representatives(
-            id,
-            name,
-            party,
-            mandate_type,
-            order_index,
-            email,
-            phone,
-            office_address,
-            bio
-          )
-        `)
-        .order("district_number");
+  const fetchDistricts = async (): Promise<ElectionDistrict[]> => {
+    const { data, error } = await supabase
+      .from("election_districts")
+      .select(`
+        *,
+        representatives:election_representatives(
+          id,
+          name,
+          party,
+          mandate_type,
+          order_index,
+          email,
+          phone,
+          office_address,
+          bio
+        )
+      `)
+      .order("district_number");
 
-      if (error) throw error;
-      
-      // Sort representatives within each district (direct mandates first, then by order_index)
-      const districtsWithSortedReps = (data || []).map(district => ({
-        ...district,
-        representatives: district.representatives?.map((rep: any) => ({
+    if (error) throw error;
+
+    // Sort representatives within each district (direct mandates first, then by order_index)
+    return (data || []).map((district) => ({
+      ...district,
+      representatives: district.representatives
+        ?.map((rep: any) => ({
           ...rep,
-          mandate_type: rep.mandate_type as 'direct' | 'list'
-        })).sort((a: ElectionRepresentative, b: ElectionRepresentative) => {
-          if (a.mandate_type === 'direct' && b.mandate_type !== 'direct') return -1;
-          if (a.mandate_type !== 'direct' && b.mandate_type === 'direct') return 1;
+          mandate_type: rep.mandate_type as "direct" | "list",
+        }))
+        .sort((a: ElectionRepresentative, b: ElectionRepresentative) => {
+          if (a.mandate_type === "direct" && b.mandate_type !== "direct") return -1;
+          if (a.mandate_type !== "direct" && b.mandate_type === "direct") return 1;
           return a.order_index - b.order_index;
-        }) || []
-      }));
-      
-      setDistricts(districtsWithSortedReps);
-    } catch (error) {
-      console.error("Error fetching election districts:", error);
+        }) || [],
+    }));
+  };
+
+  const {
+    data: districts = [],
+    isLoading,
+    refetch,
+    error: districtsError,
+  } = useQuery({
+    queryKey: ["election-districts", user?.id],
+    queryFn: fetchDistricts,
+    enabled: Boolean(user),
+  });
+
+  useEffect(() => {
+    if (districtsError) {
+      console.error("Error fetching election districts:", districtsError);
       toast({
         title: "Fehler beim Laden der Wahlkreise",
         description: "Die Wahlkreisdaten konnten nicht geladen werden.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    if (user) {
-      fetchDistricts();
-    }
-  }, [user]);
+  }, [districtsError, toast]);
 
   return {
     districts,
-    loading,
-    refetch: fetchDistricts,
+    loading: isLoading,
+    refetch,
   };
 }
 

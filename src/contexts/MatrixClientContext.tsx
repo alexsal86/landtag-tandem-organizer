@@ -310,7 +310,66 @@ interface MatrixClientContextType {
   resetCryptoStore: () => Promise<void>;
 }
 
-const MatrixClientContext = createContext<MatrixClientContextType | null>(null);
+const noopAsync = async () => {};
+const noopRejectSas = () => {};
+const noopRefreshMessages = () => {};
+const noopTyping = () => {};
+
+const createDefaultE2EEDiagnostics = (): MatrixE2EEDiagnostics => {
+  if (typeof window === 'undefined') {
+    return {
+      secureContext: false,
+      crossOriginIsolated: false,
+      sharedArrayBuffer: false,
+      serviceWorkerControlled: false,
+      secretStorageReady: null,
+      crossSigningReady: null,
+      keyBackupEnabled: null,
+      cryptoError: null,
+    };
+  }
+
+  return {
+    secureContext: window.isSecureContext,
+    crossOriginIsolated: window.crossOriginIsolated,
+    sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+    serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller),
+    secretStorageReady: null,
+    crossSigningReady: null,
+    keyBackupEnabled: null,
+    cryptoError: null,
+  };
+};
+
+const defaultMatrixClientContext: MatrixClientContextType = {
+  client: null,
+  isConnected: false,
+  isConnecting: false,
+  connectionError: null,
+  cryptoEnabled: false,
+  e2eeDiagnostics: createDefaultE2EEDiagnostics(),
+  rooms: [],
+  credentials: null,
+  connect: noopAsync,
+  disconnect: noopRejectSas,
+  sendMessage: noopAsync,
+  refreshMessages: noopRefreshMessages,
+  totalUnreadCount: 0,
+  roomMessages: new Map(),
+  typingUsers: new Map(),
+  sendTypingNotification: noopTyping,
+  addReaction: noopAsync,
+  removeReaction: noopAsync,
+  createRoom: async () => '',
+  requestSelfVerification: noopAsync,
+  activeSasVerification: null,
+  confirmSasVerification: noopAsync,
+  rejectSasVerification: noopRejectSas,
+  lastVerificationError: null,
+  resetCryptoStore: noopAsync,
+};
+
+const MatrixClientContext = createContext<MatrixClientContextType>(defaultMatrixClientContext);
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
@@ -1360,9 +1419,5 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 }
 
 export function useMatrixClient() {
-  const context = useContext(MatrixClientContext);
-  if (!context) {
-    throw new Error('useMatrixClient must be used within a MatrixClientProvider');
-  }
-  return context;
+  return useContext(MatrixClientContext);
 }

@@ -12,7 +12,8 @@
     "test:role-smoke": "node scripts/mywork-role-smoke-test.mjs",
     "check:diagram-drift": "node scripts/check-diagram-drift.mjs",
     "lint:knowledge": "eslint src/components/KnowledgeBaseView.tsx src/hooks/useKnowledgeDocumentTopics.tsx src/hooks/useTopics.tsx --max-warnings 0",
-    "typecheck:knowledge": "tsc -p tsconfig.knowledge-strict.json --noEmit"
+    "typecheck:knowledge": "tsc -p tsconfig.knowledge-strict.json --noEmit",
+    "report:bundle-size": "node scripts/report-bundle-size.mjs"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
