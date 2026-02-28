@@ -33,7 +33,7 @@ interface Particle {
 export function ConfettiAnimation({ speed = 'normal', size = 'medium', onComplete }: ConfettiAnimationProps) {
   const [particles, setParticles] = useState<Particle[]>([]);
   const [shouldRender, setShouldRender] = useState(true);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number>(null);
   const startTimeRef = useRef<number>(0);
   const duration = getCelebrationDuration(speed);
   const particleCount = getParticleCount(size);

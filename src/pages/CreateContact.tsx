@@ -187,8 +187,7 @@ export function CreateContact() {
           name: updatedData.name,
           email: updatedData.email,
           phone: updatedData.phone,
-          organization: undefined,
-          organization_id: updatedData.organization_id || undefined,
+          organization: updatedData.organization_id || undefined,
         });
       }
     }
@@ -229,8 +228,7 @@ export function CreateContact() {
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
-      organization: undefined,
-      organization_id: formData.organization_id || undefined,
+      organization: formData.organization_id || undefined,
     });
 
     if (duplicates.length > 0 && !showDuplicateWarning) {

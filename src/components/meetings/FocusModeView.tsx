@@ -552,7 +552,7 @@ export function FocusModeView({
       return (
         <div
           key={item.id || navIndex}
-          ref={el => itemRefs.current[navIndex] = el}
+          ref={el => { itemRefs.current[navIndex] = el; }}
           className={cn(
             "p-4 rounded-lg border border-l-4 ml-8 transition-all duration-300",
             getSystemSubItemBorderColor(sourceType),
@@ -666,7 +666,7 @@ export function FocusModeView({
     return (
       <div
         key={item.id || navIndex}
-        ref={el => itemRefs.current[navIndex] = el}
+        ref={el => { itemRefs.current[navIndex] = el; }}
         className={cn(
           "p-6 rounded-xl border transition-all duration-300",
           isSubItem && !item.system_type && "ml-8 border-l-4 border-l-primary/30",
