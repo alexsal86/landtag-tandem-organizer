@@ -1,71 +1,91 @@
 
+Zielbild: Links bleibt der Lexical-Editor (Eingabe), rechts wird rein aus HTML gerendert (kein Lexical), und der Text fließt zuverlässig auf Seite 2+ statt auf Seite 1 „hängen zu bleiben“.
 
-# Fix: Textuberlauf und fehlender Speichern-Button im Split-Screen
+## Was aktuell schief läuft (aus dem Code)
+1. In `LetterEditorCanvas.tsx` wird die Seitenlogik über `splitHtmlIntoPages(...)` gebaut.
+2. Diese Funktion splittet nur nach **Top-Level-DOM-Nodes**.
+3. Wenn der Inhalt als ein großer `<p>...</p>` mit vielen `<br>` kommt (typisch aus Editor-HTML), ist das nur **ein Node**:
+   - Der Node ist größer als Seite 1.
+   - Wegen der aktuellen Bedingung (`sliceNodes.length > 0`) wird trotzdem keine neue Seite angelegt.
+   - Ergebnis: `pages.length` bleibt oft 1.
+4. Zusätzlich blockiert der Build aktuell bei:
+   - `src/components/letters/LetterEditorCanvas.tsx(272,22): TS2554`
+   - Ursache: `useRef<ReturnType<typeof setTimeout>>()` ohne Initialwert (React-19-Typing erwartet 1 Argument).
 
-## Problem 1: Text lauft uber die Seite hinaus
-Der Content-Container in `DIN5008LetterLayout.tsx` (Zeile 692-786) hat zwar `maxHeight` und `overflow: hidden`, aber die `contentMaxHeightMm` wird falsch berechnet -- sie berucksichtigt nur den Platz bis zur Paginierung auf Seite 1 (ca. 165mm). Content der langer ist, wird einfach abgeschnitten statt auf Seite 2 zu fliessen.
+## Umsetzungsstrategie (robust und dauerhaft)
+Statt fragiler Node-Splitting-Logik wird auf ein **Viewport/Offset-Pagination-Modell** umgestellt:
 
-**Ursache**: `DIN5008LetterLayout` ist eine Single-Page-Komponente. Sie hat kein Multi-Page-Rendering. Im WYSIWYG-Modus (Lexical direkt auf Canvas) funktioniert Multi-Page, weil `LetterEditorCanvas` mehrere Seiten-Container und CSS-Clipping verwaltet. Im Split-Screen-Preview-Modus wird aber nur `DIN5008LetterLayout` verwendet, die den Content mit `overflow: hidden` abschneidet.
+- Der komplette Brief-Flow (Inhalt + Grußformel + Signatur + Anlagen) wird als **ein durchgehender HTML-Stream** betrachtet.
+- Jede Seite zeigt nur ein „Fenster“ auf diesen Stream:
+  - Seite 1 zeigt Offset `0`
+  - Seite 2 zeigt Offset `page1BodyMm`
+  - Seite 3 zeigt Offset `page1BodyMm + pageNBodyMm`, usw.
+- Rendering pro Seite:
+  - Container hat feste Höhe des Body-Bereichs und `overflow: hidden`
+  - Innerer Flow wird per `transform: translateY(-offsetMm)` verschoben
+- Vorteil:
+  - Funktioniert bei einem einzigen großen `<p>` genauso wie bei vielen Blöcken
+  - Kein inhaltliches Zerlegen von HTML nötig
+  - Rechts bleibt vollständig non-Lexical
 
-## Problem 2: Speichern-Button nicht sichtbar
-Der "Speichern"-Button existiert (Zeile 1639-1646 in `LetterEditor.tsx`), ist aber im oberen Header-Bereich. Im Split-Screen-Modus mit der linken Editor-Pane und der rechten Canvas-Pane kann der Header je nach Layout uberscrollt oder verdeckt sein.
+## Konkrete Änderungen pro Datei
 
-## Losung
+### 1) `src/components/letters/LetterEditorCanvas.tsx`
+- Build-Fix:
+  - `const splitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);`
+- Pagination-Refactor:
+  - `splitHtmlIntoPages`/`pages[]`-Erzeugung entfernen oder stilllegen.
+  - Neue States/Refs:
+    - `flowMeasureRef` für die Messung der echten Gesamthöhe des Flows
+    - `flowHeightMm` (aus `ResizeObserver`)
+  - `totalPages` neu berechnen:
+    - wenn `flowHeightMm <= page1BodyMm` → 1
+    - sonst `1 + Math.ceil((flowHeightMm - page1BodyMm) / pageNBodyMm)`
+  - In `renderPage(pageIndex)`:
+    - Body-Viewport bleibt `height = bodyHeightMm`, `overflow: hidden`
+    - Inneren Flow mit `translateY` um den passenden Offset verschieben
+    - So wird auf jeder Seite der richtige Abschnitt sichtbar
+  - Closing/Anlagen in denselben Flow integrieren (nicht separat pro Seite duplizieren), damit sie automatisch am richtigen Seitenende landen.
+- Optional/UX:
+  - Klick-Overlay (`Brieftext bearbeiten`) nur über den sichtbaren Body-Bereich belassen.
 
-### 1. Multi-Page Preview in LetterEditorCanvas (Hauptfix)
-Statt `DIN5008LetterLayout` fur Multi-Page zu erweitern, wird die Logik in `LetterEditorCanvas.tsx` verbessert:
+### 2) `src/components/letters/DIN5008LetterLayout.tsx`
+- Keine Lexical-Abhängigkeit einführen; rechts bleibt HTML-Preview.
+- Falls weiterhin als „Page-Chrome“ genutzt:
+  - `content=""` beibehalten (weil Content im Canvas-Flow gerendert wird)
+  - `allowContentOverflow={false}` kann so bleiben, da die eigentliche Content-Paginierung im Canvas passiert.
+- Nur falls nötig: kleine Stilangleichungen, damit Header/Footer auf Folgeseiten konsistent bleiben.
 
-- Den Content-Container in `DIN5008LetterLayout` von `overflow: hidden` auf `overflow: visible` umstellen, wenn im Preview-Modus (`hideClosing=true` oder neues Prop `allowOverflow`)
-- **Alternativ (einfacher und robuster)**: In `LetterEditorCanvas.tsx` den `previewContentRef` auf den Content innerhalb von `DIN5008LetterLayout` zeigen lassen, und die bestehende Seitenumbruch-Logik (Footer-Clips auf Zeile 634-648, Page-Break-Indikatoren auf Zeile 650-677) nutzen. Dafur muss:
-  - `DIN5008LetterLayout` das `overflow: hidden` entfernen (Zeile 703), damit der Content frei uber die Seitengrenzen fliessen kann
-  - Die Footer-Clip-Divs (weisse Overlays bei `footerTopMm` pro Seite) verdecken den Ubergangsbereich korrekt
-  - Die `totalPages`-Berechnung und `canvasHeightMm` wachsen bereits dynamisch mit -- das funktioniert schon
+### 3) `src/components/LetterEditor.tsx`
+- Split-Screen-Workflow bleibt:
+  - links Editor, rechts gerenderte Seiten.
+- Sichtbarkeit Speichern absichern:
+  - vorhandenen Save-Button im linken Pane-Header beibehalten,
+  - zusätzlich einen klaren Fallback (z. B. rechter Toolbar-Button) falls linkes Pane geschlossen ist, damit Speichern immer erreichbar bleibt.
 
-Konkret in `DIN5008LetterLayout.tsx`:
-- Zeile 703: `overflow: 'hidden'` entfernen, wenn ein neues Prop `allowContentOverflow={true}` gesetzt ist
-- `LetterEditorCanvas` ubergibt dieses Prop, wenn `enableInlineContentEditing=false` (Preview-Modus)
+## Reihenfolge der Implementierung
+1. TS-Fehler in `LetterEditorCanvas` (useRef-Initialwert) beheben.
+2. Alte `splitHtmlIntoPages`-Seitenbildung durch Viewport/Offset-Pagination ersetzen.
+3. Höhenmessung (`ResizeObserver`) auf den gesamten Flow verdrahten.
+4. `totalPages` aus gemessener Flow-Höhe berechnen.
+5. Rendering jeder Seite auf „gefensterte Darstellung“ umstellen.
+6. Save-Button-Fallback in `LetterEditor` ergänzen.
+7. Manuelle Prüfung:
+   - langer Fließtext ohne Absätze
+   - viele `<br>`
+   - Listen/Formatierungen
+   - mit/ohne Grußformel + Signatur + Anlagen
+   - Split-Editor zu/auf und Speichern erreichbar
 
-Konkret in `LetterEditorCanvas.tsx`:
-- Die `measuredEditorHeightMm`-Messung (Zeile 209-216) funktioniert bereits fur den Preview-Content, muss aber den richtigen DOM-Knoten messen. Da `previewContentRef` nicht mehr im Overlay ist, wird ein neuer Ref auf den Content-Bereich innerhalb von `DIN5008LetterLayout` benotigt. Dafur wird `DIN5008LetterLayout` einen `contentRef`-Callback-Prop erhalten.
+## Risiken und Gegenmaßnahmen
+- Risiko: leichte Abweichung zwischen gemessener Höhe und sichtbarer Höhe durch Fonts/Zoom.
+  - Gegenmaßnahme: Messcontainer mit exakt gleicher Breite/Font/Line-Height wie Body-Flow; Zoom nie in die Messung einrechnen.
+- Risiko: Performance bei sehr langem HTML.
+  - Gegenmaßnahme: `ResizeObserver` + leichtes Debounce (100–150ms), keine teuren DOM-Neuberechnungen pro Keystroke.
 
-### 2. Speichern-Button sichtbar machen
-In `LetterEditor.tsx` einen zusatzlichen "Speichern"-Button in die Split-Editor-Pane einfugen (neben dem "X"-Schliessen-Button in der Kopfzeile des Editors, Zeile 1859-1867), damit der Nutzer direkt aus dem Split-Editor speichern kann.
-
-## Betroffene Dateien
-- `src/components/letters/DIN5008LetterLayout.tsx` -- `allowContentOverflow` Prop + `contentRef` Prop
-- `src/components/letters/LetterEditorCanvas.tsx` -- Prop weiterreichen + Content-Messung anpassen
-- `src/components/LetterEditor.tsx` -- Speichern-Button in Split-Editor-Pane
-
-## Technische Details
-
-```text
-DIN5008LetterLayout (vorher):
-+--Content-Container--+
-| maxHeight: 165mm    |
-| overflow: hidden    |  <-- Text wird abgeschnitten!
-+---------------------+
-
-DIN5008LetterLayout (nachher, mit allowContentOverflow=true):
-+--Content-Container--+
-| overflow: visible   |  <-- Text fliesst uber Seitenrand
-| ...                 |
-+---------------------+
-
-LetterEditorCanvas verdeckt den Footer-Bereich pro Seite:
-+--Seite 1 (297mm)----+
-| Header, Adresse...  |
-| Content (Teil 1)    |
-| [Footer-Clip: weiss]|  <-- Verdeckt Content im Footer-Bereich
-+--Seitenumbruch------+
-+--Seite 2 (297mm)----+
-| Content (Teil 2)    |
-| [Footer-Clip: weiss]|
-+---------------------+
-```
-
-Split-Editor-Pane bekommt einen eigenen Speichern-Button:
-```text
-+--Editor-Pane-Header----+
-| Brieftext [Live] [Save] [X] |
-+-------------------------+
-```
+## Erwartetes Ergebnis
+- Rechts wird weiterhin ohne Lexical gerendert.
+- Lange Inhalte erzeugen korrekt Seite 2, 3, …
+- Kein Abschneiden nach Seite 1.
+- Speichern bleibt im Split-Screen jederzeit auffindbar.
+- Build-Fehler TS2554 ist beseitigt.
