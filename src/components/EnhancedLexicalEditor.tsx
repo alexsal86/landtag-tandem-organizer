@@ -92,11 +92,13 @@ interface EnhancedLexicalEditorProps {
 // Content Plugin - loads initial content ONCE on mount
 function ContentPlugin({ content, contentNodes }: { content: string; contentNodes?: string }) {
   const [editor] = useLexicalComposerContext();
-  const hasLoadedRef = useRef(false);
+  const lastLoadedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!editor || hasLoadedRef.current) return;
-    hasLoadedRef.current = true;
+    if (!editor) return;
+    const key = contentNodes || content || '';
+    if (lastLoadedRef.current === key) return;
+    lastLoadedRef.current = key;
 
     if (contentNodes && contentNodes.trim()) {
       try {
@@ -117,7 +119,7 @@ function ContentPlugin({ content, contentNodes }: { content: string; contentNode
         root.append(paragraph);
       });
     }
-  }, [editor]);
+  }, [editor, contentNodes, content]);
 
   return null;
 }

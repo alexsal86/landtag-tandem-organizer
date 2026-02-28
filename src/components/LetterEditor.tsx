@@ -303,11 +303,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         content: letter.content || '',
         contentNodes: letter.content_nodes || null,
       };
-      // Delay enabling live-sync so Lexical's ContentPlugin can load
-      // the real content before onChange overwrites the ref
-      setTimeout(() => {
-        draftInitializedRef.current = true;
-      }, 500);
+      draftInitializedRef.current = true;
       // Set proofreading mode based on actual letter status
       setIsProofreadingMode(letter.status === 'review');
       
@@ -341,11 +337,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       setDraftContent('');
       setDraftContentNodes(null);
       setDraftContentHtml(null);
-      // Delay enabling live-sync so Lexical's ContentPlugin can load
-      // the real content before onChange overwrites the ref
-      setTimeout(() => {
-        draftInitializedRef.current = true;
-      }, 500);
+      draftInitializedRef.current = true;
       // Reset proofreading mode and set default pagination for new letters
       setIsProofreadingMode(false);
       setShowPagination(true);
@@ -1916,6 +1908,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   </div>
                   <div className="flex-1 overflow-auto p-3">
                     <EnhancedLexicalEditor
+                      key={letter?.id || 'new'}
                       content={draftContent}
                       contentNodes={draftContentNodes}
                       onChange={(nextContent, nextNodes, nextHtml) => {
