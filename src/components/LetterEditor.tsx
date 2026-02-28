@@ -1944,8 +1944,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   <div className="flex-1 overflow-auto p-3">
                     <EnhancedLexicalEditor
                       key={letter?.id || 'new'}
-                      content={draftContent}
-                      contentNodes={draftContentNodes}
+                      content={draftContent || letter?.content || ''}
+                      contentNodes={draftContentNodes ?? letter?.content_nodes ?? undefined}
                       onChange={(nextContent, nextNodes, nextHtml) => {
                         setDraftContent(nextContent || '');
                         setDraftContentNodes(nextNodes && nextNodes.trim() !== '' ? nextNodes : null);
