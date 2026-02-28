@@ -198,6 +198,13 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   }, [content, contentNodes, contentFontSizePt]);
 
   // Footer/pagination constraints
+  const paginationTopMm = 263.77;
+  const paginationGapMm = 4.23;
+  const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
+  const footerTopMm = layout.footer?.top || 272;
+  const reservedZoneStartMm = paginationEnabled ? (paginationTopMm - paginationGapMm) : (footerTopMm - paginationGapMm);
+  const reservedZoneHeightMm = Math.max(0, 297 - reservedZoneStartMm);
+
   const baseClosingHeightMm = closingFormula ? (hasSignature ? 32 : 20) : 0;
   const estimatedContentBottomMm = editorTopMm + Math.max(60, measuredEditorHeightMm) + baseClosingHeightMm;
   const totalPages = Math.max(1, Math.ceil((estimatedContentBottomMm + 10) / 297));
@@ -569,6 +576,23 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                 )}
               </div>
             )}
+
+            {/* Reserve footer/pagination zone on every page so Lexical text cannot visually overlap it */}
+            {Array.from({ length: totalPages }, (_, index) => index).map((pageIndex) => (
+              <div
+                key={`footer-guard-${pageIndex}`}
+                style={{
+                  position: 'absolute',
+                  top: `${(pageIndex * 297) + reservedZoneStartMm}mm`,
+                  left: '25mm',
+                  right: '20mm',
+                  height: `${reservedZoneHeightMm}mm`,
+                  backgroundColor: '#fff',
+                  zIndex: 12,
+                  pointerEvents: 'none',
+                }}
+              />
+            ))}
 
             {/* Page break indicators at 297mm intervals */}
             {Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 1).map((page) => (
