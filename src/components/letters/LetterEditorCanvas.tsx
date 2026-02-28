@@ -10,12 +10,27 @@ import { ContactSelector } from '@/components/ContactSelector';
 import { DIN5008LetterLayout } from './DIN5008LetterLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { EditableCanvasOverlay } from './EditableCanvasOverlay';
-import EnhancedLexicalEditor from '@/components/EnhancedLexicalEditor';
 import type { HeaderElement } from '@/components/canvas-engine/types';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
 
+// ─── DIN A4 constants ────────────────────────────────────────────────────────
+const PAGE_W_MM = 210;
+const PAGE_H_MM = 297;
+const MARGIN_L_MM = 25;
+const MARGIN_R_MM = 20;
+const CONTENT_W_MM = PAGE_W_MM - MARGIN_L_MM - MARGIN_R_MM; // 165 mm
+
+// 1 mm = 3.7795 px @ 96 dpi
+const MM_TO_PX = 3.7795;
+const mmToPx = (mm: number) => mm * MM_TO_PX;
+const pxToMm = (px: number) => px / MM_TO_PX;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface PageSlice {
+  html: string;
+}
+
 interface LetterEditorCanvasProps {
-  // Letter data
   subject?: string;
   salutation?: string;
   content: string;
@@ -25,14 +40,10 @@ interface LetterEditorCanvasProps {
   referenceNumber?: string;
   attachments?: any[];
   showPagination?: boolean;
-
-  // Template/layout data
   template?: any;
   layoutSettings?: any;
   senderInfo?: any;
   informationBlock?: any;
-
-  // Substituted block elements
   addressFieldElements?: HeaderElement[];
   returnAddressElements?: HeaderElement[];
   infoBlockElements?: HeaderElement[];
@@ -42,23 +53,18 @@ interface LetterEditorCanvasProps {
   addressFieldLines?: BlockLine[];
   returnAddressLines?: BlockLine[];
   infoBlockLines?: BlockLine[];
-
-  // Editor controls
   canEdit?: boolean;
   documentId?: string;
   onContentChange: (content: string, contentNodes?: string, contentHtml?: string) => void;
   enableInlineContentEditing?: boolean;
   onRequestContentEdit?: () => void;
+  /** HTML produced by the left-side editor — this is what we paginate */
   displayContentHtml?: string;
   onMentionInsert?: (userId: string, displayName: string) => void;
-
-  // Track Changes / Review mode
   isReviewMode?: boolean;
   reviewerName?: string;
   reviewerId?: string;
   showAcceptReject?: boolean;
-
-  // Editable field callbacks
   onSubjectChange?: (subject: string) => void;
   onSalutationChange?: (salutation: string) => void;
   onRecipientNameChange?: (name: string) => void;
@@ -66,20 +72,91 @@ interface LetterEditorCanvasProps {
   onRecipientContactSelect?: (contact: any) => void;
   onSenderChange?: (senderId: string) => void;
   onInfoBlockChange?: (blockIds: string[]) => void;
-
-  // Data for popover selects
   senderInfos?: any[];
   informationBlocks?: any[];
   selectedSenderId?: string;
   selectedRecipientContactId?: string;
   selectedInfoBlockIds?: string[];
   templateName?: string;
-
-  // Zoom
   zoom?: number;
   onZoomChange?: (zoom: number) => void;
 }
 
+// ─── HTML page splitter ───────────────────────────────────────────────────────
+/**
+ * Splits HTML into per-page slices by measuring each top-level DOM node
+ * in a hidden container and greedily filling pages.
+ *
+ * Each node is kept intact (no mid-paragraph splitting). If a single node
+ * is taller than one page it occupies its own page.
+ */
+function splitHtmlIntoPages(
+  html: string,
+  page1HeightMm: number,
+  pageNHeightMm: number,
+  fontSizePt: number,
+  contentWidthPx: number,
+): PageSlice[] {
+  if (!html?.trim()) return [{ html: '' }];
+
+  // Hidden measurement host
+  const host = document.createElement('div');
+  host.style.cssText = [
+    'position:absolute',
+    'visibility:hidden',
+    'pointer-events:none',
+    `width:${contentWidthPx}px`,
+    `font-size:${fontSizePt}pt`,
+    'font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif',
+    'line-height:1.2',
+    'top:-99999px',
+    'left:-99999px',
+  ].join(';');
+  document.body.appendChild(host);
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = html;
+  const nodes = Array.from(wrapper.childNodes);
+
+  const pages: PageSlice[] = [];
+  let pageIdx = 0;
+  let usedMm = 0;
+  let sliceNodes: Node[] = [];
+
+  const availMm = (i: number) => (i === 0 ? page1HeightMm : pageNHeightMm);
+
+  const flushPage = () => {
+    const tmp = document.createElement('div');
+    sliceNodes.forEach((n) => tmp.appendChild(n.cloneNode(true)));
+    pages.push({ html: tmp.innerHTML });
+  };
+
+  for (const node of nodes) {
+    // Measure this node in isolation
+    host.innerHTML = '';
+    host.appendChild(node.cloneNode(true));
+    const nodeHeightMm = pxToMm(host.scrollHeight);
+    const avail = availMm(pageIdx);
+
+    if (sliceNodes.length > 0 && usedMm + nodeHeightMm > avail) {
+      // Current node overflows → flush current page and start a new one
+      flushPage();
+      pageIdx++;
+      sliceNodes = [];
+      usedMm = 0;
+    }
+
+    sliceNodes.push(node.cloneNode(true));
+    usedMm += nodeHeightMm;
+  }
+
+  if (sliceNodes.length > 0) flushPage();
+
+  document.body.removeChild(host);
+  return pages.length > 0 ? pages : [{ html: '' }];
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   subject,
   salutation,
@@ -106,7 +183,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   canEdit = true,
   documentId,
   onContentChange,
-  enableInlineContentEditing = true,
+  enableInlineContentEditing = false,
   onRequestContentEdit,
   displayContentHtml,
   isReviewMode = false,
@@ -130,225 +207,275 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   zoom: externalZoom,
   onZoomChange,
 }) => {
+  // ── font size helper ──
   const toFontSizePt = (value: unknown, fallback: number): number => {
-    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-      return value;
-    }
-
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
     if (typeof value === 'string') {
-      const trimmed = value.trim().toLowerCase();
-      const match = trimmed.match(/([0-9]+(?:\.[0-9]+)?)/);
-      if (match) {
-        const parsed = Number(match[1]);
-        if (Number.isFinite(parsed) && parsed > 0) {
-          if (trimmed.includes('px')) {
-            return parsed * 0.75;
-          }
-          return parsed;
-        }
+      const m = value.trim().toLowerCase().match(/([0-9]+(?:\.[0-9]+)?)/);
+      if (m) {
+        const n = Number(m[1]);
+        if (Number.isFinite(n) && n > 0) return value.includes('px') ? n * 0.75 : n;
       }
     }
-
     return fallback;
   };
 
+  // ── zoom ──
   const [internalZoom, setInternalZoom] = useState(0.75);
-  const toolbarPortalRef = useRef<HTMLDivElement>(null);
-  const editorContainerRef = useRef<HTMLDivElement>(null);
-  const previewContentRef = useRef<HTMLDivElement>(null);
   const zoom = externalZoom ?? internalZoom;
   const setZoom = onZoomChange ?? setInternalZoom;
-  const [measuredEditorHeightMm, setMeasuredEditorHeightMm] = useState(80);
 
+  // ── layout ──
   const layout = layoutSettings || template?.layout_settings || {};
-  const closingFormula = layout.closing?.formula;
-  const hasSignature = Boolean(layout.closing?.signatureName || layout.closing?.signatureImagePath);
-
-  // Compute content top position (after subject + salutation)
-  const subjectTopMm = layout.subject?.top || 98.46;
-  const subjectFontSizePt = toFontSizePt(layout.subject?.fontSize, 11);
+  const contentFontSizePt = toFontSizePt(
+    layout.content?.fontSize ?? layout.salutation?.fontSize, 11,
+  );
+  const subjectFontSizePt = toFontSizePt(layout.subject?.fontSize, 13);
   const salutationFontSizePt = toFontSizePt(layout.salutation?.fontSize, 11);
-  const contentFontSizePt = toFontSizePt(layout.content?.fontSize, salutationFontSizePt);
+  const closingFontSizePt = toFontSizePt(layout.closing?.fontSize, 11);
 
-  const lineHeightMm = layout.content?.lineHeight || 4.5;
-  const subjectLineMm = subject ? (subjectFontSizePt * 0.3528 * 1.2) : 0;
-  const gapAfterSubjectMm = subject ? (lineHeightMm * 2) : 0;
-  const salutationLineMm = salutation ? (salutationFontSizePt * 0.3528 * 1.2) : 0;
-  const gapAfterSalutationMm = salutation ? lineHeightMm : 0;
+  const footerTopMm: number = layout.footer?.top ?? 272;
+  const page2TopMm: number = layout.margins?.top ?? 25;
 
-  const editorTopMm = subjectTopMm + subjectLineMm + gapAfterSubjectMm + salutationLineMm + gapAfterSalutationMm;
+  // ── where content starts on page 1 ──
+  const subjectTopMm: number = layout.subject?.top ?? 98.46;
+  const subjectHeightMm = subject ? subjectFontSizePt * 0.3528 * 1.2 : 0;
+  const gapAfterSubjectMm = subject ? 9 : 0;          // ~2 blank lines
+  const salutationHeightMm = salutation ? salutationFontSizePt * 0.3528 * 1.2 : 0;
+  const gapAfterSalutationMm = salutation ? 4.5 : 0;  // ~1 blank line
+  const contentStartMm =
+    subjectTopMm
+    + subjectHeightMm
+    + gapAfterSubjectMm
+    + salutationHeightMm
+    + gapAfterSalutationMm;
 
-  // Keep page-break helpers aligned with content growth.
+  // ── available body height per page ──
+  const page1BodyMm = footerTopMm - contentStartMm;
+  const pageNBodyMm = footerTopMm - page2TopMm;
+
+  // ── closing metadata ──
+  const closingFormula: string | undefined = layout.closing?.formula;
+  const closingName: string | undefined = layout.closing?.signatureName;
+  const closingTitle: string | undefined = layout.closing?.signatureTitle;
+  const closingImagePath: string | undefined = layout.closing?.signatureImagePath;
+
+  // ── HTML to render ──
+  const escapeHtml = (v: string) =>
+    v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const renderedHtml =
+    displayContentHtml ??
+    (content ? `<p>${escapeHtml(content).replace(/\n/g, '<br/>')}</p>` : '');
+
+  // ── split into pages ──
+  const [pages, setPages] = useState<PageSlice[]>([{ html: '' }]);
+  const splitTimer = useRef<ReturnType<typeof setTimeout>>();
+
   useEffect(() => {
-    const pxToMm = (px: number) => px * (25.4 / 96);
+    clearTimeout(splitTimer.current);
+    splitTimer.current = setTimeout(() => {
+      const slices = splitHtmlIntoPages(
+        renderedHtml,
+        page1BodyMm,
+        pageNBodyMm,
+        contentFontSizePt,
+        mmToPx(CONTENT_W_MM),
+      );
+      setPages(slices);
+    }, 150); // debounce: avoid layout thrash while typing
+    return () => clearTimeout(splitTimer.current);
+  }, [renderedHtml, page1BodyMm, pageNBodyMm, contentFontSizePt]);
 
-    const measure = (element: HTMLElement | null) => {
-      if (!element) return;
-      const measuredPx = element.scrollHeight;
-      const measuredMm = Math.max(30, pxToMm(measuredPx));
-      setMeasuredEditorHeightMm((prev) => (Math.abs(prev - measuredMm) < 0.5 ? prev : measuredMm));
-    };
+  const totalPages = pages.length;
 
-    if (enableInlineContentEditing) {
-      const container = editorContainerRef.current;
-      if (!container) return;
+  // ── overlay dimensions ──
+  const addressFieldWidth: number = layout.addressField?.width ?? 85;
+  const returnAddressHeight: number = layout.addressField?.returnAddressHeight ?? 17.7;
+  const addressZoneHeight: number = layout.addressField?.addressZoneHeight ?? 27.3;
 
-      const updateHeight = () => {
-        const editorInput = container.querySelector<HTMLElement>('.editor-input');
-        measure(editorInput ?? container);
-      };
-
-      updateHeight();
-      const observer = new ResizeObserver(updateHeight);
-      observer.observe(container);
-      const editorInput = container.querySelector<HTMLElement>('.editor-input');
-      if (editorInput) observer.observe(editorInput);
-      return () => observer.disconnect();
-    }
-
-    const previewEl = previewContentRef.current;
-    if (!previewEl) return;
-
-    const updatePreviewHeight = () => measure(previewEl);
-    updatePreviewHeight();
-    const observer = new ResizeObserver(updatePreviewHeight);
-    observer.observe(previewEl);
-    return () => observer.disconnect();
-  }, [enableInlineContentEditing, content, contentNodes, contentFontSizePt, displayContentHtml]);
-
-  // Footer/pagination constraints
-  const footerTopMm = Number(layout.footer?.top || 272);
-  const footerHeightMm = Number(layout.footer?.height || 18);
-
-  const baseClosingHeightMm = closingFormula ? (hasSignature ? 32 : 20) : 0;
-  const estimatedContentBottomMm = editorTopMm + Math.max(60, measuredEditorHeightMm) + baseClosingHeightMm;
-  const totalPages = Math.max(1, Math.ceil((estimatedContentBottomMm + 10) / 297));
-  const canvasHeightMm = Math.max(297, totalPages * 297);
-
-
-  const escapeHtml = (value: string) => value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-  const previewContentHtml = displayContentHtml
-    ?? (content
-      ? `<p>${escapeHtml(content).replace(/\n/g, '<br/>')}</p>`
-      : '<p></p>');
-
-  // Layout positions for overlays
-  const addressFieldTop = 50; // DIN 5008
-  const addressFieldLeft = 25;
-  const addressFieldWidth = layout.addressField?.width || 85;
-  const returnAddressHeight = layout.addressField?.returnAddressHeight || 17.7;
-  const addressZoneHeight = layout.addressField?.addressZoneHeight || 27.3;
-  const infoBlockLeft = 125;
-  const infoBlockWidth = 75;
-  const infoBlockHeight = 40;
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Toolbar above canvas */}
-      <div className="flex-none flex items-center justify-between gap-2 p-2 border-b bg-muted/30">
-        {/* Left: Lexical toolbar portal target + Template indicator */}
-        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
-          <div ref={toolbarPortalRef} className="flex items-center" />
-          {templateName && (
-            <Badge variant="outline" className="text-xs gap-1 shrink-0">
-              <Layout className="h-3 w-3" />
-              {templateName}
-            </Badge>
-          )}
-        </div>
-
-        {/* Right: Zoom controls */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2"
-            onClick={() => setZoom(Math.max(0.3, zoom - 0.1))}
-          >
-            <ZoomOut className="h-3.5 w-3.5" />
-          </Button>
-          <span className="text-xs min-w-[50px] text-center font-medium">
-            {Math.round(zoom * 100)}%
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2"
-            onClick={() => setZoom(Math.min(1.5, zoom + 0.1))}
-          >
-            <ZoomIn className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2"
-            onClick={() => setZoom(0.75)}
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+  // ── closing block ──
+  const renderClosing = () => {
+    if (!closingFormula) return null;
+    return (
+      <div style={{
+        fontSize: `${closingFontSizePt}pt`,
+        color: '#000',
+        fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
+      }}>
+        <div style={{ height: '9mm' }} />
+        <div>{closingFormula}</div>
+        {closingImagePath && (() => {
+          const { data: { publicUrl } } = supabase.storage
+            .from('letter-assets')
+            .getPublicUrl(closingImagePath);
+          return (
+            <div style={{ marginTop: '2mm', marginBottom: '2mm' }}>
+              <img
+                src={publicUrl}
+                alt="Unterschrift"
+                style={{ maxHeight: '15mm', maxWidth: '50mm', objectFit: 'contain' }}
+              />
+            </div>
+          );
+        })()}
+        {!closingImagePath && closingName && <div style={{ height: '4.5mm' }} />}
+        {closingName && <div>{closingName}</div>}
+        {closingTitle && (
+          <div style={{ fontSize: `${closingFontSizePt - 1}pt`, color: '#555' }}>
+            {closingTitle}
+          </div>
+        )}
       </div>
+    );
+  };
 
-      {/* Canvas area */}
-      <div className="flex-1 overflow-auto bg-muted/50" style={{ padding: '24px' }}>
+  // ── attachment list ──
+  const renderAttachments = () => {
+    const list = (attachments ?? [])
+      .map((a) => (typeof a === 'string' ? a : a.display_name || a.file_name || ''))
+      .filter(Boolean);
+    if (!list.length) return null;
+    return (
+      <div style={{
+        marginTop: closingFormula ? '4.5mm' : '13.5mm',
+        fontSize: `${contentFontSizePt}pt`,
+        color: '#000',
+        fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
+      }}>
+        <div style={{ fontWeight: 700 }}>Anlagen</div>
+        {list.map((name, i) => (
+          <div key={`${name}-${i}`} style={{ marginTop: '1mm', paddingLeft: '5mm' }}>
+            – {name}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // ── single page renderer ──
+  const renderPage = (pageIndex: number) => {
+    const slice = pages[pageIndex] ?? { html: '' };
+    const isFirst = pageIndex === 0;
+    const isLast = pageIndex === totalPages - 1;
+    const localTopMm = isFirst ? contentStartMm : page2TopMm;
+    // Height available for body text on this page
+    const bodyHeightMm = footerTopMm - localTopMm;
+
+    return (
+      <div
+        key={`page-${pageIndex}`}
+        className="mx-auto bg-white relative"
+        style={{
+          width: `${PAGE_W_MM}mm`,
+          height: `${PAGE_H_MM}mm`,
+          // hard clip — content CANNOT overflow the page boundary
+          overflow: 'hidden',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
+          fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
+          fontSize: `${contentFontSizePt}pt`,
+          lineHeight: '1.2',
+          marginBottom: pageIndex < totalPages - 1 ? '8mm' : 0,
+        }}
+      >
+        {/* ── Page chrome (header, address zones, footer) ── */}
+        {isFirst ? (
+          <DIN5008LetterLayout
+            template={template}
+            senderInfo={senderInfo}
+            informationBlock={informationBlock}
+            recipientAddress={recipientAddress}
+            subject={subject}
+            letterDate={letterDate}
+            referenceNumber={referenceNumber}
+            content=""      // we render content ourselves
+            attachments={[]}
+            showPagination={false}
+            layoutSettings={layoutSettings}
+            salutation={salutation}
+            hideClosing={true}
+            allowContentOverflow={false}
+            addressFieldElements={addressFieldElements}
+            returnAddressElements={returnAddressElements}
+            infoBlockElements={infoBlockElements}
+            subjectElements={subjectElements}
+            attachmentElements={attachmentElements}
+            footerTextElements={footerTextElements}
+            addressFieldLines={addressFieldLines}
+            returnAddressLines={returnAddressLines}
+            infoBlockLines={infoBlockLines}
+          />
+        ) : (
+          // Pages 2+: only footer chrome, no header or address block
+          <DIN5008LetterLayout
+            template={template}
+            senderInfo={senderInfo}
+            informationBlock={undefined}
+            recipientAddress={null}
+            subject={undefined}
+            content=""
+            showPagination={false}
+            layoutSettings={layoutSettings}
+            hideClosing={true}
+            allowContentOverflow={false}
+            footerTextElements={footerTextElements}
+          />
+        )}
+
+        {/* ── Body content for this page slice ──
+            height is exactly the body zone → overflow:hidden clips anything
+            that might exceed the footer boundary (should not happen after
+            splitting, but this is the safety net). ── */}
         <div
           style={{
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top center',
-            marginBottom: `${(zoom - 1) * canvasHeightMm}mm`,
+            position: 'absolute',
+            top: `${localTopMm}mm`,
+            left: `${MARGIN_L_MM}mm`,
+            right: `${MARGIN_R_MM}mm`,
+            height: `${bodyHeightMm}mm`,
+            overflow: 'hidden',
+            fontSize: `${contentFontSizePt}pt`,
+            lineHeight: '1.2',
+            color: '#000',
           }}
         >
           <div
-            className="mx-auto bg-white relative"
+            className="din5008-content-text"
+            dangerouslySetInnerHTML={{ __html: slice.html }}
+          />
+
+          {/* Closing + attachments flow after body on the last page */}
+          {isLast && (
+            <>
+              {renderClosing()}
+              {renderAttachments()}
+            </>
+          )}
+        </div>
+
+        {/* ── Pagination ── */}
+        {showPagination && (
+          <div
             style={{
-              width: '210mm',
-              minHeight: `${canvasHeightMm}mm`,
-              boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
-              fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
-              fontSize: `${contentFontSizePt}pt`,
-              lineHeight: '1.2',
+              position: 'absolute',
+              top: '263.77mm',
+              right: layout.pagination?.align === 'left' ? 'auto' : `${MARGIN_R_MM}mm`,
+              left: layout.pagination?.align === 'left' ? `${MARGIN_L_MM}mm` : undefined,
+              fontSize: `${layout.pagination?.fontSize ?? 8}pt`,
+              color: '#666',
+              fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
+              pointerEvents: 'none',
             }}
           >
-            {/* Render the full DIN5008 letter layout - closing hidden, rendered dynamically below editor */}
-            <DIN5008LetterLayout
-              template={template}
-              senderInfo={senderInfo}
-              informationBlock={informationBlock}
-              recipientAddress={recipientAddress}
-              subject={subject}
-              letterDate={letterDate}
-              referenceNumber={referenceNumber}
-              content={previewContentHtml} 
-              attachments={attachments}
-              showPagination={showPagination}
-              layoutSettings={layoutSettings}
-              salutation={salutation}
-              hideClosing={enableInlineContentEditing}
-              allowContentOverflow={!enableInlineContentEditing}
-              contentRef={!enableInlineContentEditing ? previewContentRef : undefined}
-              addressFieldElements={addressFieldElements}
-              returnAddressElements={returnAddressElements}
-              infoBlockElements={infoBlockElements}
-              subjectElements={subjectElements}
-              attachmentElements={attachmentElements}
-              footerTextElements={footerTextElements}
-              addressFieldLines={addressFieldLines}
-              returnAddressLines={returnAddressLines}
-              infoBlockLines={infoBlockLines}
-            />
+            Seite {pageIndex + 1} von {totalPages}
+          </div>
+        )}
 
-            {/* === Editable Overlays === */}
-            
-            {/* Return Address Overlay */}
+        {/* ── Editable overlays (page 1 only) ── */}
+        {isFirst && (
+          <>
             <EditableCanvasOverlay
-              top={addressFieldTop}
-              left={addressFieldLeft}
+              top={50}
+              left={MARGIN_L_MM}
               width={addressFieldWidth}
               height={returnAddressHeight}
               label="Rücksendezeile"
@@ -358,7 +485,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                 <Label className="text-xs">Absender</Label>
                 <Select
                   value={selectedSenderId || 'none'}
-                  onValueChange={(value) => onSenderChange?.(value === 'none' ? '' : value)}
+                  onValueChange={(v) => onSenderChange?.(v === 'none' ? '' : v)}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Absender wählen..." />
@@ -366,19 +493,16 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                   <SelectContent className="z-[200]">
                     <SelectItem value="none">Kein Absender</SelectItem>
                     {senderInfos.map((info: any) => (
-                      <SelectItem key={info.id} value={info.id}>
-                        {info.name}
-                      </SelectItem>
+                      <SelectItem key={info.id} value={info.id}>{info.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </EditableCanvasOverlay>
 
-            {/* Address Field Overlay */}
             <EditableCanvasOverlay
-              top={addressFieldTop + returnAddressHeight}
-              left={addressFieldLeft}
+              top={50 + returnAddressHeight}
+              left={MARGIN_L_MM}
               width={addressFieldWidth}
               height={addressZoneHeight}
               label="Empfängeradresse"
@@ -388,7 +512,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                 <div>
                   <Label className="text-xs">Aus Kontakten wählen</Label>
                   <ContactSelector
-                    onSelect={(contact) => onRecipientContactSelect?.(contact)}
+                    onSelect={(c) => onRecipientContactSelect?.(c)}
                     selectedContactId={selectedRecipientContactId}
                     placeholder="Kontakt aus Adressbuch wählen..."
                     className="text-xs"
@@ -416,12 +540,11 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             </EditableCanvasOverlay>
 
-            {/* Info Block Overlay */}
             <EditableCanvasOverlay
-              top={addressFieldTop}
-              left={infoBlockLeft}
-              width={infoBlockWidth}
-              height={infoBlockHeight}
+              top={50}
+              left={125}
+              width={75}
+              height={40}
               label="Informationsblock"
               canEdit={canEdit && !!onInfoBlockChange}
             >
@@ -449,12 +572,11 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             </EditableCanvasOverlay>
 
-            {/* Subject Overlay */}
             <EditableCanvasOverlay
               top={subjectTopMm}
-              left={25}
-              width={165}
-              height={subjectLineMm + 2}
+              left={MARGIN_L_MM}
+              width={CONTENT_W_MM}
+              height={subjectHeightMm + 2}
               label="Betreff"
               canEdit={canEdit && !!onSubjectChange}
             >
@@ -469,13 +591,12 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             </EditableCanvasOverlay>
 
-            {/* Salutation Overlay */}
             {salutation && (
               <EditableCanvasOverlay
-                top={subjectTopMm + subjectLineMm + gapAfterSubjectMm}
-                left={25}
-                width={165}
-                height={salutationLineMm + 2}
+                top={subjectTopMm + subjectHeightMm + gapAfterSubjectMm}
+                left={MARGIN_L_MM}
+                width={CONTENT_W_MM}
+                height={salutationHeightMm + 2}
                 label="Anrede"
                 canEdit={canEdit && !!onSalutationChange}
               >
@@ -487,199 +608,109 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                     onChange={(e) => onSalutationChange?.(e.target.value)}
                     placeholder="Sehr geehrte Damen und Herren,"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Leer = automatische Anrede</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Leer = automatische Anrede
+                  </p>
                 </div>
               </EditableCanvasOverlay>
             )}
+          </>
+        )}
 
-            {/* Overlay: Lexical Editor positioned in content area - no maxHeight, grows freely */}
-            {enableInlineContentEditing ? (
-            <div
-              style={{
-                position: 'absolute',
-                top: `${editorTopMm}mm`,
-                left: '25mm',
-                right: '20mm',
-                zIndex: 10,
-              }}
-            >
-              <div
-                className="group"
-                style={{
-                  border: '1px solid transparent',
-                  borderRadius: '2px',
-                  transition: 'border-color 0.2s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)'; }}
-                onMouseLeave={(e) => { 
-                  if (!e.currentTarget.contains(document.activeElement)) {
-                    e.currentTarget.style.borderColor = 'transparent'; 
-                  }
-                }}
-                onFocusCapture={(e) => { e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)'; }}
-                onBlurCapture={(e) => { 
-                  if (!e.currentTarget.contains(e.relatedTarget)) {
-                    e.currentTarget.style.borderColor = 'transparent'; 
-                  }
-                }}
-              >
-              <div ref={editorContainerRef} className="letter-canvas-editor">
-                <EnhancedLexicalEditor
-                  content={content}
-                  contentNodes={contentNodes}
-                  onChange={onContentChange}
-                  placeholder="Brieftext hier eingeben..."
-                  documentId={documentId}
-                  showToolbar={canEdit}
-                  editable={canEdit}
-                  onMentionInsert={onMentionInsert}
-                  renderToolbarPortal={toolbarPortalRef}
-                  defaultFontSize={`${contentFontSizePt}pt`}
-                  isReviewMode={isReviewMode}
-                  reviewerName={reviewerName}
-                  reviewerId={reviewerId}
-                  showAcceptReject={showAcceptReject}
-                />
-                <style>{`
-                  .letter-canvas-editor > .relative {
-                    border: none !important;
-                    border-radius: 0 !important;
-                    min-height: auto !important;
-                    background: transparent !important;
-                  }
-                  .letter-canvas-editor .editor-input {
-                    min-height: 50px !important;
-                    padding: 0 !important;
-                    background: transparent !important;
-                    font-family: Arial, sans-serif !important;
-                    font-size: ${contentFontSizePt}pt !important;
-                    line-height: 1.2 !important;
-                    color: #000 !important;
-                  }
-                  .letter-canvas-editor .editor-placeholder {
-                    left: 0 !important;
-                    top: 0 !important;
-                  }
-                  .letter-preview-content p {
-                    margin: 0 0 4.5mm 0;
-                  }
-                  .letter-preview-content p:last-child {
-                    margin-bottom: 0;
-                  }
-                `}</style>
-              </div>
-            </div>
-            </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => onRequestContentEdit?.()}
-                className="absolute text-left rounded-sm hover:bg-primary/5 transition-colors"
-                style={{
-                  top: `${editorTopMm}mm`,
-                  left: '25mm',
-                  right: '20mm',
-                  bottom: `${297 - footerTopMm}mm`,
-                  zIndex: 10,
-                  background: 'transparent',
-                  border: '1px dashed rgba(100,116,139,0.35)',
-                  cursor: 'pointer',
-                }}
-                title="Brieftext bearbeiten (öffnet Editor im Splitscreen)"
-              />
-            )}
+        {/* Click-to-edit on body zone */}
+        {canEdit && onRequestContentEdit && (
+          <button
+            type="button"
+            onClick={() => onRequestContentEdit()}
+            aria-label="Brieftext bearbeiten"
+            style={{
+              position: 'absolute',
+              top: `${localTopMm}mm`,
+              left: `${MARGIN_L_MM}mm`,
+              right: `${MARGIN_R_MM}mm`,
+              height: `${bodyHeightMm}mm`,
+              background: 'transparent',
+              border: '1px dashed transparent',
+              cursor: 'text',
+              transition: 'border-color 0.15s',
+              zIndex: 20,
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(59,130,246,0.3)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'transparent';
+            }}
+          />
+        )}
+      </div>
+    );
+  };
 
-            {/* Dynamic closing block rendered below editor content */}
-            {enableInlineContentEditing && closingFormula && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: `${editorTopMm + 60}mm`, // Will be repositioned by content height via CSS
-                  left: '25mm',
-                  right: '20mm',
-                  zIndex: 5,
-                  pointerEvents: 'none',
-                }}
-                className="letter-closing-block"
-              >
-                <div style={{ height: '9mm' }} />
-                <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
-                  {closingFormula}
-                </div>
-                {layout.closing?.signatureImagePath && (() => {
-                  const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(layout.closing.signatureImagePath!);
-                  return (
-                    <div style={{ marginTop: '2mm', marginBottom: '2mm' }}>
-                      <img
-                        src={publicUrl}
-                        alt="Unterschrift"
-                        style={{ maxHeight: '15mm', maxWidth: '50mm', objectFit: 'contain' }}
-                      />
-                    </div>
-                  );
-                })()}
-                {!layout.closing?.signatureImagePath && layout.closing?.signatureName && <div style={{ height: '4.5mm' }} />}
-                {layout.closing?.signatureName && (
-                  <div style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
-                    {layout.closing.signatureName}
-                  </div>
-                )}
-                {layout.closing?.signatureTitle && (
-                  <div style={{ fontSize: `${(layout.closing?.fontSize || 11) - 1}pt`, color: '#555' }}>
-                    {layout.closing.signatureTitle}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Clip only the true footer stripe per page to avoid visual overlap without hiding large text areas */}
-            {Array.from({ length: totalPages }, (_, index) => index).map((pageIndex) => (
-              <div
-                key={`footer-clip-${pageIndex}`}
-                style={{
-                  position: 'absolute',
-                  top: `${(pageIndex * 297) + footerTopMm}mm`,
-                  left: '25mm',
-                  right: '20mm',
-                  height: `${footerHeightMm}mm`,
-                  backgroundColor: '#fff',
-                  zIndex: 14,
-                  pointerEvents: 'none',
-                }}
-              />
-            ))}
-
-            {/* Page break indicators at 297mm intervals */}
-            {Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 1).map((page) => (
-              <div
-                key={`page-break-${page}`}
-                style={{
-                  position: 'absolute',
-                  top: `${297 * page}mm`,
-                  left: 0,
-                  right: 0,
-                  height: '1px',
-                  borderTop: '2px dashed rgba(0,0,0,0.15)',
-                  zIndex: 20,
-                  pointerEvents: 'none',
-                }}
-              >
-                <span style={{
-                  position: 'absolute',
-                  right: '5mm',
-                  top: '-10px',
-                  fontSize: '8pt',
-                  color: 'rgba(0,0,0,0.3)',
-                  backgroundColor: 'white',
-                  padding: '0 4px',
-                }}>
-                  Seite {page + 1}
-                </span>
-              </div>
-            ))}
-          </div>
+  // ── main render ──
+  return (
+    <div className="flex flex-col h-full">
+      {/* Toolbar */}
+      <div className="flex-none flex items-center justify-between gap-2 p-2 border-b bg-muted/30">
+        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
+          {templateName && (
+            <Badge variant="outline" className="text-xs gap-1 shrink-0">
+              <Layout className="h-3 w-3" />
+              {templateName}
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline" size="sm" className="h-7 px-2"
+            onClick={() => setZoom(Math.max(0.3, zoom - 0.1))}
+          >
+            <ZoomOut className="h-3.5 w-3.5" />
+          </Button>
+          <span className="text-xs min-w-[50px] text-center font-medium">
+            {Math.round(zoom * 100)}%
+          </span>
+          <Button
+            variant="outline" size="sm" className="h-7 px-2"
+            onClick={() => setZoom(Math.min(1.5, zoom + 0.1))}
+          >
+            <ZoomIn className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="outline" size="sm" className="h-7 px-2"
+            onClick={() => setZoom(0.75)}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </div>
+
+      {/* Scrollable canvas */}
+      <div className="flex-1 overflow-auto bg-muted/50" style={{ padding: '24px' }}>
+        <div
+          style={{
+            transform: `scale(${zoom})`,
+            transformOrigin: 'top center',
+            // Let the scroll container see the correct height after scaling
+            paddingBottom: `${(1 - zoom) * totalPages * PAGE_H_MM * MM_TO_PX}px`,
+          }}
+        >
+          {Array.from({ length: totalPages }, (_, i) => renderPage(i))}
+        </div>
+      </div>
+
+      <style>{`
+        .din5008-content-text,
+        .din5008-content-text * {
+          color: #000 !important;
+        }
+        .din5008-content-text p {
+          margin: 0 0 4.5mm 0;
+        }
+        .din5008-content-text p:last-child {
+          margin-bottom: 0;
+        }
+      `}</style>
     </div>
   );
 };
