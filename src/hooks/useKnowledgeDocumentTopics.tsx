@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useKnowledgeDocumentTopics = (documentId: string | undefined) => {
   const [assignedTopics, setAssignedTopics] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchAssignedTopics = async () => {
+  const fetchAssignedTopics = useCallback(async () => {
     if (!documentId) return;
     
     try {
@@ -22,11 +22,11 @@ export const useKnowledgeDocumentTopics = (documentId: string | undefined) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [documentId]);
 
   useEffect(() => {
     fetchAssignedTopics();
-  }, [documentId]);
+  }, [fetchAssignedTopics]);
 
   const assignTopic = async (topicId: string) => {
     if (!documentId) return false;

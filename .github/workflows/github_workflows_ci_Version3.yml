@@ -68,6 +68,12 @@ jobs:
             echo "Kein tsconfig.json – überspringe Type Check."
           fi
 
+
+      - name: Lint Knowledge-Bereich (blockierend)
+        run: npm run lint:knowledge
+
+      - name: Strict Type Check Knowledge-Bereich
+        run: npm run typecheck:knowledge
       - name: Build (falls vorhanden)
         run: |
           if npm run | grep -q "build"; then

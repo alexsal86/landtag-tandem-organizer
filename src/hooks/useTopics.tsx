@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -6,9 +6,9 @@ export interface Topic {
   id: string;
   name: string;
   label: string;
-  icon: string;
-  color: string;
-  description?: string;
+  icon: string | null;
+  color: string | null;
+  description: string | null;
   order_index: number;
   is_active: boolean;
   created_at: string;
@@ -46,6 +46,15 @@ export const useTopics = () => {
   }, []);
 
   const createTopic = async (topicData: Partial<Topic>) => {
+    if (!topicData.name || !topicData.label) {
+      toast({
+        title: "Fehler",
+        description: "Name und Label sind Pflichtfelder.",
+        variant: "destructive"
+      });
+      return null;
+    }
+
     try {
       const maxOrderIndex = topics.length > 0 
         ? Math.max(...topics.map(t => t.order_index)) + 1 
@@ -167,7 +176,7 @@ export const useCaseFileTopics = (caseFileId: string | undefined) => {
   const [assignedTopics, setAssignedTopics] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchAssignedTopics = async () => {
+  const fetchAssignedTopics = useCallback(async () => {
     if (!caseFileId) return;
     
     try {
@@ -184,11 +193,11 @@ export const useCaseFileTopics = (caseFileId: string | undefined) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [caseFileId]);
 
   useEffect(() => {
     fetchAssignedTopics();
-  }, [caseFileId]);
+  }, [fetchAssignedTopics]);
 
   const assignTopic = async (topicId: string) => {
     if (!caseFileId) return false;
