@@ -120,7 +120,6 @@ const LeafletKarlsruheMap: React.FC<LeafletKarlsruheMapProps> = ({
     );
   }
 
-  console.log('LeafletKarlsruheMap rendering with districts:', districts.length);
 
   return (
     <div className="relative w-full h-[400px] bg-card rounded-lg overflow-hidden border border-border">

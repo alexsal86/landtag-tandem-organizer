@@ -59,6 +59,7 @@ import { DecisionResponseSummary } from "@/components/shared/DecisionResponseSum
 import { NoteLinkedBadge } from "@/components/shared/NoteLinkedBadge";
 import { NoteLinkedDetails } from "@/components/shared/NoteLinkedDetails";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
 
 // Type for archived info from database (JSON)
 type ArchivedInfo = { id: string; title: string; archived_at: string } | null;
@@ -1433,17 +1434,8 @@ export function QuickNotesList({
     });
   };
 
-  // Simple HTML sanitizer for safe rendering
-  const sanitizeHtml = (html: string) => {
-    // Allow only basic formatting tags - preserve data-* and style attributes on spans
-    const allowedTags = ['b', 'i', 'u', 'strong', 'em', 'br', 'p', 'ul', 'ol', 'li', 'span'];
-    const tagPattern = new RegExp(`<(?!\/?(${allowedTags.join('|')})(\\s|>))[^>]*>`, 'gi');
-    return html
-      .replace(tagPattern, '')
-      .replace(/<script[^>]*>.*?<\/script>/gi, '')
-      .replace(/on\w+="[^"]*"/gi, '')
-      .replace(/on\w+='[^']*'/gi, '');
-  };
+
+
 
   const renderNoteCard = (note: QuickNote, showFollowUpBadge = false, dragHandleProps?: any) => {
     const isExpanded = expandedNotes.has(note.id);
@@ -1501,7 +1493,7 @@ export function QuickNotesList({
               <div>
                 <div 
                   className="text-sm text-muted-foreground/70 prose prose-sm max-w-none [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(note.content) }}
                 />
                 {needsTruncation && (
                   <button 
@@ -1517,7 +1509,7 @@ export function QuickNotesList({
               <div className="text-sm text-muted-foreground/70">
                 <div 
                   className="line-clamp-2 prose prose-sm max-w-none [&>p]:mb-0 [&>ul]:mb-0 [&>ol]:mb-0"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(note.content) }}
                 />
                 {needsTruncation && (
                   <button 
