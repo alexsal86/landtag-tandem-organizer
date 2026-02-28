@@ -81,3 +81,18 @@ jobs:
           else
             echo "Kein build Script vorhanden – überspringe."
           fi
+
+      - name: Bundle-Size Report erzeugen
+        run: |
+          if [ -d dist/assets ]; then
+            npm run report:bundle-size | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "dist/assets nicht gefunden – Bundle-Report übersprungen." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Bundle-Size Report als Artifact hochladen
+        if: hashFiles('dist/bundle-size-report.md') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-size-report
+          path: dist/bundle-size-report.md
