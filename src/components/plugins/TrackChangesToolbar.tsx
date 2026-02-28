@@ -4,15 +4,13 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getRoot, $isTextNode, $createTextNode } from 'lexical';
+import { $getRoot } from 'lexical';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Eye } from 'lucide-react';
 import {
   $isTrackInsertNode,
   $isTrackDeleteNode,
-  TrackInsertNode,
-  TrackDeleteNode,
 } from '../nodes/TrackChangeNode';
 
 interface TrackChangesToolbarProps {
