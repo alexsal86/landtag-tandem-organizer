@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Layout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,10 +26,6 @@ const mmToPx = (mm: number) => mm * MM_TO_PX;
 const pxToMm = (px: number) => px / MM_TO_PX;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-interface PageSlice {
-  html: string;
-}
-
 interface LetterEditorCanvasProps {
   subject?: string;
   salutation?: string;
@@ -80,80 +76,6 @@ interface LetterEditorCanvasProps {
   templateName?: string;
   zoom?: number;
   onZoomChange?: (zoom: number) => void;
-}
-
-// ─── HTML page splitter ───────────────────────────────────────────────────────
-/**
- * Splits HTML into per-page slices by measuring each top-level DOM node
- * in a hidden container and greedily filling pages.
- *
- * Each node is kept intact (no mid-paragraph splitting). If a single node
- * is taller than one page it occupies its own page.
- */
-function splitHtmlIntoPages(
-  html: string,
-  page1HeightMm: number,
-  pageNHeightMm: number,
-  fontSizePt: number,
-  contentWidthPx: number,
-): PageSlice[] {
-  if (!html?.trim()) return [{ html: '' }];
-
-  // Hidden measurement host
-  const host = document.createElement('div');
-  host.style.cssText = [
-    'position:absolute',
-    'visibility:hidden',
-    'pointer-events:none',
-    `width:${contentWidthPx}px`,
-    `font-size:${fontSizePt}pt`,
-    'font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif',
-    'line-height:1.2',
-    'top:-99999px',
-    'left:-99999px',
-  ].join(';');
-  document.body.appendChild(host);
-
-  const wrapper = document.createElement('div');
-  wrapper.innerHTML = html;
-  const nodes = Array.from(wrapper.childNodes);
-
-  const pages: PageSlice[] = [];
-  let pageIdx = 0;
-  let usedMm = 0;
-  let sliceNodes: Node[] = [];
-
-  const availMm = (i: number) => (i === 0 ? page1HeightMm : pageNHeightMm);
-
-  const flushPage = () => {
-    const tmp = document.createElement('div');
-    sliceNodes.forEach((n) => tmp.appendChild(n.cloneNode(true)));
-    pages.push({ html: tmp.innerHTML });
-  };
-
-  for (const node of nodes) {
-    // Measure this node in isolation
-    host.innerHTML = '';
-    host.appendChild(node.cloneNode(true));
-    const nodeHeightMm = pxToMm(host.scrollHeight);
-    const avail = availMm(pageIdx);
-
-    if (sliceNodes.length > 0 && usedMm + nodeHeightMm > avail) {
-      // Current node overflows → flush current page and start a new one
-      flushPage();
-      pageIdx++;
-      sliceNodes = [];
-      usedMm = 0;
-    }
-
-    sliceNodes.push(node.cloneNode(true));
-    usedMm += nodeHeightMm;
-  }
-
-  if (sliceNodes.length > 0) flushPage();
-
-  document.body.removeChild(host);
-  return pages.length > 0 ? pages : [{ html: '' }];
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -240,9 +162,9 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   // ── where content starts on page 1 ──
   const subjectTopMm: number = layout.subject?.top ?? 98.46;
   const subjectHeightMm = subject ? subjectFontSizePt * 0.3528 * 1.2 : 0;
-  const gapAfterSubjectMm = subject ? 9 : 0;          // ~2 blank lines
+  const gapAfterSubjectMm = subject ? 9 : 0;
   const salutationHeightMm = salutation ? salutationFontSizePt * 0.3528 * 1.2 : 0;
-  const gapAfterSalutationMm = salutation ? 4.5 : 0;  // ~1 blank line
+  const gapAfterSalutationMm = salutation ? 4.5 : 0;
   const contentStartMm =
     subjectTopMm
     + subjectHeightMm
@@ -267,26 +189,37 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     displayContentHtml ??
     (content ? `<p>${escapeHtml(content).replace(/\n/g, '<br/>')}</p>` : '');
 
-  // ── split into pages ──
-  const [pages, setPages] = useState<PageSlice[]>([{ html: '' }]);
-  const splitTimer = useRef<ReturnType<typeof setTimeout>>();
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Viewport/Offset Pagination: measure the full flow height, then compute
+  // how many pages are needed. Each page shows a "window" into the flow.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const flowMeasureRef = useRef<HTMLDivElement>(null);
+  const [flowHeightMm, setFlowHeightMm] = useState(0);
 
+  // Measure the hidden flow container via ResizeObserver
   useEffect(() => {
-    clearTimeout(splitTimer.current);
-    splitTimer.current = setTimeout(() => {
-      const slices = splitHtmlIntoPages(
-        renderedHtml,
-        page1BodyMm,
-        pageNBodyMm,
-        contentFontSizePt,
-        mmToPx(CONTENT_W_MM),
-      );
-      setPages(slices);
-    }, 150); // debounce: avoid layout thrash while typing
-    return () => clearTimeout(splitTimer.current);
-  }, [renderedHtml, page1BodyMm, pageNBodyMm, contentFontSizePt]);
+    const el = flowMeasureRef.current;
+    if (!el) return;
 
-  const totalPages = pages.length;
+    const measure = () => {
+      setFlowHeightMm(pxToMm(el.scrollHeight));
+    };
+
+    // Initial measurement
+    measure();
+
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(el);
+
+    return () => ro.disconnect();
+  }, [renderedHtml, closingFormula, closingName, attachments]);
+
+  // Calculate total pages from measured flow height
+  const totalPages = (() => {
+    if (flowHeightMm <= 0) return 1;
+    if (flowHeightMm <= page1BodyMm) return 1;
+    return 1 + Math.ceil((flowHeightMm - page1BodyMm) / pageNBodyMm);
+  })();
 
   // ── overlay dimensions ──
   const addressFieldWidth: number = layout.addressField?.width ?? 85;
@@ -352,14 +285,28 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     );
   };
 
-  // ── single page renderer ──
+  // ── The complete content flow (used for both measurement and rendering) ──
+  const renderContentFlow = () => (
+    <>
+      <div
+        className="din5008-content-text"
+        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+      />
+      {renderClosing()}
+      {renderAttachments()}
+    </>
+  );
+
+  // ── single page renderer (viewport/offset model) ──
   const renderPage = (pageIndex: number) => {
-    const slice = pages[pageIndex] ?? { html: '' };
     const isFirst = pageIndex === 0;
-    const isLast = pageIndex === totalPages - 1;
     const localTopMm = isFirst ? contentStartMm : page2TopMm;
-    // Height available for body text on this page
     const bodyHeightMm = footerTopMm - localTopMm;
+
+    // Calculate the vertical offset into the flow for this page
+    const offsetMm = isFirst
+      ? 0
+      : page1BodyMm + (pageIndex - 1) * pageNBodyMm;
 
     return (
       <div
@@ -368,7 +315,6 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
         style={{
           width: `${PAGE_W_MM}mm`,
           height: `${PAGE_H_MM}mm`,
-          // hard clip — content CANNOT overflow the page boundary
           overflow: 'hidden',
           boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
           fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
@@ -387,7 +333,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             subject={subject}
             letterDate={letterDate}
             referenceNumber={referenceNumber}
-            content=""      // we render content ourselves
+            content=""
             attachments={[]}
             showPagination={false}
             layoutSettings={layoutSettings}
@@ -405,7 +351,6 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             infoBlockLines={infoBlockLines}
           />
         ) : (
-          // Pages 2+: only footer chrome, no header or address block
           <DIN5008LetterLayout
             template={template}
             senderInfo={senderInfo}
@@ -421,10 +366,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           />
         )}
 
-        {/* ── Body content for this page slice ──
-            height is exactly the body zone → overflow:hidden clips anything
-            that might exceed the footer boundary (should not happen after
-            splitting, but this is the safety net). ── */}
+        {/* ── Body viewport: shows a window into the content flow ── */}
         <div
           style={{
             position: 'absolute',
@@ -438,18 +380,15 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             color: '#000',
           }}
         >
+          {/* Inner flow shifted by offset */}
           <div
-            className="din5008-content-text"
-            dangerouslySetInnerHTML={{ __html: slice.html }}
-          />
-
-          {/* Closing + attachments flow after body on the last page */}
-          {isLast && (
-            <>
-              {renderClosing()}
-              {renderAttachments()}
-            </>
-          )}
+            style={{
+              transform: `translateY(-${offsetMm}mm)`,
+              width: '100%',
+            }}
+          >
+            {renderContentFlow()}
+          </div>
         </div>
 
         {/* ── Pagination ── */}
@@ -650,6 +589,25 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   // ── main render ──
   return (
     <div className="flex flex-col h-full">
+      {/* Hidden measurement container — same width/font as real body */}
+      <div
+        ref={flowMeasureRef}
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          visibility: 'hidden',
+          pointerEvents: 'none',
+          width: `${CONTENT_W_MM}mm`,
+          fontSize: `${contentFontSizePt}pt`,
+          fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
+          lineHeight: '1.2',
+          top: '-99999px',
+          left: '-99999px',
+        }}
+      >
+        {renderContentFlow()}
+      </div>
+
       {/* Toolbar */}
       <div className="flex-none flex items-center justify-between gap-2 p-2 border-b bg-muted/30">
         <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
@@ -691,7 +649,6 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           style={{
             transform: `scale(${zoom})`,
             transformOrigin: 'top center',
-            // Let the scroll container see the correct height after scaling
             paddingBottom: `${(1 - zoom) * totalPages * PAGE_H_MM * MM_TO_PX}px`,
           }}
         >
