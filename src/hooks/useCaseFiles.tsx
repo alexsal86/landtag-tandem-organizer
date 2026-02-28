@@ -44,6 +44,12 @@ export interface CaseFileFormData {
   target_date?: string;
   tags?: string[];
   is_private?: boolean;
+  visibility?: 'private' | 'shared' | 'public';
+}
+
+interface CaseFileParticipantInput {
+  user_id: string;
+  role: 'viewer' | 'editor';
 }
 
 // Legacy fallback - types are now loaded from database via useCaseFileTypes
@@ -90,27 +96,49 @@ export const useCaseFiles = () => {
 
       if (error) throw error;
 
-      // Fetch counts for each case file
-      const caseFilesWithCounts = await Promise.all(
-        (data || []).map(async (cf) => {
-          const [contacts, documents, tasks, appointments, letters] = await Promise.all([
-            supabase.from('case_file_contacts').select('id', { count: 'exact', head: true }).eq('case_file_id', cf.id),
-            supabase.from('case_file_documents').select('id', { count: 'exact', head: true }).eq('case_file_id', cf.id),
-            supabase.from('case_file_tasks').select('id', { count: 'exact', head: true }).eq('case_file_id', cf.id),
-            supabase.from('case_file_appointments').select('id', { count: 'exact', head: true }).eq('case_file_id', cf.id),
-            supabase.from('case_file_letters').select('id', { count: 'exact', head: true }).eq('case_file_id', cf.id),
-          ]);
+      const caseFileIds = (data || []).map((cf) => cf.id);
 
-          return {
-            ...cf,
-            contacts_count: contacts.count || 0,
-            documents_count: documents.count || 0,
-            tasks_count: tasks.count || 0,
-            appointments_count: appointments.count || 0,
-            letters_count: letters.count || 0,
-          };
-        })
-      );
+      const [contactsRes, documentsRes, tasksRes, appointmentsRes, lettersRes] = caseFileIds.length
+        ? await Promise.all([
+            supabase.from('case_file_contacts').select('case_file_id').in('case_file_id', caseFileIds),
+            supabase.from('case_file_documents').select('case_file_id').in('case_file_id', caseFileIds),
+            supabase.from('case_file_tasks').select('case_file_id').in('case_file_id', caseFileIds),
+            supabase.from('case_file_appointments').select('case_file_id').in('case_file_id', caseFileIds),
+            supabase.from('case_file_letters').select('case_file_id').in('case_file_id', caseFileIds),
+          ])
+        : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
+
+      if (
+        contactsRes.error ||
+        documentsRes.error ||
+        tasksRes.error ||
+        appointmentsRes.error ||
+        lettersRes.error
+      ) {
+        throw contactsRes.error || documentsRes.error || tasksRes.error || appointmentsRes.error || lettersRes.error;
+      }
+
+      const countByCaseFileId = (items?: { case_file_id: string }[] | null) => {
+        return (items || []).reduce<Record<string, number>>((acc, item) => {
+          acc[item.case_file_id] = (acc[item.case_file_id] || 0) + 1;
+          return acc;
+        }, {});
+      };
+
+      const contactsByCaseFileId = countByCaseFileId(contactsRes.data);
+      const documentsByCaseFileId = countByCaseFileId(documentsRes.data);
+      const tasksByCaseFileId = countByCaseFileId(tasksRes.data);
+      const appointmentsByCaseFileId = countByCaseFileId(appointmentsRes.data);
+      const lettersByCaseFileId = countByCaseFileId(lettersRes.data);
+
+      const caseFilesWithCounts = (data || []).map((cf) => ({
+        ...cf,
+        contacts_count: contactsByCaseFileId[cf.id] || 0,
+        documents_count: documentsByCaseFileId[cf.id] || 0,
+        tasks_count: tasksByCaseFileId[cf.id] || 0,
+        appointments_count: appointmentsByCaseFileId[cf.id] || 0,
+        letters_count: lettersByCaseFileId[cf.id] || 0,
+      }));
 
       setCaseFiles(caseFilesWithCounts);
     } catch (error) {
@@ -125,7 +153,7 @@ export const useCaseFiles = () => {
     }
   }, [user, currentTenant, toast]);
 
-  const createCaseFile = async (data: CaseFileFormData) => {
+  const createCaseFile = async (data: CaseFileFormData, participants: CaseFileParticipantInput[] = []) => {
     if (!user || !currentTenant) return null;
 
     try {
@@ -141,6 +169,23 @@ export const useCaseFiles = () => {
 
       if (error) throw error;
 
+      if (participants.length > 0) {
+        const { error: participantsError } = await supabase
+          .from('case_file_participants')
+          .insert(
+            participants.map((participant) => ({
+              case_file_id: newCaseFile.id,
+              user_id: participant.user_id,
+              role: participant.role,
+            }))
+          );
+
+        if (participantsError) {
+          await supabase.from('case_files').delete().eq('id', newCaseFile.id);
+          throw new Error('ROLLBACK_CASE_FILE_PARTICIPANTS');
+        }
+      }
+
       toast({
         title: "Erfolgreich",
         description: "FallAkte wurde erstellt.",
@@ -150,9 +195,14 @@ export const useCaseFiles = () => {
       return newCaseFile;
     } catch (error) {
       console.error('Error creating case file:', error);
+      const participantsRollbackError =
+        error instanceof Error && error.message === 'ROLLBACK_CASE_FILE_PARTICIPANTS';
+
       toast({
         title: "Fehler",
-        description: "FallAkte konnte nicht erstellt werden.",
+        description: participantsRollbackError
+          ? "FallAkte-Erstellung wurde zurückgerollt, da Teilnehmer nicht gespeichert werden konnten."
+          : "FallAkte konnte nicht erstellt werden.",
         variant: "destructive",
       });
       return null;
