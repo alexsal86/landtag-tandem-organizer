@@ -99,11 +99,11 @@ export function CaseFilesView() {
   }, [filteredCaseFiles, caseFileTypes]);
 
   // Initialize all groups as expanded
-  useMemo(() => {
+  useEffect(() => {
     if (expandedGroups.size === 0 && groupedCaseFiles.size > 0) {
       setExpandedGroups(new Set(groupedCaseFiles.keys()));
     }
-  }, [groupedCaseFiles]);
+  }, [groupedCaseFiles, expandedGroups.size]);
 
   const toggleGroup = (groupName: string) => {
     const newExpanded = new Set(expandedGroups);
