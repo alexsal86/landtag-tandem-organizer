@@ -283,7 +283,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           right: '20mm',
           height: '18mm',
           fontSize: '8pt',
-          backgroundColor: debugMode ? 'rgba(128,0,128,0.05)' : 'transparent'
+          zIndex: 30,
+          backgroundColor: debugMode ? 'rgba(128,0,128,0.05)' : '#fff'
         }}
       >
         {sortedBlocks.map((block: any, index: number) => {
@@ -863,7 +864,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           right: '20mm',
           fontSize: '8pt',
           color: '#666',
-          backgroundColor: debugMode ? 'rgba(255,165,0,0.05)' : 'transparent',
+          zIndex: 30,
+          backgroundColor: debugMode ? 'rgba(255,165,0,0.05)' : '#fff',
           padding: debugMode ? '2mm' : '0'
         }}>
           {formatSenderAddress(senderInfo)}
@@ -883,6 +885,9 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           textAlign: layout.pagination?.align || 'right',
           fontSize: `${layout.pagination?.fontSize || 8}pt`,
           color: '#666',
+          zIndex: 30,
+          backgroundColor: '#fff',
+          padding: '0 1mm',
           fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif'
         }}>
           Seite 1 von 1
