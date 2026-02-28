@@ -284,6 +284,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       console.log('Letter show_pagination:', letter.show_pagination);
       console.log('=== END LETTER DATA ===');
       
+      // Reset draft initialization so content reloads from DB
+      draftInitializedRef.current = false;
+      
       setEditedLetter({
         ...letter,
         content_html: letter.content_html || '',

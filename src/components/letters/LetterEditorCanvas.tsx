@@ -235,7 +235,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   // Calculate total pages from measured flow height
   const totalPages = (() => {
     if (flowHeightMm <= 0) return 1;
-    if (flowHeightMm <= page1BodyMm) return 1;
+    if (flowHeightMm <= page1BodyMm + lineHeightMm * 0.5) return 1;
     return 1 + Math.ceil((flowHeightMm - page1BodyMm) / pageNBodyMm);
   })();
 
@@ -319,9 +319,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const renderPage = (pageIndex: number) => {
     const isFirst = pageIndex === 0;
     const localTopMm = isFirst ? contentStartMm : page2TopMm;
-    const bodyHeightMm = isFirst
-      ? (contentBottomMm - contentStartMm)
-      : (page2BottomMm - page2TopMm);
+    const bodyHeightMm = isFirst ? page1BodyMm : pageNBodyMm;
 
     // Calculate the vertical offset into the flow for this page (line-snapped)
     const rawOffset = isFirst
