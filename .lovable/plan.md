@@ -1,102 +1,73 @@
 
+# Fix: Textüberlauf in der Briefvorschau (Split-Screen)
 
-# Track Changes und Kommentare im Pruefschritt
+## Problem
+Im Split-Screen-Modus wird der Brieftext in einem Overlay-Element ohne Höhenbegrenzung gerendert. Der Text laeuft über den Footer und die Seitengrenzen hinaus, statt auf Seite 2 umzubrechen.
 
-## Ziel
+**Ursache**: Wenn `enableInlineContentEditing=false` ist (Preview-Modus), wird leerer Content an die `DIN5008LetterLayout`-Komponente übergeben, und der eigentliche Text wird in einem `<button>`-Overlay ohne `maxHeight` oder `overflow: hidden` dargestellt.
 
-Wenn der Abgeordnete einen Brief im Status "Zur Freigabe" bearbeitet, sollen seine Aenderungen farblich markiert werden (Track Changes) und er soll Kommentare hinterlassen koennen. Der Mitarbeiter sieht nach einer Zurueckweisung genau, was geaendert und kommentiert wurde.
+## Lösung
 
----
+### 1. Content direkt an DIN5008LetterLayout übergeben
 
-## Konzept
+In `LetterEditorCanvas.tsx` (Zeile 327):
+- Statt `content={enableInlineContentEditing ? previewContentHtml : ''}` wird der Content **immer** übergeben: `content={previewContentHtml}`
+- Die `DIN5008LetterLayout`-Komponente hat bereits eingebaute Höhenbegrenzung (`maxHeight` + `overflow: hidden`)
 
-### Track Changes (Aenderungsverfolgung)
+### 2. Overlay-Button vereinfachen
 
-- Wenn der Editor im **Pruefmodus** ist (Status `pending_approval` und der aktuelle Benutzer ist der Reviewer), wird ein neues `TrackChangesPlugin` aktiviert.
-- Dieses Plugin ueberwacht alle Text-Aenderungen im Editor:
-  - **Eingefuegter Text**: Wird gruen hinterlegt markiert
-  - **Geloeschter Text**: Wird rot und durchgestrichen dargestellt (Text bleibt sichtbar, wird aber als geloescht markiert)
-- Die Aenderungen werden als spezielle Lexical-Nodes (`TrackInsertNode`, `TrackDeleteNode`) gespeichert, die beim Serialisieren erhalten bleiben.
-- Ein Banner oberhalb des Editors zeigt an: "Pruefmodus aktiv - Aenderungen werden nachverfolgt"
+Das Overlay (Zeilen 571-601) wird zu einem reinen Klick-Target ohne eigene Content-Darstellung:
+- `dangerouslySetInnerHTML` und die Content-Vorschau im Overlay entfernen
+- Button bleibt als transparente, klickbare Fläche über dem Inhaltsbereich
+- Der Text wird stattdessen von `DIN5008LetterLayout` korrekt gerendert (mit Clipping)
 
-### Kommentare (bereits vorhanden)
+### 3. Mehrseitige Darstellung
 
-- Das bestehende `CommentPlugin` ist bereits im `EnhancedLexicalEditor` integriert. Dieses wird im Pruefmodus weiterhin verfuegbar sein, sodass der Abgeordnete Textpassagen markieren und kommentieren kann.
+Für Content der über eine Seite hinausgeht:
+- Die `canvasHeightMm`-Berechnung (Zeile 225-226) basiert bereits auf `totalPages` und `estimatedContentBottomMm`
+- Die Seitenumbruch-Indikatoren (Zeilen 663-690) und Footer-Clips (Zeilen 647-661) existieren bereits
+- Die `DIN5008LetterLayout`-Komponente muss den Content über mehrere "virtuelle Seiten" verteilen, statt ihn mit `overflow: hidden` abzuschneiden
 
-### Aenderungen akzeptieren/ablehnen
+Konkret wird in `DIN5008LetterLayout.tsx`:
+- Der Content-Container bekommt **kein** `overflow: hidden` mehr wenn `hideClosing=false` (Preview-Modus)
+- Stattdessen wird ein CSS-basiertes Paginierungssystem eingeführt: Der Content fließt frei, und die Footer/Header-Overlays in `LetterEditorCanvas` verdecken die Übergangsbereiche zwischen den Seiten korrekt
+- Alternativ (einfacher): Der Content wird in `LetterEditorCanvas` gemessen und bei Überlauf werden separate Seiten-Container mit CSS-Clipping gerendert
 
-- Der Mitarbeiter sieht bei "Ueberarbeitung" alle markierten Aenderungen.
-- Buttons "Alle Aenderungen annehmen" und "Alle Aenderungen ablehnen" ermoeglichen die Uebernahme oder Verwerfung.
-- Optional: Einzelne Aenderungen koennen per Rechtsklick/Hover akzeptiert oder abgelehnt werden.
+### 4. Messung und Seitenberechnung verbessern
 
----
+In `LetterEditorCanvas.tsx`:
+- Die bestehende `measuredEditorHeightMm`-Logik (ResizeObserver) wird für den Preview-Content-Bereich genutzt
+- `totalPages` wird korrekt aus der gemessenen Content-Höhe berechnet
+- Jede Seite > 1 bekommt einen reduzierten Header und die Content-Fortsetzung wird mit CSS `clip-path` / `overflow` korrekt positioniert
 
-## Technische Umsetzung
+## Betroffene Dateien
+- `src/components/letters/LetterEditorCanvas.tsx` - Content-Weitergabe und Overlay-Vereinfachung
+- `src/components/letters/DIN5008LetterLayout.tsx` - Overflow-Verhalten anpassen
 
-### 1. Neuer TrackChangesNode (ElementNode)
+## Technische Details
 
-**Datei:** `src/components/nodes/TrackChangeNode.ts`
+```text
+Vorher (Split-Screen Preview):
++--DIN5008LetterLayout-----------+
+|  Header, Adresse, Info         |
+|  Subject, Salutation           |
+|  content="" (leer!)            |
++--------------------------------+
++--Overlay-Button (z-index:10)---+
+|  previewContentHtml            |
+|  (KEIN maxHeight!)             |  <-- Text laeuft über!
+|  ...überlappt Footer...        |
++--------------------------------+
 
-- Zwei Node-Typen: `TrackInsertNode` und `TrackDeleteNode`
-- Beide erweitern `ElementNode` von Lexical
-- `TrackInsertNode`: Rendert mit gruenem Hintergrund (`background: #dcfce7; text-decoration: none`)
-- `TrackDeleteNode`: Rendert mit rotem Hintergrund und Durchstreichung (`background: #fecaca; text-decoration: line-through`)
-- Beide speichern Metadaten: `authorId`, `authorName`, `timestamp`
-- Serialisierung/Deserialisierung ueber `importJSON`/`exportJSON`
-
-### 2. TrackChangesPlugin
-
-**Datei:** `src/components/plugins/TrackChangesPlugin.tsx`
-
-- Wird nur aktiviert, wenn `isReviewMode={true}` uebergeben wird
-- Registriert Listener fuer:
-  - **Text-Eingabe**: Neue Text-Nodes werden automatisch in einen `TrackInsertNode` gewrappt
-  - **Text-Loeschung**: Statt den Text zu loeschen, wird er in einen `TrackDeleteNode` gewrappt (Override von DELETE/BACKSPACE Commands)
-- Props: `authorId`, `authorName`, `isReviewMode`
-
-### 3. TrackChangesToolbar
-
-**Datei:** `src/components/plugins/TrackChangesToolbar.tsx`
-
-- Zeigt im Pruefmodus ein Banner: "Pruefmodus - Aenderungen werden nachverfolgt"
-- Zeigt im Ueberarbeitungsmodus Buttons:
-  - "Alle annehmen" - Entfernt alle Track-Nodes und behaelt den eingefuegten Text / entfernt geloeschten Text
-  - "Alle ablehnen" - Entfernt alle Track-Nodes und verwirft eingefuegten Text / stellt geloeschten Text wieder her
-  - Zaehler: "X Aenderungen"
-
-### 4. Integration in EnhancedLexicalEditor
-
-**Datei:** `src/components/EnhancedLexicalEditor.tsx`
-
-- Neue Props: `isReviewMode?: boolean`, `reviewerName?: string`, `reviewerId?: string`
-- `TrackInsertNode` und `TrackDeleteNode` zur Node-Liste hinzufuegen
-- `TrackChangesPlugin` als Plugin einbinden (nur aktiv wenn `isReviewMode`)
-- `TrackChangesToolbar` unterhalb der Haupt-Toolbar rendern
-
-### 5. Integration in LetterEditorCanvas
-
-**Datei:** `src/components/letters/LetterEditorCanvas.tsx`
-
-- Neuer Prop `isReviewMode` durchreichen an den `EnhancedLexicalEditor`
-
-### 6. Integration in LetterEditor
-
-**Datei:** `src/components/LetterEditor.tsx`
-
-- Pruefmodus erkennen: `isReviewMode = isReviewer && (currentStatus === 'pending_approval' || currentStatus === 'review')`
-- `isReviewMode`, `reviewerName` und `reviewerId` an `LetterEditorCanvas` weitergeben
-- Im Status `revision_requested` (Ueberarbeitung): Die TrackChangesToolbar mit "Annehmen/Ablehnen"-Buttons anzeigen
-
----
-
-## Dateien-Uebersicht
-
-| Datei | Aktion |
-|---|---|
-| `src/components/nodes/TrackChangeNode.ts` | Neu erstellen |
-| `src/components/plugins/TrackChangesPlugin.tsx` | Neu erstellen |
-| `src/components/plugins/TrackChangesToolbar.tsx` | Neu erstellen |
-| `src/components/EnhancedLexicalEditor.tsx` | Erweitern (Props, Nodes, Plugin) |
-| `src/components/letters/LetterEditorCanvas.tsx` | Erweitern (Prop durchreichen) |
-| `src/components/LetterEditor.tsx` | Erweitern (Pruefmodus-Logik) |
-
+Nachher:
++--DIN5008LetterLayout-----------+
+|  Header, Adresse, Info         |
+|  Subject, Salutation           |
+|  content=previewContentHtml    |  <-- DIN5008 rendert mit Clipping
+|  maxHeight + overflow:hidden   |
++--------------------------------+
++--Overlay-Button (transparent)--+
+|  (nur Klick-Target, kein Text) |
++--------------------------------+
+Bei Überlauf: Seite 2+ mit reduziertem Header
+```
