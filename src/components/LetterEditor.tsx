@@ -141,7 +141,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [collaborators, setCollaborators] = useState<LetterCollaborator[]>([]);
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
   const [showDINPreview, setShowDINPreview] = useState(false);
-  const [showBriefDetails, setShowBriefDetails] = useState(true);
+  const [showBriefDetails, setShowBriefDetails] = useState(false);
   
   const [senderInfos, setSenderInfos] = useState<any[]>([]);
   const [informationBlocks, setInformationBlocks] = useState<any[]>([]);
