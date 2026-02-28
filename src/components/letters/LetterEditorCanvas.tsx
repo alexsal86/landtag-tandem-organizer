@@ -222,8 +222,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   const previewContentHtml = displayContentHtml
     ?? (content
-      ? `<p>${escapeHtml(content).replace(/
-/g, '<br/>')}</p>`
+      ? `<p>${escapeHtml(content).replace(/\n/g, '<br/>')}</p>`
       : '<p></p>');
 
   // Layout positions for overlays
