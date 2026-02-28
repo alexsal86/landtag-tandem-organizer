@@ -1,48 +1,62 @@
 
-# Fix: Drei Probleme im Briefeditor
+# Fix: Editor-Text leer und Vorschau reagiert nicht auf Eingaben
 
-## Problem 1: Letzte Zeile von Seite 1 wird auf Seite 2 wiederholt
+## Ursache
 
-**Ursache**: Die `page1BodyMm` und `pageNBodyMm` werden mit `snapToLine()` abgerundet. Dadurch ist `page1BodyMm` kleiner als der tatsaechliche Body-Bereich. Der Offset fuer Seite 2 ist `page1BodyMm`, aber die Fensterhoehe auf Seite 1 ist `contentBottomMm - contentStartMm` (ungerundet, Zeile 323). Die Fensterhoehe ist also groesser als `page1BodyMm` -- Seite 1 zeigt mehr Text als der Offset fuer Seite 2 ueberspringt.
+Im letzten Fix wurde `draftInitializedRef.current = false` beim Laden eines neuen Briefes gesetzt (Zeile 288). Das allein reicht aber nicht, weil:
 
-**Fix in `LetterEditorCanvas.tsx`**: Die `bodyHeightMm` in `renderPage` muss ebenfalls die gesnapte Hoehe verwenden, nicht die rohe:
-- Zeile 323-324: `bodyHeightMm` fuer Seite 1 auf `page1BodyMm` setzen (bereits gesnapt), fuer Seite 2+ auf `pageNBodyMm`
+1. Der `useEffect` bei Zeile 174, der die Draft-States initialisiert, hat als Dependency nur `[showTextSplitEditor]`
+2. `showTextSplitEditor` ist bereits `true` und aendert sich nicht beim Briefwechsel
+3. Der Effect feuert daher nie erneut -- die Draft-States (`draftContent`, `draftContentNodes`, `draftContentHtml`) bleiben leer
+4. Der Lexical-Editor (Zeile 1883) bekommt leere Props
+5. Die Live-Sync (Zeile 200) prueft `draftInitializedRef.current` -- das ist `false`, also werden Aenderungen im Editor nicht zur Vorschau synchronisiert
 
-## Problem 2: Editortext verschwindet nach Navigation
+## Loesung
 
-**Ursache**: `draftInitializedRef` (Zeile 173) wird beim Verlassen der Seite nie zurueckgesetzt. Wenn der Benutzer zurueckkehrt, wird `editedLetter` korrekt aus der DB geladen (Zeile 287-291), aber `draftInitializedRef.current` ist noch `true`, daher werden `draftContent`/`draftContentNodes`/`draftContentHtml` nicht aktualisiert. Der Lexical-Editor bekommt leere/veraltete Werte.
+In `src/components/LetterEditor.tsx` an der Stelle, wo der Brief geladen wird (Zeile 286-294): Die Draft-States direkt mit den neuen Briefdaten initialisieren und `draftInitializedRef.current = true` setzen, damit die Live-Sync sofort funktioniert.
 
-**Fix in `LetterEditor.tsx`**:
-- Beim Laden eines neuen Briefes (im `useEffect` bei Zeile 278): `draftInitializedRef.current = false` zuruecksetzen
-- Alternativ/zusaetzlich: Wenn `letter` sich aendert, die Draft-States direkt aus dem neuen `letter`-Objekt initialisieren
+### Aenderung in `src/components/LetterEditor.tsx` (Zeile 286-294)
 
-## Problem 3: Kuenstlicher Platz nach Schlussformel erzeugt leere Seiten
+Aus:
+```
+draftInitializedRef.current = false;
 
-**Ursache**: `renderClosing()` hat einen festen `<div style={{ height: '9mm' }} />` Abstand VOR der Grussformel (Zeile 256). Nach dem Namen/Titel gibt es keinen weiteren Spacer, ABER im Mess-Container wird dieser 9mm-Abstand mitgemessen. Wenn der Content fast die Seite fuellt, reichen diese 9mm aus, um `flowHeightMm > page1BodyMm` zu erzeugen, was eine zweite (fast leere) Seite generiert. Zudem: Wenn keine Anlagen vorhanden sind, braucht nach dem Namen nichts mehr zu kommen -- aber die 9mm VOR der Grussformel bleiben.
+setEditedLetter({
+  ...letter,
+  content_html: letter.content_html || '',
+  content_nodes: letter.content_nodes || null
+});
+```
 
-**Fix in `LetterEditorCanvas.tsx`**:
-- Den Abstand vor der Grussformel von `9mm` auf einen kleineren Wert reduzieren (z.B. `4.5mm`) -- dies muss aber zur PDF-Ausgabe passen
-- Alternativ (robuster): Die `totalPages`-Berechnung um einen Schwellwert ergaenzen: Wenn der Ueberhang kleiner als eine Zeilenhoehe ist, keine weitere Seite erzeugen
+Wird:
+```
+// Reset and immediately re-initialize draft states from new letter
+draftInitializedRef.current = false;
 
-## Betroffene Dateien
+setEditedLetter({
+  ...letter,
+  content_html: letter.content_html || '',
+  content_nodes: letter.content_nodes || null
+});
 
-### `src/components/letters/LetterEditorCanvas.tsx`
-1. **Zeile 322-324** (`renderPage`): `bodyHeightMm` auf gesnapte Werte umstellen:
-   ```
-   const bodyHeightMm = isFirst ? page1BodyMm : pageNBodyMm;
-   ```
-2. **Zeile 236-240** (`totalPages`): Schwellwert einfuegen, um Mikro-Ueberlaeufe zu ignorieren:
-   ```
-   if (flowHeightMm <= page1BodyMm + lineHeightMm * 0.5) return 1;
-   ```
+// Directly initialize draft states so the editor gets content
+setDraftContent(letter.content || '');
+setDraftContentNodes(letter.content_nodes || null);
+setDraftContentHtml(letter.content_html || null);
+draftInitializedRef.current = true;
+```
 
-### `src/components/LetterEditor.tsx`
-3. **Zeile 278-291** (letter-Lade-Effekt): `draftInitializedRef.current = false` setzen, wenn ein neuer Brief geladen wird, damit die Draft-States korrekt reinitialisiert werden:
-   ```
-   draftInitializedRef.current = false;
-   ```
+Das stellt sicher, dass:
+- Der Editor sofort den Briefinhalt erhaelt
+- Die Live-Sync (`draftInitializedRef.current === true`) funktioniert
+- Aenderungen im Editor wieder zur Vorschau synchronisiert werden
 
-## Zusammenfassung
-- Bug 1 (Zeilenwiederholung): Fensterhoehe und Offset muessen identische (gesnapte) Werte nutzen
-- Bug 2 (Text weg): Draft-Initialisierungs-Flag muss beim Briefwechsel zurueckgesetzt werden
-- Bug 3 (Leere Seiten): Schwellwert bei totalPages verhindert, dass minimale Ueberlaeufe eine neue Seite erzeugen
+## Zusaetzlich: Neuer Brief (else-Zweig, Zeile 310-327)
+
+Gleiche Logik fuer neue Briefe anwenden -- Draft-States zuruecksetzen:
+```
+setDraftContent('');
+setDraftContentNodes(null);
+setDraftContentHtml(null);
+draftInitializedRef.current = true;
+```
