@@ -15,8 +15,36 @@ serve(async (req) => {
   try {
     console.log('🔄 Starting force calendar re-sync');
 
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAuth.auth.getUser();
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
+      supabaseUrl,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
@@ -26,6 +54,36 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'calendar_id is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: calendar, error: calendarError } = await supabase
+      .from('external_calendars')
+      .select('id, tenant_id')
+      .eq('id', calendar_id)
+      .single();
+
+    if (calendarError || !calendar) {
+      return new Response(
+        JSON.stringify({ error: 'Calendar not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: isAdmin } = await supabase.rpc('is_admin', { _user_id: user.id });
+    const { data: membership } = await supabase
+      .from('user_tenant_memberships')
+      .select('role, is_active')
+      .eq('user_id', user.id)
+      .eq('tenant_id', calendar.tenant_id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    const canResync = Boolean(isAdmin) || membership?.role === 'abgeordneter';
+    if (!canResync) {
+      return new Response(
+        JSON.stringify({ error: 'Insufficient permissions' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -91,8 +149,7 @@ serve(async (req) => {
     console.error('❌ Force re-sync error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
+        error: error instanceof Error ? error.message : 'Unknown error'
       }),
       { 
         status: 500, 

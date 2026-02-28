@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { ProtocolSearch } from './ProtocolSearch';
 import { ProtocolExport } from './ProtocolExport';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { ProtocolOverview } from './ProtocolOverview';
 import { ProtocolAgenda } from './ProtocolAgenda';
 import { ProtocolRawData } from './ProtocolRawData';
@@ -186,7 +187,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
       enhancedText = enhancedText.replace(regex, `<span class="${getEventClass(event.type)}">${event.text}</span>`);
     });
 
-    return <p dangerouslySetInnerHTML={{ __html: enhancedText }} className="text-sm whitespace-pre-wrap leading-relaxed" />;
+    return <p dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(enhancedText) }} className="text-sm whitespace-pre-wrap leading-relaxed" />;
   };
 
   const escapeRegExp = (string: string) => {
