@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -68,6 +68,7 @@ interface AdminSidebarProps {
   onNavigate: (section: string, subSection?: string) => void;
   isSuperAdmin: boolean;
   annualTasksBadge?: number;
+  className?: string;
 }
 
 export const adminMenuItems: AdminMenuItem[] = [
@@ -165,8 +166,13 @@ export function AdminSidebar({
   onNavigate,
   isSuperAdmin,
   annualTasksBadge,
+  className,
 }: AdminSidebarProps) {
   const [openSections, setOpenSections] = useState<string[]>([activeSection]);
+
+  useEffect(() => {
+    setOpenSections((prev) => (prev.includes(activeSection) ? prev : [...prev, activeSection]));
+  }, [activeSection]);
 
   const toggleSection = (sectionId: string) => {
     setOpenSections((prev) =>
@@ -200,7 +206,7 @@ export function AdminSidebar({
   );
 
   return (
-    <div className="w-64 border-r bg-muted/30 h-full">
+    <div className={cn("w-64 border-r bg-muted/30 h-full", className)}>
       <div className="p-4 border-b">
         <h2 className="font-semibold text-lg">Administration</h2>
         <p className="text-xs text-muted-foreground">Systemkonfiguration</p>
