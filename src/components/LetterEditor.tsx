@@ -297,6 +297,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       setDraftContent(letter.content || '');
       setDraftContentNodes(letter.content_nodes || null);
       setDraftContentHtml(letter.content_html || null);
+      // Also initialize latestContentRef so save works immediately
+      latestContentRef.current = {
+        content: letter.content || '',
+        contentNodes: letter.content_nodes || null,
+      };
       draftInitializedRef.current = true;
       // Set proofreading mode based on actual letter status
       setIsProofreadingMode(letter.status === 'review');
@@ -1046,8 +1051,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     if (!canEdit || !currentTenant || !user) return;
 
     // Use immediate parameters if provided, otherwise use latest ref values, fallback to state
-    const contentToSave = immediateContent !== undefined ? immediateContent : latestContentRef.current.content;
-    const contentNodesToSave = immediateContentNodes !== undefined ? immediateContentNodes : latestContentRef.current.contentNodes;
+    const contentToSave = immediateContent !== undefined ? immediateContent : (latestContentRef.current.content || editedLetter.content || '');
+    const contentNodesToSave = immediateContentNodes !== undefined ? immediateContentNodes : (latestContentRef.current.contentNodes || editedLetter.content_nodes || null);
 
     console.log('=== MANUAL SAVE STARTED ===');
     console.log('content_nodes to save:', contentNodesToSave ? 'HAS JSON DATA' : 'NO JSON DATA');
