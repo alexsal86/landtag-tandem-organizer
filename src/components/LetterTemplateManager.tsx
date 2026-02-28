@@ -579,7 +579,7 @@ const LetterTemplateManager: React.FC = () => {
     );
   };
 
-  const tabDefinitions = [
+  const tabDefinitions: ReadonlyArray<{ value: string; label: string; mobileLabel?: string }> = [
     { value: 'canvas-designer', label: 'Canvas' },
     { value: 'header-designer', label: 'Header' },
     { value: 'footer-designer', label: 'Footer' },
@@ -589,7 +589,7 @@ const LetterTemplateManager: React.FC = () => {
     { value: 'block-attachments', label: 'Anlagen' },
     { value: 'layout-settings', label: 'Layout' },
     { value: 'general', label: 'Allgemein' },
-  ] as const;
+  ];
 
   const activeTabDefinition = tabDefinitions.find((tab) => tab.value === activeTab);
 

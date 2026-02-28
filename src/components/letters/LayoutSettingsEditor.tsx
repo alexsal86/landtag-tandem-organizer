@@ -185,6 +185,8 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
             <div><Label htmlFor="content-max-height">Max. Höhe (mm)</Label><Input id="content-max-height" type="number" value={layoutSettings.content.maxHeight} onChange={(e) => updateSetting(['content', 'maxHeight'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="content-line-height">Zeilenhöhe (mm)</Label><Input id="content-line-height" type="number" value={layoutSettings.content.lineHeight} onChange={(e) => updateSetting(['content', 'lineHeight'], parseFloat(e.target.value))} step="0.1" /></div>
             <div><Label htmlFor="content-font-size">Schriftgröße (pt)</Label><Input id="content-font-size" type="number" value={layoutSettings.content.fontSize || 11} onChange={(e) => updateSetting(['content', 'fontSize'], parseFloat(e.target.value))} step="0.5" /></div>
+            <div><Label htmlFor="content-page2-top">Seite 2+ Beginn (mm)</Label><Input id="content-page2-top" type="number" value={layoutSettings.content.page2TopMm ?? layoutSettings.margins.top} onChange={(e) => updateSetting(['content', 'page2TopMm'], parseFloat(e.target.value))} step="0.1" /></div>
+            <div><Label htmlFor="content-page2-bottom">Seite 2+ Ende (mm)</Label><Input id="content-page2-bottom" type="number" value={layoutSettings.content.page2BottomMm ?? layoutSettings.footer.top} onChange={(e) => updateSetting(['content', 'page2BottomMm'], parseFloat(e.target.value))} step="0.1" /></div>
           </div>
         </div>
 
