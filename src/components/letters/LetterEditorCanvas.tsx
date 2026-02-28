@@ -158,6 +158,12 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   const footerTopMm: number = layout.footer?.top ?? 272;
   const page2TopMm: number = layout.margins?.top ?? 25;
+  const paginationGapMm = 4.23;
+  const paginationTopMm: number = layout.pagination?.top ?? 263.77;
+  const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
+  const contentBottomMm = paginationEnabled
+    ? Math.min(footerTopMm, paginationTopMm - paginationGapMm)
+    : footerTopMm;
 
   // ── where content starts on page 1 ──
   const subjectTopMm: number = layout.subject?.top ?? 98.46;
@@ -173,8 +179,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     + gapAfterSalutationMm;
 
   // ── available body height per page ──
-  const page1BodyMm = footerTopMm - contentStartMm;
-  const pageNBodyMm = footerTopMm - page2TopMm;
+  const page1BodyMm = Math.max(20, contentBottomMm - contentStartMm);
+  const pageNBodyMm = Math.max(20, contentBottomMm - page2TopMm);
 
   // ── closing metadata ──
   const closingFormula: string | undefined = layout.closing?.formula;
@@ -392,11 +398,11 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
         </div>
 
         {/* ── Pagination ── */}
-        {showPagination && (
+        {paginationEnabled && (
           <div
             style={{
               position: 'absolute',
-              top: '263.77mm',
+              top: `${paginationTopMm}mm`,
               right: layout.pagination?.align === 'left' ? 'auto' : `${MARGIN_R_MM}mm`,
               left: layout.pagination?.align === 'left' ? `${MARGIN_L_MM}mm` : undefined,
               fontSize: `${layout.pagination?.fontSize ?? 8}pt`,

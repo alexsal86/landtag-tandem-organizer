@@ -130,15 +130,20 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   const paginationHeightMm = 4;
   const contentTopMm = Number(layout.content?.top ?? 98.46);
   const footerTopMm = Number(layout.footer?.top ?? 272);
-  const paginationTopMm = 263.77;
+  const configuredContentMaxHeightMm = Number(layout.content?.maxHeight ?? 165);
+  const paginationTopMm = Number(layout.pagination?.top ?? 263.77);
   const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
   const foldHoleMarks = {
     ...DEFAULT_LAYOUT.foldHoleMarks,
     ...(layout.foldHoleMarks || {}),
   };
-  const contentMaxHeightMm = paginationEnabled
-    ? Math.max(20, paginationTopMm - paginationGapMm - contentTopMm)
-    : 165;
+  const contentBottomLimitMm = paginationEnabled
+    ? Math.min(footerTopMm, paginationTopMm - paginationGapMm)
+    : footerTopMm;
+  const contentMaxHeightMm = Math.max(
+    20,
+    Math.min(configuredContentMaxHeightMm, contentBottomLimitMm - contentTopMm),
+  );
   const formatAddress = (address: any) => {
     if (!address) return '';
     
