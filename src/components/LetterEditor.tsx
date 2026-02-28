@@ -141,6 +141,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [collaborators, setCollaborators] = useState<LetterCollaborator[]>([]);
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
   const [showDINPreview, setShowDINPreview] = useState(false);
+  const [showBriefDetails, setShowBriefDetails] = useState(true);
   
   const [senderInfos, setSenderInfos] = useState<any[]>([]);
   const [informationBlocks, setInformationBlocks] = useState<any[]>([]);
@@ -1301,6 +1302,15 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               Druckvorschau
             </Button>
 
+            <Button
+              variant={showBriefDetails ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowBriefDetails(!showBriefDetails)}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Briefdetails
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -1685,8 +1695,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         )}
       </div>
 
-      <div className="border-b bg-card/30 p-4 overflow-y-auto max-h-[45vh]">
-        <Card>
+      {showBriefDetails && (
+        <div className="border-b bg-card/30 p-4 overflow-y-auto max-h-[45vh]">
+          <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileText className="h-4 w-4" />
@@ -1809,9 +1820,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       </div>
                     )}
                   </CardContent>
-        </Card>
-
-      </div>
+          </Card>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 flex overflow-hidden">
