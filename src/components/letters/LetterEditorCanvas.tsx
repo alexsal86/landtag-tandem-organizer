@@ -68,6 +68,7 @@ interface LetterEditorCanvasProps {
   onRecipientContactSelect?: (contact: any) => void;
   onSenderChange?: (senderId: string) => void;
   onInfoBlockChange?: (blockIds: string[]) => void;
+  onAttachmentNameChange?: (attachmentId: string, displayName: string) => void;
   senderInfos?: any[];
   informationBlocks?: any[];
   selectedSenderId?: string;
@@ -120,6 +121,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   onRecipientContactSelect,
   onSenderChange,
   onInfoBlockChange,
+  onAttachmentNameChange,
   senderInfos = [],
   informationBlocks = [],
   selectedSenderId,
@@ -302,6 +304,10 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
       </div>
     );
   };
+
+  const editableAttachmentList = (attachments ?? []).filter((attachment) =>
+    typeof attachment === 'object' && attachment !== null && typeof attachment.id === 'string',
+  ) as Array<{ id: string; file_name?: string; display_name?: string }>;
 
   // ── The complete content flow (used for both measurement and rendering) ──
   const renderContentFlow = () => (
@@ -562,6 +568,34 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                 />
               </div>
             </EditableCanvasOverlay>
+
+            {editableAttachmentList.length > 0 && (
+              <EditableCanvasOverlay
+                top={layout.attachments?.top ?? 230}
+                left={MARGIN_L_MM}
+                width={CONTENT_W_MM}
+                height={Math.max(16, editableAttachmentList.length * 5 + 4)}
+                label="Anlagen"
+                canEdit={canEdit && !!onAttachmentNameChange}
+                zIndex={30}
+              >
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {editableAttachmentList.map((attachment) => (
+                    <div key={attachment.id} className="space-y-1">
+                      <Label className="text-xs">{attachment.file_name || 'Anlage'}</Label>
+                      <Input
+                        className="h-8 text-xs"
+                        defaultValue={attachment.display_name || attachment.file_name || ''}
+                        onBlur={(event) => {
+                          onAttachmentNameChange?.(attachment.id, event.target.value.trim());
+                        }}
+                        placeholder="Anzeigename"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </EditableCanvasOverlay>
+            )}
 
             {salutation && (
               <EditableCanvasOverlay

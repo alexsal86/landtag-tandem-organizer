@@ -16,6 +16,8 @@ interface EditableCanvasOverlayProps {
   children: React.ReactNode;
   /** Optional className for the wrapper */
   className?: string;
+  /** Optional z-index for overlap control */
+  zIndex?: number;
 }
 
 export const EditableCanvasOverlay: React.FC<EditableCanvasOverlayProps> = ({
@@ -27,6 +29,7 @@ export const EditableCanvasOverlay: React.FC<EditableCanvasOverlayProps> = ({
   canEdit = true,
   children,
   className = '',
+  zIndex = 20,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -41,7 +44,7 @@ export const EditableCanvasOverlay: React.FC<EditableCanvasOverlayProps> = ({
         left: `${left}mm`,
         width: `${width}mm`,
         height: `${height}mm`,
-        zIndex: 20,
+        zIndex,
         pointerEvents: 'auto',
       }}
       onMouseEnter={() => setIsHovered(true)}
