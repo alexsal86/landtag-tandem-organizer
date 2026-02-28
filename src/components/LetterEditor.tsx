@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, Settings, Wifi, WifiOff, Activity, Ruler, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -149,7 +149,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [previewZoom, setPreviewZoom] = useState(1.0);
   const [showPagination, setShowPagination] = useState(true);
   const [showLayoutDebug, setShowLayoutDebug] = useState(false);
-  const [showTextSplitEditor, setShowTextSplitEditor] = useState(false);
+  const [showTextSplitEditor, setShowTextSplitEditor] = useState(true);
   const [draftContent, setDraftContent] = useState('');
   const [draftContentNodes, setDraftContentNodes] = useState<any>(null);
   const [draftContentHtml, setDraftContentHtml] = useState<string | null>(null);
@@ -161,15 +161,26 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
 
   const openTextSplitEditor = () => {
-    setDraftContent(editedLetter.content || '');
-    setDraftContentNodes(editedLetter.content_nodes || null);
-    setDraftContentHtml(editedLetter.content_html || null);
+    if (!showTextSplitEditor) {
+      setDraftContent(editedLetter.content || '');
+      setDraftContentNodes(editedLetter.content_nodes || null);
+      setDraftContentHtml(editedLetter.content_html || null);
+    }
     setShowTextSplitEditor(true);
   };
 
-  const applyDraftToPreview = () => {
-    if (!canEdit) return;
+  // Initialize draft content when split editor is shown for the first time
+  const draftInitializedRef = useRef(false);
+  useEffect(() => {
+    if (showTextSplitEditor && !draftInitializedRef.current) {
+      draftInitializedRef.current = true;
+      setDraftContent(editedLetter.content || '');
+      setDraftContentNodes(editedLetter.content_nodes || null);
+      setDraftContentHtml(editedLetter.content_html || null);
+    }
+  }, [showTextSplitEditor]);
 
+  const applyDraftToPreview = useCallback(() => {
     latestContentRef.current = {
       content: draftContent?.trim() || '',
       contentNodes: draftContentNodes || null,
@@ -181,7 +192,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       content_nodes: draftContentNodes || null,
       content_html: draftContentHtml || undefined,
     }));
-  };
+  }, [draftContent, draftContentNodes, draftContentHtml]);
+
+  // Live-sync: automatically apply draft changes to preview
+  const liveSyncTimerRef = useRef<NodeJS.Timeout>(null);
+  useEffect(() => {
+    if (!showTextSplitEditor || !draftInitializedRef.current) return;
+    if (liveSyncTimerRef.current) clearTimeout(liveSyncTimerRef.current);
+    liveSyncTimerRef.current = setTimeout(() => {
+      applyDraftToPreview();
+    }, 300);
+    return () => { if (liveSyncTimerRef.current) clearTimeout(liveSyncTimerRef.current); };
+  }, [draftContent, draftContentNodes, draftContentHtml, showTextSplitEditor, applyDraftToPreview]);
 
   const statusLabels: Record<string, string> = {
     draft: 'Entwurf',
@@ -1830,20 +1852,19 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               </div>
             </div>
           ) : (
-            /* Split mode: optional text editor + letter canvas preview */
+            /* Split mode: text editor + letter canvas preview */
             <div className="flex-1 flex overflow-hidden">
               {showTextSplitEditor && (
-                <div className="w-[42%] min-w-[340px] border-r bg-background flex flex-col">
-                  <div className="flex items-center justify-between gap-2 p-2 border-b bg-muted/20">
-                    <h3 className="text-sm font-medium">Brieftext-Editor</h3>
+                <div className="w-[48%] min-w-[380px] border-r bg-background flex flex-col">
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-muted/20">
                     <div className="flex items-center gap-2">
-                      <Button size="sm" onClick={applyDraftToPreview} disabled={!canEdit}>
-                        Vorschau aktualisieren
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setShowTextSplitEditor(false)}>
-                        Schließen
-                      </Button>
+                      <Edit3 className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-medium">Brieftext</h3>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Live</Badge>
                     </div>
+                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                   <div className="flex-1 overflow-auto p-3">
                     <EnhancedLexicalEditor
