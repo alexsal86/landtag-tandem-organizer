@@ -6,12 +6,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact } from "@/lib/utils";
+import {
+  isValidEmail,
+  findPotentialDuplicates,
+  DuplicateMatch,
+  type Contact,
+} from "@/lib/utils";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { TagInput } from "@/components/ui/tag-input";
 
@@ -72,26 +83,31 @@ export function CreateContact() {
     added_at: new Date().toISOString().split("T")[0],
   });
 
-  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([]);
+  const [organizations, setOrganizations] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [existingContacts, setExistingContacts] = useState<Contact[]>([]);
-  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
+  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>(
+    [],
+  );
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [emailValidationError, setEmailValidationError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [allTags, setAllTags] = useState<string[]>([]);
 
   useEffect(() => {
-    if (user) {
+    if (user && currentTenant) {
       fetchOrganizations();
       fetchExistingContacts();
       fetchAllTags();
     }
-  }, [user]);
+  }, [user, currentTenant]);
 
   const fetchOrganizations = async () => {
     const { data, error } = await supabase
       .from("contacts")
       .select("id, name")
+      .eq("tenant_id", currentTenant.id)
       .eq("contact_type", "organization")
       .order("name");
 
@@ -101,7 +117,8 @@ export function CreateContact() {
   const fetchExistingContacts = async () => {
     const { data, error } = await supabase
       .from("contacts")
-      .select("id, name, email, phone, organization")
+      .select("id, name, email, phone, organization, organization_id")
+      .eq("tenant_id", currentTenant.id)
       .order("name");
 
     if (error) return;
@@ -113,12 +130,17 @@ export function CreateContact() {
         email: contact.email,
         phone: contact.phone,
         organization: contact.organization,
-      })) || []
+        organization_id: contact.organization_id,
+      })) || [],
     );
   };
 
   const fetchAllTags = async () => {
-    const { data, error } = await supabase.from("contacts").select("tags").not("tags", "is", null);
+    const { data, error } = await supabase
+      .from("contacts")
+      .select("tags")
+      .eq("tenant_id", currentTenant.id)
+      .not("tags", "is", null);
     if (error) return;
 
     const tagsSet = new Set<string>();
@@ -137,7 +159,9 @@ export function CreateContact() {
     }
 
     if (!isValidEmail(email)) {
-      setEmailValidationError("Bitte geben Sie eine gültige E-Mail-Adresse ein (z.B. name@beispiel.de)");
+      setEmailValidationError(
+        "Bitte geben Sie eine gültige E-Mail-Adresse ein (z.B. name@beispiel.de)",
+      );
       return false;
     }
 
@@ -164,6 +188,7 @@ export function CreateContact() {
           email: updatedData.email,
           phone: updatedData.phone,
           organization: undefined,
+          organization_id: updatedData.organization_id || undefined,
         });
       }
     }
@@ -172,7 +197,11 @@ export function CreateContact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const requiredFields: Array<keyof ContactFormData> = ["name", "category", "priority"];
+    const requiredFields: Array<keyof ContactFormData> = [
+      "name",
+      "category",
+      "priority",
+    ];
     const missingFields = requiredFields.filter((field) => !formData[field]);
 
     if (missingFields.length > 0) {
@@ -187,7 +216,8 @@ export function CreateContact() {
     if (!formData.email && !formData.phone) {
       toast({
         title: "Fehlende Kontaktdaten",
-        description: "Bitte hinterlegen Sie mindestens E-Mail oder Telefonnummer.",
+        description:
+          "Bitte hinterlegen Sie mindestens E-Mail oder Telefonnummer.",
         variant: "destructive",
       });
       return;
@@ -200,6 +230,7 @@ export function CreateContact() {
       email: formData.email,
       phone: formData.phone,
       organization: undefined,
+      organization_id: formData.organization_id || undefined,
     });
 
     if (duplicates.length > 0 && !showDuplicateWarning) {
@@ -218,7 +249,8 @@ export function CreateContact() {
     try {
       const organizationName =
         formData.contact_type === "person" && formData.organization_id
-          ? organizations.find((org) => org.id === formData.organization_id)?.name || null
+          ? organizations.find((org) => org.id === formData.organization_id)
+              ?.name || null
           : null;
 
       const { error } = await supabase.from("contacts").insert({
@@ -254,7 +286,8 @@ export function CreateContact() {
     } catch {
       toast({
         title: "Fehler",
-        description: "Der Kontakt konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+        description:
+          "Der Kontakt konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
         variant: "destructive",
       });
     } finally {
@@ -268,13 +301,22 @@ export function CreateContact() {
       <div className="bg-card border-b border-border p-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
-            <Button variant="outline" size="sm" onClick={() => navigate("/contacts")} className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/contacts")}
+              className="gap-2"
+            >
               <ArrowLeft className="h-4 w-4" />
               Zurück zu Kontakten
             </Button>
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Neuen Kontakt anlegen</h1>
-          <p className="text-muted-foreground">Vereinfachte Erfassung für den Büroalltag.</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Neuen Kontakt anlegen
+          </h1>
+          <p className="text-muted-foreground">
+            Vereinfachte Erfassung für den Büroalltag.
+          </p>
         </div>
       </div>
 
@@ -294,7 +336,11 @@ export function CreateContact() {
                     <Label>Kontakt-Typ *</Label>
                     <Select
                       onValueChange={(value: "person" | "organization") =>
-                        setFormData((prev) => ({ ...prev, contact_type: value, organization_id: "" }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          contact_type: value,
+                          organization_id: "",
+                        }))
                       }
                       defaultValue="person"
                     >
@@ -303,7 +349,9 @@ export function CreateContact() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="person">Person</SelectItem>
-                        <SelectItem value="organization">Organisation</SelectItem>
+                        <SelectItem value="organization">
+                          Organisation
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -311,45 +359,72 @@ export function CreateContact() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="name">Name *</Label>
-                      <Input id="name" value={formData.name} onChange={(e) => handleInputChange("name", e.target.value)} required />
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) =>
+                          handleInputChange("name", e.target.value)
+                        }
+                        required
+                      />
                     </div>
                     <div>
                       <Label htmlFor="role">Rolle/Funktion</Label>
-                      <Input id="role" value={formData.role} onChange={(e) => handleInputChange("role", e.target.value)} />
+                      <Input
+                        id="role"
+                        value={formData.role}
+                        onChange={(e) =>
+                          handleInputChange("role", e.target.value)
+                        }
+                      />
                     </div>
                   </div>
 
                   {formData.contact_type === "person" && (
                     <>
-                    <div>
-                      <Label htmlFor="gender">Anrede</Label>
-                      <Select onValueChange={(value) => handleInputChange("gender", value === "none" ? "" : value)} value={formData.gender || "none"}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Anrede wählen" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Keine Angabe</SelectItem>
-                          <SelectItem value="m">Herr</SelectItem>
-                          <SelectItem value="f">Frau</SelectItem>
-                          <SelectItem value="d">Divers</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="organization_id">Organisation (optional)</Label>
-                      <Select onValueChange={(value) => handleInputChange("organization_id", value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Organisation auswählen" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {organizations.map((org) => (
-                            <SelectItem key={org.id} value={org.id}>
-                              {org.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      <div>
+                        <Label htmlFor="gender">Anrede</Label>
+                        <Select
+                          onValueChange={(value) =>
+                            handleInputChange(
+                              "gender",
+                              value === "none" ? "" : value,
+                            )
+                          }
+                          value={formData.gender || "none"}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Anrede wählen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Keine Angabe</SelectItem>
+                            <SelectItem value="m">Herr</SelectItem>
+                            <SelectItem value="f">Frau</SelectItem>
+                            <SelectItem value="d">Divers</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="organization_id">
+                          Organisation (optional)
+                        </Label>
+                        <Select
+                          onValueChange={(value) =>
+                            handleInputChange("organization_id", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Organisation auswählen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {organizations.map((org) => (
+                              <SelectItem key={org.id} value={org.id}>
+                                {org.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </>
                   )}
 
@@ -357,14 +432,27 @@ export function CreateContact() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="industry">Branche</Label>
-                        <Input id="industry" value={formData.industry} onChange={(e) => handleInputChange("industry", e.target.value)} />
+                        <Input
+                          id="industry"
+                          value={formData.industry}
+                          onChange={(e) =>
+                            handleInputChange("industry", e.target.value)
+                          }
+                        />
                       </div>
                       <div>
-                        <Label htmlFor="main_contact_person">Ansprechperson</Label>
+                        <Label htmlFor="main_contact_person">
+                          Ansprechperson
+                        </Label>
                         <Input
                           id="main_contact_person"
                           value={formData.main_contact_person}
-                          onChange={(e) => handleInputChange("main_contact_person", e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "main_contact_person",
+                              e.target.value,
+                            )
+                          }
                         />
                       </div>
                     </div>
@@ -377,39 +465,76 @@ export function CreateContact() {
                         id="email"
                         type="email"
                         value={formData.email}
-                        onChange={(e) => handleInputChange("email", e.target.value)}
-                        className={emailValidationError ? "border-destructive" : ""}
+                        onChange={(e) =>
+                          handleInputChange("email", e.target.value)
+                        }
+                        className={
+                          emailValidationError ? "border-destructive" : ""
+                        }
                       />
-                      {emailValidationError && <p className="text-sm text-destructive mt-1">{emailValidationError}</p>}
+                      {emailValidationError && (
+                        <p className="text-sm text-destructive mt-1">
+                          {emailValidationError}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="phone">Telefon</Label>
-                      <Input id="phone" value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} />
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) =>
+                          handleInputChange("phone", e.target.value)
+                        }
+                      />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">Mindestens E-Mail oder Telefon ist erforderlich.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Mindestens E-Mail oder Telefon ist erforderlich.
+                  </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="website">Website</Label>
-                      <Input id="website" value={formData.website} onChange={(e) => handleInputChange("website", e.target.value)} />
+                      <Input
+                        id="website"
+                        value={formData.website}
+                        onChange={(e) =>
+                          handleInputChange("website", e.target.value)
+                        }
+                      />
                     </div>
                     <div>
                       <Label htmlFor="address">Adresse</Label>
-                      <Input id="address" value={formData.address} onChange={(e) => handleInputChange("address", e.target.value)} />
+                      <Input
+                        id="address"
+                        value={formData.address}
+                        onChange={(e) =>
+                          handleInputChange("address", e.target.value)
+                        }
+                      />
                     </div>
                   </div>
 
                   <div>
                     <Label htmlFor="notes">Notizen</Label>
-                    <Textarea id="notes" rows={4} value={formData.notes} onChange={(e) => handleInputChange("notes", e.target.value)} />
+                    <Textarea
+                      id="notes"
+                      rows={4}
+                      value={formData.notes}
+                      onChange={(e) =>
+                        handleInputChange("notes", e.target.value)
+                      }
+                    />
                   </div>
 
                   <div>
                     <Label>Tags</Label>
                     <TagInput
                       tags={formData.tags}
-                      onTagsChange={(tags) => setFormData((prev) => ({ ...prev, tags }))}
+                      onTagsChange={(tags) =>
+                        setFormData((prev) => ({ ...prev, tags }))
+                      }
                       suggestions={allTags}
                       placeholder="Tags hinzufügen..."
                     />
@@ -441,7 +566,11 @@ export function CreateContact() {
                 <CardContent className="space-y-4">
                   <div>
                     <Label htmlFor="category">Kategorie *</Label>
-                    <Select onValueChange={(value) => handleInputChange("category", value)}>
+                    <Select
+                      onValueChange={(value) =>
+                        handleInputChange("category", value)
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Kategorie wählen" />
                       </SelectTrigger>
@@ -457,7 +586,11 @@ export function CreateContact() {
 
                   <div>
                     <Label htmlFor="priority">Priorität *</Label>
-                    <Select onValueChange={(value) => handleInputChange("priority", value)}>
+                    <Select
+                      onValueChange={(value) =>
+                        handleInputChange("priority", value)
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Priorität wählen" />
                       </SelectTrigger>
@@ -471,7 +604,11 @@ export function CreateContact() {
 
                   <div>
                     <Label htmlFor="added_reason">Grund der Aufnahme</Label>
-                    <Select onValueChange={(value) => handleInputChange("added_reason", value)}>
+                    <Select
+                      onValueChange={(value) =>
+                        handleInputChange("added_reason", value)
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Grund auswählen" />
                       </SelectTrigger>
@@ -487,18 +624,34 @@ export function CreateContact() {
 
                   <div>
                     <Label htmlFor="added_at">Aufnahmedatum</Label>
-                    <Input id="added_at" type="date" value={formData.added_at} onChange={(e) => handleInputChange("added_at", e.target.value)} />
+                    <Input
+                      id="added_at"
+                      type="date"
+                      value={formData.added_at}
+                      onChange={(e) =>
+                        handleInputChange("added_at", e.target.value)
+                      }
+                    />
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="bg-card shadow-card border-border">
                 <CardContent className="pt-6 space-y-3">
-                  <Button type="submit" className="w-full gap-2" disabled={isSubmitting}>
+                  <Button
+                    type="submit"
+                    className="w-full gap-2"
+                    disabled={isSubmitting}
+                  >
                     <Save className="h-4 w-4" />
                     {isSubmitting ? "Wird gespeichert..." : "Kontakt speichern"}
                   </Button>
-                  <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/contacts")}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => navigate("/contacts")}
+                  >
                     Abbrechen
                   </Button>
                 </CardContent>
