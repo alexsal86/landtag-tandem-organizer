@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
 import { LayoutSettingsEditor } from '@/components/letters/LayoutSettingsEditor';
 import { CanvasToolbar } from '@/components/letters/CanvasToolbar';
@@ -187,6 +188,7 @@ const LetterTemplateManager: React.FC = () => {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
   const [senderInfos, setSenderInfos] = useState<SenderInformation[]>([]);
@@ -277,13 +279,13 @@ const LetterTemplateManager: React.FC = () => {
     left: 'L',
   };
 
-  const renderTabTrigger = (value: string, label: string) => {
+  const renderTabTrigger = (value: string, label: string, mobileLabel?: string) => {
     const margins = tabMarginMap[value] || [];
 
     return (
       <TabsTrigger className="shrink-0" value={value}>
         <span className="inline-flex items-center gap-1">
-          <span>{label}</span>
+          <span>{isMobile && mobileLabel ? mobileLabel : label}</span>
           {margins.length > 0 && (
             <span className="inline-flex items-center gap-0.5 rounded-sm border px-1 py-0.5 text-[10px] leading-none text-muted-foreground" title={`Betroffene Seitenränder: ${margins.join(', ')}`}>
               {margins.map((margin) => marginLabelMap[margin]).join('·')}
@@ -577,20 +579,41 @@ const LetterTemplateManager: React.FC = () => {
     );
   };
 
-  // Consolidated tab list - used by both create and edit
-  // Order: Canvas, Header, Footer, Adressfeld, Rücksende, Info-Block, Betreff, Anlagen, Layout, Allgemein
-  const renderTabsList = () => (
-    <TabsList className="flex w-full justify-start gap-1 overflow-x-auto whitespace-nowrap">
-      {renderTabTrigger('canvas-designer', 'Canvas')}
-      {renderTabTrigger('header-designer', 'Header')}
-      {renderTabTrigger('footer-designer', 'Footer')}
-      {renderTabTrigger('block-address', 'Adressfeld')}
-      {renderTabTrigger('block-info', 'Info-Block')}
-      {renderTabTrigger('block-subject', 'Betreff, Anrede & Abschluss')}
-      {renderTabTrigger('block-attachments', 'Anlagen')}
-      {renderTabTrigger('layout-settings', 'Layout')}
-      {renderTabTrigger('general', 'Allgemein')}
-    </TabsList>
+  const tabDefinitions = [
+    { value: 'canvas-designer', label: 'Canvas' },
+    { value: 'header-designer', label: 'Header' },
+    { value: 'footer-designer', label: 'Footer' },
+    { value: 'block-address', label: 'Adressfeld', mobileLabel: 'Adresse' },
+    { value: 'block-info', label: 'Info-Block', mobileLabel: 'Info' },
+    { value: 'block-subject', label: 'Betreff, Anrede & Abschluss', mobileLabel: 'Betreff' },
+    { value: 'block-attachments', label: 'Anlagen' },
+    { value: 'layout-settings', label: 'Layout' },
+    { value: 'general', label: 'Allgemein' },
+  ] as const;
+
+  const activeTabDefinition = tabDefinitions.find((tab) => tab.value === activeTab);
+
+  // Consolidated tab navigation - used by both create and edit
+  const renderTabsNavigation = () => (
+    <>
+      <div className="sm:hidden">
+        <Label htmlFor="letter-template-tab-select" className="mb-2 block text-sm font-medium">Bereich</Label>
+        <Select value={activeTab} onValueChange={setActiveTab}>
+          <SelectTrigger id="letter-template-tab-select" className="w-full">
+            <SelectValue>{activeTabDefinition ? (activeTabDefinition.mobileLabel ?? activeTabDefinition.label) : 'Bereich auswählen'}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {tabDefinitions.map((tab) => (
+              <SelectItem key={tab.value} value={tab.value}>{tab.mobileLabel ?? tab.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <TabsList className="hidden w-full justify-start gap-1 overflow-x-auto whitespace-nowrap sm:flex">
+        {tabDefinitions.map((tab) => renderTabTrigger(tab.value, tab.label, tab.mobileLabel))}
+      </TabsList>
+    </>
   );
 
   // Consolidated tab content - used by both create and edit
@@ -1010,12 +1033,12 @@ const LetterTemplateManager: React.FC = () => {
   return (
     <div className="space-y-6">
       {!editingTemplate && !showSettings && (
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setShowSettings(true)}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button className="w-full sm:w-auto" variant="outline" onClick={() => setShowSettings(true)}>
             <Settings className="h-4 w-4 mr-2" />
             Einstellungen
           </Button>
-          <Button onClick={() => { if (showCreateDialog) { setShowCreateDialog(false); resetForm(); } else { setShowCreateDialog(true); resetForm(); setActiveTab('canvas-designer'); } }}>
+          <Button className="w-full sm:w-auto" onClick={() => { if (showCreateDialog) { setShowCreateDialog(false); resetForm(); } else { setShowCreateDialog(true); resetForm(); setActiveTab('canvas-designer'); } }}>
             <Plus className="h-4 w-4 mr-2" />
             {showCreateDialog ? 'Erstellung schließen' : 'Neues Template'}
           </Button>
@@ -1035,13 +1058,13 @@ const LetterTemplateManager: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              {renderTabsList()}
+              {renderTabsNavigation()}
               {renderCommonTabsContent()}
             </Tabs>
             {activeTab !== 'canvas-designer' && activeTab !== 'header-designer' && (
-              <div className="flex justify-end space-x-2 pt-4 border-t">
-                <Button variant="outline" onClick={() => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>Abbrechen</Button>
-                <Button onClick={handleCreateTemplate}>Template erstellen</Button>
+              <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+                <Button className="w-full sm:w-auto" variant="outline" onClick={() => { setShowCreateDialog(false); setActiveTab('canvas-designer'); resetForm(); }}>Abbrechen</Button>
+                <Button className="w-full sm:w-auto" onClick={handleCreateTemplate}>Template erstellen</Button>
               </div>
             )}
           </CardContent>
@@ -1060,9 +1083,9 @@ const LetterTemplateManager: React.FC = () => {
             <Card key={template.id} className="relative">
               {renderPreview(template)}
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">{template.name}</CardTitle>
-                  <div className="flex space-x-1">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle className="text-sm break-words">{template.name}</CardTitle>
+                  <div className="flex flex-wrap gap-1">
                     <Button variant="ghost" size="sm" onClick={() => setShowPreview(template.id)} title="Vorschau"><Eye className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => startEditing(template)} title="Template bearbeiten"><Edit3 className="h-4 w-4" /></Button>
                     {!template.is_default && (<Button variant="ghost" size="sm" onClick={() => handleDeleteTemplate(template)}><Trash2 className="h-4 w-4 text-destructive" /></Button>)}
@@ -1070,7 +1093,7 @@ const LetterTemplateManager: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <Badge variant="outline" className="text-xs">{template.response_time_days} Tage</Badge>
                   {template.is_default && (<Badge variant="default" className="text-xs">Standard</Badge>)}
                 </div>
@@ -1083,15 +1106,15 @@ const LetterTemplateManager: React.FC = () => {
       {/* Edit Template - inline card (same as create) */}
       {editingTemplate && !showCreateDialog && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-2xl font-semibold tracking-tight">Template bearbeiten: {editingTemplate.name}</h2>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={cancelEditing}><X className="h-4 w-4 mr-2" />Abbrechen</Button>
-              <Button onClick={handleUpdateTemplate}><Save className="h-4 w-4 mr-2" />Speichern</Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl break-words">Template bearbeiten: {editingTemplate.name}</h2>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <Button className="w-full sm:w-auto" variant="outline" onClick={cancelEditing}><X className="h-4 w-4 mr-2" />Abbrechen</Button>
+              <Button className="w-full sm:w-auto" onClick={handleUpdateTemplate}><Save className="h-4 w-4 mr-2" />Speichern</Button>
             </div>
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            {renderTabsList()}
+            {renderTabsNavigation()}
             {renderCommonTabsContent()}
           </Tabs>
         </div>
