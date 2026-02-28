@@ -50,6 +50,8 @@ export interface LetterLayoutSettings {
     maxHeight: number;
     lineHeight: number;
     fontSize?: number;
+    page2TopMm?: number;
+    page2BottomMm?: number;
   };
   footer: {
     top: number;

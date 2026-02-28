@@ -157,13 +157,19 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const closingFontSizePt = toFontSizePt(layout.closing?.fontSize, 11);
 
   const footerTopMm: number = layout.footer?.top ?? 272;
-  const page2TopMm: number = layout.margins?.top ?? 25;
   const paginationGapMm = 4.23;
   const paginationTopMm: number = layout.pagination?.top ?? 263.77;
   const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
   const contentBottomMm = paginationEnabled
     ? Math.min(footerTopMm, paginationTopMm - paginationGapMm)
     : footerTopMm;
+
+  // ── page 2+ content boundaries from layout ──
+  const page2TopMm: number = layout.content?.page2TopMm ?? layout.margins?.top ?? 25;
+  const page2BottomRaw: number = layout.content?.page2BottomMm ?? footerTopMm;
+  const page2BottomMm = paginationEnabled
+    ? Math.min(page2BottomRaw, paginationTopMm - paginationGapMm)
+    : page2BottomRaw;
 
   // ── where content starts on page 1 ──
   const subjectTopMm: number = layout.subject?.top ?? 98.46;
@@ -178,9 +184,15 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     + salutationHeightMm
     + gapAfterSalutationMm;
 
-  // ── available body height per page ──
-  const page1BodyMm = Math.max(20, contentBottomMm - contentStartMm);
-  const pageNBodyMm = Math.max(20, contentBottomMm - page2TopMm);
+  // ── line-height snapping to avoid cutting lines ──
+  const lineHeightMm = contentFontSizePt * 0.3528 * 1.2;
+  const snapToLine = (mm: number) => lineHeightMm > 0
+    ? Math.floor(mm / lineHeightMm) * lineHeightMm
+    : mm;
+
+  // ── available body height per page (snapped to line height) ──
+  const page1BodyMm = Math.max(lineHeightMm, snapToLine(contentBottomMm - contentStartMm));
+  const pageNBodyMm = Math.max(lineHeightMm, snapToLine(page2BottomMm - page2TopMm));
 
   // ── closing metadata ──
   const closingFormula: string | undefined = layout.closing?.formula;
@@ -307,12 +319,15 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const renderPage = (pageIndex: number) => {
     const isFirst = pageIndex === 0;
     const localTopMm = isFirst ? contentStartMm : page2TopMm;
-    const bodyHeightMm = footerTopMm - localTopMm;
+    const bodyHeightMm = isFirst
+      ? (contentBottomMm - contentStartMm)
+      : (page2BottomMm - page2TopMm);
 
-    // Calculate the vertical offset into the flow for this page
-    const offsetMm = isFirst
+    // Calculate the vertical offset into the flow for this page (line-snapped)
+    const rawOffset = isFirst
       ? 0
       : page1BodyMm + (pageIndex - 1) * pageNBodyMm;
+    const offsetMm = isFirst ? 0 : snapToLine(rawOffset);
 
     return (
       <div
@@ -329,8 +344,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           marginBottom: pageIndex < totalPages - 1 ? '8mm' : 0,
         }}
       >
-        {/* ── Page chrome (header, address zones, footer) ── */}
-        {isFirst ? (
+        {/* ── Page chrome (header, address zones, footer) — page 1 only ── */}
+        {isFirst && (
           <DIN5008LetterLayout
             template={template}
             senderInfo={senderInfo}
@@ -356,21 +371,35 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             returnAddressLines={returnAddressLines}
             infoBlockLines={infoBlockLines}
           />
-        ) : (
-          <DIN5008LetterLayout
-            template={template}
-            senderInfo={senderInfo}
-            informationBlock={undefined}
-            recipientAddress={null}
-            subject={undefined}
-            content=""
-            showPagination={false}
-            layoutSettings={layoutSettings}
-            hideClosing={true}
-            allowContentOverflow={false}
-            footerTextElements={footerTextElements}
-          />
         )}
+
+        {/* ── Fold/hole marks on all pages ── */}
+        {!isFirst && layout.foldHoleMarks?.enabled !== false && (() => {
+          const marks = layout.foldHoleMarks || {};
+          const markLeft = marks.left ?? 3;
+          const foldW = marks.foldMarkWidth ?? 5;
+          const holeW = marks.holeMarkWidth ?? 8;
+          const strokePt = marks.strokeWidthPt ?? 1;
+          const topY = marks.topMarkY ?? 105;
+          const holeY = marks.holeMarkY ?? 148.5;
+          const bottomY = marks.bottomMarkY ?? 210;
+          return (
+            <>
+              {[topY, bottomY].map((y) => (
+                <div key={`fold-${y}`} style={{
+                  position: 'absolute', top: `${y}mm`, left: `${markLeft}mm`,
+                  width: `${foldW}mm`, height: 0,
+                  borderTop: `${strokePt}pt solid #999`,
+                }} />
+              ))}
+              <div style={{
+                position: 'absolute', top: `${holeY}mm`, left: `${markLeft}mm`,
+                width: `${holeW}mm`, height: 0,
+                borderTop: `${strokePt}pt solid #999`,
+              }} />
+            </>
+          );
+        })()}
 
         {/* ── Body viewport: shows a window into the content flow ── */}
         <div
