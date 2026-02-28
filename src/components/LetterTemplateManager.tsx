@@ -579,20 +579,41 @@ const LetterTemplateManager: React.FC = () => {
     );
   };
 
-  // Consolidated tab list - used by both create and edit
-  // Order: Canvas, Header, Footer, Adressfeld, Rücksende, Info-Block, Betreff, Anlagen, Layout, Allgemein
-  const renderTabsList = () => (
-    <TabsList className="flex w-full justify-start gap-1 overflow-x-auto whitespace-nowrap">
-      {renderTabTrigger('canvas-designer', 'Canvas')}
-      {renderTabTrigger('header-designer', 'Header')}
-      {renderTabTrigger('footer-designer', 'Footer')}
-      {renderTabTrigger('block-address', 'Adressfeld', 'Adresse')}
-      {renderTabTrigger('block-info', 'Info-Block', 'Info')}
-      {renderTabTrigger('block-subject', 'Betreff, Anrede & Abschluss', 'Betreff')}
-      {renderTabTrigger('block-attachments', 'Anlagen')}
-      {renderTabTrigger('layout-settings', 'Layout')}
-      {renderTabTrigger('general', 'Allgemein')}
-    </TabsList>
+  const tabDefinitions = [
+    { value: 'canvas-designer', label: 'Canvas' },
+    { value: 'header-designer', label: 'Header' },
+    { value: 'footer-designer', label: 'Footer' },
+    { value: 'block-address', label: 'Adressfeld', mobileLabel: 'Adresse' },
+    { value: 'block-info', label: 'Info-Block', mobileLabel: 'Info' },
+    { value: 'block-subject', label: 'Betreff, Anrede & Abschluss', mobileLabel: 'Betreff' },
+    { value: 'block-attachments', label: 'Anlagen' },
+    { value: 'layout-settings', label: 'Layout' },
+    { value: 'general', label: 'Allgemein' },
+  ] as const;
+
+  const activeTabDefinition = tabDefinitions.find((tab) => tab.value === activeTab);
+
+  // Consolidated tab navigation - used by both create and edit
+  const renderTabsNavigation = () => (
+    <>
+      <div className="sm:hidden">
+        <Label htmlFor="letter-template-tab-select" className="mb-2 block text-sm font-medium">Bereich</Label>
+        <Select value={activeTab} onValueChange={setActiveTab}>
+          <SelectTrigger id="letter-template-tab-select" className="w-full">
+            <SelectValue>{activeTabDefinition ? (activeTabDefinition.mobileLabel ?? activeTabDefinition.label) : 'Bereich auswählen'}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {tabDefinitions.map((tab) => (
+              <SelectItem key={tab.value} value={tab.value}>{tab.mobileLabel ?? tab.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <TabsList className="hidden w-full justify-start gap-1 overflow-x-auto whitespace-nowrap sm:flex">
+        {tabDefinitions.map((tab) => renderTabTrigger(tab.value, tab.label, tab.mobileLabel))}
+      </TabsList>
+    </>
   );
 
   // Consolidated tab content - used by both create and edit
@@ -1037,7 +1058,7 @@ const LetterTemplateManager: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              {renderTabsList()}
+              {renderTabsNavigation()}
               {renderCommonTabsContent()}
             </Tabs>
             {activeTab !== 'canvas-designer' && activeTab !== 'header-designer' && (
@@ -1093,7 +1114,7 @@ const LetterTemplateManager: React.FC = () => {
             </div>
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            {renderTabsList()}
+            {renderTabsNavigation()}
             {renderCommonTabsContent()}
           </Tabs>
         </div>
