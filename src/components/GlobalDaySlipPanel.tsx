@@ -102,31 +102,63 @@ type DayTemplate = {
 
 const defaultDayTemplates: DayTemplate[] = [
   {
-    id: "meeting-day",
-    name: "Sitzungstag",
+    id: "plenary-day",
+    name: "Plenar-/Sitzungstag",
     lines: [
-      "--- Vorbereitung ---",
-      "!! Tagesordnung final prüfen",
-      "Unterlagen für Ausschuss ausdrucken",
-      "--- Sitzung ---",
-      "! Offene Fragen notieren",
-      "Beschlüsse direkt ins Protokoll übertragen",
-      "--- Nachbereitung ---",
-      "Aufgaben an Team verteilen",
+      "--- 1) Vor Start ---",
+      "!! Tagesordnung + Redebeiträge final prüfen",
+      "Mappen/Links für Sitzung und Team bereitstellen",
+      "--- 2) Während der Sitzung ---",
+      "! Offene Fragen + Zusagen live notieren",
+      "Beschlüsse inkl. Fristen protokollieren",
+      "--- 3) Direkt danach ---",
+      "Aufgaben an zuständige Personen verteilen",
+      "Follow-ups in Kalender/Taskliste eintragen",
+    ],
+  },
+  {
+    id: "committee-day",
+    name: "Ausschusstag",
+    lines: [
+      "--- 1) Vorbereitung ---",
+      "Einladung, Unterlagen und Stellungnahmen querlesen",
+      "!! Kritische Nachfragen + Kernbotschaften formulieren",
+      "--- 2) Termin ---",
+      "Fragen, Antworten und nächste Schritte mitschreiben",
+      "Stakeholder mit Bezug markieren",
+      "--- 3) Nachbereitung ---",
+      "Beschlusslage intern kurz zusammenfassen",
+      "Offene Punkte an Fachreferate übergeben",
+    ],
+  },
+  {
+    id: "district-day",
+    name: "Wahlkreis-/Bürgersprechstunden-Tag",
+    lines: [
+      "--- 1) Vorbereitung ---",
+      "Termine + Anfahrten gegenprüfen",
+      "Bürgeranliegen nach Dringlichkeit sortieren",
+      "--- 2) Vor Ort ---",
+      "! Zusagen realistisch und konkret festhalten",
+      "Rückruf-/Antwortfristen direkt notieren",
+      "--- 3) Nachbereitung ---",
+      "Anliegen in Aufgaben überführen",
+      "Status-Update für Team/Assistenz senden",
     ],
   },
   {
     id: "homeoffice-day",
     name: "Homeoffice-Tag",
     lines: [
-      "--- Fokusblöcke ---",
+      "--- 1) Fokusblöcke ---",
       "!! Wichtigste Aufgabe des Tages (MIT)",
       "! E-Mails nur um 11:00 und 16:00",
-      "--- Kommunikation ---",
+      "--- 2) Kommunikation ---",
       "Jour fixe vorbereiten",
       "Rückrufe und Nachrichten abarbeiten",
-      "--- Tagesabschluss ---",
+      "--- 3) Tagesabschluss ---",
       "Ergebnisse dokumentieren",
+      "Top-3 für morgen festlegen",
     ],
   },
 ];
@@ -1426,7 +1458,7 @@ export function GlobalDaySlipPanel() {
                       key={day}
                       type="button"
                       onClick={() => setRecurringDraftWeekday(day)}
-                      className={`rounded border px-2 py-0.5 text-[11px] ${recurringDraftWeekday === day ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-100" : "border-border/60 hover:bg-muted"}`}
+                      className={`rounded border px-2 py-0.5 text-[11px] transition-colors ${recurringDraftWeekday === day ? "border-primary/60 bg-primary/15 text-primary" : "border-border/60 hover:bg-muted"}`}
                     >
                       {weekDayLabels[day]}
                     </button>
