@@ -1,62 +1,42 @@
 
-# Fix: Editor-Text leer und Vorschau reagiert nicht auf Eingaben
+
+# Fix: Brieftext wird nicht gespeichert (Editor leer nach Reload)
 
 ## Ursache
 
-Im letzten Fix wurde `draftInitializedRef.current = false` beim Laden eines neuen Briefes gesetzt (Zeile 288). Das allein reicht aber nicht, weil:
+Die Reihenfolge beim Laden eines Briefes ist fehlerhaft:
 
-1. Der `useEffect` bei Zeile 174, der die Draft-States initialisiert, hat als Dependency nur `[showTextSplitEditor]`
-2. `showTextSplitEditor` ist bereits `true` und aendert sich nicht beim Briefwechsel
-3. Der Effect feuert daher nie erneut -- die Draft-States (`draftContent`, `draftContentNodes`, `draftContentHtml`) bleiben leer
-4. Der Lexical-Editor (Zeile 1883) bekommt leere Props
-5. Die Live-Sync (Zeile 200) prueft `draftInitializedRef.current` -- das ist `false`, also werden Aenderungen im Editor nicht zur Vorschau synchronisiert
+1. Brief wird geladen, `draftContentNodes` gesetzt, `draftInitializedRef = true`
+2. Lexical Editor mountet mit leerem Zustand und feuert sofort `onChange` mit leerem Content
+3. Da `draftInitializedRef` bereits `true` ist, laeuft die Live-Sync und ueberschreibt `latestContentRef` mit leerem Content
+4. Erst DANACH laedt ContentPlugin (useEffect) den echten Content aus `contentNodes`
+5. Beim Speichern wird der leere `latestContentRef` in die Datenbank geschrieben
+
+Die Vorschau zeigt den Text trotzdem korrekt, weil ContentPlugin den Editor-State nachtraeglich setzt und die nachfolgende `onChange`-Kette die Vorschau aktualisiert. Aber `latestContentRef` wurde zu diesem Zeitpunkt bereits mit leerem Inhalt befuellt.
 
 ## Loesung
 
-In `src/components/LetterEditor.tsx` an der Stelle, wo der Brief geladen wird (Zeile 286-294): Die Draft-States direkt mit den neuen Briefdaten initialisieren und `draftInitializedRef.current = true` setzen, damit die Live-Sync sofort funktioniert.
+In `src/components/LetterEditor.tsx`: `draftInitializedRef.current = true` nicht sofort setzen, sondern mit einer kurzen Verzoegerung (500ms). Das gibt ContentPlugin Zeit, den echten Inhalt zu laden und `onChange` mit den richtigen Daten zu feuern. Waehrend dieser 500ms wird die Live-Sync blockiert, sodass der leere Mount-State nicht durchkommt.
 
-### Aenderung in `src/components/LetterEditor.tsx` (Zeile 286-294)
+`latestContentRef` bleibt sofort mit dem DB-Inhalt initialisiert -- damit funktioniert Speichern auch waehrend der 500ms korrekt.
+
+### Aenderung (Zeile 304 in LetterEditor.tsx)
 
 Aus:
 ```
-draftInitializedRef.current = false;
-
-setEditedLetter({
-  ...letter,
-  content_html: letter.content_html || '',
-  content_nodes: letter.content_nodes || null
-});
+draftInitializedRef.current = true;
 ```
 
 Wird:
 ```
-// Reset and immediately re-initialize draft states from new letter
-draftInitializedRef.current = false;
-
-setEditedLetter({
-  ...letter,
-  content_html: letter.content_html || '',
-  content_nodes: letter.content_nodes || null
-});
-
-// Directly initialize draft states so the editor gets content
-setDraftContent(letter.content || '');
-setDraftContentNodes(letter.content_nodes || null);
-setDraftContentHtml(letter.content_html || null);
-draftInitializedRef.current = true;
+// Delay enabling live-sync so Lexical's ContentPlugin can load
+// the real content before onChange overwrites the ref
+setTimeout(() => {
+  draftInitializedRef.current = true;
+}, 500);
 ```
 
-Das stellt sicher, dass:
-- Der Editor sofort den Briefinhalt erhaelt
-- Die Live-Sync (`draftInitializedRef.current === true`) funktioniert
-- Aenderungen im Editor wieder zur Vorschau synchronisiert werden
+Gleiche Aenderung im else-Zweig fuer neue Briefe (Zeile 339).
 
-## Zusaetzlich: Neuer Brief (else-Zweig, Zeile 310-327)
-
-Gleiche Logik fuer neue Briefe anwenden -- Draft-States zuruecksetzen:
-```
-setDraftContent('');
-setDraftContentNodes(null);
-setDraftContentHtml(null);
-draftInitializedRef.current = true;
-```
+### Betroffene Datei
+- `src/components/LetterEditor.tsx` (2 Stellen)
