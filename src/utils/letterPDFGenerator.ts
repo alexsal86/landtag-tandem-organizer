@@ -630,6 +630,18 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
             drawDebugGuides(currentPage);
             drawFoldAndHoleMarks();
             
+            // Reduced header on follow pages: sender/organization name
+            pdf.setFontSize(9);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(100, 100, 100);
+            const reducedHeaderText = senderInfo?.organization || senderInfo?.name || template?.name || '';
+            if (reducedHeaderText) {
+              pdf.text(reducedHeaderText, leftMargin, 10);
+              pdf.setLineWidth(0.3);
+              pdf.setDrawColor(200, 200, 200);
+              pdf.line(leftMargin, 14, pageWidth - rightMargin, 14);
+            }
+            
             // Add footer for new page using template footer blocks
             renderFooterBlocks();
             
@@ -638,7 +650,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
             pdf.setFont('helvetica', 'normal');
             pdf.setTextColor(0, 0, 0);
             
-            currentY = 30; // Start from top margin on new page
+            currentY = 20; // Start below reduced header on new page
           }
           
           pdf.text(line, leftMargin, currentY);
