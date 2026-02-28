@@ -1,91 +1,81 @@
 
-Zielbild: Links bleibt der Lexical-Editor (Eingabe), rechts wird rein aus HTML gerendert (kein Lexical), und der Text fließt zuverlässig auf Seite 2+ statt auf Seite 1 „hängen zu bleiben“.
 
-## Was aktuell schief läuft (aus dem Code)
-1. In `LetterEditorCanvas.tsx` wird die Seitenlogik über `splitHtmlIntoPages(...)` gebaut.
-2. Diese Funktion splittet nur nach **Top-Level-DOM-Nodes**.
-3. Wenn der Inhalt als ein großer `<p>...</p>` mit vielen `<br>` kommt (typisch aus Editor-HTML), ist das nur **ein Node**:
-   - Der Node ist größer als Seite 1.
-   - Wegen der aktuellen Bedingung (`sliceNodes.length > 0`) wird trotzdem keine neue Seite angelegt.
-   - Ergebnis: `pages.length` bleibt oft 1.
-4. Zusätzlich blockiert der Build aktuell bei:
-   - `src/components/letters/LetterEditorCanvas.tsx(272,22): TS2554`
-   - Ursache: `useRef<ReturnType<typeof setTimeout>>()` ohne Initialwert (React-19-Typing erwartet 1 Argument).
+# Fix: Mehrseitige Vorschau, Inhaltsbereich Seite 2ff, und Build-Fehler
 
-## Umsetzungsstrategie (robust und dauerhaft)
-Statt fragiler Node-Splitting-Logik wird auf ein **Viewport/Offset-Pagination-Modell** umgestellt:
+## Ubersicht
+Drei zusammenhangende Probleme werden gelost:
+1. **Build-Fehler** in `LetterTemplateManager.tsx` (fehlende `mobileLabel`-Property)
+2. **Seite 2+ zeigt falscherweise Header/Footer** -- soll nur den Inhaltsbereich zeigen
+3. **Zeilen werden zerschnitten** durch das Viewport/Offset-Modell, weil `translateY` pixelgenau verschiebt und Zeilen auf der Grenze liegen konnen
+4. **Fehlende Template-Einstellungen** fur den Inhaltsbereich auf Folgeseiten (Beginn/Ende)
 
-- Der komplette Brief-Flow (Inhalt + Grußformel + Signatur + Anlagen) wird als **ein durchgehender HTML-Stream** betrachtet.
-- Jede Seite zeigt nur ein „Fenster“ auf diesen Stream:
-  - Seite 1 zeigt Offset `0`
-  - Seite 2 zeigt Offset `page1BodyMm`
-  - Seite 3 zeigt Offset `page1BodyMm + pageNBodyMm`, usw.
-- Rendering pro Seite:
-  - Container hat feste Höhe des Body-Bereichs und `overflow: hidden`
-  - Innerer Flow wird per `transform: translateY(-offsetMm)` verschoben
-- Vorteil:
-  - Funktioniert bei einem einzigen großen `<p>` genauso wie bei vielen Blöcken
-  - Kein inhaltliches Zerlegen von HTML nötig
-  - Rechts bleibt vollständig non-Lexical
+## Betroffene Dateien
 
-## Konkrete Änderungen pro Datei
+### 1. `src/types/letterLayout.ts` -- Neue Felder fur Seite 2+
+Neue optionale Felder im `LetterLayoutSettings`-Interface:
+- `content.page2TopMm` (number, default: `margins.top`) -- wo der Inhaltsbereich auf Seite 2ff beginnt
+- `content.page2BottomMm` (number, default: `footer.top`) -- wo der Inhaltsbereich auf Seite 2ff endet
 
-### 1) `src/components/letters/LetterEditorCanvas.tsx`
-- Build-Fix:
-  - `const splitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);`
-- Pagination-Refactor:
-  - `splitHtmlIntoPages`/`pages[]`-Erzeugung entfernen oder stilllegen.
-  - Neue States/Refs:
-    - `flowMeasureRef` für die Messung der echten Gesamthöhe des Flows
-    - `flowHeightMm` (aus `ResizeObserver`)
-  - `totalPages` neu berechnen:
-    - wenn `flowHeightMm <= page1BodyMm` → 1
-    - sonst `1 + Math.ceil((flowHeightMm - page1BodyMm) / pageNBodyMm)`
-  - In `renderPage(pageIndex)`:
-    - Body-Viewport bleibt `height = bodyHeightMm`, `overflow: hidden`
-    - Inneren Flow mit `translateY` um den passenden Offset verschieben
-    - So wird auf jeder Seite der richtige Abschnitt sichtbar
-  - Closing/Anlagen in denselben Flow integrieren (nicht separat pro Seite duplizieren), damit sie automatisch am richtigen Seitenende landen.
-- Optional/UX:
-  - Klick-Overlay (`Brieftext bearbeiten`) nur über den sichtbaren Body-Bereich belassen.
+### 2. `src/components/letters/LayoutSettingsEditor.tsx` -- UI fur die neuen Felder
+Im Abschnitt "Inhalt" zwei neue Eingabefelder hinzufugen:
+- "Seite 2+ Beginn (mm)" -- fur `content.page2TopMm`
+- "Seite 2+ Ende (mm)" -- fur `content.page2BottomMm`
 
-### 2) `src/components/letters/DIN5008LetterLayout.tsx`
-- Keine Lexical-Abhängigkeit einführen; rechts bleibt HTML-Preview.
-- Falls weiterhin als „Page-Chrome“ genutzt:
-  - `content=""` beibehalten (weil Content im Canvas-Flow gerendert wird)
-  - `allowContentOverflow={false}` kann so bleiben, da die eigentliche Content-Paginierung im Canvas passiert.
-- Nur falls nötig: kleine Stilangleichungen, damit Header/Footer auf Folgeseiten konsistent bleiben.
+### 3. `src/components/letters/LetterEditorCanvas.tsx` -- Kernlogik-Anpassungen
 
-### 3) `src/components/LetterEditor.tsx`
-- Split-Screen-Workflow bleibt:
-  - links Editor, rechts gerenderte Seiten.
-- Sichtbarkeit Speichern absichern:
-  - vorhandenen Save-Button im linken Pane-Header beibehalten,
-  - zusätzlich einen klaren Fallback (z. B. rechter Toolbar-Button) falls linkes Pane geschlossen ist, damit Speichern immer erreichbar bleibt.
+**a) Seite 2+ ohne Header/Footer rendern:**
+- Im `renderPage(pageIndex)` fur `pageIndex > 0`: Keinen `DIN5008LetterLayout` mehr rendern (kein Header, kein Footer, keine Adresszonen)
+- Nur den Body-Viewport und ggf. Paginierung anzeigen
 
-## Reihenfolge der Implementierung
-1. TS-Fehler in `LetterEditorCanvas` (useRef-Initialwert) beheben.
-2. Alte `splitHtmlIntoPages`-Seitenbildung durch Viewport/Offset-Pagination ersetzen.
-3. Höhenmessung (`ResizeObserver`) auf den gesamten Flow verdrahten.
-4. `totalPages` aus gemessener Flow-Höhe berechnen.
-5. Rendering jeder Seite auf „gefensterte Darstellung“ umstellen.
-6. Save-Button-Fallback in `LetterEditor` ergänzen.
-7. Manuelle Prüfung:
-   - langer Fließtext ohne Absätze
-   - viele `<br>`
-   - Listen/Formatierungen
-   - mit/ohne Grußformel + Signatur + Anlagen
-   - Split-Editor zu/auf und Speichern erreichbar
+**b) Neue Layout-Felder berucksichtigen:**
+- `page2TopMm` aus `layout.content.page2TopMm ?? layout.margins?.top ?? 25` lesen
+- `contentBottomMm` fur Seite 2+ aus `layout.content.page2BottomMm ?? footerTopMm` lesen (kein Footer = mehr Platz)
+- `pageNBodyMm` entsprechend neu berechnen
 
-## Risiken und Gegenmaßnahmen
-- Risiko: leichte Abweichung zwischen gemessener Höhe und sichtbarer Höhe durch Fonts/Zoom.
-  - Gegenmaßnahme: Messcontainer mit exakt gleicher Breite/Font/Line-Height wie Body-Flow; Zoom nie in die Messung einrechnen.
-- Risiko: Performance bei sehr langem HTML.
-  - Gegenmaßnahme: `ResizeObserver` + leichtes Debounce (100–150ms), keine teuren DOM-Neuberechnungen pro Keystroke.
+**c) Zeilen-Zerschneidung vermeiden:**
+Das Problem entsteht, weil `translateY(-offsetMm)` den Content pixelgenau verschiebt und eine Textzeile genau auf der oberen Kante des Viewports liegen kann. Losung:
+- Die Zeilenhohe in mm berechnen: `lineHeightMm = contentFontSizePt * 0.3528 * 1.2` (pt zu mm, mal line-height 1.2)
+- Den Offset pro Seite auf ein Vielfaches der Zeilenhohe abrunden: `offsetMm = Math.floor(rawOffset / lineHeightMm) * lineHeightMm`
+- Dadurch beginnt jede Seite immer am Anfang einer Zeile
+- Die `page1BodyMm` und `pageNBodyMm` werden ebenfalls auf Vielfache der Zeilenhohe abgerundet, damit die Fensterhohen konsistent bleiben
 
-## Erwartetes Ergebnis
-- Rechts wird weiterhin ohne Lexical gerendert.
-- Lange Inhalte erzeugen korrekt Seite 2, 3, …
-- Kein Abschneiden nach Seite 1.
-- Speichern bleibt im Split-Screen jederzeit auffindbar.
-- Build-Fehler TS2554 ist beseitigt.
+**d) Paginierung im Inhaltsbereich beachten:**
+- Wenn Paginierung aktiv: `contentBottomMm` bereits korrekt berechnet (min von footerTop und paginationTop minus Gap)
+- Fur Seite 2+: Paginierung reduziert ebenfalls den verfugbaren Raum, also `page2BottomMm` wird gegen `paginationTopMm - paginationGapMm` geclampt
+
+### 4. `src/components/LetterTemplateManager.tsx` -- Build-Fehler beheben
+Zeile 582-592: `mobileLabel` fehlt bei einigen Tab-Definitionen. Fix: `mobileLabel` als optionales Feld in der Nutzung behandeln. Die drei Stellen (Zeile 603, 607, 614) nutzen `tab.mobileLabel`, obwohl nicht alle Tabs dieses Feld haben.
+- Option: `(tab as any).mobileLabel ?? tab.label` oder besser: den Typ der `tabDefinitions` anpassen, sodass alle Eintraege `mobileLabel?: string` haben.
+- Einfachster Fix: Das Array mit explizitem Typ annotieren statt `as const`, oder alle Eintraege mit `mobileLabel` versehen.
+
+## Technische Details
+
+```text
+Seite 1 (wie bisher):
++--Header, Adresse, Info--+
+| Betreff, Anrede         |
+| Inhalt (Fenster 1)      |
+| Paginierung             |
+| Footer                  |
++--------------------------+
+
+Seite 2+ (NEU -- kein Header/Footer):
++--------------------------+
+| (page2TopMm)             |
+| Inhalt (Fenster N)       |
+| Paginierung (wenn aktiv) |
+| (page2BottomMm)          |
++--------------------------+
+
+Zeilen-Alignment:
+rawOffset = page1BodyMm + (i-1) * pageNBodyMm
+alignedOffset = floor(rawOffset / lineHeightMm) * lineHeightMm
+--> Keine halben Zeilen am oberen Rand
+```
+
+## Reihenfolge
+1. Build-Fehler in `LetterTemplateManager.tsx` beheben
+2. Neue Felder in `letterLayout.ts` + Defaults
+3. UI-Felder in `LayoutSettingsEditor.tsx`
+4. Renderlogik in `LetterEditorCanvas.tsx` anpassen (kein Header/Footer auf Seite 2+, Zeilen-Alignment, neue Layout-Felder)
+
