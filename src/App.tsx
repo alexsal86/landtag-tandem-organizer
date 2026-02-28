@@ -64,7 +64,7 @@ const MatrixProviderBoundary = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <Suspense fallback={<>{children}</>}>
+    <Suspense fallback={<div className="min-h-screen bg-gradient-subtle flex items-center justify-center" />}>
       <MatrixClientProvider>{children}</MatrixClientProvider>
     </Suspense>
   );

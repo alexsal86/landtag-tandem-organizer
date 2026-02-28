@@ -315,13 +315,21 @@ const noopRejectSas = () => {};
 const noopRefreshMessages = () => {};
 const noopTyping = () => {};
 
-const defaultMatrixClientContext: MatrixClientContextType = {
-  client: null,
-  isConnected: false,
-  isConnecting: false,
-  connectionError: null,
-  cryptoEnabled: false,
-  e2eeDiagnostics: {
+const createDefaultE2EEDiagnostics = (): MatrixE2EEDiagnostics => {
+  if (typeof window === 'undefined') {
+    return {
+      secureContext: false,
+      crossOriginIsolated: false,
+      sharedArrayBuffer: false,
+      serviceWorkerControlled: false,
+      secretStorageReady: null,
+      crossSigningReady: null,
+      keyBackupEnabled: null,
+      cryptoError: null,
+    };
+  }
+
+  return {
     secureContext: window.isSecureContext,
     crossOriginIsolated: window.crossOriginIsolated,
     sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
@@ -330,7 +338,16 @@ const defaultMatrixClientContext: MatrixClientContextType = {
     crossSigningReady: null,
     keyBackupEnabled: null,
     cryptoError: null,
-  },
+  };
+};
+
+const defaultMatrixClientContext: MatrixClientContextType = {
+  client: null,
+  isConnected: false,
+  isConnecting: false,
+  connectionError: null,
+  cryptoEnabled: false,
+  e2eeDiagnostics: createDefaultE2EEDiagnostics(),
   rooms: [],
   credentials: null,
   connect: noopAsync,
