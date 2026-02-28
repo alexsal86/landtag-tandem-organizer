@@ -155,6 +155,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const [internalZoom, setInternalZoom] = useState(0.75);
   const toolbarPortalRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const previewContentRef = useRef<HTMLDivElement>(null);
   const zoom = externalZoom ?? internalZoom;
   const setZoom = onZoomChange ?? setInternalZoom;
   const [measuredEditorHeightMm, setMeasuredEditorHeightMm] = useState(80);
@@ -177,31 +178,43 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   const editorTopMm = subjectTopMm + subjectLineMm + gapAfterSubjectMm + salutationLineMm + gapAfterSalutationMm;
 
-  // Keep page-break helpers aligned with real Lexical content growth.
+  // Keep page-break helpers aligned with content growth.
   useEffect(() => {
-    const container = editorContainerRef.current;
-    if (!container) return;
-
     const pxToMm = (px: number) => px * (25.4 / 96);
 
-    const updateHeight = () => {
-      const editorInput = container.querySelector<HTMLElement>('.editor-input');
-      const measuredPx = editorInput?.scrollHeight ?? container.scrollHeight;
+    const measure = (element: HTMLElement | null) => {
+      if (!element) return;
+      const measuredPx = element.scrollHeight;
       const measuredMm = Math.max(30, pxToMm(measuredPx));
       setMeasuredEditorHeightMm((prev) => (Math.abs(prev - measuredMm) < 0.5 ? prev : measuredMm));
     };
 
-    updateHeight();
+    if (enableInlineContentEditing) {
+      const container = editorContainerRef.current;
+      if (!container) return;
 
-    const observer = new ResizeObserver(updateHeight);
-    observer.observe(container);
-    const editorInput = container.querySelector<HTMLElement>('.editor-input');
-    if (editorInput) {
-      observer.observe(editorInput);
+      const updateHeight = () => {
+        const editorInput = container.querySelector<HTMLElement>('.editor-input');
+        measure(editorInput ?? container);
+      };
+
+      updateHeight();
+      const observer = new ResizeObserver(updateHeight);
+      observer.observe(container);
+      const editorInput = container.querySelector<HTMLElement>('.editor-input');
+      if (editorInput) observer.observe(editorInput);
+      return () => observer.disconnect();
     }
 
+    const previewEl = previewContentRef.current;
+    if (!previewEl) return;
+
+    const updatePreviewHeight = () => measure(previewEl);
+    updatePreviewHeight();
+    const observer = new ResizeObserver(updatePreviewHeight);
+    observer.observe(previewEl);
     return () => observer.disconnect();
-  }, [content, contentNodes, contentFontSizePt]);
+  }, [enableInlineContentEditing, content, contentNodes, contentFontSizePt, displayContentHtml]);
 
   // Footer/pagination constraints
   const footerTopMm = Number(layout.footer?.top || 272);
@@ -222,7 +235,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   const previewContentHtml = displayContentHtml
     ?? (content
-      ? `<p>${escapeHtml(content).replace(/\n/g, '<br/>')}</p>`
+      ? `<p>${escapeHtml(content).replace(/
+/g, '<br/>')}</p>`
       : '<p></p>');
 
   // Layout positions for overlays
@@ -311,7 +325,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               subject={subject}
               letterDate={letterDate}
               referenceNumber={referenceNumber}
-              content={previewContentHtml} 
+              content={enableInlineContentEditing ? previewContentHtml : ''} 
               attachments={attachments}
               showPagination={showPagination}
               layoutSettings={layoutSettings}
@@ -545,6 +559,12 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                     left: 0 !important;
                     top: 0 !important;
                   }
+                  .letter-preview-content p {
+                    margin: 0 0 4.5mm 0;
+                  }
+                  .letter-preview-content p:last-child {
+                    margin-bottom: 0;
+                  }
                 `}</style>
               </div>
             </div>
@@ -553,7 +573,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               <button
                 type="button"
                 onClick={() => onRequestContentEdit?.()}
-                className="absolute border border-dashed border-muted-foreground/40 rounded-sm text-left hover:border-primary/60 hover:bg-primary/5 transition-colors"
+                className="absolute text-left rounded-sm hover:bg-primary/5 transition-colors"
                 style={{
                   top: `${editorTopMm}mm`,
                   left: '25mm',
@@ -561,11 +581,23 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                   minHeight: '60mm',
                   zIndex: 10,
                   background: 'transparent',
+                  border: '1px dashed rgba(100,116,139,0.35)',
                 }}
               >
                 <span className="block text-xs text-muted-foreground px-2 py-1">
                   Brieftext bearbeiten (öffnet Editor im Splitscreen)
                 </span>
+                <div
+                  ref={previewContentRef}
+                  className="letter-preview-content px-2 pb-2"
+                  style={{
+                    fontFamily: 'Arial, sans-serif',
+                    fontSize: `${contentFontSizePt}pt`,
+                    lineHeight: 1.2,
+                    color: '#000',
+                  }}
+                  dangerouslySetInnerHTML={{ __html: previewContentHtml }}
+                />
               </button>
             )}
 
