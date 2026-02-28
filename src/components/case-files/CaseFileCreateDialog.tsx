@@ -95,17 +95,18 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
     if (!formData.title.trim()) return;
 
     setIsSubmitting(true);
-    
-    // Map visibility to is_private for backward compat + set visibility
-    const submitData = {
-      ...formData,
-      is_private: visibility === 'private',
-      visibility,
-    };
-    
-    const result = await createCaseFile(submitData);
+    try {
+      // Map visibility to is_private for backward compat + set visibility
+      const submitData = {
+        ...formData,
+        is_private: visibility === 'private',
+        visibility,
+      };
 
-    if (result) {
+      const result = await createCaseFile(submitData);
+
+      if (!result) return;
+
       // Save participants if shared
       if (visibility === 'shared' && selectedParticipantIds.length > 0) {
         const participants = selectedParticipantIds.map(userId => ({
@@ -113,8 +114,11 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
           user_id: userId,
           role: participantRoles[userId] || 'viewer',
         }));
-        
-        await supabase.from('case_file_participants').insert(participants);
+
+        const { error } = await supabase.from('case_file_participants').insert(participants);
+        if (error) {
+          console.error('Error saving case file participants:', error);
+        }
       }
 
       // Reset form
@@ -132,8 +136,9 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
       setParticipantRoles({});
       onOpenChange(false);
       onSuccess?.(result);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (
