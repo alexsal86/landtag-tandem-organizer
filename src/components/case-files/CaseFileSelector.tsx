@@ -82,14 +82,15 @@ export function CaseFileSelector({
       let linkError: any = null;
       
       switch (itemType) {
-        case 'document':
+        case 'document': {
           const docResult = await supabase.from('case_file_documents').insert({
             case_file_id: caseFileId,
             document_id: itemId,
           });
           linkError = docResult.error;
           break;
-        case 'contact':
+        }
+        case 'contact': {
           const contactResult = await supabase.from('case_file_contacts').insert({
             case_file_id: caseFileId,
             contact_id: itemId,
@@ -97,27 +98,31 @@ export function CaseFileSelector({
           });
           linkError = contactResult.error;
           break;
-        case 'task':
+        }
+        case 'task': {
           const taskResult = await supabase.from('case_file_tasks').insert({
             case_file_id: caseFileId,
             task_id: itemId,
           });
           linkError = taskResult.error;
           break;
-        case 'appointment':
+        }
+        case 'appointment': {
           const apptResult = await supabase.from('case_file_appointments').insert({
             case_file_id: caseFileId,
             appointment_id: itemId,
           });
           linkError = apptResult.error;
           break;
-        case 'letter':
+        }
+        case 'letter': {
           const letterResult = await supabase.from('case_file_letters').insert({
             case_file_id: caseFileId,
             letter_id: itemId,
           });
           linkError = letterResult.error;
           break;
+        }
       }
       
       if (linkError) {
@@ -144,7 +149,7 @@ export function CaseFileSelector({
         letter: `Brief verknüpft: ${itemTitle || 'Unbekannt'}`,
       };
       
-      await supabase.from('case_file_timeline').insert({
+      const { error: timelineError } = await supabase.from('case_file_timeline').insert({
         case_file_id: caseFileId,
         event_date: new Date().toISOString(),
         event_type: eventTypeMap[itemType],
@@ -153,11 +158,18 @@ export function CaseFileSelector({
         source_id: itemId,
         created_by: user.id,
       });
-      
-      return caseFileId;
+
+      if (timelineError) {
+        console.error('Error creating timeline entry for case file link:', timelineError);
+      }
+
+      return { caseFileId, timelineFailed: Boolean(timelineError) };
     },
-    onSuccess: (caseFileId) => {
-      toast({ title: "Zur FallAkte hinzugefügt" });
+    onSuccess: ({ caseFileId, timelineFailed }) => {
+      toast({
+        title: timelineFailed ? "Zur FallAkte hinzugefügt (ohne Chronologie-Eintrag)" : "Zur FallAkte hinzugefügt",
+        variant: timelineFailed ? "destructive" : "default",
+      });
       queryClient.invalidateQueries({ queryKey: ['case-files'] });
       onSelect(caseFileId);
       onOpenChange(false);
@@ -180,7 +192,7 @@ export function CaseFileSelector({
       const { data: newCaseFile, error: createError } = await supabase
         .from('case_files')
         .insert({
-          title: newTitle,
+          title: newTitle.trim(),
           tenant_id: currentTenant.id,
           user_id: user.id,
           status: 'active',
@@ -192,9 +204,9 @@ export function CaseFileSelector({
       if (createError) throw createError;
       
       // Link the item
-      await linkMutation.mutateAsync(newCaseFile.id);
-      
-      return newCaseFile.id;
+      const { caseFileId } = await linkMutation.mutateAsync(newCaseFile.id);
+
+      return caseFileId;
     },
     onSuccess: () => {
       setNewTitle("");

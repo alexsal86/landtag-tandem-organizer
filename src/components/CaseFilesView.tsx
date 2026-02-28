@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useCaseFiles, CaseFile, CASE_STATUSES } from "@/hooks/useCaseFiles";
 import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
@@ -43,6 +43,7 @@ export function CaseFilesView() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedCaseFile, setSelectedCaseFile] = useState<CaseFile | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const hasInitializedGroups = useRef(false);
 
   // Handle URL action parameter for QuickActions
   useEffect(() => {
@@ -98,11 +99,31 @@ export function CaseFilesView() {
     return groups;
   }, [filteredCaseFiles, caseFileTypes]);
 
-  // Initialize all groups as expanded
-  useMemo(() => {
-    if (expandedGroups.size === 0 && groupedCaseFiles.size > 0) {
+  // Initialize groups once when data becomes available, then preserve user expand/collapse choices
+  useEffect(() => {
+    if (!hasInitializedGroups.current && groupedCaseFiles.size > 0) {
       setExpandedGroups(new Set(groupedCaseFiles.keys()));
+      hasInitializedGroups.current = true;
+      return;
     }
+
+    // Keep only groups that still exist and preserve explicit user collapse choices
+    setExpandedGroups((prev) => {
+      if (groupedCaseFiles.size === 0) return prev;
+
+      const next = new Set<string>();
+      for (const groupName of groupedCaseFiles.keys()) {
+        if (prev.has(groupName)) {
+          next.add(groupName);
+        }
+      }
+
+      if (next.size === prev.size && Array.from(next).every((group) => prev.has(group))) {
+        return prev;
+      }
+
+      return next;
+    });
   }, [groupedCaseFiles]);
 
   const toggleGroup = (groupName: string) => {
