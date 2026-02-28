@@ -55,7 +55,10 @@ import { DirectPushTest } from "@/components/DirectPushTest";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Menu } from "lucide-react";
 
 // Roles in descending hierarchy
 const ROLE_OPTIONS = [
@@ -123,6 +126,8 @@ export default function Administration() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   // Navigation state
   const [activeSection, setActiveSection] = useState(() =>
@@ -305,7 +310,16 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
     }
 
     navigate({ pathname: location.pathname, search: params.toString() });
+
+    if (isMobile) {
+      setMobileSidebarOpen(false);
+    }
   };
+
+  const currentSectionLabel = adminMenuItems.find((item) => item.id === activeSection)?.label ?? "Administration";
+  const currentSubSectionLabel = adminMenuItems
+    .find((item) => item.id === activeSection)
+    ?.children?.find((child) => child.id === activeSubSection)?.label;
 
   // Drag & Drop handlers
   const handleMeetingDragEnd = (result: any) => {
@@ -2249,7 +2263,31 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
   };
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col md:flex-row">
+      <div className="border-b bg-background p-3 md:hidden">
+        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full justify-start gap-2">
+              <Menu className="h-4 w-4" />
+              <span className="truncate">{currentSectionLabel}{currentSubSectionLabel ? ` · ${currentSubSectionLabel}` : ""}</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[90vw] max-w-none p-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Administrations-Navigation</SheetTitle>
+            </SheetHeader>
+            <AdminSidebar
+              activeSection={activeSection}
+              activeSubSection={activeSubSection}
+              onNavigate={handleNavigate}
+              isSuperAdmin={isSuperAdmin}
+              annualTasksBadge={annualTasksBadge}
+              className="h-full w-full border-r-0"
+            />
+          </SheetContent>
+        </Sheet>
+      </div>
+
       {/* Sidebar */}
       <AdminSidebar
         activeSection={activeSection}
@@ -2257,12 +2295,13 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
         onNavigate={handleNavigate}
         isSuperAdmin={isSuperAdmin}
         annualTasksBadge={annualTasksBadge}
+        className="hidden md:block"
       />
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
-          <div className="p-6">
+          <div className="p-3 md:p-6">
             {renderContent()}
           </div>
         </ScrollArea>
