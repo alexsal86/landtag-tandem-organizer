@@ -47,6 +47,9 @@ interface LetterEditorCanvasProps {
   canEdit?: boolean;
   documentId?: string;
   onContentChange: (content: string, contentNodes?: string, contentHtml?: string) => void;
+  enableInlineContentEditing?: boolean;
+  onRequestContentEdit?: () => void;
+  displayContentHtml?: string;
   onMentionInsert?: (userId: string, displayName: string) => void;
 
   // Track Changes / Review mode
@@ -103,6 +106,9 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   canEdit = true,
   documentId,
   onContentChange,
+  enableInlineContentEditing = true,
+  onRequestContentEdit,
+  displayContentHtml,
   isReviewMode = false,
   reviewerName = '',
   reviewerId = '',
@@ -206,6 +212,20 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const totalPages = Math.max(1, Math.ceil((estimatedContentBottomMm + 10) / 297));
   const canvasHeightMm = Math.max(297, totalPages * 297);
 
+
+  const escapeHtml = (value: string) => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const previewContentHtml = displayContentHtml
+    ?? (content
+      ? `<p>${escapeHtml(content).replace(/
+/g, '<br/>')}</p>`
+      : '<p></p>');
+
   // Layout positions for overlays
   const addressFieldTop = 50; // DIN 5008
   const addressFieldLeft = 25;
@@ -292,12 +312,12 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               subject={subject}
               letterDate={letterDate}
               referenceNumber={referenceNumber}
-              content="" 
+              content={previewContentHtml} 
               attachments={attachments}
               showPagination={showPagination}
               layoutSettings={layoutSettings}
               salutation={salutation}
-              hideClosing={true}
+              hideClosing={enableInlineContentEditing}
               addressFieldElements={addressFieldElements}
               returnAddressElements={returnAddressElements}
               infoBlockElements={infoBlockElements}
@@ -459,6 +479,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             )}
 
             {/* Overlay: Lexical Editor positioned in content area - no maxHeight, grows freely */}
+            {enableInlineContentEditing ? (
             <div
               style={{
                 position: 'absolute',
@@ -529,9 +550,28 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             </div>
             </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onRequestContentEdit?.()}
+                className="absolute border border-dashed border-muted-foreground/40 rounded-sm text-left hover:border-primary/60 hover:bg-primary/5 transition-colors"
+                style={{
+                  top: `${editorTopMm}mm`,
+                  left: '25mm',
+                  right: '20mm',
+                  minHeight: '60mm',
+                  zIndex: 10,
+                  background: 'transparent',
+                }}
+              >
+                <span className="block text-xs text-muted-foreground px-2 py-1">
+                  Brieftext bearbeiten (öffnet Editor im Splitscreen)
+                </span>
+              </button>
+            )}
 
             {/* Dynamic closing block rendered below editor content */}
-            {closingFormula && (
+            {enableInlineContentEditing && closingFormula && (
               <div
                 style={{
                   position: 'absolute',
