@@ -50,7 +50,7 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'letter_review_requested':
     case 'letter_review_completed':
     case 'letter_sent':
-      return data.letter_id ? `/documents?tab=letters&highlight=${data.letter_id}` : '/documents?tab=letters';
+      return data.letter_id ? `/letters/${data.letter_id}` : '/documents?tab=letters';
 
     // Knowledge
     case 'knowledge_document_created':
