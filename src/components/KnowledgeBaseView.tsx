@@ -31,6 +31,18 @@ interface KnowledgeDocument {
   creator_name?: string;
 }
 
+interface KnowledgeDocumentRow {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  is_published: boolean;
+  is_locked: boolean | null;
+}
+
 const KnowledgeBaseView = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -53,6 +65,35 @@ const KnowledgeBaseView = () => {
   const [documentTopicsMap, setDocumentTopicsMap] = useState<Record<string, string[]>>({});
   const [editorContent, setEditorContent] = useState('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const fetchCreatorNames = useCallback(async (rows: KnowledgeDocumentRow[]) => {
+    const uniqueCreatorIds = Array.from(new Set(rows.map((row) => row.created_by).filter(Boolean)));
+    if (uniqueCreatorIds.length === 0) {
+      return {} as Record<string, string>;
+    }
+
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select('user_id, display_name')
+      .in('user_id', uniqueCreatorIds);
+
+    if (error) throw error;
+
+    return (profiles ?? []).reduce<Record<string, string>>((acc, profile) => {
+      acc[profile.user_id] = profile.display_name || 'Unbekannt';
+      return acc;
+    }, {});
+  }, []);
+
+  const hydrateDocuments = useCallback(async (rows: KnowledgeDocumentRow[]) => {
+    const creatorNameMap = await fetchCreatorNames(rows);
+
+    return rows.map((row) => ({
+      ...row,
+      is_locked: row.is_locked || false,
+      creator_name: creatorNameMap[row.created_by] || 'Unbekannt',
+    }));
+  }, [fetchCreatorNames]);
   
   // Handle URL action parameter for QuickActions
   useEffect(() => {
@@ -113,7 +154,7 @@ const KnowledgeBaseView = () => {
   }, [documentId, documents, navigate, loading, selectedDocument, isEditorOpen]);
 
   // Fetch all document topics for list display
-  const fetchAllDocumentTopics = async (docIds: string[]) => {
+  const fetchAllDocumentTopics = useCallback(async (docIds: string[]) => {
     if (docIds.length === 0) return;
     
     try {
@@ -135,9 +176,27 @@ const KnowledgeBaseView = () => {
     } catch (error) {
       console.error('Error fetching document topics:', error);
     }
-  };
+  }, []);
 
-  const fetchDocuments = async () => {
+  const fetchDocumentTopicsById = useCallback(async (docId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('knowledge_document_topics')
+        .select('topic_id')
+        .eq('document_id', docId);
+
+      if (error) throw error;
+
+      setDocumentTopicsMap((prev) => ({
+        ...prev,
+        [docId]: (data ?? []).map((item) => item.topic_id),
+      }));
+    } catch (error) {
+      console.error('Error fetching document topics by id:', error);
+    }
+  }, []);
+
+  const fetchDocuments = useCallback(async () => {
     if (!user) {
       setLoading(false);
       return;
@@ -151,22 +210,10 @@ const KnowledgeBaseView = () => {
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        const documentsWithCreator = await Promise.all(
-          data.map(async (doc) => {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('display_name')
-              .eq('user_id', doc.created_by)
-              .maybeSingle();
-            
-            return {
-              ...doc,
-              is_locked: doc.is_locked || false,
-              creator_name: profile?.display_name || 'Unbekannt'
-            };
-          })
-        );
+      const rows = (data ?? []) as KnowledgeDocumentRow[];
+
+      if (rows.length > 0) {
+        const documentsWithCreator = await hydrateDocuments(rows);
 
         setDocuments(documentsWithCreator);
         await fetchAllDocumentTopics(documentsWithCreator.map(d => d.id));
@@ -183,11 +230,11 @@ const KnowledgeBaseView = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, hydrateDocuments, fetchAllDocumentTopics, toast]);
 
   useEffect(() => {
     fetchDocuments();
-  }, [user]);
+  }, [fetchDocuments]);
 
   // Fetch tenant ID
   useEffect(() => {
@@ -227,8 +274,51 @@ const KnowledgeBaseView = () => {
           table: 'knowledge_documents',
           filter: `tenant_id=eq.${tenantId}`
         },
-        () => {
-          fetchDocuments();
+        async (payload) => {
+          const { eventType } = payload;
+
+          if (eventType === 'DELETE') {
+            const deletedId = (payload.old as { id?: string } | null)?.id;
+            if (!deletedId) return;
+
+            setDocuments((prev) => prev.filter((doc) => doc.id !== deletedId));
+            setDocumentTopicsMap((prev) => {
+              const { [deletedId]: _removed, ...rest } = prev;
+              return rest;
+            });
+
+            if (selectedDocument?.id === deletedId) {
+              navigate('/knowledge', { replace: true });
+            }
+            return;
+          }
+
+          const nextRow = payload.new as KnowledgeDocumentRow | null;
+          if (!nextRow) return;
+
+          try {
+            const [nextDocument] = await hydrateDocuments([nextRow]);
+
+            setDocuments((prev) => {
+              const existingIndex = prev.findIndex((doc) => doc.id === nextDocument.id);
+              if (existingIndex === -1) {
+                return [nextDocument, ...prev];
+              }
+
+              const updated = [...prev];
+              updated[existingIndex] = { ...updated[existingIndex], ...nextDocument };
+              return updated;
+            });
+
+            if (selectedDocument?.id === nextDocument.id) {
+              setSelectedDocument((prev) => (prev ? { ...prev, ...nextDocument } : prev));
+            }
+
+            await fetchDocumentTopicsById(nextDocument.id);
+          } catch (error) {
+            console.error('Realtime hydration failed, falling back to full reload:', error);
+            fetchDocuments();
+          }
         }
       )
       .subscribe();
@@ -236,7 +326,7 @@ const KnowledgeBaseView = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, tenantId]);
+  }, [user, tenantId, selectedDocument?.id, navigate, hydrateDocuments, fetchDocumentTopicsById, fetchDocuments]);
 
   const handleCreateDocument = async () => {
     if (!user || !newDocument.title.trim() || !tenantId) return;
