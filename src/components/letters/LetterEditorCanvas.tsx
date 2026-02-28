@@ -324,7 +324,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               subject={subject}
               letterDate={letterDate}
               referenceNumber={referenceNumber}
-              content={enableInlineContentEditing ? previewContentHtml : ''} 
+              content={previewContentHtml} 
               attachments={attachments}
               showPagination={showPagination}
               layoutSettings={layoutSettings}
@@ -577,27 +577,14 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                   top: `${editorTopMm}mm`,
                   left: '25mm',
                   right: '20mm',
-                  minHeight: '60mm',
+                  bottom: `${297 - footerTopMm}mm`,
                   zIndex: 10,
                   background: 'transparent',
                   border: '1px dashed rgba(100,116,139,0.35)',
+                  cursor: 'pointer',
                 }}
-              >
-                <span className="block text-xs text-muted-foreground px-2 py-1">
-                  Brieftext bearbeiten (öffnet Editor im Splitscreen)
-                </span>
-                <div
-                  ref={previewContentRef}
-                  className="letter-preview-content px-2 pb-2"
-                  style={{
-                    fontFamily: 'Arial, sans-serif',
-                    fontSize: `${contentFontSizePt}pt`,
-                    lineHeight: 1.2,
-                    color: '#000',
-                  }}
-                  dangerouslySetInnerHTML={{ __html: previewContentHtml }}
-                />
-              </button>
+                title="Brieftext bearbeiten (öffnet Editor im Splitscreen)"
+              />
             )}
 
             {/* Dynamic closing block rendered below editor content */}
