@@ -198,12 +198,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   }, [content, contentNodes, contentFontSizePt]);
 
   // Footer/pagination constraints
-  const paginationTopMm = 263.77;
-  const paginationGapMm = 4.23;
-  const paginationEnabled = showPagination && (layout.pagination?.enabled ?? true);
-  const footerTopMm = layout.footer?.top || 272;
-  const reservedZoneStartMm = paginationEnabled ? (paginationTopMm - paginationGapMm) : (footerTopMm - paginationGapMm);
-  const reservedZoneHeightMm = Math.max(0, 297 - reservedZoneStartMm);
+  const footerTopMm = Number(layout.footer?.top || 272);
+  const footerHeightMm = Number(layout.footer?.height || 18);
 
   const baseClosingHeightMm = closingFormula ? (hasSignature ? 32 : 20) : 0;
   const estimatedContentBottomMm = editorTopMm + Math.max(60, measuredEditorHeightMm) + baseClosingHeightMm;
@@ -577,18 +573,18 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             )}
 
-            {/* Reserve footer/pagination zone on every page so Lexical text cannot visually overlap it */}
+            {/* Clip only the true footer stripe per page to avoid visual overlap without hiding large text areas */}
             {Array.from({ length: totalPages }, (_, index) => index).map((pageIndex) => (
               <div
-                key={`footer-guard-${pageIndex}`}
+                key={`footer-clip-${pageIndex}`}
                 style={{
                   position: 'absolute',
-                  top: `${(pageIndex * 297) + reservedZoneStartMm}mm`,
+                  top: `${(pageIndex * 297) + footerTopMm}mm`,
                   left: '25mm',
                   right: '20mm',
-                  height: `${reservedZoneHeightMm}mm`,
+                  height: `${footerHeightMm}mm`,
                   backgroundColor: '#fff',
-                  zIndex: 12,
+                  zIndex: 14,
                   pointerEvents: 'none',
                 }}
               />
