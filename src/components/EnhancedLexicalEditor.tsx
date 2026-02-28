@@ -92,13 +92,11 @@ interface EnhancedLexicalEditorProps {
 // Content Plugin - loads initial content ONCE on mount
 function ContentPlugin({ content, contentNodes }: { content: string; contentNodes?: string }) {
   const [editor] = useLexicalComposerContext();
-  const lastLoadedRef = useRef<string | null>(null);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
-    if (!editor) return;
-    const key = contentNodes || content || '';
-    if (lastLoadedRef.current === key) return;
-    lastLoadedRef.current = key;
+    if (!editor || hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
 
     if (contentNodes && contentNodes.trim()) {
       try {
