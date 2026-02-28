@@ -121,3 +121,18 @@ flowchart TD
 
 - Einige Wege sind rollenabhängig (z. B. `...`-Menü nur für Ersteller, Antwortbuttons je nach Teilnehmerstatus).
 - Mehrere Buttons führen in denselben Ziel-Dialog (`TaskDecisionDetails`), je nach Kontext mit Highlight auf Kommentar/Response.
+
+## So kannst du das Diagramm ansehen
+
+1. **In VS Code**:
+   - Datei `docs/my-work-decisions-button-flowchart.md` öffnen.
+   - `Strg+Shift+V` (oder Rechtsklick → **Open Preview**) drücken.
+   - Die Mermaid-Grafik wird direkt im Markdown-Preview gerendert.
+
+2. **Auf GitHub/GitLab**:
+   - Die Datei im Repository öffnen.
+   - Plattformen mit Mermaid-Support rendern den Block automatisch.
+
+3. **Im Mermaid Live Editor** (falls lokal kein Rendering klappt):
+   - https://mermaid.live öffnen.
+   - Den Inhalt des ```mermaid```-Blocks aus dieser Datei einfügen.
