@@ -159,12 +159,17 @@ export function CaseFileSelector({
         created_by: user.id,
       });
 
-      if (timelineError) throw timelineError;
+      if (timelineError) {
+        console.error('Error creating timeline entry for case file link:', timelineError);
+      }
 
-      return caseFileId;
+      return { caseFileId, timelineFailed: Boolean(timelineError) };
     },
-    onSuccess: (caseFileId) => {
-      toast({ title: "Zur FallAkte hinzugefügt" });
+    onSuccess: ({ caseFileId, timelineFailed }) => {
+      toast({
+        title: timelineFailed ? "Zur FallAkte hinzugefügt (ohne Chronologie-Eintrag)" : "Zur FallAkte hinzugefügt",
+        variant: timelineFailed ? "destructive" : "default",
+      });
       queryClient.invalidateQueries({ queryKey: ['case-files'] });
       onSelect(caseFileId);
       onOpenChange(false);
@@ -199,9 +204,9 @@ export function CaseFileSelector({
       if (createError) throw createError;
       
       // Link the item
-      await linkMutation.mutateAsync(newCaseFile.id);
-      
-      return newCaseFile.id;
+      const { caseFileId } = await linkMutation.mutateAsync(newCaseFile.id);
+
+      return caseFileId;
     },
     onSuccess: () => {
       setNewTitle("");

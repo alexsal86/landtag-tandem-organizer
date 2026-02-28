@@ -20,6 +20,7 @@ import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Lock, Users, Globe } from "lucide-react";
 import { CaseFile } from "@/hooks/useCaseFiles";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface CaseFileCreateDialogProps {
   open: boolean;
@@ -32,14 +33,11 @@ interface Profile {
   display_name: string | null;
 }
 
-interface ParticipantEntry {
-  user_id: string;
-  role: 'viewer' | 'editor';
-}
 
 export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFileCreateDialogProps) {
   const { createCaseFile } = useCaseFiles();
   const { caseFileTypes } = useCaseFileTypes();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CaseFileFormData>({
     title: "",
@@ -60,7 +58,7 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
     if (open && !profilesLoaded) {
       loadProfiles();
     }
-  }, [open]);
+  }, [open, profilesLoaded]);
 
   const loadProfiles = async () => {
     try {
@@ -118,6 +116,11 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
         const { error } = await supabase.from('case_file_participants').insert(participants);
         if (error) {
           console.error('Error saving case file participants:', error);
+          toast({
+            title: "Akte erstellt, Teilnehmer nicht gespeichert",
+            description: "Die FallAkte wurde angelegt, aber die Teilnehmer konnten nicht hinzugefügt werden.",
+            variant: "destructive",
+          });
         }
       }
 
