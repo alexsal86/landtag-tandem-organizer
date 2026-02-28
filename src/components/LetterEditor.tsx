@@ -284,7 +284,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       console.log('Letter show_pagination:', letter.show_pagination);
       console.log('=== END LETTER DATA ===');
       
-      // Reset draft initialization so content reloads from DB
+      // Reset and immediately re-initialize draft states from new letter
       draftInitializedRef.current = false;
       
       setEditedLetter({
@@ -292,6 +292,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         content_html: letter.content_html || '',
         content_nodes: letter.content_nodes || null
       });
+
+      // Directly initialize draft states so the editor gets content
+      setDraftContent(letter.content || '');
+      setDraftContentNodes(letter.content_nodes || null);
+      setDraftContentHtml(letter.content_html || null);
+      draftInitializedRef.current = true;
       // Set proofreading mode based on actual letter status
       setIsProofreadingMode(letter.status === 'review');
       
@@ -321,6 +327,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         status: 'draft',
         letter_date: currentDate
       });
+      // Reset draft states for new letter
+      setDraftContent('');
+      setDraftContentNodes(null);
+      setDraftContentHtml(null);
+      draftInitializedRef.current = true;
       // Reset proofreading mode and set default pagination for new letters
       setIsProofreadingMode(false);
       setShowPagination(true);
