@@ -154,7 +154,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [draftContentNodes, setDraftContentNodes] = useState<any>(null);
   const [draftContentHtml, setDraftContentHtml] = useState<string | null>(null);
   
-  const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const saveTimeoutRef = useRef<NodeJS.Timeout>(null);
   const isUpdatingFromRemoteRef = useRef(false);
   const latestContentRef = useRef<{content: string, contentNodes?: any}>({ content: '' });
   const pendingMentionsRef = useRef<Set<string>>(new Set());

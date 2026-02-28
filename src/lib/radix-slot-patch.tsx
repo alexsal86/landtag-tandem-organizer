@@ -79,9 +79,9 @@ function getElementRef(element: React.ReactElement): any {
   getter = Object.getOwnPropertyDescriptor(element, "ref")?.get;
   mayWarn = getter && "isReactWarning" in getter && (getter as any).isReactWarning;
   if (mayWarn) {
-    return element.props.ref;
+    return (element as any).props.ref;
   }
-  return element.props.ref || (element as any).ref;
+  return (element as any).props.ref || (element as any).ref;
 }
 
 // SlotClone - THE FIX: uses useComposedRefs instead of raw composeRefs

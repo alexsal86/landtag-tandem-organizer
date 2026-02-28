@@ -40,6 +40,31 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseAuth = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      {
+        global: { headers: { Authorization: authHeader } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      }
+    );
+
+    const { data: authData, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !authData.user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     const {
@@ -65,6 +90,29 @@ serve(async (req) => {
       contact_ids_count: contact_ids.length,
       distribution_list_ids_count: distribution_list_ids.length,
     });
+
+    if (authData.user.id !== user_id) {
+      return new Response(
+        JSON.stringify({ error: "user_id does not match authenticated user" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: membership } = await supabase
+      .from("user_tenant_memberships")
+      .select("role, is_active")
+      .eq("user_id", user_id)
+      .eq("tenant_id", tenant_id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    const { data: isAdmin } = await supabase.rpc("is_admin", { _user_id: user_id });
+    if (!membership && !isAdmin) {
+      return new Response(
+        JSON.stringify({ error: "No tenant membership found for user" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Collect recipients with contact data for personalization
     const allRecipients: Array<{ email: string; contact_data?: any }> = [];

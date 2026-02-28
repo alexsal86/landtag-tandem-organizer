@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 
 interface RichTextDisplayProps {
   content: string | null | undefined;
@@ -12,17 +13,6 @@ interface RichTextDisplayProps {
  */
 export const RichTextDisplay: React.FC<RichTextDisplayProps> = ({ content, className }) => {
   if (!content) return null;
-
-  // Basic sanitization - remove script tags and event handlers
-  const sanitizeHtml = (html: string): string => {
-    // Remove script tags
-    let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-    // Remove event handlers
-    sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '');
-    // Remove javascript: URLs
-    sanitized = sanitized.replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"');
-    return sanitized;
-  };
 
   // Check if content looks like HTML (has tags)
   const isHtml = /<[a-z][\s\S]*>/i.test(content);
@@ -44,7 +34,7 @@ export const RichTextDisplay: React.FC<RichTextDisplayProps> = ({ content, class
         "[&_p]:mb-2 [&_li]:mb-1",
         className
       )}
-      dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }}
+      dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
     />
   );
 };

@@ -13,10 +13,9 @@ import {
   KEY_BACKSPACE_COMMAND,
   KEY_DELETE_COMMAND,
   DELETE_CHARACTER_COMMAND,
-  DELETE_WORD_COMMAND,
-  DELETE_LINE_COMMAND,
   $getNodeByKey,
-  TextNode,
+  $getRoot,
+  type NodeKey,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -24,7 +23,6 @@ import {
   $createTrackDeleteNode,
   $isTrackInsertNode,
   $isTrackDeleteNode,
-  TrackInsertNode,
 } from '../nodes/TrackChangeNode';
 
 interface TrackChangesPluginProps {
@@ -42,18 +40,53 @@ export function TrackChangesPlugin({ isReviewMode, authorId, authorName }: Track
     const removers: (() => void)[] = [];
 
     // ── 1. Wrap newly typed text inside a TrackInsertNode ──
-    // We use a node transform on TextNode: whenever a TextNode is created or
-    // modified and it is NOT already inside a TrackInsertNode, we wrap it.
-    const removeTransform = editor.registerNodeTransform(TextNode, (node) => {
-      // Skip if already inside a track node
-      const parent = node.getParent();
-      if ($isTrackInsertNode(parent) || $isTrackDeleteNode(parent)) return;
+    const collectUntrackedTextKeys = (): Set<NodeKey> => {
+      const keys = new Set<NodeKey>();
+      const walk = (node: any) => {
+        if ($isTextNode(node) && node.getTextContentSize() > 0) {
+          const parent = node.getParent();
+          if (!$isTrackInsertNode(parent) && !$isTrackDeleteNode(parent)) {
+            keys.add(node.getKey());
+          }
+          return;
+        }
 
-      // Only wrap if the node was just created (no key match in previous state)
-      // We detect "new" text by checking if the text changed
-      // This is a simplified heuristic – we wrap any bare TextNode that gets mutated
-    });
-    removers.push(removeTransform);
+        if (typeof node.getChildren === 'function') {
+          node.getChildren().forEach(walk);
+        }
+      };
+
+      walk($getRoot());
+      return keys;
+    };
+
+    removers.push(
+      editor.registerUpdateListener(({ editorState, prevEditorState, tags }) => {
+        if (tags.has('history-merge') || tags.has('historic')) {
+          return;
+        }
+
+        const prevKeys = prevEditorState.read(collectUntrackedTextKeys);
+        const currKeys = editorState.read(collectUntrackedTextKeys);
+        const insertedKeys = [...currKeys].filter((key) => !prevKeys.has(key));
+
+        if (insertedKeys.length === 0) return;
+
+        editor.update(() => {
+          for (const key of insertedKeys) {
+            const node = $getNodeByKey(key);
+            if (!$isTextNode(node) || node.getTextContentSize() === 0) continue;
+
+            const parent = node.getParent();
+            if (!parent || $isTrackInsertNode(parent) || $isTrackDeleteNode(parent)) continue;
+
+            const insertWrapper = $createTrackInsertNode(authorId, authorName);
+            node.insertBefore(insertWrapper);
+            insertWrapper.append(node);
+          }
+        });
+      }),
+    );
 
     // ── 2. Intercept delete commands ──
     const handleDelete = (): boolean => {
@@ -110,7 +143,11 @@ export function TrackChangesPlugin({ isReviewMode, authorId, authorName }: Track
     };
 
     // Register for all delete-type commands
-    for (const cmd of [KEY_BACKSPACE_COMMAND, DELETE_CHARACTER_COMMAND]) {
+    for (const cmd of [
+      KEY_BACKSPACE_COMMAND,
+      KEY_DELETE_COMMAND,
+      DELETE_CHARACTER_COMMAND,
+    ]) {
       removers.push(
         editor.registerCommand(cmd, () => {
           let handled = false;
