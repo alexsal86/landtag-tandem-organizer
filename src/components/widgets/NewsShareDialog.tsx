@@ -147,6 +147,44 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
         if (matrixError) throw matrixError;
       }
 
+      // Create in-app notifications for internal recipients
+      if (selectedUserIds.length > 0) {
+        const notificationTitle = `News geteilt: ${article.title}`;
+        const notificationMessage = personalMessage
+          ? `${senderName}: ${personalMessage}`
+          : `${senderName} hat eine News mit Ihnen geteilt.`;
+
+        const notificationPayload = {
+          article_title: article.title,
+          article_description: article.description,
+          article_source: article.source,
+          article_link: article.link,
+          sender_name: senderName,
+          personal_message: personalMessage || null,
+        };
+
+        const notificationCalls = selectedUserIds.map((recipientUserId) =>
+          supabase.rpc('create_notification', {
+            user_id_param: recipientUserId,
+            type_name: 'news_shared_internal',
+            title_param: notificationTitle,
+            message_param: notificationMessage,
+            priority_param: 'medium',
+            data_param: notificationPayload,
+          })
+        );
+
+        const notificationResults = await Promise.allSettled(notificationCalls);
+        const failedNotifications = notificationResults.filter((result) => result.status === 'rejected');
+
+        if (failedNotifications.length > 0) {
+          console.warn('Some in-app notifications for shared news could not be created', {
+            attempted: selectedUserIds.length,
+            failed: failedNotifications.length,
+          });
+        }
+      }
+
       const totalRecipients = selectedUserIds.length + emails.length;
       toast.success(`News erfolgreich an ${totalRecipients} Empfänger gesendet`);
       
