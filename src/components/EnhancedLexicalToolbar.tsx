@@ -514,8 +514,8 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
             !speechSupported
               ? 'Spracherkennung in diesem Browser nicht unterstützt'
               : isListening
-                ? 'Spracherkennung beenden'
-                : 'Spracherkennung starten'
+                ? "Spracherkennung beenden. Beenden auch per Sprachkommando: 'Stopp'"
+                : "Spracherkennung starten. Beenden auch per Sprachkommando: 'Stopp'"
           }
           disabled={!speechSupported}
         >

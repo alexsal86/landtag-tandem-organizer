@@ -7,7 +7,18 @@ export type SpeechCommand =
   | { type: 'insert-newline' };
 
 const COMMAND_PHRASES: Array<{ command: SpeechCommand; phrases: string[] }> = [
-  { command: { type: 'stop-listening' }, phrases: ['stopp', 'stop', 'aufnahme stoppen', 'diktat stoppen'] },
+  {
+    command: { type: 'stop-listening' },
+    phrases: [
+      'stopp',
+      'stop',
+      'aufnahme stoppen',
+      'diktat stoppen',
+      'aufnahme aus',
+      'mikro aus',
+      'diktat aus',
+    ],
+  },
   { command: { type: 'toggle-format', format: 'bold' }, phrases: ['fett', 'fett markieren'] },
   { command: { type: 'toggle-format', format: 'italic' }, phrases: ['kursiv'] },
   { command: { type: 'toggle-format', format: 'underline' }, phrases: ['unterstreichen', 'unterstrichen'] },
@@ -31,15 +42,29 @@ const PUNCTUATION_REPLACEMENTS: Array<[RegExp, string]> = [
 export const normalizeSpeechText = (text: string): string =>
   text
     .toLowerCase()
+    .replace(/[,:;!?]/g, ' ')
     .trim()
     .replace(/[.!?]+$/g, '')
+    .replace(/\b(ähm|äh|hm|bitte|jetzt|mal|einmal|okay|ok|hey|hallo)\b/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
+
+const STOP_COMMAND_PATTERNS: RegExp[] = [
+  /\bstop+p?\b/i,
+  /\b(stopp|stop)\s+(bitte|jetzt)?\b/i,
+  /\b(aufnahme|mikro(?:fon)?|diktat)\s+(aus|stoppen?)\b/i,
+  /\bbeende\s+(aufnahme|diktat)\b/i,
+];
 
 export const detectSpeechCommand = (text: string): SpeechCommand | null => {
   const normalized = normalizeSpeechText(text);
 
+  if (STOP_COMMAND_PATTERNS.some((pattern) => pattern.test(normalized))) {
+    return { type: 'stop-listening' };
+  }
+
   for (const { command, phrases } of COMMAND_PHRASES) {
-    if (phrases.includes(normalized)) {
+    if (phrases.includes(normalized) || phrases.some((phrase) => normalized.includes(phrase))) {
       return command;
     }
   }
