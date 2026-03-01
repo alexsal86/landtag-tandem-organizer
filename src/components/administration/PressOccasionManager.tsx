@@ -12,9 +12,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { loadPressTemplates, type PressTemplateConfig } from '@/components/press/pressTemplateConfig';
 
 const OCCASION_KEY = 'press_occasions_v1';
-const TEMPLATE_KEY = 'press_templates_v1';
 
 interface PressOccasion {
   id: string;
@@ -29,11 +29,7 @@ interface PressOccasion {
   is_active: boolean;
 }
 
-interface PressTemplate {
-  id: string;
-  name: string;
-  is_active?: boolean;
-}
+type PressTemplate = Pick<PressTemplateConfig, 'id' | 'name' | 'is_active'>;
 
 const ICON_OPTIONS = [
   { value: 'Megaphone', label: 'Presse' },
@@ -137,17 +133,9 @@ export function PressOccasionManager() {
 
   const loadTemplates = async () => {
     if (!currentTenant) return;
-
-    const { data } = await supabase
-      .from('app_settings')
-      .select('setting_value')
-      .eq('tenant_id', currentTenant.id)
-      .eq('setting_key', TEMPLATE_KEY)
-      .maybeSingle();
-
     try {
-      const parsed = data?.setting_value ? JSON.parse(data.setting_value) : [];
-      setTemplates(Array.isArray(parsed) ? parsed.filter((t) => t.is_active !== false) : []);
+      const parsed = await loadPressTemplates(currentTenant.id);
+      setTemplates(parsed.filter((t) => t.is_active !== false));
     } catch {
       setTemplates([]);
     }

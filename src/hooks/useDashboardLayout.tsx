@@ -12,7 +12,7 @@ export type WidgetSize =
 
 export interface DashboardWidget {
   id: string;
-  type: 'stats' | 'tasks' | 'schedule' | 'actions' | 'messages' | 'blackboard' | 'combined-messages' | 'quicknotes' | 'pomodoro' | 'habits' | 'calllog' | 'teamchat' | 'quickactions' | 'news' | 'appointmentfeedback';
+  type: 'stats' | 'tasks' | 'schedule' | 'actions' | 'messages' | 'blackboard' | 'combined-messages' | 'quicknotes' | 'pomodoro' | 'habits' | 'calllog' | 'teamchat' | 'quickactions' | 'news' | 'appointmentfeedback' | 'stakeholder-network';
   title: string;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -509,7 +509,7 @@ export function useDashboardLayout() {
     }
 
     // Validiere Type
-    const validTypes = ['stats', 'tasks', 'schedule', 'appointmentfeedback', 'messages', 'combined-messages', 'quicknotes', 'pomodoro', 'habits', 'calllog', 'teamchat', 'quickactions', 'news', 'blackboard', 'actions'];
+    const validTypes = ['stats', 'tasks', 'schedule', 'appointmentfeedback', 'messages', 'combined-messages', 'quicknotes', 'pomodoro', 'habits', 'calllog', 'teamchat', 'quickactions', 'news', 'blackboard', 'actions', 'stakeholder-network'];
     if (!validTypes.includes(type)) {
       console.error('❌ Invalid widget type:', type);
       toast.error(`Ungültiger Widget-Typ: ${type}`);
@@ -532,7 +532,8 @@ export function useDashboardLayout() {
       'quickactions': 'Quick Actions',
       'news': 'News Feed',
       'blackboard': 'Pinnwand',
-      'actions': 'Aktionen'
+      'actions': 'Aktionen',
+      'stakeholder-network': 'Stakeholder-Netzwerk'
     };
     
     // Find next available position
