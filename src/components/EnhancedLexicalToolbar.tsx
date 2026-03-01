@@ -67,6 +67,7 @@ import { LineHeightPlugin } from './plugins/LineHeightPlugin';
 import { ImageUploadDialog } from './plugins/ImagePlugin';
 import { Input } from '@/components/ui/input';
 import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
+import { detectSpeechCommand, formatDictatedText } from '@/lib/speechCommandUtils';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
@@ -91,17 +92,55 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   const [tableCols, setTableCols] = useState('3');
   const [speechState, setSpeechState] = useState<SpeechToTextState>('idle');
   const [speechError, setSpeechError] = useState<SpeechToTextError | null>(null);
+  const [interimTranscript, setInterimTranscript] = useState('');
 
   const speechAdapter = useMemo(() => new WebSpeechToTextAdapter(), []);
 
   useEffect(() => {
     speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
     speechAdapter.onError = (error) => setSpeechError(error);
+    speechAdapter.onInterimTranscript = (text) => setInterimTranscript(text);
     speechAdapter.onFinalTranscript = (text) => {
+      const command = detectSpeechCommand(text);
+      if (command) {
+        switch (command.type) {
+          case 'stop-listening':
+            speechAdapter.stop();
+            return;
+          case 'toggle-format':
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
+            return;
+          case 'insert-list':
+            editor.dispatchCommand(
+              command.listType === 'unordered' ? INSERT_UNORDERED_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND,
+              undefined,
+            );
+            return;
+          case 'undo':
+            editor.dispatchCommand(UNDO_COMMAND, undefined);
+            return;
+          case 'redo':
+            editor.dispatchCommand(REDO_COMMAND, undefined);
+            return;
+          case 'insert-newline':
+            editor.update(() => {
+              const selection = $getSelection();
+              if ($isRangeSelection(selection)) {
+                selection.insertText('\n');
+              }
+            });
+            return;
+        }
+      }
+
+      const formattedText = formatDictatedText(text);
+      if (!formattedText) return;
+
       editor.update(() => {
         const selection = $getSelection();
         if ($isRangeSelection(selection)) {
-          selection.insertText(`${text} `);
+          const shouldAddTrailingSpace = !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+          selection.insertText(shouldAddTrailingSpace ? `${formattedText} ` : formattedText);
         }
       });
     };
@@ -372,6 +411,12 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
 
         {speechState === 'listening' && (
           <span className="text-xs text-primary">Aufnahme läuft…</span>
+        )}
+
+        {speechState === 'listening' && interimTranscript && (
+          <span className="text-xs text-muted-foreground italic" title="Live-Erkennung">
+            {interimTranscript}
+          </span>
         )}
 
         {speechError && (

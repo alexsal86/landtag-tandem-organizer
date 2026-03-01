@@ -12,6 +12,7 @@ export interface SpeechToTextAdapter {
   stop(): void;
   destroy(): void;
   onFinalTranscript?: (text: string) => void;
+  onInterimTranscript?: (text: string) => void;
   onError?: (error: SpeechToTextError) => void;
   onStateChange?: (state: SpeechToTextState) => void;
 }
@@ -62,6 +63,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
   private shouldListen = false;
 
   onFinalTranscript?: (text: string) => void;
+  onInterimTranscript?: (text: string) => void;
   onError?: (error: SpeechToTextError) => void;
   onStateChange?: (state: SpeechToTextState) => void;
 
@@ -81,6 +83,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
 
   stop(): void {
     this.shouldListen = false;
+    this.onInterimTranscript?.('');
     this.onStateChange?.('stopping');
     this.recognition?.stop();
   }
@@ -94,6 +97,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
       this.recognition.stop();
       this.recognition = null;
     }
+    this.onInterimTranscript?.('');
     this.onStateChange?.('idle');
   }
 
@@ -112,16 +116,23 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let finalTranscript = '';
+      let interimTranscript = '';
+
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
         const result = event.results[i];
         if (result.isFinal) {
           finalTranscript += result[0]?.transcript ?? '';
+        } else {
+          interimTranscript += result[0]?.transcript ?? '';
         }
       }
+
+      this.onInterimTranscript?.(interimTranscript.trim());
 
       const text = finalTranscript.trim();
       if (text) {
         this.onFinalTranscript?.(text);
+        this.onInterimTranscript?.('');
       }
     };
 
