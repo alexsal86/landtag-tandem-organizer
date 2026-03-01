@@ -9,7 +9,12 @@ import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
 import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getWeather, translateCondition, getWeatherIcon } from '@/utils/dashboard/weatherApi';
-import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
+import {
+  DEFAULT_SPECIAL_DAYS,
+  getSpecialDayHint,
+  parseSpecialDaysSetting,
+  SpecialDay
+} from '@/utils/dashboard/specialDays';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -38,6 +43,7 @@ export const DashboardGreetingSection = () => {
   const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [specialDays, setSpecialDays] = useState<SpecialDay[]>(DEFAULT_SPECIAL_DAYS);
 
   // Feedback-Reminder: zeitgesteuert + offene Feedbacks
   const feedbackReminderVisible = useMemo(() => {
@@ -116,6 +122,32 @@ export const DashboardGreetingSection = () => {
     
     loadWeather();
   }, []);
+
+  useEffect(() => {
+    const loadSpecialDays = async () => {
+      try {
+        let query = supabase
+          .from('app_settings')
+          .select('setting_value')
+          .eq('setting_key', 'dashboard_special_day_hints')
+          .limit(1);
+
+        query = currentTenant?.id
+          ? query.eq('tenant_id', currentTenant.id)
+          : query.is('tenant_id', null);
+
+        const { data } = await query.maybeSingle();
+
+        const parsedDays = parseSpecialDaysSetting(data?.setting_value);
+        setSpecialDays(parsedDays || DEFAULT_SPECIAL_DAYS);
+      } catch (error) {
+        console.error('Error loading dashboard special day hints:', error);
+        setSpecialDays(DEFAULT_SPECIAL_DAYS);
+      }
+    };
+
+    loadSpecialDays();
+  }, [currentTenant?.id]);
 
   // Load task stats for contextual greeting
   useEffect(() => {
@@ -343,30 +375,62 @@ export const DashboardGreetingSection = () => {
     
     const message = selectMessage(context);
     
-    const roleSpecificLead = {
-      abgeordneter: {
-        day: 'Heute stehen politische Prioritäten und klare Entscheidungen im Fokus.',
-        evening: 'Für morgen stehen politische Prioritäten und klare Entscheidungen im Fokus.'
-      },
-      bueroleitung: {
-        day: 'Heute zählt ein klarer Überblick über Team, Fristen und Prioritäten.',
-        evening: 'Für morgen zählt ein klarer Überblick über Team, Fristen und Prioritäten.'
-      },
-      mitarbeiter: {
-        day: 'Heute geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.',
-        evening: 'Für morgen geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.'
-      },
-      praktikant: {
-        day: 'Heute ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.',
-        evening: 'Morgen ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.'
-      }
-    } as const;
-
-    const roleConfig = roleSpecificLead[userRole as keyof typeof roleSpecificLead];
     const isLateDay = timeSlot === 'evening' || timeSlot === 'night';
-    const roleLine = roleConfig
-      ? (isShowingTomorrow || isLateDay ? roleConfig.evening : roleConfig.day)
-      : undefined;
+    const useTomorrowTone = isShowingTomorrow || isLateDay;
+
+    const getRoleLeadLine = () => {
+      if (userRole === 'abgeordneter') {
+        if (hasPlenum || hasCommittee || multipleSessions) {
+          return useTomorrowTone
+            ? 'Für morgen stehen zentrale politische Termine und klare Entscheidungen im Fokus.'
+            : 'Heute stehen zentrale politische Termine und klare Entscheidungen im Fokus.';
+        }
+
+        if (appointments.length === 0) {
+          return useTomorrowTone
+            ? 'Für morgen gibt es Raum für strategische Vorbereitung und Gespräche im Wahlkreis.'
+            : 'Heute gibt es Raum für strategische Vorbereitung und Gespräche im Wahlkreis.';
+        }
+
+        return useTomorrowTone
+          ? 'Für morgen liegt der Schwerpunkt auf Abstimmungen, Austausch und politischer Präsenz.'
+          : 'Heute liegt der Schwerpunkt auf Abstimmungen, Austausch und politischer Präsenz.';
+      }
+
+      if (userRole === 'mitarbeiter') {
+        if (appointments.length >= 4) {
+          return useTomorrowTone
+            ? 'Für morgen zählt ein guter Takt zwischen Terminen, Rückmeldungen und Umsetzung.'
+            : 'Heute zählt ein guter Takt zwischen Terminen, Rückmeldungen und Umsetzung.';
+        }
+
+        if (openTasksCount >= 8) {
+          return useTomorrowTone
+            ? 'Für morgen lohnt sich ein klarer Fokus auf Prioritäten und verlässliche Übergaben.'
+            : 'Heute lohnt sich ein klarer Fokus auf Prioritäten und verlässliche Übergaben.';
+        }
+
+        return useTomorrowTone
+          ? 'Für morgen geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.'
+          : 'Heute geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.';
+      }
+
+      if (userRole === 'bueroleitung') {
+        return useTomorrowTone
+          ? 'Für morgen zählt ein klarer Überblick über Team, Fristen und Prioritäten.'
+          : 'Heute zählt ein klarer Überblick über Team, Fristen und Prioritäten.';
+      }
+
+      if (userRole === 'praktikant') {
+        return useTomorrowTone
+          ? 'Morgen ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.'
+          : 'Heute ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.';
+      }
+
+      return undefined;
+    };
+
+    const roleLine = getRoleLeadLine();
 
     let text = `${greeting}, ${userName}!\n\n`;
     if (roleLine) {
@@ -375,7 +439,7 @@ export const DashboardGreetingSection = () => {
 
     text += `${message.text}\n\n`;
 
-    const specialDayHint = getSpecialDayHint();
+    const specialDayHint = getSpecialDayHint(new Date(), specialDays);
     if (specialDayHint) {
       text += `${specialDayHint}\n\n`;
     }
@@ -420,7 +484,20 @@ export const DashboardGreetingSection = () => {
     }
     
     return text;
-  }, [isLoading, userName, userRole, weatherKarlsruhe, weatherStuttgart, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, openTaskTitles, showWeather]);
+  }, [
+    isLoading,
+    userName,
+    userRole,
+    weatherKarlsruhe,
+    weatherStuttgart,
+    appointments,
+    isShowingTomorrow,
+    openTasksCount,
+    completedTasksToday,
+    openTaskTitles,
+    showWeather,
+    specialDays
+  ]);
 
   // Parse text for bold markers (**text**) and task list placeholder
   const parsedContent = useMemo(() => {

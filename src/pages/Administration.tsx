@@ -49,6 +49,7 @@ import { LetterOccasionManager } from "@/components/administration/LetterOccasio
 import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
 import { GeoDataImport } from "@/components/administration/GeoDataImport";
 import { MyWorkSystemOverview } from "@/components/administration/MyWorkSystemOverview";
+import { DashboardHintSettings } from "@/components/administration/DashboardHintSettings";
 import { PushNotificationTest } from "@/components/PushNotificationTest";
 import { VapidKeyTest } from "@/components/VapidKeyTest";
 import { DirectPushTest } from "@/components/DirectPushTest";
@@ -2230,6 +2231,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
           return <GeoDataImport />;
         case "mywork-overview":
           return <MyWorkSystemOverview />;
+        case "dashboard-hints":
+          return <DashboardHintSettings />;
         default:
           return null;
       }
