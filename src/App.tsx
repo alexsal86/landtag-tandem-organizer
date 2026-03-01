@@ -103,6 +103,8 @@ const AppContent = () => {
               <Route path="/" element={<Navigate to="/mywork" replace />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/contacts/new" element={<Navigate to="/contacts?action=new" replace />} />
+              <Route path="/contacts/netzwerk" element={<Index />} />
+              <Route path="/contacts/stakeholder" element={<Index />} />
               <Route path="/contacts/:id" element={<ContactDetail />} />
               <Route path="/contacts/:id/edit" element={<EditContact />} />
               <Route path="/tasks/new" element={<CreateTask />} />
