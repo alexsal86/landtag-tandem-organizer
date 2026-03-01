@@ -61,8 +61,12 @@ const RULE_TEMPLATES = [
     conditionOperator: "equals",
     conditionValue: "high",
     actionType: "create_notification",
-    actionTarget: "",
+    actionTargetUserId: "",
+    actionTitle: "Überfällige Aufgabe",
     actionMessage: "Eine priorisierte Aufgabe ist überfällig.",
+    actionTable: "tasks",
+    actionRecordId: "",
+    actionStatus: "",
   },
   {
     id: "knowledge-review",
@@ -76,8 +80,12 @@ const RULE_TEMPLATES = [
     conditionOperator: "equals",
     conditionValue: "published",
     actionType: "update_record_status",
-    actionTarget: "",
+    actionTargetUserId: "",
+    actionTitle: "",
     actionMessage: "",
+    actionTable: "knowledge_documents",
+    actionRecordId: "",
+    actionStatus: "review",
   },
 ] as const;
 
@@ -146,8 +154,12 @@ const DEFAULT_FORM = {
   conditionOperator: "equals",
   conditionValue: "",
   actionType: "create_notification",
-  actionTarget: "owner",
+  actionTargetUserId: "",
+  actionTitle: "",
   actionMessage: "",
+  actionTable: "tasks",
+  actionRecordId: "",
+  actionStatus: "",
   enabled: true,
 };
 
@@ -265,8 +277,12 @@ export function AutomationRulesManager() {
       conditionOperator: condition?.operator || "equals",
       conditionValue: condition?.value || "",
       actionType: action?.type || "create_notification",
-      actionTarget: (action?.payload?.target as string) || "owner",
+      actionTargetUserId: (action?.payload?.target_user_id as string) || "",
+      actionTitle: (action?.payload?.title as string) || "",
       actionMessage: (action?.payload?.message as string) || "",
+      actionTable: (action?.payload?.table as string) || "tasks",
+      actionRecordId: (action?.payload?.record_id as string) || "",
+      actionStatus: (action?.payload?.status as string) || "",
       enabled: rule.enabled,
     });
   };
@@ -274,6 +290,24 @@ export function AutomationRulesManager() {
   const upsertRule = async () => {
     if (!currentTenant || !user || !form.name.trim()) {
       toast({ title: "Fehlende Angaben", description: "Bitte Regelname ausfüllen.", variant: "destructive" });
+      return;
+    }
+
+    if (form.actionType === "create_notification" && !form.actionTargetUserId.trim()) {
+      toast({
+        title: "Fehlende Angaben",
+        description: "Bitte Ziel-User-ID für die Benachrichtigungsaktion eintragen.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (form.actionType === "update_record_status" && (!form.actionRecordId.trim() || !form.actionStatus.trim())) {
+      toast({
+        title: "Fehlende Angaben",
+        description: "Für Status-Updates werden Record-ID und Zielstatus benötigt.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -301,8 +335,12 @@ export function AutomationRulesManager() {
         {
           type: form.actionType,
           payload: {
-            target: form.actionTarget,
+            target_user_id: form.actionTargetUserId,
+            title: form.actionTitle,
             message: form.actionMessage,
+            table: form.actionTable,
+            record_id: form.actionRecordId,
+            status: form.actionStatus,
           },
         },
       ],
@@ -349,8 +387,8 @@ export function AutomationRulesManager() {
         dryRun: true,
         idempotencyKey,
         sourcePayload: {
-          status: "overdue",
-          priority: "high",
+          [form.triggerField]: form.triggerValue || "triggered",
+          [form.conditionField]: form.conditionValue || "condition-match",
           rule_name: rule.name,
           module: rule.module,
         },
@@ -378,8 +416,8 @@ export function AutomationRulesManager() {
         dryRun: false,
         idempotencyKey,
         sourcePayload: {
-          status: "overdue",
-          priority: "high",
+          [form.triggerField]: form.triggerValue || "triggered",
+          [form.conditionField]: form.conditionValue || "condition-match",
           rule_name: rule.name,
           module: rule.module,
         },
@@ -520,12 +558,58 @@ export function AutomationRulesManager() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Ziel</Label>
-              <Input value={form.actionTarget} onChange={(e) => setForm((prev) => ({ ...prev, actionTarget: e.target.value }))} placeholder="owner, teamlead, role:..." />
+              <Label>Ziel-User-ID</Label>
+              <Input
+                value={form.actionTargetUserId}
+                onChange={(e) => setForm((prev) => ({ ...prev, actionTargetUserId: e.target.value }))}
+                placeholder="UUID der Empfänger:in"
+              />
             </div>
             <div className="space-y-2">
-              <Label>Nachricht/Parameter</Label>
-              <Input value={form.actionMessage} onChange={(e) => setForm((prev) => ({ ...prev, actionMessage: e.target.value }))} placeholder="Optional" />
+              <Label>Titel</Label>
+              <Input
+                value={form.actionTitle}
+                onChange={(e) => setForm((prev) => ({ ...prev, actionTitle: e.target.value }))}
+                placeholder="Optionaler Notification-Titel"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Nachricht</Label>
+              <Input
+                value={form.actionMessage}
+                onChange={(e) => setForm((prev) => ({ ...prev, actionMessage: e.target.value }))}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tabelle (nur Status-Update)</Label>
+              <Select value={form.actionTable} onValueChange={(value) => setForm((prev) => ({ ...prev, actionTable: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tasks">tasks</SelectItem>
+                  <SelectItem value="decisions">decisions</SelectItem>
+                  <SelectItem value="knowledge_documents">knowledge_documents</SelectItem>
+                  <SelectItem value="casefiles">casefiles</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Record-ID / Zielstatus</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  value={form.actionRecordId}
+                  onChange={(e) => setForm((prev) => ({ ...prev, actionRecordId: e.target.value }))}
+                  placeholder="record_id"
+                />
+                <Input
+                  value={form.actionStatus}
+                  onChange={(e) => setForm((prev) => ({ ...prev, actionStatus: e.target.value }))}
+                  placeholder="status"
+                />
+              </div>
             </div>
           </div>
 
