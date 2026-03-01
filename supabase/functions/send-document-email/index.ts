@@ -1,16 +1,16 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "npm:resend@2.0.0";
+import {
+  buildRequestId,
+  createCorsHeaders,
+  createServiceClient,
+  getAuthenticatedUser,
+  jsonResponse,
+  safeErrorResponse,
+  userCanAccessTenant,
+} from "../_shared/security.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
 
 interface SendEmailRequest {
   subject: string;
@@ -35,38 +35,23 @@ interface FailedRecipient {
 }
 
 serve(async (req) => {
+  const corsHeaders = createCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = buildRequestId();
+
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const authResult = await getAuthenticatedUser(req);
+    if ("errorResponse" in authResult) {
+      return authResult.errorResponse;
     }
 
-    const supabaseAuth = createClient(
-      supabaseUrl,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      {
-        global: { headers: { Authorization: authHeader } },
-        auth: { persistSession: false, autoRefreshToken: false },
-      }
-    );
+    const user = authResult.user;
+    const supabase = createServiceClient();
 
-    const { data: authData, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !authData.user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
     const {
       subject,
       body_html,
@@ -84,55 +69,68 @@ serve(async (req) => {
       scheduled_at,
     }: SendEmailRequest = await req.json();
 
-    console.log("Email request:", {
-      subject,
+    if (!tenant_id || !user_id || !subject || !body_html) {
+      return safeErrorResponse(
+        "tenant_id, user_id, subject and body_html are required",
+        400,
+        corsHeaders,
+        requestId,
+      );
+    }
+
+    if (user.id !== user_id) {
+      return safeErrorResponse(
+        "user_id does not match authenticated user",
+        403,
+        corsHeaders,
+        requestId,
+      );
+    }
+
+    const canSendEmail = await userCanAccessTenant(
+      supabase,
+      user_id,
+      tenant_id,
+    );
+    if (!canSendEmail) {
+      return safeErrorResponse(
+        "No tenant membership found for user",
+        403,
+        corsHeaders,
+        requestId,
+      );
+    }
+
+    console.log(`[${requestId}] Email request`, {
       recipients_count: recipients.length + recipient_emails.length,
       contact_ids_count: contact_ids.length,
       distribution_list_ids_count: distribution_list_ids.length,
+      document_ids_count: document_ids.length,
     });
 
-    if (authData.user.id !== user_id) {
-      return new Response(
-        JSON.stringify({ error: "user_id does not match authenticated user" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const allRecipients: Array<{
+      email: string;
+      contact_data?: Record<string, unknown>;
+    }> = [];
+    recipients.forEach((email) => allRecipients.push({ email }));
+    recipient_emails.forEach((email) => allRecipients.push({ email }));
 
-    const { data: membership } = await supabase
-      .from("user_tenant_memberships")
-      .select("role, is_active")
-      .eq("user_id", user_id)
-      .eq("tenant_id", tenant_id)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    const { data: isAdmin } = await supabase.rpc("is_admin", { _user_id: user_id });
-    if (!membership && !isAdmin) {
-      return new Response(
-        JSON.stringify({ error: "No tenant membership found for user" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Collect recipients with contact data for personalization
-    const allRecipients: Array<{ email: string; contact_data?: any }> = [];
-
-    // Add manual recipients
-    recipients.forEach(email => allRecipients.push({ email }));
-    recipient_emails.forEach(email => allRecipients.push({ email }));
-
-    // Get emails from distribution lists with contact data
     if (distribution_list_ids.length > 0) {
       const { data: listMembers, error: listError } = await supabase
         .from("distribution_list_members")
-        .select("contact_id, contacts(id, name, email, organization, phone)")
+        .select(
+          "contact_id, contacts(id, tenant_id, name, email, organization, phone)",
+        )
         .in("distribution_list_id", distribution_list_ids);
 
       if (listError) {
-        console.error("Distribution list error:", listError);
+        console.error(`[${requestId}] Distribution list error:`, listError);
       } else if (listMembers) {
         listMembers.forEach((member: any) => {
-          if (member.contacts?.email) {
+          if (
+            member.contacts?.email &&
+            member.contacts?.tenant_id === tenant_id
+          ) {
             allRecipients.push({
               email: member.contacts.email,
               contact_data: member.contacts,
@@ -142,15 +140,15 @@ serve(async (req) => {
       }
     }
 
-    // Get contact data
     if (contact_ids.length > 0) {
       const { data: contacts, error: contactError } = await supabase
         .from("contacts")
-        .select("id, name, email, organization, phone")
-        .in("id", contact_ids);
+        .select("id, name, email, organization, phone, tenant_id")
+        .in("id", contact_ids)
+        .eq("tenant_id", tenant_id);
 
       if (contactError) {
-        console.error("Contacts error:", contactError);
+        console.error(`[${requestId}] Contacts error:`, contactError);
       } else if (contacts) {
         contacts.forEach((contact: any) => {
           if (contact.email) {
@@ -163,7 +161,6 @@ serve(async (req) => {
       }
     }
 
-    // Get sender info
     let fromEmail = "onboarding@resend.dev";
     let fromName = "Team";
 
@@ -172,6 +169,7 @@ serve(async (req) => {
         .from("sender_information")
         .select("name, landtag_email")
         .eq("id", sender_id)
+        .eq("tenant_id", tenant_id)
         .single();
 
       if (!senderError && senderInfo) {
@@ -180,27 +178,27 @@ serve(async (req) => {
       }
     }
 
-    // Remove duplicates
     const uniqueRecipients = Array.from(
-      new Map(allRecipients.map(r => [r.email, r])).values()
+      new Map(
+        allRecipients.map((recipient) => [recipient.email, recipient]),
+      ).values(),
     );
 
-    console.log(`Sending to ${uniqueRecipients.length} unique recipients`);
-
     if (uniqueRecipients.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No recipients found" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+      return safeErrorResponse(
+        "No recipients found",
+        400,
+        corsHeaders,
+        requestId,
       );
     }
 
-    // Replace variables function
-    const replaceVariables = (text: string, contactData?: any) => {
+    const replaceVariables = (
+      text: string,
+      contactData?: Record<string, any>,
+    ) => {
       if (!contactData) return text;
-      
+
       return text
         .replace(/\{\{name\}\}/g, contactData.name || "")
         .replace(/\{\{email\}\}/g, contactData.email || "")
@@ -208,16 +206,21 @@ serve(async (req) => {
         .replace(/\{\{phone\}\}/g, contactData.phone || "");
     };
 
-    // Send personalized emails
     let sent = 0;
     let failed = 0;
     const failedRecipients: FailedRecipient[] = [];
-    const personalizationData: Record<string, any> = {};
+    const personalizationData: Record<string, unknown> = {};
 
     for (const recipient of uniqueRecipients) {
       try {
-        const personalizedSubject = replaceVariables(subject, recipient.contact_data);
-        const personalizedBody = replaceVariables(body_html, recipient.contact_data);
+        const personalizedSubject = replaceVariables(
+          subject,
+          recipient.contact_data,
+        );
+        const personalizedBody = replaceVariables(
+          body_html,
+          recipient.contact_data,
+        );
 
         const emailPayload: Record<string, unknown> = {
           from: `${fromName} <${fromEmail}>`,
@@ -228,6 +231,7 @@ serve(async (req) => {
           subject: personalizedSubject,
           html: personalizedBody,
         };
+
         if (scheduled_at) {
           emailPayload.scheduledAt = scheduled_at;
         }
@@ -238,33 +242,29 @@ serve(async (req) => {
           throw emailResponse.error;
         }
 
-        sent++;
-        
+        sent += 1;
+
         if (recipient.contact_data) {
           personalizationData[recipient.email] = {
             name: recipient.contact_data.name,
             organization: recipient.contact_data.organization,
           };
         }
-
-        console.log(`✓ Sent to ${recipient.email}`);
       } catch (error: any) {
-        failed++;
+        failed += 1;
         failedRecipients.push({
           email: recipient.email,
-          error: error.message || "Unknown error",
+          error: error?.message || "Unknown error",
         });
-        console.error(`✗ Failed ${recipient.email}:`, error.message);
       }
     }
 
-    // Log to database
     const emailLogData = {
       tenant_id,
       user_id,
       subject,
       body_html,
-      recipients: uniqueRecipients.map(r => r.email),
+      recipients: uniqueRecipients.map((recipient) => recipient.email),
       cc,
       bcc,
       reply_to: reply_to || null,
@@ -281,32 +281,28 @@ serve(async (req) => {
       .insert(emailLogData);
 
     if (logError) {
-      console.error("Log error:", logError);
+      console.error(`[${requestId}] Log error:`, logError);
     }
 
-    console.log(`Results: ${sent} sent, ${failed} failed`);
-
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      {
         success: sent > 0,
         sent,
         failed,
         total: uniqueRecipients.length,
         failed_recipients: failedRecipients,
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
+        request_id: requestId,
+      },
+      200,
+      corsHeaders,
     );
-  } catch (error: any) {
-    console.error("Function error:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      }
+  } catch (error) {
+    console.error(`[${requestId}] Function error:`, error);
+    return safeErrorResponse(
+      "Internal server error",
+      500,
+      corsHeaders,
+      requestId,
     );
   }
 });
