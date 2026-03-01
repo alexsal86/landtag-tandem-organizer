@@ -100,33 +100,100 @@ type DayTemplate = {
   lines: string[];
 };
 
+const normalizeDayTemplates = (value: unknown): DayTemplate[] => {
+  if (!Array.isArray(value)) return defaultDayTemplates;
+
+  const normalized = value
+    .map((entry, index) => {
+      if (!entry || typeof entry !== "object") return null;
+      const candidate = entry as Partial<DayTemplate> & { content?: string[] | string };
+      const name = typeof candidate.name === "string" ? candidate.name.trim() : "";
+      if (!name) return null;
+
+      const rawLines = Array.isArray(candidate.lines)
+        ? candidate.lines
+        : Array.isArray(candidate.content)
+          ? candidate.content
+          : typeof candidate.content === "string"
+            ? candidate.content.split("\n")
+            : [];
+
+      const lines = rawLines
+        .map((line) => (typeof line === "string" ? line.trim() : ""))
+        .filter(Boolean);
+
+      if (lines.length === 0) return null;
+
+      return {
+        id: typeof candidate.id === "string" && candidate.id.trim() ? candidate.id : `template-${index}-${crypto.randomUUID()}`,
+        name,
+        lines,
+      };
+    })
+    .filter((template): template is DayTemplate => Boolean(template));
+
+  return normalized.length > 0 ? normalized : defaultDayTemplates;
+};
+
 const defaultDayTemplates: DayTemplate[] = [
   {
-    id: "meeting-day",
-    name: "Sitzungstag",
+    id: "plenary-day",
+    name: "Plenar-/Sitzungstag",
     lines: [
-      "--- Vorbereitung ---",
-      "!! Tagesordnung final prüfen",
-      "Unterlagen für Ausschuss ausdrucken",
-      "--- Sitzung ---",
-      "! Offene Fragen notieren",
-      "Beschlüsse direkt ins Protokoll übertragen",
-      "--- Nachbereitung ---",
-      "Aufgaben an Team verteilen",
+      "--- 1) Vor Start ---",
+      "!! Tagesordnung + Redebeiträge final prüfen",
+      "Mappen/Links für Sitzung und Team bereitstellen",
+      "--- 2) Während der Sitzung ---",
+      "! Offene Fragen + Zusagen live notieren",
+      "Beschlüsse inkl. Fristen protokollieren",
+      "--- 3) Direkt danach ---",
+      "Aufgaben an zuständige Personen verteilen",
+      "Follow-ups in Kalender/Taskliste eintragen",
+    ],
+  },
+  {
+    id: "committee-day",
+    name: "Ausschusstag",
+    lines: [
+      "--- 1) Vorbereitung ---",
+      "Einladung, Unterlagen und Stellungnahmen querlesen",
+      "!! Kritische Nachfragen + Kernbotschaften formulieren",
+      "--- 2) Termin ---",
+      "Fragen, Antworten und nächste Schritte mitschreiben",
+      "Stakeholder mit Bezug markieren",
+      "--- 3) Nachbereitung ---",
+      "Beschlusslage intern kurz zusammenfassen",
+      "Offene Punkte an Fachreferate übergeben",
+    ],
+  },
+  {
+    id: "district-day",
+    name: "Wahlkreis-/Bürgersprechstunden-Tag",
+    lines: [
+      "--- 1) Vorbereitung ---",
+      "Termine + Anfahrten gegenprüfen",
+      "Bürgeranliegen nach Dringlichkeit sortieren",
+      "--- 2) Vor Ort ---",
+      "! Zusagen realistisch und konkret festhalten",
+      "Rückruf-/Antwortfristen direkt notieren",
+      "--- 3) Nachbereitung ---",
+      "Anliegen in Aufgaben überführen",
+      "Status-Update für Team/Assistenz senden",
     ],
   },
   {
     id: "homeoffice-day",
     name: "Homeoffice-Tag",
     lines: [
-      "--- Fokusblöcke ---",
+      "--- 1) Fokusblöcke ---",
       "!! Wichtigste Aufgabe des Tages (MIT)",
       "! E-Mails nur um 11:00 und 16:00",
-      "--- Kommunikation ---",
+      "--- 2) Kommunikation ---",
       "Jour fixe vorbereiten",
       "Rückrufe und Nachrichten abarbeiten",
-      "--- Tagesabschluss ---",
+      "--- 3) Tagesabschluss ---",
       "Ergebnisse dokumentieren",
+      "Top-3 für morgen festlegen",
     ],
   },
 ];
@@ -535,17 +602,18 @@ export function GlobalDaySlipPanel() {
       return [];
     }
   });
-  const [dayTemplates] = useState<DayTemplate[]>(() => {
+  const [dayTemplates, setDayTemplates] = useState<DayTemplate[]>(() => {
     try {
       const raw = localStorage.getItem(DAY_TEMPLATE_STORAGE_KEY);
       if (!raw) return defaultDayTemplates;
-      const parsed = JSON.parse(raw) as DayTemplate[];
-      if (!Array.isArray(parsed) || parsed.length === 0) return defaultDayTemplates;
-      return parsed;
+      return normalizeDayTemplates(JSON.parse(raw));
     } catch {
       return defaultDayTemplates;
     }
   });
+  const [dayTemplateDraftName, setDayTemplateDraftName] = useState("");
+  const [dayTemplateDraftLines, setDayTemplateDraftLines] = useState("");
+  const [dayTemplateEditId, setDayTemplateEditId] = useState<string | null>(null);
   const [lineContextMenu, setLineContextMenu] = useState<{
     x: number;
     y: number;
@@ -592,6 +660,14 @@ export function GlobalDaySlipPanel() {
       console.warn("Recurring items localStorage write failed", error);
     }
   }, [recurringItems]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DAY_TEMPLATE_STORAGE_KEY, JSON.stringify(dayTemplates));
+    } catch (error) {
+      console.warn("Day templates localStorage write failed", error);
+    }
+  }, [dayTemplates]);
 
   // ── Global keyboard shortcut: Ctrl+Alt+J ────────────────────────────────
   useEffect(() => {
@@ -720,7 +796,7 @@ export function GlobalDaySlipPanel() {
   };
 
   const insertStructuredLines = useCallback((lines: string[]) => {
-    if (!editorRef.current) {
+    const appendLinesToStore = () => {
       setStore((prev) => {
         const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
         const existingLines = extractLinesFromHtml(day.html);
@@ -738,10 +814,17 @@ export function GlobalDaySlipPanel() {
           },
         };
       });
+    };
+
+    const editor = editorRef.current;
+    const editorMounted = Boolean(editor?.getRootElement());
+
+    if (!editorMounted) {
+      appendLinesToStore();
       return;
     }
 
-    editorRef.current.update(() => {
+    editor.update(() => {
       const root = $getRoot();
       lines.forEach((line) => {
         const parsed = parseRuleLine(line);
@@ -762,6 +845,56 @@ export function GlobalDaySlipPanel() {
   const applyDayTemplate = (template: DayTemplate) => {
     insertStructuredLines(template.lines);
     setShowSettings(false);
+  };
+
+  const startEditDayTemplate = (template: DayTemplate) => {
+    setDayTemplateEditId(template.id);
+    setDayTemplateDraftName(template.name);
+    setDayTemplateDraftLines(template.lines.join("\n"));
+  };
+
+  const resetTemplateDraft = () => {
+    setDayTemplateEditId(null);
+    setDayTemplateDraftName("");
+    setDayTemplateDraftLines("");
+  };
+
+  const saveDayTemplate = () => {
+    const name = dayTemplateDraftName.trim();
+    const lines = dayTemplateDraftLines
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (!name || lines.length === 0) return;
+
+    setDayTemplates((prev) => {
+      if (dayTemplateEditId) {
+        return prev.map((template) =>
+          template.id === dayTemplateEditId
+            ? {
+                ...template,
+                name,
+                lines,
+              }
+            : template,
+        );
+      }
+
+      return [...prev, { id: crypto.randomUUID(), name, lines }];
+    });
+
+    resetTemplateDraft();
+  };
+
+  const removeDayTemplate = (templateId: string) => {
+    setDayTemplates((prev) => {
+      const next = prev.filter((template) => template.id !== templateId);
+      return next.length > 0 ? next : defaultDayTemplates;
+    });
+    if (dayTemplateEditId === templateId) {
+      resetTemplateDraft();
+    }
   };
 
   const createFromLine = async (lineText: string, target: "note" | "task") => {
@@ -1122,6 +1255,26 @@ export function GlobalDaySlipPanel() {
     if (yesterdayCarryLines.length === 0) return;
     const linesToAppend = yesterdayCarryLines.map((line) => line.text);
     appendLinesToToday(linesToAppend);
+    const carriedLineIds = new Set(yesterdayCarryLines.map((line) => line.id));
+    setStore((prev) => {
+      const yesterdayData = prev[yesterdayKey];
+      if (!yesterdayData) return prev;
+
+      const existingStruck = yesterdayData.struckLineIds ?? yesterdayData.struckLines ?? [];
+      const struck = new Set(existingStruck);
+      carriedLineIds.forEach((lineId) => struck.add(lineId));
+
+      return {
+        ...prev,
+        [yesterdayKey]: {
+          ...yesterdayData,
+          struckLineIds: Array.from(struck),
+          resolved: (yesterdayData.resolved ?? []).filter(
+            (item) => !(item.target === "snoozed" && carriedLineIds.has(item.lineId)),
+          ),
+        },
+      };
+    });
     setCarriedOver(true);
   };
 
@@ -1426,7 +1579,7 @@ export function GlobalDaySlipPanel() {
                       key={day}
                       type="button"
                       onClick={() => setRecurringDraftWeekday(day)}
-                      className={`rounded border px-2 py-0.5 text-[11px] ${recurringDraftWeekday === day ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-100" : "border-border/60 hover:bg-muted"}`}
+                      className={`rounded border px-2 py-0.5 text-[11px] transition-colors ${recurringDraftWeekday === day ? "border-primary/60 bg-primary/15 text-primary" : "border-border/60 hover:bg-muted"}`}
                     >
                       {weekDayLabels[day]}
                     </button>
@@ -1493,15 +1646,65 @@ export function GlobalDaySlipPanel() {
                 <p className="text-xs text-muted-foreground">Fügt vordefinierte Blöcke inkl. HR-Trennlinien ein.</p>
                 <div className="space-y-1.5">
                   {dayTemplates.map((template) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      className="w-full rounded border border-border/60 px-2 py-1.5 text-left text-xs hover:bg-muted"
-                      onClick={() => applyDayTemplate(template)}
-                    >
-                      {template.name}
-                    </button>
+                    <div key={template.id} className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="flex-1 rounded border border-border/60 px-2 py-1.5 text-left text-xs hover:bg-muted"
+                        onClick={() => applyDayTemplate(template)}
+                      >
+                        {template.name}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded p-1 hover:bg-muted"
+                        onClick={() => startEditDayTemplate(template)}
+                        aria-label="Tagesvorlage bearbeiten"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded p-1 text-red-300 hover:bg-red-500/10"
+                        onClick={() => removeDayTemplate(template.id)}
+                        aria-label="Tagesvorlage löschen"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   ))}
+                </div>
+                <div className="space-y-2 border-t border-border/60 pt-2">
+                  <input
+                    value={dayTemplateDraftName}
+                    onChange={(e) => setDayTemplateDraftName(e.target.value)}
+                    placeholder="Vorlagenname"
+                    className="h-8 w-full rounded border border-border/60 bg-background px-2 text-xs"
+                  />
+                  <textarea
+                    value={dayTemplateDraftLines}
+                    onChange={(e) => setDayTemplateDraftLines(e.target.value)}
+                    placeholder={'Eine Zeile pro Punkt\n--- Überschrift mit Trenner ---'}
+                    className="min-h-[90px] w-full rounded border border-border/60 bg-background px-2 py-1.5 text-xs"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={saveDayTemplate}
+                      disabled={!dayTemplateDraftName.trim() || !dayTemplateDraftLines.trim()}
+                      className="rounded border border-border/60 px-2 py-1 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {dayTemplateEditId ? "Speichern" : "Neu anlegen"}
+                    </button>
+                    {dayTemplateEditId && (
+                      <button
+                        type="button"
+                        className="rounded border border-border/60 px-2 py-1 text-xs hover:bg-muted"
+                        onClick={resetTemplateDraft}
+                      >
+                        Abbrechen
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
