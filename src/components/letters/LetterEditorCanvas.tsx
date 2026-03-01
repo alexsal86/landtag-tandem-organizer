@@ -304,6 +304,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           color: '#000',
           fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
           position: 'relative',
+          zIndex: 25,
+          pointerEvents: 'auto',
           border: canEditAttachments && (isAttachmentOverlayHovered || isAttachmentOverlayOpen)
             ? '1.5px dashed rgba(59, 130, 246, 0.6)'
             : '1.5px dashed transparent',
@@ -707,7 +709,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               border: '1px dashed transparent',
               cursor: 'text',
               transition: 'border-color 0.15s',
-              zIndex: 20,
+              zIndex: 10,
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(59,130,246,0.3)';
