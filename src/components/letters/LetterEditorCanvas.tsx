@@ -151,9 +151,6 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const setZoom = onZoomChange ?? setInternalZoom;
 
 
-  const [isAttachmentOverlayHovered, setIsAttachmentOverlayHovered] = useState(false);
-  const [isAttachmentOverlayOpen, setIsAttachmentOverlayOpen] = useState(false);
-
   // ── layout ──
   const layout = layoutSettings || template?.layout_settings || {};
   const contentFontSizePt = toFontSizePt(
@@ -293,8 +290,6 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
       .map((a) => (typeof a === 'string' ? a : a.display_name || a.file_name || ''))
       .filter(Boolean);
     if (!list.length) return null;
-
-    const canEditAttachments = canEdit && !!onAttachmentNameChange && editableAttachmentList.length > 0;
 
     return (
       <div
@@ -639,33 +634,32 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             </EditableCanvasOverlay>
 
-            {editableAttachmentList.length > 0 && (
-              <EditableCanvasOverlay
-                top={layout.attachments?.top ?? 230}
-                left={MARGIN_L_MM}
-                width={CONTENT_W_MM}
-                height={Math.max(16, editableAttachmentList.length * 5 + 4)}
-                label="Anlagen"
-                canEdit={canEdit && !!onAttachmentNameChange}
-                zIndex={30}
-              >
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {editableAttachmentList.map((attachment) => (
-                    <div key={attachment.id} className="space-y-1">
-                      <Label className="text-xs">{attachment.file_name || 'Anlage'}</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        defaultValue={attachment.display_name || attachment.file_name || ''}
-                        onBlur={(event) => {
-                          onAttachmentNameChange?.(attachment.id, event.target.value.trim());
-                        }}
-                        placeholder="Anzeigename"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </EditableCanvasOverlay>
-            )}
+            <EditableCanvasOverlay
+              top={layout.attachments?.top ?? 230}
+              left={MARGIN_L_MM}
+              width={CONTENT_W_MM}
+              height={Math.max(18, editableAttachmentList.length * 5 + 6)}
+              label="Anlagen"
+              canEdit={canEdit && !!onAttachmentNameChange}
+            >
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {editableAttachmentList.length > 0 ? editableAttachmentList.map((attachment) => (
+                  <div key={attachment.id} className="space-y-1">
+                    <Label className="text-xs">{attachment.file_name || 'Anlage'}</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      defaultValue={attachment.display_name || attachment.file_name || ''}
+                      onBlur={(event) => {
+                        onAttachmentNameChange?.(attachment.id, event.target.value.trim());
+                      }}
+                      placeholder="Anzeigename"
+                    />
+                  </div>
+                )) : (
+                  <p className="text-xs text-muted-foreground">Keine Anlagen vorhanden.</p>
+                )}
+              </div>
+            </EditableCanvasOverlay>
 
             {salutation && (
               <EditableCanvasOverlay
