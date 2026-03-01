@@ -52,6 +52,7 @@ import { SuperadminTenantManagement } from "@/components/administration/Superadm
 import { GeoDataImport } from "@/components/administration/GeoDataImport";
 import { MyWorkSystemOverview } from "@/components/administration/MyWorkSystemOverview";
 import { DashboardHintSettings } from "@/components/administration/DashboardHintSettings";
+import { StakeholderNetworkTagSettings } from "@/components/administration/StakeholderNetworkTagSettings";
 import { PushNotificationTest } from "@/components/PushNotificationTest";
 import { VapidKeyTest } from "@/components/VapidKeyTest";
 import { DirectPushTest } from "@/components/DirectPushTest";
@@ -1113,6 +1114,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
               />
             </div>
           );
+        case "stakeholder-network-tags":
+          return <StakeholderNetworkTagSettings />;
         default:
           return <TopicSettings />;
       }
