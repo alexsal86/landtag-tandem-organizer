@@ -24,6 +24,42 @@ import { buildVariableMap, substituteVariables, substituteBlockLines, isLineMode
 import type { HeaderElement } from '@/components/canvas-engine/types';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
 
+
+const DEFAULT_LETTER_FONT_STACK = 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
+
+const findFontFamilyInLexicalNode = (node: any): string | null => {
+  if (!node || typeof node !== 'object') return null;
+
+  if (typeof node.style === 'string') {
+    const match = node.style.match(/font-family\s*:\s*([^;]+)/i);
+    if (match?.[1]) return match[1].trim();
+  }
+
+  if (Array.isArray(node.children)) {
+    for (const child of node.children) {
+      const childFont = findFontFamilyInLexicalNode(child);
+      if (childFont) return childFont;
+    }
+  }
+
+  return null;
+};
+
+const extractFontFamilyFromContentNodes = (contentNodes?: unknown): string | null => {
+  if (!contentNodes) return null;
+
+  let parsed: any = contentNodes;
+  if (typeof contentNodes === 'string') {
+    try {
+      parsed = JSON.parse(contentNodes);
+    } catch {
+      return null;
+    }
+  }
+
+  return findFontFamilyInLexicalNode(parsed?.root || parsed);
+};
+
 interface Letter {
   id: string;
   title: string;
@@ -69,6 +105,7 @@ interface LetterTemplate {
   is_active: boolean;
   default_sender_id?: string;
   default_info_blocks?: string[];
+  layout_settings?: any;
 }
 
 interface Contact {
@@ -1252,6 +1289,25 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     return { canvasBlocks, lineBlocks };
   }, [currentTemplate, editedLetter, senderInfos, contacts, informationBlocks, attachments]);
 
+  const templateDefaultFontFamily = React.useMemo(() => {
+    const layoutFontFamily = (currentTemplate as any)?.layout_settings?.content?.fontFamily;
+    if (typeof layoutFontFamily === 'string' && layoutFontFamily.trim() !== '') {
+      return layoutFontFamily.trim();
+    }
+
+    const draftNodesFontFamily = extractFontFamilyFromContentNodes(draftContentNodes);
+    if (draftNodesFontFamily) {
+      return draftNodesFontFamily;
+    }
+
+    const letterNodesFontFamily = extractFontFamilyFromContentNodes(letter?.content_nodes);
+    if (letterNodesFontFamily) {
+      return letterNodesFontFamily;
+    }
+
+    return DEFAULT_LETTER_FONT_STACK;
+  }, [currentTemplate, draftContentNodes, letter?.content_nodes]);
+
   // Compute salutation from template settings and variable map
   const computedSalutation = React.useMemo(() => {
     const salutationTemplate = (currentTemplate as any)?.layout_settings?.salutation?.template || 'Sehr geehrte Damen und Herren,';
@@ -1920,7 +1976,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             /* Split mode: text editor + letter canvas preview */
             <div className="flex-1 flex overflow-hidden">
               {showTextSplitEditor && (
-                <div className="w-[48%] min-w-[380px] border-r bg-background flex flex-col">
+                <div className="w-[52%] min-w-[420px] border-r bg-background flex flex-col">
                   <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-muted/20">
                     <div className="flex items-center gap-2">
                       <Edit3 className="h-4 w-4 text-muted-foreground" />
@@ -1957,6 +2013,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       editable={canEdit}
                       onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)}
                       defaultFontSize="11pt"
+                      defaultFontFamily={templateDefaultFontFamily}
+                      matchLetterPreview
                       isReviewMode={isReviewer && (currentStatus === 'pending_approval' || currentStatus === 'review')}
                       reviewerName={user?.id ? (userProfiles[user.id]?.display_name || user.email || '') : ''}
                       reviewerId={user?.id || ''}
