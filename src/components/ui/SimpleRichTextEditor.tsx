@@ -350,8 +350,8 @@ const Toolbar = () => {
           !speechSupported
             ? 'Spracherkennung in diesem Browser nicht unterstützt'
             : isListening
-              ? "Spracherkennung beenden. Beenden auch per Sprachkommando: 'Stopp'"
-              : "Spracherkennung starten. Beenden auch per Sprachkommando: 'Stopp'"
+              ? "Spracherkennung beenden. Beenden auch per Sprachkommando: ‘Stopp’"
+              : "Spracherkennung starten. Beenden auch per Sprachkommando: ‘Stopp’"
         }
         disabled={!speechSupported}
       >
