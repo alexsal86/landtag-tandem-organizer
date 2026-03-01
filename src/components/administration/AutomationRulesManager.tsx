@@ -113,6 +113,7 @@ const ACTION_TYPES = [
 ] as const;
 
 const STATUS_TABLE_OPTIONS = ["tasks", "decisions", "knowledge_documents", "casefiles"] as const;
+const TASK_PRIORITY_OPTIONS = ["low", "medium", "high", "urgent"] as const;
 
 const TRIGGER_TYPES = [
   { value: "record_changed", label: "Bei Datenänderung" },
@@ -159,6 +160,10 @@ const DEFAULT_FORM = {
   actionTargetUserId: "",
   actionTitle: "",
   actionMessage: "",
+  actionTaskPriority: "medium",
+  actionTaskCategory: "personal",
+  actionTaskDueDate: "",
+  actionTaskAssignees: "",
   actionTable: "tasks",
   actionRecordId: "",
   actionStatus: "",
@@ -183,6 +188,8 @@ export function AutomationRulesManager() {
   const fieldOptions = useMemo(() => FIELD_OPTIONS_BY_MODULE[form.module] ?? FIELD_OPTIONS_BY_MODULE.tasks, [form.module]);
   const isNotificationAction = form.actionType === "create_notification";
   const isStatusAction = form.actionType === "update_record_status";
+  const isCreateTaskAction = form.actionType === "create_task";
+  const [runStatusFilter, setRunStatusFilter] = useState<string>("all");
 
   const loadData = async () => {
     if (!currentTenant) return;
@@ -284,6 +291,10 @@ export function AutomationRulesManager() {
       actionTargetUserId: (action?.payload?.target_user_id as string) || "",
       actionTitle: (action?.payload?.title as string) || "",
       actionMessage: (action?.payload?.message as string) || "",
+      actionTaskPriority: (action?.payload?.priority as string) || "medium",
+      actionTaskCategory: (action?.payload?.category as string) || "personal",
+      actionTaskDueDate: (action?.payload?.due_date as string) || "",
+      actionTaskAssignees: (action?.payload?.assigned_to as string) || "",
       actionTable: (action?.payload?.table as string) || "tasks",
       actionRecordId: (action?.payload?.record_id as string) || "",
       actionStatus: (action?.payload?.status as string) || "",
@@ -310,6 +321,15 @@ export function AutomationRulesManager() {
       toast({
         title: "Fehlende Angaben",
         description: "Für Status-Updates werden Record-ID und Zielstatus benötigt.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (form.actionType === "create_task" && !form.actionTitle.trim()) {
+      toast({
+        title: "Fehlende Angaben",
+        description: "Für Aufgaben-Erstellung wird ein Titel benötigt.",
         variant: "destructive",
       });
       return;
@@ -342,6 +362,10 @@ export function AutomationRulesManager() {
             target_user_id: form.actionTargetUserId,
             title: form.actionTitle,
             message: form.actionMessage,
+            priority: form.actionTaskPriority,
+            category: form.actionTaskCategory,
+            due_date: form.actionTaskDueDate,
+            assigned_to: form.actionTaskAssignees,
             table: form.actionTable,
             record_id: form.actionRecordId,
             status: form.actionStatus,
@@ -630,6 +654,62 @@ export function AutomationRulesManager() {
             </div>
           ) : null}
 
+          {isCreateTaskAction ? (
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Aufgaben-Titel</Label>
+                <Input
+                  value={form.actionTitle}
+                  onChange={(e) => setForm((prev) => ({ ...prev, actionTitle: e.target.value }))}
+                  placeholder="Titel der zu erstellenden Aufgabe"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Priorität</Label>
+                <Select value={form.actionTaskPriority} onValueChange={(value) => setForm((prev) => ({ ...prev, actionTaskPriority: value }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TASK_PRIORITY_OPTIONS.map((priority) => (
+                      <SelectItem key={priority} value={priority}>{priority}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Kategorie</Label>
+                <Input
+                  value={form.actionTaskCategory}
+                  onChange={(e) => setForm((prev) => ({ ...prev, actionTaskCategory: e.target.value }))}
+                  placeholder="personal"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Beschreibung</Label>
+                <Input
+                  value={form.actionMessage}
+                  onChange={(e) => setForm((prev) => ({ ...prev, actionMessage: e.target.value }))}
+                  placeholder="Optional"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Fällig am (ISO/Datum)</Label>
+                <Input
+                  value={form.actionTaskDueDate}
+                  onChange={(e) => setForm((prev) => ({ ...prev, actionTaskDueDate: e.target.value }))}
+                  placeholder="2026-03-01"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Assigned_to</Label>
+                <Input
+                  value={form.actionTaskAssignees}
+                  onChange={(e) => setForm((prev) => ({ ...prev, actionTaskAssignees: e.target.value }))}
+                  placeholder="UUID, UUID"
+                />
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex items-center justify-between border rounded-md p-3">
             <div>
               <p className="text-sm font-medium">Regel aktiv</p>
@@ -703,13 +783,25 @@ export function AutomationRulesManager() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Run-Historie (inkl. Dry-Run)</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle>Run-Historie (inkl. Dry-Run)</CardTitle>
+            <Select value={runStatusFilter} onValueChange={setRunStatusFilter}>
+              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle</SelectItem>
+                <SelectItem value="success">Success</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="running">Running</SelectItem>
+                <SelectItem value="dry_run">Dry-Run</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          {runs.length === 0 ? (
+          {filteredRuns.length === 0 ? (
             <p className="text-sm text-muted-foreground">Noch keine Ausführungen protokolliert.</p>
           ) : (
-            runs.map((run) => (
+            filteredRuns.map((run) => (
               <div key={run.id} className="border rounded-md p-2 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
@@ -756,3 +848,8 @@ export function AutomationRulesManager() {
     </div>
   );
 }
+  const filteredRuns = useMemo(() => {
+    if (runStatusFilter === "all") return runs;
+    if (runStatusFilter === "dry_run") return runs.filter((run) => run.dry_run);
+    return runs.filter((run) => run.status === runStatusFilter && !run.dry_run);
+  }, [runs, runStatusFilter]);

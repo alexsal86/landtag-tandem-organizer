@@ -13,7 +13,7 @@ type Condition = {
 };
 
 type Action = {
-  type: "create_notification" | "update_record_status";
+  type: "create_notification" | "update_record_status" | "create_task";
   payload?: Record<string, unknown>;
 };
 
@@ -288,6 +288,48 @@ serve(async (req) => {
 
         if (updateError) {
           throw updateError;
+        }
+      }
+
+      if (action.type === "create_task") {
+        const payload = action.payload ?? {};
+        const title = String(payload.title ?? "").trim();
+        const description = String(payload.description ?? "").trim();
+        const priority = String(payload.priority ?? "medium");
+        const category = String(payload.category ?? "personal");
+        const dueDate = String(payload.due_date ?? "");
+        const assignedTo = String(payload.assigned_to ?? "").trim();
+
+        if (!title) {
+          await supabaseAdmin.from("automation_rule_run_steps").insert({
+            run_id: run.id,
+            tenant_id: rule.tenant_id,
+            step_order: stepOrder,
+            step_type: action.type,
+            status: "skipped",
+            input_payload: action,
+            result_payload: { reason: "missing_title" },
+          });
+          stepOrder += 1;
+          continue;
+        }
+
+        const taskInsert = {
+          title,
+          description: description || null,
+          priority,
+          category,
+          due_date: dueDate ? new Date(dueDate).toISOString() : null,
+          user_id: user?.id ?? null,
+          status: "todo",
+          tenant_id: rule.tenant_id,
+          assigned_to: assignedTo || null,
+        };
+
+        const { error: taskError } = await supabaseAdmin.from("tasks").insert(taskInsert);
+
+        if (taskError) {
+          throw taskError;
         }
       }
 
