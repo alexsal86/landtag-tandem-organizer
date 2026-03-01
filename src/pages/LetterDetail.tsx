@@ -35,7 +35,8 @@ interface LetterRecord {
 }
 
 const LetterDetail = () => {
-  const { letterId } = useParams<{ letterId: string }>();
+  const { letterId, subId } = useParams<{ letterId?: string; subId?: string }>();
+  const resolvedLetterId = letterId || subId;
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
@@ -44,13 +45,13 @@ const LetterDetail = () => {
   const [letter, setLetter] = useState<LetterRecord | null>(null);
 
   const fetchLetter = async () => {
-    if (!letterId || !currentTenant) return;
+    if (!resolvedLetterId || !currentTenant) return;
 
     setLoading(true);
     const { data } = await supabase
       .from('letters')
       .select('*')
-      .eq('id', letterId)
+      .eq('id', resolvedLetterId)
       .eq('tenant_id', currentTenant.id)
       .maybeSingle();
 
@@ -66,11 +67,11 @@ const LetterDetail = () => {
     }
 
     fetchLetter();
-  }, [letterId, currentTenant, user, authLoading, tenantLoading, navigate]);
+  }, [resolvedLetterId, currentTenant, user, authLoading, tenantLoading, navigate]);
 
   if (authLoading || tenantLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[320px]">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
@@ -78,7 +79,7 @@ const LetterDetail = () => {
 
   if (!letter) {
     return (
-      <div className="min-h-screen bg-gradient-subtle p-6">
+      <div className="p-6">
         <Card className="max-w-2xl mx-auto mt-12">
           <CardHeader>
             <CardTitle>Brief nicht gefunden</CardTitle>
@@ -97,14 +98,14 @@ const LetterDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 p-4 md:p-6">
+    <div className="p-4 md:p-6">
       <div className="max-w-[1800px] mx-auto space-y-4">
         <Button variant="outline" onClick={() => navigate('/documents?tab=letters')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Zurück zu Briefen
         </Button>
 
-        <div className="h-[calc(100vh-7rem)]">
+        <div className="h-[calc(100vh-12rem)] min-h-[600px]">
           <LetterEditor
             letter={letter as any}
             isOpen={true}
