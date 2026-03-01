@@ -59,6 +59,7 @@ import { de } from "date-fns/locale";
 import LetterEditor from "./LetterEditor";
 import { PressReleasesList } from "./press/PressReleasesList";
 import { PressReleaseEditor } from "./press/PressReleaseEditor";
+import { PressReleaseWizard, type PressWizardResult } from "./press/PressReleaseWizard";
 import LetterTemplateSelector from "./LetterTemplateSelector";
 import { LetterWizard } from "./letters/LetterWizard";
 import LetterPDFExport from "./LetterPDFExport";
@@ -170,7 +171,9 @@ export function DocumentsView() {
   const [showWizard, setShowWizard] = useState(false);
   const [activeTab, setActiveTab] = useState<'documents' | 'letters' | 'emails' | 'press'>(initialTab);
   const [showPressEditor, setShowPressEditor] = useState(false);
+  const [showPressWizard, setShowPressWizard] = useState(false);
   const [selectedPressReleaseId, setSelectedPressReleaseId] = useState<string | null>(null);
+  const [pressDraftConfig, setPressDraftConfig] = useState<PressWizardResult | null>(null);
   const [emailSubTab, setEmailSubTab] = useState<'compose' | 'history' | 'templates' | 'settings'>('compose');
   const [letterSubTab, setLetterSubTab] = useState<'active' | 'archived'>('active');
   const [autoArchiveDays, setAutoArchiveDays] = useState(30);
@@ -709,6 +712,20 @@ export function DocumentsView() {
 
   const handleEditLetter = (letter: Letter) => {
     navigate(`/letters/${letter.id}`);
+  };
+
+  const handleCreatePressRelease = () => {
+    setSelectedPressReleaseId(null);
+    setPressDraftConfig(null);
+    setShowPressWizard(true);
+    setShowPressEditor(false);
+  };
+
+  const handlePressWizardComplete = (config: PressWizardResult) => {
+    setPressDraftConfig(config);
+    setShowPressWizard(false);
+    setSelectedPressReleaseId(null);
+    setShowPressEditor(true);
   };
 
   const openTaskDialog = async (letter: Letter, mode: 'task' | 'subtask') => {
@@ -1546,7 +1563,7 @@ export function DocumentsView() {
                   E-Mails
                 </button>
                 <button
-                  onClick={() => { setActiveTab('press'); setShowPressEditor(false); setSelectedPressReleaseId(null); }}
+                  onClick={() => { setActiveTab('press'); setShowPressEditor(false); setShowPressWizard(false); setSelectedPressReleaseId(null); setPressDraftConfig(null); }}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === 'press'
                       ? 'border-primary text-primary'
@@ -1699,15 +1716,21 @@ export function DocumentsView() {
 
         {/* Content Grid */}
         {activeTab === 'press' ? (
-          showPressEditor ? (
+          showPressWizard ? (
+            <PressReleaseWizard
+              onComplete={handlePressWizardComplete}
+              onCancel={() => setShowPressWizard(false)}
+            />
+          ) : showPressEditor ? (
             <PressReleaseEditor
               pressReleaseId={selectedPressReleaseId}
-              onBack={() => { setShowPressEditor(false); setSelectedPressReleaseId(null); }}
+              initialDraft={selectedPressReleaseId ? null : pressDraftConfig}
+              onBack={() => { setShowPressEditor(false); setSelectedPressReleaseId(null); setPressDraftConfig(null); }}
             />
           ) : (
             <PressReleasesList
-              onCreateNew={() => { setSelectedPressReleaseId(null); setShowPressEditor(true); }}
-              onSelect={(id) => { setSelectedPressReleaseId(id); setShowPressEditor(true); }}
+              onCreateNew={handleCreatePressRelease}
+              onSelect={(id) => { setPressDraftConfig(null); setSelectedPressReleaseId(id); setShowPressEditor(true); setShowPressWizard(false); }}
             />
           )
         ) : loading && (activeTab === 'documents' ? documents.length === 0 : activeTab === 'letters' ? letters.length === 0 : false) ? (

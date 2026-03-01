@@ -32,6 +32,14 @@ const generateSlug = (title: string): string => {
 
 interface PressReleaseEditorProps {
   pressReleaseId?: string | null;
+  initialDraft?: {
+    title?: string;
+    excerpt?: string;
+    contentHtml?: string;
+    tags?: string;
+    templateName?: string;
+    occasionLabel?: string;
+  } | null;
   onBack: () => void;
 }
 
@@ -61,7 +69,7 @@ interface PressRelease {
   updated_at: string;
 }
 
-export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEditorProps) {
+export function PressReleaseEditor({ pressReleaseId, initialDraft, onBack }: PressReleaseEditorProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -86,6 +94,7 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
   const [metaDescription, setMetaDescription] = useState("");
   const [publisherName, setPublisherName] = useState<string | null>(null);
   const [emailSenderName, setEmailSenderName] = useState<string | null>(null);
+  const [wizardMeta, setWizardMeta] = useState<{ templateName?: string; occasionLabel?: string } | null>(null);
 
   // Dialog states
   const [showRevisionDialog, setShowRevisionDialog] = useState(false);
@@ -125,6 +134,16 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
         });
     }
   }, [pressReleaseId, currentTenant]);
+
+  useEffect(() => {
+    if (pressReleaseId || !initialDraft) return;
+
+    setTitle(initialDraft.title || '');
+    setExcerpt(initialDraft.excerpt || '');
+    setContentHtml(initialDraft.contentHtml || '');
+    if (initialDraft.tags) setTagsInput(initialDraft.tags);
+    setWizardMeta({ templateName: initialDraft.templateName, occasionLabel: initialDraft.occasionLabel });
+  }, [pressReleaseId, initialDraft]);
 
   const loadPressRelease = async (id: string) => {
     setLoading(true);
@@ -458,6 +477,14 @@ export function PressReleaseEditor({ pressReleaseId, onBack }: PressReleaseEdito
           {pressRelease && <PressReleaseStatusBadge status={status} />}
         </div>
       </div>
+
+      {!pressReleaseId && wizardMeta && (wizardMeta.templateName || wizardMeta.occasionLabel) && (
+        <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          {wizardMeta.occasionLabel ? `Anlass: ${wizardMeta.occasionLabel}` : ''}
+          {wizardMeta.occasionLabel && wizardMeta.templateName ? ' · ' : ''}
+          {wizardMeta.templateName ? `Vorlage: ${wizardMeta.templateName}` : ''}
+        </div>
+      )}
 
       {/* Revision Comment Banner */}
       {pressRelease?.revision_comment && (status === 'revision_requested' || status === 'draft') && (
