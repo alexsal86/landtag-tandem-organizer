@@ -61,7 +61,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { CommentPlugin } from './plugins/CommentPlugin';
 import { VersionHistoryPlugin } from './plugins/VersionHistoryPlugin';
 import FontSizePlugin from './plugins/FontSizePlugin';
 import FontFamilyPlugin from './plugins/FontFamilyPlugin';
@@ -76,12 +75,15 @@ interface EnhancedLexicalToolbarProps {
   documentId?: string;
   /** Default font size for the FontSizePlugin (e.g. "11pt") */
   defaultFontSize?: string;
+  /** Default font family for the FontFamilyPlugin */
+  defaultFontFamily?: string;
 }
 
 export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   showFloatingToolbar = false,
   documentId,
   defaultFontSize,
+  defaultFontFamily,
 }) => {
   const [editor] = useLexicalComposerContext();
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
@@ -261,7 +263,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
         </DropdownMenu>
 
         {/* Font controls */}
-        <FontFamilyPlugin />
+        <FontFamilyPlugin defaultFontFamily={defaultFontFamily} />
         <FontSizePlugin defaultFontSize={defaultFontSize} />
 
         <Separator orientation="vertical" className="h-6 mx-1" />
@@ -319,7 +321,6 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
 
         {/* Document features */}
         <div className="flex gap-0.5 items-center">
-          {documentId && <CommentPlugin documentId={documentId} />}
           {documentId && <VersionHistoryPlugin documentId={documentId} />}
         </div>
       </div>

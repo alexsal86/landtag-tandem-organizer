@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Layout } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Layout, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ContactSelector } from '@/components/ContactSelector';
 import { DIN5008LetterLayout } from './DIN5008LetterLayout';
 import { supabase } from '@/integrations/supabase/client';
@@ -291,12 +292,74 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     if (!list.length) return null;
 
     return (
-      <div style={{
-        marginTop: closingFormula ? '4.5mm' : '13.5mm',
-        fontSize: `${contentFontSizePt}pt`,
-        color: '#000',
-        fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
-      }}>
+      <div
+        style={{
+          marginTop: closingFormula ? '4.5mm' : '13.5mm',
+          fontSize: `${contentFontSizePt}pt`,
+          color: '#000',
+          fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
+          position: 'relative',
+          zIndex: 25,
+          pointerEvents: 'auto',
+          border: canEditAttachments && (isAttachmentOverlayHovered || isAttachmentOverlayOpen)
+            ? '1.5px dashed rgba(59, 130, 246, 0.6)'
+            : '1.5px dashed transparent',
+          background: canEditAttachments && (isAttachmentOverlayHovered || isAttachmentOverlayOpen)
+            ? 'rgba(59, 130, 246, 0.03)'
+            : 'transparent',
+          borderRadius: '6px',
+          padding: canEditAttachments ? '2mm' : 0,
+        }}
+        onMouseEnter={() => canEditAttachments && setIsAttachmentOverlayHovered(true)}
+        onMouseLeave={() => canEditAttachments && !isAttachmentOverlayOpen && setIsAttachmentOverlayHovered(false)}
+      >
+        {canEditAttachments && (isAttachmentOverlayHovered || isAttachmentOverlayOpen) && (
+          <Popover
+            open={isAttachmentOverlayOpen}
+            onOpenChange={(open) => {
+              setIsAttachmentOverlayOpen(open);
+              if (!open) setIsAttachmentOverlayHovered(false);
+            }}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                title="Anlagen bearbeiten"
+                style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  right: '-8px',
+                  width: '26px',
+                  height: '26px',
+                }}
+                className="rounded-full bg-green-600 text-white shadow-md flex items-center justify-center hover:bg-green-700 transition-colors z-30"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 z-50" side="right" align="start" sideOffset={8}>
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm">Anlagen</h4>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {editableAttachmentList.map((attachment) => (
+                    <div key={attachment.id} className="space-y-1">
+                      <Label className="text-xs">{attachment.file_name || 'Anlage'}</Label>
+                      <Input
+                        className="h-8 text-xs"
+                        defaultValue={attachment.display_name || attachment.file_name || ''}
+                        onBlur={(event) => {
+                          onAttachmentNameChange?.(attachment.id, event.target.value.trim());
+                        }}
+                        placeholder="Anzeigename"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
         <div style={{ fontWeight: 700 }}>Anlagen</div>
         {list.map((name, i) => (
           <div key={`${name}-${i}`} style={{ marginTop: '1mm', paddingLeft: '5mm' }}>
