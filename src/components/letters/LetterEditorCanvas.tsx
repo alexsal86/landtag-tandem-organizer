@@ -639,6 +639,33 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             </EditableCanvasOverlay>
 
+            <EditableCanvasOverlay
+              top={layout.attachments?.top ?? 230}
+              left={MARGIN_L_MM}
+              width={CONTENT_W_MM}
+              height={Math.max(18, editableAttachmentList.length * 5 + 6)}
+              label="Anlagen"
+              canEdit={canEdit && !!onAttachmentNameChange}
+            >
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {editableAttachmentList.length > 0 ? editableAttachmentList.map((attachment) => (
+                  <div key={attachment.id} className="space-y-1">
+                    <Label className="text-xs">{attachment.file_name || 'Anlage'}</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      defaultValue={attachment.display_name || attachment.file_name || ''}
+                      onBlur={(event) => {
+                        onAttachmentNameChange?.(attachment.id, event.target.value.trim());
+                      }}
+                      placeholder="Anzeigename"
+                    />
+                  </div>
+                )) : (
+                  <p className="text-xs text-muted-foreground">Keine Anlagen vorhanden.</p>
+                )}
+              </div>
+            </EditableCanvasOverlay>
+
             {salutation && (
               <EditableCanvasOverlay
                 top={subjectTopMm + subjectHeightMm + gapAfterSubjectMm}

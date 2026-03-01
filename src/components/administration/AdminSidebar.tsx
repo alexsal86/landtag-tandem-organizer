@@ -35,6 +35,7 @@ import {
   Mail,
   Layout,
   Newspaper,
+  Megaphone,
   Landmark,
   MapPin,
   CreditCard,
@@ -127,6 +128,8 @@ export const adminMenuItems: AdminMenuItem[] = [
     children: [
       { id: "letters", label: "Briefvorlagen", icon: Mail },
       { id: "occasions", label: "Brief-Anlässe", icon: File },
+      { id: "press-templates", label: "Pressevorlagen", icon: Newspaper },
+      { id: "press-occasions", label: "Presse-Anlässe", icon: Megaphone },
       { id: "meetings", label: "Meeting-Templates", icon: Users },
       { id: "plannings", label: "Planungs-Templates", icon: Layout },
       { id: "emails", label: "E-Mail-Vorlagen", icon: Newspaper },
@@ -156,6 +159,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "mapping", label: "Wahlkreis-Zuordnung", icon: Building2 },
       { id: "geo-import", label: "Geo-Datenimport", icon: Globe },
       { id: "mywork-overview", label: "Meine Arbeit Übersicht", icon: PanelTop },
+      { id: "dashboard-hints", label: "Dashboard-Hinweise", icon: PanelTop },
     ],
   },
 ];

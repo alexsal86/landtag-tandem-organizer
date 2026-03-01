@@ -9,17 +9,19 @@ import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getRoot, $insertNodes, FORMAT_TEXT_COMMAND, EditorState, LexicalEditor } from 'lexical';
+import { $getRoot, FORMAT_TEXT_COMMAND, EditorState, LexicalEditor, REDO_COMMAND, UNDO_COMMAND } from 'lexical';
 import { 
   INSERT_ORDERED_LIST_COMMAND, 
   INSERT_UNORDERED_LIST_COMMAND,
 } from '@lexical/list';
 import { $getSelection, $isRangeSelection } from 'lexical';
-import { Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
+import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
+import { detectSpeechCommand, formatDictatedText } from '@/lib/speechCommandUtils';
 
 interface SimpleRichTextEditorProps {
   initialContent?: string;
@@ -38,6 +40,11 @@ const Toolbar = () => {
   const [isBold, setIsBold] = React.useState(false);
   const [isItalic, setIsItalic] = React.useState(false);
   const [isUnderline, setIsUnderline] = React.useState(false);
+  const [speechState, setSpeechState] = React.useState<SpeechToTextState>('idle');
+  const [speechError, setSpeechError] = React.useState<SpeechToTextError | null>(null);
+  const [interimTranscript, setInterimTranscript] = React.useState('');
+
+  const speechAdapter = React.useMemo(() => new WebSpeechToTextAdapter(), []);
 
   const updateToolbar = useCallback(() => {
     const selection = $getSelection();
@@ -55,6 +62,64 @@ const Toolbar = () => {
       });
     });
   }, [editor, updateToolbar]);
+
+  React.useEffect(() => {
+    speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
+    speechAdapter.onError = (error) => setSpeechError(error);
+    speechAdapter.onInterimTranscript = (text) => setInterimTranscript(text);
+    speechAdapter.onFinalTranscript = (text) => {
+      const command = detectSpeechCommand(text);
+      if (command) {
+        switch (command.type) {
+          case 'stop-listening':
+            speechAdapter.stop();
+            return;
+          case 'toggle-format':
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
+            return;
+          case 'insert-list':
+            editor.dispatchCommand(
+              command.listType === 'unordered' ? INSERT_UNORDERED_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND,
+              undefined,
+            );
+            return;
+          case 'undo':
+            editor.dispatchCommand(UNDO_COMMAND, undefined);
+            return;
+          case 'redo':
+            editor.dispatchCommand(REDO_COMMAND, undefined);
+            return;
+          case 'insert-newline':
+            editor.update(() => {
+              const selection = $getSelection();
+              if ($isRangeSelection(selection)) {
+                selection.insertText('\n');
+              }
+            });
+            return;
+        }
+      }
+
+      const formattedText = formatDictatedText(text);
+      if (!formattedText) return;
+
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          const shouldAddTrailingSpace = !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+          selection.insertText(shouldAddTrailingSpace ? `${formattedText} ` : formattedText);
+        }
+      });
+    };
+
+    if (!speechAdapter.supported) {
+      setSpeechState('unsupported');
+    }
+
+    return () => {
+      speechAdapter.destroy();
+    };
+  }, [editor, speechAdapter]);
 
   const formatBold = () => {
     editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
@@ -74,6 +139,21 @@ const Toolbar = () => {
 
   const formatNumberedList = () => {
     editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+  };
+
+  const isListening = speechState === 'listening';
+  const speechSupported = speechAdapter.supported;
+
+  const toggleSpeechRecognition = () => {
+    if (!speechSupported) return;
+
+    if (isListening) {
+      speechAdapter.stop();
+      return;
+    }
+
+    setSpeechError(null);
+    speechAdapter.start();
   };
 
   return (
@@ -129,6 +209,34 @@ const Toolbar = () => {
       >
         <ListOrdered className="h-4 w-4" />
       </Button>
+      <div className="w-px h-5 bg-border mx-1" />
+      <Button
+        type="button"
+        variant={isListening ? 'default' : 'ghost'}
+        size="sm"
+        onClick={toggleSpeechRecognition}
+        className="h-8 w-8 p-0"
+        title={
+          !speechSupported
+            ? 'Spracherkennung in diesem Browser nicht unterstützt'
+            : isListening
+              ? 'Spracherkennung beenden'
+              : 'Spracherkennung starten'
+        }
+        disabled={!speechSupported}
+      >
+        <Mic className="h-4 w-4" />
+      </Button>
+      {speechError && (
+        <span className="text-xs text-destructive pl-1" title={speechError.code}>
+          {speechError.message}
+        </span>
+      )}
+      {isListening && interimTranscript && (
+        <span className="text-xs text-muted-foreground pl-1 italic" title="Live-Erkennung">
+          {interimTranscript}
+        </span>
+      )}
     </div>
   );
 };

@@ -46,9 +46,12 @@ import { AdminSidebar, adminMenuItems } from "@/components/administration/AdminS
 import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
 import { InformationBlockManager } from "@/components/administration/InformationBlockManager";
 import { LetterOccasionManager } from "@/components/administration/LetterOccasionManager";
+import { PressTemplateManager } from "@/components/administration/PressTemplateManager";
+import { PressOccasionManager } from "@/components/administration/PressOccasionManager";
 import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
 import { GeoDataImport } from "@/components/administration/GeoDataImport";
 import { MyWorkSystemOverview } from "@/components/administration/MyWorkSystemOverview";
+import { DashboardHintSettings } from "@/components/administration/DashboardHintSettings";
 import { PushNotificationTest } from "@/components/PushNotificationTest";
 import { VapidKeyTest } from "@/components/VapidKeyTest";
 import { DirectPushTest } from "@/components/DirectPushTest";
@@ -1130,6 +1133,22 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
             <Card>
               <CardContent className="pt-6">
                 <LetterOccasionManager />
+              </CardContent>
+            </Card>
+          );
+        case "press-templates":
+          return (
+            <Card>
+              <CardContent className="pt-6">
+                <PressTemplateManager />
+              </CardContent>
+            </Card>
+          );
+        case "press-occasions":
+          return (
+            <Card>
+              <CardContent className="pt-6">
+                <PressOccasionManager />
               </CardContent>
             </Card>
           );
@@ -2230,6 +2249,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
           return <GeoDataImport />;
         case "mywork-overview":
           return <MyWorkSystemOverview />;
+        case "dashboard-hints":
+          return <DashboardHintSettings />;
         default:
           return null;
       }

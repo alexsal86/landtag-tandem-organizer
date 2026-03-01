@@ -17,7 +17,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Type, ChevronDown } from 'lucide-react';
 
+const DEFAULT_FONT_FAMILY = 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
+
 const FONT_FAMILY_OPTIONS = [
+  { label: 'Calibri', value: DEFAULT_FONT_FAMILY },
   { label: 'Arial', value: 'Arial, sans-serif' },
   { label: 'Times New Roman', value: 'Times New Roman, serif' },
   { label: 'Helvetica', value: 'Helvetica, sans-serif' },
@@ -38,11 +41,12 @@ const FONT_FAMILY_OPTIONS = [
 
 interface FontFamilyPluginProps {
   disabled?: boolean;
+  defaultFontFamily?: string;
 }
 
-export function FontFamilyPlugin({ disabled = false }: FontFamilyPluginProps) {
+export function FontFamilyPlugin({ disabled = false, defaultFontFamily = DEFAULT_FONT_FAMILY }: FontFamilyPluginProps) {
   const [editor] = useLexicalComposerContext();
-  const [fontFamily, setFontFamily] = useState<string>('Arial, sans-serif');
+  const [fontFamily, setFontFamily] = useState<string>(defaultFontFamily);
 
   const updateFontFamilyInSelection = useCallback((newFontFamily: string) => {
     editor.update(() => {
@@ -60,9 +64,9 @@ export function FontFamilyPlugin({ disabled = false }: FontFamilyPluginProps) {
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
         const nodes = selection.getNodes();
-        
+
         if (nodes.length === 0) {
-          setFontFamily('Arial, sans-serif');
+          setFontFamily(defaultFontFamily);
           return;
         }
 
@@ -72,16 +76,16 @@ export function FontFamilyPlugin({ disabled = false }: FontFamilyPluginProps) {
           const style = firstNode.getStyle();
           const fontFamilyMatch = style.match(/font-family:\s*([^;]+)/);
           if (fontFamilyMatch) {
-            setFontFamily(fontFamilyMatch[1].trim().replace(/['"]/g, ''));
+            setFontFamily(fontFamilyMatch[1].trim().replace(/["']/g, ''));
           } else {
-            setFontFamily('Arial, sans-serif');
+            setFontFamily(defaultFontFamily);
           }
         } else {
-          setFontFamily('Arial, sans-serif');
+          setFontFamily(defaultFontFamily);
         }
       }
     });
-  }, [editor]);
+  }, [editor, defaultFontFamily]);
 
   useEffect(() => {
     return editor.registerCommand(
@@ -94,13 +98,17 @@ export function FontFamilyPlugin({ disabled = false }: FontFamilyPluginProps) {
     );
   }, [editor, updateFontFamily]);
 
+  useEffect(() => {
+    setFontFamily(defaultFontFamily);
+  }, [defaultFontFamily]);
+
   const handleFontFamilyChange = useCallback((newFontFamily: string) => {
     setFontFamily(newFontFamily);
     updateFontFamilyInSelection(newFontFamily);
   }, [updateFontFamilyInSelection]);
 
   const getCurrentFontLabel = () => {
-    const option = FONT_FAMILY_OPTIONS.find(opt => 
+    const option = FONT_FAMILY_OPTIONS.find(opt =>
       opt.value.toLowerCase().includes(fontFamily.toLowerCase().split(',')[0])
     );
     return option ? option.label : fontFamily.split(',')[0];

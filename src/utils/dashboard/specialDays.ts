@@ -7,7 +7,7 @@ export interface SpecialDay {
   hint: string;
 }
 
-const SPECIAL_DAYS: SpecialDay[] = [
+export const DEFAULT_SPECIAL_DAYS: SpecialDay[] = [
   { month: 1, day: 27, name: 'Tag des Gedenkens an die Opfer des Nationalsozialismus', hint: 'Ein Moment für Erinnerung, Verantwortung und demokratisches Miteinander.' },
   { month: 3, day: 8, name: 'Internationaler Frauentag', hint: 'Ein guter Anlass, Gleichstellung und Teilhabe aktiv mitzudenken.' },
   { month: 5, day: 8, name: 'Tag der Befreiung', hint: 'Ein Tag der historischen Verantwortung und des Einsatzes für Freiheit.' },
@@ -24,18 +24,59 @@ const normalizeDate = (date: Date): Date => {
   return normalized;
 };
 
-export const getSpecialDayHint = (baseDate: Date = new Date()): string | null => {
+export const isValidSpecialDayDate = (month: number, day: number): boolean => {
+  if (!Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (month < 1 || month > 12 || day < 1) return false;
+
+  const lastDayOfMonth = new Date(2024, month, 0).getDate();
+  return day <= lastDayOfMonth;
+};
+
+export const parseSpecialDaysSetting = (value: string | null | undefined): SpecialDay[] | null => {
+  if (!value) return null;
+
+  try {
+    const parsedValue = JSON.parse(value);
+    if (!Array.isArray(parsedValue)) {
+      return null;
+    }
+
+    const validDays = parsedValue.filter((entry): entry is SpecialDay => {
+      if (!entry || typeof entry !== 'object') return false;
+
+      const month = Number((entry as { month?: unknown }).month);
+      const day = Number((entry as { day?: unknown }).day);
+      const name = (entry as { name?: unknown }).name;
+      const hint = (entry as { hint?: unknown }).hint;
+
+      return isValidSpecialDayDate(month, day)
+        && typeof name === 'string'
+        && name.trim().length > 0
+        && typeof hint === 'string'
+        && hint.trim().length > 0;
+    });
+
+    return validDays.length > 0 ? validDays : null;
+  } catch {
+    return null;
+  }
+};
+
+export const getSpecialDayHint = (
+  baseDate: Date = new Date(),
+  specialDays: SpecialDay[] = DEFAULT_SPECIAL_DAYS
+): string | null => {
   const month = baseDate.getMonth() + 1;
   const day = baseDate.getDate();
 
-  const today = SPECIAL_DAYS.find((specialDay) => specialDay.month === month && specialDay.day === day);
+  const today = specialDays.find((specialDay) => specialDay.month === month && specialDay.day === day);
   if (today) {
     return `🕯️ **Heute ist ${today.name}.** ${today.hint}`;
   }
 
   const normalizedBaseDate = normalizeDate(baseDate);
 
-  const upcoming = SPECIAL_DAYS
+  const upcoming = specialDays
     .map((specialDay) => {
       const targetDate = new Date(baseDate.getFullYear(), specialDay.month - 1, specialDay.day);
       const normalizedTargetDate = normalizeDate(targetDate);

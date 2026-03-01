@@ -22,6 +22,7 @@ const GuestResponse = lazy(() => import("./pages/GuestResponse"));
 const EventRSVP = lazy(() => import("./pages/EventRSVP"));
 const AppointmentPreparationDetail = lazy(() => import("./pages/AppointmentPreparationDetail"));
 const EmployeeMeetingDetail = lazy(() => import("./pages/EmployeeMeetingDetail"));
+const LetterDetail = lazy(() => import("./pages/LetterDetail"));
 const TaskArchiveView = lazy(() =>
   import("./components/TaskArchiveView").then((module) => ({ default: module.TaskArchiveView })),
 );
@@ -120,6 +121,7 @@ const AppContent = () => {
               {/* notifications is now handled by /:section in Index */}
               {/* editor-test route removed */}
               <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
+              <Route path="/letters/:letterId" element={<LetterDetail />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="/:section/:subId" element={<Index />} />
               <Route path="/:section" element={<Index />} />
