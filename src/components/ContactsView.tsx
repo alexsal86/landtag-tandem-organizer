@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, ChevronRight, Star, Tag, Merge, CheckSquare, Square, FileText } from "lucide-react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, ChevronRight, Star, Tag, Merge, CheckSquare, Square, FileText, Network } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
 import { ContactDocumentsList } from "./contacts/ContactDocumentsList";
 import { ContactDocumentRows } from "./contacts/ContactDocumentRows";
 import { useContactDocuments } from "@/hooks/useContactDocuments";
+import { StakeholderNetworkPage } from "@/components/contacts/StakeholderNetworkPage";
 
 interface DistributionList {
   id: string;
@@ -65,7 +66,7 @@ export function ContactsView() {
   const [distributionViewMode, setDistributionViewMode] = useState<"grid" | "list">(() => {
     return localStorage.getItem('distribution-view-mode') as "grid" | "list" || "grid";
   });
-  const [activeTab, setActiveTab] = useState<"contacts" | "stakeholders" | "distribution-lists" | "archive">("contacts");
+  const [activeTab, setActiveTab] = useState<"contacts" | "stakeholders" | "stakeholder-network" | "distribution-lists" | "archive">("contacts");
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -83,11 +84,25 @@ export function ContactsView() {
   const [creatingDistribution, setCreatingDistribution] = useState(false);
   
   const navigate = useNavigate();
+  const { subId } = useParams();
   const { user } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
 
   // Note: create-contact action is handled globally by GlobalQuickActionHandler
+
+  useEffect(() => {
+    if (subId === "netzwerk") {
+      setActiveTab("stakeholder-network");
+      return;
+    }
+
+    if (subId === "stakeholder") {
+      setActiveTab("stakeholders");
+      return;
+    }
+
+  }, [subId]);
 
   // Get accurate counts for tab badges - MUST be before early returns
   const { contactsCount, stakeholdersCount, archiveCount, distributionListsCount } = useCounts();
@@ -467,7 +482,7 @@ export function ContactsView() {
               <Merge className="h-4 w-4" />
               Duplikate prüfen
             </Button>
-            <Button variant="outline" className="gap-2" onClick={() => { setActiveTab("distribution-lists"); setCreatingDistribution(true); }}>
+            <Button variant="outline" className="gap-2" onClick={() => { setActiveTab("distribution-lists"); setCreatingDistribution(true); navigate("/contacts"); }}>
               <Users className="h-4 w-4" />
               Neuer Verteiler
             </Button>
@@ -479,7 +494,7 @@ export function ContactsView() {
           <Button
             variant={activeTab === "contacts" ? "default" : "outline"}
             size="sm"
-            onClick={() => setActiveTab("contacts")}
+            onClick={() => { setActiveTab("contacts"); navigate("/contacts"); }}
             className="gap-2"
           >
             <User className="h-4 w-4" />
@@ -488,16 +503,25 @@ export function ContactsView() {
           <Button
             variant={activeTab === "stakeholders" ? "default" : "outline"}
             size="sm"
-            onClick={() => setActiveTab("stakeholders")}
+            onClick={() => navigate("/contacts/stakeholder")}
             className="gap-2"
           >
             <Building className="h-4 w-4" />
             Stakeholder ({stakeholdersCount})
           </Button>
           <Button
+            variant={activeTab === "stakeholder-network" ? "default" : "outline"}
+            size="sm"
+            onClick={() => navigate("/contacts/netzwerk")}
+            className="gap-2"
+          >
+            <Network className="h-4 w-4" />
+            Netzwerk
+          </Button>
+          <Button
             variant={activeTab === "distribution-lists" ? "default" : "outline"}
             size="sm"
-            onClick={() => setActiveTab("distribution-lists")}
+            onClick={() => { setActiveTab("distribution-lists"); navigate("/contacts"); }}
             className="gap-2"
           >
             <Users className="h-4 w-4" />
@@ -506,7 +530,7 @@ export function ContactsView() {
           <Button
             variant={activeTab === "archive" ? "default" : "outline"}
             size="sm"
-            onClick={() => setActiveTab("archive")}
+            onClick={() => { setActiveTab("archive"); navigate("/contacts"); }}
             className="gap-2"
           >
             <Archive className="h-4 w-4" />
@@ -515,6 +539,7 @@ export function ContactsView() {
         </div>
 
         {/* Search and Filter */}
+        {activeTab !== "stakeholder-network" && (
         <div className="flex gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -630,6 +655,7 @@ export function ContactsView() {
             )}
           </div>
         </div>
+        )}
 
         {/* Type Filter - Only show for contacts tab and when filters are open */}
         {activeTab === "contacts" && showFilters && (
@@ -1130,6 +1156,8 @@ export function ContactsView() {
             />
           )}
         </div>
+      ) : activeTab === "stakeholder-network" ? (
+        <StakeholderNetworkPage />
       ) : activeTab === "archive" ? (
         // Archive Display
         <div className="space-y-6">

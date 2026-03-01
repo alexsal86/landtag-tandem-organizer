@@ -8,13 +8,21 @@ export interface SpecialDay {
 }
 
 export const DEFAULT_SPECIAL_DAYS: SpecialDay[] = [
+  { month: 1, day: 11, name: 'Tag des Energiesparens', hint: 'Ein guter Zeitpunkt, um Energieeffizienz und Klimaschutz im Alltag sichtbar zu machen.' },
   { month: 1, day: 27, name: 'Tag des Gedenkens an die Opfer des Nationalsozialismus', hint: 'Ein Moment für Erinnerung, Verantwortung und demokratisches Miteinander.' },
   { month: 3, day: 8, name: 'Internationaler Frauentag', hint: 'Ein guter Anlass, Gleichstellung und Teilhabe aktiv mitzudenken.' },
+  { month: 3, day: 21, name: 'Internationaler Tag gegen Rassismus', hint: 'Setze heute ein sichtbares Zeichen für Vielfalt, Respekt und Zusammenhalt.' },
+  { month: 4, day: 22, name: 'Tag der Erde', hint: 'Nutze den Tag, um Klima- und Naturschutzthemen im Team und in Terminen zu platzieren.' },
   { month: 5, day: 8, name: 'Tag der Befreiung', hint: 'Ein Tag der historischen Verantwortung und des Einsatzes für Freiheit.' },
+  { month: 5, day: 9, name: 'Europatag', hint: 'Ein guter Anlass, europäische Zusammenarbeit und demokratische Werte zu betonen.' },
   { month: 5, day: 23, name: 'Tag des Grundgesetzes', hint: 'Ein guter Moment, den Wert unserer Verfassung sichtbar zu machen.' },
+  { month: 6, day: 5, name: 'Weltumwelttag', hint: 'Plane Gespräche rund um Umwelt- und Ressourcenschutz mit klaren nächsten Schritten.' },
   { month: 9, day: 1, name: 'Antikriegstag', hint: 'Ein Impuls für Frieden, Verständigung und demokratische Konfliktlösung.' },
+  { month: 9, day: 20, name: 'Weltkindertag', hint: 'Ein Impuls, Kinderrechte, Bildungsgerechtigkeit und Teilhabe stärker mitzudenken.' },
   { month: 10, day: 3, name: 'Tag der Deutschen Einheit', hint: 'Gemeinschaft, Zusammenhalt und demokratische Werte stehen im Mittelpunkt.' },
+  { month: 10, day: 11, name: 'Internationaler Coming-out-Tag', hint: 'Ein guter Moment, Sichtbarkeit, Vielfalt und gleiche Rechte aktiv zu unterstützen.' },
   { month: 11, day: 9, name: 'Schicksalstag 9. November', hint: 'Ein historischer Tag mit Mahnung und Hoffnung zugleich.' },
+  { month: 12, day: 5, name: 'Tag des Ehrenamts', hint: 'Bedanke dich bei Engagierten und mache zivilgesellschaftliche Arbeit im Kalender sichtbar.' },
   { month: 12, day: 10, name: 'Tag der Menschenrechte', hint: 'Ein guter Anlass, die Bedeutung von Grund- und Menschenrechten zu betonen.' }
 ];
 
