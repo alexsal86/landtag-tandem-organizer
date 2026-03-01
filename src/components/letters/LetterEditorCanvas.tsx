@@ -150,8 +150,6 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const zoom = externalZoom ?? internalZoom;
   const setZoom = onZoomChange ?? setInternalZoom;
 
-  // ── attachment overlay state ──
-  const canEditAttachments = canEdit && !!onAttachmentNameChange;
   const [isAttachmentOverlayHovered, setIsAttachmentOverlayHovered] = useState(false);
   const [isAttachmentOverlayOpen, setIsAttachmentOverlayOpen] = useState(false);
 
@@ -295,6 +293,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
       .map((a) => (typeof a === 'string' ? a : a.display_name || a.file_name || ''))
       .filter(Boolean);
     if (!list.length) return null;
+
+    const canEditAttachments = canEdit && !!onAttachmentNameChange && editableAttachmentList.length > 0;
 
     return (
       <div
