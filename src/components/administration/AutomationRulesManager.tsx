@@ -112,6 +112,8 @@ const ACTION_TYPES = [
   { value: "send_push_notification", label: "Push senden" },
 ] as const;
 
+const STATUS_TABLE_OPTIONS = ["tasks", "decisions", "knowledge_documents", "casefiles"] as const;
+
 const TRIGGER_TYPES = [
   { value: "record_changed", label: "Bei Datenänderung" },
   { value: "schedule", label: "Zeitgesteuert" },
@@ -179,6 +181,8 @@ export function AutomationRulesManager() {
   const [form, setForm] = useState(DEFAULT_FORM);
 
   const fieldOptions = useMemo(() => FIELD_OPTIONS_BY_MODULE[form.module] ?? FIELD_OPTIONS_BY_MODULE.tasks, [form.module]);
+  const isNotificationAction = form.actionType === "create_notification";
+  const isStatusAction = form.actionType === "update_record_status";
 
   const loadData = async () => {
     if (!currentTenant) return;
@@ -557,25 +561,33 @@ export function AutomationRulesManager() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Ziel-User-ID</Label>
-              <Input
-                value={form.actionTargetUserId}
-                onChange={(e) => setForm((prev) => ({ ...prev, actionTargetUserId: e.target.value }))}
-                placeholder="UUID der Empfänger:in"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Titel</Label>
-              <Input
-                value={form.actionTitle}
-                onChange={(e) => setForm((prev) => ({ ...prev, actionTitle: e.target.value }))}
-                placeholder="Optionaler Notification-Titel"
-              />
-            </div>
+            {isNotificationAction ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Ziel-User-ID</Label>
+                  <Input
+                    value={form.actionTargetUserId}
+                    onChange={(e) => setForm((prev) => ({ ...prev, actionTargetUserId: e.target.value }))}
+                    placeholder="UUID der Empfänger:in"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Titel</Label>
+                  <Input
+                    value={form.actionTitle}
+                    onChange={(e) => setForm((prev) => ({ ...prev, actionTitle: e.target.value }))}
+                    placeholder="Optionaler Notification-Titel"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="md:col-span-2 rounded border border-dashed p-3 text-xs text-muted-foreground flex items-center">
+                Für diese Aktion werden unten Tabellen-/Statusfelder verwendet.
+              </div>
+            )}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          {isNotificationAction ? (
             <div className="space-y-2">
               <Label>Nachricht</Label>
               <Input
@@ -584,26 +596,31 @@ export function AutomationRulesManager() {
                 placeholder="Optional"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Tabelle (nur Status-Update)</Label>
-              <Select value={form.actionTable} onValueChange={(value) => setForm((prev) => ({ ...prev, actionTable: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tasks">tasks</SelectItem>
-                  <SelectItem value="decisions">decisions</SelectItem>
-                  <SelectItem value="knowledge_documents">knowledge_documents</SelectItem>
-                  <SelectItem value="casefiles">casefiles</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Record-ID / Zielstatus</Label>
-              <div className="grid grid-cols-2 gap-2">
+          ) : null}
+
+          {isStatusAction ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Tabelle</Label>
+                <Select value={form.actionTable} onValueChange={(value) => setForm((prev) => ({ ...prev, actionTable: value }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {STATUS_TABLE_OPTIONS.map((tableName) => (
+                      <SelectItem key={tableName} value={tableName}>{tableName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Record-ID</Label>
                 <Input
                   value={form.actionRecordId}
                   onChange={(e) => setForm((prev) => ({ ...prev, actionRecordId: e.target.value }))}
                   placeholder="record_id"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Zielstatus</Label>
                 <Input
                   value={form.actionStatus}
                   onChange={(e) => setForm((prev) => ({ ...prev, actionStatus: e.target.value }))}
@@ -611,7 +628,7 @@ export function AutomationRulesManager() {
                 />
               </div>
             </div>
-          </div>
+          ) : null}
 
           <div className="flex items-center justify-between border rounded-md p-3">
             <div>
@@ -713,9 +730,19 @@ export function AutomationRulesManager() {
                       <p className="text-xs text-muted-foreground">Keine Step-Logs vorhanden.</p>
                     ) : (
                       (runStepsByRunId[run.id] || []).map((step) => (
-                        <div key={step.id} className="text-xs flex items-center justify-between border-b last:border-b-0 py-1">
-                          <span>#{step.step_order} · {step.step_type}</span>
-                          <span className={step.status === "failed" ? "text-destructive" : "text-muted-foreground"}>{step.status}</span>
+                        <div key={step.id} className="text-xs border-b last:border-b-0 py-1 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span>#{step.step_order} · {step.step_type}</span>
+                            <span className={step.status === "failed" ? "text-destructive" : "text-muted-foreground"}>{step.status}</span>
+                          </div>
+                          {step.error_message ? (
+                            <p className="text-destructive">Fehler: {step.error_message}</p>
+                          ) : null}
+                          {step.result_payload ? (
+                            <pre className="bg-background rounded p-2 overflow-x-auto text-[11px] whitespace-pre-wrap">
+                              {JSON.stringify(step.result_payload, null, 2)}
+                            </pre>
+                          ) : null}
                         </div>
                       ))
                     )}

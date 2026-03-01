@@ -45,7 +45,7 @@ import {
   Bell,
   Globe,
   PanelTop,
-  Network,
+  WandSparkles,
 } from "lucide-react";
 
 export interface AdminMenuItem {
