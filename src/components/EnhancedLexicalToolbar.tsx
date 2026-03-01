@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $isTextNode, TextNode } from 'lexical';
+import { $getRoot, $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $isTextNode, TextNode } from 'lexical';
 import {
   $createHeadingNode,
   $createQuoteNode,
@@ -15,6 +15,9 @@ import {
   REDO_COMMAND,
   TextFormatType,
   ElementFormatType,
+  $createRangeSelection,
+  $getNodeByKey,
+  $setSelection,
   $insertNodes,
 } from 'lexical';
 import {
@@ -93,8 +96,36 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   const [speechState, setSpeechState] = useState<SpeechToTextState>('idle');
   const [speechError, setSpeechError] = useState<SpeechToTextError | null>(null);
   const [interimTranscript, setInterimTranscript] = useState('');
+  const lastRangeSelectionRef = React.useRef<{
+    anchor: { key: string; offset: number; type: 'text' | 'element' };
+    focus: { key: string; offset: number; type: 'text' | 'element' };
+  } | null>(null);
 
   const speechAdapter = useMemo(() => new WebSpeechToTextAdapter(), []);
+
+  const restoreLastRangeSelection = useCallback(() => {
+    const previousSelection = lastRangeSelectionRef.current;
+    if (!previousSelection) return false;
+
+    if (!$getNodeByKey(previousSelection.anchor.key) || !$getNodeByKey(previousSelection.focus.key)) {
+      return false;
+    }
+
+    const restoredSelection = $createRangeSelection();
+    restoredSelection.anchor.set(
+      previousSelection.anchor.key,
+      previousSelection.anchor.offset,
+      previousSelection.anchor.type,
+    );
+    restoredSelection.focus.set(
+      previousSelection.focus.key,
+      previousSelection.focus.offset,
+      previousSelection.focus.type,
+    );
+    $setSelection(restoredSelection);
+
+    return $isRangeSelection($getSelection());
+  }, []);
 
   useEffect(() => {
     speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
@@ -137,7 +168,19 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
       if (!formattedText) return;
 
       editor.update(() => {
-        const selection = $getSelection();
+        let selection = $getSelection();
+        if (!$isRangeSelection(selection) && restoreLastRangeSelection()) {
+          selection = $getSelection();
+        }
+
+        if ($isRangeSelection(selection)) {
+          const shouldAddTrailingSpace = !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+          selection.insertText(shouldAddTrailingSpace ? `${formattedText} ` : formattedText);
+          return;
+        }
+
+        $getRoot().selectEnd();
+        selection = $getSelection();
         if ($isRangeSelection(selection)) {
           const shouldAddTrailingSpace = !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
           selection.insertText(shouldAddTrailingSpace ? `${formattedText} ` : formattedText);
@@ -161,6 +204,18 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
         const selection = $getSelection();
         const formats: string[] = [];
         if ($isRangeSelection(selection)) {
+          lastRangeSelectionRef.current = {
+            anchor: {
+              key: selection.anchor.key,
+              offset: selection.anchor.offset,
+              type: selection.anchor.type,
+            },
+            focus: {
+              key: selection.focus.key,
+              offset: selection.focus.offset,
+              type: selection.focus.type,
+            },
+          };
           if (selection.hasFormat('bold')) formats.push('bold');
           if (selection.hasFormat('italic')) formats.push('italic');
           if (selection.hasFormat('underline')) formats.push('underline');
@@ -296,7 +351,8 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
 
     setSpeechError(null);
     speechAdapter.start();
-  }, [isListening, speechAdapter, speechSupported]);
+    editor.focus();
+  }, [editor, isListening, speechAdapter, speechSupported]);
 
   if (showFloatingToolbar) {
     return (
@@ -396,6 +452,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           variant={isListening ? 'default' : 'ghost'}
           size="sm"
           onClick={toggleSpeechRecognition}
+          onMouseDown={(e) => e.preventDefault()}
           className="h-8 w-8 p-0"
           title={
             !speechSupported
