@@ -7,18 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
+import { parsePressTemplates, type PressTemplateConfig } from '@/components/press/pressTemplateConfig';
 
-interface PressTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  default_title?: string;
-  default_excerpt?: string;
-  default_content_html?: string;
-  default_tags?: string;
-  is_default?: boolean;
-  is_active?: boolean;
-}
+type PressTemplate = PressTemplateConfig;
 
 interface PressOccasion {
   id: string;
@@ -89,9 +80,7 @@ export function PressReleaseWizard({ onComplete, onCancel }: PressReleaseWizardP
     let loadedOccasions: PressOccasion[] = [];
 
     for (const setting of data || []) {
-      if (setting.setting_key === 'press_templates_v1' && setting.setting_value) {
-        try { loadedTemplates = JSON.parse(setting.setting_value); } catch { loadedTemplates = []; }
-      }
+      if (setting.setting_key === 'press_templates_v1') loadedTemplates = parsePressTemplates(setting.setting_value);
       if (setting.setting_key === 'press_occasions_v1' && setting.setting_value) {
         try { loadedOccasions = JSON.parse(setting.setting_value); } catch { loadedOccasions = []; }
       }
