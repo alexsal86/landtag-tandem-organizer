@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Save, Trash2, X, Sparkles } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Plus, Edit, Save, Trash2, X, Sparkles, Eye, LayoutTemplate, FileCode2, Type } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,26 +8,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
+import EnhancedLexicalEditor from '@/components/EnhancedLexicalEditor';
+import { loadPressTemplates, persistPressTemplates, type PressTemplateConfig } from '@/components/press/pressTemplateConfig';
 
-const SETTINGS_KEY = 'press_templates_v1';
-
-type PressTemplate = {
-  id: string;
-  name: string;
-  description?: string;
-  default_title?: string;
-  default_excerpt?: string;
-  default_content_html?: string;
-  default_tags?: string;
-  is_default?: boolean;
-  is_active?: boolean;
-};
+type PressTemplate = PressTemplateConfig;
 
 const makeId = () => crypto.randomUUID();
+
+const getCanvasPreviewHtml = (html?: string) => {
+  if (!html?.trim()) {
+    return '<p class="text-muted-foreground">Noch kein Startinhalt definiert.</p>';
+  }
+
+  return html;
+};
 
 export function PressTemplateManager() {
   const { currentTenant } = useTenant();
@@ -38,6 +36,7 @@ export function PressTemplateManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [activeEditorTab, setActiveEditorTab] = useState('canvas');
   const [form, setForm] = useState<Required<Omit<PressTemplate, 'id'>> & { id?: string }>({
     name: '',
     description: '',
@@ -58,61 +57,32 @@ export function PressTemplateManager() {
     if (!currentTenant) return;
     setLoading(true);
 
-    const { data, error } = await supabase
-      .from('app_settings')
-      .select('setting_value')
-      .eq('tenant_id', currentTenant.id)
-      .eq('setting_key', SETTINGS_KEY)
-      .maybeSingle();
-
-    if (error) {
-      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
-      setLoading(false);
-      return;
-    }
-
     try {
-      const parsed = data?.setting_value ? JSON.parse(data.setting_value) : [];
-      const normalized = Array.isArray(parsed) ? parsed : [];
-      setTemplates(normalized);
-    } catch {
-      setTemplates([]);
+      const loadedTemplates = await loadPressTemplates(currentTenant.id);
+      setTemplates(loadedTemplates);
+    } catch (error: any) {
+      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  const persistTemplates = async (nextTemplates: PressTemplate[]) => {
+  const saveTemplates = async (nextTemplates: PressTemplate[]) => {
     if (!currentTenant) return false;
-    const serialized = JSON.stringify(nextTemplates);
 
-    const { data: existing, error: findError } = await supabase
-      .from('app_settings')
-      .select('id')
-      .eq('tenant_id', currentTenant.id)
-      .eq('setting_key', SETTINGS_KEY)
-      .maybeSingle();
-
-    if (findError) {
-      toast({ title: 'Fehler', description: findError.message, variant: 'destructive' });
-      return false;
-    }
-
-    const query = existing
-      ? supabase.from('app_settings').update({ setting_value: serialized }).eq('id', existing.id)
-      : supabase.from('app_settings').insert({ tenant_id: currentTenant.id, setting_key: SETTINGS_KEY, setting_value: serialized });
-
-    const { error } = await query;
-    if (error) {
+    try {
+      await persistPressTemplates(currentTenant.id, nextTemplates);
+      setTemplates(nextTemplates);
+      return true;
+    } catch (error: any) {
       toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
       return false;
     }
-
-    setTemplates(nextTemplates);
-    return true;
   };
 
   const resetForm = (template?: PressTemplate) => {
+    setActiveEditorTab('canvas');
+
     if (template) {
       setForm({
         id: template.id,
@@ -163,7 +133,7 @@ export function PressTemplateManager() {
       ? base.map((t) => ({ ...t, is_default: t.id === payload.id }))
       : base;
 
-    const ok = await persistTemplates(nextTemplates);
+    const ok = await saveTemplates(nextTemplates);
     if (!ok) return;
 
     toast({ title: editingId ? 'Pressevorlage aktualisiert' : 'Pressevorlage erstellt' });
@@ -180,13 +150,14 @@ export function PressTemplateManager() {
       ? next.map((t, index) => ({ ...t, is_default: index === 0 }))
       : next;
 
-    const ok = await persistTemplates(adjusted);
+    const ok = await saveTemplates(adjusted);
     if (ok) toast({ title: 'Pressevorlage gelöscht' });
 
     setDeletingId(null);
   };
 
   const isEditing = editingId || showCreate;
+  const canvasPreviewHtml = useMemo(() => getCanvasPreviewHtml(form.default_content_html), [form.default_content_html]);
 
   if (loading) return <div className="text-sm text-muted-foreground p-4">Laden...</div>;
 
@@ -195,7 +166,7 @@ export function PressTemplateManager() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Pressevorlagen</h3>
-          <p className="text-sm text-muted-foreground">Verwalten Sie Vorlagen für Presse-Wizard und Editor – analog zum Briefvorlagen-Workflow.</p>
+          <p className="text-sm text-muted-foreground">Verwalten Sie Vorlagen für Presse-Wizard und Editor mit tab-basiertem Template-Studio (inkl. Content-Canvas).</p>
         </div>
         <Button size="sm" onClick={() => { setShowCreate(true); resetForm(); }}>
           <Plus className="h-4 w-4 mr-1" /> Neue Vorlage
@@ -208,79 +179,110 @@ export function PressTemplateManager() {
             <CardTitle className="text-base">{editingId ? 'Vorlage bearbeiten' : 'Neue Vorlage'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Name *</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="z.B. Standard-Pressemitteilung"
-                />
-              </div>
-              <div>
-                <Label>Beschreibung</Label>
-                <Input
-                  value={form.description}
-                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="Kurzbeschreibung für den Anwendungsfall"
-                />
-              </div>
-            </div>
+            <Tabs value={activeEditorTab} onValueChange={setActiveEditorTab}>
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="basis"><Type className="h-4 w-4 mr-1" /> Basis</TabsTrigger>
+                <TabsTrigger value="wizard"><Sparkles className="h-4 w-4 mr-1" /> Wizard</TabsTrigger>
+                <TabsTrigger value="canvas"><LayoutTemplate className="h-4 w-4 mr-1" /> Canvas</TabsTrigger>
+                <TabsTrigger value="html"><FileCode2 className="h-4 w-4 mr-1" /> HTML</TabsTrigger>
+              </TabsList>
 
-            <Separator />
+              <TabsContent value="basis" className="pt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Name *</Label>
+                    <Input
+                      value={form.name}
+                      onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                      placeholder="z.B. Standard-Pressemitteilung"
+                    />
+                  </div>
+                  <div>
+                    <Label>Beschreibung</Label>
+                    <Input
+                      value={form.description}
+                      onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                      placeholder="Kurzbeschreibung für den Anwendungsfall"
+                    />
+                  </div>
+                </div>
 
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium flex items-center gap-2"><Sparkles className="h-4 w-4" /> Wizard-Standardwerte</h4>
-              <div>
-                <Label>Standardtitel</Label>
-                <Input
-                  value={form.default_title}
-                  onChange={(e) => setForm((prev) => ({ ...prev, default_title: e.target.value }))}
-                  placeholder="Titel-Vorschlag im Wizard"
-                />
-              </div>
-              <div>
-                <Label>Standard-Teaser (Excerpt)</Label>
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={form.is_default} onCheckedChange={(v) => setForm((prev) => ({ ...prev, is_default: !!v }))} />
+                    Als Standardvorlage
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={form.is_active} onCheckedChange={(v) => setForm((prev) => ({ ...prev, is_active: !!v }))} />
+                    Aktiv
+                  </label>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="wizard" className="pt-4 space-y-3">
+                <h4 className="text-sm font-medium flex items-center gap-2"><Sparkles className="h-4 w-4" /> Wizard-Standardwerte</h4>
+                <div>
+                  <Label>Standardtitel</Label>
+                  <Input
+                    value={form.default_title}
+                    onChange={(e) => setForm((prev) => ({ ...prev, default_title: e.target.value }))}
+                    placeholder="Titel-Vorschlag im Wizard"
+                  />
+                </div>
+                <div>
+                  <Label>Standard-Teaser (Excerpt)</Label>
+                  <Textarea
+                    rows={2}
+                    value={form.default_excerpt}
+                    onChange={(e) => setForm((prev) => ({ ...prev, default_excerpt: e.target.value }))}
+                    placeholder="Kurztext für Presseverteiler"
+                  />
+                </div>
+                <div>
+                  <Label>Standard-Tags (kommagetrennt)</Label>
+                  <Input
+                    value={form.default_tags}
+                    onChange={(e) => setForm((prev) => ({ ...prev, default_tags: e.target.value }))}
+                    placeholder="Pressemitteilung, Landtag, ..."
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="canvas" className="pt-4 space-y-3">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-xs text-muted-foreground mb-3">Editor-Canvas für den Startinhalt der Pressevorlage.</p>
+                  <EnhancedLexicalEditor
+                    content={form.default_content_html || ''}
+                    onChange={(_, __, contentHtml) => {
+                      setForm((prev) => ({ ...prev, default_content_html: contentHtml || '' }));
+                    }}
+                    placeholder="Erstellen Sie hier den Startinhalt für neue Pressemitteilungen ..."
+                    matchLetterPreview
+                  />
+                </div>
+
+                <div className="rounded-lg border p-4 bg-background">
+                  <div className="flex items-center gap-2 text-sm font-medium mb-3"><Eye className="h-4 w-4" /> Canvas-Vorschau</div>
+                  <div className="mx-auto w-full max-w-[794px] min-h-[320px] border bg-white p-8 shadow-sm prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: canvasPreviewHtml }}
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="html" className="pt-4">
+                <Label>Standardinhalt (HTML)</Label>
                 <Textarea
-                  rows={2}
-                  value={form.default_excerpt}
-                  onChange={(e) => setForm((prev) => ({ ...prev, default_excerpt: e.target.value }))}
-                  placeholder="Kurztext für Presseverteiler"
+                  rows={12}
+                  value={form.default_content_html}
+                  onChange={(e) => setForm((prev) => ({ ...prev, default_content_html: e.target.value }))}
+                  placeholder="Optionales HTML-Startgerüst für den Presse-Editor"
+                  className="font-mono text-xs"
                 />
-              </div>
-              <div>
-                <Label>Standard-Tags (kommagetrennt)</Label>
-                <Input
-                  value={form.default_tags}
-                  onChange={(e) => setForm((prev) => ({ ...prev, default_tags: e.target.value }))}
-                  placeholder="Pressemitteilung, Landtag, ..."
-                />
-              </div>
-            </div>
+                <p className="text-xs text-muted-foreground mt-1">Tipp: Hier können Sie ein Redaktions-Skelett hinterlegen (Zwischenüberschriften, Boilerplate, Kontaktblock).</p>
+              </TabsContent>
+            </Tabs>
 
             <Separator />
-
-            <div>
-              <Label>Standardinhalt (HTML) für Editor</Label>
-              <Textarea
-                rows={8}
-                value={form.default_content_html}
-                onChange={(e) => setForm((prev) => ({ ...prev, default_content_html: e.target.value }))}
-                placeholder="Optionales HTML-Startgerüst für den Presse-Editor"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Tipp: Hier können Sie ein Redaktions-Skelett hinterlegen (Zwischenüberschriften, Boilerplate, Kontaktblock).</p>
-            </div>
-
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={form.is_default} onCheckedChange={(v) => setForm((prev) => ({ ...prev, is_default: !!v }))} />
-                Als Standardvorlage
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={form.is_active} onCheckedChange={(v) => setForm((prev) => ({ ...prev, is_active: !!v }))} />
-                Aktiv
-              </label>
-            </div>
 
             <div className="flex gap-2">
               <Button onClick={handleSave}><Save className="h-4 w-4 mr-1" /> Speichern</Button>
@@ -303,7 +305,7 @@ export function PressTemplateManager() {
                 {template.description && <span>{template.description}</span>}
                 {template.default_title && <Badge variant="secondary" className="text-xs">Titel vorbelegt</Badge>}
                 {template.default_excerpt && <Badge variant="secondary" className="text-xs">Teaser vorbelegt</Badge>}
-                {template.default_content_html && <Badge variant="secondary" className="text-xs">HTML-Starttext</Badge>}
+                {template.default_content_html && <Badge variant="secondary" className="text-xs">Canvas-Inhalt</Badge>}
               </div>
             </div>
             <div className="flex gap-1">
