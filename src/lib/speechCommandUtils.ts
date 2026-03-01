@@ -16,7 +16,11 @@ const COMMAND_PHRASES: Array<{ command: SpeechCommand; phrases: string[] }> = [
       'diktat stoppen',
       'aufnahme aus',
       'mikro aus',
+      'mikrofon aus',
       'diktat aus',
+      'aufnahme abstellen',
+      'mikro abstellen',
+      'diktat beenden',
     ],
   },
   { command: { type: 'toggle-format', format: 'bold' }, phrases: ['fett', 'fett markieren'] },
@@ -45,21 +49,28 @@ export const normalizeSpeechText = (text: string): string =>
     .replace(/[,:;!?]/g, ' ')
     .trim()
     .replace(/[.!?]+$/g, '')
-    .replace(/\b(ähm|äh|hm|bitte|jetzt|mal|einmal|okay|ok|hey|hallo)\b/g, ' ')
+    .replace(/\b(ähm|äh|hm|bitte|jetzt|mal|einmal|doch|kurz|okay|ok|hey|hallo|servus|guten\s+tag)\b/g, ' ')
+    .replace(/\b(kannst\s+du|könntest\s+du|würdest\s+du|mach\s+mal|machst\s+du)\b/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
 const STOP_COMMAND_PATTERNS: RegExp[] = [
   /\bstop+p?\b/i,
-  /\b(stopp|stop)\s+(bitte|jetzt)?\b/i,
-  /\b(aufnahme|mikro(?:fon)?|diktat)\s+(aus|stoppen?)\b/i,
-  /\bbeende\s+(aufnahme|diktat)\b/i,
+  /\b(stopp|stop)\s+(bitte|jetzt|mal)?\b/i,
+  /\b(aufnahme|mikro(?:fon)?|diktat)\s+(aus|abstellen|stoppen?|beenden?)\b/i,
+  /\bbeende\s+(aufnahme|mikro(?:fon)?|diktat)\b/i,
+  /\b(ausmachen|abschalten)\s+(aufnahme|mikro(?:fon)?|diktat)\b/i,
 ];
+
+const STOP_KEYWORDS = ['stopp', 'stop', 'aufnahme aus', 'mikro aus', 'mikrofon aus', 'diktat aus'];
+
+const containsStopKeyword = (text: string): boolean =>
+  STOP_KEYWORDS.some((keyword) => text.includes(keyword));
 
 export const detectSpeechCommand = (text: string): SpeechCommand | null => {
   const normalized = normalizeSpeechText(text);
 
-  if (STOP_COMMAND_PATTERNS.some((pattern) => pattern.test(normalized))) {
+  if (containsStopKeyword(normalized) || STOP_COMMAND_PATTERNS.some((pattern) => pattern.test(normalized))) {
     return { type: 'stop-listening' };
   }
 
