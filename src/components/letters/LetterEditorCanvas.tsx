@@ -68,6 +68,7 @@ interface LetterEditorCanvasProps {
   onRecipientContactSelect?: (contact: any) => void;
   onSenderChange?: (senderId: string) => void;
   onInfoBlockChange?: (blockIds: string[]) => void;
+  onAttachmentNameChange?: (attachmentId: string, displayName: string) => void;
   senderInfos?: any[];
   informationBlocks?: any[];
   selectedSenderId?: string;
@@ -120,6 +121,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   onRecipientContactSelect,
   onSenderChange,
   onInfoBlockChange,
+  onAttachmentNameChange,
   senderInfos = [],
   informationBlocks = [],
   selectedSenderId,
@@ -146,6 +148,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const [internalZoom, setInternalZoom] = useState(0.75);
   const zoom = externalZoom ?? internalZoom;
   const setZoom = onZoomChange ?? setInternalZoom;
+
 
   // ── layout ──
   const layout = layoutSettings || template?.layout_settings || {};
@@ -286,6 +289,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
       .map((a) => (typeof a === 'string' ? a : a.display_name || a.file_name || ''))
       .filter(Boolean);
     if (!list.length) return null;
+
     return (
       <div style={{
         marginTop: closingFormula ? '4.5mm' : '13.5mm',
@@ -302,6 +306,10 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
       </div>
     );
   };
+
+  const editableAttachmentList = (attachments ?? []).filter((attachment) =>
+    typeof attachment === 'object' && attachment !== null && typeof attachment.id === 'string',
+  ) as Array<{ id: string; file_name?: string; display_name?: string }>;
 
   // ── The complete content flow (used for both measurement and rendering) ──
   const renderContentFlow = () => (
@@ -563,6 +571,33 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             </EditableCanvasOverlay>
 
+            <EditableCanvasOverlay
+              top={layout.attachments?.top ?? 230}
+              left={MARGIN_L_MM}
+              width={CONTENT_W_MM}
+              height={Math.max(18, editableAttachmentList.length * 5 + 6)}
+              label="Anlagen"
+              canEdit={canEdit && !!onAttachmentNameChange}
+            >
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {editableAttachmentList.length > 0 ? editableAttachmentList.map((attachment) => (
+                  <div key={attachment.id} className="space-y-1">
+                    <Label className="text-xs">{attachment.file_name || 'Anlage'}</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      defaultValue={attachment.display_name || attachment.file_name || ''}
+                      onBlur={(event) => {
+                        onAttachmentNameChange?.(attachment.id, event.target.value.trim());
+                      }}
+                      placeholder="Anzeigename"
+                    />
+                  </div>
+                )) : (
+                  <p className="text-xs text-muted-foreground">Keine Anlagen vorhanden.</p>
+                )}
+              </div>
+            </EditableCanvasOverlay>
+
             {salutation && (
               <EditableCanvasOverlay
                 top={subjectTopMm + subjectHeightMm + gapAfterSubjectMm}
@@ -605,7 +640,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               border: '1px dashed transparent',
               cursor: 'text',
               transition: 'border-color 0.15s',
-              zIndex: 20,
+              zIndex: 10,
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(59,130,246,0.3)';
