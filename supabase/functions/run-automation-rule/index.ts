@@ -42,9 +42,12 @@ serve(async (req) => {
     return new Response(null, { headers: CORS_HEADERS });
   }
 
+  let activeRunId: string | null = null;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const authHeader = req.headers.get("Authorization");
 
     if (!authHeader) {
@@ -54,7 +57,6 @@ serve(async (req) => {
       });
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const supabaseUser = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
       global: { headers: { Authorization: authHeader } },
     });
@@ -158,6 +160,8 @@ serve(async (req) => {
       });
     }
 
+    activeRunId = run.id;
+
     const conditions = ((rule.conditions as any)?.all ?? []) as Condition[];
     const actions = (rule.actions ?? []) as Action[];
 
@@ -204,31 +208,22 @@ serve(async (req) => {
 
       if (action.type === "create_notification") {
         const payload = action.payload ?? {};
-        const targetUserId = String(payload.target_user_id ?? user.id);
+        const targetUserId = String(payload.target_user_id ?? payload.target ?? user.id);
         const title = String(payload.title ?? `Automation: ${rule.name}`);
         const message = String(payload.message ?? "Automatische Regel ausgelöst.");
 
-        const { data: typeData } = await supabaseAdmin
-          .from("notification_types")
-          .select("id")
-          .eq("name", "system_alert")
-          .maybeSingle();
-
-        const { error: notificationError } = await supabaseAdmin
-          .from("notifications")
-          .insert({
-            user_id: targetUserId,
-            title,
-            message,
-            notification_type_id: typeData?.id ?? null,
-            sender_id: user.id,
-            tenant_id: rule.tenant_id,
-            metadata: {
-              source: "automation_rule",
-              rule_id: rule.id,
-              run_id: run.id,
-            },
-          });
+        const { error: notificationError } = await supabaseAdmin.rpc("create_notification", {
+          user_id_param: targetUserId,
+          type_name: "system_update",
+          title_param: title,
+          message_param: message,
+          data_param: {
+            source: "automation_rule",
+            rule_id: rule.id,
+            run_id: run.id,
+          },
+          priority_param: "medium",
+        });
 
         if (notificationError) {
           throw notificationError;
@@ -240,6 +235,20 @@ serve(async (req) => {
         const tableName = String(payload.table ?? "");
         const recordId = String(payload.record_id ?? "");
         const status = String(payload.status ?? "");
+
+        if (!tableName || !recordId || !status) {
+          await supabaseAdmin.from("automation_rule_run_steps").insert({
+            run_id: run.id,
+            tenant_id: rule.tenant_id,
+            step_order: stepOrder,
+            step_type: action.type,
+            status: "skipped",
+            input_payload: action,
+            result_payload: { reason: "missing_payload", required: ["table", "record_id", "status"] },
+          });
+          stepOrder += 1;
+          continue;
+        }
 
         const allowedTables = new Set(["tasks", "decisions", "knowledge_documents", "casefiles"]);
         if (!allowedTables.has(tableName)) {
@@ -283,6 +292,32 @@ serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown automation executor error";
+
+    if (activeRunId) {
+      await supabaseAdmin
+        .from("automation_rule_runs")
+        .update({ status: "failed", error_message: message, finished_at: new Date().toISOString() })
+        .eq("id", activeRunId);
+
+      const { data: runRow } = await supabaseAdmin
+        .from("automation_rule_runs")
+        .select("tenant_id")
+        .eq("id", activeRunId)
+        .maybeSingle();
+
+      if (runRow?.tenant_id) {
+        await supabaseAdmin.from("automation_rule_run_steps").insert({
+          run_id: activeRunId,
+          tenant_id: runRow.tenant_id,
+          step_order: 999,
+          step_type: "executor_error",
+          status: "failed",
+          input_payload: {},
+          error_message: message,
+        });
+      }
+    }
+
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
