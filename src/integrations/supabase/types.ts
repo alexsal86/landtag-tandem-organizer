@@ -1011,6 +1011,179 @@ export type Database = {
           },
         ]
       }
+      automation_rule_run_steps: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          input_payload: Json
+          result_payload: Json | null
+          run_id: string
+          status: string
+          step_order: number
+          step_type: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_payload?: Json
+          result_payload?: Json | null
+          run_id: string
+          status: string
+          step_order: number
+          step_type: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_payload?: Json
+          result_payload?: Json | null
+          run_id?: string
+          status?: string
+          step_order?: number
+          step_type?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rule_run_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rule_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_rule_run_steps_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_rule_runs: {
+        Row: {
+          created_by: string | null
+          dry_run: boolean
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          idempotency_key: string | null
+          input_payload: Json
+          result_payload: Json | null
+          rule_id: string
+          started_at: string
+          status: string
+          tenant_id: string
+          trigger_source: string
+        }
+        Insert: {
+          created_by?: string | null
+          dry_run?: boolean
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          input_payload?: Json
+          result_payload?: Json | null
+          rule_id: string
+          started_at?: string
+          status: string
+          tenant_id: string
+          trigger_source?: string
+        }
+        Update: {
+          created_by?: string | null
+          dry_run?: boolean
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          input_payload?: Json
+          result_payload?: Json | null
+          rule_id?: string
+          started_at?: string
+          status?: string
+          tenant_id?: string
+          trigger_source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rule_runs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_rule_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_rules: {
+        Row: {
+          actions: Json
+          conditions: Json
+          created_at: string
+          created_by: string
+          description: string | null
+          enabled: boolean
+          id: string
+          module: string
+          name: string
+          tenant_id: string
+          trigger_config: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json
+          conditions?: Json
+          created_at?: string
+          created_by: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          module: string
+          name: string
+          tenant_id: string
+          trigger_config?: Json
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json
+          conditions?: Json
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          module?: string
+          name?: string
+          tenant_id?: string
+          trigger_config?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_sync_settings: {
         Row: {
           created_at: string | null

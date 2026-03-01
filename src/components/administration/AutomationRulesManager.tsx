@@ -191,6 +191,12 @@ export function AutomationRulesManager() {
   const isCreateTaskAction = form.actionType === "create_task";
   const [runStatusFilter, setRunStatusFilter] = useState<string>("all");
 
+  const filteredRuns = useMemo(() => {
+    if (runStatusFilter === "all") return runs;
+    if (runStatusFilter === "dry_run") return runs.filter((run) => run.dry_run);
+    return runs.filter((run) => run.status === runStatusFilter && !run.dry_run);
+  }, [runs, runStatusFilter]);
+
   const loadData = async () => {
     if (!currentTenant) return;
 
@@ -219,8 +225,8 @@ export function AutomationRulesManager() {
       return;
     }
 
-    setRules((rulesData || []) as RuleRow[]);
-    setRuns((runData || []) as RunRow[]);
+    setRules((rulesData || []) as unknown as RuleRow[]);
+    setRuns((runData || []) as unknown as RunRow[]);
     setLoading(false);
   };
 
@@ -258,7 +264,7 @@ export function AutomationRulesManager() {
       return;
     }
 
-    setRunStepsByRunId((prev) => ({ ...prev, [runId]: (data || []) as RunStepRow[] }));
+    setRunStepsByRunId((prev) => ({ ...prev, [runId]: (data || []) as unknown as RunStepRow[] }));
   };
 
   const toggleRunDetails = async (runId: string) => {
@@ -848,8 +854,3 @@ export function AutomationRulesManager() {
     </div>
   );
 }
-  const filteredRuns = useMemo(() => {
-    if (runStatusFilter === "all") return runs;
-    if (runStatusFilter === "dry_run") return runs.filter((run) => run.dry_run);
-    return runs.filter((run) => run.status === runStatusFilter && !run.dry_run);
-  }, [runs, runStatusFilter]);

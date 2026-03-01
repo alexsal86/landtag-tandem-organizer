@@ -37,7 +37,7 @@ const cloneLayout = (layout?: LetterLayoutSettings): LetterLayoutSettings => ({
   content: { ...DEFAULT_DIN5008_LAYOUT.content, ...(layout?.content || {}) },
   footer: { ...DEFAULT_DIN5008_LAYOUT.footer, ...(layout?.footer || {}) },
   attachments: { ...DEFAULT_DIN5008_LAYOUT.attachments, ...(layout?.attachments || {}) },
-  pagination: { ...(DEFAULT_DIN5008_LAYOUT.pagination || {}), ...(layout?.pagination || {}) },
+  pagination: { enabled: false, top: 10, align: 'right' as const, ...(DEFAULT_DIN5008_LAYOUT.pagination || {}), ...(layout?.pagination || {}) },
   blockContent: { ...((layout?.blockContent as Record<string, any[]>) || {}) },
 });
 
@@ -214,7 +214,7 @@ export function PressTemplateManager() {
   };
 
   const isEditing = editingId || showCreate;
-  const canvasPreviewHtml = useMemo(() => getCanvasPreviewHtml(form.default_content_html), [form.default_content_html]);
+  const canvasPreviewHtml = useMemo(() => form.default_content_html || '', [form.default_content_html]);
 
   const tabDefinitions: ReadonlyArray<{ value: EditorTab; label: string }> = useMemo(() => [
     { value: 'canvas-designer', label: 'Canvas' },
