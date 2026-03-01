@@ -47,7 +47,7 @@ interface UseInfiniteContactsProps {
   searchTerm?: string;
   selectedCategory?: string;
   selectedType?: string;
-  activeTab?: "contacts" | "stakeholders" | "distribution-lists" | "archive";
+  activeTab?: "contacts" | "stakeholders" | "stakeholder-network" | "distribution-lists" | "archive";
   sortColumn?: string | null;
   sortDirection?: "asc" | "desc";
   selectedTagFilter?: string;
@@ -84,7 +84,7 @@ export const useInfiniteContacts = ({
     // Filter by tab
     if (activeTab === "contacts") {
       query = query.eq('contact_type', 'person').neq('name', 'Archivierter Kontakt');
-    } else if (activeTab === "stakeholders") {
+    } else if (activeTab === "stakeholders" || activeTab === "stakeholder-network") {
       query = query.eq('contact_type', 'organization');
     } else if (activeTab === "archive") {
       query = query.eq('name', 'Archivierter Kontakt');
