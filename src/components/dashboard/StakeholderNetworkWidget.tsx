@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpRight, Link2, Users } from "lucide-react";
+import { ArrowUpRight, Link2, Network, Orbit, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
+
+type LayoutMode = "radial" | "cluster";
 
 interface StakeholderContact {
   id: string;
@@ -19,6 +21,7 @@ interface NetworkNode {
   x: number;
   y: number;
   degree: number;
+  dominantTag: string;
 }
 
 interface NetworkEdge {
@@ -28,13 +31,54 @@ interface NetworkEdge {
   sharedTags: string[];
 }
 
+interface NormalizedContact {
+  id: string;
+  name: string;
+  normalizedTags: string[];
+}
+
 const MAX_NODES = 14;
 const SVG_SIZE = 500;
 const CENTER = SVG_SIZE / 2;
 const BASE_RADIUS = 150;
 
+const TAG_SYNONYMS: Record<string, string> = {
+  "verkehrspolitik": "verkehr",
+  "verkehrs-politik": "verkehr",
+  "mobilität": "verkehr",
+  "mobilitaet": "verkehr",
+  "wirtschaftspolitik": "wirtschaft",
+  "wirtschafts-politik": "wirtschaft",
+  "bildungs-politik": "bildung",
+  "schule": "bildung",
+  "schulen": "bildung",
+};
+
+const normalizeTag = (tag: string) => {
+  const normalized = tag
+    .toLowerCase()
+    .trim()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+
+  return TAG_SYNONYMS[normalized] || normalized;
+};
+
+const prettifyTag = (tag: string) =>
+  tag
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
 export function StakeholderNetworkWidget() {
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("radial");
   const { currentTenant, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
 
@@ -56,7 +100,20 @@ export function StakeholderNetworkWidget() {
   });
 
   const network = useMemo(() => {
-    const contacts = (data || []).filter((contact) => contact.name).slice(0, MAX_NODES);
+    const contacts: NormalizedContact[] = (data || [])
+      .filter((contact) => contact.name)
+      .slice(0, MAX_NODES)
+      .map((contact) => {
+        const normalizedTags = Array.from(
+          new Set((contact.tags || []).map(normalizeTag).filter(Boolean)),
+        );
+
+        return {
+          id: contact.id,
+          name: contact.name,
+          normalizedTags,
+        };
+      });
 
     const edgeMap = new Map<string, NetworkEdge>();
     const degreeCount = new Map<string, number>();
@@ -65,7 +122,7 @@ export function StakeholderNetworkWidget() {
       for (let j = i + 1; j < contacts.length; j++) {
         const a = contacts[i];
         const b = contacts[j];
-        const sharedTags = (a.tags || []).filter((tag) => (b.tags || []).includes(tag));
+        const sharedTags = a.normalizedTags.filter((tag) => b.normalizedTags.includes(tag));
 
         if (sharedTags.length === 0) continue;
 
@@ -84,19 +141,52 @@ export function StakeholderNetworkWidget() {
 
     const maxDegree = Math.max(...Array.from(degreeCount.values()), 1);
 
-    const nodes: NetworkNode[] = contacts.map((contact, index) => {
-      const angle = (2 * Math.PI * index) / Math.max(contacts.length, 1);
-      const degree = degreeCount.get(contact.id) || 0;
-      const ring = degree > maxDegree * 0.5 ? BASE_RADIUS - 40 : BASE_RADIUS;
-
-      return {
-        id: contact.id,
-        label: contact.name,
-        x: CENTER + Math.cos(angle) * ring,
-        y: CENTER + Math.sin(angle) * ring,
-        degree,
-      };
+    const tagGroups = new Map<string, NormalizedContact[]>();
+    contacts.forEach((contact) => {
+      const dominantTag = contact.normalizedTags[0] || "ohne-tag";
+      const bucket = tagGroups.get(dominantTag) || [];
+      bucket.push(contact);
+      tagGroups.set(dominantTag, bucket);
     });
+
+    const groups = Array.from(tagGroups.entries());
+
+    const nodes: NetworkNode[] =
+      layoutMode === "cluster"
+        ? groups.flatMap(([tag, groupContacts], groupIndex) => {
+            const clusterAngle = (2 * Math.PI * groupIndex) / Math.max(groups.length, 1);
+            const clusterCenterX = CENTER + Math.cos(clusterAngle) * (BASE_RADIUS - 15);
+            const clusterCenterY = CENTER + Math.sin(clusterAngle) * (BASE_RADIUS - 15);
+
+            return groupContacts.map((contact, index) => {
+              const localAngle = (2 * Math.PI * index) / Math.max(groupContacts.length, 1);
+              const localRadius = 28 + (index % 3) * 10;
+              const degree = degreeCount.get(contact.id) || 0;
+
+              return {
+                id: contact.id,
+                label: contact.name,
+                dominantTag: tag,
+                x: clusterCenterX + Math.cos(localAngle) * localRadius,
+                y: clusterCenterY + Math.sin(localAngle) * localRadius,
+                degree,
+              };
+            });
+          })
+        : contacts.map((contact, index) => {
+            const angle = (2 * Math.PI * index) / Math.max(contacts.length, 1);
+            const degree = degreeCount.get(contact.id) || 0;
+            const ring = degree > maxDegree * 0.5 ? BASE_RADIUS - 40 : BASE_RADIUS;
+
+            return {
+              id: contact.id,
+              label: contact.name,
+              dominantTag: contact.normalizedTags[0] || "ohne-tag",
+              x: CENTER + Math.cos(angle) * ring,
+              y: CENTER + Math.sin(angle) * ring,
+              degree,
+            };
+          });
 
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
 
@@ -109,7 +199,7 @@ export function StakeholderNetworkWidget() {
           ? (2 * edgeMap.size) / (contacts.length * (contacts.length - 1))
           : 0,
     };
-  }, [data]);
+  }, [data, layoutMode]);
 
   if (tenantLoading || isLoading) {
     return (
@@ -153,12 +243,32 @@ export function StakeholderNetworkWidget() {
   const activeNode = activeNodeId ? network.nodeById.get(activeNodeId) : null;
 
   return (
-    <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-3">
+    <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-3">
       <div className="flex flex-col gap-2 min-h-0">
-        <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+        <div className="flex items-center justify-between text-xs text-muted-foreground px-1 gap-2 flex-wrap">
           <span>{network.nodes.length} Stakeholder</span>
           <span>{network.edges.length} Verbindungen</span>
           <span>Dichte: {(network.density * 100).toFixed(0)}%</span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant={layoutMode === "radial" ? "default" : "outline"}
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => setLayoutMode("radial")}
+            >
+              <Orbit className="h-3.5 w-3.5 mr-1" />
+              Kreis
+            </Button>
+            <Button
+              variant={layoutMode === "cluster" ? "default" : "outline"}
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => setLayoutMode("cluster")}
+            >
+              <Network className="h-3.5 w-3.5 mr-1" />
+              Cluster
+            </Button>
+          </div>
         </div>
 
         <div className="relative grow min-h-0 rounded-md border bg-card overflow-hidden">
@@ -229,7 +339,7 @@ export function StakeholderNetworkWidget() {
         <p className="text-xs text-muted-foreground px-1 truncate">
           {activeNodeId
             ? `${activeNode?.label}: ${activeEdges.length} Verbindungen`
-            : "Verbindungen entstehen über gemeinsame Tags. Klick auf einen Knoten öffnet die Kontaktansicht."}
+            : "Verbindungen entstehen über normalisierte gemeinsame Tags. Klick auf einen Knoten öffnet die Kontaktansicht."}
         </p>
       </div>
 
@@ -238,6 +348,7 @@ export function StakeholderNetworkWidget() {
         {activeNode ? (
           <>
             <div className="font-semibold leading-tight">{activeNode.label}</div>
+            <div className="text-muted-foreground">Cluster: {prettifyTag(activeNode.dominantTag)}</div>
             <div className="text-muted-foreground flex items-center gap-1">
               <Link2 className="h-3.5 w-3.5" />
               {activeEdges.length} direkte Verbindungen
@@ -247,10 +358,13 @@ export function StakeholderNetworkWidget() {
                 const partnerId = edge.source === activeNode.id ? edge.target : edge.source;
                 const partner = network.nodeById.get(partnerId);
                 return (
-                  <div key={`${edge.source}-${edge.target}`} className="rounded border bg-background px-2 py-1">
+                  <div
+                    key={`${edge.source}-${edge.target}`}
+                    className="rounded border bg-background px-2 py-1"
+                  >
                     <div className="font-medium truncate">{partner?.label || "Unbekannt"}</div>
                     <div className="text-muted-foreground truncate">
-                      Gemeinsame Tags: {edge.sharedTags.slice(0, 3).join(", ") || "-"}
+                      Gemeinsame Tags: {edge.sharedTags.slice(0, 3).map(prettifyTag).join(", ") || "-"}
                     </div>
                   </div>
                 );
@@ -267,7 +381,9 @@ export function StakeholderNetworkWidget() {
             </Button>
           </>
         ) : (
-          <p className="text-muted-foreground">Knoten hovern oder klicken, um Details und Verbindungen zu sehen.</p>
+          <p className="text-muted-foreground">
+            Knoten hovern oder klicken, um Details und normalisierte Verbindungen zu sehen.
+          </p>
         )}
       </aside>
     </div>
