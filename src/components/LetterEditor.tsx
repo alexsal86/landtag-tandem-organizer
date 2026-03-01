@@ -635,6 +635,41 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
   };
 
+
+  const handleAttachmentNameChange = async (attachmentId: string, displayName: string) => {
+    const existingAttachment = attachments.find((attachment) => attachment.id === attachmentId);
+    if (!existingAttachment) return;
+
+    const sanitizedDisplayName = displayName.trim();
+    const currentDisplayName = (existingAttachment.display_name || '').trim();
+
+    if (sanitizedDisplayName === currentDisplayName) return;
+
+    try {
+      const { error } = await supabase
+        .from('letter_attachments')
+        .update({
+          display_name: sanitizedDisplayName || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', attachmentId);
+
+      if (error) throw error;
+
+      setAttachments((prev) => prev.map((attachment) => (
+        attachment.id === attachmentId
+          ? { ...attachment, display_name: sanitizedDisplayName || null }
+          : attachment
+      )));
+    } catch (error) {
+      console.error('Error updating attachment display name:', error);
+      toast({
+        title: 'Fehler beim Umbenennen',
+        description: 'Der Anlagenname konnte nicht aktualisiert werden.',
+        variant: 'destructive',
+      });
+    }
+  };
   const handleTemplateChange = async (templateId: string) => {
     if (!templateId || templateId === 'none') {
       setEditedLetter(prev => ({ 
@@ -1909,8 +1944,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   <div className="flex-1 overflow-auto p-3">
                     <EnhancedLexicalEditor
                       key={letter?.id || 'new'}
-                      content={draftContent}
-                      contentNodes={draftContentNodes}
+                      content={draftContent || letter?.content || ''}
+                      contentNodes={draftContentNodes ?? letter?.content_nodes ?? undefined}
                       onChange={(nextContent, nextNodes, nextHtml) => {
                         setDraftContent(nextContent || '');
                         setDraftContentNodes(nextNodes && nextNodes.trim() !== '' ? nextNodes : null);
@@ -1922,6 +1957,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       editable={canEdit}
                       onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)}
                       defaultFontSize="11pt"
+                      matchLetterPreview
                       isReviewMode={isReviewer && (currentStatus === 'pending_approval' || currentStatus === 'review')}
                       reviewerName={user?.id ? (userProfiles[user.id]?.display_name || user.email || '') : ''}
                       reviewerId={user?.id || ''}
@@ -2012,6 +2048,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 setEditedLetter(prev => ({ ...prev, information_block_ids: newIds }));
                 broadcastContentChange('information_block_ids', JSON.stringify(newIds));
               }}
+              onAttachmentNameChange={handleAttachmentNameChange}
               senderInfos={senderInfos}
               informationBlocks={informationBlocks}
               selectedSenderId={editedLetter.sender_info_id}

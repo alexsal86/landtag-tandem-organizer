@@ -126,8 +126,22 @@ export function substituteVariables(
     if (el.type !== 'text') return el;
     const textEl = el as TextElement;
     if (!textEl.isVariable || !textEl.content) return el;
-    const replacement = variableMap[textEl.content];
-    if (replacement === undefined) return el;
+
+    // Support both exact placeholders ("{{betreff}}") and mixed text with
+    // multiple placeholders ("{{absender_name}} · {{absender_strasse}}"),
+    // which is frequently used in Rücksendezeilen from templates.
+    let replacement = textEl.content;
+    let hasSubstitution = false;
+    for (const [placeholder, value] of Object.entries(variableMap)) {
+      const nextValue = replacement.split(placeholder).join(value);
+      if (nextValue !== replacement) {
+        replacement = nextValue;
+        hasSubstitution = true;
+      }
+    }
+
+    if (!hasSubstitution) return el;
+
     return {
       ...textEl,
       content: replacement,

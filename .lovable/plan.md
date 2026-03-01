@@ -1,67 +1,44 @@
 
 
-# Fix: Editor verliert Fokus beim Tippen
+# Fix: Brieftext wird nach Refresh nicht im Editor angezeigt
 
 ## Ursache
 
-Die letzte Aenderung am `ContentPlugin` hat einen Feedback-Loop erzeugt:
+Ein React-Timing-Problem: Die `draftContentNodes` werden per `useEffect` gesetzt, aber `useEffect` laeuft NACH dem ersten Render. Auf dem ersten Render ist `draftContentNodes` noch `null`, der Editor mountet mit leerem Inhalt, und `ContentPlugin` markiert sich als "schon geladen". Wenn dann `useEffect` die richtigen Daten setzt, ignoriert das Plugin sie.
 
 ```text
-1. User tippt -> Lexical feuert onChange
-2. onChange setzt draftContentNodes (neuer JSON-String)
-3. draftContentNodes wird als contentNodes-Prop zurueck an ContentPlugin gegeben
-4. ContentPlugin erkennt: "contentNodes hat sich geaendert!" (lastLoadedRef !== neuer Wert)
-5. ContentPlugin ruft editor.setEditorState() auf
-6. setEditorState() setzt den gesamten Editor-State zurueck -> Cursor und Fokus gehen verloren
-7. Zurueck zu Schritt 1...
+Render 1:  draftContentNodes = null  →  Editor mountet mit leerem Content  →  hasLoadedRef = true
+Effect:    draftContentNodes = letter.content_nodes  →  aber Editor ignoriert (schon geladen)
+Render 2:  Editor bekommt neue Props, aber ContentPlugin tut nichts mehr
 ```
 
 ## Loesung
 
-`ContentPlugin` darf NUR beim ersten Mount den Inhalt laden. Da `key={letter?.id || 'new'}` bereits einen kompletten Neuaufbau bei Briefwechsel erzwingt, ist reaktives Nachladen nicht noetig.
+Im `contentNodes`-Prop des Editors direkt auf `letter?.content_nodes` zurueckfallen, falls `draftContentNodes` noch leer ist. Gleich fuer `content`:
 
-### Aenderung in `src/components/EnhancedLexicalEditor.tsx`
-
-ContentPlugin zurueck auf "load once on mount"-Logik mit `hasLoadedRef`:
+### Aenderung in `src/components/LetterEditor.tsx` (Zeile ~1912-1913)
 
 ```typescript
-function ContentPlugin({ content, contentNodes }: { content: string; contentNodes?: string }) {
-  const [editor] = useLexicalComposerContext();
-  const hasLoadedRef = useRef(false);
+// Vorher:
+content={draftContent}
+contentNodes={draftContentNodes}
 
-  useEffect(() => {
-    if (!editor || hasLoadedRef.current) return;
-    hasLoadedRef.current = true;
-
-    if (contentNodes && contentNodes.trim()) {
-      try {
-        const editorState = editor.parseEditorState(contentNodes);
-        editor.setEditorState(editorState);
-        return;
-      } catch (error) {
-        console.warn('[ContentPlugin] Failed to parse contentNodes:', error);
-      }
-    }
-
-    if (content && content.trim()) {
-      editor.update(() => {
-        const root = $getRoot();
-        root.clear();
-        const paragraph = $createParagraphNode();
-        paragraph.append($createTextNode(content));
-        root.append(paragraph);
-      });
-    }
-  }, [editor, contentNodes, content]);
-
-  return null;
-}
+// Nachher:
+content={draftContent || letter?.content || ''}
+contentNodes={draftContentNodes ?? letter?.content_nodes ?? undefined}
 ```
 
+Damit bekommt der Editor schon beim ersten Render die richtigen Daten direkt aus dem `letter`-Prop, unabhaengig davon ob der `useEffect` schon gelaufen ist.
+
 ### Betroffene Datei
-- `src/components/EnhancedLexicalEditor.tsx` (nur ContentPlugin, ca. 10 Zeilen)
+
+| Datei | Aenderung |
+|---|---|
+| `src/components/LetterEditor.tsx` | Zeile 1912-1913: Fallback auf `letter?.content` und `letter?.content_nodes` |
 
 ### Warum sicher
-- `key={letter?.id || 'new'}` auf dem Editor erzwingt bei Briefwechsel einen voelligen Neuaufbau inkl. ContentPlugin
-- ContentPlugin laedt beim Mount die richtigen Daten
-- Kein Feedback-Loop mehr, da Prop-Aenderungen durch onChange ignoriert werden
+
+- Sobald `useEffect` laeuft und `draftContentNodes` befuellt, wird der Fallback nicht mehr benoetigt (OR/Nullish-Coalescing greift nur bei leerem Wert)
+- Kein Feedback-Loop, da ContentPlugin weiterhin nur einmal beim Mount laedt
+- `key={letter?.id || 'new'}` erzwingt bei Briefwechsel weiterhin einen Neuaufbau
+
