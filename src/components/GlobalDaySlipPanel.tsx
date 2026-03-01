@@ -796,7 +796,7 @@ export function GlobalDaySlipPanel() {
   };
 
   const insertStructuredLines = useCallback((lines: string[]) => {
-    if (!editorRef.current) {
+    const appendLinesToStore = () => {
       setStore((prev) => {
         const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
         const existingLines = extractLinesFromHtml(day.html);
@@ -814,10 +814,17 @@ export function GlobalDaySlipPanel() {
           },
         };
       });
+    };
+
+    const editor = editorRef.current;
+    const editorMounted = Boolean(editor?.getRootElement());
+
+    if (!editorMounted) {
+      appendLinesToStore();
       return;
     }
 
-    editorRef.current.update(() => {
+    editor.update(() => {
       const root = $getRoot();
       lines.forEach((line) => {
         const parsed = parseRuleLine(line);
