@@ -9,7 +9,7 @@ import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getRoot, FORMAT_TEXT_COMMAND, EditorState, LexicalEditor } from 'lexical';
+import { $getRoot, FORMAT_TEXT_COMMAND, EditorState, LexicalEditor, REDO_COMMAND, UNDO_COMMAND } from 'lexical';
 import { 
   INSERT_ORDERED_LIST_COMMAND, 
   INSERT_UNORDERED_LIST_COMMAND,
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
+import { detectSpeechCommand, formatDictatedText } from '@/lib/speechCommandUtils';
 
 interface SimpleRichTextEditorProps {
   initialContent?: string;
@@ -41,6 +42,7 @@ const Toolbar = () => {
   const [isUnderline, setIsUnderline] = React.useState(false);
   const [speechState, setSpeechState] = React.useState<SpeechToTextState>('idle');
   const [speechError, setSpeechError] = React.useState<SpeechToTextError | null>(null);
+  const [interimTranscript, setInterimTranscript] = React.useState('');
 
   const speechAdapter = React.useMemo(() => new WebSpeechToTextAdapter(), []);
 
@@ -64,11 +66,48 @@ const Toolbar = () => {
   React.useEffect(() => {
     speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
     speechAdapter.onError = (error) => setSpeechError(error);
+    speechAdapter.onInterimTranscript = (text) => setInterimTranscript(text);
     speechAdapter.onFinalTranscript = (text) => {
+      const command = detectSpeechCommand(text);
+      if (command) {
+        switch (command.type) {
+          case 'stop-listening':
+            speechAdapter.stop();
+            return;
+          case 'toggle-format':
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
+            return;
+          case 'insert-list':
+            editor.dispatchCommand(
+              command.listType === 'unordered' ? INSERT_UNORDERED_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND,
+              undefined,
+            );
+            return;
+          case 'undo':
+            editor.dispatchCommand(UNDO_COMMAND, undefined);
+            return;
+          case 'redo':
+            editor.dispatchCommand(REDO_COMMAND, undefined);
+            return;
+          case 'insert-newline':
+            editor.update(() => {
+              const selection = $getSelection();
+              if ($isRangeSelection(selection)) {
+                selection.insertText('\n');
+              }
+            });
+            return;
+        }
+      }
+
+      const formattedText = formatDictatedText(text);
+      if (!formattedText) return;
+
       editor.update(() => {
         const selection = $getSelection();
         if ($isRangeSelection(selection)) {
-          selection.insertText(`${text} `);
+          const shouldAddTrailingSpace = !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+          selection.insertText(shouldAddTrailingSpace ? `${formattedText} ` : formattedText);
         }
       });
     };
@@ -191,6 +230,11 @@ const Toolbar = () => {
       {speechError && (
         <span className="text-xs text-destructive pl-1" title={speechError.code}>
           {speechError.message}
+        </span>
+      )}
+      {isListening && interimTranscript && (
+        <span className="text-xs text-muted-foreground pl-1 italic" title="Live-Erkennung">
+          {interimTranscript}
         </span>
       )}
     </div>

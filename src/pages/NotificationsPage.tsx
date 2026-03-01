@@ -39,7 +39,7 @@ const getNotificationIcon = (type: string) => {
     case 'employee_meeting_action_item_overdue': case 'employee_meeting_scheduled': return Users;
     case 'task_decision_request': case 'task_decision_completed': case 'task_decision_complete':
     case 'task_decision_comment_received': case 'task_decision_creator_response': return MessageSquare;
-    case 'document_created': case 'document_mention': case 'letter_review_requested':
+    case 'document_created': case 'document_mention': case 'news_shared_internal': case 'letter_review_requested':
     case 'letter_review_completed': case 'letter_sent': return FileText;
     case 'knowledge_document_created': return BookOpen;
     case 'meeting_created': return Calendar;
@@ -458,6 +458,10 @@ export function NotificationsPage() {
                           onClick={() => {
                             if (!notification.is_read) markAsRead(notification.id);
                             const path = buildDeepLinkPath(notification);
+                            if (/^https?:\/\//i.test(path)) {
+                              window.location.href = path;
+                              return;
+                            }
                             navigate(path);
                           }}
                         >
