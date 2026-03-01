@@ -635,6 +635,41 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
   };
 
+
+  const handleAttachmentNameChange = async (attachmentId: string, displayName: string) => {
+    const existingAttachment = attachments.find((attachment) => attachment.id === attachmentId);
+    if (!existingAttachment) return;
+
+    const sanitizedDisplayName = displayName.trim();
+    const currentDisplayName = (existingAttachment.display_name || '').trim();
+
+    if (sanitizedDisplayName === currentDisplayName) return;
+
+    try {
+      const { error } = await supabase
+        .from('letter_attachments')
+        .update({
+          display_name: sanitizedDisplayName || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', attachmentId);
+
+      if (error) throw error;
+
+      setAttachments((prev) => prev.map((attachment) => (
+        attachment.id === attachmentId
+          ? { ...attachment, display_name: sanitizedDisplayName || null }
+          : attachment
+      )));
+    } catch (error) {
+      console.error('Error updating attachment display name:', error);
+      toast({
+        title: 'Fehler beim Umbenennen',
+        description: 'Der Anlagenname konnte nicht aktualisiert werden.',
+        variant: 'destructive',
+      });
+    }
+  };
   const handleTemplateChange = async (templateId: string) => {
     if (!templateId || templateId === 'none') {
       setEditedLetter(prev => ({ 
@@ -2012,6 +2047,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 setEditedLetter(prev => ({ ...prev, information_block_ids: newIds }));
                 broadcastContentChange('information_block_ids', JSON.stringify(newIds));
               }}
+              onAttachmentNameChange={handleAttachmentNameChange}
               senderInfos={senderInfos}
               informationBlocks={informationBlocks}
               selectedSenderId={editedLetter.sender_info_id}
