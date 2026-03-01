@@ -38,6 +38,49 @@ type RunRow = {
   error_message: string | null;
 };
 
+type RunStepRow = {
+  id: string;
+  run_id: string;
+  step_order: number;
+  step_type: string;
+  status: string;
+  result_payload: Record<string, unknown> | null;
+  error_message: string | null;
+};
+
+const RULE_TEMPLATES = [
+  {
+    id: "tasks-overdue",
+    name: "Überfällige Aufgaben erinnern",
+    description: "Wenn Aufgaben überfällig sind, Benachrichtigung an zuständige Person.",
+    module: "tasks",
+    triggerType: "record_changed",
+    triggerField: "status",
+    triggerValue: "overdue",
+    conditionField: "priority",
+    conditionOperator: "equals",
+    conditionValue: "high",
+    actionType: "create_notification",
+    actionTarget: "",
+    actionMessage: "Eine priorisierte Aufgabe ist überfällig.",
+  },
+  {
+    id: "knowledge-review",
+    name: "Wissensartikel Review anstoßen",
+    description: "Markiert alte Wissensartikel zur Überprüfung.",
+    module: "knowledge",
+    triggerType: "schedule",
+    triggerField: "updated_at",
+    triggerValue: "90_days",
+    conditionField: "status",
+    conditionOperator: "equals",
+    conditionValue: "published",
+    actionType: "update_record_status",
+    actionTarget: "",
+    actionMessage: "",
+  },
+] as const;
+
 const MODULE_OPTIONS = [
   { value: "tasks", label: "Aufgaben" },
   { value: "meetings", label: "Meetings" },
@@ -119,6 +162,8 @@ export function AutomationRulesManager() {
   const [rules, setRules] = useState<RuleRow[]>([]);
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+  const [runStepsByRunId, setRunStepsByRunId] = useState<Record<string, RunStepRow[]>>({});
   const [form, setForm] = useState(DEFAULT_FORM);
 
   const fieldOptions = useMemo(() => FIELD_OPTIONS_BY_MODULE[form.module] ?? FIELD_OPTIONS_BY_MODULE.tasks, [form.module]);
@@ -164,6 +209,45 @@ export function AutomationRulesManager() {
   const resetForm = () => {
     setEditingRuleId(null);
     setForm(DEFAULT_FORM);
+  };
+
+  const applyTemplate = (templateId: string) => {
+    const template = RULE_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
+
+    setForm((prev) => ({
+      ...prev,
+      ...template,
+      enabled: true,
+    }));
+    setEditingRuleId(null);
+  };
+
+  const loadRunSteps = async (runId: string) => {
+    const { data, error } = await supabase
+      .from("automation_rule_run_steps" as any)
+      .select("id, run_id, step_order, step_type, status, result_payload, error_message")
+      .eq("run_id", runId)
+      .order("step_order", { ascending: true });
+
+    if (error) {
+      toast({ title: "Schritte konnten nicht geladen werden", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    setRunStepsByRunId((prev) => ({ ...prev, [runId]: (data || []) as RunStepRow[] }));
+  };
+
+  const toggleRunDetails = async (runId: string) => {
+    if (expandedRunId === runId) {
+      setExpandedRunId(null);
+      return;
+    }
+
+    setExpandedRunId(runId);
+    if (!runStepsByRunId[runId]) {
+      await loadRunSteps(runId);
+    }
   };
 
   const startEdit = (rule: RuleRow) => {
@@ -461,6 +545,14 @@ export function AutomationRulesManager() {
             <Button variant="outline" onClick={resetForm}>
               <Plus className="h-4 w-4 mr-2" /> Neue Regel
             </Button>
+            <Select onValueChange={applyTemplate}>
+              <SelectTrigger className="w-[240px]"><SelectValue placeholder="Template laden" /></SelectTrigger>
+              <SelectContent>
+                {RULE_TEMPLATES.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -517,14 +609,34 @@ export function AutomationRulesManager() {
             <p className="text-sm text-muted-foreground">Noch keine Ausführungen protokolliert.</p>
           ) : (
             runs.map((run) => (
-              <div key={run.id} className="flex items-center justify-between border rounded-md p-2">
-                <div>
-                  <p className="text-sm font-medium">Regel: {rules.find((rule) => rule.id === run.rule_id)?.name || `${run.rule_id.slice(0, 8)}…`}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {run.trigger_source} · {formatDistanceToNow(new Date(run.started_at), { addSuffix: true, locale: de })}
-                  </p>
+              <div key={run.id} className="border rounded-md p-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Regel: {rules.find((rule) => rule.id === run.rule_id)?.name || `${run.rule_id.slice(0, 8)}…`}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {run.trigger_source} · {formatDistanceToNow(new Date(run.started_at), { addSuffix: true, locale: de })}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <Badge variant={run.status === "failed" ? "destructive" : "outline"}>{run.dry_run ? "dry_run" : run.status}</Badge>
+                    <Button size="sm" variant="outline" onClick={() => toggleRunDetails(run.id)}>Details</Button>
+                  </div>
                 </div>
-                <Badge variant={run.status === "failed" ? "destructive" : "outline"}>{run.dry_run ? "dry_run" : run.status}</Badge>
+                {expandedRunId === run.id ? (
+                  <div className="rounded bg-muted/50 p-2 space-y-1">
+                    {run.error_message ? <p className="text-xs text-destructive">Fehler: {run.error_message}</p> : null}
+                    {(runStepsByRunId[run.id] || []).length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Keine Step-Logs vorhanden.</p>
+                    ) : (
+                      (runStepsByRunId[run.id] || []).map((step) => (
+                        <div key={step.id} className="text-xs flex items-center justify-between border-b last:border-b-0 py-1">
+                          <span>#{step.step_order} · {step.step_type}</span>
+                          <span className={step.status === "failed" ? "text-destructive" : "text-muted-foreground"}>{step.status}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : null}
               </div>
             ))
           )}

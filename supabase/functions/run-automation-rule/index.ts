@@ -45,32 +45,41 @@ serve(async (req) => {
   let activeRunId: string | null = null;
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const automationSecret = Deno.env.get("AUTOMATION_CRON_SECRET") ?? "";
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
   try {
     const authHeader = req.headers.get("Authorization");
+    const internalSecret = req.headers.get("x-automation-secret");
+    const isInternalCall = Boolean(automationSecret && internalSecret === automationSecret);
 
-    if (!authHeader) {
+    if (!authHeader && !isInternalCall) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
         status: 401,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
     }
 
-    const supabaseUser = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-      global: { headers: { Authorization: authHeader } },
-    });
+    let user: { id: string } | null = null;
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseUser.auth.getUser();
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    if (!isInternalCall) {
+      const supabaseUser = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+        global: { headers: { Authorization: authHeader as string } },
       });
+
+      const {
+        data: { user: authUser },
+        error: authError,
+      } = await supabaseUser.auth.getUser();
+
+      if (authError || !authUser) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+
+      user = { id: authUser.id };
     }
 
     const { ruleId, dryRun = false, sourcePayload = {}, idempotencyKey }: {
@@ -100,16 +109,18 @@ serve(async (req) => {
       });
     }
 
-    const { data: adminAllowed, error: adminError } = await supabaseAdmin.rpc("is_tenant_admin", {
-      _user_id: user.id,
-      _tenant_id: rule.tenant_id,
-    });
-
-    if (adminError || !adminAllowed) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    if (!isInternalCall) {
+      const { data: adminAllowed, error: adminError } = await supabaseAdmin.rpc("is_tenant_admin", {
+        _user_id: user!.id,
+        _tenant_id: rule.tenant_id,
       });
+
+      if (adminError || !adminAllowed) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
     }
 
     if (!rule.enabled && !dryRun) {
@@ -143,7 +154,7 @@ serve(async (req) => {
       dry_run: dryRun,
       idempotency_key: idempotencyKey ?? null,
       input_payload: sourcePayload,
-      created_by: user.id,
+      created_by: user?.id ?? null,
       started_at: new Date().toISOString(),
     };
 
@@ -208,9 +219,23 @@ serve(async (req) => {
 
       if (action.type === "create_notification") {
         const payload = action.payload ?? {};
-        const targetUserId = String(payload.target_user_id ?? payload.target ?? user.id);
+        const targetUserId = String(payload.target_user_id ?? payload.target ?? "");
         const title = String(payload.title ?? `Automation: ${rule.name}`);
         const message = String(payload.message ?? "Automatische Regel ausgelöst.");
+
+        if (!targetUserId) {
+          await supabaseAdmin.from("automation_rule_run_steps").insert({
+            run_id: run.id,
+            tenant_id: rule.tenant_id,
+            step_order: stepOrder,
+            step_type: action.type,
+            status: "skipped",
+            input_payload: action,
+            result_payload: { reason: "missing_target_user_id" },
+          });
+          stepOrder += 1;
+          continue;
+        }
 
         const { error: notificationError } = await supabaseAdmin.rpc("create_notification", {
           user_id_param: targetUserId,
