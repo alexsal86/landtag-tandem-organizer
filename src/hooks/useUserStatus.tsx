@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
@@ -53,7 +53,7 @@ export const useUserStatus = () => {
   const [usersWithStatus, setUsersWithStatus] = useState<UserWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAwayTimerActive, setIsAwayTimerActive] = useState(false);
-  const [presenceChannel, setPresenceChannel] = useState<any>(null);
+  const presenceChannelRef = useRef<any>(null);
 
   // Auto-away timer
   useEffect(() => {
@@ -173,9 +173,9 @@ export const useUserStatus = () => {
     if (!user || !currentTenant?.id) return;
 
     // Cleanup previous channel if tenant changed
-    if (presenceChannel) {
-      presenceChannel.unsubscribe();
-      setPresenceChannel(null);
+    if (presenceChannelRef.current) {
+      presenceChannelRef.current.unsubscribe();
+      presenceChannelRef.current = null;
     }
 
     const setupPresence = async () => {
@@ -198,7 +198,12 @@ export const useUserStatus = () => {
           
           Object.entries(presenceState).forEach(([userId, presences]: [string, any[]]) => {
             if (presences && presences.length > 0) {
-              const presence = presences[0];
+              const presence = [...presences].sort((a, b) => {
+                const aTime = new Date(a.online_at || 0).getTime();
+                const bTime = new Date(b.online_at || 0).getTime();
+                return bTime - aTime;
+              })[0];
+
               onlineUsersList.push({
                 user_id: userId,
                 display_name: presence.display_name || 'Unbekannt',
@@ -238,21 +243,26 @@ export const useUserStatus = () => {
         }
       });
 
-      setPresenceChannel(channel);
+      presenceChannelRef.current = channel;
     };
 
     setupPresence();
 
     return () => {
-      if (presenceChannel) {
-        presenceChannel.unsubscribe();
-      }
+      channelCleanup();
     };
+
+    function channelCleanup() {
+      if (presenceChannelRef.current) {
+        presenceChannelRef.current.unsubscribe();
+        presenceChannelRef.current = null;
+      }
+    }
   }, [user?.id, currentTenant?.id]);
 
   // Update presence when status changes
   useEffect(() => {
-    if (presenceChannel && currentStatus && user) {
+    if (presenceChannelRef.current && currentStatus && user) {
       const updatePresence = async () => {
         const { data: profile } = await supabase
           .from('profiles')
@@ -260,7 +270,7 @@ export const useUserStatus = () => {
           .eq('user_id', user.id)
           .single();
 
-        await presenceChannel.track({
+        await presenceChannelRef.current.track({
           user_id: user.id,
           display_name: profile?.display_name || user.email,
           avatar_url: profile?.avatar_url,
@@ -271,7 +281,7 @@ export const useUserStatus = () => {
 
       updatePresence();
     }
-  }, [currentStatus, presenceChannel, user]);
+  }, [currentStatus, user]);
 
   // Function to update usersWithStatus based on online users and their statuses - TENANT FILTERED
   const updateUsersWithStatus = async (onlineUsersList: OnlineUser[]) => {

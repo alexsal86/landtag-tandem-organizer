@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $isTextNode, TextNode } from 'lexical';
 import {
@@ -49,10 +49,6 @@ import {
   Subscript,
   Superscript,
   RemoveFormatting,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
   Mic,
 } from 'lucide-react';
 import {
@@ -70,6 +66,8 @@ import { TextAlignmentPlugin } from './plugins/TextAlignmentPlugin';
 import { LineHeightPlugin } from './plugins/LineHeightPlugin';
 import { ImageUploadDialog } from './plugins/ImagePlugin';
 import { Input } from '@/components/ui/input';
+import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
+import { detectSpeechCommand, formatDictatedText } from '@/lib/speechCommandUtils';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
@@ -92,23 +90,69 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   const [showTableDialog, setShowTableDialog] = useState(false);
   const [tableRows, setTableRows] = useState('3');
   const [tableCols, setTableCols] = useState('3');
-  const [speechSupported, setSpeechSupported] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [speechError, setSpeechError] = useState<string | null>(null);
-  const recognitionRef = React.useRef<SpeechRecognition | null>(null);
+  const [speechState, setSpeechState] = useState<SpeechToTextState>('idle');
+  const [speechError, setSpeechError] = useState<SpeechToTextError | null>(null);
+  const [interimTranscript, setInterimTranscript] = useState('');
+
+  const speechAdapter = useMemo(() => new WebSpeechToTextAdapter(), []);
 
   useEffect(() => {
-    const SpeechRecognitionCtor =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    setSpeechSupported(Boolean(SpeechRecognitionCtor));
+    speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
+    speechAdapter.onError = (error) => setSpeechError(error);
+    speechAdapter.onInterimTranscript = (text) => setInterimTranscript(text);
+    speechAdapter.onFinalTranscript = (text) => {
+      const command = detectSpeechCommand(text);
+      if (command) {
+        switch (command.type) {
+          case 'stop-listening':
+            speechAdapter.stop();
+            return;
+          case 'toggle-format':
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
+            return;
+          case 'insert-list':
+            editor.dispatchCommand(
+              command.listType === 'unordered' ? INSERT_UNORDERED_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND,
+              undefined,
+            );
+            return;
+          case 'undo':
+            editor.dispatchCommand(UNDO_COMMAND, undefined);
+            return;
+          case 'redo':
+            editor.dispatchCommand(REDO_COMMAND, undefined);
+            return;
+          case 'insert-newline':
+            editor.update(() => {
+              const selection = $getSelection();
+              if ($isRangeSelection(selection)) {
+                selection.insertText('\n');
+              }
+            });
+            return;
+        }
+      }
+
+      const formattedText = formatDictatedText(text);
+      if (!formattedText) return;
+
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          const shouldAddTrailingSpace = !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+          selection.insertText(shouldAddTrailingSpace ? `${formattedText} ` : formattedText);
+        }
+      });
+    };
+
+    if (!speechAdapter.supported) {
+      setSpeechState('unsupported');
+    }
 
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-        recognitionRef.current = null;
-      }
+      speechAdapter.destroy();
     };
-  }, []);
+  }, [editor, speechAdapter]);
 
   // Track active formats
   useEffect(() => {
@@ -239,72 +283,20 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     });
   }, [editor]);
 
-  const stopSpeechRecognition = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-    setIsListening(false);
-  }, []);
+  const isListening = speechState === 'listening';
+  const speechSupported = speechAdapter.supported;
 
   const toggleSpeechRecognition = useCallback(() => {
     if (!speechSupported) return;
 
     if (isListening) {
-      stopSpeechRecognition();
+      speechAdapter.stop();
       return;
     }
 
     setSpeechError(null);
-    const SpeechRecognitionCtor =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognitionCtor) {
-      setSpeechSupported(false);
-      return;
-    }
-
-    const recognition = new SpeechRecognitionCtor();
-    recognition.lang = 'de-DE';
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const result = event.results[i];
-        if (result.isFinal) {
-          finalTranscript += result[0]?.transcript ?? '';
-        }
-      }
-
-      const trimmedTranscript = finalTranscript.trim();
-      if (!trimmedTranscript) return;
-
-      editor.update(() => {
-        const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
-          selection.insertText(`${trimmedTranscript} `);
-        }
-      });
-    };
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error !== 'no-speech') {
-        setSpeechError(event.error);
-      }
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-
-    recognition.start();
-    recognitionRef.current = recognition;
-    setIsListening(true);
-  }, [editor, isListening, speechSupported, stopSpeechRecognition]);
+    speechAdapter.start();
+  }, [isListening, speechAdapter, speechSupported]);
 
   if (showFloatingToolbar) {
     return (
@@ -417,8 +409,20 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           <Mic className="h-4 w-4" />
         </Button>
 
+        {speechState === 'listening' && (
+          <span className="text-xs text-primary">Aufnahme läuft…</span>
+        )}
+
+        {speechState === 'listening' && interimTranscript && (
+          <span className="text-xs text-muted-foreground italic" title="Live-Erkennung">
+            {interimTranscript}
+          </span>
+        )}
+
         {speechError && (
-          <span className="text-xs text-destructive">STT-Fehler: {speechError}</span>
+          <span className="text-xs text-destructive" title={speechError.code}>
+            {speechError.message}
+          </span>
         )}
 
         <Separator orientation="vertical" className="h-6 mx-1" />

@@ -46,6 +46,8 @@ import { AdminSidebar, adminMenuItems } from "@/components/administration/AdminS
 import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
 import { InformationBlockManager } from "@/components/administration/InformationBlockManager";
 import { LetterOccasionManager } from "@/components/administration/LetterOccasionManager";
+import { PressTemplateManager } from "@/components/administration/PressTemplateManager";
+import { PressOccasionManager } from "@/components/administration/PressOccasionManager";
 import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
 import { GeoDataImport } from "@/components/administration/GeoDataImport";
 import { MyWorkSystemOverview } from "@/components/administration/MyWorkSystemOverview";
@@ -1131,6 +1133,22 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
             <Card>
               <CardContent className="pt-6">
                 <LetterOccasionManager />
+              </CardContent>
+            </Card>
+          );
+        case "press-templates":
+          return (
+            <Card>
+              <CardContent className="pt-6">
+                <PressTemplateManager />
+              </CardContent>
+            </Card>
+          );
+        case "press-occasions":
+          return (
+            <Card>
+              <CardContent className="pt-6">
+                <PressOccasionManager />
               </CardContent>
             </Card>
           );
