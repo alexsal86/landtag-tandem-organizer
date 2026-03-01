@@ -9,7 +9,17 @@ import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getRoot, FORMAT_TEXT_COMMAND, EditorState, LexicalEditor, REDO_COMMAND, UNDO_COMMAND } from 'lexical';
+import {
+  $createRangeSelection,
+  $getNodeByKey,
+  $getRoot,
+  $setSelection,
+  FORMAT_TEXT_COMMAND,
+  EditorState,
+  LexicalEditor,
+  REDO_COMMAND,
+  UNDO_COMMAND,
+} from 'lexical';
 import { 
   INSERT_ORDERED_LIST_COMMAND, 
   INSERT_UNORDERED_LIST_COMMAND,
@@ -43,16 +53,56 @@ const Toolbar = () => {
   const [speechState, setSpeechState] = React.useState<SpeechToTextState>('idle');
   const [speechError, setSpeechError] = React.useState<SpeechToTextError | null>(null);
   const [interimTranscript, setInterimTranscript] = React.useState('');
+  const lastRangeSelectionRef = React.useRef<{
+    anchor: { key: string; offset: number; type: 'text' | 'element' };
+    focus: { key: string; offset: number; type: 'text' | 'element' };
+  } | null>(null);
 
   const speechAdapter = React.useMemo(() => new WebSpeechToTextAdapter(), []);
 
   const updateToolbar = useCallback(() => {
     const selection = $getSelection();
     if ($isRangeSelection(selection)) {
+      lastRangeSelectionRef.current = {
+        anchor: {
+          key: selection.anchor.key,
+          offset: selection.anchor.offset,
+          type: selection.anchor.type,
+        },
+        focus: {
+          key: selection.focus.key,
+          offset: selection.focus.offset,
+          type: selection.focus.type,
+        },
+      };
       setIsBold(selection.hasFormat('bold'));
       setIsItalic(selection.hasFormat('italic'));
       setIsUnderline(selection.hasFormat('underline'));
     }
+  }, []);
+
+  const restoreLastRangeSelection = useCallback(() => {
+    const previousSelection = lastRangeSelectionRef.current;
+    if (!previousSelection) return false;
+
+    if (!$getNodeByKey(previousSelection.anchor.key) || !$getNodeByKey(previousSelection.focus.key)) {
+      return false;
+    }
+
+    const restoredSelection = $createRangeSelection();
+    restoredSelection.anchor.set(
+      previousSelection.anchor.key,
+      previousSelection.anchor.offset,
+      previousSelection.anchor.type,
+    );
+    restoredSelection.focus.set(
+      previousSelection.focus.key,
+      previousSelection.focus.offset,
+      previousSelection.focus.type,
+    );
+    $setSelection(restoredSelection);
+
+    return $isRangeSelection($getSelection());
   }, []);
 
   React.useEffect(() => {
@@ -104,7 +154,19 @@ const Toolbar = () => {
       if (!formattedText) return;
 
       editor.update(() => {
-        const selection = $getSelection();
+        let selection = $getSelection();
+        if (!$isRangeSelection(selection) && restoreLastRangeSelection()) {
+          selection = $getSelection();
+        }
+
+        if ($isRangeSelection(selection)) {
+          const shouldAddTrailingSpace = !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+          selection.insertText(shouldAddTrailingSpace ? `${formattedText} ` : formattedText);
+          return;
+        }
+
+        $getRoot().selectEnd();
+        selection = $getSelection();
         if ($isRangeSelection(selection)) {
           const shouldAddTrailingSpace = !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
           selection.insertText(shouldAddTrailingSpace ? `${formattedText} ` : formattedText);
@@ -154,6 +216,7 @@ const Toolbar = () => {
 
     setSpeechError(null);
     speechAdapter.start();
+    editor.focus();
   };
 
   return (
@@ -215,6 +278,7 @@ const Toolbar = () => {
         variant={isListening ? 'default' : 'ghost'}
         size="sm"
         onClick={toggleSpeechRecognition}
+        onMouseDown={(e) => e.preventDefault()}
         className="h-8 w-8 p-0"
         title={
           !speechSupported
