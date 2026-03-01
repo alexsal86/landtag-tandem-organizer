@@ -56,6 +56,7 @@ import { StakeholderNetworkTagSettings } from "@/components/administration/Stake
 import { PushNotificationTest } from "@/components/PushNotificationTest";
 import { VapidKeyTest } from "@/components/VapidKeyTest";
 import { DirectPushTest } from "@/components/DirectPushTest";
+import { AutomationRulesManager } from "@/components/administration/AutomationRulesManager";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -92,7 +93,7 @@ const DEFAULT_SUB_SECTION: Record<string, string> = {
   content: "topics",
   templates: "letters",
   politics: "associations",
-  automation: "rss-sources",
+  automation: "rules",
   superadmin: "tenants",
 };
 
@@ -2262,6 +2263,13 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
     // SECTION 7: Automatisierung
     if (activeSection === "automation") {
       switch (activeSubSection) {
+        case "rules":
+          return (
+            <div>
+              <h3 className="text-lg font-medium mb-4">No-Code Regel-Builder</h3>
+              <AutomationRulesManager />
+            </div>
+          );
         case "rss-sources":
           return (
             <div>
