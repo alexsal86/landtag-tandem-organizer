@@ -97,6 +97,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   const [speechError, setSpeechError] = useState<SpeechToTextError | null>(null);
   const [interimTranscript, setInterimTranscript] = useState('');
   const interimNodeKeyRef = React.useRef<string | null>(null);
+  const lastInsertedSegmentRef = React.useRef<string>('');
 
   const speechAdapter = useMemo(() => new WebSpeechToTextAdapter(), []);
 
@@ -246,10 +247,12 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
         }
 
         if (!textToInsert) return;
+        if (lastInsertedSegmentRef.current === textToInsert) return;
 
         const selection = $getSelection();
         if ($isRangeSelection(selection)) {
           selection.insertText(textToInsert);
+          lastInsertedSegmentRef.current = textToInsert;
         }
       });
     };
