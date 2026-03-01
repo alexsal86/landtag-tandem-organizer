@@ -25,8 +25,18 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
   const [loading, setLoading] = useState(true);
   const isMountedRef = useRef(true);
 
+  const getMeetingTimestamp = useCallback((meeting: Pick<Meeting, "meeting_date" | "meeting_time">) => {
+    const time = meeting.meeting_time?.slice(0, 5);
+    const meetingDateTime = time ? `${meeting.meeting_date}T${time}:00` : `${meeting.meeting_date}T23:59:59`;
+    const parsed = new Date(meetingDateTime);
+    return Number.isNaN(parsed.getTime()) ? Number.POSITIVE_INFINITY : parsed.getTime();
+  }, []);
+
   const loadParticipantsForMeetings = useCallback(async (meetingIds: string[]) => {
-    if (meetingIds.length === 0) return;
+    if (meetingIds.length === 0) {
+      if (isMountedRef.current) setMeetingParticipants({});
+      return;
+    }
 
     try {
       const { data: participants, error: participantsError } = await supabase
@@ -62,10 +72,20 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
   }, []);
 
   const loadMeetings = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      if (isMountedRef.current) {
+        setUpcomingMeetings([]);
+        setPastMeetings([]);
+        setMeetingParticipants({});
+        setLoading(false);
+      }
+      return;
+    }
 
     try {
-      const now = new Date().toISOString();
+      const now = new Date();
+      const startOfToday = new Date(now);
+      startOfToday.setHours(0, 0, 0, 0);
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -77,7 +97,7 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
           .select(selectFields)
           .eq("user_id", userId)
           .neq("status", "archived")
-          .gte("meeting_date", now)
+          .gte("meeting_date", startOfToday.toISOString())
           .order("meeting_date", { ascending: true })
           .limit(20),
         supabase
@@ -85,7 +105,7 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
           .select(selectFields)
           .eq("user_id", userId)
           .neq("status", "archived")
-          .lt("meeting_date", now)
+          .lt("meeting_date", startOfToday.toISOString())
           .gte("meeting_date", thirtyDaysAgo.toISOString())
           .order("meeting_date", { ascending: false })
           .limit(10),
@@ -128,13 +148,13 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
       });
 
       const upcoming = deduped
-        .filter(m => new Date(m.meeting_date) >= new Date(now))
-        .sort((a, b) => new Date(a.meeting_date).getTime() - new Date(b.meeting_date).getTime())
+        .filter(m => getMeetingTimestamp(m) >= now.getTime())
+        .sort((a, b) => getMeetingTimestamp(a) - getMeetingTimestamp(b))
         .slice(0, 20);
 
       const past = deduped
-        .filter(m => new Date(m.meeting_date) < new Date(now))
-        .sort((a, b) => new Date(b.meeting_date).getTime() - new Date(a.meeting_date).getTime())
+        .filter(m => getMeetingTimestamp(m) < now.getTime())
+        .sort((a, b) => getMeetingTimestamp(b) - getMeetingTimestamp(a))
         .slice(0, 10);
 
       if (isMountedRef.current) {
@@ -146,7 +166,7 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
-  }, [userId]);
+  }, [getMeetingTimestamp, userId]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -156,14 +176,12 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
   }, []);
 
   useEffect(() => {
-    if (userId) void loadMeetings();
-  }, [userId, loadMeetings]);
+    void loadMeetings();
+  }, [loadMeetings]);
 
   useEffect(() => {
     const allMeetingIds = [...upcomingMeetings, ...pastMeetings].map(m => m.id);
-    if (allMeetingIds.length > 0) {
-      void loadParticipantsForMeetings(allMeetingIds);
-    }
+    void loadParticipantsForMeetings(allMeetingIds);
   }, [upcomingMeetings, pastMeetings, loadParticipantsForMeetings]);
 
   return {
