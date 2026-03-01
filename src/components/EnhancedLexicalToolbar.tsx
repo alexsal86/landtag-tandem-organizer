@@ -53,6 +53,7 @@ import {
   AlignCenter,
   AlignRight,
   AlignJustify,
+  Mic,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -91,6 +92,23 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   const [showTableDialog, setShowTableDialog] = useState(false);
   const [tableRows, setTableRows] = useState('3');
   const [tableCols, setTableCols] = useState('3');
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const recognitionRef = React.useRef<SpeechRecognition | null>(null);
+
+  useEffect(() => {
+    const SpeechRecognitionCtor =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    setSpeechSupported(Boolean(SpeechRecognitionCtor));
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+    };
+  }, []);
 
   // Track active formats
   useEffect(() => {
@@ -221,6 +239,73 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     });
   }, [editor]);
 
+  const stopSpeechRecognition = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+  }, []);
+
+  const toggleSpeechRecognition = useCallback(() => {
+    if (!speechSupported) return;
+
+    if (isListening) {
+      stopSpeechRecognition();
+      return;
+    }
+
+    setSpeechError(null);
+    const SpeechRecognitionCtor =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      setSpeechSupported(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'de-DE';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          finalTranscript += result[0]?.transcript ?? '';
+        }
+      }
+
+      const trimmedTranscript = finalTranscript.trim();
+      if (!trimmedTranscript) return;
+
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          selection.insertText(`${trimmedTranscript} `);
+        }
+      });
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (event.error !== 'no-speech') {
+        setSpeechError(event.error);
+      }
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.start();
+    recognitionRef.current = recognition;
+    setIsListening(true);
+  }, [editor, isListening, speechSupported, stopSpeechRecognition]);
+
   if (showFloatingToolbar) {
     return (
       <div className="bg-background border rounded-lg shadow-lg p-1 flex gap-1">
@@ -311,6 +396,30 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           <Button variant="ghost" size="sm" onClick={() => setShowImageDialog(true)} className="h-8 w-8 p-0" title="Bild einfügen"><Image className="h-4 w-4" /></Button>
           <Button variant="ghost" size="sm" onClick={insertMention} className="h-8 w-8 p-0" title="Erwähnung"><AtSign className="h-4 w-4" /></Button>
         </div>
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* Speech-to-text (Web Speech API) */}
+        <Button
+          variant={isListening ? 'default' : 'ghost'}
+          size="sm"
+          onClick={toggleSpeechRecognition}
+          className="h-8 w-8 p-0"
+          title={
+            !speechSupported
+              ? 'Spracherkennung in diesem Browser nicht unterstützt'
+              : isListening
+                ? 'Spracherkennung beenden'
+                : 'Spracherkennung starten'
+          }
+          disabled={!speechSupported}
+        >
+          <Mic className="h-4 w-4" />
+        </Button>
+
+        {speechError && (
+          <span className="text-xs text-destructive">STT-Fehler: {speechError}</span>
+        )}
 
         <Separator orientation="vertical" className="h-6 mx-1" />
 
