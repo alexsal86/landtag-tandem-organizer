@@ -246,7 +246,7 @@ export default function EnhancedLexicalEditor({
     });
   }, [onChange]);
 
-  const pageTypography = 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
+  const pageTypography = defaultFontFamily || 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
 
   const toolbarElement = showToolbar ? <EnhancedLexicalToolbar documentId={documentId} defaultFontSize={defaultFontSize} defaultFontFamily={defaultFontFamily || pageTypography} /> : null;
 
@@ -275,7 +275,6 @@ export default function EnhancedLexicalEditor({
                   ].join(' ')}
                   style={matchLetterPreview ? {
                     width: '210mm',
-                    maxWidth: '100%',
                     minHeight: '297mm',
                     padding: '20mm 25mm 25mm',
                     fontFamily: pageTypography,
@@ -292,7 +291,7 @@ export default function EnhancedLexicalEditor({
                 <div
                   className={[
                     'editor-placeholder text-muted-foreground pointer-events-none',
-                    matchLetterPreview ? 'absolute top-6 left-1/2 -translate-x-1/2 w-[210mm] max-w-full px-[25mm] pt-[20mm]' : 'absolute top-4 left-4',
+                    matchLetterPreview ? 'absolute top-6 left-1/2 -translate-x-1/2 w-[210mm] px-[25mm] pt-[20mm]' : 'absolute top-4 left-4',
                   ].join(' ')}
                   style={{ fontFamily: pageTypography }}
                 >
