@@ -12,6 +12,9 @@ export interface PressTemplateConfig {
   default_tags?: string;
   is_default?: boolean;
   is_active?: boolean;
+  layout_settings?: any;
+  header_elements?: any[];
+  footer_elements?: any[];
 }
 
 export const parsePressTemplates = (rawValue?: string | null): PressTemplateConfig[] => {
