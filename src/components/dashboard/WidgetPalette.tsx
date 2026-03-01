@@ -23,7 +23,8 @@ import {
   Sparkles,
   Clock,
   TrendingUp,
-  ClipboardCheck
+  ClipboardCheck,
+  Network
 } from 'lucide-react';
 import { DashboardWidget } from '@/hooks/useDashboardLayout';
 
@@ -112,6 +113,14 @@ const WIDGET_TYPES = [
     description: 'Schnelle Rückmeldung zu vergangenen Terminen',
     icon: ClipboardCheck,
     category: 'calendar',
+    popular: true
+  },
+  {
+    type: 'stakeholder-network' as const,
+    title: 'Stakeholder-Netzwerk',
+    description: 'Graphische Übersicht zu Stakeholder-Verbindungen',
+    icon: Network,
+    category: 'analytics',
     popular: true
   },
   {
