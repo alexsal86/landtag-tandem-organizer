@@ -174,6 +174,16 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
     speechAdapter.onError = (error) => setSpeechError(error);
     speechAdapter.onInterimTranscript = (text) => {
+      const command = detectSpeechCommand(text);
+      if (command?.type === 'stop-listening') {
+        setInterimTranscript('');
+        editor.update(() => {
+          removeInterimNode();
+        });
+        speechAdapter.stop();
+        return;
+      }
+
       setInterimTranscript(text);
       updateInterimNode(text);
     };
