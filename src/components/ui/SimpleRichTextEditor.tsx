@@ -60,10 +60,46 @@ const Toolbar = () => {
   const updateToolbar = useCallback(() => {
     const selection = $getSelection();
     if ($isRangeSelection(selection)) {
+      lastRangeSelectionRef.current = {
+        anchor: {
+          key: selection.anchor.key,
+          offset: selection.anchor.offset,
+          type: selection.anchor.type,
+        },
+        focus: {
+          key: selection.focus.key,
+          offset: selection.focus.offset,
+          type: selection.focus.type,
+        },
+      };
       setIsBold(selection.hasFormat('bold'));
       setIsItalic(selection.hasFormat('italic'));
       setIsUnderline(selection.hasFormat('underline'));
     }
+  }, []);
+
+  const restoreLastRangeSelection = useCallback(() => {
+    const previousSelection = lastRangeSelectionRef.current;
+    if (!previousSelection) return false;
+
+    if (!$getNodeByKey(previousSelection.anchor.key) || !$getNodeByKey(previousSelection.focus.key)) {
+      return false;
+    }
+
+    const restoredSelection = $createRangeSelection();
+    restoredSelection.anchor.set(
+      previousSelection.anchor.key,
+      previousSelection.anchor.offset,
+      previousSelection.anchor.type,
+    );
+    restoredSelection.focus.set(
+      previousSelection.focus.key,
+      previousSelection.focus.offset,
+      previousSelection.focus.type,
+    );
+    $setSelection(restoredSelection);
+
+    return $isRangeSelection($getSelection());
   }, []);
 
   React.useEffect(() => {
@@ -236,6 +272,7 @@ const Toolbar = () => {
 
     setSpeechError(null);
     speechAdapter.start();
+    editor.focus();
   };
 
   return (
@@ -297,6 +334,7 @@ const Toolbar = () => {
         variant={isListening ? 'default' : 'ghost'}
         size="sm"
         onClick={toggleSpeechRecognition}
+        onMouseDown={(e) => e.preventDefault()}
         className="h-8 w-8 p-0"
         title={
           !speechSupported

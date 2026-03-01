@@ -15,6 +15,9 @@ import {
   REDO_COMMAND,
   TextFormatType,
   ElementFormatType,
+  $createRangeSelection,
+  $getNodeByKey,
+  $setSelection,
   $insertNodes,
 } from 'lexical';
 import {
@@ -96,6 +99,30 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   const interimNodeKeyRef = React.useRef<string | null>(null);
 
   const speechAdapter = useMemo(() => new WebSpeechToTextAdapter(), []);
+
+  const restoreLastRangeSelection = useCallback(() => {
+    const previousSelection = lastRangeSelectionRef.current;
+    if (!previousSelection) return false;
+
+    if (!$getNodeByKey(previousSelection.anchor.key) || !$getNodeByKey(previousSelection.focus.key)) {
+      return false;
+    }
+
+    const restoredSelection = $createRangeSelection();
+    restoredSelection.anchor.set(
+      previousSelection.anchor.key,
+      previousSelection.anchor.offset,
+      previousSelection.anchor.type,
+    );
+    restoredSelection.focus.set(
+      previousSelection.focus.key,
+      previousSelection.focus.offset,
+      previousSelection.focus.type,
+    );
+    $setSelection(restoredSelection);
+
+    return $isRangeSelection($getSelection());
+  }, []);
 
   useEffect(() => {
     const removeInterimNode = () => {
@@ -233,6 +260,18 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
         const selection = $getSelection();
         const formats: string[] = [];
         if ($isRangeSelection(selection)) {
+          lastRangeSelectionRef.current = {
+            anchor: {
+              key: selection.anchor.key,
+              offset: selection.anchor.offset,
+              type: selection.anchor.type,
+            },
+            focus: {
+              key: selection.focus.key,
+              offset: selection.focus.offset,
+              type: selection.focus.type,
+            },
+          };
           if (selection.hasFormat('bold')) formats.push('bold');
           if (selection.hasFormat('italic')) formats.push('italic');
           if (selection.hasFormat('underline')) formats.push('underline');
@@ -368,7 +407,8 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
 
     setSpeechError(null);
     speechAdapter.start();
-  }, [isListening, speechAdapter, speechSupported]);
+    editor.focus();
+  }, [editor, isListening, speechAdapter, speechSupported]);
 
   if (showFloatingToolbar) {
     return (
@@ -468,6 +508,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           variant={isListening ? 'default' : 'ghost'}
           size="sm"
           onClick={toggleSpeechRecognition}
+          onMouseDown={(e) => e.preventDefault()}
           className="h-8 w-8 p-0"
           title={
             !speechSupported
