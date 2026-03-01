@@ -10,14 +10,14 @@ import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
-  $createRangeSelection,
+  $createTextNode,
   $getNodeByKey,
   $getRoot,
-  $setSelection,
   FORMAT_TEXT_COMMAND,
   EditorState,
   LexicalEditor,
   REDO_COMMAND,
+  TextNode,
   UNDO_COMMAND,
 } from 'lexical';
 import { 
@@ -53,10 +53,7 @@ const Toolbar = () => {
   const [speechState, setSpeechState] = React.useState<SpeechToTextState>('idle');
   const [speechError, setSpeechError] = React.useState<SpeechToTextError | null>(null);
   const [interimTranscript, setInterimTranscript] = React.useState('');
-  const lastRangeSelectionRef = React.useRef<{
-    anchor: { key: string; offset: number; type: 'text' | 'element' };
-    focus: { key: string; offset: number; type: 'text' | 'element' };
-  } | null>(null);
+  const interimNodeKeyRef = React.useRef<string | null>(null);
 
   const speechAdapter = React.useMemo(() => new WebSpeechToTextAdapter(), []);
 
@@ -114,12 +111,66 @@ const Toolbar = () => {
   }, [editor, updateToolbar]);
 
   React.useEffect(() => {
+    const removeInterimNode = () => {
+      const interimNodeKey = interimNodeKeyRef.current;
+      if (!interimNodeKey) return null;
+
+      const interimNode = $getNodeByKey(interimNodeKey);
+      if (interimNode instanceof TextNode) {
+        interimNode.remove();
+        interimNodeKeyRef.current = null;
+        return interimNode;
+      }
+
+      interimNodeKeyRef.current = null;
+      return null;
+    };
+
+    const updateInterimNode = (text: string) => {
+      editor.update(() => {
+        const interimNodeKey = interimNodeKeyRef.current;
+        if (interimNodeKey) {
+          const interimNode = $getNodeByKey(interimNodeKey);
+          if (interimNode instanceof TextNode) {
+            if (!text) {
+              interimNode.remove();
+              interimNodeKeyRef.current = null;
+              return;
+            }
+
+            interimNode.setTextContent(text);
+            return;
+          }
+
+          interimNodeKeyRef.current = null;
+        }
+
+        if (!text) return;
+
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          const node = $createTextNode(text);
+          node.setStyle('opacity: 0.65; font-style: italic;');
+          selection.insertNodes([node]);
+          interimNodeKeyRef.current = node.getKey();
+        }
+      });
+    };
+
     speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
     speechAdapter.onError = (error) => setSpeechError(error);
-    speechAdapter.onInterimTranscript = (text) => setInterimTranscript(text);
+    speechAdapter.onInterimTranscript = (text) => {
+      setInterimTranscript(text);
+      updateInterimNode(text);
+    };
     speechAdapter.onFinalTranscript = (text) => {
       const command = detectSpeechCommand(text);
       if (command) {
+        editor.update(() => {
+          removeInterimNode();
+        });
+        setInterimTranscript('');
+
         switch (command.type) {
           case 'stop-listening':
             speechAdapter.stop();
@@ -151,25 +202,30 @@ const Toolbar = () => {
       }
 
       const formattedText = formatDictatedText(text);
-      if (!formattedText) return;
+      setInterimTranscript('');
 
       editor.update(() => {
-        let selection = $getSelection();
-        if (!$isRangeSelection(selection) && restoreLastRangeSelection()) {
-          selection = $getSelection();
-        }
+        const shouldAddTrailingSpace =
+          !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+        const textToInsert = formattedText
+          ? shouldAddTrailingSpace
+            ? `${formattedText} `
+            : formattedText
+          : '';
 
-        if ($isRangeSelection(selection)) {
-          const shouldAddTrailingSpace = !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
-          selection.insertText(shouldAddTrailingSpace ? `${formattedText} ` : formattedText);
+        const interimNode = removeInterimNode();
+        if (interimNode instanceof TextNode) {
+          if (textToInsert) {
+            interimNode.replace($createTextNode(textToInsert));
+          }
           return;
         }
 
-        $getRoot().selectEnd();
-        selection = $getSelection();
+        if (!textToInsert) return;
+
+        const selection = $getSelection();
         if ($isRangeSelection(selection)) {
-          const shouldAddTrailingSpace = !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
-          selection.insertText(shouldAddTrailingSpace ? `${formattedText} ` : formattedText);
+          selection.insertText(textToInsert);
         }
       });
     };
