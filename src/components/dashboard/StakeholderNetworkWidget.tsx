@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useTenant } from "@/hooks/useTenant";
 
 interface StakeholderContact {
   id: string;
@@ -14,7 +15,6 @@ interface StakeholderContact {
 interface NetworkNode {
   id: string;
   label: string;
-  group: string;
   x: number;
   y: number;
   degree: number;
@@ -32,21 +32,18 @@ const SVG_SIZE = 500;
 const CENTER = SVG_SIZE / 2;
 const BASE_RADIUS = 150;
 
-const getGroup = (contact: StakeholderContact) => {
-  const primaryTag = contact.tags?.[0];
-  if (primaryTag) return primaryTag;
-  return contact.organization || "Sonstige";
-};
-
 export function StakeholderNetworkWidget() {
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
+  const { currentTenant, loading: tenantLoading } = useTenant();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["stakeholder-network-widget"],
+    queryKey: ["stakeholder-network-widget", currentTenant?.id],
+    enabled: !!currentTenant?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contacts")
         .select("id, name, organization, tags")
+        .eq("tenant_id", currentTenant?.id || "")
         .eq("contact_type", "organization")
         .order("updated_at", { ascending: false })
         .limit(40);
@@ -93,7 +90,6 @@ export function StakeholderNetworkWidget() {
       return {
         id: contact.id,
         label: contact.name,
-        group: getGroup(contact),
         x: CENTER + Math.cos(angle) * ring,
         y: CENTER + Math.sin(angle) * ring,
         degree,
@@ -107,8 +103,12 @@ export function StakeholderNetworkWidget() {
     };
   }, [data]);
 
-  if (isLoading) {
+  if (tenantLoading || isLoading) {
     return <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Stakeholder-Netzwerk wird geladen…</div>;
+  }
+
+  if (!currentTenant) {
+    return <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Kein Mandant zugewiesen.</div>;
   }
 
   if (error) {
