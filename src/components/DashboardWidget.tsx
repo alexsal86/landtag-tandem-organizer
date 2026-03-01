@@ -19,6 +19,7 @@ import { HabitsWidget } from '@/components/widgets/HabitsWidget';
 import { CallLogWidget } from '@/components/widgets/CallLogWidget';
 import { QuickActionsWidget } from '@/components/widgets/QuickActionsWidget';
 import { AppointmentFeedbackWidget } from '@/components/dashboard/AppointmentFeedbackWidget';
+import { StakeholderNetworkWidget } from '@/components/dashboard/StakeholderNetworkWidget';
 
 interface WidgetProps {
   widget: WidgetType;
@@ -588,6 +589,8 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         return <NewsWidget widgetId={widget.id} />;
       case 'appointmentfeedback':
         return <AppointmentFeedbackWidget widgetSize={widget.widgetSize} isEditMode={isEditMode} />;
+      case 'stakeholder-network':
+        return <StakeholderNetworkWidget />;
 
       default:
         return <div>Unbekanntes Widget</div>;
@@ -595,7 +598,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
   };
 
   // For new widget types that handle their own layout, render them directly
-  if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news', 'appointmentfeedback', 'stats', 'actions', 'tasks', 'schedule', 'messages', 'blackboard'].includes(widget.type)) {
+  if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news', 'appointmentfeedback', 'stakeholder-network', 'stats', 'actions', 'tasks', 'schedule', 'messages', 'blackboard'].includes(widget.type)) {
     return (
       <div 
         className={`group relative h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''}`}
