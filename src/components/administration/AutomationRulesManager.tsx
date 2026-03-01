@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Play, Plus, Save, Trash2 } from "lucide-react";
+import { Loader2, Play, Plus, Save, Trash2, Zap } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -32,6 +32,7 @@ type RunRow = {
   id: string;
   rule_id: string;
   status: string;
+  dry_run?: boolean;
   trigger_source: string;
   started_at: string;
   error_message: string | null;
@@ -134,7 +135,7 @@ export function AutomationRulesManager() {
         .order("updated_at", { ascending: false }),
       supabase
         .from("automation_rule_runs" as any)
-        .select("id, rule_id, status, trigger_source, started_at, error_message")
+        .select("id, rule_id, status, dry_run, trigger_source, started_at, error_message")
         .eq("tenant_id", currentTenant.id)
         .order("started_at", { ascending: false })
         .limit(30),
@@ -195,7 +196,6 @@ export function AutomationRulesManager() {
     setSaving(true);
     const payload = {
       tenant_id: currentTenant.id,
-      created_by: user.id,
       name: form.name.trim(),
       description: form.description.trim() || null,
       module: form.module,
@@ -227,7 +227,7 @@ export function AutomationRulesManager() {
 
     const query = editingRuleId
       ? supabase.from("automation_rules" as any).update(payload).eq("id", editingRuleId)
-      : supabase.from("automation_rules" as any).insert(payload);
+      : supabase.from("automation_rules" as any).insert({ ...payload, created_by: user.id });
 
     const { error } = await query;
 
@@ -258,21 +258,19 @@ export function AutomationRulesManager() {
     if (!currentTenant || !user) return;
     setRunningRuleId(rule.id);
 
-    const { error } = await supabase.from("automation_rule_runs" as any).insert({
-      rule_id: rule.id,
-      tenant_id: currentTenant.id,
-      status: "dry_run",
-      trigger_source: "manual",
-      input_payload: {
-        rule_name: rule.name,
-        module: rule.module,
+    const idempotencyKey = crypto.randomUUID();
+    const { error } = await supabase.functions.invoke("run-automation-rule", {
+      body: {
+        ruleId: rule.id,
+        dryRun: true,
+        idempotencyKey,
+        sourcePayload: {
+          status: "overdue",
+          priority: "high",
+          rule_name: rule.name,
+          module: rule.module,
+        },
       },
-      result_payload: {
-        simulated: true,
-        message: "Dry-Run gespeichert. Executor kann darauf aufsetzen.",
-      },
-      finished_at: new Date().toISOString(),
-      created_by: user.id,
     });
 
     setRunningRuleId(null);
@@ -282,6 +280,35 @@ export function AutomationRulesManager() {
     }
 
     toast({ title: "Dry-Run erstellt", description: "Ausführung wurde in der Historie protokolliert." });
+    loadData();
+  };
+
+  const triggerRunNow = async (rule: RuleRow) => {
+    if (!currentTenant || !user) return;
+    setRunningRuleId(rule.id);
+
+    const idempotencyKey = crypto.randomUUID();
+    const { error } = await supabase.functions.invoke("run-automation-rule", {
+      body: {
+        ruleId: rule.id,
+        dryRun: false,
+        idempotencyKey,
+        sourcePayload: {
+          status: "overdue",
+          priority: "high",
+          rule_name: rule.name,
+          module: rule.module,
+        },
+      },
+    });
+
+    setRunningRuleId(null);
+    if (error) {
+      toast({ title: "Ausführung fehlgeschlagen", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Regel ausgeführt", description: "Die Ausführung wurde protokolliert." });
     loadData();
   };
 
@@ -464,6 +491,9 @@ export function AutomationRulesManager() {
                     <Button size="sm" variant="outline" onClick={() => triggerDryRun(rule)} disabled={runningRuleId === rule.id}>
                       {runningRuleId === rule.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                     </Button>
+                    <Button size="sm" onClick={() => triggerRunNow(rule)} disabled={runningRuleId === rule.id}>
+                      <Zap className="h-4 w-4" />
+                    </Button>
                     <Button size="sm" variant="destructive" onClick={() => deleteRule(rule.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -489,12 +519,12 @@ export function AutomationRulesManager() {
             runs.map((run) => (
               <div key={run.id} className="flex items-center justify-between border rounded-md p-2">
                 <div>
-                  <p className="text-sm font-medium">Regel: {run.rule_id.slice(0, 8)}…</p>
+                  <p className="text-sm font-medium">Regel: {rules.find((rule) => rule.id === run.rule_id)?.name || `${run.rule_id.slice(0, 8)}…`}</p>
                   <p className="text-xs text-muted-foreground">
                     {run.trigger_source} · {formatDistanceToNow(new Date(run.started_at), { addSuffix: true, locale: de })}
                   </p>
                 </div>
-                <Badge variant={run.status === "failed" ? "destructive" : "outline"}>{run.status}</Badge>
+                <Badge variant={run.status === "failed" ? "destructive" : "outline"}>{run.dry_run ? "dry_run" : run.status}</Badge>
               </div>
             ))
           )}

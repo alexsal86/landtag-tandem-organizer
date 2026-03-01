@@ -1,0 +1,291 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.1";
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+type Condition = {
+  field: string;
+  operator: "equals" | "not_equals" | "contains" | "gt" | "lt";
+  value: string;
+};
+
+type Action = {
+  type: "create_notification" | "update_record_status";
+  payload?: Record<string, unknown>;
+};
+
+const evaluateCondition = (source: Record<string, unknown>, condition: Condition) => {
+  const current = source[condition.field];
+  const target = condition.value;
+
+  switch (condition.operator) {
+    case "equals":
+      return String(current ?? "") === target;
+    case "not_equals":
+      return String(current ?? "") !== target;
+    case "contains":
+      return String(current ?? "").includes(target);
+    case "gt":
+      return Number(current ?? 0) > Number(target);
+    case "lt":
+      return Number(current ?? 0) < Number(target);
+    default:
+      return false;
+  }
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: CORS_HEADERS });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const authHeader = req.headers.get("Authorization");
+
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const supabaseUser = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseUser.auth.getUser();
+
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
+    const { ruleId, dryRun = false, sourcePayload = {}, idempotencyKey }: {
+      ruleId: string;
+      dryRun?: boolean;
+      sourcePayload?: Record<string, unknown>;
+      idempotencyKey?: string;
+    } = await req.json();
+
+    if (!ruleId) {
+      return new Response(JSON.stringify({ error: "ruleId is required" }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: rule, error: ruleError } = await supabaseAdmin
+      .from("automation_rules")
+      .select("id, tenant_id, name, conditions, actions, enabled")
+      .eq("id", ruleId)
+      .maybeSingle();
+
+    if (ruleError || !rule) {
+      return new Response(JSON.stringify({ error: "Rule not found" }), {
+        status: 404,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: adminAllowed, error: adminError } = await supabaseAdmin.rpc("is_tenant_admin", {
+      _user_id: user.id,
+      _tenant_id: rule.tenant_id,
+    });
+
+    if (adminError || !adminAllowed) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!rule.enabled && !dryRun) {
+      return new Response(JSON.stringify({ error: "Rule is disabled" }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
+    if (idempotencyKey) {
+      const { data: existingRun } = await supabaseAdmin
+        .from("automation_rule_runs")
+        .select("id, status")
+        .eq("rule_id", rule.id)
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+
+      if (existingRun) {
+        return new Response(JSON.stringify({ reused: true, runId: existingRun.id, status: existingRun.status }), {
+          status: 200,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    const runInsert = {
+      rule_id: rule.id,
+      tenant_id: rule.tenant_id,
+      status: "running",
+      trigger_source: "manual",
+      dry_run: dryRun,
+      idempotency_key: idempotencyKey ?? null,
+      input_payload: sourcePayload,
+      created_by: user.id,
+      started_at: new Date().toISOString(),
+    };
+
+    const { data: run, error: runError } = await supabaseAdmin
+      .from("automation_rule_runs")
+      .insert(runInsert)
+      .select("id")
+      .single();
+
+    if (runError || !run) {
+      return new Response(JSON.stringify({ error: runError?.message ?? "Could not create run" }), {
+        status: 500,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
+    const conditions = ((rule.conditions as any)?.all ?? []) as Condition[];
+    const actions = (rule.actions ?? []) as Action[];
+
+    const matches = conditions.every((condition) => evaluateCondition(sourcePayload, condition));
+
+    if (!matches) {
+      await supabaseAdmin.from("automation_rule_runs").update({
+        status: "success",
+        result_payload: { skipped: true, reason: "conditions_not_met" },
+        finished_at: new Date().toISOString(),
+      }).eq("id", run.id);
+
+      await supabaseAdmin.from("automation_rule_run_steps").insert({
+        run_id: run.id,
+        tenant_id: rule.tenant_id,
+        step_order: 0,
+        step_type: "condition_check",
+        status: "skipped",
+        input_payload: { conditions },
+        result_payload: { matches: false },
+      });
+
+      return new Response(JSON.stringify({ runId: run.id, status: "success", skipped: true }), {
+        status: 200,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
+    let stepOrder = 1;
+    for (const action of actions) {
+      if (dryRun) {
+        await supabaseAdmin.from("automation_rule_run_steps").insert({
+          run_id: run.id,
+          tenant_id: rule.tenant_id,
+          step_order: stepOrder,
+          step_type: action.type,
+          status: "success",
+          input_payload: action,
+          result_payload: { dry_run: true },
+        });
+        stepOrder += 1;
+        continue;
+      }
+
+      if (action.type === "create_notification") {
+        const payload = action.payload ?? {};
+        const targetUserId = String(payload.target_user_id ?? user.id);
+        const title = String(payload.title ?? `Automation: ${rule.name}`);
+        const message = String(payload.message ?? "Automatische Regel ausgelöst.");
+
+        const { data: typeData } = await supabaseAdmin
+          .from("notification_types")
+          .select("id")
+          .eq("name", "system_alert")
+          .maybeSingle();
+
+        const { error: notificationError } = await supabaseAdmin
+          .from("notifications")
+          .insert({
+            user_id: targetUserId,
+            title,
+            message,
+            notification_type_id: typeData?.id ?? null,
+            sender_id: user.id,
+            tenant_id: rule.tenant_id,
+            metadata: {
+              source: "automation_rule",
+              rule_id: rule.id,
+              run_id: run.id,
+            },
+          });
+
+        if (notificationError) {
+          throw notificationError;
+        }
+      }
+
+      if (action.type === "update_record_status") {
+        const payload = action.payload ?? {};
+        const tableName = String(payload.table ?? "");
+        const recordId = String(payload.record_id ?? "");
+        const status = String(payload.status ?? "");
+
+        const allowedTables = new Set(["tasks", "decisions", "knowledge_documents", "casefiles"]);
+        if (!allowedTables.has(tableName)) {
+          throw new Error(`Table not allowed: ${tableName}`);
+        }
+
+        const { error: updateError } = await supabaseAdmin
+          .from(tableName)
+          .update({ status })
+          .eq("id", recordId)
+          .eq("tenant_id", rule.tenant_id);
+
+        if (updateError) {
+          throw updateError;
+        }
+      }
+
+      await supabaseAdmin.from("automation_rule_run_steps").insert({
+        run_id: run.id,
+        tenant_id: rule.tenant_id,
+        step_order: stepOrder,
+        step_type: action.type,
+        status: "success",
+        input_payload: action,
+      });
+      stepOrder += 1;
+    }
+
+    await supabaseAdmin.from("automation_rule_runs").update({
+      status: dryRun ? "dry_run" : "success",
+      result_payload: {
+        conditions_matched: true,
+        action_count: actions.length,
+      },
+      finished_at: new Date().toISOString(),
+    }).eq("id", run.id);
+
+    return new Response(JSON.stringify({ runId: run.id, status: dryRun ? "dry_run" : "success" }), {
+      status: 200,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown automation executor error";
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
+  }
+});
