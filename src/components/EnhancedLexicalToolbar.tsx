@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $isTextNode, TextNode } from 'lexical';
 import {
@@ -49,10 +49,7 @@ import {
   Subscript,
   Superscript,
   RemoveFormatting,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
+  Mic,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -69,6 +66,7 @@ import { TextAlignmentPlugin } from './plugins/TextAlignmentPlugin';
 import { LineHeightPlugin } from './plugins/LineHeightPlugin';
 import { ImageUploadDialog } from './plugins/ImagePlugin';
 import { Input } from '@/components/ui/input';
+import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
@@ -91,6 +89,31 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   const [showTableDialog, setShowTableDialog] = useState(false);
   const [tableRows, setTableRows] = useState('3');
   const [tableCols, setTableCols] = useState('3');
+  const [speechState, setSpeechState] = useState<SpeechToTextState>('idle');
+  const [speechError, setSpeechError] = useState<SpeechToTextError | null>(null);
+
+  const speechAdapter = useMemo(() => new WebSpeechToTextAdapter(), []);
+
+  useEffect(() => {
+    speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
+    speechAdapter.onError = (error) => setSpeechError(error);
+    speechAdapter.onFinalTranscript = (text) => {
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          selection.insertText(`${text} `);
+        }
+      });
+    };
+
+    if (!speechAdapter.supported) {
+      setSpeechState('unsupported');
+    }
+
+    return () => {
+      speechAdapter.destroy();
+    };
+  }, [editor, speechAdapter]);
 
   // Track active formats
   useEffect(() => {
@@ -221,6 +244,21 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     });
   }, [editor]);
 
+  const isListening = speechState === 'listening';
+  const speechSupported = speechAdapter.supported;
+
+  const toggleSpeechRecognition = useCallback(() => {
+    if (!speechSupported) return;
+
+    if (isListening) {
+      speechAdapter.stop();
+      return;
+    }
+
+    setSpeechError(null);
+    speechAdapter.start();
+  }, [isListening, speechAdapter, speechSupported]);
+
   if (showFloatingToolbar) {
     return (
       <div className="bg-background border rounded-lg shadow-lg p-1 flex gap-1">
@@ -311,6 +349,36 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           <Button variant="ghost" size="sm" onClick={() => setShowImageDialog(true)} className="h-8 w-8 p-0" title="Bild einfügen"><Image className="h-4 w-4" /></Button>
           <Button variant="ghost" size="sm" onClick={insertMention} className="h-8 w-8 p-0" title="Erwähnung"><AtSign className="h-4 w-4" /></Button>
         </div>
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* Speech-to-text (Web Speech API) */}
+        <Button
+          variant={isListening ? 'default' : 'ghost'}
+          size="sm"
+          onClick={toggleSpeechRecognition}
+          className="h-8 w-8 p-0"
+          title={
+            !speechSupported
+              ? 'Spracherkennung in diesem Browser nicht unterstützt'
+              : isListening
+                ? 'Spracherkennung beenden'
+                : 'Spracherkennung starten'
+          }
+          disabled={!speechSupported}
+        >
+          <Mic className="h-4 w-4" />
+        </Button>
+
+        {speechState === 'listening' && (
+          <span className="text-xs text-primary">Aufnahme läuft…</span>
+        )}
+
+        {speechError && (
+          <span className="text-xs text-destructive" title={speechError.code}>
+            {speechError.message}
+          </span>
+        )}
 
         <Separator orientation="vertical" className="h-6 mx-1" />
 
