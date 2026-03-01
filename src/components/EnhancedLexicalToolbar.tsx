@@ -61,7 +61,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { CommentPlugin } from './plugins/CommentPlugin';
 import { VersionHistoryPlugin } from './plugins/VersionHistoryPlugin';
 import FontSizePlugin from './plugins/FontSizePlugin';
 import FontFamilyPlugin from './plugins/FontFamilyPlugin';
@@ -319,7 +318,6 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
 
         {/* Document features */}
         <div className="flex gap-0.5 items-center">
-          {documentId && <CommentPlugin documentId={documentId} />}
           {documentId && <VersionHistoryPlugin documentId={documentId} />}
         </div>
       </div>
