@@ -24,6 +24,14 @@ const normalizeDate = (date: Date): Date => {
   return normalized;
 };
 
+export const isValidSpecialDayDate = (month: number, day: number): boolean => {
+  if (!Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (month < 1 || month > 12 || day < 1) return false;
+
+  const lastDayOfMonth = new Date(2024, month, 0).getDate();
+  return day <= lastDayOfMonth;
+};
+
 export const parseSpecialDaysSetting = (value: string | null | undefined): SpecialDay[] | null => {
   if (!value) return null;
 
@@ -41,12 +49,7 @@ export const parseSpecialDaysSetting = (value: string | null | undefined): Speci
       const name = (entry as { name?: unknown }).name;
       const hint = (entry as { hint?: unknown }).hint;
 
-      return Number.isInteger(month)
-        && month >= 1
-        && month <= 12
-        && Number.isInteger(day)
-        && day >= 1
-        && day <= 31
+      return isValidSpecialDayDate(month, day)
         && typeof name === 'string'
         && name.trim().length > 0
         && typeof hint === 'string'
