@@ -261,7 +261,9 @@ const parseRuleLine = (text: string): { isRule: boolean; label?: string } => {
   const trimmed = text.trim();
   const match = trimmed.match(/^[-–—―−_]{3,}\s*(.*)$/);
   if (!match) return { isRule: false };
-  const label = match[1]?.trim();
+  const label = match[1]
+    ?.replace(/\s*[-–—―−_]{3,}\s*$/, "")
+    .trim();
   return { isRule: true, label: label || undefined };
 };
 
@@ -275,6 +277,11 @@ const escapeHtml = (value: string) =>
 
 const toParagraphHtml = (entry: DaySlipLineEntry) =>
   `<p data-line-id="${entry.id}">${escapeHtml(entry.text)}</p>`;
+
+const toRuleHtml = (label?: string) => {
+  const safeLabel = label ? escapeHtml(label) : "";
+  return `<div class="labeled-hr" data-label="${safeLabel}"></div>`;
+};
 
 const weekdayKey = (date: Date): (typeof weekDays)[number] => {
   const idx = date.getDay();
@@ -796,28 +803,40 @@ export function GlobalDaySlipPanel() {
   };
 
   const insertStructuredLines = useCallback((lines: string[]) => {
-    if (!editorRef.current) {
+    const appendLinesToStore = () => {
       setStore((prev) => {
         const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
         const existingLines = extractLinesFromHtml(day.html);
-        const extra = lines
-          .filter((line) => !parseRuleLine(line).isRule)
-          .map((text) => ({ id: crypto.randomUUID(), text }));
+        const extra = lines.map((text) => ({ id: crypto.randomUUID(), text }));
         const merged = [...existingLines, ...extra];
+        const structuredHtml = lines
+          .map((line) => {
+            const parsed = parseRuleLine(line);
+            if (!parsed.isRule) return toParagraphHtml({ id: crypto.randomUUID(), text: line });
+            return toRuleHtml(parsed.label);
+          })
+          .join("");
         return {
           ...prev,
           [todayKey]: {
             ...day,
-            html: merged.map(toParagraphHtml).join(""),
+            html: `${day.html ?? ""}${structuredHtml}`,
             plainText: merged.map((line) => line.text).join("\n"),
             nodes: undefined,
           },
         };
       });
+    };
+
+    const editor = editorRef.current;
+    const editorMounted = Boolean(editor?.getRootElement());
+
+    if (!editorMounted) {
+      appendLinesToStore();
       return;
     }
 
-    editorRef.current.update(() => {
+    editor.update(() => {
       const root = $getRoot();
       lines.forEach((line) => {
         const parsed = parseRuleLine(line);

@@ -31,6 +31,7 @@ const CallsView = lazyWithRetry(() => import("@/components/CallsView").then(m =>
 const DataView = lazyWithRetry(() => import("@/components/DataView").then(m => ({ default: m.DataView })));
 const EditProfile = lazyWithRetry(() => import("@/pages/EditProfile"));
 const NotificationsPage = lazyWithRetry(() => import("@/pages/NotificationsPage"));
+const LetterDetail = lazyWithRetry(() => import("@/pages/LetterDetail"));
 import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
 import { GlobalQuickActionHandler } from "@/components/layout/GlobalQuickActionHandler";
 import { GlobalAnnouncementBanner } from "@/components/announcements/GlobalAnnouncementBanner";
@@ -49,7 +50,7 @@ const Index = () => {
   const { currentTenant, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
   const location = useLocation();
-  const { subId } = useParams();
+  const { section, subId } = useParams();
   
   // Wait for both auth AND tenant to be loaded before rendering
   const loading = authLoading || (user && tenantLoading);
@@ -57,8 +58,13 @@ const Index = () => {
   // Determine active section from URL
   const getActiveSectionFromPath = (pathname: string) => {
     if (pathname === '/') return 'dashboard';
-    const section = pathname.slice(1).split('/')[0];
-    return section || 'dashboard';
+    const pathSection = pathname.slice(1).split('/')[0];
+
+    if (pathSection === 'letters') {
+      return 'documents';
+    }
+
+    return pathSection || 'dashboard';
   };
   
   const [activeSection, setActiveSection] = useState(() => getActiveSectionFromPath(location.pathname));
@@ -178,6 +184,10 @@ const Index = () => {
       case "kreisverbände":
         return <PartyAssociationsMapView />;
       case "documents":
+        if (section === 'letters' && subId) {
+          return <LetterDetail />;
+        }
+
         return <DocumentsView />;
       case "knowledge":
         return <KnowledgeBaseView />;

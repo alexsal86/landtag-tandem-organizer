@@ -19,6 +19,17 @@ interface SenderData {
   email?: string;
   website?: string;
   return_address_line?: string;
+  // sender_information table variants
+  wahlkreis_street?: string;
+  wahlkreis_house_number?: string;
+  wahlkreis_postal_code?: string;
+  wahlkreis_city?: string;
+  landtag_street?: string;
+  landtag_house_number?: string;
+  landtag_postal_code?: string;
+  landtag_city?: string;
+  wahlkreis_email?: string;
+  landtag_email?: string;
 }
 
 interface RecipientData {
@@ -83,11 +94,23 @@ export function buildVariableMap(
   if (sender) {
     map['{{absender_name}}'] = sender.name || '';
     map['{{absender_organisation}}'] = sender.organization || '';
-    const senderStreet = [sender.street, sender.house_number].filter(Boolean).join(' ');
+
+    const senderStreet = [
+      [sender.street, sender.house_number].filter(Boolean).join(' '),
+      [sender.wahlkreis_street, sender.wahlkreis_house_number].filter(Boolean).join(' '),
+      [sender.landtag_street, sender.landtag_house_number].filter(Boolean).join(' '),
+    ].find((value) => !!value) || '';
+
+    const senderPostalCity = [
+      [sender.postal_code, sender.city].filter(Boolean).join(' '),
+      [sender.wahlkreis_postal_code, sender.wahlkreis_city].filter(Boolean).join(' '),
+      [sender.landtag_postal_code, sender.landtag_city].filter(Boolean).join(' '),
+    ].find((value) => !!value) || '';
+
     map['{{absender_strasse}}'] = senderStreet;
-    map['{{absender_plz_ort}}'] = [sender.postal_code, sender.city].filter(Boolean).join(' ');
+    map['{{absender_plz_ort}}'] = senderPostalCity;
     map['{{telefon}}'] = sender.phone || '';
-    map['{{email}}'] = sender.email || '';
+    map['{{email}}'] = sender.email || sender.wahlkreis_email || sender.landtag_email || '';
   }
 
   // Recipient
