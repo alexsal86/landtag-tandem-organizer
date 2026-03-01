@@ -1957,6 +1957,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       editable={canEdit}
                       onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)}
                       defaultFontSize="11pt"
+                      defaultFontFamily={'Calibri, Carlito, "Segoe UI", Arial, sans-serif'}
+                      matchLetterPreview
                       isReviewMode={isReviewer && (currentStatus === 'pending_approval' || currentStatus === 'review')}
                       reviewerName={user?.id ? (userProfiles[user.id]?.display_name || user.email || '') : ''}
                       reviewerId={user?.id || ''}

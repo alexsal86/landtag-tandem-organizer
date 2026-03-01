@@ -73,6 +73,10 @@ interface EnhancedLexicalEditorProps {
   renderToolbarPortal?: React.RefObject<HTMLDivElement | null>;
   /** Default font size for the toolbar's FontSizePlugin (e.g. "11pt") */
   defaultFontSize?: string;
+  /** Default font family for the toolbar's FontFamilyPlugin */
+  defaultFontFamily?: string;
+  /** Render editor as DIN A4 writing area (210mm width) for letter-like WYSIWYG editing */
+  matchLetterPreview?: boolean;
   /** Track Changes: review mode active */
   isReviewMode?: boolean;
   /** Track Changes: reviewer display name */
@@ -182,6 +186,8 @@ export default function EnhancedLexicalEditor({
   onMentionInsert,
   renderToolbarPortal,
   defaultFontSize,
+  defaultFontFamily,
+  matchLetterPreview = false,
   isReviewMode = false,
   reviewerName = '',
   reviewerId = '',
@@ -240,7 +246,9 @@ export default function EnhancedLexicalEditor({
     });
   }, [onChange]);
 
-  const toolbarElement = showToolbar ? <EnhancedLexicalToolbar documentId={documentId} defaultFontSize={defaultFontSize} /> : null;
+  const pageTypography = 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
+
+  const toolbarElement = showToolbar ? <EnhancedLexicalToolbar documentId={documentId} defaultFontSize={defaultFontSize} defaultFontFamily={defaultFontFamily || pageTypography} /> : null;
 
   return (
     <div className="relative min-h-[200px] border rounded-md overflow-hidden">
@@ -255,15 +263,39 @@ export default function EnhancedLexicalEditor({
           {/* Track Changes banner / accept-reject bar */}
           <TrackChangesToolbar isReviewMode={isReviewMode} showAcceptReject={showAcceptReject} />
 
-          <div className="relative">
+          <div className={matchLetterPreview ? 'relative bg-muted/50 overflow-auto p-6' : 'relative'}>
             <RichTextPlugin
               contentEditable={
                 <ContentEditable
-                  className="editor-input min-h-[300px] p-4 focus:outline-none resize-none prose prose-sm max-w-none bg-white dark:bg-card"
+                  className={[
+                    'editor-input min-h-[300px] focus:outline-none resize-none max-w-none bg-white',
+                    matchLetterPreview
+                      ? 'mx-auto'
+                      : 'p-4 prose prose-sm dark:bg-card',
+                  ].join(' ')}
+                  style={matchLetterPreview ? {
+                    width: '210mm',
+                    maxWidth: '100%',
+                    minHeight: '297mm',
+                    padding: '20mm 25mm 25mm',
+                    fontFamily: pageTypography,
+                    fontSize: '11pt',
+                    lineHeight: '1.2',
+                    color: '#000',
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
+                  } : {
+                    fontFamily: pageTypography,
+                  }}
                 />
               }
               placeholder={
-                <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
+                <div
+                  className={[
+                    'editor-placeholder text-muted-foreground pointer-events-none',
+                    matchLetterPreview ? 'absolute top-6 left-1/2 -translate-x-1/2 w-[210mm] max-w-full px-[25mm] pt-[20mm]' : 'absolute top-4 left-4',
+                  ].join(' ')}
+                  style={{ fontFamily: pageTypography }}
+                >
                   {placeholder}
                 </div>
               }
