@@ -61,6 +61,7 @@ const mapSpeechError = (code: string): SpeechToTextError => {
 export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
   private recognition: SpeechRecognition | null = null;
   private shouldListen = false;
+  private finalizedTranscriptBuffer = '';
 
   onFinalTranscript?: (text: string) => void;
   onInterimTranscript?: (text: string) => void;
@@ -83,6 +84,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
 
   stop(): void {
     this.shouldListen = false;
+    this.resetSessionDedupeState();
     this.onInterimTranscript?.('');
     this.onStateChange?.('stopping');
     this.recognition?.stop();
@@ -90,6 +92,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
 
   destroy(): void {
     this.shouldListen = false;
+    this.resetSessionDedupeState();
     if (this.recognition) {
       this.recognition.onresult = null;
       this.recognition.onerror = null;
@@ -109,6 +112,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
     }
 
     const recognition = new SpeechRecognitionCtor();
+    this.resetSessionDedupeState();
     recognition.lang = 'de-DE';
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -118,7 +122,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
       let finalTranscript = '';
       let interimTranscript = '';
 
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+      for (let i = 0; i < event.results.length; i += 1) {
         const result = event.results[i];
         if (result.isFinal) {
           finalTranscript += result[0]?.transcript ?? '';
@@ -129,9 +133,9 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
 
       this.onInterimTranscript?.(interimTranscript.trim());
 
-      const text = finalTranscript.trim();
-      if (text) {
-        this.onFinalTranscript?.(text);
+      const textDelta = this.consumeFinalTranscriptDelta(finalTranscript);
+      if (textDelta) {
+        this.onFinalTranscript?.(textDelta);
         this.onInterimTranscript?.('');
       }
     };
@@ -148,9 +152,12 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
 
       if (this.shouldListen) {
         // Browser beendet Session regelmäßig; bei aktiver Aufnahme automatisch neu starten.
+        this.resetSessionDedupeState();
         this.startRecognition();
         return;
       }
+
+      this.resetSessionDedupeState();
 
       this.onStateChange?.('idle');
     };
@@ -158,5 +165,34 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
     recognition.start();
     this.recognition = recognition;
     this.onStateChange?.('listening');
+  }
+
+  private consumeFinalTranscriptDelta(finalTranscript: string): string {
+    const normalizedFinal = finalTranscript.trim();
+    if (!normalizedFinal) {
+      return '';
+    }
+
+    if (!this.finalizedTranscriptBuffer) {
+      this.finalizedTranscriptBuffer = normalizedFinal;
+      return normalizedFinal;
+    }
+
+    if (normalizedFinal.startsWith(this.finalizedTranscriptBuffer)) {
+      const delta = normalizedFinal.slice(this.finalizedTranscriptBuffer.length).trimStart();
+      this.finalizedTranscriptBuffer = normalizedFinal;
+      return delta;
+    }
+
+    if (this.finalizedTranscriptBuffer.startsWith(normalizedFinal)) {
+      return '';
+    }
+
+    this.finalizedTranscriptBuffer = normalizedFinal;
+    return normalizedFinal;
+  }
+
+  private resetSessionDedupeState(): void {
+    this.finalizedTranscriptBuffer = '';
   }
 }
