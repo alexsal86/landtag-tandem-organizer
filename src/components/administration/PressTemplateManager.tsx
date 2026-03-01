@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Plus, Edit, Save, Trash2, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
@@ -30,11 +32,22 @@ const makeId = () => crypto.randomUUID();
 export function PressTemplateManager() {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+
   const [templates, setTemplates] = useState<PressTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<PressTemplate | null>(null);
-
-  const hasTemplates = useMemo(() => templates.length > 0, [templates.length]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState<Required<Omit<PressTemplate, 'id'>> & { id?: string }>({
+    name: '',
+    description: '',
+    default_title: '',
+    default_excerpt: '',
+    default_content_html: '',
+    default_tags: '',
+    is_default: false,
+    is_active: true,
+  });
 
   useEffect(() => {
     if (!currentTenant) return;
@@ -44,6 +57,7 @@ export function PressTemplateManager() {
   const loadTemplates = async () => {
     if (!currentTenant) return;
     setLoading(true);
+
     const { data, error } = await supabase
       .from('app_settings')
       .select('setting_value')
@@ -59,10 +73,12 @@ export function PressTemplateManager() {
 
     try {
       const parsed = data?.setting_value ? JSON.parse(data.setting_value) : [];
-      setTemplates(Array.isArray(parsed) ? parsed : []);
+      const normalized = Array.isArray(parsed) ? parsed : [];
+      setTemplates(normalized);
     } catch {
       setTemplates([]);
     }
+
     setLoading(false);
   };
 
@@ -82,106 +98,193 @@ export function PressTemplateManager() {
       return false;
     }
 
-    if (existing) {
-      const { error } = await supabase.from('app_settings').update({ setting_value: serialized }).eq('id', existing.id);
-      if (error) {
-        toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
-        return false;
-      }
-    } else {
-      const { error } = await supabase
-        .from('app_settings')
-        .insert({ tenant_id: currentTenant.id, setting_key: SETTINGS_KEY, setting_value: serialized });
-      if (error) {
-        toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
-        return false;
-      }
+    const query = existing
+      ? supabase.from('app_settings').update({ setting_value: serialized }).eq('id', existing.id)
+      : supabase.from('app_settings').insert({ tenant_id: currentTenant.id, setting_key: SETTINGS_KEY, setting_value: serialized });
+
+    const { error } = await query;
+    if (error) {
+      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+      return false;
     }
 
     setTemplates(nextTemplates);
     return true;
   };
 
-  const startCreate = () => {
-    setEditing({ id: makeId(), name: '', description: '', default_title: '', default_excerpt: '', default_content_html: '', default_tags: '', is_default: !hasTemplates, is_active: true });
+  const resetForm = (template?: PressTemplate) => {
+    if (template) {
+      setForm({
+        id: template.id,
+        name: template.name || '',
+        description: template.description || '',
+        default_title: template.default_title || '',
+        default_excerpt: template.default_excerpt || '',
+        default_content_html: template.default_content_html || '',
+        default_tags: template.default_tags || '',
+        is_default: !!template.is_default,
+        is_active: template.is_active !== false,
+      });
+      return;
+    }
+
+    setForm({
+      name: '',
+      description: '',
+      default_title: '',
+      default_excerpt: '',
+      default_content_html: '',
+      default_tags: '',
+      is_default: templates.length === 0,
+      is_active: true,
+    });
   };
 
-  const saveEdit = async () => {
-    if (!editing || !editing.name.trim()) return;
-    const normalized = {
-      ...editing,
-      name: editing.name.trim(),
-      is_active: editing.is_active ?? true,
-      is_default: editing.is_default ?? false,
+  const handleSave = async () => {
+    if (!form.name.trim()) return;
+
+    const payload: PressTemplate = {
+      id: editingId || makeId(),
+      name: form.name.trim(),
+      description: form.description.trim() || undefined,
+      default_title: form.default_title.trim() || undefined,
+      default_excerpt: form.default_excerpt.trim() || undefined,
+      default_content_html: form.default_content_html.trim() || undefined,
+      default_tags: form.default_tags.trim() || undefined,
+      is_default: form.is_default,
+      is_active: form.is_active,
     };
 
-    const base = templates.filter((t) => t.id !== normalized.id);
-    const next = normalized.is_default
-      ? [{ ...normalized, is_default: true }, ...base.map((t) => ({ ...t, is_default: false }))]
-      : [...base, normalized];
+    const base = editingId
+      ? templates.map((t) => (t.id === editingId ? payload : t))
+      : [...templates, payload];
 
-    const ok = await persistTemplates(next);
-    if (ok) {
-      toast({ title: 'Pressevorlage gespeichert' });
-      setEditing(null);
-    }
+    const nextTemplates = payload.is_default
+      ? base.map((t) => ({ ...t, is_default: t.id === payload.id }))
+      : base;
+
+    const ok = await persistTemplates(nextTemplates);
+    if (!ok) return;
+
+    toast({ title: editingId ? 'Pressevorlage aktualisiert' : 'Pressevorlage erstellt' });
+    setEditingId(null);
+    setShowCreate(false);
   };
 
-  const removeTemplate = async (id: string) => {
-    const next = templates.filter((t) => t.id !== id);
-    const ok = await persistTemplates(next);
+  const handleDelete = async () => {
+    if (!deletingId) return;
+
+    const next = templates.filter((t) => t.id !== deletingId);
+    const hadDeletedDefault = templates.find((t) => t.id === deletingId)?.is_default;
+    const adjusted = hadDeletedDefault && next.length > 0
+      ? next.map((t, index) => ({ ...t, is_default: index === 0 }))
+      : next;
+
+    const ok = await persistTemplates(adjusted);
     if (ok) toast({ title: 'Pressevorlage gelöscht' });
+
+    setDeletingId(null);
   };
 
-  if (loading) return <div className="p-4 text-sm text-muted-foreground">Lade Pressevorlagen...</div>;
+  const isEditing = editingId || showCreate;
+
+  if (loading) return <div className="text-sm text-muted-foreground p-4">Laden...</div>;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Pressevorlagen</h3>
-          <p className="text-sm text-muted-foreground">Grundlagen wie bei Briefvorlagen für den Presse-Wizard.</p>
+          <p className="text-sm text-muted-foreground">Verwalten Sie Vorlagen für Presse-Wizard und Editor – analog zum Briefvorlagen-Workflow.</p>
         </div>
-        <Button size="sm" onClick={startCreate}><Plus className="h-4 w-4 mr-1" />Neue Vorlage</Button>
+        <Button size="sm" onClick={() => { setShowCreate(true); resetForm(); }}>
+          <Plus className="h-4 w-4 mr-1" /> Neue Vorlage
+        </Button>
       </div>
 
-      {editing && (
+      {isEditing && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{templates.some((t) => t.id === editing.id) ? 'Vorlage bearbeiten' : 'Neue Vorlage'}</CardTitle>
+            <CardTitle className="text-base">{editingId ? 'Vorlage bearbeiten' : 'Neue Vorlage'}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <Label>Name *</Label>
-              <Input value={editing.name} onChange={(e) => setEditing((prev) => prev ? ({ ...prev, name: e.target.value }) : prev)} />
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Name *</Label>
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="z.B. Standard-Pressemitteilung"
+                />
+              </div>
+              <div>
+                <Label>Beschreibung</Label>
+                <Input
+                  value={form.description}
+                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Kurzbeschreibung für den Anwendungsfall"
+                />
+              </div>
             </div>
-            <div>
-              <Label>Beschreibung</Label>
-              <Textarea rows={2} value={editing.description || ''} onChange={(e) => setEditing((prev) => prev ? ({ ...prev, description: e.target.value }) : prev)} />
+
+            <Separator />
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium flex items-center gap-2"><Sparkles className="h-4 w-4" /> Wizard-Standardwerte</h4>
+              <div>
+                <Label>Standardtitel</Label>
+                <Input
+                  value={form.default_title}
+                  onChange={(e) => setForm((prev) => ({ ...prev, default_title: e.target.value }))}
+                  placeholder="Titel-Vorschlag im Wizard"
+                />
+              </div>
+              <div>
+                <Label>Standard-Teaser (Excerpt)</Label>
+                <Textarea
+                  rows={2}
+                  value={form.default_excerpt}
+                  onChange={(e) => setForm((prev) => ({ ...prev, default_excerpt: e.target.value }))}
+                  placeholder="Kurztext für Presseverteiler"
+                />
+              </div>
+              <div>
+                <Label>Standard-Tags (kommagetrennt)</Label>
+                <Input
+                  value={form.default_tags}
+                  onChange={(e) => setForm((prev) => ({ ...prev, default_tags: e.target.value }))}
+                  placeholder="Pressemitteilung, Landtag, ..."
+                />
+              </div>
             </div>
+
+            <Separator />
+
             <div>
-              <Label>Standardtitel</Label>
-              <Input value={editing.default_title || ''} onChange={(e) => setEditing((prev) => prev ? ({ ...prev, default_title: e.target.value }) : prev)} />
+              <Label>Standardinhalt (HTML) für Editor</Label>
+              <Textarea
+                rows={8}
+                value={form.default_content_html}
+                onChange={(e) => setForm((prev) => ({ ...prev, default_content_html: e.target.value }))}
+                placeholder="Optionales HTML-Startgerüst für den Presse-Editor"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Tipp: Hier können Sie ein Redaktions-Skelett hinterlegen (Zwischenüberschriften, Boilerplate, Kontaktblock).</p>
             </div>
-            <div>
-              <Label>Teaser (Excerpt)</Label>
-              <Textarea rows={2} value={editing.default_excerpt || ''} onChange={(e) => setEditing((prev) => prev ? ({ ...prev, default_excerpt: e.target.value }) : prev)} />
-            </div>
-            <div>
-              <Label>Standardinhalt (HTML)</Label>
-              <Textarea rows={4} value={editing.default_content_html || ''} onChange={(e) => setEditing((prev) => prev ? ({ ...prev, default_content_html: e.target.value }) : prev)} />
-            </div>
-            <div>
-              <Label>Standard-Tags (kommagetrennt)</Label>
-              <Input value={editing.default_tags || ''} onChange={(e) => setEditing((prev) => prev ? ({ ...prev, default_tags: e.target.value }) : prev)} />
-            </div>
+
             <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm"><Checkbox checked={!!editing.is_default} onCheckedChange={(v) => setEditing((prev) => prev ? ({ ...prev, is_default: !!v }) : prev)} /> Als Standard</label>
-              <label className="flex items-center gap-2 text-sm"><Checkbox checked={!!editing.is_active} onCheckedChange={(v) => setEditing((prev) => prev ? ({ ...prev, is_active: !!v }) : prev)} /> Aktiv</label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={form.is_default} onCheckedChange={(v) => setForm((prev) => ({ ...prev, is_default: !!v }))} />
+                Als Standardvorlage
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={form.is_active} onCheckedChange={(v) => setForm((prev) => ({ ...prev, is_active: !!v }))} />
+                Aktiv
+              </label>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditing(null)}><X className="h-4 w-4 mr-1" />Abbrechen</Button>
-              <Button onClick={saveEdit}><Save className="h-4 w-4 mr-1" />Speichern</Button>
+
+            <div className="flex gap-2">
+              <Button onClick={handleSave}><Save className="h-4 w-4 mr-1" /> Speichern</Button>
+              <Button variant="outline" onClick={() => { setEditingId(null); setShowCreate(false); }}><X className="h-4 w-4 mr-1" /> Abbrechen</Button>
             </div>
           </CardContent>
         </Card>
@@ -189,25 +292,48 @@ export function PressTemplateManager() {
 
       <div className="space-y-2">
         {templates.map((template) => (
-          <Card key={template.id}>
-            <CardContent className="pt-4 flex items-start justify-between gap-2">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{template.name}</span>
-                  {template.is_default && <Badge>Standard</Badge>}
-                  {!template.is_active && <Badge variant="secondary">Inaktiv</Badge>}
-                </div>
-                {template.description && <p className="text-sm text-muted-foreground">{template.description}</p>}
+          <div key={template.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium truncate">{template.name}</span>
+                {template.is_default && <Badge>Standard</Badge>}
+                {template.is_active === false && <Badge variant="outline" className="text-xs">Inaktiv</Badge>}
               </div>
-              <div className="flex gap-1">
-                <Button size="sm" variant="ghost" onClick={() => setEditing(template)}>Bearbeiten</Button>
-                <Button size="sm" variant="ghost" onClick={() => removeTemplate(template.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+              <div className="text-xs text-muted-foreground flex flex-wrap gap-2 items-center">
+                {template.description && <span>{template.description}</span>}
+                {template.default_title && <Badge variant="secondary" className="text-xs">Titel vorbelegt</Badge>}
+                {template.default_excerpt && <Badge variant="secondary" className="text-xs">Teaser vorbelegt</Badge>}
+                {template.default_content_html && <Badge variant="secondary" className="text-xs">HTML-Starttext</Badge>}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm" onClick={() => { setEditingId(template.id); resetForm(template); setShowCreate(false); }}>
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setDeletingId(template.id)}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
         ))}
-        {templates.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Pressevorlagen vorhanden.</p>}
+
+        {templates.length === 0 && !isEditing && (
+          <p className="text-sm text-muted-foreground text-center py-8">Noch keine Pressevorlagen vorhanden. Legen Sie eine neue Vorlage an.</p>
+        )}
       </div>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vorlage löschen?</AlertDialogTitle>
+            <AlertDialogDescription>Diese Pressevorlage wird unwiderruflich gelöscht.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Löschen</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
