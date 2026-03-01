@@ -96,6 +96,10 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'planning_collaborator_added':
       return data.planning_id ? `/eventplanning?highlight=${data.planning_id}` : '/eventplanning';
 
+    // Shared news
+    case 'news_shared_internal':
+      return data.article_link || data.link || '/';
+
     // System
     case 'team_announcement_created':
       return '/mywork?tab=team';

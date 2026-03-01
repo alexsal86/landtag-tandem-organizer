@@ -68,6 +68,7 @@ const getNotificationIcon = (type: string) => {
       return MessageSquare;
     case 'document_created':
     case 'document_mention':
+    case 'news_shared_internal':
     case 'letter_review_requested':
     case 'letter_review_completed':
     case 'letter_sent':
@@ -126,6 +127,12 @@ const NotificationItem: React.FC<{
     }
     
     const path = buildDeepLinkPath(notification);
+    if (/^https?:\/\//i.test(path)) {
+      window.location.href = path;
+      onClose?.();
+      return;
+    }
+
     navigate(path);
     onClose?.();
   };
