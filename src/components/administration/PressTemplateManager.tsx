@@ -214,6 +214,7 @@ export function PressTemplateManager() {
   };
 
   const isEditing = editingId || showCreate;
+  const canvasPreviewHtml = useMemo(() => getCanvasPreviewHtml(form.default_content_html), [form.default_content_html]);
 
   const tabDefinitions: ReadonlyArray<{ value: EditorTab; label: string }> = useMemo(() => [
     { value: 'canvas-designer', label: 'Canvas' },
