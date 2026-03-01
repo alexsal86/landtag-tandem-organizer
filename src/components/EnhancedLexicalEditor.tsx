@@ -250,8 +250,6 @@ export default function EnhancedLexicalEditor({
 
   const toolbarElement = showToolbar ? <EnhancedLexicalToolbar documentId={documentId} defaultFontSize={defaultFontSize} defaultFontFamily={defaultFontFamily || pageTypography} /> : null;
 
-  const pageTypography = 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
-
   return (
     <div className="relative min-h-[200px] border rounded-md overflow-hidden">
       <LexicalComposer initialConfig={initialConfig}>
