@@ -58,7 +58,7 @@ import { LineHeightPlugin } from './plugins/LineHeightPlugin';
 import { ImageUploadDialog } from './plugins/ImagePlugin';
 import { Input } from '@/components/ui/input';
 import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
-import { formatDictatedText, splitTranscriptAndCommand } from '@/lib/speechCommandUtils';
+import { detectSpeechCommand, formatDictatedText, parseSpeechInput } from '@/lib/speechCommandUtils';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
@@ -212,11 +212,8 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
       updateInterimNode(contentText);
     };
     speechAdapter.onFinalTranscript = (text) => {
-      const { command, contentText } = splitTranscriptAndCommand(text);
-      const formattedText = formatDictatedText(contentText);
-
-      const commitContentText = () => {
-        setInterimTranscript('');
+      const { command, contentText } = parseSpeechInput(text);
+      if (command) {
         editor.update(() => {
           const shouldAddTrailingSpace =
             !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
@@ -257,8 +254,11 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
 
         switch (command.type) {
           case 'stop-listening':
-            speechAdapter.stop();
-            return;
+            if (!contentText) {
+              speechAdapter.stop();
+              return;
+            }
+            break;
           case 'toggle-format':
             editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
             return;
@@ -285,7 +285,40 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
         }
       }
 
-      commitContentText();
+      const dictationText = contentText || text;
+      const formattedText = formatDictatedText(dictationText);
+      setInterimTranscript('');
+
+      editor.update(() => {
+        const shouldAddTrailingSpace =
+          !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+        const textToInsert = formattedText
+          ? shouldAddTrailingSpace
+            ? `${formattedText} `
+            : formattedText
+          : '';
+
+        const interimNode = removeInterimNode();
+        if (interimNode instanceof TextNode) {
+          if (textToInsert) {
+            interimNode.replace($createTextNode(textToInsert));
+          }
+          return;
+        }
+
+        if (!textToInsert) return;
+        if (lastInsertedSegmentRef.current === textToInsert) return;
+
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          selection.insertText(textToInsert);
+          lastInsertedSegmentRef.current = textToInsert;
+        }
+      });
+
+      if (command?.type === 'stop-listening') {
+        speechAdapter.stop();
+      }
     };
 
     if (!speechAdapter.supported) {

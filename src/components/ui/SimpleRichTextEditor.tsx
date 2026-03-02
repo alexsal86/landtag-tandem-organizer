@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
-import { formatDictatedText, splitTranscriptAndCommand } from '@/lib/speechCommandUtils';
+import { detectSpeechCommand, formatDictatedText, parseSpeechInput } from '@/lib/speechCommandUtils';
 
 interface SimpleRichTextEditorProps {
   initialContent?: string;
@@ -210,11 +210,8 @@ const Toolbar = () => {
       updateInterimNode(contentText);
     };
     speechAdapter.onFinalTranscript = (text) => {
-      const { command, contentText } = splitTranscriptAndCommand(text);
-      const formattedText = formatDictatedText(contentText);
-
-      const commitContentText = () => {
-        setInterimTranscript('');
+      const { command, contentText } = parseSpeechInput(text);
+      if (command) {
         editor.update(() => {
           const shouldAddTrailingSpace =
             !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
@@ -253,8 +250,11 @@ const Toolbar = () => {
 
         switch (command.type) {
           case 'stop-listening':
-            speechAdapter.stop();
-            return;
+            if (!contentText) {
+              speechAdapter.stop();
+              return;
+            }
+            break;
           case 'toggle-format':
             editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
             return;
@@ -281,7 +281,38 @@ const Toolbar = () => {
         }
       }
 
-      commitContentText();
+      const dictationText = contentText || text;
+      const formattedText = formatDictatedText(dictationText);
+      setInterimTranscript('');
+
+      editor.update(() => {
+        const shouldAddTrailingSpace =
+          !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+        const textToInsert = formattedText
+          ? shouldAddTrailingSpace
+            ? `${formattedText} `
+            : formattedText
+          : '';
+
+        const interimNode = removeInterimNode();
+        if (interimNode instanceof TextNode) {
+          if (textToInsert) {
+            interimNode.replace($createTextNode(textToInsert));
+          }
+          return;
+        }
+
+        if (!textToInsert) return;
+
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          selection.insertText(textToInsert);
+        }
+      });
+
+      if (command?.type === 'stop-listening') {
+        speechAdapter.stop();
+      }
     };
 
     if (!speechAdapter.supported) {
