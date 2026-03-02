@@ -232,7 +232,7 @@ const MyWorkDecisionCardInner = ({
             >
               <p className="text-sm font-semibold text-foreground">Deine Entscheidung</p>
 
-              {decision.participants && decision.participants.length > 0 && (
+              {decision.isParticipant && decision.participant_id && (
                 <TaskDecisionResponse
                   decisionId={decision.id}
                   participantId={decision.participant_id || ''}
