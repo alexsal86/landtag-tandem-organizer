@@ -303,7 +303,7 @@ export function TimeTrackingView() {
       .reduce((s, l) => s + (l.minutes_counted || dailyMinutes), 0);
     
     // Gesamte Gutschrift (OHNE Feiertage - diese reduzieren bereits das Soll)
-    const totalCredit = sickMinutes + vacationMinutes + overtimeMinutes + medicalMinutes;
+    const totalCredit = sickMinutes + vacationMinutes + medicalMinutes;
     
     // Arbeitstage im Monat (ohne Wochenenden und Feiertage)
     const workingDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
@@ -349,7 +349,7 @@ export function TimeTrackingView() {
           return parseISO(e.work_date) <= today;
         } catch { return false; }
       })
-      .filter(e => ['sick', 'vacation', 'overtime_reduction', 'medical'].includes(e.entry_type))
+      .filter(e => ['sick', 'vacation', 'medical'].includes(e.entry_type))
       .reduce((s, e) => s + (e.minutes || 0), 0);
     
     // Gearbeitete Minuten bis heute (nur echte Arbeit)
@@ -939,8 +939,8 @@ export function TimeTrackingView() {
                             )}
                             {monthlyTotals.overtimeMinutes > 0 && (
                               <div className="flex justify-between gap-4">
-                                <span>⏰ Überstundenabbau:</span>
-                                <span className="font-mono">{fmt(monthlyTotals.overtimeMinutes)}</span>
+                                <span>⏰ Überstundenabbau (Abzug):</span>
+                                <span className="font-mono text-amber-700 dark:text-amber-300">-{fmt(monthlyTotals.overtimeMinutes)}</span>
                               </div>
                             )}
                             {monthlyTotals.medicalMinutes > 0 && (
@@ -1766,8 +1766,9 @@ export function TimeTrackingView() {
               <ul className="text-muted-foreground space-y-1 text-xs">
                 <li><strong>Soll:</strong> Arbeitstage im Monat × tägliche Arbeitszeit (ohne Feiertage)</li>
                 <li><strong>Gearbeitet:</strong> Tatsächlich erfasste Arbeitszeit</li>
-                <li><strong>Gutschriften:</strong> Urlaub, Krankheit, Überstundenabbau</li>
-                <li><strong>Saldo:</strong> Gearbeitet + Gutschriften − Soll</li>
+                <li><strong>Gutschriften:</strong> Urlaub, Krankheit, Arzttermine</li>
+                <li><strong>Überstundenabbau:</strong> Baut vorhandenen Saldo ab (wird abgezogen)</li>
+                <li><strong>Saldo:</strong> Gearbeitet + Gutschriften − Soll − Überstundenabbau</li>
                 <li><strong>Kumuliert:</strong> Laufende Summe aller Monats-Salden</li>
               </ul>
             </div>
