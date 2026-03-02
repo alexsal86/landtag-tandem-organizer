@@ -86,6 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Use template from administration or fallback to defaults
     const emailTemplate = template || {
       subject: 'Entscheidungsanfrage',
+      details_block_template: 'Aufgabe: {task_title}\nEntscheidung: {decision_title}',
       greeting: 'Hallo {participant_name},',
       introduction: 'Sie wurden zu einer Entscheidung bezüglich einer Aufgabe eingeladen.',
       instruction: 'Bitte wählen Sie eine der folgenden Optionen:',
@@ -214,6 +215,17 @@ const handler = async (req: Request): Promise<Response> => {
             .replace(/{decision_description}/g, decisionDescription || '');
         };
 
+        const escapeHtml = (text: string) =>
+          text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
+        const toHtmlWithLineBreaks = (text: string) =>
+          escapeHtml(text).replace(/\r?\n/g, '<br>');
+
         // Prepare email content using template from administration with all variables
         const greeting = replaceVariables(emailTemplate.greeting);
         const introduction = replaceVariables(emailTemplate.introduction);
@@ -222,10 +234,10 @@ const handler = async (req: Request): Promise<Response> => {
         const closing = replaceVariables(emailTemplate.closing);
         const signature = replaceVariables(emailTemplate.signature);
         const subject = replaceVariables(emailTemplate.subject);
-        const shouldPrefixCreatorName = !emailTemplate.introduction.includes('{creator_name}');
-        const renderedIntroduction = shouldPrefixCreatorName
-          ? `${creatorName} ${introduction}`.trim()
-          : introduction;
+        const detailsBlockTemplate = replaceVariables(
+          emailTemplate.details_block_template || 'Aufgabe: {task_title}\nEntscheidung: {decision_title}'
+        );
+        const detailsBlockHtml = toHtmlWithLineBreaks(detailsBlockTemplate);
         
         // Send decision email with customized template
         const emailResponse = await resend.emails.send({
@@ -243,9 +255,7 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
               
               <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0; border-radius: 4px;">
-                <h3 style="margin: 0 0 8px 0; color: #333; font-size: 18px;">Aufgabe: ${taskTitle}</h3>
-                <h4 style="margin: 0 0 8px 0; color: #333; font-size: 16px;">Entscheidung: ${decisionTitle}</h4>
-                ${decisionDescription ? `<p style="margin: 0; color: #666; font-size: 14px;">${decisionDescription}</p>` : ''}
+                <p style="margin: 0; color: #333; font-size: 15px; line-height: 1.5;">${detailsBlockHtml}</p>
               </div>
               
               <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
