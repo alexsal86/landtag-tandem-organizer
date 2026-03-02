@@ -6,33 +6,6 @@ export type SpeechCommand =
   | { type: 'redo' }
   | { type: 'insert-newline' };
 
-const COMMAND_PHRASES: Array<{ command: SpeechCommand; phrases: string[] }> = [
-  {
-    command: { type: 'stop-listening' },
-    phrases: [
-      'stopp',
-      'stop',
-      'aufnahme stoppen',
-      'diktat stoppen',
-      'aufnahme aus',
-      'mikro aus',
-      'mikrofon aus',
-      'diktat aus',
-      'aufnahme abstellen',
-      'mikro abstellen',
-      'diktat beenden',
-    ],
-  },
-  { command: { type: 'toggle-format', format: 'bold' }, phrases: ['fett', 'fett markieren'] },
-  { command: { type: 'toggle-format', format: 'italic' }, phrases: ['kursiv'] },
-  { command: { type: 'toggle-format', format: 'underline' }, phrases: ['unterstreichen', 'unterstrichen'] },
-  { command: { type: 'insert-list', listType: 'unordered' }, phrases: ['aufzählung', 'liste'] },
-  { command: { type: 'insert-list', listType: 'ordered' }, phrases: ['nummerierte liste'] },
-  { command: { type: 'undo' }, phrases: ['rückgängig'] },
-  { command: { type: 'redo' }, phrases: ['wiederholen', 'wiederherstellen'] },
-  { command: { type: 'insert-newline' }, phrases: ['neue zeile', 'neuer absatz'] },
-];
-
 const PUNCTUATION_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\b(punkt)\b/gi, '.'],
   [/\b(komma)\b/gi, ','],
@@ -55,32 +28,108 @@ export const normalizeSpeechText = (text: string): string =>
     .trim();
 
 const STOP_COMMAND_PATTERNS: RegExp[] = [
-  /\bstop+p?\b/i,
-  /\b(stopp|stop)\s+(bitte|jetzt|mal)?\b/i,
-  /\b(aufnahme|mikro(?:fon)?|diktat)\s+(aus|abstellen|stoppen?|beenden?)\b/i,
-  /\bbeende\s+(aufnahme|mikro(?:fon)?|diktat)\b/i,
-  /\b(ausmachen|abschalten)\s+(aufnahme|mikro(?:fon)?|diktat)\b/i,
+  /^stop+p?$/i,
+  /^(aufnahme|mikro(?:fon)?|diktat)\s+(aus|abstellen|stoppen?|beenden?)$/i,
+  /^beende\s+(aufnahme|mikro(?:fon)?|diktat)$/i,
+  /^(ausmachen|abschalten)\s+(aufnahme|mikro(?:fon)?|diktat)$/i,
 ];
 
-const STOP_KEYWORDS = ['stopp', 'stop', 'aufnahme aus', 'mikro aus', 'mikrofon aus', 'diktat aus'];
+const STOP_SUFFIX_PATTERNS: RegExp[] = [
+  /^(?<content>.+?)\s+stop+p?$/i,
+  /^(?<content>.+?)\s+(aufnahme|mikro(?:fon)?|diktat)\s+(aus|abstellen|stoppen?|beenden?)$/i,
+  /^(?<content>.+?)\s+beende\s+(aufnahme|mikro(?:fon)?|diktat)$/i,
+  /^(?<content>.+?)\s+(ausmachen|abschalten)\s+(aufnahme|mikro(?:fon)?|diktat)$/i,
+];
 
-const containsStopKeyword = (text: string): boolean =>
-  STOP_KEYWORDS.some((keyword) => text.includes(keyword));
+const COMMAND_MATCHERS: Array<{ command: SpeechCommand; patterns: RegExp[] }> = [
+  { command: { type: 'toggle-format', format: 'bold' }, patterns: [/^fett$/, /^fett markieren$/] },
+  { command: { type: 'toggle-format', format: 'italic' }, patterns: [/^kursiv$/] },
+  {
+    command: { type: 'toggle-format', format: 'underline' },
+    patterns: [/^unterstreichen$/, /^unterstrichen$/],
+  },
+  { command: { type: 'insert-list', listType: 'unordered' }, patterns: [/^aufzählung$/, /^liste$/] },
+  { command: { type: 'insert-list', listType: 'ordered' }, patterns: [/^nummerierte liste$/] },
+  { command: { type: 'undo' }, patterns: [/^rückgängig$/] },
+  { command: { type: 'redo' }, patterns: [/^wiederholen$/, /^wiederherstellen$/] },
+  { command: { type: 'insert-newline' }, patterns: [/^neue zeile$/, /^neuer absatz$/] },
+];
 
-export const detectSpeechCommand = (text: string): SpeechCommand | null => {
-  const normalized = normalizeSpeechText(text);
+export type ParsedSpeechInput = {
+  command: SpeechCommand | null;
+  contentText: string;
+};
 
-  if (containsStopKeyword(normalized) || STOP_COMMAND_PATTERNS.some((pattern) => pattern.test(normalized))) {
-    return { type: 'stop-listening' };
-  }
-
-  for (const { command, phrases } of COMMAND_PHRASES) {
-    if (phrases.includes(normalized) || phrases.some((phrase) => normalized.includes(phrase))) {
+const detectNonStopCommand = (normalizedText: string): SpeechCommand | null => {
+  for (const { command, patterns } of COMMAND_MATCHERS) {
+    if (patterns.some((pattern) => pattern.test(normalizedText))) {
       return command;
     }
   }
 
   return null;
+};
+
+export const parseSpeechInput = (text: string): ParsedSpeechInput => {
+  const normalized = normalizeSpeechText(text);
+
+  if (!normalized) {
+    return { command: null, contentText: '' };
+  }
+
+  if (STOP_COMMAND_PATTERNS.some((pattern) => pattern.test(normalized))) {
+    return { command: { type: 'stop-listening' }, contentText: '' };
+  }
+
+  for (const pattern of STOP_SUFFIX_PATTERNS) {
+    const match = normalized.match(pattern);
+    const suffixContent = match?.groups?.content?.trim();
+    if (suffixContent) {
+      return {
+        command: { type: 'stop-listening' },
+        contentText: suffixContent,
+      };
+    }
+  }
+
+  const command = detectNonStopCommand(normalized);
+  if (command) {
+    return { command, contentText: '' };
+  }
+
+  return { command: null, contentText: normalized };
+};
+
+export const detectSpeechCommand = (text: string): SpeechCommand | null => {
+  return parseSpeechInput(text).command;
+};
+
+
+export const splitTranscriptAndCommand = (text: string): { contentText: string; command: SpeechCommand | null } => {
+  const transcript = text.trim();
+
+  if (!transcript) {
+    return { contentText: '', command: null };
+  }
+
+  for (const pattern of TRAILING_STOP_COMMAND_PATTERNS) {
+    const match = transcript.match(pattern);
+    const contentText = match?.groups?.content?.trim() ?? '';
+
+    if (contentText) {
+      return { contentText, command: { type: 'stop-listening' } };
+    }
+  }
+
+  const command = detectSpeechCommand(transcript);
+  if (command?.type === 'stop-listening') {
+    const normalized = normalizeSpeechText(transcript);
+    if (!isPureStopCommand(normalized)) {
+      return { contentText: transcript, command: null };
+    }
+  }
+
+  return { contentText: command ? '' : transcript, command };
 };
 
 export const formatDictatedText = (text: string): string => {

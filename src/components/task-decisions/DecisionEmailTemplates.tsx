@@ -254,6 +254,9 @@ export const DecisionEmailTemplates = () => {
             placeholder="Erklärung der Entscheidungsanfrage"
             rows={3}
           />
+          <p className="text-xs text-muted-foreground mt-1">
+            Tipp: Verwenden Sie {"{creator_name}"} für natürliche Sätze in der Einleitung.
+          </p>
         </div>
 
         <div>

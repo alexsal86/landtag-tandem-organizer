@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
-import { detectSpeechCommand, formatDictatedText } from '@/lib/speechCommandUtils';
+import { detectSpeechCommand, formatDictatedText, parseSpeechInput } from '@/lib/speechCommandUtils';
 
 interface SimpleRichTextEditorProps {
   initialContent?: string;
@@ -164,31 +164,97 @@ const Toolbar = () => {
     speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
     speechAdapter.onError = (error) => setSpeechError(error);
     speechAdapter.onInterimTranscript = (text) => {
-      const command = detectSpeechCommand(text);
+      const { command, contentText } = splitTranscriptAndCommand(text);
       if (command?.type === 'stop-listening') {
-        setInterimTranscript('');
-        editor.update(() => {
-          removeInterimNode();
-        });
+        setInterimTranscript(contentText);
+        updateInterimNode(contentText);
+
+        if (contentText) {
+          const formattedText = formatDictatedText(contentText);
+          editor.update(() => {
+            const shouldAddTrailingSpace =
+              !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+            const textToInsert = formattedText
+              ? shouldAddTrailingSpace
+                ? `${formattedText} `
+                : formattedText
+              : '';
+
+            const interimNode = removeInterimNode();
+            if (interimNode instanceof TextNode) {
+              if (textToInsert) {
+                interimNode.replace($createTextNode(textToInsert));
+              }
+              return;
+            }
+
+            if (!textToInsert) return;
+
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              selection.insertText(textToInsert);
+            }
+          });
+        } else {
+          setInterimTranscript('');
+          editor.update(() => {
+            removeInterimNode();
+          });
+        }
+
         speechAdapter.stop();
         return;
       }
 
-      setInterimTranscript(text);
-      updateInterimNode(text);
+      setInterimTranscript(contentText);
+      updateInterimNode(contentText);
     };
     speechAdapter.onFinalTranscript = (text) => {
-      const command = detectSpeechCommand(text);
+      const { command, contentText } = parseSpeechInput(text);
       if (command) {
         editor.update(() => {
-          removeInterimNode();
+          const shouldAddTrailingSpace =
+            !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+          const textToInsert = formattedText
+            ? shouldAddTrailingSpace
+              ? `${formattedText} `
+              : formattedText
+            : '';
+
+          const interimNode = removeInterimNode();
+          if (interimNode instanceof TextNode) {
+            if (textToInsert) {
+              interimNode.replace($createTextNode(textToInsert));
+            }
+            return;
+          }
+
+          if (!textToInsert) return;
+
+          const selection = $getSelection();
+          if ($isRangeSelection(selection)) {
+            selection.insertText(textToInsert);
+          }
         });
-        setInterimTranscript('');
+      };
+
+      if (command) {
+        if (contentText) {
+          commitContentText();
+        } else {
+          editor.update(() => {
+            removeInterimNode();
+          });
+          setInterimTranscript('');
+        }
 
         switch (command.type) {
           case 'stop-listening':
-            speechAdapter.stop();
-            return;
+            if (!contentText) {
+              speechAdapter.stop();
+              return;
+            }
+            break;
           case 'toggle-format':
             editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
             return;
@@ -215,7 +281,8 @@ const Toolbar = () => {
         }
       }
 
-      const formattedText = formatDictatedText(text);
+      const dictationText = contentText || text;
+      const formattedText = formatDictatedText(dictationText);
       setInterimTranscript('');
 
       editor.update(() => {
@@ -242,6 +309,10 @@ const Toolbar = () => {
           selection.insertText(textToInsert);
         }
       });
+
+      if (command?.type === 'stop-listening') {
+        speechAdapter.stop();
+      }
     };
 
     if (!speechAdapter.supported) {
