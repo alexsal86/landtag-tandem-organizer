@@ -35,6 +35,8 @@ interface Profile {
   display_name: string | null;
 }
 
+const stripHtml = (value: string) => value.replace(/<[^>]*>/g, '').trim();
+
 export function NoteDecisionCreator({
   note,
   open,
@@ -70,7 +72,8 @@ export function NoteDecisionCreator({
   // Initialize from note content
   useEffect(() => {
     if (open && note) {
-      const noteTitle = note.title || note.content.split('\n')[0].replace(/<[^>]*>/g, '').substring(0, 100);
+      const sanitizedTitle = note.title ? stripHtml(note.title) : '';
+      const noteTitle = sanitizedTitle || stripHtml(note.content.split('\n')[0]).substring(0, 100);
       setTitle(noteTitle);
       setDescription(note.content);
     }
@@ -200,7 +203,9 @@ export function NoteDecisionCreator({
   }, [profiles]);
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
+    const sanitizedTitle = stripHtml(title);
+
+    if (!sanitizedTitle) {
       toast.error("Bitte geben Sie einen Titel ein");
       return;
     }
@@ -219,7 +224,7 @@ export function NoteDecisionCreator({
     try {
       // Create the decision
       const insertData = {
-        title: title.trim(),
+        title: sanitizedTitle,
         description,
         created_by: user.id,
         tenant_id: currentTenant.id,
