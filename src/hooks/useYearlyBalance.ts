@@ -36,11 +36,11 @@ export function useYearlyBalance(
             .lte("work_date", format(effectiveEnd, "yyyy-MM-dd")),
           supabase
             .from("leave_requests")
-            .select("type, start_date, end_date")
+            .select("type, start_date, end_date, minutes_counted")
             .eq("user_id", userId)
             .eq("status", "approved")
-            .gte("start_date", format(yearStart, "yyyy-MM-dd"))
-            .lte("end_date", format(effectiveEnd, "yyyy-MM-dd")),
+            .lte("start_date", format(effectiveEnd, "yyyy-MM-dd"))
+            .gte("end_date", format(yearStart, "yyyy-MM-dd")),
           supabase
             .from("public_holidays")
             .select("holiday_date")
@@ -49,7 +49,9 @@ export function useYearlyBalance(
           supabase
             .from("time_entry_corrections")
             .select("correction_minutes")
-            .eq("user_id", userId),
+            .eq("user_id", userId)
+            .gte("correction_date", format(yearStart, "yyyy-MM-dd"))
+            .lte("correction_date", format(effectiveEnd, "yyyy-MM-dd")),
         ]);
 
         // Abort check after all fetches complete
@@ -112,14 +114,28 @@ export function useYearlyBalance(
             })
             .reduce((sum, e) => sum + (e.minutes || 0), 0);
 
-          // Credit minutes: absence days that are actual work days (not holidays or weekends)
-          const monthCredit =
+          // Credit minutes for day-based leave types on actual work days
+          const dayBasedCredit =
             [...monthAbsenceDates]
               .filter((d) => !holidayDates.has(d))
               .filter((d) => {
                 const date = parseISO(d);
                 return date.getDay() !== 0 && date.getDay() !== 6;
               }).length * dailyMin;
+
+          // Medical leave is credited by its actual counted minutes (only on work days)
+          const medicalCredit = (leavesRes.data || [])
+            .filter((leave) => leave.type === "medical")
+            .filter((leave) => {
+              const date = parseISO(leave.start_date);
+              if (date.getMonth() !== m || date.getFullYear() !== year || date > mEffectiveEnd) return false;
+              const dateStr = format(date, "yyyy-MM-dd");
+              if (holidayDates.has(dateStr)) return false;
+              return date.getDay() !== 0 && date.getDay() !== 6;
+            })
+            .reduce((sum, leave) => sum + (leave.minutes_counted || 0), 0);
+
+          const monthCredit = dayBasedCredit + medicalCredit;
 
           const monthBalance = monthWorked + monthCredit - monthTarget;
 
@@ -134,7 +150,7 @@ export function useYearlyBalance(
 
         if (signal.aborted) return;
 
-        // Corrections are applied to the YEARLY total only – not to monthly balance
+        // Corrections are applied only within the selected year and only to the YEARLY total
         const correctionsTotal = (correctionsRes.data || []).reduce(
           (sum, c) => sum + c.correction_minutes,
           0

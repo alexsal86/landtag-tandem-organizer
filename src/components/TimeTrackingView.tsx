@@ -84,6 +84,7 @@ interface HolidayRow {
 }
 
 export function TimeTrackingView() {
+  const MAX_PAUSE_MINUTES = 180;
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -388,6 +389,11 @@ export function TimeTrackingView() {
     const start = new Date(`${entryDate}T${startTime}`), end = new Date(`${entryDate}T${endTime}`);
     if (end <= start) { toast.error("Endzeit nach Startzeit"); return; }
     const gross = Math.round((end.getTime() - start.getTime()) / 60000), pause = parseInt(pauseMinutes) || 0;
+
+    if (pause < 0) { toast.error("Die Pausenzeit darf nicht negativ sein"); return; }
+    if (pause > gross) { toast.error("Die Pause darf nicht länger als die Arbeitszeit sein"); return; }
+    if (pause > MAX_PAUSE_MINUTES) { toast.error(`Die Pause darf maximal ${MAX_PAUSE_MINUTES} Minuten betragen`); return; }
+
     try {
       await validateDailyLimit(entryDate, gross);
       await supabase.from("time_entries").insert({ user_id: user.id, work_date: entryDate, started_at: start.toISOString(), ended_at: end.toISOString(), minutes: gross - pause, pause_minutes: pause, notes: notes || null });
@@ -397,11 +403,13 @@ export function TimeTrackingView() {
 
   const handleRequestVacation = async () => {
     if (!user || !vacationStartDate || !vacationEndDate) { toast.error("Bitte beide Felder"); return; }
+    if (vacationEndDate < vacationStartDate) { toast.error("Das Enddatum darf nicht vor dem Startdatum liegen"); return; }
     try { await supabase.from("leave_requests").insert({ user_id: user.id, type: "vacation", start_date: vacationStartDate, end_date: vacationEndDate, reason: vacationReason || null, status: "pending" }); toast.success("Urlaubsantrag eingereicht"); setVacationStartDate(""); setVacationEndDate(""); setVacationReason(""); loadData(); } catch (error: any) { toast.error(error.message); }
   };
 
   const handleReportSick = async () => {
     if (!user || !sickStartDate || !sickEndDate) { toast.error("Bitte beide Felder"); return; }
+    if (sickEndDate < sickStartDate) { toast.error("Das Enddatum darf nicht vor dem Startdatum liegen"); return; }
     try { await supabase.from("leave_requests").insert({ user_id: user.id, type: "sick", start_date: sickStartDate, end_date: sickEndDate, reason: sickNotes || null, status: "pending" }); toast.success("Krankmeldung eingereicht"); setSickStartDate(""); setSickEndDate(""); setSickNotes(""); loadData(); } catch (error: any) { toast.error(error.message); }
   };
 
@@ -454,11 +462,23 @@ export function TimeTrackingView() {
       toast.error("Bitte beide Datumsfelder ausfüllen");
       return;
     }
+
+    if (overtimeEndDate < overtimeStartDate) {
+      toast.error("Das Enddatum darf nicht vor dem Startdatum liegen");
+      return;
+    }
     
-    const days = eachDayOfInterval({ 
-      start: parseISO(overtimeStartDate), 
-      end: parseISO(overtimeEndDate) 
-    }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length;
+    let days = 0;
+    try {
+      days = eachDayOfInterval({ 
+        start: parseISO(overtimeStartDate), 
+        end: parseISO(overtimeEndDate) 
+      }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length;
+    } catch (error) {
+      console.error("Invalid overtime interval:", error);
+      toast.error("Ungültiger Datumsbereich für den Überstundenabbau");
+      return;
+    }
     
     if (days === 0) {
       toast.error("Bitte mindestens einen Werktag auswählen");
@@ -524,6 +544,21 @@ export function TimeTrackingView() {
 
     const gross = Math.round((end.getTime() - start.getTime()) / 60000);
     const pause = parseInt(pauseMinutes) || 0;
+
+    if (pause < 0) {
+      toast.error("Die Pausenzeit darf nicht negativ sein");
+      return;
+    }
+
+    if (pause > gross) {
+      toast.error("Die Pause darf nicht länger als die Arbeitszeit sein");
+      return;
+    }
+
+    if (pause > MAX_PAUSE_MINUTES) {
+      toast.error(`Die Pause darf maximal ${MAX_PAUSE_MINUTES} Minuten betragen`);
+      return;
+    }
 
     try {
       await validateDailyLimit(entryDate, gross, editingEntry.id);
@@ -1799,4 +1834,3 @@ export function TimeTrackingView() {
     </div>
   );
 }
-
