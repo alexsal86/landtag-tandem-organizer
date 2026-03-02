@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Mail, Send, Loader2 } from 'lucide-react';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { useTenant } from '@/hooks/useTenant';
 
 interface NewsArticle {
   id: string;
@@ -34,6 +35,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
   onOpenChange,
   article
 }) => {
+  const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -45,32 +47,50 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
     if (open) {
       loadUsers();
     }
-  }, [open]);
+  }, [open, currentTenant?.id]);
 
   const loadUsers = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setUsers([]);
+        return;
+      }
 
-      const { data: memberships } = await supabase
+      if (!currentTenant?.id) {
+        setUsers([]);
+        return;
+      }
+
+      const { data: memberships, error: membershipsError } = await supabase
         .from('user_tenant_memberships')
-        .select('tenant_id')
-        .eq('user_id', user.id)
+        .select('user_id')
+        .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
-        .limit(1)
-        .single();
+        .neq('user_id', user.id);
 
-      if (!memberships?.tenant_id) return;
+      if (membershipsError) throw membershipsError;
 
-      const { data: profiles } = await supabase
+      const tenantUserIds = memberships?.map((membership) => membership.user_id) || [];
+
+      if (tenantUserIds.length === 0) {
+        setUsers([]);
+        return;
+      }
+
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, display_name')
+        .in('user_id', tenantUserIds)
         .neq('user_id', user.id)
         .order('display_name');
+
+      if (profilesError) throw profilesError;
 
       setUsers(profiles || []);
     } catch (error) {
       console.error('Error loading users:', error);
+      setUsers([]);
     }
   };
 
