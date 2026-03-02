@@ -89,13 +89,15 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     toggleSpeechRecognition,
   } = useSpeechDictation({
     editor,
-    insertText: (text) => {
-      const selection = $getSelection();
-      if ($isRangeSelection(selection)) {
-        selection.insertText(text);
-      }
-    },
-    dispatchCommand: (command) => {
+    insertText: useCallback((text: string) => {
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          selection.insertText(text);
+        }
+      });
+    }, [editor]),
+    dispatchCommand: useCallback((command) => {
       switch (command.type) {
         case 'toggle-format':
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
@@ -123,7 +125,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
         case 'stop-listening':
           break;
       }
-    },
+    }, [editor]),
   });
 
   // Track active formats

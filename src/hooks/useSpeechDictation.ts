@@ -19,6 +19,13 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
 
   const interimNodeKeyRef = useRef<string | null>(null);
   const lastInsertedSegmentRef = useRef('');
+
+  // Stabilize callbacks via refs so the setup effect doesn't re-run on every render
+  const insertTextRef = useRef(insertText);
+  insertTextRef.current = insertText;
+  const dispatchCommandRef = useRef(dispatchCommand);
+  dispatchCommandRef.current = dispatchCommand;
+
   const speechAdapter = useMemo(() => new WebSpeechToTextAdapter(), []);
 
   const removeInterimNode = useCallback(() => {
@@ -90,13 +97,14 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
 
       if (!textToInsert || lastInsertedSegmentRef.current === textToInsert) return;
 
-      insertText(textToInsert);
+      insertTextRef.current(textToInsert);
       lastInsertedSegmentRef.current = textToInsert;
     });
 
     setInterimTranscript('');
-  }, [editor, insertText, removeInterimNode]);
+  }, [editor, removeInterimNode]);
 
+  // Setup effect: only depends on stable references (editor, speechAdapter, memoized callbacks)
   useEffect(() => {
     speechAdapter.onStateChange = setSpeechState;
     speechAdapter.onError = setSpeechError;
@@ -139,7 +147,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
           return;
         }
 
-        dispatchCommand(command);
+        dispatchCommandRef.current(command);
         return;
       }
 
@@ -153,7 +161,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     return () => {
       speechAdapter.destroy();
     };
-  }, [commitContentText, dispatchCommand, editor, removeInterimNode, speechAdapter, updateInterimNode]);
+  }, [commitContentText, editor, removeInterimNode, speechAdapter, updateInterimNode]);
 
   const toggleSpeechRecognition = useCallback(() => {
     if (!speechAdapter.supported) return;

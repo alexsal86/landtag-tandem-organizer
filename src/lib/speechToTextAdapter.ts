@@ -79,6 +79,10 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
       return;
     }
 
+    if (import.meta.env.DEV) {
+      console.debug('[SpeechAdapter] start() called');
+    }
+
     this.shouldListen = true;
     this.startRecognition();
   }
@@ -144,6 +148,9 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (import.meta.env.DEV) {
+        console.debug('[SpeechAdapter] onerror:', event.error);
+      }
       // "no-speech" kommt häufig vor, wenn kurz pausiert wurde. Keine Fehlermeldung nötig.
       if (event.error !== 'no-speech') {
         this.onError?.(mapSpeechError(event.error));
@@ -151,6 +158,9 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
     };
 
     recognition.onend = () => {
+      if (import.meta.env.DEV) {
+        console.debug('[SpeechAdapter] onend, shouldListen:', this.shouldListen);
+      }
       this.recognition = null;
 
       if (this.shouldListen) {
