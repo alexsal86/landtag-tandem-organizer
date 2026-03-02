@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -53,7 +53,8 @@ const Toolbar = () => {
     interimTranscript,
     isListening,
     speechSupported,
-    toggleSpeechRecognition,
+    startSpeechRecognition,
+    stopSpeechRecognition,
   } = useSpeechDictation({
     editor,
     insertText: useCallback((text: string) => {
@@ -118,6 +119,52 @@ const Toolbar = () => {
       });
     });
   }, [editor, updateToolbar]);
+
+  const shortcutActiveRef = useRef(false);
+
+  useEffect(() => {
+    const isSupportedShortcut = (event: KeyboardEvent) =>
+      event.code === 'KeyM' && event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey;
+
+    const isEditorFocused = () => {
+      const rootElement = editor.getRootElement();
+      const activeElement = document.activeElement;
+      return !!rootElement && !!activeElement && rootElement.contains(activeElement);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!speechSupported || !isEditorFocused() || !isSupportedShortcut(event)) return;
+      if (shortcutActiveRef.current) return;
+
+      shortcutActiveRef.current = true;
+      event.preventDefault();
+      startSpeechRecognition();
+    };
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (!shortcutActiveRef.current || event.code !== 'KeyM') return;
+      shortcutActiveRef.current = false;
+      stopSpeechRecognition();
+    };
+
+    const onVisibilityOrBlur = () => {
+      if (!shortcutActiveRef.current) return;
+      shortcutActiveRef.current = false;
+      stopSpeechRecognition();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onVisibilityOrBlur);
+    document.addEventListener('visibilitychange', onVisibilityOrBlur);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onVisibilityOrBlur);
+      document.removeEventListener('visibilitychange', onVisibilityOrBlur);
+    };
+  }, [editor, speechSupported, startSpeechRecognition, stopSpeechRecognition]);
 
   const formatBold = () => {
     editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
@@ -197,21 +244,25 @@ const Toolbar = () => {
         type="button"
         variant={isListening ? 'default' : 'ghost'}
         size="sm"
-        onClick={() => {
+        onPointerDown={(event) => {
           if (!speechSupported) {
             toast.error('Spracherkennung wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge.');
             return;
           }
-          toggleSpeechRecognition();
+          event.preventDefault();
+          startSpeechRecognition();
         }}
+        onPointerUp={() => stopSpeechRecognition()}
+        onPointerLeave={() => stopSpeechRecognition()}
+        onPointerCancel={() => stopSpeechRecognition()}
         onMouseDown={(e) => e.preventDefault()}
         className={cn("h-8 w-8 p-0 relative", isListening && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
         title={
           !speechSupported
             ? 'Spracherkennung in diesem Browser nicht unterstützt'
             : isListening
-              ? "Spracherkennung beenden. Beenden auch per Sprachkommando: 'Stopp'"
-              : "Spracherkennung starten. Beenden auch per Sprachkommando: 'Stopp'"
+              ? "Push-to-talk aktiv – loslassen zum Beenden. Sprachkommando: 'Stopp'"
+              : "Push-to-talk: Taste halten zum Sprechen (Strg+Shift+M)"
         }
       >
         <Mic className="h-4 w-4" />
