@@ -222,6 +222,10 @@ const handler = async (req: Request): Promise<Response> => {
         const closing = replaceVariables(emailTemplate.closing);
         const signature = replaceVariables(emailTemplate.signature);
         const subject = replaceVariables(emailTemplate.subject);
+        const shouldPrefixCreatorName = !emailTemplate.introduction.includes('{creator_name}');
+        const renderedIntroduction = shouldPrefixCreatorName
+          ? `${creatorName} ${introduction}`.trim()
+          : introduction;
         
         // Send decision email with customized template
         const emailResponse = await resend.emails.send({
@@ -235,7 +239,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="color: #666; font-size: 16px; margin-bottom: 16px;">${greeting}</p>
               
               <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
-                ${creatorName} ${introduction}
+                ${renderedIntroduction}
               </p>
               
               <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0; border-radius: 4px;">
