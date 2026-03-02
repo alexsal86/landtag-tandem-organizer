@@ -81,7 +81,7 @@ export function useYearlyBalance(
           // Absence dates for this month
           const monthAbsenceDates = new Set<string>();
           (leavesRes.data || []).forEach((leave) => {
-            if (["sick", "vacation", "overtime_reduction"].includes(leave.type)) {
+            if (["sick", "vacation", "medical"].includes(leave.type)) {
               try {
                 eachDayOfInterval({
                   start: parseISO(leave.start_date),

@@ -408,7 +408,7 @@ export function AdminTimeTrackingView() {
   // Credit minutes (absences that count towards target - WITHOUT holidays, they reduce the target)
   const creditMinutes = useMemo(() => 
     combinedEntries
-      .filter(e => ['sick', 'vacation', 'overtime_reduction', 'medical'].includes(e.entry_type))
+      .filter(e => ['sick', 'vacation', 'medical'].includes(e.entry_type))
       .reduce((sum, e) => sum + (e.minutes || 0), 0),
     [combinedEntries]
   );
@@ -1405,8 +1405,9 @@ export function AdminTimeTrackingView() {
               <ul className="text-muted-foreground space-y-1 text-xs">
                 <li><strong>Soll:</strong> Arbeitstage im Monat × tägliche Arbeitszeit (ohne Feiertage)</li>
                 <li><strong>Gearbeitet:</strong> Tatsächlich erfasste Arbeitszeit</li>
-                <li><strong>Gutschriften:</strong> Urlaub, Krankheit, Überstundenabbau (zählen als gearbeitet)</li>
-                <li><strong>Saldo:</strong> Gearbeitet + Gutschriften − Soll</li>
+                <li><strong>Gutschriften:</strong> Urlaub, Krankheit, Arzttermine (zählen als gearbeitet)</li>
+                <li><strong>Überstundenabbau:</strong> Reduziert den Überstundensaldo</li>
+                <li><strong>Saldo:</strong> Gearbeitet + Gutschriften − Soll − Überstundenabbau</li>
                 <li><strong>Kumuliert:</strong> Laufende Summe aller Monats-Salden</li>
               </ul>
             </div>
