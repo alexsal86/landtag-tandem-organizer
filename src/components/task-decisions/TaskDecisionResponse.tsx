@@ -11,6 +11,7 @@ import { DecisionFileUpload } from "./DecisionFileUpload";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
+import { Textarea } from "@/components/ui/textarea";
 
 interface TaskDecisionResponseProps {
   decisionId: string;
@@ -18,6 +19,8 @@ interface TaskDecisionResponseProps {
   onResponseSubmitted: () => void;
   hasResponded?: boolean;
   creatorId?: string;
+  layout?: "default" | "decision-panel";
+  disabled?: boolean;
 }
 
 interface ResponseData {
@@ -49,6 +52,8 @@ export const TaskDecisionResponse = ({
   onResponseSubmitted,
   hasResponded = false,
   creatorId,
+  layout = "default",
+  disabled = false,
 }: TaskDecisionResponseProps) => {
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [questionComment, setQuestionComment] = useState("");
@@ -58,6 +63,8 @@ export const TaskDecisionResponse = ({
   const [showCommentField, setShowCommentField] = useState(false);
   const [responseOptions, setResponseOptions] = useState<ResponseOption[]>(getDefaultOptions());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [panelOptionKey, setPanelOptionKey] = useState<string | null>(null);
+  const [panelComment, setPanelComment] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -274,6 +281,47 @@ export const TaskDecisionResponse = ({
     handleResponse(option.key, questionComment.trim());
   };
 
+
+  const panelActions = responseOptions.filter((o) => ["yes", "no", "question"].includes(o.key));
+  const panelNoOption = panelActions.find((o) => o.key === "no");
+  const panelQuestionOption = panelActions.find((o) => o.key === "question");
+
+  const handlePanelOptionSelect = (option: ResponseOption) => {
+    if (disabled || isLoading) return;
+    if (option.key === "yes") {
+      handleResponse(option.key);
+      setPanelOptionKey(null);
+      setPanelComment("");
+      return;
+    }
+
+    setPanelOptionKey(option.key);
+    setPanelComment("");
+  };
+
+  const handlePanelSubmit = () => {
+    if (!panelOptionKey) return;
+    const selected = responseOptions.find((o) => o.key === panelOptionKey);
+    if (!selected) return;
+
+    const defaultRequired = panelOptionKey === "no";
+    const requiresComment = selected.requires_comment || defaultRequired;
+    if (requiresComment && !panelComment.trim()) {
+      toast({
+        title: "Fehler",
+        description: panelOptionKey === "question"
+          ? "Bitte formulieren Sie Ihre Rückfrage."
+          : "Bitte begründen Sie Ihre Ablehnung.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    handleResponse(selected.key, panelComment.trim() || undefined);
+    setPanelOptionKey(null);
+    setPanelComment("");
+  };
+
   // Show current response if already responded
   if (hasResponded && currentResponse && !showEdit) {
     const option = getOptionByKey(currentResponse.response_type);
@@ -345,7 +393,6 @@ export const TaskDecisionResponse = ({
 
   // (isSingleFreetext and isSingleAcknowledgement already declared above)
 
-  const optionRequiringComment = responseOptions.find(o => o.requires_comment);
 
   const renderDescriptionInfo = (description: string) => (
     <TooltipProvider delayDuration={150}>
@@ -444,6 +491,74 @@ export const TaskDecisionResponse = ({
 
     return <div key={option.key}>{button}</div>;
   };
+
+
+  if (layout === "decision-panel") {
+    const yesOption = panelActions.find((o) => o.key === "yes") || responseOptions[0];
+    const noOption = panelNoOption;
+    const questionOption = panelQuestionOption;
+
+    return (
+      <div className="space-y-2">
+        <div className="flex flex-col gap-2">
+          {yesOption && (
+            <Button
+              onClick={() => handlePanelOptionSelect(yesOption)}
+              disabled={disabled || isLoading || !!(isCreator && !isSingleAcknowledgement && !isSingleFreetext)}
+              className="w-full"
+            >
+              <Check className="h-4 w-4 mr-1.5" />Ja
+            </Button>
+          )}
+          {noOption && (
+            <Button
+              variant="destructive"
+              onClick={() => handlePanelOptionSelect(noOption)}
+              disabled={disabled || isLoading || !!(isCreator && !isSingleAcknowledgement && !isSingleFreetext)}
+              className="w-full"
+            >
+              <X className="h-4 w-4 mr-1.5" />Nein
+            </Button>
+          )}
+          {questionOption && (
+            <Button
+              variant="outline"
+              onClick={() => handlePanelOptionSelect(questionOption)}
+              disabled={disabled || isLoading || !!(isCreator && !isSingleAcknowledgement && !isSingleFreetext)}
+              className="w-full"
+            >
+              <MessageCircle className="h-4 w-4 mr-1.5" />Rückfrage
+            </Button>
+          )}
+        </div>
+
+        {panelOptionKey && (
+          <div className="space-y-2 rounded-md border border-border/70 bg-muted/10 p-2">
+            <Textarea
+              value={panelComment}
+              onChange={(e) => setPanelComment(e.target.value)}
+              placeholder={panelOptionKey === "question" ? "Rückfrage eingeben …" : "Begründung eingeben …"}
+              className="min-h-[84px] text-sm"
+            />
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { setPanelOptionKey(null); setPanelComment(""); }}>
+                Abbrechen
+              </Button>
+              <Button size="sm" onClick={handlePanelSubmit} disabled={isLoading}>
+                {isLoading ? "Sende..." : panelOptionKey === "question" ? "Rückfrage senden" : "Entscheidung senden"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {(isCreator && !isSingleAcknowledgement && !isSingleFreetext) && (
+          <div className="text-xs text-muted-foreground italic">
+            Als Ersteller können Sie hier nicht abstimmen.
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Single acknowledgement mode: show a single prominent button
   if (isSingleAcknowledgement) {
