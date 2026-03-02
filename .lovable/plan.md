@@ -1,44 +1,60 @@
 
+# Speech Recognition Reparatur und Verbesserungen
 
-# Fix: Brieftext wird nach Refresh nicht im Editor angezeigt
+## Problem: Mikrofon blockiert
 
-## Ursache
-
-Ein React-Timing-Problem: Die `draftContentNodes` werden per `useEffect` gesetzt, aber `useEffect` laeuft NACH dem ersten Render. Auf dem ersten Render ist `draftContentNodes` noch `null`, der Editor mountet mit leerem Inhalt, und `ContentPlugin` markiert sich als "schon geladen". Wenn dann `useEffect` die richtigen Daten setzt, ignoriert das Plugin sie.
-
-```text
-Render 1:  draftContentNodes = null  →  Editor mountet mit leerem Content  →  hasLoadedRef = true
-Effect:    draftContentNodes = letter.content_nodes  →  aber Editor ignoriert (schon geladen)
-Render 2:  Editor bekommt neue Props, aber ContentPlugin tut nichts mehr
+In `vite.config.ts` (Zeile 11) steht:
+```
+'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
 ```
 
-## Loesung
+`microphone=()` blockiert den Mikrofonzugriff komplett -- die Web Speech API kann deshalb nicht starten. Der Button ist entweder deaktiviert (`speechSupported = false`) oder die Erkennung schlagt sofort mit einem Fehler fehl.
 
-Im `contentNodes`-Prop des Editors direkt auf `letter?.content_nodes` zurueckfallen, falls `draftContentNodes` noch leer ist. Gleich fuer `content`:
+## Losung
 
-### Aenderung in `src/components/LetterEditor.tsx` (Zeile ~1912-1913)
-
-```typescript
-// Vorher:
-content={draftContent}
-contentNodes={draftContentNodes}
-
-// Nachher:
-content={draftContent || letter?.content || ''}
-contentNodes={draftContentNodes ?? letter?.content_nodes ?? undefined}
+Die `Permissions-Policy` muss das Mikrofon erlauben:
+```
+'Permissions-Policy': 'camera=(), microphone=(self), geolocation=()'
 ```
 
-Damit bekommt der Editor schon beim ersten Render die richtigen Daten direkt aus dem `letter`-Prop, unabhaengig davon ob der `useEffect` schon gelaufen ist.
+## Qualitatsanalyse der bestehenden Implementierung
 
-### Betroffene Datei
+Die Architektur ist insgesamt solide aufgebaut:
 
-| Datei | Aenderung |
-|---|---|
-| `src/components/LetterEditor.tsx` | Zeile 1912-1913: Fallback auf `letter?.content` und `letter?.content_nodes` |
+**Gut umgesetzt:**
+- Saubere Trennung: `WebSpeechToTextAdapter` (Low-Level API) -> `useSpeechDictation` (Hook) -> Toolbar-Komponenten
+- Deduplizierung kumulativer Transkripte (`consumeFinalTranscriptDelta`)
+- Automatischer Neustart bei Browser-Session-Timeout
+- Interim-Vorschau (kursiv/halbtransparent) im Editor
+- Deutsche Sprachbefehle (Stopp, Fett, Kursiv, etc.)
+- Interpunktions-Ersetzung ("Punkt" -> ".", "Komma" -> ",")
+- Unit-Tests fur Adapter und Command-Parser
 
-### Warum sicher
+**Verbesserungspotenzial:**
 
-- Sobald `useEffect` laeuft und `draftContentNodes` befuellt, wird der Fallback nicht mehr benoetigt (OR/Nullish-Coalescing greift nur bei leerem Wert)
-- Kein Feedback-Loop, da ContentPlugin weiterhin nur einmal beim Mount laedt
-- `key={letter?.id || 'new'}` erzwingt bei Briefwechsel weiterhin einen Neuaufbau
+1. **Fehlende visuelle Ruckmeldung bei Blockierung**: Wenn `speechSupported` false ist (z.B. wegen Permissions-Policy), wird der Button einfach deaktiviert ohne Erklarung. Ein Tooltip oder Toast ware hilfreicher.
 
+2. **Kein visuelles Feedback beim Aufnehmen im SimpleRichTextEditor**: Der `SimpleRichTextEditor` zeigt keinen "Aufnahme lauft..."-Text wie der `EnhancedLexicalToolbar`. Nur das Button-Variant wechselt.
+
+3. **Mikrofon-Icon zeigt keinen aktiven Zustand**: Ein animiertes oder farbiges Mic-Icon (z.B. rot pulsierend) ware intuitiver als nur der Button-Variant-Wechsel.
+
+## Umsetzungsplan
+
+### Schritt 1: Permissions-Policy korrigieren
+- In `vite.config.ts` Zeile 11: `microphone=()` zu `microphone=(self)` andern
+
+### Schritt 2: Visuelles Feedback verbessern
+- Pulsierender roter Punkt oder Animation am Mic-Button wenn `isListening`
+- "Aufnahme lauft..." Text auch im `SimpleRichTextEditor` hinzufugen (analog zu `EnhancedLexicalToolbar`)
+
+### Schritt 3: Bessere Fehlermeldung bei fehlender Unterstutzung
+- Toast-Nachricht wenn der Nutzer auf den deaktivierten Button klickt, statt nur disabled
+
+---
+
+### Technische Details
+
+**Betroffene Dateien:**
+- `vite.config.ts` -- Permissions-Policy Fix (Hauptursache)
+- `src/components/ui/SimpleRichTextEditor.tsx` -- Visuelles Feedback angleichen
+- Optional: Tailwind-Animation fur pulsierenden Aufnahme-Indikator
