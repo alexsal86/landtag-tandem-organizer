@@ -166,9 +166,24 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
       this.onStateChange?.('idle');
     };
 
-    recognition.start();
-    this.recognition = recognition;
-    this.onStateChange?.('listening');
+    try {
+      recognition.start();
+      this.recognition = recognition;
+      this.onStateChange?.('listening');
+    } catch (err) {
+      console.error('SpeechRecognition.start() failed:', err);
+      this.recognition = null;
+      this.shouldListen = false;
+      const message = err instanceof DOMException && err.name === 'NotAllowedError'
+        ? 'Mikrofonzugriff verweigert. Bitte Browser-Berechtigung erlauben.'
+        : `Spracherkennung konnte nicht gestartet werden: ${err instanceof Error ? err.message : String(err)}`;
+      this.onError?.({
+        code: err instanceof DOMException ? err.name : 'start-failed',
+        message,
+        recoverable: true,
+      });
+      this.onStateChange?.('idle');
+    }
   }
 
   private consumeFinalTranscriptDelta(finalTranscript: string): string {
