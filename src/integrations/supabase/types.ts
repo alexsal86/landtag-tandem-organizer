@@ -2499,7 +2499,6 @@ export type Database = {
         Row: {
           closing: string
           created_at: string
-          details_block_template: string
           greeting: string
           id: string
           instruction: string
@@ -2513,7 +2512,6 @@ export type Database = {
         Insert: {
           closing?: string
           created_at?: string
-          details_block_template?: string
           greeting?: string
           id?: string
           instruction?: string
@@ -2527,7 +2525,6 @@ export type Database = {
         Update: {
           closing?: string
           created_at?: string
-          details_block_template?: string
           greeting?: string
           id?: string
           instruction?: string
