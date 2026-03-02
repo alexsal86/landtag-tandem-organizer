@@ -64,7 +64,7 @@ const Toolbar = () => {
         }
       });
     }, [editor]),
-    dispatchCommand: (command) => {
+    dispatchCommand: useCallback((command) => {
       switch (command.type) {
         case 'toggle-format':
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
@@ -92,7 +92,7 @@ const Toolbar = () => {
         case 'stop-listening':
           break;
       }
-    },
+    }, [editor]),
   });
 
   // Show toast on speech errors
