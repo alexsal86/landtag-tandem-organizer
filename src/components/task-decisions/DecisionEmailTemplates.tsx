@@ -12,6 +12,7 @@ interface EmailTemplate {
   id: string;
   tenant_id: string;
   subject: string;
+  details_block_template: string;
   greeting: string;
   introduction: string;
   instruction: string;
@@ -92,6 +93,7 @@ export const DecisionEmailTemplates = () => {
         .from('decision_email_templates')
         .update({
           subject: template.subject,
+          details_block_template: template.details_block_template,
           greeting: template.greeting,
           introduction: template.introduction,
           instruction: template.instruction,
@@ -232,6 +234,19 @@ export const DecisionEmailTemplates = () => {
         </div>
 
         <div>
+          <label className="text-sm font-medium">Kasteninhalt</label>
+          <Textarea
+            value={template.details_block_template || 'Aufgabe: {task_title}\nEntscheidung: {decision_title}'}
+            onChange={(e) => updateField('details_block_template', e.target.value)}
+            placeholder="z.B. Aufgabe: {task_title}\nEntscheidung: {decision_title}"
+            rows={3}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Zeilenumbrüche werden in der E-Mail als neue Zeilen dargestellt.
+          </p>
+        </div>
+
+        <div>
           <label className="text-sm font-medium">Einleitungstext</label>
           <Textarea
             value={template.introduction}
@@ -294,7 +309,12 @@ export const DecisionEmailTemplates = () => {
             <p>{template.introduction}</p>
             <p>{template.instruction}</p>
             <div className="bg-background p-2 rounded border">
-              <p className="text-center">
+              <p className="whitespace-pre-line">
+                {(template.details_block_template || 'Aufgabe: {task_title}\nEntscheidung: {decision_title}')
+                  .replace('{task_title}', 'Haushaltsantrag 2026')
+                  .replace('{decision_title}', 'Freigabe der finalen Version')}
+              </p>
+              <p className="text-center mt-3">
                 <span className="bg-green-100 text-green-800 px-3 py-1 rounded mr-2">Ja</span>
                 <span className="bg-red-100 text-red-800 px-3 py-1 rounded mr-2">Nein</span>
                 <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded">Frage</span>
