@@ -12,7 +12,7 @@ interface EmailTemplate {
   id: string;
   tenant_id: string;
   subject: string;
-  details_block_template: string;
+  details_block_template?: string;
   greeting: string;
   introduction: string;
   instruction: string;

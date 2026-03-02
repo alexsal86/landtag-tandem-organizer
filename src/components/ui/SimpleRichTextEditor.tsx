@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
+import { toast } from 'sonner';
 
 interface SimpleRichTextEditorProps {
   initialContent?: string;
@@ -92,8 +93,6 @@ const Toolbar = () => {
     },
   });
 
-
-
   const updateToolbar = useCallback(() => {
     const selection = $getSelection();
     if ($isRangeSelection(selection)) {
@@ -130,6 +129,7 @@ const Toolbar = () => {
   const formatNumberedList = () => {
     editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
   };
+
   return (
     <div className="flex items-center gap-1 p-2 border-b border-border bg-muted/30">
       <Button
@@ -188,20 +188,33 @@ const Toolbar = () => {
         type="button"
         variant={isListening ? 'default' : 'ghost'}
         size="sm"
-        onClick={toggleSpeechRecognition}
+        onClick={() => {
+          if (!speechSupported) {
+            toast.error('Spracherkennung wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge.');
+            return;
+          }
+          toggleSpeechRecognition();
+        }}
         onMouseDown={(e) => e.preventDefault()}
-        className="h-8 w-8 p-0"
+        className={cn("h-8 w-8 p-0 relative", isListening && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
         title={
           !speechSupported
             ? 'Spracherkennung in diesem Browser nicht unterstützt'
             : isListening
-              ? "Spracherkennung beenden. Beenden auch per Sprachkommando: ‘Stopp’"
-              : "Spracherkennung starten. Beenden auch per Sprachkommando: ‘Stopp’"
+              ? "Spracherkennung beenden. Beenden auch per Sprachkommando: 'Stopp'"
+              : "Spracherkennung starten. Beenden auch per Sprachkommando: 'Stopp'"
         }
-        disabled={!speechSupported}
       >
         <Mic className="h-4 w-4" />
+        {isListening && (
+          <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background animate-pulse" />
+        )}
       </Button>
+      {isListening && (
+        <span className="text-xs text-destructive font-medium pl-1 animate-pulse">
+          Aufnahme läuft…
+        </span>
+      )}
       {speechError && (
         <span className="text-xs text-destructive pl-1" title={speechError.code}>
           {speechError.message}
