@@ -330,8 +330,8 @@ const MyWorkDecisionCardInner = ({
 
         {/* Voting row */}
         {decision.participants && decision.participants.length > 0 && (
-          <div className="flex items-start justify-between gap-4 mt-4">
-            <div className="flex-1 min-w-0 max-w-3xl" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-col-reverse gap-3 mt-4 md:flex-row md:items-start md:justify-between md:gap-4">
+            <div className="flex-1 min-w-0 max-w-3xl md:max-w-none md:flex md:justify-end" onClick={(e) => e.stopPropagation()}>
               {decision.isParticipant && decision.participant_id && !decision.hasResponded && (
                 <TaskDecisionResponse 
                   decisionId={decision.id}
