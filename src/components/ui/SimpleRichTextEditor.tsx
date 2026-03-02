@@ -13,6 +13,10 @@ import {
   $createTextNode,
   $getNodeByKey,
   $getRoot,
+  $getSelection,
+  $isRangeSelection,
+  $createRangeSelection,
+  $setSelection,
   FORMAT_TEXT_COMMAND,
   EditorState,
   LexicalEditor,
@@ -24,7 +28,6 @@ import {
   INSERT_ORDERED_LIST_COMMAND, 
   INSERT_UNORDERED_LIST_COMMAND,
 } from '@lexical/list';
-import { $getSelection, $isRangeSelection } from 'lexical';
 import { Bold, Italic, Underline, List, ListOrdered, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -56,6 +59,7 @@ const Toolbar = () => {
   const interimNodeKeyRef = React.useRef<string | null>(null);
 
   const speechAdapter = React.useMemo(() => new WebSpeechToTextAdapter(), []);
+  const lastRangeSelectionRef = React.useRef<{ anchor: { key: string; offset: number; type: 'element' | 'text' }; focus: { key: string; offset: number; type: 'element' | 'text' } } | null>(null);
 
   const updateToolbar = useCallback(() => {
     const selection = $getSelection();

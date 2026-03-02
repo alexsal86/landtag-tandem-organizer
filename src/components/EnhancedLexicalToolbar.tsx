@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $getNodeByKey, $isTextNode, TextNode } from 'lexical';
+import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $getNodeByKey, $isTextNode, TextNode, FORMAT_TEXT_COMMAND, FORMAT_ELEMENT_COMMAND, UNDO_COMMAND, REDO_COMMAND, TextFormatType, ElementFormatType, $createRangeSelection, $setSelection, $insertNodes } from 'lexical';
 import {
   $createHeadingNode,
   $createQuoteNode,
@@ -8,18 +8,6 @@ import {
 } from '@lexical/rich-text';
 import { $createCodeNode } from '@lexical/code';
 import { $createLinkNode } from '@lexical/link';
-import {
-  FORMAT_TEXT_COMMAND,
-  FORMAT_ELEMENT_COMMAND,
-  UNDO_COMMAND,
-  REDO_COMMAND,
-  TextFormatType,
-  ElementFormatType,
-  $createRangeSelection,
-  $getNodeByKey,
-  $setSelection,
-  $insertNodes,
-} from 'lexical';
 import {
   INSERT_UNORDERED_LIST_COMMAND,
   INSERT_ORDERED_LIST_COMMAND,
@@ -100,6 +88,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   const lastInsertedSegmentRef = React.useRef<string>('');
 
   const speechAdapter = useMemo(() => new WebSpeechToTextAdapter(), []);
+  const lastRangeSelectionRef = React.useRef<{ anchor: { key: string; offset: number; type: 'element' | 'text' }; focus: { key: string; offset: number; type: 'element' | 'text' } } | null>(null);
 
   const restoreLastRangeSelection = useCallback(() => {
     const previousSelection = lastRangeSelectionRef.current;
