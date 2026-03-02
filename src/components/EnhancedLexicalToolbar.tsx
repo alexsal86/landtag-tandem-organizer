@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $getNodeByKey, $isTextNode, TextNode, FORMAT_TEXT_COMMAND, FORMAT_ELEMENT_COMMAND, UNDO_COMMAND, REDO_COMMAND, TextFormatType, ElementFormatType, $createRangeSelection, $setSelection, $insertNodes } from 'lexical';
+import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $isTextNode, FORMAT_TEXT_COMMAND, FORMAT_ELEMENT_COMMAND, UNDO_COMMAND, REDO_COMMAND, TextFormatType, ElementFormatType, $insertNodes } from 'lexical';
 import {
   $createHeadingNode,
   $createQuoteNode,
@@ -57,8 +57,7 @@ import { TextAlignmentPlugin } from './plugins/TextAlignmentPlugin';
 import { LineHeightPlugin } from './plugins/LineHeightPlugin';
 import { ImageUploadDialog } from './plugins/ImagePlugin';
 import { Input } from '@/components/ui/input';
-import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
-import { detectSpeechCommand, formatDictatedText, parseSpeechInput } from '@/lib/speechCommandUtils';
+import { useSpeechDictation } from '@/hooks/useSpeechDictation';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
@@ -81,254 +80,51 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   const [showTableDialog, setShowTableDialog] = useState(false);
   const [tableRows, setTableRows] = useState('3');
   const [tableCols, setTableCols] = useState('3');
-  const [speechState, setSpeechState] = useState<SpeechToTextState>('idle');
-  const [speechError, setSpeechError] = useState<SpeechToTextError | null>(null);
-  const [interimTranscript, setInterimTranscript] = useState('');
-  const interimNodeKeyRef = React.useRef<string | null>(null);
-  const lastInsertedSegmentRef = React.useRef<string>('');
-
-  const speechAdapter = useMemo(() => new WebSpeechToTextAdapter(), []);
-  const lastRangeSelectionRef = React.useRef<{ anchor: { key: string; offset: number; type: 'element' | 'text' }; focus: { key: string; offset: number; type: 'element' | 'text' } } | null>(null);
-
-  const restoreLastRangeSelection = useCallback(() => {
-    const previousSelection = lastRangeSelectionRef.current;
-    if (!previousSelection) return false;
-
-    if (!$getNodeByKey(previousSelection.anchor.key) || !$getNodeByKey(previousSelection.focus.key)) {
-      return false;
-    }
-
-    const restoredSelection = $createRangeSelection();
-    restoredSelection.anchor.set(
-      previousSelection.anchor.key,
-      previousSelection.anchor.offset,
-      previousSelection.anchor.type,
-    );
-    restoredSelection.focus.set(
-      previousSelection.focus.key,
-      previousSelection.focus.offset,
-      previousSelection.focus.type,
-    );
-    $setSelection(restoredSelection);
-
-    return $isRangeSelection($getSelection());
-  }, []);
-
-  useEffect(() => {
-    const removeInterimNode = () => {
-      const interimNodeKey = interimNodeKeyRef.current;
-      if (!interimNodeKey) return null;
-
-      const interimNode = $getNodeByKey(interimNodeKey);
-      if (interimNode instanceof TextNode) {
-        interimNode.remove();
-        interimNodeKeyRef.current = null;
-        return interimNode;
+  const {
+    speechState,
+    speechError,
+    interimTranscript,
+    isListening,
+    speechSupported,
+    toggleSpeechRecognition,
+  } = useSpeechDictation({
+    editor,
+    insertText: (text) => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        selection.insertText(text);
       }
-
-      interimNodeKeyRef.current = null;
-      return null;
-    };
-
-    const updateInterimNode = (text: string) => {
-      editor.update(() => {
-        const interimNodeKey = interimNodeKeyRef.current;
-        if (interimNodeKey) {
-          const interimNode = $getNodeByKey(interimNodeKey);
-          if (interimNode instanceof TextNode) {
-            if (!text) {
-              interimNode.remove();
-              interimNodeKeyRef.current = null;
-              return;
-            }
-
-            interimNode.setTextContent(text);
-            return;
-          }
-
-          interimNodeKeyRef.current = null;
-        }
-
-        if (!text) return;
-
-        const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
-          const node = $createTextNode(text);
-          node.setStyle('opacity: 0.65; font-style: italic;');
-          selection.insertNodes([node]);
-          interimNodeKeyRef.current = node.getKey();
-        }
-      });
-    };
-
-    speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
-    speechAdapter.onError = (error) => setSpeechError(error);
-    speechAdapter.onInterimTranscript = (text) => {
-      const { command, contentText } = splitTranscriptAndCommand(text);
-      if (command?.type === 'stop-listening') {
-        setInterimTranscript(contentText);
-        updateInterimNode(contentText);
-
-        if (contentText) {
-          const formattedText = formatDictatedText(contentText);
+    },
+    dispatchCommand: (command) => {
+      switch (command.type) {
+        case 'toggle-format':
+          editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
+          break;
+        case 'insert-list':
+          editor.dispatchCommand(
+            command.listType === 'unordered' ? INSERT_UNORDERED_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND,
+            undefined,
+          );
+          break;
+        case 'undo':
+          editor.dispatchCommand(UNDO_COMMAND, undefined);
+          break;
+        case 'redo':
+          editor.dispatchCommand(REDO_COMMAND, undefined);
+          break;
+        case 'insert-newline':
           editor.update(() => {
-            const shouldAddTrailingSpace =
-              !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
-            const textToInsert = formattedText
-              ? shouldAddTrailingSpace
-                ? `${formattedText} `
-                : formattedText
-              : '';
-
-            const interimNode = removeInterimNode();
-            if (interimNode instanceof TextNode) {
-              if (textToInsert) {
-                interimNode.replace($createTextNode(textToInsert));
-              }
-              return;
-            }
-
-            if (!textToInsert) return;
-            if (lastInsertedSegmentRef.current === textToInsert) return;
-
             const selection = $getSelection();
             if ($isRangeSelection(selection)) {
-              selection.insertText(textToInsert);
-              lastInsertedSegmentRef.current = textToInsert;
+              selection.insertText('\n');
             }
           });
-        } else {
-          setInterimTranscript('');
-          editor.update(() => {
-            removeInterimNode();
-          });
-        }
-
-        speechAdapter.stop();
-        return;
+          break;
+        case 'stop-listening':
+          break;
       }
-
-      setInterimTranscript(contentText);
-      updateInterimNode(contentText);
-    };
-    speechAdapter.onFinalTranscript = (text) => {
-      const { command, contentText } = parseSpeechInput(text);
-      if (command) {
-        editor.update(() => {
-          const shouldAddTrailingSpace =
-            !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
-          const textToInsert = formattedText
-            ? shouldAddTrailingSpace
-              ? `${formattedText} `
-              : formattedText
-            : '';
-
-          const interimNode = removeInterimNode();
-          if (interimNode instanceof TextNode) {
-            if (textToInsert) {
-              interimNode.replace($createTextNode(textToInsert));
-            }
-            return;
-          }
-
-          if (!textToInsert) return;
-          if (lastInsertedSegmentRef.current === textToInsert) return;
-
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            selection.insertText(textToInsert);
-            lastInsertedSegmentRef.current = textToInsert;
-          }
-        });
-      };
-
-      if (command) {
-        if (contentText) {
-          commitContentText();
-        } else {
-          editor.update(() => {
-            removeInterimNode();
-          });
-          setInterimTranscript('');
-        }
-
-        switch (command.type) {
-          case 'stop-listening':
-            if (!contentText) {
-              speechAdapter.stop();
-              return;
-            }
-            break;
-          case 'toggle-format':
-            editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
-            return;
-          case 'insert-list':
-            editor.dispatchCommand(
-              command.listType === 'unordered' ? INSERT_UNORDERED_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND,
-              undefined,
-            );
-            return;
-          case 'undo':
-            editor.dispatchCommand(UNDO_COMMAND, undefined);
-            return;
-          case 'redo':
-            editor.dispatchCommand(REDO_COMMAND, undefined);
-            return;
-          case 'insert-newline':
-            editor.update(() => {
-              const selection = $getSelection();
-              if ($isRangeSelection(selection)) {
-                selection.insertText('\n');
-              }
-            });
-            return;
-        }
-      }
-
-      const dictationText = contentText || text;
-      const formattedText = formatDictatedText(dictationText);
-      setInterimTranscript('');
-
-      editor.update(() => {
-        const shouldAddTrailingSpace =
-          !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
-        const textToInsert = formattedText
-          ? shouldAddTrailingSpace
-            ? `${formattedText} `
-            : formattedText
-          : '';
-
-        const interimNode = removeInterimNode();
-        if (interimNode instanceof TextNode) {
-          if (textToInsert) {
-            interimNode.replace($createTextNode(textToInsert));
-          }
-          return;
-        }
-
-        if (!textToInsert) return;
-        if (lastInsertedSegmentRef.current === textToInsert) return;
-
-        const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
-          selection.insertText(textToInsert);
-          lastInsertedSegmentRef.current = textToInsert;
-        }
-      });
-
-      if (command?.type === 'stop-listening') {
-        speechAdapter.stop();
-      }
-    };
-
-    if (!speechAdapter.supported) {
-      setSpeechState('unsupported');
-    }
-
-    return () => {
-      speechAdapter.destroy();
-    };
-  }, [editor, speechAdapter]);
+    },
+  });
 
   // Track active formats
   useEffect(() => {
@@ -337,18 +133,6 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
         const selection = $getSelection();
         const formats: string[] = [];
         if ($isRangeSelection(selection)) {
-          lastRangeSelectionRef.current = {
-            anchor: {
-              key: selection.anchor.key,
-              offset: selection.anchor.offset,
-              type: selection.anchor.type,
-            },
-            focus: {
-              key: selection.focus.key,
-              offset: selection.focus.offset,
-              type: selection.focus.type,
-            },
-          };
           if (selection.hasFormat('bold')) formats.push('bold');
           if (selection.hasFormat('italic')) formats.push('italic');
           if (selection.hasFormat('underline')) formats.push('underline');
@@ -470,23 +254,6 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
       }
     });
   }, [editor]);
-
-  const isListening = speechState === 'listening';
-  const speechSupported = speechAdapter.supported;
-
-  const toggleSpeechRecognition = useCallback(() => {
-    if (!speechSupported) return;
-
-    if (isListening) {
-      speechAdapter.stop();
-      return;
-    }
-
-    setSpeechError(null);
-    speechAdapter.start();
-    editor.focus();
-  }, [editor, isListening, speechAdapter, speechSupported]);
-
   if (showFloatingToolbar) {
     return (
       <div className="bg-background border rounded-lg shadow-lg p-1 flex gap-1">
