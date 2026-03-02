@@ -235,10 +235,12 @@ const MyWorkDecisionCardInner = ({
               {decision.isParticipant && decision.participant_id && (
                 <TaskDecisionResponse
                   decisionId={decision.id}
-                  participantId={decision.participant_id}
+                  participantId={decision.participant_id || ''}
                   onResponseSubmitted={onResponseSubmitted}
                   hasResponded={decision.hasResponded}
                   creatorId={decision.created_by}
+                  layout="decision-panel"
+                  disabled={!decision.isParticipant || !decision.participant_id}
                 />
               )}
 

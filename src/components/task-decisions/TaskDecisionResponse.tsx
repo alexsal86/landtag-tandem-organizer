@@ -11,6 +11,7 @@ import { DecisionFileUpload } from "./DecisionFileUpload";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
+import { Textarea } from "@/components/ui/textarea";
 
 interface TaskDecisionResponseProps {
   decisionId: string;
@@ -18,6 +19,8 @@ interface TaskDecisionResponseProps {
   onResponseSubmitted: () => void;
   hasResponded?: boolean;
   creatorId?: string;
+  layout?: "default" | "decision-panel";
+  disabled?: boolean;
 }
 
 interface ResponseData {
@@ -49,6 +52,8 @@ export const TaskDecisionResponse = ({
   onResponseSubmitted,
   hasResponded = false,
   creatorId,
+  layout = "default",
+  disabled = false,
 }: TaskDecisionResponseProps) => {
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [questionComment, setQuestionComment] = useState("");
@@ -58,6 +63,8 @@ export const TaskDecisionResponse = ({
   const [showCommentField, setShowCommentField] = useState(false);
   const [responseOptions, setResponseOptions] = useState<ResponseOption[]>(getDefaultOptions());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [panelOptionKey, setPanelOptionKey] = useState<string | null>(null);
+  const [panelComment, setPanelComment] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {

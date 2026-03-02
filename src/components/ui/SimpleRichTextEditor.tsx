@@ -23,13 +23,14 @@ import {
   INSERT_ORDERED_LIST_COMMAND, 
   INSERT_UNORDERED_LIST_COMMAND,
 } from '@lexical/list';
-import { Bold, Italic, Underline, List, ListOrdered, Mic } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, Mic, CircleHelp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SimpleRichTextEditorProps {
   initialContent?: string;
@@ -41,6 +42,18 @@ interface SimpleRichTextEditorProps {
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   showToolbar?: boolean;
 }
+
+const SPEECH_COMMAND_HINTS = [
+  'Fett',
+  'Kursiv',
+  'Unterstreichen',
+  'Aufzählung / Liste',
+  'Nummerierte Liste',
+  'Rückgängig',
+  'Wiederholen',
+  'Neue Zeile / Neuer Absatz',
+  'Stopp (beendet die Aufnahme)',
+] as const;
 
 // Toolbar Component
 const Toolbar = () => {
@@ -270,6 +283,34 @@ const Toolbar = () => {
           <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background animate-pulse" />
         )}
       </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-muted-foreground"
+              aria-label="Sprachbefehle anzeigen"
+              onMouseDown={(event) => event.preventDefault()}
+            >
+              <CircleHelp className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="start" className="max-w-[320px]">
+            <div className="space-y-2 text-xs">
+              <p className="font-medium">Push-to-talk</p>
+              <p>Halte den Mikrofon-Button oder <span className="font-medium">Strg + Shift + M</span>, um zu sprechen.</p>
+              <p className="font-medium">Sprachbefehle</p>
+              <ul className="list-disc pl-4 space-y-1">
+                {SPEECH_COMMAND_HINTS.map((commandHint) => (
+                  <li key={commandHint}>{commandHint}</li>
+                ))}
+              </ul>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       {isListening && (
         <span className="text-xs text-destructive font-medium pl-1 animate-pulse">
           Aufnahme läuft…
