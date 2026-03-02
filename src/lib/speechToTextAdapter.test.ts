@@ -85,4 +85,47 @@ describe('WebSpeechToTextAdapter', () => {
     expect(emittedSegments).toEqual(['in', 'Karlsruhe', 'scheint die Sonne']);
     expect(emittedSegments.join(' ')).toBe('in Karlsruhe scheint die Sonne');
   });
+
+  it('does not duplicate committed final segments when a final result arrives after stop was requested', () => {
+    const instances: MockSpeechRecognitionInstance[] = [];
+
+    class MockSpeechRecognition {
+      onresult: ((event: SpeechRecognitionEvent) => void) | null = null;
+      onerror: ((event: SpeechRecognitionErrorEvent) => void) | null = null;
+      onend: (() => void) | null = null;
+      lang = '';
+      continuous = false;
+      interimResults = false;
+      maxAlternatives = 1;
+      start = vi.fn();
+      stop = vi.fn();
+
+      constructor() {
+        instances.push(this);
+      }
+    }
+
+    window.SpeechRecognition = MockSpeechRecognition as unknown as typeof SpeechRecognition;
+    window.webkitSpeechRecognition = undefined;
+
+    const adapter = new WebSpeechToTextAdapter();
+    const emittedSegments: string[] = [];
+
+    adapter.onFinalTranscript = (text) => {
+      emittedSegments.push(text);
+    };
+
+    adapter.start();
+
+    const recognition = instances[0];
+    expect(recognition).toBeDefined();
+
+    recognition.onresult?.(createSpeechRecognitionEvent(['in Karlsruhe']));
+    adapter.stop();
+    recognition.onresult?.(createSpeechRecognitionEvent(['in Karlsruhe']));
+    recognition.onresult?.(createSpeechRecognitionEvent(['in Karlsruhe scheint die Sonne']));
+
+    expect(emittedSegments).toEqual(['in Karlsruhe', 'scheint die Sonne']);
+    expect(emittedSegments.join(' ')).toBe('in Karlsruhe scheint die Sonne');
+  });
 });

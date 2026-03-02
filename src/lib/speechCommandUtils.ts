@@ -104,6 +104,34 @@ export const detectSpeechCommand = (text: string): SpeechCommand | null => {
   return parseSpeechInput(text).command;
 };
 
+
+export const splitTranscriptAndCommand = (text: string): { contentText: string; command: SpeechCommand | null } => {
+  const transcript = text.trim();
+
+  if (!transcript) {
+    return { contentText: '', command: null };
+  }
+
+  for (const pattern of TRAILING_STOP_COMMAND_PATTERNS) {
+    const match = transcript.match(pattern);
+    const contentText = match?.groups?.content?.trim() ?? '';
+
+    if (contentText) {
+      return { contentText, command: { type: 'stop-listening' } };
+    }
+  }
+
+  const command = detectSpeechCommand(transcript);
+  if (command?.type === 'stop-listening') {
+    const normalized = normalizeSpeechText(transcript);
+    if (!isPureStopCommand(normalized)) {
+      return { contentText: transcript, command: null };
+    }
+  }
+
+  return { contentText: command ? '' : transcript, command };
+};
+
 export const formatDictatedText = (text: string): string => {
   let formatted = text.trim();
   for (const [pattern, replacement] of PUNCTUATION_REPLACEMENTS) {

@@ -164,26 +164,89 @@ const Toolbar = () => {
     speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
     speechAdapter.onError = (error) => setSpeechError(error);
     speechAdapter.onInterimTranscript = (text) => {
-      const command = detectSpeechCommand(text);
+      const { command, contentText } = splitTranscriptAndCommand(text);
       if (command?.type === 'stop-listening') {
-        setInterimTranscript('');
-        editor.update(() => {
-          removeInterimNode();
-        });
+        setInterimTranscript(contentText);
+        updateInterimNode(contentText);
+
+        if (contentText) {
+          const formattedText = formatDictatedText(contentText);
+          editor.update(() => {
+            const shouldAddTrailingSpace =
+              !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+            const textToInsert = formattedText
+              ? shouldAddTrailingSpace
+                ? `${formattedText} `
+                : formattedText
+              : '';
+
+            const interimNode = removeInterimNode();
+            if (interimNode instanceof TextNode) {
+              if (textToInsert) {
+                interimNode.replace($createTextNode(textToInsert));
+              }
+              return;
+            }
+
+            if (!textToInsert) return;
+
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              selection.insertText(textToInsert);
+            }
+          });
+        } else {
+          setInterimTranscript('');
+          editor.update(() => {
+            removeInterimNode();
+          });
+        }
+
         speechAdapter.stop();
         return;
       }
 
-      setInterimTranscript(text);
-      updateInterimNode(text);
+      setInterimTranscript(contentText);
+      updateInterimNode(contentText);
     };
     speechAdapter.onFinalTranscript = (text) => {
       const { command, contentText } = parseSpeechInput(text);
       if (command) {
         editor.update(() => {
-          removeInterimNode();
+          const shouldAddTrailingSpace =
+            !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+          const textToInsert = formattedText
+            ? shouldAddTrailingSpace
+              ? `${formattedText} `
+              : formattedText
+            : '';
+
+          const interimNode = removeInterimNode();
+          if (interimNode instanceof TextNode) {
+            if (textToInsert) {
+              interimNode.replace($createTextNode(textToInsert));
+            }
+            return;
+          }
+
+          if (!textToInsert) return;
+
+          const selection = $getSelection();
+          if ($isRangeSelection(selection)) {
+            selection.insertText(textToInsert);
+          }
         });
-        setInterimTranscript('');
+      };
+
+      if (command) {
+        if (contentText) {
+          commitContentText();
+        } else {
+          editor.update(() => {
+            removeInterimNode();
+          });
+          setInterimTranscript('');
+        }
 
         switch (command.type) {
           case 'stop-listening':

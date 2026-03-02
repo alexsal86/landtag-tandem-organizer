@@ -61,6 +61,7 @@ const mapSpeechError = (code: string): SpeechToTextError => {
 export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
   private recognition: SpeechRecognition | null = null;
   private shouldListen = false;
+  private isStopping = false;
   private finalizedTranscriptBuffer = '';
 
   onFinalTranscript?: (text: string) => void;
@@ -84,7 +85,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
 
   stop(): void {
     this.shouldListen = false;
-    this.resetSessionDedupeState();
+    this.isStopping = true;
     this.onInterimTranscript?.('');
     this.onStateChange?.('stopping');
     this.recognition?.stop();
@@ -92,6 +93,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
 
   destroy(): void {
     this.shouldListen = false;
+    this.isStopping = false;
     this.resetSessionDedupeState();
     if (this.recognition) {
       this.recognition.onresult = null;
@@ -112,6 +114,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
     }
 
     const recognition = new SpeechRecognitionCtor();
+    this.isStopping = false;
     this.resetSessionDedupeState();
     recognition.lang = 'de-DE';
     recognition.continuous = true;
@@ -157,6 +160,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
         return;
       }
 
+      this.isStopping = false;
       this.resetSessionDedupeState();
 
       this.onStateChange?.('idle');
