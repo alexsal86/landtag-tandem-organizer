@@ -90,6 +90,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
     setLoading(true);
 
     try {
+      let deliveredEmailRecipients = 0;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -103,34 +104,23 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
 
       // Send emails
       if (selectedUserIds.length > 0 || emails.length > 0) {
-        // Get email addresses for internal users
-        const { data: userProfiles } = await supabase
-          .from('profiles')
-          .select('user_id, display_name')
-          .in('user_id', selectedUserIds);
-
-        const internalEmails: string[] = [];
-        if (userProfiles) {
-          for (const prof of userProfiles) {
-            const { data: authUser } = await supabase.auth.admin.getUserById(prof.user_id);
-            if (authUser.user?.email) {
-              internalEmails.push(authUser.user.email);
-            }
-          }
-        }
-
-        const allEmails = [...internalEmails, ...emails];
-
-        const { error: emailError } = await supabase.functions.invoke('send-news-email', {
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-news-email', {
           body: {
             article,
-            recipients: allEmails,
+            recipients: emails,
+            internalRecipientUserIds: selectedUserIds,
             senderName,
             personalMessage: personalMessage || undefined
           }
         });
 
         if (emailError) throw emailError;
+
+        deliveredEmailRecipients = emailData?.recipients ?? 0;
+
+        if (emailData?.partialFailure?.message) {
+          toast.warning(emailData.partialFailure.message);
+        }
       }
 
       // Send via Matrix
@@ -185,8 +175,8 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
         }
       }
 
-      const totalRecipients = selectedUserIds.length + emails.length;
-      toast.success(`News erfolgreich an ${totalRecipients} Empfänger gesendet`);
+      const totalRecipients = Math.max(deliveredEmailRecipients, 0);
+      toast.success(`News erfolgreich an ${totalRecipients} Empfänger per E-Mail gesendet`);
       
       // Reset form
       setSelectedUserIds([]);
