@@ -28,7 +28,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MyWorkDecision, getResponseSummary, getBorderColor } from "./types";
+import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
 
 interface MyWorkDecisionCardProps {
   decision: MyWorkDecision;
@@ -89,7 +89,35 @@ const MyWorkDecisionCardInner = ({
     () => (decision.description || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(),
     [decision.description],
   );
-  const previewText = plainDescription.length > 240 ? `${plainDescription.slice(0, 240).replace(/\s+\S*$/, '')}…` : plainDescription;
+  const previewCharacterLimit = 620;
+  const hasLongDescription = plainDescription.length > previewCharacterLimit;
+  const previewText = hasLongDescription
+    ? `${plainDescription.slice(0, previewCharacterLimit).replace(/\s+\S*$/, '')}…`
+    : plainDescription;
+
+  const customSummary = useMemo(() => {
+    if (!decision.response_options || decision.response_options.length === 0) {
+      return null;
+    }
+
+    const keys = decision.response_options.map((option) => option.key).sort();
+    const isStandardOptions =
+      (keys.length === 2 && keys[0] === 'no' && keys[1] === 'yes') ||
+      (keys.length === 3 && keys[0] === 'no' && keys[1] === 'question' && keys[2] === 'yes');
+
+    if (isStandardOptions || !decision.participants) {
+      return null;
+    }
+
+    return getCustomResponseSummary(decision.participants, decision.response_options);
+  }, [decision.participants, decision.response_options]);
+
+  const responseSummaryText = customSummary
+    ? [
+        ...customSummary.counts.map((entry) => `${entry.count} ${entry.label}`),
+        `${customSummary.pending} Ausstehend`,
+      ].join(' • ')
+    : `${summary.yesCount} Ja • ${summary.noCount} Nein${summary.questionCount > 0 ? ` • ${summary.questionCount} Rückfrage` : ''}`;
 
   const avatarParticipants = (decision.participants || []).map((p) => ({
     user_id: p.user_id,
@@ -193,35 +221,26 @@ const MyWorkDecisionCardInner = ({
             )}
           </div>
 
-          <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="mt-3 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
             <div className="min-w-0">
               <h3 className="font-bold text-lg leading-snug mb-2">{decision.title}</h3>
 
               {plainDescription && (
-                <div className="rounded-md border border-border/60 bg-muted/20 p-3" onClick={(e) => e.stopPropagation()}>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{previewText}</p>
-                  {plainDescription.length > 240 && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {detailsExpanded ? plainDescription : previewText}
+                  </p>
+                  {hasLongDescription && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="mt-2 h-7 px-2 text-xs"
+                      className="mt-2 h-7 px-0 text-xs"
                       onClick={() => setDetailsExpanded((prev) => !prev)}
                     >
-                      {detailsExpanded ? 'Details ausblenden' : 'Details anzeigen'}
+                      {detailsExpanded ? 'Weniger Details' : 'Details anzeigen'}
                       {detailsExpanded ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}
                     </Button>
                   )}
-                </div>
-              )}
-
-              {detailsExpanded && decision.description && (
-                <div className="mt-3 max-h-[260px] overflow-y-auto pr-2" onClick={(e) => e.stopPropagation()}>
-                  <div className="rounded-md border border-border/60 p-3 bg-background">
-                    <p className="text-xs font-semibold text-foreground mb-2">Details</p>
-                    <div className="text-sm text-muted-foreground leading-relaxed">
-                      {plainDescription}
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
@@ -246,23 +265,23 @@ const MyWorkDecisionCardInner = ({
 
               <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
                 <div className="font-medium text-foreground">
-                  {summary.yesCount} Ja • {summary.noCount} Nein{summary.questionCount > 0 ? ` • ${summary.questionCount} Rückfrage` : ''}
+                  {responseSummaryText}
                 </div>
                 <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
               </div>
 
               <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span>{new Date(decision.created_at).toLocaleDateString('de-DE')}</span>
                   {decision.creator && <span>• {decision.creator.display_name || 'Unbekannt'}</span>}
+                  <button
+                    onClick={() => onOpenComments(decision.id, decision.title)}
+                    className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    {commentCount > 0 ? `${commentCount} Kommentar${commentCount !== 1 ? 'e' : ''}` : 'Kommentar schreiben'}
+                  </button>
                 </div>
-                <button
-                  onClick={() => onOpenComments(decision.id, decision.title)}
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                >
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  {commentCount > 0 ? `${commentCount} Kommentar${commentCount !== 1 ? 'e' : ''}` : 'Kommentar schreiben'}
-                </button>
 
                 <div className="flex items-center gap-3">
                   {(decision.fileAttachments?.length ?? 0) > 0 && (
