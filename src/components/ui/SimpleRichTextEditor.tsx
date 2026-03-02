@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -56,12 +56,14 @@ const Toolbar = () => {
     toggleSpeechRecognition,
   } = useSpeechDictation({
     editor,
-    insertText: (text) => {
-      const selection = $getSelection();
-      if ($isRangeSelection(selection)) {
-        selection.insertText(text);
-      }
-    },
+    insertText: useCallback((text: string) => {
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          selection.insertText(text);
+        }
+      });
+    }, [editor]),
     dispatchCommand: (command) => {
       switch (command.type) {
         case 'toggle-format':
@@ -92,6 +94,13 @@ const Toolbar = () => {
       }
     },
   });
+
+  // Show toast on speech errors
+  useEffect(() => {
+    if (speechError) {
+      toast.error(speechError.message);
+    }
+  }, [speechError]);
 
   const updateToolbar = useCallback(() => {
     const selection = $getSelection();
