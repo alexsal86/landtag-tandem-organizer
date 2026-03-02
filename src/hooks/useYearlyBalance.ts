@@ -39,8 +39,8 @@ export function useYearlyBalance(
             .select("type, start_date, end_date")
             .eq("user_id", userId)
             .eq("status", "approved")
-            .gte("start_date", format(yearStart, "yyyy-MM-dd"))
-            .lte("end_date", format(effectiveEnd, "yyyy-MM-dd")),
+            .lte("start_date", format(effectiveEnd, "yyyy-MM-dd"))
+            .gte("end_date", format(yearStart, "yyyy-MM-dd")),
           supabase
             .from("public_holidays")
             .select("holiday_date")
