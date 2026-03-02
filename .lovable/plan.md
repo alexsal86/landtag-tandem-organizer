@@ -1,60 +1,108 @@
 
-# Speech Recognition Reparatur und Verbesserungen
+Ziel: Speech Recognition in den Editoren (insb. Quick Notes mit `SimpleRichTextEditor`) wieder zuverlässig aktivierbar machen und die Implementierung robuster + besser diagnostizierbar machen.
 
-## Problem: Mikrofon blockiert
+## Befund aus der Analyse
 
-In `vite.config.ts` (Zeile 11) steht:
-```
-'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
-```
+Ich habe die relevanten Pfade geprüft:
 
-`microphone=()` blockiert den Mikrofonzugriff komplett -- die Web Speech API kann deshalb nicht starten. Der Button ist entweder deaktiviert (`speechSupported = false`) oder die Erkennung schlagt sofort mit einem Fehler fehl.
+- `src/hooks/useSpeechDictation.ts`
+- `src/lib/speechToTextAdapter.ts`
+- `src/components/ui/SimpleRichTextEditor.tsx`
+- `src/components/EnhancedLexicalToolbar.tsx`
+- Quick-Notes-Flows (`GlobalQuickNoteDialog`, `MyWorkQuickCapture`, `QuickNotesWidget`)
 
-## Losung
+Wichtige Erkenntnisse:
 
-Die `Permissions-Policy` muss das Mikrofon erlauben:
-```
-'Permissions-Policy': 'camera=(), microphone=(self), geolocation=()'
-```
+1. **Hauptursache (Regression): Effekt-Reset im Hook**
+   - In `useSpeechDictation` hängt der zentrale `useEffect` von `dispatchCommand` und `insertText` ab.
+   - Diese Funktionen werden in den Toolbars aktuell nicht durchgehend stabil referenziert (teils inline).
+   - Ergebnis: Bei Re-Renders läuft Cleanup (`speechAdapter.destroy()`), wodurch die Aufnahme sofort wieder auf `idle` kippt.
+   - Symptom passt exakt: **Mic-Button wirkt „ohne Effekt“ / wird nicht aktiv**.
 
-## Qualitatsanalyse der bestehenden Implementierung
+2. **CSP/Permissions sind bereits korrekt**
+   - `vite.config.ts` hat `microphone=(self)`; der frühere Blocker ist damit nicht mehr der primäre Grund.
 
-Die Architektur ist insgesamt solide aufgebaut:
+3. **Quick Notes ist nicht überall gleich**
+   - In manchen Quick-Notes-Varianten wird `SimpleRichTextEditor` genutzt (mit Mic).
+   - In `QuickNotesWidget` ist der Body aktuell noch `Textarea` (ohne Speech-Button). Das ist kein Defekt, aber uneinheitlich.
 
-**Gut umgesetzt:**
-- Saubere Trennung: `WebSpeechToTextAdapter` (Low-Level API) -> `useSpeechDictation` (Hook) -> Toolbar-Komponenten
-- Deduplizierung kumulativer Transkripte (`consumeFinalTranscriptDelta`)
-- Automatischer Neustart bei Browser-Session-Timeout
-- Interim-Vorschau (kursiv/halbtransparent) im Editor
-- Deutsche Sprachbefehle (Stopp, Fett, Kursiv, etc.)
-- Interpunktions-Ersetzung ("Punkt" -> ".", "Komma" -> ",")
-- Unit-Tests fur Adapter und Command-Parser
+4. **Fehlersichtbarkeit ist inkonsistent**
+   - `SimpleRichTextEditor` zeigt Toasts.
+   - `EnhancedLexicalToolbar` hat aktuell schlechteres Fehlerverhalten (z. B. disabled ohne klare Interaktion).
 
-**Verbesserungspotenzial:**
+## Umsetzungsplan (konkret)
 
-1. **Fehlende visuelle Ruckmeldung bei Blockierung**: Wenn `speechSupported` false ist (z.B. wegen Permissions-Policy), wird der Button einfach deaktiviert ohne Erklarung. Ein Tooltip oder Toast ware hilfreicher.
+### 1) Hook stabilisieren (kritischer Fix)
+Datei: `src/hooks/useSpeechDictation.ts`
 
-2. **Kein visuelles Feedback beim Aufnehmen im SimpleRichTextEditor**: Der `SimpleRichTextEditor` zeigt keinen "Aufnahme lauft..."-Text wie der `EnhancedLexicalToolbar`. Nur das Button-Variant wechselt.
+- `insertText` und `dispatchCommand` über `useRef` stabilisieren:
+  - `insertTextRef.current = insertText`
+  - `dispatchCommandRef.current = dispatchCommand`
+- Event-Handler des Adapters so umbauen, dass sie **Refs** verwenden statt volatile Closures.
+- Den Setup-Effekt von volatilen Callback-Dependencies entkoppeln, damit `speechAdapter.destroy()` **nicht** bei jedem Render feuert.
+- Cleanup nur bei tatsächlichem Unmount/Editor-Wechsel.
 
-3. **Mikrofon-Icon zeigt keinen aktiven Zustand**: Ein animiertes oder farbiges Mic-Icon (z.B. rot pulsierend) ware intuitiver als nur der Button-Variant-Wechsel.
+Erwarteter Effekt:
+- `speechState` bleibt beim Start auf `listening`.
+- Mic-Button bleibt sichtbar aktiv.
+- Keine sofortige „silent stop“-Schleife mehr.
 
-## Umsetzungsplan
+### 2) Aufrufstellen härten (Stabilität + Lesbarkeit)
+Dateien:
+- `src/components/ui/SimpleRichTextEditor.tsx`
+- `src/components/EnhancedLexicalToolbar.tsx`
 
-### Schritt 1: Permissions-Policy korrigieren
-- In `vite.config.ts` Zeile 11: `microphone=()` zu `microphone=(self)` andern
+- `dispatchCommand` und `insertText` in beiden Komponenten mit `useCallback` stabilisieren.
+- In `EnhancedLexicalToolbar` das Speech-Button-Verhalten an `SimpleRichTextEditor` angleichen:
+  - Klick auch bei „nicht unterstützt“ erlaubt, dann klare Toast-Meldung statt reinem `disabled`.
+  - Sichtbarer aktiver Zustand (bereits vorhanden, bei Bedarf vereinheitlichen).
 
-### Schritt 2: Visuelles Feedback verbessern
-- Pulsierender roter Punkt oder Animation am Mic-Button wenn `isListening`
-- "Aufnahme lauft..." Text auch im `SimpleRichTextEditor` hinzufugen (analog zu `EnhancedLexicalToolbar`)
+### 3) Schnell-Diagnostik einbauen (für echte Geräteprobleme)
+Datei: `src/lib/speechToTextAdapter.ts`
 
-### Schritt 3: Bessere Fehlermeldung bei fehlender Unterstutzung
-- Toast-Nachricht wenn der Nutzer auf den deaktivierten Button klickt, statt nur disabled
+- Präziseres Fehler-Mapping erweitern (z. B. iframe/policy-Hinweis bei `not-allowed`/`service-not-allowed`).
+- Optionale, leichtgewichtige Debug-Logs (nur development), damit klar ist:
+  - `start()` aufgerufen?
+  - `onstart/onend/onerror` Reihenfolge?
+  - welcher Fehlercode kam zurück?
 
----
+### 4) Quick-Notes UX konsistent machen (optional, aber empfohlen)
+Datei: `src/components/widgets/QuickNotesWidget.tsx`
 
-### Technische Details
+- Aktuell ist der Body dort `Textarea` (ohne Speech).
+- Optional auf `SimpleRichTextEditor` umstellen, damit Speech-Funktion in allen Quick-Notes-Einstiegen konsistent verfügbar ist.
 
-**Betroffene Dateien:**
-- `vite.config.ts` -- Permissions-Policy Fix (Hauptursache)
-- `src/components/ui/SimpleRichTextEditor.tsx` -- Visuelles Feedback angleichen
-- Optional: Tailwind-Animation fur pulsierenden Aufnahme-Indikator
+## Testplan (nach Umsetzung)
+
+1. **My Work → Quick Notes (SimpleRichTextEditor)**
+   - Mic klicken → Button wird aktiv (rot/pulsierend), „Aufnahme läuft…“ sichtbar.
+   - Diktat erscheint als Interim und final als Text.
+   - „Stopp“ per Sprache beendet sauber.
+
+2. **Global Quick Note Dialog**
+   - Gleiches Verhalten wie oben.
+   - Öffnen/Schließen des Dialogs während/zwischen Aufnahmen darf nichts „hängen“ lassen.
+
+3. **Enhanced Toolbar Screen**
+   - Start/Stop per Klick + Sprachkommando.
+   - Format-Kommandos (z. B. „fett“, „neue zeile“) funktionieren weiterhin.
+
+4. **Negativtests**
+   - Browser ohne Web Speech API: klare Fehlermeldung statt scheinbar toter UI.
+   - Mikrofonberechtigung verweigert: verständliche Toast-Meldung.
+   - Mehrfaches Start/Stop hintereinander: kein Dead-State.
+
+## Risiken und Gegenmaßnahmen
+
+- Risiko: Hook-Refactor kann Nebenwirkungen auf Command-Dispatch haben.
+  - Gegenmaßnahme: gezielte Smoke-Tests für alle vorhandenen Sprachkommandos.
+- Risiko: Unterschiede zwischen Browsern (Chrome/Edge/Safari).
+  - Gegenmaßnahme: Fehlertexte browserneutral + konkrete Handlungsanweisung.
+
+## Zusätzliche Feature-Ideen (nach Stabilisierung)
+
+1. **Sprachsprache konfigurierbar** (`de-DE`, `en-US`, …) pro User-Setting.
+2. **Push-to-talk Modus** als Alternative zu Toggle-Aufnahme.
+3. **Mini-Debug-Panel** (nur Dev/optional) mit State, letztem Error, letztem Transcript-Event.
+4. **Auto-Punctuation Modus** konfigurierbar (konservativ vs. aggressiv).
+5. **QuickNotesWidget auf Rich Editor migrieren**, damit Speech überall gleich nutzbar ist.
