@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
-import { detectSpeechCommand, formatDictatedText } from '@/lib/speechCommandUtils';
+import { detectSpeechCommand, formatDictatedText, parseSpeechInput } from '@/lib/speechCommandUtils';
 
 interface SimpleRichTextEditorProps {
   initialContent?: string;
@@ -178,7 +178,7 @@ const Toolbar = () => {
       updateInterimNode(text);
     };
     speechAdapter.onFinalTranscript = (text) => {
-      const command = detectSpeechCommand(text);
+      const { command, contentText } = parseSpeechInput(text);
       if (command) {
         editor.update(() => {
           removeInterimNode();
@@ -187,8 +187,11 @@ const Toolbar = () => {
 
         switch (command.type) {
           case 'stop-listening':
-            speechAdapter.stop();
-            return;
+            if (!contentText) {
+              speechAdapter.stop();
+              return;
+            }
+            break;
           case 'toggle-format':
             editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
             return;
@@ -215,7 +218,8 @@ const Toolbar = () => {
         }
       }
 
-      const formattedText = formatDictatedText(text);
+      const dictationText = contentText || text;
+      const formattedText = formatDictatedText(dictationText);
       setInterimTranscript('');
 
       editor.update(() => {
@@ -242,6 +246,10 @@ const Toolbar = () => {
           selection.insertText(textToInsert);
         }
       });
+
+      if (command?.type === 'stop-listening') {
+        speechAdapter.stop();
+      }
     };
 
     if (!speechAdapter.supported) {
