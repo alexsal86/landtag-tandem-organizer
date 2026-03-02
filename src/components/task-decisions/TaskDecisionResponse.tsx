@@ -269,6 +269,8 @@ export const TaskDecisionResponse = ({
     return responseOptions.find(o => o.key === key);
   };
 
+  const showReasonToggle = responseOptions.some((option) => option.requires_comment);
+
   const handleQuestionSubmit = (option: ResponseOption) => {
     if (option.requires_comment && !questionComment.trim()) {
       toast({
@@ -520,14 +522,16 @@ export const TaskDecisionResponse = ({
       <div className="flex items-center flex-wrap gap-2">
         {responseOptions.map(renderOptionButton)}
         
-        <Collapsible open={showCommentField} onOpenChange={setShowCommentField}>
-          <CollapsibleTrigger asChild>
-            <Button variant="outline" size="sm" className="text-xs text-muted-foreground">
-              Begründung
-              <ChevronDown className={`h-3 w-3 ml-0.5 transition-transform ${showCommentField ? 'rotate-180' : ''}`} />
-            </Button>
-          </CollapsibleTrigger>
-        </Collapsible>
+        {showReasonToggle && (
+          <Collapsible open={showCommentField} onOpenChange={setShowCommentField}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm" className="text-xs text-muted-foreground">
+                Begründung
+                <ChevronDown className={`h-3 w-3 ml-0.5 transition-transform ${showCommentField ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+          </Collapsible>
+        )}
         
         {showEdit && (
           <Button
