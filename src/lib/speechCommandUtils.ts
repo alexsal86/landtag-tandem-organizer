@@ -67,6 +67,25 @@ const STOP_KEYWORDS = ['stopp', 'stop', 'aufnahme aus', 'mikro aus', 'mikrofon a
 const containsStopKeyword = (text: string): boolean =>
   STOP_KEYWORDS.some((keyword) => text.includes(keyword));
 
+const PURE_STOP_COMMAND_PATTERNS: RegExp[] = [
+  /^(stopp|stop+p?)$/i,
+  /^(stopp|stop)\s+(bitte|jetzt|mal)$/i,
+  /^(aufnahme|mikro(?:fon)?|diktat)\s+(aus|abstellen|stoppen?|beenden?)$/i,
+  /^beende\s+(aufnahme|mikro(?:fon)?|diktat)$/i,
+  /^(ausmachen|abschalten)\s+(aufnahme|mikro(?:fon)?|diktat)$/i,
+];
+
+const TRAILING_STOP_COMMAND_PATTERNS: RegExp[] = [
+  /^(?<content>.*?)[,;:.!?\s-]+(?:stopp|stop+p?)\s*[.!?]*$/i,
+  /^(?<content>.*?)[,;:.!?\s-]+(?:stopp|stop)\s+(?:bitte|jetzt|mal)\s*[.!?]*$/i,
+  /^(?<content>.*?)[,;:.!?\s-]+(?:aufnahme|mikro(?:fon)?|diktat)\s+(?:aus|abstellen|stoppen?|beenden?)\s*[.!?]*$/i,
+  /^(?<content>.*?)[,;:.!?\s-]+beende\s+(?:aufnahme|mikro(?:fon)?|diktat)\s*[.!?]*$/i,
+  /^(?<content>.*?)[,;:.!?\s-]+(?:ausmachen|abschalten)\s+(?:aufnahme|mikro(?:fon)?|diktat)\s*[.!?]*$/i,
+];
+
+const isPureStopCommand = (normalizedText: string): boolean =>
+  PURE_STOP_COMMAND_PATTERNS.some((pattern) => pattern.test(normalizedText));
+
 export const detectSpeechCommand = (text: string): SpeechCommand | null => {
   const normalized = normalizeSpeechText(text);
 
@@ -81,6 +100,34 @@ export const detectSpeechCommand = (text: string): SpeechCommand | null => {
   }
 
   return null;
+};
+
+
+export const splitTranscriptAndCommand = (text: string): { contentText: string; command: SpeechCommand | null } => {
+  const transcript = text.trim();
+
+  if (!transcript) {
+    return { contentText: '', command: null };
+  }
+
+  for (const pattern of TRAILING_STOP_COMMAND_PATTERNS) {
+    const match = transcript.match(pattern);
+    const contentText = match?.groups?.content?.trim() ?? '';
+
+    if (contentText) {
+      return { contentText, command: { type: 'stop-listening' } };
+    }
+  }
+
+  const command = detectSpeechCommand(transcript);
+  if (command?.type === 'stop-listening') {
+    const normalized = normalizeSpeechText(transcript);
+    if (!isPureStopCommand(normalized)) {
+      return { contentText: transcript, command: null };
+    }
+  }
+
+  return { contentText: command ? '' : transcript, command };
 };
 
 export const formatDictatedText = (text: string): string => {

@@ -58,7 +58,7 @@ import { LineHeightPlugin } from './plugins/LineHeightPlugin';
 import { ImageUploadDialog } from './plugins/ImagePlugin';
 import { Input } from '@/components/ui/input';
 import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
-import { detectSpeechCommand, formatDictatedText } from '@/lib/speechCommandUtils';
+import { formatDictatedText, splitTranscriptAndCommand } from '@/lib/speechCommandUtils';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
@@ -164,26 +164,96 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     speechAdapter.onStateChange = (nextState) => setSpeechState(nextState);
     speechAdapter.onError = (error) => setSpeechError(error);
     speechAdapter.onInterimTranscript = (text) => {
-      const command = detectSpeechCommand(text);
+      const { command, contentText } = splitTranscriptAndCommand(text);
       if (command?.type === 'stop-listening') {
-        setInterimTranscript('');
-        editor.update(() => {
-          removeInterimNode();
-        });
+        setInterimTranscript(contentText);
+        updateInterimNode(contentText);
+
+        if (contentText) {
+          const formattedText = formatDictatedText(contentText);
+          editor.update(() => {
+            const shouldAddTrailingSpace =
+              !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+            const textToInsert = formattedText
+              ? shouldAddTrailingSpace
+                ? `${formattedText} `
+                : formattedText
+              : '';
+
+            const interimNode = removeInterimNode();
+            if (interimNode instanceof TextNode) {
+              if (textToInsert) {
+                interimNode.replace($createTextNode(textToInsert));
+              }
+              return;
+            }
+
+            if (!textToInsert) return;
+            if (lastInsertedSegmentRef.current === textToInsert) return;
+
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              selection.insertText(textToInsert);
+              lastInsertedSegmentRef.current = textToInsert;
+            }
+          });
+        } else {
+          setInterimTranscript('');
+          editor.update(() => {
+            removeInterimNode();
+          });
+        }
+
         speechAdapter.stop();
         return;
       }
 
-      setInterimTranscript(text);
-      updateInterimNode(text);
+      setInterimTranscript(contentText);
+      updateInterimNode(contentText);
     };
     speechAdapter.onFinalTranscript = (text) => {
-      const command = detectSpeechCommand(text);
-      if (command) {
-        editor.update(() => {
-          removeInterimNode();
-        });
+      const { command, contentText } = splitTranscriptAndCommand(text);
+      const formattedText = formatDictatedText(contentText);
+
+      const commitContentText = () => {
         setInterimTranscript('');
+        editor.update(() => {
+          const shouldAddTrailingSpace =
+            !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+          const textToInsert = formattedText
+            ? shouldAddTrailingSpace
+              ? `${formattedText} `
+              : formattedText
+            : '';
+
+          const interimNode = removeInterimNode();
+          if (interimNode instanceof TextNode) {
+            if (textToInsert) {
+              interimNode.replace($createTextNode(textToInsert));
+            }
+            return;
+          }
+
+          if (!textToInsert) return;
+          if (lastInsertedSegmentRef.current === textToInsert) return;
+
+          const selection = $getSelection();
+          if ($isRangeSelection(selection)) {
+            selection.insertText(textToInsert);
+            lastInsertedSegmentRef.current = textToInsert;
+          }
+        });
+      };
+
+      if (command) {
+        if (contentText) {
+          commitContentText();
+        } else {
+          editor.update(() => {
+            removeInterimNode();
+          });
+          setInterimTranscript('');
+        }
 
         switch (command.type) {
           case 'stop-listening':
@@ -215,35 +285,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
         }
       }
 
-      const formattedText = formatDictatedText(text);
-      setInterimTranscript('');
-
-      editor.update(() => {
-        const shouldAddTrailingSpace =
-          !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
-        const textToInsert = formattedText
-          ? shouldAddTrailingSpace
-            ? `${formattedText} `
-            : formattedText
-          : '';
-
-        const interimNode = removeInterimNode();
-        if (interimNode instanceof TextNode) {
-          if (textToInsert) {
-            interimNode.replace($createTextNode(textToInsert));
-          }
-          return;
-        }
-
-        if (!textToInsert) return;
-        if (lastInsertedSegmentRef.current === textToInsert) return;
-
-        const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
-          selection.insertText(textToInsert);
-          lastInsertedSegmentRef.current = textToInsert;
-        }
-      });
+      commitContentText();
     };
 
     if (!speechAdapter.supported) {
