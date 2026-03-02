@@ -212,139 +212,123 @@ const MyWorkDecisionCardInner = ({
           )}
         </div>
 
-        {/* Title */}
-        <div className="max-w-[85%]">
-          <h3 className="font-bold text-lg mb-1 line-clamp-2">{decision.title}</h3>
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div>
+            <h3 className="font-bold text-lg mb-1 line-clamp-2">{decision.title}</h3>
 
-          {/* Description */}
-          {decision.description && (
-            <div onClick={(e) => e.stopPropagation()}>
-              <TruncatedDescription content={decision.description} maxLength={300} />
-            </div>
-          )}
-        </div>
+            {decision.description && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <TruncatedDescription content={decision.description} maxLength={300} />
+              </div>
+            )}
+          </div>
 
-        {/* Metadata row */}
-        <div className="flex items-center flex-wrap gap-3 mt-4 text-xs text-muted-foreground overflow-x-auto">
-          <span className="flex items-center gap-1">
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-            {new Date(decision.created_at).toLocaleDateString('de-DE')}
-          </span>
-
-          {decision.response_deadline && (
-            <Badge variant={new Date(decision.response_deadline) < new Date() ? "destructive" : "secondary"} className="gap-1">
-              Frist: {new Date(decision.response_deadline).toLocaleDateString('de-DE')} {new Date(decision.response_deadline).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-            </Badge>
-          )}
-
-          {decision.creator && (
+          <div className="space-y-3 text-xs text-muted-foreground lg:pl-4 lg:border-l lg:border-border/70" onClick={(e) => e.stopPropagation()}>
             <span className="flex items-center gap-1">
-              <Avatar className="h-5 w-5">
-                {decision.creator.avatar_url && (
-                  <AvatarImage src={decision.creator.avatar_url} alt={decision.creator.display_name || 'Avatar'} />
-                )}
-                <AvatarFallback 
-                  className="text-[8px]"
-                  style={{ backgroundColor: decision.creator.badge_color || undefined }}
-                >
-                  {getInitials(decision.creator.display_name)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="font-medium text-foreground">{decision.creator.display_name || 'Unbekannt'}</span>
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              {new Date(decision.created_at).toLocaleDateString('de-DE')}
             </span>
-          )}
 
-          <button
-            onClick={(e) => { e.stopPropagation(); onOpenComments(decision.id, decision.title); }}
-            className="flex items-center gap-1 hover:text-foreground transition-colors"
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            {commentCount > 0 
-              ? `${commentCount} Kommentar${commentCount !== 1 ? 'e' : ''}`
-              : 'Kommentar schreiben'
-            }
-          </button>
+            {decision.response_deadline && (
+              <Badge variant={new Date(decision.response_deadline) < new Date() ? "destructive" : "secondary"} className="gap-1 w-fit">
+                Frist: {new Date(decision.response_deadline).toLocaleDateString('de-DE')} {new Date(decision.response_deadline).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+              </Badge>
+            )}
 
-          {(decision.fileAttachments?.length ?? 0) > 0 && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                >
-                  <Paperclip className="h-3.5 w-3.5" />
-                  {decision.fileAttachments?.length}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-2" onClick={(e) => e.stopPropagation()}>
-                <p className="text-xs font-medium mb-1.5">Angehängte Dateien</p>
-                <div className="space-y-1">
-                  {(decision.fileAttachments || []).map(att => (
+            {decision.creator && (
+              <span className="flex items-center gap-1">
+                <Avatar className="h-5 w-5">
+                  {decision.creator.avatar_url && (
+                    <AvatarImage src={decision.creator.avatar_url} alt={decision.creator.display_name || 'Avatar'} />
+                  )}
+                  <AvatarFallback
+                    className="text-[8px]"
+                    style={{ backgroundColor: decision.creator.badge_color || undefined }}
+                  >
+                    {getInitials(decision.creator.display_name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-medium text-foreground">{decision.creator.display_name || 'Unbekannt'}</span>
+              </span>
+            )}
+
+            <button
+              onClick={() => onOpenComments(decision.id, decision.title)}
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              {commentCount > 0
+                ? `${commentCount} Kommentar${commentCount !== 1 ? 'e' : ''}`
+                : 'Kommentar schreiben'
+              }
+            </button>
+
+            <div className="flex items-center gap-3">
+              {(decision.fileAttachments?.length ?? 0) > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
                     <button
-                      key={att.id}
-                      onClick={() => setPreviewAttachment({ file_path: att.file_path, file_name: att.file_name })}
-                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-1 transition-colors w-full text-left cursor-pointer"
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
                     >
-                      <Paperclip className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">{att.file_name}</span>
+                      <Paperclip className="h-3.5 w-3.5" />
+                      {decision.fileAttachments?.length}
                     </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-2" onClick={(e) => e.stopPropagation()}>
+                    <p className="text-xs font-medium mb-1.5">Angehängte Dateien</p>
+                    <div className="space-y-1">
+                      {(decision.fileAttachments || []).map(att => (
+                        <button
+                          key={att.id}
+                          onClick={() => setPreviewAttachment({ file_path: att.file_path, file_name: att.file_name })}
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-1 transition-colors w-full text-left cursor-pointer"
+                        >
+                          <Paperclip className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{att.file_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
 
-          {(decision.emailAttachmentCount ?? 0) > 0 && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                >
-                  <Mail className="h-3.5 w-3.5" />
-                  {decision.emailAttachmentCount}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-2" onClick={(e) => e.stopPropagation()}>
-                <p className="text-xs font-medium mb-1.5">Angehängte E-Mails</p>
-                <div className="space-y-1">
-                  {(decision.emailAttachments || []).map(att => (
-                    <button 
-                      key={att.id} 
-                      onClick={() => setPreviewEmail({ file_path: att.file_path, file_name: att.file_name })}
-                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-0.5 transition-colors w-full text-left cursor-pointer"
+              {(decision.emailAttachmentCount ?? 0) > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
                     >
-                      <Mail className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">{att.file_name}</span>
+                      <Mail className="h-3.5 w-3.5" />
+                      {decision.emailAttachmentCount}
                     </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-
-          {decision.topicIds && decision.topicIds.length > 0 && (
-            <TopicDisplay topicIds={decision.topicIds} maxDisplay={1} />
-          )}
-        </div>
-
-        {/* Voting row */}
-        {decision.participants && decision.participants.length > 0 && (
-          <div className="flex flex-col-reverse gap-3 mt-4 md:flex-row md:items-start md:justify-between md:gap-4">
-            <div className="flex-1 min-w-0 max-w-3xl md:max-w-none md:flex md:justify-end" onClick={(e) => e.stopPropagation()}>
-              {decision.isParticipant && decision.participant_id && !decision.hasResponded && (
-                <TaskDecisionResponse 
-                  decisionId={decision.id}
-                  participantId={decision.participant_id}
-                  onResponseSubmitted={onResponseSubmitted}
-                  hasResponded={decision.hasResponded}
-                  creatorId={decision.created_by}
-                />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2" onClick={(e) => e.stopPropagation()}>
+                    <p className="text-xs font-medium mb-1.5">Angehängte E-Mails</p>
+                    <div className="space-y-1">
+                      {(decision.emailAttachments || []).map(att => (
+                        <button
+                          key={att.id}
+                          onClick={() => setPreviewEmail({ file_path: att.file_path, file_name: att.file_name })}
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-0.5 transition-colors w-full text-left cursor-pointer"
+                        >
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{att.file_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
 
-            <div className="flex items-center gap-3 ml-auto shrink-0">
-              <div className="flex items-center gap-1.5 text-sm font-bold">
+            {decision.topicIds && decision.topicIds.length > 0 && (
+              <TopicDisplay topicIds={decision.topicIds} maxDisplay={1} />
+            )}
+
+            {decision.participants && decision.participants.length > 0 && (
+              <>
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="flex items-center gap-1.5 text-sm font-bold">
                 {customSummary ? (() => {
                   const sortedCounts = [...customSummary.counts].sort((a, b) => b.count - a.count);
                   const winningCount = sortedCounts[0];
@@ -377,11 +361,25 @@ const MyWorkDecisionCardInner = ({
                     )}
                   </>
                 )}
-              </div>
-              <AvatarStack participants={avatarParticipants} maxVisible={3} size="sm" />
-            </div>
+                  </div>
+                  <AvatarStack participants={avatarParticipants} maxVisible={3} size="sm" />
+                </div>
+
+                <div>
+                  {decision.isParticipant && decision.participant_id && !decision.hasResponded && (
+                    <TaskDecisionResponse
+                      decisionId={decision.id}
+                      participantId={decision.participant_id}
+                      onResponseSubmitted={onResponseSubmitted}
+                      hasResponded={decision.hasResponded}
+                      creatorId={decision.created_by}
+                    />
+                  )}
+                </div>
+              </>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Activity preview */}
         <DecisionCardActivity 
