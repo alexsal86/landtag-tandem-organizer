@@ -274,6 +274,7 @@ export const TaskDecisionResponse = ({
     handleResponse(option.key, questionComment.trim());
   };
 
+
   // Show current response if already responded
   if (hasResponded && currentResponse && !showEdit) {
     const option = getOptionByKey(currentResponse.response_type);
@@ -345,7 +346,6 @@ export const TaskDecisionResponse = ({
 
   // (isSingleFreetext and isSingleAcknowledgement already declared above)
 
-  const optionRequiringComment = responseOptions.find(o => o.requires_comment);
 
   const renderDescriptionInfo = (description: string) => (
     <TooltipProvider delayDuration={150}>
@@ -444,6 +444,7 @@ export const TaskDecisionResponse = ({
 
     return <div key={option.key}>{button}</div>;
   };
+
 
   // Single acknowledgement mode: show a single prominent button
   if (isSingleAcknowledgement) {
