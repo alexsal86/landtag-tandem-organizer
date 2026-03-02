@@ -163,18 +163,32 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     };
   }, [commitContentText, editor, removeInterimNode, speechAdapter, updateInterimNode]);
 
-  const toggleSpeechRecognition = useCallback(() => {
+  const startSpeechRecognition = useCallback(() => {
     if (!speechAdapter.supported) return;
-
-    if (speechState === 'listening') {
-      speechAdapter.stop();
-      return;
-    }
+    if (speechState === 'listening') return;
 
     setSpeechError(null);
     speechAdapter.start();
     editor.focus();
   }, [editor, speechAdapter, speechState]);
+
+  const stopSpeechRecognition = useCallback(() => {
+    if (!speechAdapter.supported) return;
+    if (speechState !== 'listening') return;
+
+    speechAdapter.stop();
+  }, [speechAdapter, speechState]);
+
+  const toggleSpeechRecognition = useCallback(() => {
+    if (!speechAdapter.supported) return;
+
+    if (speechState === 'listening') {
+      stopSpeechRecognition();
+      return;
+    }
+
+    startSpeechRecognition();
+  }, [speechAdapter, speechState, startSpeechRecognition, stopSpeechRecognition]);
 
   return {
     speechState,
@@ -182,6 +196,8 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     interimTranscript,
     isListening: speechState === 'listening',
     speechSupported: speechAdapter.supported,
+    startSpeechRecognition,
+    stopSpeechRecognition,
     toggleSpeechRecognition,
   };
 };
