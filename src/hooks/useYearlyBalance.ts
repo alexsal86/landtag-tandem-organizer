@@ -49,7 +49,9 @@ export function useYearlyBalance(
           supabase
             .from("time_entry_corrections")
             .select("correction_minutes")
-            .eq("user_id", userId),
+            .eq("user_id", userId)
+            .gte("correction_date", format(yearStart, "yyyy-MM-dd"))
+            .lte("correction_date", format(effectiveEnd, "yyyy-MM-dd")),
         ]);
 
         // Abort check after all fetches complete
@@ -134,7 +136,7 @@ export function useYearlyBalance(
 
         if (signal.aborted) return;
 
-        // Corrections are applied to the YEARLY total only – not to monthly balance
+        // Corrections are applied only within the selected year and only to the YEARLY total
         const correctionsTotal = (correctionsRes.data || []).reduce(
           (sum, c) => sum + c.correction_minutes,
           0
