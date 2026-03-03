@@ -79,6 +79,12 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'note_follow_up':
       return data.noteId ? `/mywork?tab=notes&highlight=${data.noteId}` : '/mywork?tab=notes';
 
+    // Feedback
+    case 'appointment_feedback':
+      return data.feedback_id
+        ? `/mywork?tab=feedbackfeed&highlight=${data.feedback_id}`
+        : '/mywork?tab=feedbackfeed';
+
     // Polls
     case 'poll_auto_cancelled':
     case 'poll_auto_completed':
@@ -109,8 +115,9 @@ export const buildDeepLinkPath = (notification: Notification): string => {
 
     default:
       // Fallback: use navigation_context if available
-      if (notification.navigation_context) {
-        return '/' + notification.navigation_context;
+      const navigationContext = notification.navigation_context || notification.data?.navigation_context;
+      if (navigationContext) {
+        return '/' + navigationContext;
       }
       return '/';
   }
