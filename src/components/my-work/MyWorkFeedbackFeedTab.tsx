@@ -1,13 +1,27 @@
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { CheckCircle2, Paperclip, CheckSquare, MessageSquare, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useTeamFeedbackFeed } from '@/hooks/useTeamFeedbackFeed';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function MyWorkFeedbackFeedTab() {
+  const navigate = useNavigate();
   const { data: entries, isLoading } = useTeamFeedbackFeed();
+
+  const getFeedbackTarget = (entry: { appointment_id: string | null; external_event_id: string | null }) => {
+    if (entry.appointment_id) {
+      return `/calendar?highlight=${entry.appointment_id}`;
+    }
+
+    if (entry.external_event_id) {
+      return '/mywork?tab=feedbackfeed';
+    }
+
+    return '/mywork?tab=feedbackfeed';
+  };
 
   if (isLoading) {
     return (
@@ -37,7 +51,19 @@ export function MyWorkFeedbackFeedTab() {
       </p>
 
       {entries.map((entry) => (
-        <Card key={entry.id} className="border-border">
+        <Card
+          key={entry.id}
+          className="border-border cursor-pointer transition-colors hover:bg-muted/40 focus-within:ring-2 focus-within:ring-ring"
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate(getFeedbackTarget(entry))}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              navigate(getFeedbackTarget(entry));
+            }
+          }}
+        >
           <CardContent className="pt-4 pb-4">
             {/* Header */}
             <div className="flex items-start justify-between gap-3 mb-3">
