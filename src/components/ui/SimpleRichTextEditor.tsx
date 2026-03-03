@@ -66,6 +66,7 @@ const Toolbar = () => {
     interimTranscript,
     isListening,
     speechSupported,
+    toggleSpeechRecognition,
     startSpeechRecognition,
     stopSpeechRecognition,
   } = useSpeechDictation({
@@ -257,25 +258,21 @@ const Toolbar = () => {
         type="button"
         variant={isListening ? 'default' : 'ghost'}
         size="sm"
-        onPointerDown={(event) => {
+        onClick={() => {
           if (!speechSupported) {
             toast.error('Spracherkennung wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge.');
             return;
           }
-          event.preventDefault();
-          startSpeechRecognition();
+          toggleSpeechRecognition();
         }}
-        onPointerUp={() => stopSpeechRecognition()}
-        onPointerLeave={() => stopSpeechRecognition()}
-        onPointerCancel={() => stopSpeechRecognition()}
         onMouseDown={(e) => e.preventDefault()}
         className={cn("h-8 w-8 p-0 relative", isListening && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
         title={
           !speechSupported
             ? 'Spracherkennung in diesem Browser nicht unterstützt'
             : isListening
-              ? "Push-to-talk aktiv – loslassen zum Beenden. Sprachkommando: 'Stopp'"
-              : "Push-to-talk: Taste halten zum Sprechen (Strg+Shift+M)"
+              ? "Aufnahme aktiv – klicken zum Beenden. Sprachkommando: 'Stopp'"
+              : "Diktat: Klicken zum Starten (Strg+Shift+M)"
         }
       >
         <Mic className="h-4 w-4" />
@@ -299,8 +296,8 @@ const Toolbar = () => {
           </TooltipTrigger>
           <TooltipContent side="bottom" align="start" className="max-w-[320px]">
             <div className="space-y-2 text-xs">
-              <p className="font-medium">Push-to-talk</p>
-              <p>Halte den Mikrofon-Button oder <span className="font-medium">Strg + Shift + M</span>, um zu sprechen.</p>
+              <p className="font-medium">Diktat</p>
+              <p>Klicke den Mikrofon-Button zum Starten und erneut zum Stoppen. Alternativ <span className="font-medium">Strg + Shift + M</span> gedrückt halten (Push-to-talk).</p>
               <p className="font-medium">Sprachbefehle</p>
               <ul className="list-disc pl-4 space-y-1">
                 {SPEECH_COMMAND_HINTS.map((commandHint) => (

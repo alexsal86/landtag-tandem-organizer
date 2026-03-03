@@ -122,7 +122,7 @@ const AppContent = () => {
               <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
               {/* notifications is now handled by /:section in Index */}
               {/* editor-test route removed */}
-              <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
+              <Route path="/employee-meeting/:meetingId" element={<Index />} />
               <Route path="/letters/:letterId" element={<LetterDetail />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="/:section/:subId" element={<Index />} />

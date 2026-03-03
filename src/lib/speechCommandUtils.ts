@@ -112,7 +112,11 @@ export const formatDictatedText = (text: string): string => {
     formatted = formatted.replace(pattern, replacement);
   }
 
-  return formatted
+  const withSentenceCaseAfterPeriod = formatted
+    .replace(/\.\s*(\p{L})/gu, (_, letter: string) => `. ${letter.toUpperCase()}`)
+    .replace(/^(\p{L})/u, (letter: string) => letter.toUpperCase());
+
+  return withSentenceCaseAfterPeriod
     .replace(/\s+([,.;:!?])/g, '$1')
     .replace(/\n\s+/g, '\n')
     .replace(/\s{2,}/g, ' ')

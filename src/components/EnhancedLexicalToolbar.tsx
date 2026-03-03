@@ -18,6 +18,7 @@ import { INSERT_TABLE_COMMAND } from '@lexical/table';
 import { $setBlocksType } from '@lexical/selection';
 import { $createImageNode } from './nodes/ImageNode';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import {
   Bold,
@@ -100,6 +101,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     interimTranscript,
     isListening,
     speechSupported,
+    toggleSpeechRecognition,
     startSpeechRecognition,
     stopSpeechRecognition,
   } = useSpeechDictation({
@@ -415,13 +417,13 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
         <Button
           variant={isListening ? 'default' : 'ghost'}
           size="sm"
-          onPointerDown={(event) => {
-            event.preventDefault();
-            startSpeechRecognition();
+          onClick={() => {
+            if (!speechSupported) {
+              toast.error('Spracherkennung wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge.');
+              return;
+            }
+            toggleSpeechRecognition();
           }}
-          onPointerUp={() => stopSpeechRecognition()}
-          onPointerLeave={() => stopSpeechRecognition()}
-          onPointerCancel={() => stopSpeechRecognition()}
           onMouseDown={(e) => e.preventDefault()}
           className="h-8 w-8 p-0"
           title={
