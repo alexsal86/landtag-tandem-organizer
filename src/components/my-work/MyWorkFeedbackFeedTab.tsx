@@ -35,6 +35,18 @@ export function MyWorkFeedbackFeedTab() {
     onlyWithTasks,
   });
 
+  const getFeedbackTarget = (entry: { appointment_id: string | null; external_event_id: string | null }) => {
+    if (entry.appointment_id) {
+      return `/calendar?highlight=${entry.appointment_id}`;
+    }
+
+    if (entry.external_event_id) {
+      return '/mywork?tab=feedbackfeed';
+    }
+
+    return '/mywork?tab=feedbackfeed';
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -82,7 +94,19 @@ export function MyWorkFeedbackFeedTab() {
       />
 
       {entries.map((entry) => (
-        <Card key={entry.id} className="border-border">
+        <Card
+          key={entry.id}
+          className="border-border cursor-pointer transition-colors hover:bg-muted/40 focus-within:ring-2 focus-within:ring-ring"
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate(getFeedbackTarget(entry))}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              navigate(getFeedbackTarget(entry));
+            }
+          }}
+        >
           <CardContent className="pt-4 pb-4">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex-1 min-w-0">

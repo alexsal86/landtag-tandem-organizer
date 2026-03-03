@@ -1,4 +1,4 @@
-import React, { useState, useEffect, startTransition } from "react";
+import React, { useState, useEffect, useRef, startTransition } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Calendar, Clock, MapPin, Users, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,14 +62,70 @@ export function CalendarView() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [preparationSidebarOpen, setPreparationSidebarOpen] = useState(false);
   const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<CalendarEvent | null>(null);
+  const handledHighlightRef = useRef<string | null>(null);
 
-  // Auto-switch to polls view when highlight param targets a poll
+  // Deep-link support: /calendar?highlight=<appointment_id>
   useEffect(() => {
     const highlightId = searchParams.get('highlight');
-    if (highlightId && view !== 'polls') {
-      setView('polls');
+    if (!highlightId || handledHighlightRef.current === highlightId) {
+      return;
     }
-  }, [searchParams]);
+
+    const matchingAppointment = appointments.find((appointment) => appointment.id === highlightId);
+    if (matchingAppointment) {
+      handledHighlightRef.current = highlightId;
+      setCurrentDate(new Date(matchingAppointment.date));
+      setSelectedAppointment(matchingAppointment);
+      setSidebarOpen(true);
+      if (view === 'polls') {
+        setView('day');
+      }
+      return;
+    }
+
+    let active = true;
+
+    const loadHighlightedAppointment = async () => {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('id, title, start_time, end_time, location, is_all_day')
+        .eq('id', highlightId)
+        .maybeSingle();
+
+      if (!active || error || !data) {
+        handledHighlightRef.current = highlightId;
+        return;
+      }
+
+      const startDate = new Date(data.start_time);
+      const endDate = data.end_time ? new Date(data.end_time) : startDate;
+
+      handledHighlightRef.current = highlightId;
+      setCurrentDate(startDate);
+      setSelectedAppointment({
+        id: data.id,
+        title: data.title,
+        time: startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+        duration: '',
+        date: startDate,
+        endTime: endDate,
+        location: data.location || undefined,
+        priority: 'medium',
+        type: 'appointment',
+        is_all_day: data.is_all_day || false,
+      });
+      setSidebarOpen(true);
+      if (view === 'polls') {
+        setView('day');
+      }
+    };
+
+    loadHighlightedAppointment();
+
+    return () => {
+      active = false;
+    };
+  }, [appointments, searchParams, view]);
 
   // Type guard to check if view is a calendar view
   const isCalendarView = (v: string): v is "day" | "week" | "month" | "agenda" => {
