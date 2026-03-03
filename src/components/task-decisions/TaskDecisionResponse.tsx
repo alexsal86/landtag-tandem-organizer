@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,6 @@ import { DecisionFileUpload } from "./DecisionFileUpload";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
-import { Textarea } from "@/components/ui/textarea";
 
 interface TaskDecisionResponseProps {
   decisionId: string;
@@ -52,7 +51,6 @@ export const TaskDecisionResponse = ({
   onResponseSubmitted,
   hasResponded = false,
   creatorId,
-  layout = "default",
   disabled = false,
 }: TaskDecisionResponseProps) => {
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
@@ -64,7 +62,9 @@ export const TaskDecisionResponse = ({
   const [responseOptions, setResponseOptions] = useState<ResponseOption[]>(getDefaultOptions());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [panelOptionKey, setPanelOptionKey] = useState<string | null>(null);
-  const [panelComment, setPanelComment] = useState("");
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
+  const LONG_PRESS_MS = 500;
   const { toast } = useToast();
 
   useEffect(() => {
@@ -74,6 +74,15 @@ export const TaskDecisionResponse = ({
       loadCurrentResponse();
     }
   }, [hasResponded, participantId, decisionId]);
+
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
+  }, []);
 
   const loadCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -378,6 +387,25 @@ export const TaskDecisionResponse = ({
     </TooltipProvider>
   );
 
+  const startLongPressForReason = (optionKey: string) => {
+    if (!showReasonToggle) return;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTriggeredRef.current = false;
+
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      setPanelOptionKey(optionKey);
+      setShowCommentField(true);
+    }, LONG_PRESS_MS);
+  };
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
   const renderOptionButton = (option: ResponseOption) => {
     const colorClasses = getColorClasses(option.color);
     
@@ -441,7 +469,18 @@ export const TaskDecisionResponse = ({
         key={option.key}
         variant="outline"
         size="sm"
-        onClick={() => handleResponse(option.key, questionComment.trim() || undefined)}
+        onPointerDown={() => startLongPressForReason(option.key)}
+        onPointerUp={() => clearLongPress()}
+        onPointerLeave={() => clearLongPress()}
+        onPointerCancel={() => clearLongPress()}
+        onClick={() => {
+          if (longPressTriggeredRef.current) {
+            longPressTriggeredRef.current = false;
+            return;
+          }
+          setPanelOptionKey(option.key);
+          handleResponse(option.key, questionComment.trim() || undefined);
+        }}
         disabled={isLoading}
         className={`${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass}`}
       >
@@ -523,14 +562,23 @@ export const TaskDecisionResponse = ({
         {responseOptions.map(renderOptionButton)}
         
         {showReasonToggle && (
-          <Collapsible open={showCommentField} onOpenChange={setShowCommentField}>
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" size="sm" className="text-xs text-muted-foreground">
-                Begründung
-                <ChevronDown className={`h-3 w-3 ml-0.5 transition-transform ${showCommentField ? 'rotate-180' : ''}`} />
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <Collapsible open={showCommentField} onOpenChange={setShowCommentField}>
+                <TooltipTrigger asChild>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-xs text-muted-foreground">
+                      Begründung
+                      <ChevronDown className={`h-3 w-3 ml-0.5 transition-transform ${showCommentField ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                </TooltipTrigger>
+              </Collapsible>
+              <TooltipContent>
+                <p className="text-xs">Tipp: Antwort länger gedrückt halten, um direkt mit Begründung zu antworten.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
         
         {showEdit && (
@@ -554,7 +602,7 @@ export const TaskDecisionResponse = ({
           <SimpleRichTextEditor
             initialContent={questionComment}
             onChange={setQuestionComment}
-            placeholder="Ihre Begründung (optional)..."
+            placeholder={panelOptionKey ? `Begründung zu ${getOptionByKey(panelOptionKey)?.label || "Antwort"} (optional)...` : "Ihre Begründung (optional)..."}
             minHeight="80px"
           />
         </div>
