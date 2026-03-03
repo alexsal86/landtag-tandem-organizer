@@ -32,17 +32,17 @@ function Calendar({
           defaultClassNames.month_caption
         ),
         nav: cn(
-          "absolute inset-x-0 top-0 flex items-center justify-between pointer-events-auto",
+          "flex items-center gap-1 pointer-events-auto",
           defaultClassNames.nav
         ),
         button_previous: cn(
           buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 pointer-events-auto",
+          "relative h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 pointer-events-auto",
           defaultClassNames.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 pointer-events-auto",
+          "relative h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 pointer-events-auto",
           defaultClassNames.button_next
         ),
         month_grid: cn("w-full border-collapse space-y-1", defaultClassNames.month_grid),
