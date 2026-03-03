@@ -2,7 +2,6 @@ import { useMemo, useState, memo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarStack } from "@/components/ui/AvatarStack";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -29,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
+import { getColorClasses } from "@/lib/decisionTemplates";
 
 interface MyWorkDecisionCardProps {
   decision: MyWorkDecision;
@@ -112,12 +112,37 @@ const MyWorkDecisionCardInner = ({
     return getCustomResponseSummary(decision.participants, decision.response_options);
   }, [decision.participants, decision.response_options]);
 
-  const responseSummaryText = customSummary
+  const summaryItems = customSummary
     ? [
-        ...customSummary.counts.map((entry) => `${entry.count} ${entry.label}`),
-        `${customSummary.pending} Ausstehend`,
-      ].join(' • ')
-    : `${summary.yesCount} Ja • ${summary.noCount} Nein${summary.questionCount > 0 ? ` • ${summary.questionCount} Rückfrage` : ''}`;
+        ...customSummary.counts.map((entry) => ({
+          key: entry.key,
+          label: entry.label,
+          count: entry.count,
+          textClass: getColorClasses(entry.color).textClass,
+        })),
+        { key: 'pending', label: 'Ausstehend', count: customSummary.pending, textClass: 'text-muted-foreground' },
+      ]
+    : [
+        { key: 'yes', label: 'Ja', count: summary.yesCount, textClass: 'text-green-600' },
+        { key: 'no', label: 'Nein', count: summary.noCount, textClass: 'text-red-600' },
+        { key: 'question', label: 'Rückfrage', count: summary.questionCount, textClass: 'text-orange-600' },
+      ];
+
+  const winningResponse = useMemo(() => {
+    if (summary.pending !== 0 || summary.total === 0) return null;
+
+    const sorted = [...summaryItems]
+      .filter((item) => item.key !== 'pending' && item.count > 0)
+      .sort((a, b) => b.count - a.count);
+
+    const winner = sorted[0];
+    if (!winner || winner.key === 'question') return null;
+
+    return {
+      label: winner.label,
+      textClass: winner.textClass,
+    };
+  }, [summary.pending, summary.total, summaryItems]);
 
   const avatarParticipants = (decision.participants || []).map((p) => ({
     user_id: p.user_id,
@@ -264,16 +289,35 @@ const MyWorkDecisionCardInner = ({
               )}
 
               <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
-                <div className="font-medium text-foreground">
-                  {responseSummaryText}
+                {winningResponse && (
+                  <div className={cn('text-lg font-extrabold', winningResponse.textClass)}>
+                    Ergebnis: {winningResponse.label}
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
+                  {summaryItems.map((item, idx) => (
+                    <span key={item.key} className="inline-flex items-center gap-1">
+                      {idx > 0 && <span className="text-muted-foreground">•</span>}
+                      <span className={item.textClass}>{item.count}</span>
+                      <span className={item.textClass}>{item.label}</span>
+                    </span>
+                  ))}
                 </div>
-                <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
+                <div className="ml-2">
+                  <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
+                </div>
               </div>
 
               <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span>{new Date(decision.created_at).toLocaleDateString('de-DE')}</span>
-                  {decision.creator && <span>• {decision.creator.display_name || 'Unbekannt'}</span>}
+                  {decision.creator && (
+                    <>
+                      <span>•</span>
+                      <span>{decision.creator.display_name || 'Unbekannt'}</span>
+                    </>
+                  )}
+                  <span>•</span>
                   <button
                     onClick={() => onOpenComments(decision.id, decision.title)}
                     className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
@@ -281,10 +325,10 @@ const MyWorkDecisionCardInner = ({
                     <MessageSquare className="h-3.5 w-3.5" />
                     {commentCount > 0 ? `${commentCount} Kommentar${commentCount !== 1 ? 'e' : ''}` : 'Kommentar schreiben'}
                   </button>
-                </div>
 
-                <div className="flex items-center gap-3">
                   {(decision.fileAttachments?.length ?? 0) > 0 && (
+                    <>
+                      <span>•</span>
                     <Popover>
                       <PopoverTrigger asChild>
                         <button className="flex items-center gap-1 hover:text-foreground transition-colors">
@@ -308,9 +352,12 @@ const MyWorkDecisionCardInner = ({
                         </div>
                       </PopoverContent>
                     </Popover>
+                    </>
                   )}
 
                   {(decision.emailAttachmentCount ?? 0) > 0 && (
+                    <>
+                      <span>•</span>
                     <Popover>
                       <PopoverTrigger asChild>
                         <button className="flex items-center gap-1 hover:text-foreground transition-colors">
@@ -334,6 +381,7 @@ const MyWorkDecisionCardInner = ({
                         </div>
                       </PopoverContent>
                     </Popover>
+                    </>
                   )}
                 </div>
 

@@ -1358,7 +1358,7 @@ export const DecisionOverview = () => {
 
               {/* Right: Voting results + AvatarStack */}
               <div className="flex items-center gap-3 ml-auto shrink-0">
-                <div className="flex items-center gap-1.5 text-sm font-bold">
+                <div className="flex flex-col items-end gap-1.5 text-sm font-bold">
                   {(() => {
                     // Check if custom template (not standard yes/no/question)
                     const responseOptions = decision.response_options;
@@ -1398,30 +1398,56 @@ export const DecisionOverview = () => {
                       };
 
                       return (
-                        <span className={cn("font-bold", winnerTextColorMap[winningOption.color || 'gray'] || 'text-foreground')}>
-                          {winningOption.label}
-                          {winningOption.description ? ` - ${winningOption.description}` : ""}
-                        </span>
+                        <>
+                          {summary.pending === 0 && !winningOption.requires_comment && (
+                            <span className={cn("text-lg font-extrabold", winnerTextColorMap[winningOption.color || 'gray'] || 'text-foreground')}>
+                              Ergebnis: {winningOption.label}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-1 flex-wrap justify-end">
+                            {sortedOptions.map((opt, idx) => {
+                              const optColor = winnerTextColorMap[opt.color || 'gray'] || 'text-foreground';
+                              return (
+                                <span key={opt.key} className="inline-flex items-center gap-1">
+                                  {idx > 0 && <span className="text-muted-foreground">•</span>}
+                                  <span className={optColor}>{optionCounts[opt.key] || 0}</span>
+                                  <span className={optColor}>{opt.label}</span>
+                                </span>
+                              );
+                            })}
+                            <span className="text-muted-foreground">•</span>
+                            <span className="text-muted-foreground">{summary.pending} Ausstehend</span>
+                          </div>
+                        </>
                       );
                     }
                     return (
                       <>
-                        <span className="text-green-600">{summary.yesCount}</span>
-                        <span className="text-muted-foreground">/</span>
-                        <span className="text-orange-600">{summary.questionCount}</span>
-                        <span className="text-muted-foreground">/</span>
-                        <span className="text-red-600">{summary.noCount}</span>
-                        {summary.otherCount > 0 && (
-                          <>
-                            <span className="text-muted-foreground">/</span>
-                            <span className="text-blue-600">{summary.otherCount}</span>
-                          </>
+                        {summary.pending === 0 && summary.total > 0 && summary.questionCount === 0 && (
+                          <span className={cn("text-lg font-extrabold", summary.yesCount >= summary.noCount ? 'text-green-600' : 'text-red-600')}>
+                            Ergebnis: {summary.yesCount >= summary.noCount ? 'Ja' : 'Nein'}
+                          </span>
                         )}
+                        <div className="flex items-center gap-1 flex-wrap justify-end">
+                          <span className="text-green-600">{summary.yesCount} Ja</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="text-red-600">{summary.noCount} Nein</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="text-orange-600">{summary.questionCount} Rückfrage</span>
+                          {summary.otherCount > 0 && (
+                            <>
+                              <span className="text-muted-foreground">•</span>
+                              <span className="text-blue-600">{summary.otherCount} Sonstige</span>
+                            </>
+                          )}
+                        </div>
                       </>
                     );
                   })()}
                 </div>
-                <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
+                <div className="ml-2">
+                  <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
+                </div>
               </div>
             </div>
           )}
