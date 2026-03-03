@@ -56,6 +56,7 @@ interface TabConfig {
   employeeOnly?: boolean;
   abgeordneterOrBueroOnly?: boolean;
   abgeordneterOnly?: boolean;
+  feedbackFeedCoreRolesOnly?: boolean;
   isLogo?: boolean;
 }
 
@@ -68,7 +69,7 @@ const BASE_TABS: TabConfig[] = [
   { value: "casefiles", label: "FallAkten", icon: Briefcase, countKey: "caseFiles" },
   { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
-  { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare },
+  { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare, countKey: "team" },
   { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOrBueroOnly: true },
 ];
 
@@ -96,6 +97,7 @@ export function MyWorkView() {
   const [countLoadError, setCountLoadError] = useState<string | null>(null);
   const [isCountsLoading, setIsCountsLoading] = useState(false);
   const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "connected" | "degraded">("connecting");
+  const [feedbackFeedCoreRolesOnly, setFeedbackFeedCoreRolesOnly] = useState(false);
   
   // Badge display mode setting and new counts
   const { badgeDisplayMode } = useMyWorkSettings();
@@ -118,7 +120,7 @@ export function MyWorkView() {
       plannings: 'mywork_plannings',
       time: '',
       team: '',
-      feedbackfeed: '',
+      feedbackfeed: 'mywork_feedbackfeed',
     };
     
     const context = tabToContext[tab];
@@ -271,9 +273,14 @@ export function MyWorkView() {
   const loadUserRoleAndCounts = async () => {
     if (!user) return;
 
-    const [adminCheck, roleData] = await Promise.all([
+    const [adminCheck, roleData, feedbackFeedVisibilitySetting] = await Promise.all([
       supabase.rpc("is_admin", { _user_id: user.id }),
-      supabase.from("user_roles").select("role").eq("user_id", user.id).single()
+      supabase.from("user_roles").select("role").eq("user_id", user.id).single(),
+      supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "mywork_feedbackfeed_core_roles_only")
+        .maybeSingle(),
     ]);
 
     const admin = !!adminCheck.data;
@@ -284,6 +291,7 @@ export function MyWorkView() {
     setIsEmployee(roleFlags.isEmployee);
     setIsAbgeordneter(roleFlags.isAbgeordneter);
     setIsBueroleitung(roleFlags.isBueroleitung);
+    setFeedbackFeedCoreRolesOnly(Boolean(feedbackFeedVisibilitySetting.data?.setting_value));
 
     shouldIncludeTeamCountRef.current = admin && (roleFlags.isAbgeordneter || roleFlags.isBueroleitung);
     loadCounts(shouldIncludeTeamCountRef.current);
@@ -388,13 +396,20 @@ export function MyWorkView() {
                 : isEmployee
                   ? "mitarbeiter"
                   : null;
-            return canViewTab(tab, role);
+            const visibilityFlags = tab.value === 'feedbackfeed'
+              ? { ...tab, feedbackFeedCoreRolesOnly }
+              : tab;
+            return canViewTab(visibilityFlags, role);
           })
           .map((tab) => {
             const Icon = tab.icon;
             
             // Get display count based on badge display mode
             const getDisplayCount = () => {
+              if (tab.value === 'feedbackfeed') {
+                return newCounts.feedbackFeed || 0;
+              }
+
               if (!tab.countKey) return 0;
               
               // Team tab shows unread notifications count
@@ -414,7 +429,7 @@ export function MyWorkView() {
                 const key = newCountsMap[tab.countKey];
                 return key ? newCounts[key] : 0;
               }
-              
+
               return totalCounts[tab.countKey];
             };
             
