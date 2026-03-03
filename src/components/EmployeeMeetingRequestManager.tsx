@@ -14,6 +14,10 @@ import { de } from "date-fns/locale";
 import { Calendar, CheckCircle2, Loader2, X, AlertCircle } from "lucide-react";
 import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
 
+interface MeetingRequestManagerProps {
+  onPendingCountChange?: (count: number) => void;
+}
+
 interface MeetingRequest {
   id: string;
   employee_id: string;
@@ -23,7 +27,7 @@ interface MeetingRequest {
   employee_name?: string;
 }
 
-export function EmployeeMeetingRequestManager() {
+export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingRequestManagerProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -35,6 +39,7 @@ export function EmployeeMeetingRequestManager() {
   const [declining, setDeclining] = useState(false);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<{ id: string; name: string } | null>(null);
+  const [scheduledRequestId, setScheduledRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !currentTenant) return;
@@ -69,6 +74,7 @@ export function EmployeeMeetingRequestManager() {
       }));
 
       setRequests(enrichedRequests);
+      onPendingCountChange?.(enrichedRequests.length);
     } catch (error: any) {
       console.error("Error loading requests:", error);
       toast({
@@ -82,6 +88,7 @@ export function EmployeeMeetingRequestManager() {
   };
 
   const handleSchedule = (request: MeetingRequest) => {
+    setScheduledRequestId(request.id);
     setSelectedEmployee({
       id: request.employee_id,
       name: request.employee_name || "Unbekannt",
@@ -89,9 +96,21 @@ export function EmployeeMeetingRequestManager() {
     setSchedulerOpen(true);
   };
 
-  const handleSchedulerClose = async () => {
+  const handleSchedulerClose = async (meetingId?: string) => {
+    if (scheduledRequestId) {
+      await supabase
+        .from("employee_meeting_requests")
+        .update({
+          status: "completed",
+          updated_at: new Date().toISOString(),
+          scheduled_meeting_id: meetingId ?? null,
+        })
+        .eq("id", scheduledRequestId);
+    }
+
     setSchedulerOpen(false);
     setSelectedEmployee(null);
+    setScheduledRequestId(null);
     // Refresh requests after scheduling
     await loadRequests();
   };

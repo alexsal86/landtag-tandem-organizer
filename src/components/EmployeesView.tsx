@@ -1748,7 +1748,7 @@ export function EmployeesView() {
           <DialogHeader>
             <DialogTitle>Gesprächsanfragen verwalten</DialogTitle>
           </DialogHeader>
-          <EmployeeMeetingRequestManager />
+          <EmployeeMeetingRequestManager onPendingCountChange={setPendingRequestsCount} />
         </DialogContent>
       </Dialog>
       {/* Yearly Stats Dialog */}

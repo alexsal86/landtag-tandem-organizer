@@ -119,7 +119,7 @@ export function MyWorkView() {
       casefiles: 'mywork_casefiles',
       plannings: 'mywork_plannings',
       time: '',
-      team: '',
+      team: 'mywork_team',
       feedbackfeed: 'mywork_feedbackfeed',
     };
     

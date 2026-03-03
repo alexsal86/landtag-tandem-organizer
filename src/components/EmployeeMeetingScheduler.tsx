@@ -16,7 +16,7 @@ interface EmployeeMeetingSchedulerProps {
   employeeName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onScheduled?: () => void;
+  onScheduled?: (meetingId?: string) => void;
 }
 
 export function EmployeeMeetingScheduler({
@@ -152,7 +152,7 @@ export function EmployeeMeetingScheduler({
         description: `Mitarbeitergespräch mit ${employeeName} für ${format(meetingDate, "dd.MM.yyyy", { locale: de })} um ${meetingStartTime} Uhr geplant${addToCalendar ? ' und im Kalender eingetragen' : ''}.`,
       });
 
-      onScheduled?.();
+      onScheduled?.(meeting.id);
       onOpenChange(false);
       setMeetingDate(undefined);
       setMeetingType("regular");
