@@ -179,7 +179,6 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
         .from('appointment_feedback')
         .select('id', { count: 'exact', head: true })
         .eq('feedback_status', 'completed')
-        .not('notes', 'is', null)
         .gt('completed_at', feedbackFeedLastVisit);
 
       setNewCounts({

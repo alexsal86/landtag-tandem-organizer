@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { CheckCircle2, Paperclip, CheckSquare, MessageSquare, Loader2, Filter } from 'lucide-react';
+import { CheckCircle2, Paperclip, CheckSquare, MessageSquare, Loader2, Filter, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useTeamFeedbackFeed } from '@/hooks/useTeamFeedbackFeed';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 
 const PERIOD_PRESETS = {
   '3d': 3,
@@ -29,10 +30,15 @@ export function MyWorkFeedbackFeedTab() {
     [periodPreset],
   );
 
-  const { data: entries, isLoading } = useTeamFeedbackFeed({
+  const completedTo = useMemo(
+    () => new Date().toISOString(),
+    [periodPreset],
+  );
+
+  const { data: entries, isLoading, isError, error, refetch } = useTeamFeedbackFeed({
     scope,
     completedFrom,
-    completedTo: new Date().toISOString(),
+    completedTo,
     onlyWithAttachments,
     onlyWithTasks,
   });
@@ -58,6 +64,21 @@ export function MyWorkFeedbackFeedTab() {
     );
   }
 
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-destructive gap-3">
+        <AlertTriangle className="w-10 h-10 opacity-60" />
+        <p className="text-sm font-medium">Fehler beim Laden der Rückmeldungen</p>
+        <p className="text-xs text-muted-foreground max-w-md text-center">
+          {(error as Error)?.message || 'Unbekannter Fehler'}
+        </p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="w-4 h-4 mr-1" />
+          Erneut versuchen
+        </Button>
+      </div>
+    );
+  }
   if (!entries || entries.length === 0) {
     return (
       <div className="space-y-4 max-w-4xl">

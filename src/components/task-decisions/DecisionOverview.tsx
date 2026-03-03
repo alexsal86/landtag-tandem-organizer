@@ -85,6 +85,7 @@ interface ResponseOption {
   label: string;
   description?: string | null;
   color?: string;
+  requires_comment?: boolean;
 }
 
 interface DecisionRequest {
