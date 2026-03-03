@@ -1,4 +1,4 @@
-import { detectSpeechCommand, parseSpeechInput } from './speechCommandUtils';
+import { detectSpeechCommand, formatDictatedText, parseSpeechInput } from './speechCommandUtils';
 
 describe('speechCommandUtils stop-listening parser', () => {
   it('detects strict stop command as full phrase', () => {
@@ -36,5 +36,15 @@ describe('speechCommandUtils stop-listening parser', () => {
 
   it('ignores filler words around command phrases', () => {
     expect(detectSpeechCommand('ähm bitte stopp jetzt mal')).toEqual({ type: 'stop-listening' });
+  });
+});
+
+describe('speechCommandUtils formatting', () => {
+  it('adds a space and uppercase letter after period punctuation', () => {
+    expect(formatDictatedText('hallo punkt wie geht es dir')).toBe('Hallo. Wie geht es dir');
+  });
+
+  it('uppercases words after existing periods without spaces', () => {
+    expect(formatDictatedText('hallo.welt')).toBe('Hallo. Welt');
   });
 });
