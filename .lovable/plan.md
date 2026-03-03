@@ -1,108 +1,61 @@
 
-Ziel: Speech Recognition in den Editoren (insb. Quick Notes mit `SimpleRichTextEditor`) wieder zuverlässig aktivierbar machen und die Implementierung robuster + besser diagnostizierbar machen.
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-## Befund aus der Analyse
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
-Ich habe die relevanten Pfade geprüft:
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
-- `src/hooks/useSpeechDictation.ts`
-- `src/lib/speechToTextAdapter.ts`
-- `src/components/ui/SimpleRichTextEditor.tsx`
-- `src/components/EnhancedLexicalToolbar.tsx`
-- Quick-Notes-Flows (`GlobalQuickNoteDialog`, `MyWorkQuickCapture`, `QuickNotesWidget`)
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
-Wichtige Erkenntnisse:
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-1. **Hauptursache (Regression): Effekt-Reset im Hook**
-   - In `useSpeechDictation` hängt der zentrale `useEffect` von `dispatchCommand` und `insertText` ab.
-   - Diese Funktionen werden in den Toolbars aktuell nicht durchgehend stabil referenziert (teils inline).
-   - Ergebnis: Bei Re-Renders läuft Cleanup (`speechAdapter.destroy()`), wodurch die Aufnahme sofort wieder auf `idle` kippt.
-   - Symptom passt exakt: **Mic-Button wirkt „ohne Effekt“ / wird nicht aktiv**.
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
-2. **CSP/Permissions sind bereits korrekt**
-   - `vite.config.ts` hat `microphone=(self)`; der frühere Blocker ist damit nicht mehr der primäre Grund.
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
-3. **Quick Notes ist nicht überall gleich**
-   - In manchen Quick-Notes-Varianten wird `SimpleRichTextEditor` genutzt (mit Mic).
-   - In `QuickNotesWidget` ist der Body aktuell noch `Textarea` (ohne Speech-Button). Das ist kein Defekt, aber uneinheitlich.
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
-4. **Fehlersichtbarkeit ist inkonsistent**
-   - `SimpleRichTextEditor` zeigt Toasts.
-   - `EnhancedLexicalToolbar` hat aktuell schlechteres Fehlerverhalten (z. B. disabled ohne klare Interaktion).
-
-## Umsetzungsplan (konkret)
-
-### 1) Hook stabilisieren (kritischer Fix)
-Datei: `src/hooks/useSpeechDictation.ts`
-
-- `insertText` und `dispatchCommand` über `useRef` stabilisieren:
-  - `insertTextRef.current = insertText`
-  - `dispatchCommandRef.current = dispatchCommand`
-- Event-Handler des Adapters so umbauen, dass sie **Refs** verwenden statt volatile Closures.
-- Den Setup-Effekt von volatilen Callback-Dependencies entkoppeln, damit `speechAdapter.destroy()` **nicht** bei jedem Render feuert.
-- Cleanup nur bei tatsächlichem Unmount/Editor-Wechsel.
-
-Erwarteter Effekt:
-- `speechState` bleibt beim Start auf `listening`.
-- Mic-Button bleibt sichtbar aktiv.
-- Keine sofortige „silent stop“-Schleife mehr.
-
-### 2) Aufrufstellen härten (Stabilität + Lesbarkeit)
-Dateien:
-- `src/components/ui/SimpleRichTextEditor.tsx`
-- `src/components/EnhancedLexicalToolbar.tsx`
-
-- `dispatchCommand` und `insertText` in beiden Komponenten mit `useCallback` stabilisieren.
-- In `EnhancedLexicalToolbar` das Speech-Button-Verhalten an `SimpleRichTextEditor` angleichen:
-  - Klick auch bei „nicht unterstützt“ erlaubt, dann klare Toast-Meldung statt reinem `disabled`.
-  - Sichtbarer aktiver Zustand (bereits vorhanden, bei Bedarf vereinheitlichen).
-
-### 3) Schnell-Diagnostik einbauen (für echte Geräteprobleme)
-Datei: `src/lib/speechToTextAdapter.ts`
-
-- Präziseres Fehler-Mapping erweitern (z. B. iframe/policy-Hinweis bei `not-allowed`/`service-not-allowed`).
-- Optionale, leichtgewichtige Debug-Logs (nur development), damit klar ist:
-  - `start()` aufgerufen?
-  - `onstart/onend/onerror` Reihenfolge?
-  - welcher Fehlercode kam zurück?
-
-### 4) Quick-Notes UX konsistent machen (optional, aber empfohlen)
-Datei: `src/components/widgets/QuickNotesWidget.tsx`
-
-- Aktuell ist der Body dort `Textarea` (ohne Speech).
-- Optional auf `SimpleRichTextEditor` umstellen, damit Speech-Funktion in allen Quick-Notes-Einstiegen konsistent verfügbar ist.
-
-## Testplan (nach Umsetzung)
-
-1. **My Work → Quick Notes (SimpleRichTextEditor)**
-   - Mic klicken → Button wird aktiv (rot/pulsierend), „Aufnahme läuft…“ sichtbar.
-   - Diktat erscheint als Interim und final als Text.
-   - „Stopp“ per Sprache beendet sauber.
-
-2. **Global Quick Note Dialog**
-   - Gleiches Verhalten wie oben.
-   - Öffnen/Schließen des Dialogs während/zwischen Aufnahmen darf nichts „hängen“ lassen.
-
-3. **Enhanced Toolbar Screen**
-   - Start/Stop per Klick + Sprachkommando.
-   - Format-Kommandos (z. B. „fett“, „neue zeile“) funktionieren weiterhin.
-
-4. **Negativtests**
-   - Browser ohne Web Speech API: klare Fehlermeldung statt scheinbar toter UI.
-   - Mikrofonberechtigung verweigert: verständliche Toast-Meldung.
-   - Mehrfaches Start/Stop hintereinander: kein Dead-State.
-
-## Risiken und Gegenmaßnahmen
-
-- Risiko: Hook-Refactor kann Nebenwirkungen auf Command-Dispatch haben.
-  - Gegenmaßnahme: gezielte Smoke-Tests für alle vorhandenen Sprachkommandos.
-- Risiko: Unterschiede zwischen Browsern (Chrome/Edge/Safari).
-  - Gegenmaßnahme: Fehlertexte browserneutral + konkrete Handlungsanweisung.
-
-## Zusätzliche Feature-Ideen (nach Stabilisierung)
-
-1. **Sprachsprache konfigurierbar** (`de-DE`, `en-US`, …) pro User-Setting.
-2. **Push-to-talk Modus** als Alternative zu Toggle-Aufnahme.
-3. **Mini-Debug-Panel** (nur Dev/optional) mit State, letztem Error, letztem Transcript-Event.
-4. **Auto-Punctuation Modus** konfigurierbar (konservativ vs. aggressiv).
-5. **QuickNotesWidget auf Rich Editor migrieren**, damit Speech überall gleich nutzbar ist.
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
