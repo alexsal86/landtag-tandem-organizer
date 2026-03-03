@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
-import { format, addMonths } from "date-fns";
+import { format, addMonths, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 
 interface EmployeeMeetingSchedulerProps {
@@ -35,6 +35,9 @@ export function EmployeeMeetingScheduler({
   const [meetingType, setMeetingType] = useState<string>("regular");
   const [intervalMonths, setIntervalMonths] = useState(3);
   const [addToCalendar, setAddToCalendar] = useState<boolean>(true);
+  const [meetingStartTime, setMeetingStartTime] = useState<string>("10:00");
+  const [durationMinutes, setDurationMinutes] = useState<number>(60);
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
 
   // Load employee settings to get their meeting interval
   useEffect(() => {
@@ -112,9 +115,10 @@ export function EmployeeMeetingScheduler({
       // Create calendar entry if checkbox is active
       if (addToCalendar) {
         const startTime = new Date(meetingDate);
-        startTime.setHours(10, 0, 0, 0);
-        const endTime = new Date(meetingDate);
-        endTime.setHours(11, 0, 0, 0);
+        const [hours, minutes] = meetingStartTime.split(":").map(Number);
+        startTime.setHours(hours, minutes, 0, 0);
+        const endTime = new Date(startTime);
+        endTime.setMinutes(endTime.getMinutes() + durationMinutes);
 
         const { error: calendarError } = await supabase
           .from("appointments")
@@ -145,13 +149,16 @@ export function EmployeeMeetingScheduler({
 
       toast({
         title: "Gespräch geplant",
-        description: `Mitarbeitergespräch mit ${employeeName} für ${format(meetingDate, "dd.MM.yyyy", { locale: de })} geplant${addToCalendar ? ' und im Kalender eingetragen' : ''}.`,
+        description: `Mitarbeitergespräch mit ${employeeName} für ${format(meetingDate, "dd.MM.yyyy", { locale: de })} um ${meetingStartTime} Uhr geplant${addToCalendar ? ' und im Kalender eingetragen' : ''}.`,
       });
 
       onScheduled?.();
       onOpenChange(false);
       setMeetingDate(undefined);
       setMeetingType("regular");
+      setMeetingStartTime("10:00");
+      setDurationMinutes(60);
+      setCurrentMonth(new Date());
 
       // Navigate to meeting protocol
       navigate(`/employee-meeting/${meeting.id}`);
@@ -169,7 +176,7 @@ export function EmployeeMeetingScheduler({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[620px] max-h-[88vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Mitarbeitergespräch planen mit {employeeName}</DialogTitle>
         </DialogHeader>
@@ -194,9 +201,17 @@ export function EmployeeMeetingScheduler({
             <Calendar
               mode="single"
               selected={meetingDate}
-              onSelect={setMeetingDate}
+              month={currentMonth}
+              onMonthChange={setCurrentMonth}
+              onSelect={(date) => {
+                setMeetingDate(date);
+                if (date) setCurrentMonth(date);
+              }}
               locale={de}
-              disabled={(date) => date < new Date()}
+              captionLayout="dropdown-buttons"
+              fromYear={new Date().getFullYear() - 1}
+              toYear={new Date().getFullYear() + 2}
+              disabled={(date) => date < startOfDay(new Date())}
               className="rounded-md border"
             />
             {meetingDate && (
@@ -204,6 +219,33 @@ export function EmployeeMeetingScheduler({
                 Nächstes Gespräch voraussichtlich fällig: {format(addMonths(meetingDate, intervalMonths), "dd.MM.yyyy", { locale: de })}
               </p>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="meetingStartTime">Startzeit</Label>
+              <input
+                id="meetingStartTime"
+                type="time"
+                value={meetingStartTime}
+                onChange={(e) => setMeetingStartTime(e.target.value)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="meetingDuration">Dauer</Label>
+              <select
+                id="meetingDuration"
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value={30}>30 Minuten</option>
+                <option value={45}>45 Minuten</option>
+                <option value={60}>60 Minuten</option>
+                <option value={90}>90 Minuten</option>
+              </select>
+            </div>
           </div>
 
           {/* Calendar Checkbox */}
@@ -216,7 +258,7 @@ export function EmployeeMeetingScheduler({
               className="h-4 w-4 rounded border-input"
             />
             <Label htmlFor="addToCalendar" className="text-sm cursor-pointer font-normal">
-              Als Kalendereintrag hinzufügen (10:00 - 11:00 Uhr)
+              Als Kalendereintrag hinzufügen ({meetingStartTime} Uhr, {durationMinutes} Min.)
             </Label>
           </div>
 
