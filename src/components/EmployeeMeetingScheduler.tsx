@@ -16,7 +16,7 @@ interface EmployeeMeetingSchedulerProps {
   employeeName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onScheduled?: (meetingId?: string) => void;
+  onScheduled?: (meetingId?: string) => void | Promise<void>;
 }
 
 export function EmployeeMeetingScheduler({
@@ -112,6 +112,22 @@ export function EmployeeMeetingScheduler({
         priority_param: "medium",
       });
 
+      // Auto-resolve open meeting requests for this employee
+      const { error: requestUpdateError } = await supabase
+        .from("employee_meeting_requests")
+        .update({
+          status: "completed",
+          scheduled_meeting_id: meeting.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("employee_id", employeeId)
+        .eq("tenant_id", currentTenant.id)
+        .eq("status", "pending");
+
+      if (requestUpdateError) {
+        console.error("Error auto-resolving meeting requests:", requestUpdateError);
+      }
+
       // Create calendar entry if checkbox is active
       if (addToCalendar) {
         const startTime = new Date(meetingDate);
@@ -152,7 +168,7 @@ export function EmployeeMeetingScheduler({
         description: `Mitarbeitergespräch mit ${employeeName} für ${format(meetingDate, "dd.MM.yyyy", { locale: de })} um ${meetingStartTime} Uhr geplant${addToCalendar ? ' und im Kalender eingetragen' : ''}.`,
       });
 
-      onScheduled?.(meeting.id);
+      await onScheduled?.(meeting.id);
       onOpenChange(false);
       setMeetingDate(undefined);
       setMeetingType("regular");
