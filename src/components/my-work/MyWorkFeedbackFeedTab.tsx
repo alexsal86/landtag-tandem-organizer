@@ -19,7 +19,7 @@ const PERIOD_PRESETS = {
 
 export function MyWorkFeedbackFeedTab() {
   const navigate = useNavigate();
-  const [scope, setScope] = useState<'team' | 'mine' | 'team-plus-relevant'>('team-plus-relevant');
+  const [scope, setScope] = useState<'team' | 'mine' | 'team-plus-relevant'>('team');
   const [periodPreset, setPeriodPreset] = useState<keyof typeof PERIOD_PRESETS>('7d');
   const [onlyWithAttachments, setOnlyWithAttachments] = useState(false);
   const [onlyWithTasks, setOnlyWithTasks] = useState(false);

@@ -52,23 +52,79 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
     try {
       const { data: requestsData, error: requestsError } = await supabase
         .from("employee_meeting_requests")
-        .select("id, employee_id, reason, status, created_at")
+        .select("id, employee_id, reason, status, created_at, scheduled_meeting_id")
         .eq("status", "pending")
+        .is("scheduled_meeting_id", null)
         .eq("tenant_id", currentTenant.id)
         .order("created_at", { ascending: false });
 
       if (requestsError) throw requestsError;
 
+      const employeeIds = Array.from(new Set(requestsData?.map((r) => r.employee_id) || []));
+
+      // Cleanup: pending requests are considered processed if a meeting was already created afterwards
+      if (employeeIds.length > 0 && requestsData && requestsData.length > 0) {
+        const { data: existingMeetings } = await supabase
+          .from("employee_meetings")
+          .select("id, employee_id, created_at")
+          .in("employee_id", employeeIds)
+          .eq("tenant_id", currentTenant.id);
+
+        const latestMeetingByEmployee = new Map<string, { id: string; created_at: string }>();
+        (existingMeetings || []).forEach((meeting: any) => {
+          const current = latestMeetingByEmployee.get(meeting.employee_id);
+          if (!current || new Date(meeting.created_at).getTime() > new Date(current.created_at).getTime()) {
+            latestMeetingByEmployee.set(meeting.employee_id, { id: meeting.id, created_at: meeting.created_at });
+          }
+        });
+
+        const staleRequestUpdates = requestsData
+          .filter((request) => {
+            const latestMeeting = latestMeetingByEmployee.get(request.employee_id);
+            return latestMeeting && new Date(latestMeeting.created_at).getTime() >= new Date(request.created_at).getTime();
+          })
+          .map((request) => {
+            const latestMeeting = latestMeetingByEmployee.get(request.employee_id);
+            return latestMeeting
+              ? supabase
+                  .from("employee_meeting_requests")
+                  .update({
+                    status: "completed",
+                    scheduled_meeting_id: latestMeeting.id,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", request.id)
+              : null;
+          })
+          .filter(Boolean) as PromiseLike<unknown>[];
+
+        if (staleRequestUpdates.length > 0) {
+          await Promise.all(staleRequestUpdates);
+        }
+      }
+
+      const { data: refreshedRequests, error: refreshedRequestsError } = await supabase
+        .from("employee_meeting_requests")
+        .select("id, employee_id, reason, status, created_at")
+        .eq("status", "pending")
+        .is("scheduled_meeting_id", null)
+        .eq("tenant_id", currentTenant.id)
+        .order("created_at", { ascending: false });
+
+      if (refreshedRequestsError) throw refreshedRequestsError;
+
+      const effectiveRequests = refreshedRequests || [];
+
       // Get employee names
-      const employeeIds = requestsData?.map((r) => r.employee_id) || [];
+      const effectiveEmployeeIds = effectiveRequests.map((r) => r.employee_id);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, display_name")
-        .in("user_id", employeeIds);
+        .in("user_id", effectiveEmployeeIds);
 
       const profileMap = new Map(profiles?.map((p) => [p.user_id, p.display_name]) || []);
 
-      const enrichedRequests: MeetingRequest[] = (requestsData || []).map((r) => ({
+      const enrichedRequests: MeetingRequest[] = effectiveRequests.map((r) => ({
         ...r,
         employee_name: profileMap.get(r.employee_id) || "Unbekannt",
       }));
