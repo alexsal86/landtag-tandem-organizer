@@ -9,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function EmployeeMeetingDetail() {
-  const { meetingId } = useParams<{ meetingId: string }>();
+  const { meetingId, subId } = useParams<{ meetingId?: string; subId?: string }>();
+  const resolvedMeetingId = meetingId || subId;
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -18,7 +19,7 @@ export default function EmployeeMeetingDetail() {
 
   useEffect(() => {
     const checkAccess = async () => {
-      if (!user || !meetingId) {
+      if (!user || !resolvedMeetingId) {
         setLoading(false);
         return;
       }
@@ -27,7 +28,7 @@ export default function EmployeeMeetingDetail() {
         const { data: meeting, error } = await supabase
           .from("employee_meetings")
           .select("employee_id, conducted_by")
-          .eq("id", meetingId)
+          .eq("id", resolvedMeetingId)
           .maybeSingle();
 
         if (error) throw error;
@@ -62,7 +63,7 @@ export default function EmployeeMeetingDetail() {
     };
 
     checkAccess();
-  }, [user, meetingId, navigate, toast]);
+  }, [user, resolvedMeetingId, navigate, toast]);
 
   if (loading) {
     return (
@@ -82,7 +83,7 @@ export default function EmployeeMeetingDetail() {
     );
   }
 
-  if (!hasAccess || !meetingId) {
+  if (!hasAccess || !resolvedMeetingId) {
     return null;
   }
 
@@ -94,7 +95,7 @@ export default function EmployeeMeetingDetail() {
           Zurück
         </Button>
       </div>
-      <EmployeeMeetingProtocol meetingId={meetingId} onBack={() => navigate("/employee")} />
+      <EmployeeMeetingProtocol meetingId={resolvedMeetingId} onBack={() => navigate("/employee")} />
     </div>
   );
 }

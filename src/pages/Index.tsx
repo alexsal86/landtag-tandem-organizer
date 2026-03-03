@@ -32,6 +32,7 @@ const DataView = lazyWithRetry(() => import("@/components/DataView").then(m => (
 const EditProfile = lazyWithRetry(() => import("@/pages/EditProfile"));
 const NotificationsPage = lazyWithRetry(() => import("@/pages/NotificationsPage"));
 const LetterDetail = lazyWithRetry(() => import("@/pages/LetterDetail"));
+const EmployeeMeetingDetail = lazyWithRetry(() => import("@/pages/EmployeeMeetingDetail"));
 import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
 import { GlobalQuickActionHandler } from "@/components/layout/GlobalQuickActionHandler";
 import { GlobalAnnouncementBanner } from "@/components/announcements/GlobalAnnouncementBanner";
@@ -195,6 +196,8 @@ const Index = () => {
         return <SettingsView />;
       case "employee":
         return <EmployeesView />;
+      case "employee-meeting":
+        return subId ? <EmployeeMeetingDetail /> : <EmployeesView />;
       case "administration":
         return <Administration />;
       case "drucksachen":

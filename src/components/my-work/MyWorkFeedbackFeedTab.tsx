@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { CheckCircle2, Paperclip, CheckSquare, MessageSquare, Loader2, Filter } from 'lucide-react';
@@ -17,6 +18,7 @@ const PERIOD_PRESETS = {
 } as const;
 
 export function MyWorkFeedbackFeedTab() {
+  const navigate = useNavigate();
   const [scope, setScope] = useState<'team' | 'mine' | 'team-plus-relevant'>('team-plus-relevant');
   const [periodPreset, setPeriodPreset] = useState<keyof typeof PERIOD_PRESETS>('7d');
   const [onlyWithAttachments, setOnlyWithAttachments] = useState(false);

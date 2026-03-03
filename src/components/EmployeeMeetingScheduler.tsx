@@ -208,7 +208,7 @@ export function EmployeeMeetingScheduler({
                 if (date) setCurrentMonth(date);
               }}
               locale={de}
-              captionLayout="dropdown-buttons"
+              captionLayout="dropdown"
               fromYear={new Date().getFullYear() - 1}
               toYear={new Date().getFullYear() + 2}
               disabled={(date) => date < startOfDay(new Date())}
