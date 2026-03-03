@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker, getDefaultClassNames } from "react-day-picker";
 import { de } from "date-fns/locale";
 
@@ -15,6 +15,8 @@ function Calendar({
   ...props
 }: CalendarProps) {
   const defaultClassNames = getDefaultClassNames();
+  const usesDropdownCaption =
+    typeof props.captionLayout === "string" && props.captionLayout.includes("dropdown");
 
   return (
     <DayPicker
@@ -28,21 +30,30 @@ function Calendar({
         ),
         month: cn("space-y-4", defaultClassNames.month),
         month_caption: cn(
-          "flex h-10 items-center justify-center relative text-sm font-medium",
+          "flex flex-col items-center gap-2 text-sm font-medium",
           defaultClassNames.month_caption
         ),
+        caption_label: cn(
+          usesDropdownCaption && "hidden",
+          defaultClassNames.caption_label
+        ),
+        dropdowns: cn("flex items-center gap-2", defaultClassNames.dropdowns),
+        dropdown: cn(
+          "h-9 rounded-md border border-input bg-white px-2 text-sm",
+          defaultClassNames.dropdown
+        ),
         nav: cn(
-          "absolute inset-x-0 top-0 flex items-center justify-between pointer-events-auto",
+          "flex w-full items-center justify-center gap-2 pointer-events-auto",
           defaultClassNames.nav
         ),
         button_previous: cn(
           buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 pointer-events-auto",
+          "!static h-7 w-7 bg-background p-0 opacity-100",
           defaultClassNames.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 pointer-events-auto",
+          "!static h-7 w-7 bg-background p-0 opacity-100",
           defaultClassNames.button_next
         ),
         month_grid: cn("w-full border-collapse space-y-1", defaultClassNames.month_grid),
@@ -75,10 +86,13 @@ function Calendar({
       }}
       components={{
         Chevron: ({ orientation }) => {
-          if (orientation === 'left') {
+          if (orientation === "left") {
             return <ChevronLeft className="h-4 w-4" />;
           }
-          return <ChevronRight className="h-4 w-4" />;
+          if (orientation === "right") {
+            return <ChevronRight className="h-4 w-4" />;
+          }
+          return <ChevronDown className="h-4 w-4" />;
         },
       }}
       weekStartsOn={1}
