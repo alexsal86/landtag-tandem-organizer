@@ -278,7 +278,8 @@ export const TaskDecisionResponse = ({
     return responseOptions.find(o => o.key === key);
   };
 
-  const showReasonToggle = responseOptions.some((option) => option.requires_comment);
+  const hasExplicitCommentOption = responseOptions.some((option) => option.key === 'comment');
+  const showReasonToggle = hasExplicitCommentOption;
 
   const handleQuestionSubmit = (option: ResponseOption) => {
     if (option.requires_comment && !questionComment.trim()) {

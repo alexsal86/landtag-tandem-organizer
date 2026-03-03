@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TaskDecisionResponse } from "@/components/task-decisions/TaskDecisionResponse";
 import { DecisionCardActivity } from "@/components/task-decisions/DecisionCardActivity";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { EmailPreviewDialog } from "@/components/task-decisions/EmailPreviewDialog";
 import { DecisionAttachmentPreviewDialog } from "@/components/task-decisions/DecisionAttachmentPreviewDialog";
@@ -85,10 +86,15 @@ const MyWorkDecisionCardInner = ({
   const isDeleting = deletingDecisionId === decision.id;
   const isBusy = isArchiving || isDeleting;
 
-  const plainDescription = useMemo(
-    () => (decision.description || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(),
-    [decision.description],
-  );
+  const plainDescription = useMemo(() => {
+    if (!decision.description) return '';
+
+    return decision.description
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }, [decision.description]);
   const previewCharacterLimit = 620;
   const hasLongDescription = plainDescription.length > previewCharacterLimit;
   const previewText = hasLongDescription
@@ -250,11 +256,14 @@ const MyWorkDecisionCardInner = ({
             <div className="min-w-0">
               <h3 className="font-bold text-lg leading-snug mb-2">{decision.title}</h3>
 
-              {plainDescription && (
+              {decision.description && (
                 <div onClick={(e) => e.stopPropagation()}>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {detailsExpanded ? plainDescription : previewText}
-                  </p>
+                  <div className={cn(!detailsExpanded && hasLongDescription && 'max-h-52 overflow-hidden')}>
+                    <RichTextDisplay
+                      content={detailsExpanded ? decision.description : previewText}
+                      className="leading-relaxed [&_p:last-child]:mb-0"
+                    />
+                  </div>
                   {hasLongDescription && (
                     <Button
                       variant="ghost"
@@ -294,16 +303,16 @@ const MyWorkDecisionCardInner = ({
                     Ergebnis: {winningResponse.label}
                   </div>
                 )}
-                <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
-                  {summaryItems.map((item, idx) => (
-                    <span key={item.key} className="inline-flex items-center gap-1">
-                      {idx > 0 && <span className="text-muted-foreground">•</span>}
-                      <span className={item.textClass}>{item.count}</span>
-                      <span className={item.textClass}>{item.label}</span>
-                    </span>
-                  ))}
-                </div>
-                <div className="ml-2">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
+                    {summaryItems.map((item, idx) => (
+                      <span key={item.key} className="inline-flex items-center gap-1">
+                        {idx > 0 && <span className="text-muted-foreground">•</span>}
+                        <span className={item.textClass}>{item.count}</span>
+                        <span className={item.textClass}>{item.label}</span>
+                      </span>
+                    ))}
+                  </div>
                   <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
                 </div>
               </div>
