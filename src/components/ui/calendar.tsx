@@ -30,8 +30,17 @@ function Calendar({
         ),
         month: cn("space-y-4", defaultClassNames.month),
         month_caption: cn(
-          "flex flex-col items-center gap-2 text-sm font-medium",
-          defaultClassNames.month_caption
+          defaultClassNames.month_caption,
+          "flex flex-col items-center gap-2 text-sm font-medium"
+        ),
+        caption_label: cn(
+          defaultClassNames.caption_label,
+          usesDropdownCaption && "hidden"
+        ),
+        dropdowns: cn(defaultClassNames.dropdowns, "flex items-center gap-2"),
+        dropdown: cn(
+          defaultClassNames.dropdown,
+          "h-9 rounded-md border border-input bg-transparent px-2 text-sm"
         ),
         caption_label: cn(
           usesDropdownCaption && "hidden",
@@ -43,18 +52,18 @@ function Calendar({
           defaultClassNames.dropdown
         ),
         nav: cn(
-          "flex w-full items-center justify-center gap-2 pointer-events-auto",
-          defaultClassNames.nav
+          defaultClassNames.nav,
+          "!relative !inset-auto flex w-full items-center justify-center gap-2 pointer-events-auto"
         ),
         button_previous: cn(
+          defaultClassNames.button_previous,
           buttonVariants({ variant: "outline" }),
-          "!static h-7 w-7 bg-background p-0 opacity-100",
-          defaultClassNames.button_previous
+          "!static h-7 w-7 bg-background p-0 opacity-100"
         ),
         button_next: cn(
+          defaultClassNames.button_next,
           buttonVariants({ variant: "outline" }),
-          "!static h-7 w-7 bg-background p-0 opacity-100",
-          defaultClassNames.button_next
+          "!static h-7 w-7 bg-background p-0 opacity-100"
         ),
         month_grid: cn("w-full border-collapse space-y-1", defaultClassNames.month_grid),
         weekdays: cn("flex", defaultClassNames.weekdays),
