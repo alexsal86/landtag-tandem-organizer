@@ -42,15 +42,6 @@ function Calendar({
           defaultClassNames.dropdown,
           "h-9 rounded-md border border-input bg-transparent px-2 text-sm"
         ),
-        caption_label: cn(
-          usesDropdownCaption && "hidden",
-          defaultClassNames.caption_label
-        ),
-        dropdowns: cn("flex items-center gap-2", defaultClassNames.dropdowns),
-        dropdown: cn(
-          "h-9 rounded-md border border-input bg-white px-2 text-sm",
-          defaultClassNames.dropdown
-        ),
         nav: cn(
           defaultClassNames.nav,
           "!relative !inset-auto flex w-full items-center justify-center gap-2 pointer-events-auto"

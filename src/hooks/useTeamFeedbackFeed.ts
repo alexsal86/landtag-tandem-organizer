@@ -70,7 +70,6 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
         `)
         .eq('tenant_id', currentTenant.id)
         .eq('feedback_status', 'completed')
-        .not('notes', 'is', null)
         .gte('completed_at', resolvedFilters.completedFrom)
         .lte('completed_at', resolvedFilters.completedTo)
         .order('completed_at', { ascending: false })
