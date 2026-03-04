@@ -961,30 +961,42 @@ export function AdminTimeTrackingView() {
                         <span>{combinedEntries.filter(e => e.entry_type === 'holiday').length} Tage (kein Soll)</span>
                       </div>
                     )}
-                    {combinedEntries.filter(e => e.entry_type === 'sick').length > 0 && (
-                      <div className="flex justify-between gap-4">
-                        <span>🤒 Krankheit:</span>
-                        <span>{combinedEntries.filter(e => e.entry_type === 'sick').length} Tage</span>
-                      </div>
-                    )}
-                    {combinedEntries.filter(e => e.entry_type === 'vacation').length > 0 && (
-                      <div className="flex justify-between gap-4">
-                        <span>🏖️ Urlaub:</span>
-                        <span>{combinedEntries.filter(e => e.entry_type === 'vacation').length} Tage</span>
-                      </div>
-                    )}
-                    {combinedEntries.filter(e => e.entry_type === 'overtime_reduction').length > 0 && (
-                      <div className="flex justify-between gap-4">
-                        <span>⏰ Überstundenabbau:</span>
-                        <span>{combinedEntries.filter(e => e.entry_type === 'overtime_reduction').length} Tage</span>
-                      </div>
-                    )}
-                    {combinedEntries.filter(e => e.entry_type === 'medical').length > 0 && (
-                      <div className="flex justify-between gap-4">
-                        <span>🏥 Arzttermine:</span>
-                        <span>{combinedEntries.filter(e => e.entry_type === 'medical').length}</span>
-                      </div>
-                    )}
+                    {(() => {
+                      const sickEntries = combinedEntries.filter(e => e.entry_type === 'sick');
+                      return sickEntries.length > 0 ? (
+                        <div className="flex justify-between gap-4">
+                          <span>🤒 Krankheit:</span>
+                          <span>{sickEntries.length} Tage ({fmt(sickEntries.reduce((s, e) => s + (e.minutes || 0), 0))})</span>
+                        </div>
+                      ) : null;
+                    })()}
+                    {(() => {
+                      const vacEntries = combinedEntries.filter(e => e.entry_type === 'vacation');
+                      return vacEntries.length > 0 ? (
+                        <div className="flex justify-between gap-4">
+                          <span>🏖️ Urlaub:</span>
+                          <span>{vacEntries.length} Tage ({fmt(vacEntries.reduce((s, e) => s + (e.minutes || 0), 0))})</span>
+                        </div>
+                      ) : null;
+                    })()}
+                    {(() => {
+                      const medEntries = combinedEntries.filter(e => e.entry_type === 'medical');
+                      return medEntries.length > 0 ? (
+                        <div className="flex justify-between gap-4">
+                          <span>🏥 Arzttermine:</span>
+                          <span>{medEntries.length}× ({fmt(medEntries.reduce((s, e) => s + (e.minutes || 0), 0))})</span>
+                        </div>
+                      ) : null;
+                    })()}
+                    {(() => {
+                      const otEntries = combinedEntries.filter(e => e.entry_type === 'overtime_reduction');
+                      return otEntries.length > 0 ? (
+                        <div className="flex justify-between gap-4 border-t pt-1 mt-1">
+                          <span>⏰ Überstundenabbau:</span>
+                          <span>{otEntries.length} Tage ({fmt(otEntries.reduce((s, e) => s + (e.minutes || 0), 0))}) — reduziert Saldo</span>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 </TooltipContent>
               </Tooltip>
