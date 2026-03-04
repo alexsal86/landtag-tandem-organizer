@@ -39,13 +39,12 @@ export function MatrixWebsiteWidget() {
   const [widgetSending, setWidgetSending] = useState(false);
   const [widgetMessages, setWidgetMessages] =
     useState<WidgetMessage[]>(INITIAL_MESSAGES);
-    const [conversationId] = useState(() => crypto.randomUUID());
+  const [conversationId] = useState(() => crypto.randomUUID());
   const { currentTenant } = useTenant();
-  const [showCallbackForm, setShowCallbackForm] = useState(false);  
+  const [showCallbackForm, setShowCallbackForm] = useState(false);
   const [callbackForm, setCallbackForm] = useState<WebsiteWidgetCallbackRequest>(
     INITIAL_CALLBACK_FORM,
   );
-
 
   const sendWidgetMessage = async () => {
     const trimmed = visitorMessage.trim();
