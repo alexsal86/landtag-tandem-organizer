@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type {
+  codex/add-callback-request-cta-in-matrix-widget
+  WebsiteWidgetCallbackRequest,
   ImprovementTriggerItem,
   WebsiteWidgetTestResponse,
   WidgetFeedbackStats,
@@ -15,6 +17,17 @@ export async function sendWebsiteWidgetMessage(message: string) {
   });
 }
 
+export async function submitWebsiteWidgetCallbackRequest(
+  callbackRequest: WebsiteWidgetCallbackRequest,
+) {
+  return supabase.functions.invoke<WebsiteWidgetTestResponse>("matrix-bot-handler", {
+    body: {
+      type: "website_widget_callback_request",
+      source: "data_view_widget",
+      callback_request: callbackRequest,
+    },
+  });
+}
 export async function saveWidgetMessageFeedback(params: {
   tenantId: string;
   conversationId: string;

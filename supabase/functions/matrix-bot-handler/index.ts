@@ -28,10 +28,18 @@ interface DecisionMatrixMessage extends MatrixMessage {
   };
 }
 
+interface WebsiteWidgetCallbackPayload {
+  name: string;
+  phone: string;
+  preferredTime: string;
+  concern: string;
+}
+
 interface WebsiteWidgetTestRequest {
-  type: "website_widget_test";
+  type: "website_widget_test" | "website_widget_callback_request";
   message?: string;
   source?: string;
+  callback_request?: WebsiteWidgetCallbackPayload;
 }
 
 serve(async (req) => {
@@ -58,7 +66,7 @@ serve(async (req) => {
     );
 
     // Handle website widget test request
-    if (body.type === 'website_widget_test') {
+    if (body.type === 'website_widget_test' || body.type === 'website_widget_callback_request') {
       return await handleWebsiteWidgetTest(
         body as WebsiteWidgetTestRequest,
         supabaseAdmin,
@@ -629,6 +637,55 @@ async function sendDecisionMessages(
   }
 }
 
+async function resolveWidgetTaskContext(
+  supabaseAdmin: any,
+  configuredRoomId: string | null,
+) {
+  const configuredTenantId = Deno.env.get('MATRIX_WIDGET_TASK_TENANT_ID');
+  const configuredUserId = Deno.env.get('MATRIX_WIDGET_TASK_USER_ID');
+
+  if (configuredTenantId && configuredUserId) {
+    return { tenant_id: configuredTenantId, user_id: configuredUserId };
+  }
+
+  let subscriptionQuery = supabaseAdmin
+    .from('matrix_subscriptions')
+    .select('tenant_id, user_id, room_id')
+    .eq('is_active', true)
+    .not('tenant_id', 'is', null)
+    .limit(1);
+
+  if (configuredRoomId) {
+    subscriptionQuery = subscriptionQuery.eq('room_id', configuredRoomId);
+  }
+
+  const { data: roomSubscription } = await subscriptionQuery.maybeSingle();
+
+  if (roomSubscription?.tenant_id && roomSubscription?.user_id) {
+    return {
+      tenant_id: roomSubscription.tenant_id,
+      user_id: roomSubscription.user_id,
+    };
+  }
+
+  const { data: fallbackSubscription } = await supabaseAdmin
+    .from('matrix_subscriptions')
+    .select('tenant_id, user_id')
+    .eq('is_active', true)
+    .not('tenant_id', 'is', null)
+    .limit(1)
+    .maybeSingle();
+
+  if (fallbackSubscription?.tenant_id && fallbackSubscription?.user_id) {
+    return {
+      tenant_id: fallbackSubscription.tenant_id,
+      user_id: fallbackSubscription.user_id,
+    };
+  }
+
+  return null;
+}
+
 async function handleWebsiteWidgetTest(
   body: WebsiteWidgetTestRequest,
   supabaseAdmin: any,
@@ -636,31 +693,75 @@ async function handleWebsiteWidgetTest(
   matrixHomeserver: string,
 ) {
   const configuredRoomId = Deno.env.get('MATRIX_WIDGET_TEST_ROOM_ID');
-  const fallbackMessage =
-    'Die Nachricht wurde gespeichert, konnte aber nicht in den Matrix-Test-Raum gesendet werden.';
+  const isCallbackRequest = body.type === 'website_widget_callback_request';
+  const callbackRequest = body.callback_request;
+
+  const fallbackMessage = isCallbackRequest
+    ? 'Die Rückrufanfrage konnte nicht vollständig verarbeitet werden.'
+    : 'Die Nachricht wurde gespeichert, konnte aber nicht in den Matrix-Test-Raum gesendet werden.';
 
   const logAttempt = async (
-    success: boolean,
-    extra: { event_id?: string | null; error_message?: string; room_id?: string | null },
+    status: 'success' | 'failed',
+    extra: {
+      error_message?: string;
+      room_id?: string | null;
+      response_content?: string | null;
+      metadata?: Record<string, unknown>;
+    },
   ) => {
     await supabaseAdmin.from('matrix_bot_logs').insert({
-      event_type: 'website_widget_test',
+      event_type: isCallbackRequest ? 'website_widget_callback_request' : 'website_widget_test',
       room_id: extra.room_id ?? configuredRoomId ?? null,
-      message: body.message ?? '',
-      success,
-      event_id: extra.event_id ?? null,
-      error_message: extra.error_message,
-      timestamp: new Date().toISOString(),
+      message_content: body.message ?? callbackRequest?.concern ?? '',
+      response_content: extra.response_content ?? null,
+      status,
+      error_message: extra.error_message ?? null,
+      metadata: {
+        source: body.source ?? 'unknown',
+        ...(isCallbackRequest
+          ? {
+              callback_request: callbackRequest,
+            }
+          : {}),
+        ...(extra.metadata ?? {}),
+      },
+      sent_date: new Date().toISOString().slice(0, 10),
     });
   };
 
+  if (isCallbackRequest) {
+    const hasMissingFields =
+      !callbackRequest?.name?.trim() ||
+      !callbackRequest?.phone?.trim() ||
+      !callbackRequest?.preferredTime?.trim() ||
+      !callbackRequest?.concern?.trim();
+
+    if (hasMissingFields) {
+      await logAttempt('failed', {
+        error_message: 'Missing callback request fields',
+      });
+
+      return new Response(JSON.stringify({
+        success: false,
+        event_id: null,
+        room_id: configuredRoomId ?? null,
+        task_id: null,
+        fallback_message: 'Bitte Name, Telefonnummer, Wunschzeit und Anliegen vollständig ausfüllen.',
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
   if (!matrixToken) {
     const errorText = 'Matrix bot token not configured';
-    await logAttempt(false, { error_message: errorText });
+    await logAttempt('failed', { error_message: errorText });
     return new Response(JSON.stringify({
       success: false,
       event_id: null,
       room_id: configuredRoomId ?? null,
+      task_id: null,
       fallback_message: 'Matrix-Zugang ist aktuell nicht konfiguriert.',
     }), {
       status: 500,
@@ -670,11 +771,12 @@ async function handleWebsiteWidgetTest(
 
   if (!configuredRoomId) {
     const errorText = 'MATRIX_WIDGET_TEST_ROOM_ID not configured';
-    await logAttempt(false, { error_message: errorText });
+    await logAttempt('failed', { error_message: errorText });
     return new Response(JSON.stringify({
       success: false,
       event_id: null,
       room_id: null,
+      task_id: null,
       fallback_message: 'Kein Matrix-Test-Raum konfiguriert.',
     }), {
       status: 500,
@@ -682,11 +784,20 @@ async function handleWebsiteWidgetTest(
     });
   }
 
+  const callbackHeader = isCallbackRequest ? '📞 Rückruf-Anfrage aus Website-Widget' : 'Website-Widget Test';
+  const callbackBody = callbackRequest
+    ? `Name: ${callbackRequest.name}
+Telefon: ${callbackRequest.phone}
+Wunschzeit: ${callbackRequest.preferredTime}
+Anliegen: ${callbackRequest.concern}`
+    : (body.message || 'Website-Widget Testnachricht');
+
   const payload: MatrixMessage = {
     msgtype: 'm.text',
-    body: body.message || 'Website-Widget Testnachricht',
+    body: `${callbackHeader}
+${callbackBody}`,
     format: 'org.matrix.custom.html',
-    formatted_body: `<strong>Website-Widget Test</strong><br/>${body.message || 'Website-Widget Testnachricht'}`,
+    formatted_body: `<strong>${callbackHeader}</strong><br/>${callbackBody.replace(/\n/g, '<br/>')}`,
   };
 
   const txnId = `widget_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
@@ -708,7 +819,7 @@ async function handleWebsiteWidgetTest(
 
     if (!response.ok) {
       const errorText = await response.text();
-      await logAttempt(false, {
+      await logAttempt('failed', {
         error_message: `HTTP ${response.status}: ${errorText}`,
         room_id: configuredRoomId,
       });
@@ -717,6 +828,7 @@ async function handleWebsiteWidgetTest(
         success: false,
         event_id: null,
         room_id: configuredRoomId,
+        task_id: null,
         fallback_message: fallbackMessage,
       }), {
         status: 502,
@@ -725,23 +837,117 @@ async function handleWebsiteWidgetTest(
     }
 
     const result = await response.json();
-    await logAttempt(true, {
-      event_id: result.event_id ?? null,
+
+    let createdTaskId: string | null = null;
+
+    if (isCallbackRequest && callbackRequest) {
+      const taskContext = await resolveWidgetTaskContext(supabaseAdmin, configuredRoomId);
+
+      if (!taskContext) {
+        await logAttempt('failed', {
+          error_message: 'No tenant/user context found for callback request',
+          room_id: configuredRoomId,
+          metadata: { event_id: result.event_id ?? null },
+        });
+
+        return new Response(JSON.stringify({
+          success: false,
+          event_id: result.event_id ?? null,
+          room_id: configuredRoomId,
+          task_id: null,
+          fallback_message: 'Rückrufwunsch wurde an Matrix gesendet, konnte aber keinem Organizer-Mandanten zugeordnet werden.',
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const taskPayload = {
+        title: `Rückruf anfordern: ${callbackRequest.name}`,
+        description: [
+          'Automatisch aus Matrix-Website-Widget erstellt.',
+          `Name: ${callbackRequest.name}`,
+          `Telefon: ${callbackRequest.phone}`,
+          `Wunschzeit: ${callbackRequest.preferredTime}`,
+          `Anliegen: ${callbackRequest.concern}`,
+          `Matrix-Raum: ${configuredRoomId}`,
+          `Matrix-Event: ${result.event_id ?? 'unbekannt'}`,
+        ].join('\n'),
+        status: 'todo',
+        priority: 'medium',
+        category: 'personal',
+        tenant_id: taskContext.tenant_id,
+        user_id: taskContext.user_id,
+        due_date: null,
+      };
+
+      const { data: createdTask, error: taskError } = await supabaseAdmin
+        .from('tasks')
+        .insert(taskPayload)
+        .select('id')
+        .single();
+
+      if (taskError) {
+        await logAttempt('failed', {
+          error_message: `Task creation failed: ${taskError.message}`,
+          room_id: configuredRoomId,
+          metadata: { event_id: result.event_id ?? null },
+        });
+
+        return new Response(JSON.stringify({
+          success: false,
+          event_id: result.event_id ?? null,
+          room_id: configuredRoomId,
+          task_id: null,
+          fallback_message: 'Rückrufwunsch wurde gesendet, konnte aber nicht als Task gespeichert werden.',
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      createdTaskId = createdTask?.id ?? null;
+
+      if (createdTaskId) {
+        await supabaseAdmin.from('matrix_widget_callback_requests').insert({
+          task_id: createdTaskId,
+          matrix_room_id: configuredRoomId,
+          matrix_event_id: result.event_id ?? null,
+          source: body.source ?? 'website_widget',
+          requester_name: callbackRequest.name,
+          requester_phone: callbackRequest.phone,
+          preferred_time: callbackRequest.preferredTime,
+          concern: callbackRequest.concern,
+        });
+      }
+    }
+
+    await logAttempt('success', {
       room_id: configuredRoomId,
+      response_content: isCallbackRequest
+        ? 'Callback request sent to Matrix and stored as Organizer task'
+        : 'Website widget test message sent to Matrix',
+      metadata: {
+        event_id: result.event_id ?? null,
+        task_id: createdTaskId,
+      },
     });
 
     return new Response(JSON.stringify({
       success: true,
       event_id: result.event_id ?? null,
       room_id: configuredRoomId,
-      fallback_message: 'Nachricht erfolgreich an Matrix gesendet.',
+      task_id: createdTaskId,
+      fallback_message: isCallbackRequest
+        ? 'Rückrufwunsch erfolgreich erfasst und bestätigt.'
+        : 'Nachricht erfolgreich an Matrix gesendet.',
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     const isTimeout = error instanceof DOMException && error.name === 'AbortError';
-    await logAttempt(false, {
+    await logAttempt('failed', {
       error_message: isTimeout
         ? 'Matrix API timeout after 10s'
         : error instanceof Error
@@ -754,6 +960,7 @@ async function handleWebsiteWidgetTest(
       success: false,
       event_id: null,
       room_id: configuredRoomId,
+      task_id: null,
       fallback_message: isTimeout
         ? 'Zeitüberschreitung bei der Matrix-Übertragung.'
         : fallbackMessage,
