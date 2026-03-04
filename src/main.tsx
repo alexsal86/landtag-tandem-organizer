@@ -24,10 +24,9 @@ async function setupCrossOriginIsolation(): Promise<void> {
 
   const isPreviewHost = isLovablePreviewHost(window.location.hostname);
 
-  // Hard failsafe: never use COI service workers in Lovable preview domains.
-  // This prevents stale SW cache from breaking iframe rendering (white screen).
+  // Hard failsafe: never touch SW API on Lovable preview domains.
+  // navigator.serviceWorker calls can hang indefinitely in cross-origin iframes.
   if (isPreviewHost) {
-    await unregisterAllServiceWorkers();
     sessionStorage.removeItem('coi-cleanup-state');
     return;
   }
@@ -64,9 +63,12 @@ async function setupCrossOriginIsolation(): Promise<void> {
 
 async function bootstrap() {
   try {
-    await setupCrossOriginIsolation();
+    await Promise.race([
+      setupCrossOriginIsolation(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('COI timeout')), 3000)),
+    ]);
   } catch {
-    // continue app bootstrap even if COI setup fails
+    // Timeout or error — continue to render regardless
   }
 
   createRoot(document.getElementById('root')!).render(<App />);
