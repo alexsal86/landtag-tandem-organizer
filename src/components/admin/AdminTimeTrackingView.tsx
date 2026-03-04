@@ -888,6 +888,12 @@ export function AdminTimeTrackingView() {
                           <span>Gutschriften:</span>
                           <span>+{fmt(mb.creditMinutes)}</span>
                         </div>
+                        {mb.overtimeReductionMinutes > 0 && (
+                          <div className="flex justify-between gap-4 text-amber-600">
+                            <span>⏰ ÜA-Abbau:</span>
+                            <span>{fmt(mb.overtimeReductionMinutes)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between gap-4 font-medium border-t pt-1">
                           <span>Saldo:</span>
                           <span className={mb.balance >= 0 ? "text-green-600" : "text-destructive"}>
