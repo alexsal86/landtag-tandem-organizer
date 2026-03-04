@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import type {
-  codex/add-callback-request-cta-in-matrix-widget
   WebsiteWidgetCallbackRequest,
   ImprovementTriggerItem,
   WebsiteWidgetTestResponse,
