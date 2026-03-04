@@ -1,61 +1,43 @@
 
-Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
+Ziel: Den weiterhin weißen Preview-iframe zuverlässig beheben, auch wenn parallel ein externer Tab offen ist, ohne Matrix/Push im Direkt-Tab zu verlieren.
 
-1) Diagnose (aus Code + DB)
-- Do I know what the issue is? Ja.
-- Es gibt aktuell 2 Ebenen von Problemen:
-  1. Build ist kaputt (TypeScript):
-     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
-     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
-  2. Feed-Logik ist instabil/zu restriktiv:
-     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
-       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
-     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
-- DB-Check:
-  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
-  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
+1) Ursache robust adressieren (nicht nur `Sec-Fetch-Dest`)
+- Problem: Für die Haupt-Dokumentnavigation im eingebetteten Preview-iframe ist `Sec-Fetch-Dest` oft `document` (nicht `iframe`), daher greift die aktuelle Ausnahme im Service Worker nicht.
+- Umsetzung in `public/coi-serviceworker.js`:
+  - COOP/COEP **nicht setzen**, wenn Request ein eingebettetes Dokument ist:
+    - `request.mode === "navigate"`
+    - `request.destination === "document"` (Fallback: leer/`document`)
+    - `Sec-Fetch-Site` ist `cross-site` oder `same-site`
+  - Bestehende Ausnahme für `Sec-Fetch-Dest === "iframe"` als zusätzliche Safety behalten.
+  - Für normale Direkt-Tab-Navigation (`Sec-Fetch-Site: none`) Header weiterhin setzen, damit `SharedArrayBuffer`/Matrix E2EE erhalten bleibt.
 
-2) Umsetzungsplan (in Reihenfolge)
-A. Build sofort reparieren (Blocker)
-- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
-- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
+2) Stale-Worker sicher ablösen (Cache/Update-Problem)
+- Problem: Ein alter Worker kann weiterhin aktiv sein und den iframe blockieren, bevor neuer Code greift.
+- Umsetzung in `index.html`:
+  - Worker-Script mit Version laden, z. B. `/coi-serviceworker.js?v=2026-03-04-2`, damit Browser sicher ein Update zieht.
+  - Bestehende iframe-Guard-Logik (im iframe nicht neu registrieren, ggf. deregistrieren) beibehalten.
+  - Reload-Guard via `sessionStorage` beibehalten, damit kein Loop entsteht.
 
-B. Feed-Query stabilisieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
-  - Entweder:
-    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
-    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
-- `useTeamFeedbackFeed.ts`:
-  - Query-Key nur mit stabilen Filterwerten.
-  - Zeitfilter robust halten (kein per-render Drift).
+3) Registrierung/Reload-Logik härten
+- In `public/coi-serviceworker.js` (Client-Teil):
+  - `shouldRegister: () => !inIframe` und `doReload`-Guard im iframe beibehalten.
+  - Nur dann reloaden, wenn wirklich ein Update aktiv wurde (kein unnötiger Blank-State).
 
-C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
-- `useTeamFeedbackFeed.ts`:
-  - Notiz-Pflicht entfernen oder erweitern:
-    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
-  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
+Technische Änderungen (kompakt)
+- Datei: `public/coi-serviceworker.js`
+  - Fetch-Entscheidungslogik erweitern um „embedded document navigation“ via `mode/destination/Sec-Fetch-Site`.
+  - Bestehende iframe/client Guards beibehalten.
+- Datei: `index.html`
+  - Versionierten Worker-URL-Load ergänzen.
+  - Bestehende iframe-Deregistration + einmaliger Reload-Guard beibehalten.
 
-D. Fehler nicht mehr als „keine Daten“ maskieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `isError` + `error` aus Query auslesen.
-  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
+Akzeptanzkriterien
+- Preview in Lovable-iframe rendert wieder statt weiß.
+- Externer Direkt-Tab bleibt funktionsfähig (Matrix/Push weiterhin möglich).
+- Kein Reload-Loop im iframe.
+- Bei gleichzeitig geöffnetem externen Tab + Preview kein gegenseitiges „kaputt registrieren“ mehr.
 
-E. Quercheck auf Seiteneffekte
-- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
-
-3) Validierung nach Umsetzung
-- Build grün ohne TS-Fehler.
-- Im Tab „Meine Arbeit > Rückmeldungen“:
-  - Keine Endlos-Ladeanzeige.
-  - Team-Einträge der letzten 7/14 Tage sichtbar.
-  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
-  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
-- Schneller Datenabgleich:
-  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
-
-4) Warum das den aktuellen Zustand löst
-- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
-- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
-- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
-- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
+Kurztest nach Umsetzung
+1. Externen Tab offen lassen, Preview neu laden → Preview zeigt Login/UI.
+2. Externen Tab hard reload → App lädt normal, keine Dauer-Reloads.
+3. Optional: Prüfen `window.crossOriginIsolated` im Direkt-Tab (sollte `true` sein), im Preview-iframe `false`.
