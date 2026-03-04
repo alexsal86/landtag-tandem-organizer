@@ -139,6 +139,70 @@ export function MatrixWebsiteWidget() {
     }
   };
 
+  const retryWidgetMessage = async (messageId: string) => {
+    if (widgetSending) {
+      return;
+    }
+
+    const messageToRetry = widgetMessages.find((entry) => entry.id === messageId);
+    if (
+      !messageToRetry ||
+      messageToRetry.role !== "visitor" ||
+      messageToRetry.deliveryStatus !== "failed"
+    ) {
+      return;
+    }
+
+    setWidgetSending(true);
+    setWidgetMessages((current) =>
+      current.map((entry) =>
+        entry.id === messageId ? { ...entry, deliveryStatus: "pending" } : entry,
+      ),
+    );
+
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Request timeout")), 12000),
+      );
+
+      const invokePromise = sendWebsiteWidgetMessage(messageToRetry.text, conversationId);
+
+      const { data, error } = (await Promise.race([
+        invokePromise,
+        timeoutPromise,
+      ])) as Awaited<typeof invokePromise>;
+
+      if (error) {
+        throw new Error(error.message || "Function invocation failed");
+      }
+
+      setWidgetMessages((current) =>
+        current.map((entry) =>
+          entry.id === messageId ? { ...entry, deliveryStatus: "sent" } : entry,
+        ),
+      );
+
+      const botReply: WidgetMessage = {
+        id: crypto.randomUUID(),
+        role: "bot",
+        matrixEventId: data?.event_id,
+        text: data?.success
+          ? `✅ Nachricht erfolgreich übertragen (Room: ${data.room_id || "unbekannt"}, Event: ${data.event_id || "n/a"}).`
+          : `⚠️ ${data?.fallback_message || "Die Nachricht konnte nicht an Matrix übertragen werden."}`,
+      };
+
+      setWidgetMessages((current) => [...current, botReply]);
+    } catch {
+      setWidgetMessages((current) =>
+        current.map((entry) =>
+          entry.id === messageId ? { ...entry, deliveryStatus: "failed" } : entry,
+        ),
+      );
+    } finally {
+      setWidgetSending(false);
+    }
+  };
+
   const submitCallbackRequest = async () => {
     const trimmedForm = {
       name: callbackForm.name.trim(),
@@ -314,25 +378,18 @@ export function MatrixWebsiteWidget() {
                         {message.text}
                       </div>
                       {message.role === "visitor" &&
-                        message.deliveryStatus &&
-                        message.deliveryStatus !== "sent" && (
-                          <div
-                            className="mt-1 flex justify-end"
-                            aria-live="polite"
-                          >
-                            {message.deliveryStatus === "pending" ? (
-                              <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                                <LoaderCircle
-                                  className="h-3 w-3 animate-spin"
-                                  aria-hidden="true"
-                                />
-                                Wird gesendet…
-                              </p>
-                            ) : (
-                              <p className="text-xs text-destructive">
-                                Nicht gesendet
-                              </p>
-                            )}
+                        message.deliveryStatus === "failed" && (
+                          <div className="mt-1 flex items-center justify-end gap-2 text-xs">
+                            <span className="text-destructive">Nicht gesendet</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => retryWidgetMessage(message.id)}
+                              disabled={widgetSending || message.deliveryStatus === "pending"}
+                            >
+                              Erneut senden
+                            </Button>
                           </div>
                         )}
                     </div>
