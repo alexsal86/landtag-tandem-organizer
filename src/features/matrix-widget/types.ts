@@ -2,6 +2,7 @@ export interface WidgetMessage {
   id: string;
   role: "bot" | "team" | "visitor";
   text: string;
+  deliveryStatus?: "pending" | "sent" | "failed";
   matrixEventId?: string | null;
   feedbackGiven?: boolean;
 }

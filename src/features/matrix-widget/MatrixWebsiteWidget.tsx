@@ -55,6 +55,7 @@ export function MatrixWebsiteWidget() {
       id: crypto.randomUUID(),
       role: "visitor",
       text: trimmed,
+      deliveryStatus: "pending",
     };
 
     setWidgetMessages((current) => [...current, userEntry]);
@@ -77,6 +78,14 @@ export function MatrixWebsiteWidget() {
         throw new Error(error.message || "Function invocation failed");
       }
 
+      setWidgetMessages((current) =>
+        current.map((entry) =>
+          entry.id === userEntry.id
+            ? { ...entry, deliveryStatus: "sent" }
+            : entry,
+        ),
+      );
+
       const botReply: WidgetMessage = {
         id: crypto.randomUUID(),
         role: "bot",
@@ -87,20 +96,14 @@ export function MatrixWebsiteWidget() {
       };
 
       setWidgetMessages((current) => [...current, botReply]);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error && error.message === "Request timeout"
-          ? "Zeitüberschreitung: Die Matrix-Übertragung hat zu lange gedauert."
-          : "Übertragung fehlgeschlagen. Bitte später erneut versuchen.";
-
-      setWidgetMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          role: "bot",
-          text: `⚠️ ${errorMessage}`,
-        },
-      ]);
+    } catch {
+      setWidgetMessages((current) =>
+        current.map((entry) =>
+          entry.id === userEntry.id
+            ? { ...entry, deliveryStatus: "failed" }
+            : entry,
+        ),
+      );
     } finally {
       setWidgetSending(false);
     }
@@ -259,14 +262,22 @@ export function MatrixWebsiteWidget() {
                   <div
                     className={`flex ${message.role === "visitor" ? "justify-end" : "justify-start"}`}
                   >
-                    <div
-                      className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                        message.role === "visitor"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-foreground"
-                      }`}
-                    >
-                      {message.text}
+                    <div className="max-w-[85%]">
+                      <div
+                        className={`rounded-lg px-3 py-2 text-sm ${
+                          message.role === "visitor"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground"
+                        }`}
+                      >
+                        {message.text}
+                      </div>
+                      {message.role === "visitor" &&
+                        message.deliveryStatus === "failed" && (
+                          <p className="mt-1 text-right text-xs text-destructive">
+                            Nicht gesendet
+                          </p>
+                        )}
                     </div>
                   </div>
                   {message.role !== "visitor" && message.id !== "welcome" && (
