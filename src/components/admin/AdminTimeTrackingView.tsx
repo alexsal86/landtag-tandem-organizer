@@ -1652,6 +1652,49 @@ export function AdminTimeTrackingView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Initial balance (Anfangsbestand) dialog */}
+      <Dialog open={initialBalanceDialogOpen} onOpenChange={setInitialBalanceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anfangsbestand {getYear(currentMonth)}</DialogTitle>
+            <DialogDescription>
+              Übertrag des Überstundensaldos aus dem Vorjahr ({getYear(currentMonth) - 1}) für {selectedEmployee?.display_name}. 
+              Wird als Korrektur zum 01.01.{getYear(currentMonth)} gespeichert.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Übertrag (in Minuten)</Label>
+              <Input
+                type="number"
+                value={initialBalanceMinutes}
+                onChange={e => setInitialBalanceMinutes(e.target.value)}
+                placeholder="z.B. 480 für +8 Stunden"
+              />
+              <p className="text-xs text-muted-foreground">
+                Positiv = Überstunden aus Vorjahr, Negativ = Minusstunden aus Vorjahr.
+                {initialBalanceMinutes && !isNaN(parseInt(initialBalanceMinutes)) && (
+                  <> Entspricht: <strong>{fmt(parseInt(initialBalanceMinutes))}</strong></>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInitialBalanceDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button 
+              onClick={handleAddInitialBalance}
+              disabled={!initialBalanceMinutes || isNaN(parseInt(initialBalanceMinutes))}
+            >
+              Anfangsbestand speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
