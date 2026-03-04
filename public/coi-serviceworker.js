@@ -23,14 +23,19 @@ if (typeof window === 'undefined') {
     const r = e.request;
     if (r.cache === "only-if-cached" && r.mode !== "same-origin") return;
 
-    // Detect embedded context — skip COOP/COEP to allow iframe embedding
+    // ── Determine if we should skip COOP/COEP isolation ──
+
+    // 1) Explicit iframe sub-resource
     const isIframeNavigation = r.headers.get("Sec-Fetch-Dest") === "iframe";
 
-    // Detect embedded document navigation (iframe main doc loads as "document", not "iframe")
+    // 2) Embedded document navigation (iframe loads main doc as "document")
     const secFetchSite = r.headers.get("Sec-Fetch-Site");
     const isEmbeddedDocNav = r.mode === "navigate"
       && (r.destination === "document" || r.destination === "")
-      && (secFetchSite === "cross-site" || secFetchSite === "same-site" || secFetchSite === "same-origin");
+      && secFetchSite !== null
+      && secFetchSite !== "none";
+    // secFetchSite === "none" means genuine top-level user navigation (standalone tab)
+    // anything else (cross-site, same-site, same-origin) means embedded or linked navigation
 
     const skipIsolation = isIframeNavigation || isEmbeddedDocNav;
 
