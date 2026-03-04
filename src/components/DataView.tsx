@@ -20,6 +20,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import districtResults2021 from "@/data/ltw2021DistrictResults.json";
 
 interface PartyInput {
@@ -48,6 +49,13 @@ interface WidgetMessage {
   id: string;
   role: "bot" | "visitor";
   text: string;
+}
+
+interface WebsiteWidgetTestResponse {
+  success: boolean;
+  event_id: string | null;
+  room_id: string | null;
+  fallback_message: string;
 }
 
 const MIN_SEATS = 120;
@@ -172,6 +180,7 @@ export function DataView() {
   });
   const [widgetOpen, setWidgetOpen] = useState(false);
   const [visitorMessage, setVisitorMessage] = useState("");
+  const [widgetSending, setWidgetSending] = useState(false);
   const [widgetMessages, setWidgetMessages] = useState<WidgetMessage[]>([
     {
       id: "welcome",
@@ -269,9 +278,9 @@ export function DataView() {
     }));
   };
 
-  const sendWidgetMessage = () => {
+  const sendWidgetMessage = async () => {
     const trimmed = visitorMessage.trim();
-    if (!trimmed) return;
+    if (!trimmed || widgetSending) return;
 
     const userEntry: WidgetMessage = {
       id: crypto.randomUUID(),
@@ -279,14 +288,61 @@ export function DataView() {
       text: trimmed,
     };
 
-    const botReply: WidgetMessage = {
-      id: crypto.randomUUID(),
-      role: "bot",
-      text: "Danke für den Test! Im nächsten Schritt wird diese Nachricht per Matrix-Bridge an einen dedizierten Anfrage-Raum weitergeleitet.",
-    };
-
-    setWidgetMessages((current) => [...current, userEntry, botReply]);
+    setWidgetMessages((current) => [...current, userEntry]);
     setVisitorMessage("");
+    setWidgetSending(true);
+
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Request timeout")), 12000),
+      );
+
+      const invokePromise = supabase.functions.invoke<WebsiteWidgetTestResponse>(
+        "matrix-bot-handler",
+        {
+          body: {
+            type: "website_widget_test",
+            message: trimmed,
+            source: "data_view_widget",
+          },
+        },
+      );
+
+      const { data, error } = (await Promise.race([
+        invokePromise,
+        timeoutPromise,
+      ])) as Awaited<typeof invokePromise>;
+
+      if (error) {
+        throw new Error(error.message || "Function invocation failed");
+      }
+
+      const botReply: WidgetMessage = {
+        id: crypto.randomUUID(),
+        role: "bot",
+        text: data?.success
+          ? `✅ Nachricht erfolgreich übertragen (Room: ${data.room_id || "unbekannt"}, Event: ${data.event_id || "n/a"}).`
+          : `⚠️ ${data?.fallback_message || "Die Nachricht konnte nicht an Matrix übertragen werden."}`,
+      };
+
+      setWidgetMessages((current) => [...current, botReply]);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error && error.message === "Request timeout"
+          ? "Zeitüberschreitung: Die Matrix-Übertragung hat zu lange gedauert."
+          : "Übertragung fehlgeschlagen. Bitte später erneut versuchen.";
+
+      setWidgetMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "bot",
+          text: `⚠️ ${errorMessage}`,
+        },
+      ]);
+    } finally {
+      setWidgetSending(false);
+    }
   };
 
   return (
@@ -514,6 +570,7 @@ export function DataView() {
                     value={visitorMessage}
                     onChange={(event) => setVisitorMessage(event.target.value)}
                     placeholder="Nachricht für den Prototyp …"
+                    disabled={widgetSending}
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
                         event.preventDefault();
@@ -525,6 +582,7 @@ export function DataView() {
                     size="icon"
                     onClick={sendWidgetMessage}
                     aria-label="Nachricht senden"
+                    disabled={widgetSending}
                   >
                     <Send className="h-4 w-4" />
                   </Button>
