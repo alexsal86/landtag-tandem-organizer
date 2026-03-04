@@ -1,61 +1,55 @@
 
-Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-1) Diagnose (aus Code + DB)
-- Do I know what the issue is? Ja.
-- Es gibt aktuell 2 Ebenen von Problemen:
-  1. Build ist kaputt (TypeScript):
-     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
-     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
-  2. Feed-Logik ist instabil/zu restriktiv:
-     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
-       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
-     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
-- DB-Check:
-  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
-  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
+## Problem: Weißer Bildschirm im Preview-iframe
 
-2) Umsetzungsplan (in Reihenfolge)
-A. Build sofort reparieren (Blocker)
-- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
-- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
+### Ursache (3 Quellen von COOP/COEP)
 
-B. Feed-Query stabilisieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
-  - Entweder:
-    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
-    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
-- `useTeamFeedbackFeed.ts`:
-  - Query-Key nur mit stabilen Filterwerten.
-  - Zeitfilter robust halten (kein per-render Drift).
+1. **`vite.config.ts` Zeile 19-23**: Der Dev-Server setzt `Cross-Origin-Opener-Policy: same-origin` und `Cross-Origin-Embedder-Policy: credentialless` als Server-Header auf ALLE Responses. Diese Header verhindern die Einbettung im Lovable Preview-iframe.
 
-C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
-- `useTeamFeedbackFeed.ts`:
-  - Notiz-Pflicht entfernen oder erweitern:
-    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
-  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
+2. **`coi-serviceworker.js`**: Selbst wenn `shouldRegister()` jetzt `false` liefert, bleibt ein zuvor registrierter Service Worker aktiv und injiziert COOP/COEP-Header in alle Fetch-Responses. `shouldDeregister()` löst einen Reload-Loop aus.
 
-D. Fehler nicht mehr als „keine Daten“ maskieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `isError` + `error` aus Query auslesen.
-  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
+3. **`index.html` Zeile 9 (CSP Meta-Tag)**: `frame-ancestors` in einem `<meta>` CSP-Tag wird von Browsern **ignoriert** — das ist kein Problem, aber auch kein Schutz. (Nur informativ, nicht ursächlich.)
 
-E. Quercheck auf Seiteneffekte
-- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
+### Warum die bisherige Lösung nicht half
+Die `window.coi`-Konfiguration wurde hinzugefügt, aber:
+- Der Service Worker war **bereits registriert** beim User und läuft persistent weiter
+- `vite.config.ts` setzt COOP/COEP **unabhängig** vom Service Worker auf Server-Ebene
+- Beides zusammen blockiert das iframe-Rendering
 
-3) Validierung nach Umsetzung
-- Build grün ohne TS-Fehler.
-- Im Tab „Meine Arbeit > Rückmeldungen“:
-  - Keine Endlos-Ladeanzeige.
-  - Team-Einträge der letzten 7/14 Tage sichtbar.
-  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
-  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
-- Schneller Datenabgleich:
-  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
+### Lösung
 
-4) Warum das den aktuellen Zustand löst
-- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
-- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
-- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
-- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
+#### 1. `vite.config.ts` — COOP/COEP-Header entfernen
+Die Server-Level-Header `Cross-Origin-Opener-Policy` und `Cross-Origin-Embedder-Policy` aus der `server.headers`-Konfiguration entfernen. Der Service Worker übernimmt das bei Bedarf (nur auf `/chat`).
+
+#### 2. `index.html` — Service Worker aggressiver deregistrieren
+Das `window.coi`-Script erweitern: Wenn im iframe und nicht auf `/chat`, sofort ALLE registrierten Service Worker deregistrieren (nicht nur per Message, sondern direkt via `getRegistrations()`) und hart neu laden. Das räumt den alten persistenten Worker auf.
+
+```text
+Ablauf:
+┌──────────────────────────────────────────────┐
+│ Seite lädt im iframe (nicht /chat)           │
+│  → Prüfe: Gibt es registrierte SW?          │
+│    → Ja: Deregistriere alle, reload          │
+│    → Nein: Normal weiter (kein COOP/COEP)    │
+│                                              │
+│ Seite lädt NICHT im iframe ODER auf /chat    │
+│  → coi-serviceworker.js registrieren         │
+│  → COOP/COEP aktiv für SharedArrayBuffer     │
+└──────────────────────────────────────────────┘
+```
+
+#### 3. Push-Benachrichtigungen — weiterhin funktionsfähig
+Push-Handler sind im `coi-serviceworker.js` integriert. Da der Worker nur im iframe deregistriert wird (Preview-Umgebung), bleibt er im produktiven Einsatz (direkt im Browser) aktiv. Push-Benachrichtigungen funktionieren nur außerhalb des Lovable-Previews — das ist erwartetes Verhalten, da Push ohnehin nur im deployten/direkten Zugriff relevant ist.
+
+Alternativ: Die Push-Handler in einen separaten, schlanken Service Worker auslagern (ohne COOP/COEP), der immer registriert bleibt. Das wäre ein Follow-up.
+
+### Dateien
+
+| Datei | Änderung |
+|---|---|
+| `vite.config.ts` | COOP/COEP-Header aus `server.headers` entfernen |
+| `index.html` | Aggressives SW-Cleanup-Script vor `coi-serviceworker.js` |
+
+### Zu den Benachrichtigungen
+Push-Benachrichtigungen im Browser funktionieren weiterhin, wenn die App **direkt** aufgerufen wird (nicht im Lovable-Preview). Im Preview-iframe waren sie ohnehin nicht nutzbar. Die bestehende Architektur (VAPID + `coi-serviceworker.js` mit Push-Handlern) bleibt unverändert.
+
