@@ -1,10 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MessageCircle, Send, X } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import districtResults2021 from "@/data/ltw2021DistrictResults.json";
 
 interface PartyInput {
@@ -29,9 +44,22 @@ interface SeatResult extends PartyInput {
   listSeats: number;
 }
 
+interface WidgetMessage {
+  id: string;
+  role: "bot" | "visitor";
+  text: string;
+}
+
 const MIN_SEATS = 120;
 const THRESHOLD = 5;
-const CANDIDATE_PARTIES = ["GRÜNE", "CDU", "SPD", "FDP", "AfD", "Linke"] as const;
+const CANDIDATE_PARTIES = [
+  "GRÜNE",
+  "CDU",
+  "SPD",
+  "FDP",
+  "AfD",
+  "Linke",
+] as const;
 type CandidateParty = (typeof CANDIDATE_PARTIES)[number];
 type AssignmentMap = Record<string, Record<CandidateParty, string>>;
 
@@ -40,16 +68,36 @@ const STORAGE_KEY = "bw2026-candidate-assignments";
 const initialParties: PartyInput[] = [
   { id: "cdu", name: "CDU", color: "#111827", poll: 29, directMandates: 12 },
   { id: "spd", name: "SPD", color: "#dc2626", poll: 10, directMandates: 0 },
-  { id: "gruene", name: "Grüne", color: "#16a34a", poll: 21, directMandates: 58 },
+  {
+    id: "gruene",
+    name: "Grüne",
+    color: "#16a34a",
+    poll: 21,
+    directMandates: 58,
+  },
   { id: "fdp", name: "FDP", color: "#f59e0b", poll: 5, directMandates: 0 },
   { id: "linke", name: "Linke", color: "#9333ea", poll: 7, directMandates: 0 },
   { id: "afd", name: "AfD", color: "#2563eb", poll: 20, directMandates: 0 },
   { id: "bsw", name: "BSW", color: "#7c3aed", poll: 3, directMandates: 0 },
-  { id: "sonstige", name: "Sonstige (aggregiert)", color: "#6b7280", poll: 5, directMandates: 0, aggregated: true },
+  {
+    id: "sonstige",
+    name: "Sonstige (aggregiert)",
+    color: "#6b7280",
+    poll: 5,
+    directMandates: 0,
+    aggregated: true,
+  },
 ];
 
-const allocateSainteLague = (parties: PartyInput[], seats: number): Record<string, number> => {
-  const scores = parties.map((party) => ({ id: party.id, votes: party.poll, seats: 0 }));
+const allocateSainteLague = (
+  parties: PartyInput[],
+  seats: number,
+): Record<string, number> => {
+  const scores = parties.map((party) => ({
+    id: party.id,
+    votes: party.poll,
+    seats: 0,
+  }));
 
   for (let i = 0; i < seats; i += 1) {
     let bestIndex = 0;
@@ -70,12 +118,14 @@ const allocateSainteLague = (parties: PartyInput[], seats: number): Record<strin
   return Object.fromEntries(scores.map((entry) => [entry.id, entry.seats]));
 };
 
-const buildDefaultAssignments = (districts: DistrictResult2021[]): AssignmentMap => {
+const buildDefaultAssignments = (
+  districts: DistrictResult2021[],
+): AssignmentMap => {
   const assignments: AssignmentMap = {};
 
   districts.forEach((district) => {
     const row: Record<CandidateParty, string> = {
-      "GRÜNE": "",
+      GRÜNE: "",
       CDU: "",
       SPD: "",
       FDP: "",
@@ -95,10 +145,18 @@ const buildDefaultAssignments = (districts: DistrictResult2021[]): AssignmentMap
 
 export function DataView() {
   const [parties, setParties] = useState<PartyInput[]>(initialParties);
-  const districtData = useMemo(() => (districtResults2021 as DistrictResult2021[]).slice().sort((a, b) => a.districtNumber - b.districtNumber), []);
+  const districtData = useMemo(
+    () =>
+      (districtResults2021 as DistrictResult2021[])
+        .slice()
+        .sort((a, b) => a.districtNumber - b.districtNumber),
+    [],
+  );
 
   const [assignments, setAssignments] = useState<AssignmentMap>(() => {
-    const fallback = buildDefaultAssignments(districtResults2021 as DistrictResult2021[]);
+    const fallback = buildDefaultAssignments(
+      districtResults2021 as DistrictResult2021[],
+    );
     const saved = localStorage.getItem(STORAGE_KEY);
 
     if (!saved) {
@@ -112,6 +170,15 @@ export function DataView() {
       return fallback;
     }
   });
+  const [widgetOpen, setWidgetOpen] = useState(false);
+  const [visitorMessage, setVisitorMessage] = useState("");
+  const [widgetMessages, setWidgetMessages] = useState<WidgetMessage[]>([
+    {
+      id: "welcome",
+      role: "bot",
+      text: "Hallo! Ich bin der Matrix-Widget-Prototyp. Stelle mir testweise eine Frage oder fordere einen Rückruf an.",
+    },
+  ]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(assignments));
@@ -127,26 +194,37 @@ export function DataView() {
   }, [districtData]);
 
   const result = useMemo(() => {
-    const eligibleParties = parties.filter((party) => !party.aggregated && party.poll >= THRESHOLD);
+    const eligibleParties = parties.filter(
+      (party) => !party.aggregated && party.poll >= THRESHOLD,
+    );
 
     if (eligibleParties.length === 0) {
       return {
         parliamentSize: MIN_SEATS,
-        rows: parties.map<SeatResult>((party) => ({ ...party, eligible: false, proportionalSeats: 0, listSeats: 0 })),
+        rows: parties.map<SeatResult>((party) => ({
+          ...party,
+          eligible: false,
+          proportionalSeats: 0,
+          listSeats: 0,
+        })),
       };
     }
 
     let parliamentSize = MIN_SEATS;
     let seatsByParty = allocateSainteLague(eligibleParties, parliamentSize);
 
-    while (eligibleParties.some((party) => party.directMandates > (seatsByParty[party.id] ?? 0))) {
+    while (
+      eligibleParties.some(
+        (party) => party.directMandates > (seatsByParty[party.id] ?? 0),
+      )
+    ) {
       parliamentSize += 1;
       seatsByParty = allocateSainteLague(eligibleParties, parliamentSize);
     }
 
     const rows = parties.map<SeatResult>((party) => {
       const eligible = !party.aggregated && party.poll >= THRESHOLD;
-      const proportionalSeats = eligible ? seatsByParty[party.id] ?? 0 : 0;
+      const proportionalSeats = eligible ? (seatsByParty[party.id] ?? 0) : 0;
 
       return {
         ...party,
@@ -160,36 +238,82 @@ export function DataView() {
   }, [parties]);
 
   const updateParty = (id: string, key: keyof PartyInput, value: number) => {
-    setParties((current) => current.map((party) => (party.id === id ? { ...party, [key]: Number.isFinite(value) ? Math.max(0, value) : 0 } : party)));
+    setParties((current) =>
+      current.map((party) =>
+        party.id === id
+          ? { ...party, [key]: Number.isFinite(value) ? Math.max(0, value) : 0 }
+          : party,
+      ),
+    );
   };
 
-  const updateAssignment = (districtNumber: number, party: CandidateParty, value: string) => {
+  const updateAssignment = (
+    districtNumber: number,
+    party: CandidateParty,
+    value: string,
+  ) => {
     const districtKey = String(districtNumber);
     setAssignments((current) => ({
       ...current,
       [districtKey]: {
-        ...(current[districtKey] ?? { "GRÜNE": "", CDU: "", SPD: "", FDP: "", AfD: "", Linke: "" }),
+        ...(current[districtKey] ?? {
+          GRÜNE: "",
+          CDU: "",
+          SPD: "",
+          FDP: "",
+          AfD: "",
+          Linke: "",
+        }),
         [party]: value,
       },
     }));
+  };
+
+  const sendWidgetMessage = () => {
+    const trimmed = visitorMessage.trim();
+    if (!trimmed) return;
+
+    const userEntry: WidgetMessage = {
+      id: crypto.randomUUID(),
+      role: "visitor",
+      text: trimmed,
+    };
+
+    const botReply: WidgetMessage = {
+      id: crypto.randomUUID(),
+      role: "bot",
+      text: "Danke für den Test! Im nächsten Schritt wird diese Nachricht per Matrix-Bridge an einen dedizierten Anfrage-Raum weitergeleitet.",
+    };
+
+    setWidgetMessages((current) => [...current, userEntry, botReply]);
+    setVisitorMessage("");
   };
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Daten: Mandaterechner Landtagswahl Baden-Württemberg 2026</CardTitle>
-          <CardDescription>Modell mit 120 Mindestsitzen, 5%-Hürde und Ausgleich über Sainte-Laguë/Schepers.</CardDescription>
+          <CardTitle>
+            Daten: Mandaterechner Landtagswahl Baden-Württemberg 2026
+          </CardTitle>
+          <CardDescription>
+            Modell mit 120 Mindestsitzen, 5%-Hürde und Ausgleich über
+            Sainte-Laguë/Schepers.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
           <p>
-            Startwerte Umfrage: CDU 29, SPD 10, Grüne 21, FDP 5, Linke 7, AfD 20, BSW 3, Sonstige 5.
-            Die 5% „Sonstige" sind aggregiert und werden nicht als einzelne listefähige Partei verteilt.
+            Startwerte Umfrage: CDU 29, SPD 10, Grüne 21, FDP 5, Linke 7, AfD
+            20, BSW 3, Sonstige 5. Die 5% „Sonstige" sind aggregiert und werden
+            nicht als einzelne listefähige Partei verteilt.
           </p>
           <p>
-            Startwerte Direktmandate basieren auf 2021 (Grüne 58, CDU 12), um einen realistisch vergrößerten Landtag zu simulieren.
+            Startwerte Direktmandate basieren auf 2021 (Grüne 58, CDU 12), um
+            einen realistisch vergrößerten Landtag zu simulieren.
           </p>
-          <Badge variant="secondary">Aktuelle simulierte Parlamentsgröße: {result.parliamentSize} Sitze</Badge>
+          <Badge variant="secondary">
+            Aktuelle simulierte Parlamentsgröße: {result.parliamentSize} Sitze
+          </Badge>
         </CardContent>
       </Card>
 
@@ -197,7 +321,8 @@ export function DataView() {
         <CardHeader>
           <CardTitle>Wahlkreisstatistik 2021 (70 Wahlkreise)</CardTitle>
           <CardDescription>
-            Eingepflegt aus dem im Projekt verfügbaren 2021er Wahlkreis-Datensatz als Statistikgrundlage je Wahlkreis.
+            Eingepflegt aus dem im Projekt verfügbaren 2021er
+            Wahlkreis-Datensatz als Statistikgrundlage je Wahlkreis.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -209,7 +334,8 @@ export function DataView() {
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Hinweis: In dieser Ansicht werden die Direktmandat-Gewinner je Wahlkreis statistisch aggregiert.
+            Hinweis: In dieser Ansicht werden die Direktmandat-Gewinner je
+            Wahlkreis statistisch aggregiert.
           </p>
         </CardContent>
       </Card>
@@ -217,22 +343,52 @@ export function DataView() {
       <Card>
         <CardHeader>
           <CardTitle>Eingaben Mandaterechner</CardTitle>
-          <CardDescription>Umfragewerte (%) und Direktmandate je Partei anpassen.</CardDescription>
+          <CardDescription>
+            Umfragewerte (%) und Direktmandate je Partei anpassen.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {parties.map((party) => (
-            <div key={party.id} className="grid grid-cols-1 md:grid-cols-[1fr_180px_180px] gap-3 items-end">
+            <div
+              key={party.id}
+              className="grid grid-cols-1 md:grid-cols-[1fr_180px_180px] gap-3 items-end"
+            >
               <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: party.color }} />
+                <span
+                  className="h-3 w-3 rounded-full"
+                  style={{ backgroundColor: party.color }}
+                />
                 <span className="font-medium">{party.name}</span>
               </div>
               <div>
                 <Label htmlFor={`${party.id}-poll`}>Umfrage in %</Label>
-                <Input id={`${party.id}-poll`} type="number" min={0} step={0.1} value={party.poll} onChange={(event) => updateParty(party.id, "poll", Number(event.target.value))} />
+                <Input
+                  id={`${party.id}-poll`}
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={party.poll}
+                  onChange={(event) =>
+                    updateParty(party.id, "poll", Number(event.target.value))
+                  }
+                />
               </div>
               <div>
                 <Label htmlFor={`${party.id}-direct`}>Direktmandate</Label>
-                <Input id={`${party.id}-direct`} type="number" min={0} step={1} value={party.directMandates} onChange={(event) => updateParty(party.id, "directMandates", Number(event.target.value))} />
+                <Input
+                  id={`${party.id}-direct`}
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={party.directMandates}
+                  onChange={(event) =>
+                    updateParty(
+                      party.id,
+                      "directMandates",
+                      Number(event.target.value),
+                    )
+                  }
+                />
               </div>
             </div>
           ))}
@@ -258,27 +414,135 @@ export function DataView() {
               {result.rows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{row.name}</TableCell>
-                  <TableCell className="text-right">{row.poll.toFixed(1)}%</TableCell>
-                  <TableCell className="text-right">{row.directMandates}</TableCell>
-                  <TableCell className="text-right">{row.eligible ? row.proportionalSeats : "–"}</TableCell>
-                  <TableCell className="text-right">{row.eligible ? row.listSeats : "–"}</TableCell>
+                  <TableCell className="text-right">
+                    {row.poll.toFixed(1)}%
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.directMandates}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.eligible ? row.proportionalSeats : "–"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.eligible ? row.listSeats : "–"}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
           <Separator className="my-4" />
           <p className="text-sm text-muted-foreground">
-            Rechenlogik: Parteien unter 5% (und aggregierte „Sonstige") erhalten keine proportionalen Sitze. Die Gesamtgröße wird ab 120 so lange erhöht,
-            bis keine Partei mehr Direktmandate über ihrem proportionalen Sitzanspruch hat.
+            Rechenlogik: Parteien unter 5% (und aggregierte „Sonstige") erhalten
+            keine proportionalen Sitze. Die Gesamtgröße wird ab 120 so lange
+            erhöht, bis keine Partei mehr Direktmandate über ihrem
+            proportionalen Sitzanspruch hat.
           </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Wahlkreiskandidaten 2026 (Zuordnung je Wahlkreis)</CardTitle>
+          <CardTitle>Matrix Chat-Widget (interner Prototyp)</CardTitle>
           <CardDescription>
-            Hier kannst du für GRÜNE, CDU, SPD, FDP, AfD und Linke die Kandidat:innen pro Wahlkreis pflegen.
+            Inspiration: Chatterbox/Element-Ansatz, aber zunächst als internes
+            In-App-Widget auf der Seite "Daten" für fachliche Prüfung.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Dieses Widget simuliert bereits das UI-Verhalten für Variante B
+            (schneller Einstieg, Chatverlauf, Antwortfluss). Die produktive
+            Matrix-Anbindung erfolgt im nächsten Schritt über eine
+            Edge-Function-Bridge.
+          </p>
+          <div className="rounded-md border bg-muted/20 p-3 flex items-center justify-between">
+            <div>
+              <p className="font-medium">Status</p>
+              <p className="text-xs text-muted-foreground">
+                Nur intern sichtbar · Noch ohne externes Website-Embed
+              </p>
+            </div>
+            <Badge variant="secondary">Prototype</Badge>
+          </div>
+
+          <div className="relative min-h-[280px] rounded-md border bg-background p-3">
+            {!widgetOpen ? (
+              <Button
+                className="absolute bottom-3 right-3 gap-2"
+                onClick={() => setWidgetOpen(true)}
+              >
+                <MessageCircle className="h-4 w-4" />
+                Chat öffnen
+              </Button>
+            ) : (
+              <div className="absolute bottom-3 right-3 w-full max-w-sm rounded-xl border bg-background shadow-lg">
+                <div className="flex items-center justify-between border-b px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium">Bürgerdialog (Test)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Matrix-Widget Vorschau
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setWidgetOpen(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="max-h-72 space-y-2 overflow-y-auto p-3">
+                  {widgetMessages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.role === "visitor" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                          message.role === "visitor"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground"
+                        }`}
+                      >
+                        {message.text}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2 border-t p-3">
+                  <Input
+                    value={visitorMessage}
+                    onChange={(event) => setVisitorMessage(event.target.value)}
+                    placeholder="Nachricht für den Prototyp …"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        sendWidgetMessage();
+                      }
+                    }}
+                  />
+                  <Button
+                    size="icon"
+                    onClick={sendWidgetMessage}
+                    aria-label="Nachricht senden"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Wahlkreiskandidaten 2026 (Zuordnung je Wahlkreis)
+          </CardTitle>
+          <CardDescription>
+            Hier kannst du für GRÜNE, CDU, SPD, FDP, AfD und Linke die
+            Kandidat:innen pro Wahlkreis pflegen.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -288,7 +552,9 @@ export function DataView() {
                 <TableRow>
                   <TableHead className="min-w-[180px]">Wahlkreis</TableHead>
                   {CANDIDATE_PARTIES.map((party) => (
-                    <TableHead key={party} className="min-w-[170px]">{party}</TableHead>
+                    <TableHead key={party} className="min-w-[170px]">
+                      {party}
+                    </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
@@ -302,8 +568,18 @@ export function DataView() {
                       <TableCell key={party}>
                         <Input
                           placeholder="Kandidat:in 2026"
-                          value={assignments[String(district.districtNumber)]?.[party] ?? ""}
-                          onChange={(event) => updateAssignment(district.districtNumber, party, event.target.value)}
+                          value={
+                            assignments[String(district.districtNumber)]?.[
+                              party
+                            ] ?? ""
+                          }
+                          onChange={(event) =>
+                            updateAssignment(
+                              district.districtNumber,
+                              party,
+                              event.target.value,
+                            )
+                          }
                         />
                       </TableCell>
                     ))}
@@ -313,7 +589,9 @@ export function DataView() {
             </Table>
           </div>
           <p className="text-xs text-muted-foreground mt-3">
-            Standardmäßig sind die Gewinnernamen 2021 in der jeweiligen Gewinnerpartei vorbelegt; alle Felder lassen sich überschreiben und werden lokal im Browser gespeichert.
+            Standardmäßig sind die Gewinnernamen 2021 in der jeweiligen
+            Gewinnerpartei vorbelegt; alle Felder lassen sich überschreiben und
+            werden lokal im Browser gespeichert.
           </p>
         </CardContent>
       </Card>
