@@ -1,4 +1,5 @@
-import { ReactNode, Suspense, lazy, useEffect, useState } from "react";
+import { ReactNode, Suspense, useEffect, useState } from "react";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
