@@ -108,10 +108,27 @@ Mit dieser einfachen Regelmatrix startet ihr ohne KI-Overhead.
 - Datenschutzhinweis im Widget (Zweck, Speicherdauer, Kontakt).
 - Einwilligung für Verarbeitung personenbezogener Daten im Chat.
 - PII-Minimierung (z. B. keine sensiblen Daten aktiv abfragen).
-- Löschkonzept:
-  - z. B. Rohchats nach X Monaten anonymisieren,
-  - strukturierte Vorgänge nach interner Aufbewahrungsfrist.
 - Rollen/Rechte im Organizer (nur berechtigte Mitarbeitende sehen Konversationen).
+
+### Datenschutz für Matrix-Widget-Logging
+
+- `matrix_bot_logs.metadata` darf nur betriebsnotwendige Metadaten enthalten:
+  - `conversation_id`, `source`, technische Statuswerte (`status_code`, `event_id`, `task_id`),
+  - optional maskierte Hilfswerte zur Fehlersuche (z. B. maskierte IP/Session).
+- Personenbezogene Rückrufdetails (`Name`, `Telefon`, `Wunschzeit`, `Anliegen`) werden ausschließlich in
+  `matrix_widget_callback_requests` gespeichert. Diese Tabelle bleibt über RLS strikt auf berechtigte Rollen (z. B. Admins) begrenzt.
+- In Logs dürfen Namen/Telefonnummern nur maskiert auftauchen, nie im Klartext.
+
+### Lösch- und Retention-Konzept
+
+- **`matrix_bot_logs` (technische Logs):**
+  - Aufbewahrung: 30 Tage.
+  - Danach tägliche Löschung aller Datensätze mit `created_at < now() - interval '30 days'`.
+  - Zweck: Betriebsüberwachung, Fehleranalyse, Abuse-/Rate-Limit-Nachvollziehbarkeit.
+- **`matrix_widget_callback_requests` (Fachdaten):**
+  - Aufbewahrung gemäß Fachprozess/aktenrechtlicher Frist (z. B. 180 Tage oder bis Task-Abschluss + definierter Nachlauf).
+  - Zugriff nur für ausdrücklich berechtigte Rollen.
+- **Betrieblich umzusetzen als Scheduled Job** (z. B. täglicher Supabase-Cron-Job), der die Log-Retention automatisiert durchsetzt und revisionssicher dokumentiert.
 
 ## Technischer Stack (empfohlen)
 
