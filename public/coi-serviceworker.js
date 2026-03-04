@@ -23,8 +23,16 @@ if (typeof window === 'undefined') {
     const r = e.request;
     if (r.cache === "only-if-cached" && r.mode !== "same-origin") return;
 
-    // Detect iframe navigation — skip COOP/COEP to allow embedding
+    // Detect embedded context — skip COOP/COEP to allow iframe embedding
     const isIframeNavigation = r.headers.get("Sec-Fetch-Dest") === "iframe";
+
+    // Detect embedded document navigation (iframe main doc loads as "document", not "iframe")
+    const secFetchSite = r.headers.get("Sec-Fetch-Site");
+    const isEmbeddedDocNav = r.mode === "navigate"
+      && (r.destination === "document" || r.destination === "")
+      && (secFetchSite === "cross-site" || secFetchSite === "same-site" || secFetchSite === "same-origin");
+
+    const skipIsolation = isIframeNavigation || isEmbeddedDocNav;
 
     const s = coepCredentialless && r.mode === "no-cors"
       ? new Request(r, { credentials: "omit" })
@@ -36,7 +44,7 @@ if (typeof window === 'undefined') {
 
         const headers = new Headers(response.headers);
 
-        if (!isIframeNavigation) {
+        if (!skipIsolation) {
           headers.set("Cross-Origin-Embedder-Policy",
             coepCredentialless ? "credentialless" : "require-corp");
           if (!coepCredentialless) {
