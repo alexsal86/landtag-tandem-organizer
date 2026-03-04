@@ -54,7 +54,7 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
     try {
       const { data, error } = await supabase
         .from('user_mywork_settings')
-        .select('badge_display_mode, decision_tabs_order, decision_tabs_hidden')
+        .select('badge_display_mode')
         .eq('user_id', user.id)
         .maybeSingle();
       
@@ -62,9 +62,6 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
         console.error('Error loading mywork settings:', error);
       } else if (data) {
         setBadgeDisplayMode(data.badge_display_mode as BadgeDisplayMode);
-        const tabSettings = sanitizeDecisionTabSettings(data.decision_tabs_order, data.decision_tabs_hidden);
-        setDecisionTabOrder(tabSettings.order);
-        setHiddenDecisionTabs(tabSettings.hiddenTabs);
       }
     } catch (error) {
       console.error('Error in loadSettings:', error);
