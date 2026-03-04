@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { MessageCircle, PhoneCall, Send, X } from "lucide-react";
+import { MessageCircle, Send, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  sendWebsiteWidgetMessage,
-  submitWebsiteWidgetCallbackRequest,
-} from "./api";
-import type { WebsiteWidgetCallbackRequest, WidgetMessage } from "./types";
+import { sendWebsiteWidgetMessage, saveWidgetMessageFeedback } from "./api";
+import type { WidgetMessage } from "./types";
+import { useTenant } from "@/hooks/useTenant";
 
 const INITIAL_MESSAGES: WidgetMessage[] = [
   {
@@ -30,10 +28,13 @@ export function MatrixWebsiteWidget() {
   const [widgetSending, setWidgetSending] = useState(false);
   const [widgetMessages, setWidgetMessages] =
     useState<WidgetMessage[]>(INITIAL_MESSAGES);
-  const [showCallbackForm, setShowCallbackForm] = useState(false);
+    const [conversationId] = useState(() => crypto.randomUUID());
+  const { currentTenant } = useTenant();
+  const [showCallbackForm, setShowCallbackForm] = useState(false);  
   const [callbackForm, setCallbackForm] = useState<WebsiteWidgetCallbackRequest>(
     INITIAL_CALLBACK_FORM,
   );
+
 
   const sendWidgetMessage = async () => {
     const trimmed = visitorMessage.trim();
@@ -68,6 +69,7 @@ export function MatrixWebsiteWidget() {
       const botReply: WidgetMessage = {
         id: crypto.randomUUID(),
         role: "bot",
+        matrixEventId: data?.event_id,
         text: data?.success
           ? `✅ Nachricht erfolgreich übertragen (Room: ${data.room_id || "unbekannt"}, Event: ${data.event_id || "n/a"}).`
           : `⚠️ ${data?.fallback_message || "Die Nachricht konnte nicht an Matrix übertragen werden."}`,
@@ -154,6 +156,42 @@ export function MatrixWebsiteWidget() {
       ]);
     } finally {
       setWidgetSending(false);
+  const submitFeedback = async (messageId: string, isHelpful: boolean) => {
+    if (!currentTenant?.id) {
+      return;
+    }
+
+    const message = widgetMessages.find((entry) => entry.id === messageId);
+    if (!message || message.role === "visitor" || message.feedbackGiven) {
+      return;
+    }
+
+    const messageIndex = widgetMessages.findIndex((entry) => entry.id === messageId);
+    const previousVisitorMessage =
+      messageIndex > 0
+        ? [...widgetMessages]
+            .slice(0, messageIndex)
+            .reverse()
+            .find((entry) => entry.role === "visitor")?.text
+        : undefined;
+
+    const { error } = await saveWidgetMessageFeedback({
+      tenantId: currentTenant.id,
+      conversationId,
+      widgetMessageId: message.id,
+      matrixEventId: message.matrixEventId,
+      responseRole: message.role,
+      isHelpful,
+      visitorMessage: previousVisitorMessage,
+      botReply: message.text,
+    });
+
+    if (!error) {
+      setWidgetMessages((current) =>
+        current.map((entry) =>
+          entry.id === messageId ? { ...entry, feedbackGiven: true } : entry,
+        ),
+      );
     }
   };
 
@@ -203,19 +241,46 @@ export function MatrixWebsiteWidget() {
             </div>
             <div className="max-h-72 space-y-2 overflow-y-auto p-3">
               {widgetMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.role === "visitor" ? "justify-end" : "justify-start"}`}
-                >
+                <div key={message.id}>
                   <div
-                    className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                      message.role === "visitor"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-foreground"
-                    }`}
+                    className={`flex ${message.role === "visitor" ? "justify-end" : "justify-start"}`}
                   >
-                    {message.text}
+                    <div
+                      className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                        message.role === "visitor"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground"
+                      }`}
+                    >
+                      {message.text}
+                    </div>
                   </div>
+                  {message.role !== "visitor" && message.id !== "welcome" && (
+                    <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <span>Hilfreich?</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => submitFeedback(message.id, true)}
+                        disabled={message.feedbackGiven}
+                        aria-label="Antwort hilfreich"
+                      >
+                        <ThumbsUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => submitFeedback(message.id, false)}
+                        disabled={message.feedbackGiven}
+                        aria-label="Antwort nicht hilfreich"
+                      >
+                        <ThumbsDown className="h-3.5 w-3.5" />
+                      </Button>
+                      {message.feedbackGiven && <span>Danke!</span>}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

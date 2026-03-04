@@ -19,6 +19,15 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { MatrixWebsiteWidget } from "@/features/matrix-widget/MatrixWebsiteWidget";
+import {
+  fetchOpenImprovementTriggers,
+  fetchWidgetFeedbackStats,
+} from "@/features/matrix-widget/api";
+import type {
+  ImprovementTriggerItem,
+  WidgetFeedbackStats,
+} from "@/features/matrix-widget/types";
+import { useTenant } from "@/hooks/useTenant";
 import districtResults2021 from "@/data/ltw2021DistrictResults.json";
 
 interface PartyInput {
@@ -137,7 +146,14 @@ const buildDefaultAssignments = (
 };
 
 export function DataView() {
+  const { currentTenant } = useTenant();
   const [parties, setParties] = useState<PartyInput[]>(initialParties);
+  const [feedbackStats, setFeedbackStats] = useState<WidgetFeedbackStats | null>(
+    null,
+  );
+  const [improvementTriggers, setImprovementTriggers] = useState<
+    ImprovementTriggerItem[]
+  >([]);
   const districtData = useMemo(
     () =>
       (districtResults2021 as DistrictResult2021[])
@@ -166,6 +182,30 @@ export function DataView() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(assignments));
   }, [assignments]);
+
+  useEffect(() => {
+    const loadFeedbackInsights = async () => {
+      if (!currentTenant?.id) {
+        setFeedbackStats(null);
+        setImprovementTriggers([]);
+        return;
+      }
+
+      try {
+        const [stats, triggers] = await Promise.all([
+          fetchWidgetFeedbackStats(currentTenant.id),
+          fetchOpenImprovementTriggers(currentTenant.id),
+        ]);
+        setFeedbackStats(stats);
+        setImprovementTriggers(triggers);
+      } catch {
+        setFeedbackStats(null);
+        setImprovementTriggers([]);
+      }
+    };
+
+    void loadFeedbackInsights();
+  }, [currentTenant?.id]);
 
   const winnerStats = useMemo(() => {
     const counts = districtData.reduce<Record<string, number>>((acc, item) => {
@@ -413,6 +453,49 @@ export function DataView() {
         </CardHeader>
         <CardContent className="space-y-3">
           <MatrixWebsiteWidget />
+          <div className="rounded-md border p-3 space-y-2">
+            <p className="text-sm font-medium">Admin-Auswertung (Feedback)</p>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <Badge variant="outline">
+                Gesamt: {feedbackStats?.totalFeedback ?? 0}
+              </Badge>
+              <Badge variant="outline">
+                Hilfreich: {feedbackStats?.helpfulCount ?? 0} (
+                {feedbackStats?.helpfulRatio ?? 0}%)
+              </Badge>
+              <Badge variant="outline">
+                Nicht hilfreich: {feedbackStats?.notHelpfulCount ?? 0} (
+                {feedbackStats?.notHelpfulRatio ?? 0}%)
+              </Badge>
+              <Badge variant="secondary">
+                Offene FAQ/Routing-Trigger: {feedbackStats?.openImprovementTriggers ?? 0}
+              </Badge>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Letztes Feedback: {feedbackStats?.lastFeedbackAt
+                ? new Date(feedbackStats.lastFeedbackAt).toLocaleString("de-DE")
+                : "Noch kein Feedback"}
+            </div>
+
+            {improvementTriggers.length > 0 && (
+              <div className="pt-2 space-y-1">
+                <p className="text-xs font-medium">
+                  Negative Feedback-Trigger zur Verbesserung
+                </p>
+                {improvementTriggers.map((trigger) => (
+                  <div
+                    key={trigger.id}
+                    className="text-xs flex items-center justify-between rounded bg-muted/50 px-2 py-1"
+                  >
+                    <span>
+                      Konversation {trigger.conversationId.slice(0, 8)}… · Msg {trigger.widgetMessageId.slice(0, 8)}…
+                    </span>
+                    <Badge variant="outline">{trigger.suggestedChannel}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
