@@ -12,6 +12,7 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
 import { DecisionEditDialog } from "./DecisionEditDialog";
+import { DefaultParticipantsDialog } from "./DefaultParticipantsDialog";
 
 import { DecisionSidebar } from "./DecisionSidebar";
 import { DecisionComments } from "./DecisionComments";
@@ -24,7 +25,7 @@ import { useDecisionComments } from "@/hooks/useDecisionComments";
 import { 
   Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, 
   MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle, ClipboardList, 
-  Search, FolderArchive, MessageSquare, Star
+  Search, FolderArchive, MessageSquare, Star, Settings2
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -36,6 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
+import { useMyWorkSettings, DecisionTabId } from "@/hooks/useMyWorkSettings";
 
 // Truncated description component
 const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; maxLength?: number }) => {
@@ -144,6 +146,7 @@ export const DecisionOverview = () => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const { decisionTabOrder, hiddenDecisionTabs, updateDecisionTabSettings } = useMyWorkSettings();
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const [decisions, setDecisions] = useState<DecisionRequest[]>([]);
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
@@ -153,6 +156,7 @@ export const DecisionOverview = () => {
   const [creatorResponses, setCreatorResponses] = useState<{[key: string]: string}>({});
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("for-me");
+  const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
   const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
   const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -1057,6 +1061,29 @@ export const DecisionOverview = () => {
   }, [decisions]);
 
   // Filter decisions
+  const configuredDecisionTabs = decisionTabOrder.filter((tab) => !hiddenDecisionTabs.includes(tab));
+
+  const decisionTabCounts: Record<DecisionTabId, number> = {
+    "for-me": tabCounts.forMe,
+    "answered": tabCounts.answered,
+    "my-decisions": tabCounts.myDecisions,
+    "public": tabCounts.public,
+  };
+
+  const decisionTabLabels: Record<DecisionTabId, string> = {
+    "for-me": "Für mich",
+    "answered": "Beantwortet",
+    "my-decisions": "Von mir",
+    "public": "Öffentlich",
+  };
+
+  useEffect(() => {
+    if (configuredDecisionTabs.length === 0) return;
+    if (["for-me", "answered", "my-decisions", "public"].includes(activeTab) && !configuredDecisionTabs.includes(activeTab as DecisionTabId)) {
+      setActiveTab(configuredDecisionTabs[0]);
+    }
+  }, [activeTab, configuredDecisionTabs]);
+
   const filteredDecisions = useMemo(() => {
     let filtered = decisions;
 
@@ -1547,29 +1574,33 @@ export const DecisionOverview = () => {
           isOpen={isCreateDialogOpen}
           onOpenChange={setIsCreateDialogOpen}
         />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9"
+          onClick={() => setDefaultParticipantsOpen(true)}
+          title="Standard-Einstellungen"
+        >
+          <Settings2 className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Tabs + Grid Layout */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* TabsList AUSSERHALB des Grids */}
-        <TabsList className="grid w-full grid-cols-6 h-9 mb-4">
-          <TabsTrigger value="for-me" className="text-xs">
-            Für mich
-            {tabCounts.forMe > 0 && (
-              <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">
-                {tabCounts.forMe}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="answered" className="text-xs">
-            Beantwortet ({tabCounts.answered})
-          </TabsTrigger>
-          <TabsTrigger value="my-decisions" className="text-xs">
-            Von mir ({tabCounts.myDecisions})
-          </TabsTrigger>
-          <TabsTrigger value="public" className="text-xs">
-            Öffentlich ({tabCounts.public})
-          </TabsTrigger>
+        <TabsList className="grid w-full h-9 mb-4" style={{ gridTemplateColumns: `repeat(${configuredDecisionTabs.length + 2}, minmax(0, 1fr))` }}>
+          {configuredDecisionTabs.map((tab) => (
+            <TabsTrigger key={tab} value={tab} className="text-xs">
+              {decisionTabLabels[tab]}
+              {tab === "for-me" && decisionTabCounts[tab] > 0 ? (
+                <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">
+                  {decisionTabCounts[tab]}
+                </Badge>
+              ) : (
+                tab !== "for-me" ? ` (${decisionTabCounts[tab]})` : null
+              )}
+            </TabsTrigger>
+          ))}
           <TabsTrigger value="questions" className="text-xs">
             Rückfragen
             {tabCounts.questions > 0 && (
@@ -1658,6 +1689,16 @@ export const DecisionOverview = () => {
           }}
         />
       )}
+
+      <DefaultParticipantsDialog
+        open={defaultParticipantsOpen}
+        onOpenChange={setDefaultParticipantsOpen}
+        decisionTabSettings={{
+          order: decisionTabOrder,
+          hiddenTabs: hiddenDecisionTabs,
+          onSave: updateDecisionTabSettings,
+        }}
+      />
 
       <DecisionAttachmentPreviewDialog
         open={!!previewAttachment}
