@@ -156,6 +156,9 @@ export function MatrixWebsiteWidget() {
       ]);
     } finally {
       setWidgetSending(false);
+    }
+  };
+
   const submitFeedback = async (messageId: string, isHelpful: boolean) => {
     if (!currentTenant?.id) {
       return;
