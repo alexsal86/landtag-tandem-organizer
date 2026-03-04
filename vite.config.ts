@@ -46,9 +46,9 @@ export default defineConfig(({ mode }) => ({
     ],
     exclude: [
       '@matrix-org/matrix-sdk-crypto-wasm',
-      '@radix-ui/react-compose-refs',
-      '@radix-ui/react-slot',
-      '@radix-ui/react-primitive',
+      // '@radix-ui/react-compose-refs',
+      // '@radix-ui/react-slot',
+      // '@radix-ui/react-primitive',
     ],
   },
   build: {
