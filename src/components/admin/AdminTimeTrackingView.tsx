@@ -1354,6 +1354,11 @@ export function AdminTimeTrackingView() {
                 <option value="sick">🤒 Krankheit</option>
                 <option value="overtime_reduction">⏰ Überstundenabbau</option>
               </select>
+              {newEntryType === 'overtime_reduction' && yearlyBalance < Math.round(dailyHours * 60) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-2 text-sm text-amber-800">
+                  ⚠️ Nicht genügend Überstunden vorhanden (Saldo: {fmt(yearlyBalance)}, benötigt: {fmt(Math.round(dailyHours * 60))})
+                </div>
+              )}
             </div>
             
             <div className="grid gap-2">
