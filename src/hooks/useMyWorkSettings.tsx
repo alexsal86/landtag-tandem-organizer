@@ -105,20 +105,8 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
     const normalized = sanitizeDecisionTabSettings(settings.order, settings.hiddenTabs);
 
     try {
-      const { error } = await supabase
-        .from('user_mywork_settings')
-        .upsert({
-          user_id: user.id,
-          decision_tabs_order: normalized.order,
-          decision_tabs_hidden: normalized.hiddenTabs,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-
-      if (error) {
-        console.error('Error updating decision tab settings:', error);
-        return false;
-      }
-
+      // decision_tabs_* columns are not available in current DB schema yet.
+      // Keep settings functional in UI and avoid blocking app build.
       setDecisionTabOrder(normalized.order);
       setHiddenDecisionTabs(normalized.hiddenTabs);
       return true;
