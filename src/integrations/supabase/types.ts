@@ -6026,6 +6026,108 @@ export type Database = {
           },
         ]
       }
+
+      matrix_widget_improvement_triggers: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          feedback_id: string
+          id: string
+          matrix_event_id: string | null
+          status: string
+          suggested_channel: string
+          tenant_id: string
+          trigger_reason: string
+          widget_message_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          feedback_id: string
+          id?: string
+          matrix_event_id?: string | null
+          status?: string
+          suggested_channel: string
+          tenant_id: string
+          trigger_reason?: string
+          widget_message_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          feedback_id?: string
+          id?: string
+          matrix_event_id?: string | null
+          status?: string
+          suggested_channel?: string
+          tenant_id?: string
+          trigger_reason?: string
+          widget_message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matrix_widget_improvement_triggers_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: true
+            referencedRelation: "matrix_widget_message_feedback"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matrix_widget_improvement_triggers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matrix_widget_message_feedback: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          feedback_context: Json
+          id: string
+          is_helpful: boolean
+          matrix_event_id: string | null
+          response_role: string
+          tenant_id: string
+          user_id: string
+          widget_message_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          feedback_context?: Json
+          id?: string
+          is_helpful: boolean
+          matrix_event_id?: string | null
+          response_role: string
+          tenant_id: string
+          user_id?: string
+          widget_message_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          feedback_context?: Json
+          id?: string
+          is_helpful?: boolean
+          matrix_event_id?: string | null
+          response_role?: string
+          tenant_id?: string
+          user_id?: string
+          widget_message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matrix_widget_message_feedback_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_agenda_documents: {
         Row: {
           created_at: string
@@ -9773,7 +9875,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      matrix_widget_feedback_admin_stats: {
+        Row: {
+          helpful_count: number | null
+          helpful_ratio: number | null
+          last_feedback_at: string | null
+          not_helpful_count: number | null
+          not_helpful_ratio: number | null
+          open_improvement_triggers: number | null
+          tenant_id: string | null
+          total_feedback: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matrix_widget_message_feedback_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _meeting_default_end: { Args: { _date: string }; Returns: string }
