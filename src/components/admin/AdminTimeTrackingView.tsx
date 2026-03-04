@@ -1519,6 +1519,7 @@ export function AdminTimeTrackingView() {
                     <TableHead className="text-right">Soll</TableHead>
                     <TableHead className="text-right">Gearbeitet</TableHead>
                     <TableHead className="text-right">Gutschriften</TableHead>
+                    <TableHead className="text-right">ÜA-Abbau</TableHead>
                     <TableHead className="text-right">Saldo</TableHead>
                     <TableHead className="text-right">Kumuliert</TableHead>
                   </TableRow>
@@ -1534,6 +1535,9 @@ export function AdminTimeTrackingView() {
                         <TableCell className="text-right">{fmt(mb.targetMinutes)}</TableCell>
                         <TableCell className="text-right">{fmt(mb.workedMinutes)}</TableCell>
                         <TableCell className="text-right text-blue-600">+{fmt(mb.creditMinutes)}</TableCell>
+                        <TableCell className="text-right text-amber-600">
+                          {mb.overtimeReductionMinutes > 0 ? fmt(mb.overtimeReductionMinutes) : "—"}
+                        </TableCell>
                         <TableCell className={`text-right font-medium ${mb.balance >= 0 ? "text-green-600" : "text-destructive"}`}>
                           {mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}
                         </TableCell>
