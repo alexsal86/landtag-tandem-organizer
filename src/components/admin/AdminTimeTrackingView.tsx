@@ -882,14 +882,24 @@ export function AdminTimeTrackingView() {
               <TrendingUp className="h-4 w-4" />
               Überstundensaldo {getYear(currentMonth)}
             </CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setShowBreakdownDialog(true)}
-              className="text-xs"
-            >
-              Aufschlüsselung anzeigen
-            </Button>
+            <div className="flex gap-1">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setInitialBalanceDialogOpen(true)}
+                className="text-xs"
+              >
+                Anfangsbestand
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowBreakdownDialog(true)}
+                className="text-xs"
+              >
+                Aufschlüsselung
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
