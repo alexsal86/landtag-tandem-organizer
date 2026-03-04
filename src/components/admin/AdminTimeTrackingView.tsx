@@ -460,23 +460,31 @@ export function AdminTimeTrackingView() {
 
   // Running "Gesamt-Ist" AFTER each entry (inclusive – shows cumulative total including the current entry)
   const actualAfterEntryById = useMemo(() => {
-    const actualTypes = new Set<CombinedTimeEntry['entry_type']>(['work', 'sick', 'vacation', 'medical']);
+    const actualTypes = new Set<CombinedTimeEntry['entry_type']>(['work', 'sick', 'vacation', 'medical', 'overtime_reduction']);
     const byEntryId = new Map<string, number>();
 
-    const sortedChronologically = [...combinedEntries].sort((a, b) => {
+    // Sort descending (same as display order) so running total grows as user reads top-to-bottom
+    const sortedDescending = [...combinedEntries].sort((a, b) => {
       const aDateTime = a.started_at ? new Date(a.started_at).getTime() : new Date(`${a.work_date}T00:00:00`).getTime();
       const bDateTime = b.started_at ? new Date(b.started_at).getTime() : new Date(`${b.work_date}T00:00:00`).getTime();
-      if (aDateTime !== bDateTime) return aDateTime - bDateTime;
-      return a.id.localeCompare(b.id);
+      if (aDateTime !== bDateTime) return bDateTime - aDateTime;
+      return b.id.localeCompare(a.id);
     });
 
-    let runningActual = 0;
+    // First pass: compute total of all qualifying entries
+    const totalActualAll = sortedDescending
+      .filter(e => actualTypes.has(e.entry_type))
+      .reduce((sum, e) => sum + (e.minutes || 0), 0);
 
-    sortedChronologically.forEach((entry) => {
-      if (actualTypes.has(entry.entry_type)) {
-        runningActual += entry.minutes || 0;
-      }
+    // Second pass: assign running total in display order (descending)
+    // Top row = full total, subtract as we go down
+    let runningActual = totalActualAll;
+
+    sortedDescending.forEach((entry) => {
       byEntryId.set(entry.id, runningActual);
+      if (actualTypes.has(entry.entry_type)) {
+        runningActual -= entry.minutes || 0;
+      }
     });
 
     return byEntryId;
