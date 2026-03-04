@@ -1,87 +1,61 @@
 
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-## Problem
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
-Du hast zwei Tabs im gleichen Browser:
-- **Tab A**: Externe Seite (direkter Tab) → hat den COI Service Worker **registriert und aktiv**
-- **Tab B**: Lovable Preview (iframe) → der **gleiche** Service Worker fängt auch hier alle Requests ab
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
-Das ist das Kernproblem: Service Worker sind **pro Origin** registriert, nicht pro Tab. Der SW aus Tab A bedient auch Tab B — und der alte, gecachte SW (ohne iframe-Fix) liefert COOP/COEP-Header aus, **bevor** irgendein JavaScript in `index.html` laufen kann.
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
-Der `Sec-Fetch-Dest: iframe`-Check im SW-Fetch-Handler greift nicht, weil der Browser für die Hauptnavigation innerhalb des iframes `Sec-Fetch-Dest: document` sendet (nicht `iframe`). `iframe` wird nur vom **äußeren** Dokument gesendet, wenn es den iframe-src lädt.
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-## Lösung
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
-Doppelter Ansatz:
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
-### 1. `index.html` — SW im iframe deregistrieren
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
-```javascript
-(function() {
-  var inIframe = false;
-  try { inIframe = window.self !== window.top; }
-  catch (e) { inIframe = true; }
-
-  if (inIframe) {
-    // Im iframe: KEINEN COI-Worker laden, bestehende deregistrieren
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        var hadWorker = false;
-        regs.forEach(function(r) { r.unregister(); hadWorker = true; });
-        if (hadWorker && !sessionStorage.getItem('coi-cleaned')) {
-          sessionStorage.setItem('coi-cleaned', '1');
-          window.location.reload();
-        }
-      });
-    }
-  } else {
-    // Direkter Tab: COI-Worker normal laden
-    window.coi = {
-      shouldRegister: function() { return true; },
-      shouldDeregister: function() { return false; },
-      quiet: true
-    };
-    var s = document.createElement('script');
-    s.src = '/coi-serviceworker.js';
-    document.head.appendChild(s);
-  }
-})();
-```
-
-### 2. `public/coi-serviceworker.js` — Client-Block iframe-sicher
-
-Im Client-Side-Block (ab Zeile 136): iframe-Erkennung hinzufügen. Falls im iframe → `shouldRegister: false` setzen und `doReload` deaktivieren, damit kein Endlos-Reload entsteht.
-
-```javascript
-} else {
-  // ── Client (browser) scope ──
-  
-  // Iframe detection
-  var inIframe = false;
-  try { inIframe = window.self !== window.top; }
-  catch (e) { inIframe = true; }
-  
-  const e = {
-    shouldRegister: () => !inIframe,   // Nicht im iframe registrieren
-    shouldDeregister: () => inIframe,  // Im iframe deregistrieren
-    coepCredentialless: () => !(window.chrome || window.netscape),
-    doReload: () => {
-      if (!inIframe) window.location.reload();  // Kein Reload im iframe
-    },
-    quiet: false,
-    ...window.coi
-  };
-  // ... rest bleibt gleich
-}
-```
-
-### Ergebnis
-
-| Szenario | SW aktiv | COOP/COEP | Rendering |
-|---|---|---|---|
-| Tab A (direkt) | Ja | Ja | ✓ + E2EE + Push |
-| Tab B (Preview iframe) | Nein (deregistriert) | Nein | ✓ |
-| Nach Schließen von Tab B, Tab A reload | Ja (neu registriert) | Ja | ✓ |
-
-Zwei Dateien: `index.html`, `public/coi-serviceworker.js`.
-
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
