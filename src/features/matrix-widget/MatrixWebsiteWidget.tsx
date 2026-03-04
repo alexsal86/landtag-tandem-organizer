@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { MessageCircle, Send, X } from "lucide-react";
+import { MessageCircle, PhoneCall, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { sendWebsiteWidgetMessage } from "./api";
-import type { WidgetMessage } from "./types";
+import {
+  sendWebsiteWidgetMessage,
+  submitWebsiteWidgetCallbackRequest,
+} from "./api";
+import type { WebsiteWidgetCallbackRequest, WidgetMessage } from "./types";
 
 const INITIAL_MESSAGES: WidgetMessage[] = [
   {
@@ -14,12 +17,23 @@ const INITIAL_MESSAGES: WidgetMessage[] = [
   },
 ];
 
+const INITIAL_CALLBACK_FORM: WebsiteWidgetCallbackRequest = {
+  name: "",
+  phone: "",
+  preferredTime: "",
+  concern: "",
+};
+
 export function MatrixWebsiteWidget() {
   const [widgetOpen, setWidgetOpen] = useState(false);
   const [visitorMessage, setVisitorMessage] = useState("");
   const [widgetSending, setWidgetSending] = useState(false);
   const [widgetMessages, setWidgetMessages] =
     useState<WidgetMessage[]>(INITIAL_MESSAGES);
+  const [showCallbackForm, setShowCallbackForm] = useState(false);
+  const [callbackForm, setCallbackForm] = useState<WebsiteWidgetCallbackRequest>(
+    INITIAL_CALLBACK_FORM,
+  );
 
   const sendWidgetMessage = async () => {
     const trimmed = visitorMessage.trim();
@@ -72,6 +86,70 @@ export function MatrixWebsiteWidget() {
           id: crypto.randomUUID(),
           role: "bot",
           text: `⚠️ ${errorMessage}`,
+        },
+      ]);
+    } finally {
+      setWidgetSending(false);
+    }
+  };
+
+  const submitCallbackRequest = async () => {
+    const trimmedForm = {
+      name: callbackForm.name.trim(),
+      phone: callbackForm.phone.trim(),
+      preferredTime: callbackForm.preferredTime.trim(),
+      concern: callbackForm.concern.trim(),
+    };
+
+    if (
+      !trimmedForm.name ||
+      !trimmedForm.phone ||
+      !trimmedForm.preferredTime ||
+      !trimmedForm.concern ||
+      widgetSending
+    ) {
+      return;
+    }
+
+    setWidgetSending(true);
+
+    const summary: WidgetMessage = {
+      id: crypto.randomUUID(),
+      role: "visitor",
+      text: `📞 Rückruf angefordert – Name: ${trimmedForm.name}, Telefon: ${trimmedForm.phone}, Wunschzeit: ${trimmedForm.preferredTime}, Anliegen: ${trimmedForm.concern}`,
+    };
+
+    setWidgetMessages((current) => [...current, summary]);
+
+    try {
+      const { data, error } = await submitWebsiteWidgetCallbackRequest(trimmedForm);
+
+      if (error) {
+        throw new Error(error.message || "Function invocation failed");
+      }
+
+      setWidgetMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "bot",
+          text: data?.success
+            ? `✅ Danke! Dein Rückrufwunsch wurde erfasst, als Follow-up im Organizer angelegt und mit der Chat-Konversation verknüpft.${data.task_id ? ` (Task: ${data.task_id})` : ""}`
+            : `⚠️ ${data?.fallback_message || "Der Rückrufwunsch konnte nicht vollständig verarbeitet werden."}`,
+        },
+      ]);
+
+      if (data?.success) {
+        setCallbackForm(INITIAL_CALLBACK_FORM);
+        setShowCallbackForm(false);
+      }
+    } catch {
+      setWidgetMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "bot",
+          text: "⚠️ Rückrufanfrage konnte gerade nicht verarbeitet werden. Bitte später erneut versuchen.",
         },
       ]);
     } finally {
@@ -141,26 +219,112 @@ export function MatrixWebsiteWidget() {
                 </div>
               ))}
             </div>
-            <div className="flex gap-2 border-t p-3">
-              <Input
-                value={visitorMessage}
-                onChange={(event) => setVisitorMessage(event.target.value)}
-                placeholder="Nachricht für den Prototyp …"
-                disabled={widgetSending}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    sendWidgetMessage();
+
+            {showCallbackForm && (
+              <div className="space-y-2 border-t bg-muted/30 p-3">
+                <p className="text-xs font-medium">Rückruf anfordern</p>
+                <Input
+                  value={callbackForm.name}
+                  onChange={(event) =>
+                    setCallbackForm((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
                   }
-                }}
-              />
+                  placeholder="Name"
+                  disabled={widgetSending}
+                />
+                <Input
+                  value={callbackForm.phone}
+                  onChange={(event) =>
+                    setCallbackForm((current) => ({
+                      ...current,
+                      phone: event.target.value,
+                    }))
+                  }
+                  placeholder="Telefonnummer"
+                  disabled={widgetSending}
+                />
+                <Input
+                  value={callbackForm.preferredTime}
+                  onChange={(event) =>
+                    setCallbackForm((current) => ({
+                      ...current,
+                      preferredTime: event.target.value,
+                    }))
+                  }
+                  placeholder="Wunschzeit"
+                  disabled={widgetSending}
+                />
+                <Input
+                  value={callbackForm.concern}
+                  onChange={(event) =>
+                    setCallbackForm((current) => ({
+                      ...current,
+                      concern: event.target.value,
+                    }))
+                  }
+                  placeholder="Anliegen"
+                  disabled={widgetSending}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    disabled={
+                      widgetSending ||
+                      !callbackForm.name.trim() ||
+                      !callbackForm.phone.trim() ||
+                      !callbackForm.preferredTime.trim() ||
+                      !callbackForm.concern.trim()
+                    }
+                    onClick={submitCallbackRequest}
+                  >
+                    Rückruf absenden
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={widgetSending}
+                    onClick={() => setShowCallbackForm(false)}
+                  >
+                    Abbrechen
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2 border-t p-3">
+              <div className="flex gap-2">
+                <Input
+                  value={visitorMessage}
+                  onChange={(event) => setVisitorMessage(event.target.value)}
+                  placeholder="Nachricht für den Prototyp …"
+                  disabled={widgetSending}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      sendWidgetMessage();
+                    }
+                  }}
+                />
+                <Button
+                  size="icon"
+                  onClick={sendWidgetMessage}
+                  aria-label="Nachricht senden"
+                  disabled={widgetSending}
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
               <Button
-                size="icon"
-                onClick={sendWidgetMessage}
-                aria-label="Nachricht senden"
+                variant="secondary"
+                className="gap-2"
+                onClick={() => setShowCallbackForm((current) => !current)}
                 disabled={widgetSending}
               >
-                <Send className="h-4 w-4" />
+                <PhoneCall className="h-4 w-4" />
+                Rückruf anfordern
               </Button>
             </div>
           </div>
