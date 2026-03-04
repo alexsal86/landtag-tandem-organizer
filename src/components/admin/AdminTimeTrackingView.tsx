@@ -1018,12 +1018,49 @@ export function AdminTimeTrackingView() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${balanceMinutes >= 0 ? "text-green-600" : "text-destructive"}`}>
-              {balanceMinutes >= 0 ? "+" : ""}{fmt(balanceMinutes)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Gesamt-Ist: {fmt(totalActual)}
-            </p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-help">
+                    <div className={`text-2xl font-bold ${balanceMinutes >= 0 ? "text-green-600" : "text-destructive"}`}>
+                      {balanceMinutes >= 0 ? "+" : ""}{fmt(balanceMinutes)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Gesamt-Ist: {fmt(totalActual)}
+                    </p>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  <div className="space-y-1">
+                    <div className="font-medium">{format(currentMonth, "MMMM yyyy", { locale: de })}</div>
+                    <div className="flex justify-between gap-4">
+                      <span>Soll:</span>
+                      <span>{fmt(monthlyTargetMinutes)}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span>Gearbeitet:</span>
+                      <span>{fmt(workedMinutes)}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span>Gutschriften:</span>
+                      <span>+{fmt(creditMinutes)}</span>
+                    </div>
+                    {overtimeReductionMinutes > 0 && (
+                      <div className="flex justify-between gap-4 text-amber-600">
+                        <span>⏰ ÜA-Abbau:</span>
+                        <span>{fmt(overtimeReductionMinutes)} (reduziert Saldo)</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between gap-4 font-medium border-t pt-1">
+                      <span>Saldo:</span>
+                      <span className={balanceMinutes >= 0 ? "text-green-600" : "text-destructive"}>
+                        {balanceMinutes >= 0 ? "+" : ""}{fmt(balanceMinutes)}
+                      </span>
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </CardContent>
         </Card>
 
