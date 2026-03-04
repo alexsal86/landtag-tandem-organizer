@@ -6,11 +6,12 @@ import type {
   WidgetFeedbackStats,
 } from "./types";
 
-export async function sendWebsiteWidgetMessage(message: string) {
+export async function sendWebsiteWidgetMessage(message: string, conversationId: string) {
   return supabase.functions.invoke<WebsiteWidgetTestResponse>("matrix-bot-handler", {
     body: {
       type: "website_widget_test",
       message,
+      conversation_id: conversationId,
       source: "data_view_widget",
     },
   });
