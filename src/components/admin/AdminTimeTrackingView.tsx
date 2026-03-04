@@ -358,6 +358,16 @@ export function AdminTimeTrackingView() {
         if (error) throw error;
         toast.success("Zeiteintrag erstellt");
       } else {
+        // Validate overtime reduction: check sufficient balance
+        if (newEntryType === 'overtime_reduction') {
+          const dailyMinutes = Math.round(dailyHours * 60);
+          if (yearlyBalance < dailyMinutes) {
+            toast.error(`Nicht genügend Überstunden vorhanden. Aktueller Saldo: ${fmt(yearlyBalance)}, benötigt: ${fmt(dailyMinutes)}`);
+            setIsSaving(false);
+            return;
+          }
+        }
+
         // Create absence
         const { error } = await supabase.from("leave_requests").insert({
           user_id: selectedUserId,
