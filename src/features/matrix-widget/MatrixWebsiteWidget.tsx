@@ -234,11 +234,11 @@ export function MatrixWebsiteWidget() {
     try {
       const { data, error } = await submitWebsiteWidgetCallbackRequest(trimmedForm, conversationId);
 
-      const isConversationLinked = data?.success && data?.event_id && data?.room_id;
-
       if (error) {
         throw new Error(error.message || "Function invocation failed");
       }
+
+      const isConversationLinked = data?.success && data?.event_id && data?.room_id;
 
       setWidgetMessages((current) => [
         ...current,
@@ -371,7 +371,7 @@ export function MatrixWebsiteWidget() {
                       <div
                         className={`rounded-lg px-3 py-2 text-sm ${
                           message.role === "visitor"
-                            ? "bg-primary text-primary-foreground"
+                            ? `bg-primary text-primary-foreground ${message.deliveryStatus === "pending" ? "opacity-60" : ""}`
                             : "bg-muted text-foreground"
                         }`}
                       >
@@ -386,7 +386,7 @@ export function MatrixWebsiteWidget() {
                               size="sm"
                               className="h-6 px-2 text-xs"
                               onClick={() => retryWidgetMessage(message.id)}
-                              disabled={widgetSending || message.deliveryStatus === "pending"}
+                              disabled={widgetSending}
                             >
                               Erneut senden
                             </Button>
@@ -519,7 +519,11 @@ export function MatrixWebsiteWidget() {
                   aria-label="Nachricht senden"
                   disabled={widgetSending}
                 >
-                  <Send className="h-4 w-4" />
+                  {widgetSending ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <Button
