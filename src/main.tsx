@@ -63,9 +63,12 @@ async function setupCrossOriginIsolation(): Promise<void> {
 
 async function bootstrap() {
   try {
-    await setupCrossOriginIsolation();
+    await Promise.race([
+      setupCrossOriginIsolation(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('COI timeout')), 3000)),
+    ]);
   } catch {
-    // continue app bootstrap even if COI setup fails
+    // Timeout or error — continue to render regardless
   }
 
   createRoot(document.getElementById('root')!).render(<App />);
