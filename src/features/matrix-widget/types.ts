@@ -1,6 +1,8 @@
+export type FeedbackResponseRole = "bot" | "team";
+
 export interface WidgetMessage {
   id: string;
-  role: "bot" | "team" | "visitor";
+  role: FeedbackResponseRole | "visitor";
   text: string;
   deliveryStatus?: "pending" | "sent" | "failed";
   matrixEventId?: string | null;

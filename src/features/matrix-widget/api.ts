@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type {
+  FeedbackResponseRole,
   WebsiteWidgetCallbackRequest,
   ImprovementTriggerItem,
   WebsiteWidgetTestResponse,
@@ -35,7 +36,7 @@ export async function saveWidgetMessageFeedback(params: {
   conversationId: string;
   widgetMessageId: string;
   matrixEventId?: string | null;
-  responseRole: "bot" | "team";
+  responseRole: FeedbackResponseRole;
   isHelpful: boolean;
   visitorMessage?: string;
   botReply: string;
