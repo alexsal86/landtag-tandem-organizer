@@ -2,6 +2,17 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
+function isLovablePreviewHost(hostname: string): boolean {
+  return hostname.endsWith('lovable.app') || hostname.endsWith('lovableproject.com');
+}
+
+async function unregisterAllServiceWorkers(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return;
+  const regs = await navigator.serviceWorker.getRegistrations();
+  if (regs.length === 0) return;
+  await Promise.allSettled(regs.map((r) => r.unregister()));
+}
+
 async function setupCrossOriginIsolation(): Promise<void> {
   const inIframe = (() => {
     try {
@@ -10,6 +21,16 @@ async function setupCrossOriginIsolation(): Promise<void> {
       return true;
     }
   })();
+
+  const isPreviewHost = isLovablePreviewHost(window.location.hostname);
+
+  // Hard failsafe: never use COI service workers in Lovable preview domains.
+  // This prevents stale SW cache from breaking iframe rendering (white screen).
+  if (isPreviewHost) {
+    await unregisterAllServiceWorkers();
+    sessionStorage.removeItem('coi-cleanup-state');
+    return;
+  }
 
   if (inIframe) {
     const state = sessionStorage.getItem('coi-cleanup-state');
@@ -24,19 +45,11 @@ async function setupCrossOriginIsolation(): Promise<void> {
     // Stuck-state recovery: if previous cleanup was interrupted
     if (state === 'started') {
       sessionStorage.removeItem('coi-cleanup-state');
-      // Fall through to retry cleanup
     }
 
     if ((!state || state === 'started') && 'serviceWorker' in navigator) {
       sessionStorage.setItem('coi-cleanup-state', 'started');
-      const regs = await navigator.serviceWorker.getRegistrations();
-
-      if (regs.length === 0) {
-        sessionStorage.setItem('coi-cleanup-state', 'done');
-        return;
-      }
-
-      await Promise.all(regs.map((r) => r.unregister()));
+      await unregisterAllServiceWorkers();
       sessionStorage.setItem('coi-cleanup-state', 'reloaded');
       window.location.reload();
     }
@@ -45,7 +58,7 @@ async function setupCrossOriginIsolation(): Promise<void> {
   }
 
   if ('serviceWorker' in navigator && window.isSecureContext) {
-    await navigator.serviceWorker.register('/coi-serviceworker.js?v=2026-03-04-v5');
+    await navigator.serviceWorker.register('/coi-serviceworker.js?v=2026-03-04-v6');
   }
 }
 
