@@ -693,6 +693,7 @@ async function handleWebsiteWidgetTest(
   matrixToken: string,
   matrixHomeserver: string,
 ) {
+  const responseMessageId = crypto.randomUUID();
   const configuredRoomId = Deno.env.get('MATRIX_WIDGET_TEST_ROOM_ID');
   const isCallbackRequest = body.type === 'website_widget_callback_request';
   const callbackRequest = body.callback_request;
@@ -745,10 +746,9 @@ async function handleWebsiteWidgetTest(
 
       return new Response(JSON.stringify({
         success: false,
-        event_id: null,
-        room_id: configuredRoomId ?? null,
-        task_id: null,
-        fallback_message: 'Bitte Name, Telefonnummer, Wunschzeit und Anliegen vollständig ausfüllen.',
+        message_id: responseMessageId,
+        status: 'invalid_request',
+        message: 'Bitte Name, Telefonnummer, Wunschzeit und Anliegen vollständig ausfüllen.',
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -761,10 +761,9 @@ async function handleWebsiteWidgetTest(
     await logAttempt('failed', { error_message: errorText });
     return new Response(JSON.stringify({
       success: false,
-      event_id: null,
-      room_id: configuredRoomId ?? null,
-      task_id: null,
-      fallback_message: 'Matrix-Zugang ist aktuell nicht konfiguriert.',
+      message_id: responseMessageId,
+      status: 'not_configured',
+      message: 'Matrix-Zugang ist aktuell nicht konfiguriert.',
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -776,10 +775,9 @@ async function handleWebsiteWidgetTest(
     await logAttempt('failed', { error_message: errorText });
     return new Response(JSON.stringify({
       success: false,
-      event_id: null,
-      room_id: null,
-      task_id: null,
-      fallback_message: 'Kein Matrix-Test-Raum konfiguriert.',
+      message_id: responseMessageId,
+      status: 'not_configured',
+      message: 'Kein Matrix-Test-Raum konfiguriert.',
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -828,10 +826,9 @@ ${callbackBody}`,
 
       return new Response(JSON.stringify({
         success: false,
-        event_id: null,
-        room_id: configuredRoomId,
-        task_id: null,
-        fallback_message: fallbackMessage,
+        message_id: responseMessageId,
+        status: 'delivery_failed',
+        message: fallbackMessage,
       }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -854,10 +851,9 @@ ${callbackBody}`,
 
         return new Response(JSON.stringify({
           success: false,
-          event_id: result.event_id ?? null,
-          room_id: configuredRoomId,
-          task_id: null,
-          fallback_message: 'Rückrufwunsch wurde an Matrix gesendet, konnte aber keinem Organizer-Mandanten zugeordnet werden.',
+          message_id: responseMessageId,
+          status: 'processing_failed',
+          message: 'Rückrufwunsch wurde an Matrix gesendet, konnte aber keinem Organizer-Mandanten zugeordnet werden.',
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -898,10 +894,9 @@ ${callbackBody}`,
 
         return new Response(JSON.stringify({
           success: false,
-          event_id: result.event_id ?? null,
-          room_id: configuredRoomId,
-          task_id: null,
-          fallback_message: 'Rückrufwunsch wurde gesendet, konnte aber nicht als Task gespeichert werden.',
+          message_id: responseMessageId,
+          status: 'processing_failed',
+          message: 'Rückrufwunsch wurde gesendet, konnte aber nicht als Task gespeichert werden.',
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -937,10 +932,9 @@ ${callbackBody}`,
 
     return new Response(JSON.stringify({
       success: true,
-      event_id: result.event_id ?? null,
-      room_id: configuredRoomId,
-      task_id: createdTaskId,
-      fallback_message: isCallbackRequest
+      message_id: responseMessageId,
+      status: 'accepted',
+      message: isCallbackRequest
         ? 'Rückrufwunsch erfolgreich erfasst und bestätigt.'
         : 'Nachricht erfolgreich an Matrix gesendet.',
     }), {
@@ -960,10 +954,9 @@ ${callbackBody}`,
 
     return new Response(JSON.stringify({
       success: false,
-      event_id: null,
-      room_id: configuredRoomId,
-      task_id: null,
-      fallback_message: isTimeout
+      message_id: responseMessageId,
+      status: isTimeout ? 'timeout' : 'delivery_failed',
+      message: isTimeout
         ? 'Zeitüberschreitung bei der Matrix-Übertragung.'
         : fallbackMessage,
     }), {

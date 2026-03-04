@@ -119,10 +119,9 @@ export function MatrixWebsiteWidget() {
       const botReply: WidgetMessage = {
         id: crypto.randomUUID(),
         role: "bot",
-        matrixEventId: data?.event_id,
         text: data?.success
-          ? `✅ Nachricht erfolgreich übertragen (Room: ${data.room_id || "unbekannt"}, Event: ${data.event_id || "n/a"}).`
-          : `⚠️ ${data?.fallback_message || "Die Nachricht konnte nicht an Matrix übertragen werden."}`,
+          ? `✅ ${data?.message || "Nachricht erfolgreich übertragen."}`
+          : `⚠️ ${data?.message || "Die Nachricht konnte nicht an Matrix übertragen werden."}`,
       };
 
       setWidgetMessages((current) => [...current, botReply]);
@@ -185,10 +184,9 @@ export function MatrixWebsiteWidget() {
       const botReply: WidgetMessage = {
         id: crypto.randomUUID(),
         role: "bot",
-        matrixEventId: data?.event_id,
         text: data?.success
-          ? `✅ Nachricht erfolgreich übertragen (Room: ${data.room_id || "unbekannt"}, Event: ${data.event_id || "n/a"}).`
-          : `⚠️ ${data?.fallback_message || "Die Nachricht konnte nicht an Matrix übertragen werden."}`,
+          ? `✅ ${data?.message || "Nachricht erfolgreich übertragen."}`
+          : `⚠️ ${data?.message || "Die Nachricht konnte nicht an Matrix übertragen werden."}`,
       };
 
       setWidgetMessages((current) => [...current, botReply]);
@@ -238,16 +236,14 @@ export function MatrixWebsiteWidget() {
         throw new Error(error.message || "Function invocation failed");
       }
 
-      const isConversationLinked = data?.success && data?.event_id && data?.room_id;
-
       setWidgetMessages((current) => [
         ...current,
         {
           id: crypto.randomUUID(),
           role: "bot",
           text: data?.success
-            ? `✅ Danke! Dein Rückrufwunsch wurde erfasst und als Follow-up im Organizer angelegt${isConversationLinked ? " sowie mit der Chat-Konversation verknüpft" : ""}.${data.task_id ? ` (Task: ${data.task_id})` : ""}`
-            : `⚠️ ${data?.fallback_message || "Der Rückrufwunsch konnte nicht vollständig verarbeitet werden."}`,
+            ? `✅ ${data?.message || "Danke! Dein Rückrufwunsch wurde erfasst."}`
+            : `⚠️ ${data?.message || "Der Rückrufwunsch konnte nicht vollständig verarbeitet werden."}`,
         },
       ]);
 
