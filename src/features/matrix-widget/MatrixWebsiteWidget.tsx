@@ -67,7 +67,7 @@ export function MatrixWebsiteWidget() {
         setTimeout(() => reject(new Error("Request timeout")), 12000),
       );
 
-      const invokePromise = sendWebsiteWidgetMessage(trimmed);
+      const invokePromise = sendWebsiteWidgetMessage(trimmed, conversationId);
 
       const { data, error } = (await Promise.race([
         invokePromise,

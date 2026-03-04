@@ -38,6 +38,7 @@ interface WebsiteWidgetCallbackPayload {
 interface WebsiteWidgetTestRequest {
   type: "website_widget_test" | "website_widget_callback_request";
   message?: string;
+  conversation_id?: string;
   source?: string;
   callback_request?: WebsiteWidgetCallbackPayload;
 }
@@ -718,6 +719,7 @@ async function handleWebsiteWidgetTest(
       error_message: extra.error_message ?? null,
       metadata: {
         source: body.source ?? 'unknown',
+        conversation_id: body.conversation_id ?? null,
         ...(isCallbackRequest
           ? {
               callback_request: callbackRequest,
