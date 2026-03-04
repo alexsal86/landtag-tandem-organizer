@@ -105,6 +105,8 @@ export function AdminTimeTrackingView() {
   const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false);
   const [correctionMinutes, setCorrectionMinutes] = useState("");
   const [correctionReason, setCorrectionReason] = useState("");
+  const [initialBalanceDialogOpen, setInitialBalanceDialogOpen] = useState(false);
+  const [initialBalanceMinutes, setInitialBalanceMinutes] = useState("");
   
   // Create entry dialog state
   const [createEntryDialogOpen, setCreateEntryDialogOpen] = useState(false);
