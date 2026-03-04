@@ -75,6 +75,15 @@ const MatrixProviderBoundary = ({ children }: { children: ReactNode }) => {
 const AppContent = () => {
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
 
+  // Guard: COI Service Worker im Lovable-Iframe deaktivieren
+  useEffect(() => {
+    const isInIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
+    const isLovable = window.location.hostname.includes('lovable');
+    if (isInIframe || isLovable) {
+      sessionStorage.removeItem('coi-cleanup-state');
+    }
+  }, []);
+
   // Global keyboard shortcut: Cmd/Ctrl + . (period)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -83,11 +92,10 @@ const AppContent = () => {
         setQuickNoteOpen(true);
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
+  
   return (
     <>
       <Toaster />
