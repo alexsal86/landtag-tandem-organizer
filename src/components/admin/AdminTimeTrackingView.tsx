@@ -447,7 +447,7 @@ export function AdminTimeTrackingView() {
   // Credit minutes (absences that count towards target - WITHOUT holidays, they reduce the target)
   const creditMinutes = useMemo(() => 
     combinedEntries
-      .filter(e => ['sick', 'vacation', 'medical'].includes(e.entry_type))
+      .filter(e => ['sick', 'vacation', 'medical', 'overtime_reduction'].includes(e.entry_type))
       .reduce((sum, e) => sum + (e.minutes || 0), 0),
     [combinedEntries]
   );
