@@ -6,7 +6,7 @@ function isLovablePreviewHost(hostname: string): boolean {
   return (
     hostname.endsWith('lovable.app') ||
     hostname.endsWith('lovableproject.com') ||
-    hostname.includes('lovable') // catch subdomain variants
+    hostname.includes('lovable')
   );
 }
 
@@ -14,7 +14,7 @@ function isInIframe(): boolean {
   try {
     return window.self !== window.top;
   } catch {
-    return true; // cross-origin iframe – treat as iframe
+    return true;
   }
 }
 
@@ -29,8 +29,7 @@ async function setupCrossOriginIsolation(): Promise<void> {
   const inIframe = isInIframe();
   const isPreviewHost = isLovablePreviewHost(window.location.hostname);
 
-  // Never touch SW in Lovable preview or any iframe – can hang indefinitely
-  if (isPreviewHost || inIframe) {
+  if (inIframe || isPreviewHost) {
     sessionStorage.removeItem('coi-cleanup-state');
     return;
   }
@@ -41,13 +40,12 @@ async function setupCrossOriginIsolation(): Promise<void> {
 }
 
 function bootstrap() {
-  // Always render immediately – never block on COI
   createRoot(document.getElementById('root')!).render(<App />);
 
   void Promise.race([
     setupCrossOriginIsolation(),
     new Promise((_, reject) => setTimeout(() => reject(new Error('COI timeout')), 3000)),
-  ]).catch(() => { /* ignore */ });
+  ]).catch(() => {});
 }
 
 bootstrap();
