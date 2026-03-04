@@ -138,7 +138,9 @@ export function MatrixWebsiteWidget() {
     setWidgetMessages((current) => [...current, summary]);
 
     try {
-      const { data, error } = await submitWebsiteWidgetCallbackRequest(trimmedForm);
+      const { data, error } = await submitWebsiteWidgetCallbackRequest(trimmedForm, conversationId);
+
+      const isConversationLinked = data?.success && data?.event_id && data?.room_id;
 
       if (error) {
         throw new Error(error.message || "Function invocation failed");
@@ -150,7 +152,7 @@ export function MatrixWebsiteWidget() {
           id: crypto.randomUUID(),
           role: "bot",
           text: data?.success
-            ? `✅ Danke! Dein Rückrufwunsch wurde erfasst, als Follow-up im Organizer angelegt und mit der Chat-Konversation verknüpft.${data.task_id ? ` (Task: ${data.task_id})` : ""}`
+            ? `✅ Danke! Dein Rückrufwunsch wurde erfasst und als Follow-up im Organizer angelegt${isConversationLinked ? " sowie mit der Chat-Konversation verknüpft" : ""}.${data.task_id ? ` (Task: ${data.task_id})` : ""}`
             : `⚠️ ${data?.fallback_message || "Der Rückrufwunsch konnte nicht vollständig verarbeitet werden."}`,
         },
       ]);
