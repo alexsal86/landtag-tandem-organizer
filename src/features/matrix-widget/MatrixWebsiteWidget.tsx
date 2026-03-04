@@ -10,7 +10,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { sendWebsiteWidgetMessage, saveWidgetMessageFeedback } from "./api";
+import {
+  saveWidgetMessageFeedback,
+  sendWebsiteWidgetMessage,
+  submitWebsiteWidgetCallbackRequest,
+} from "./api";
 import type { WebsiteWidgetCallbackRequest, WidgetMessage } from "./types";
 import { useTenant } from "@/hooks/useTenant";
 
