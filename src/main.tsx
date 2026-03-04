@@ -45,7 +45,7 @@ async function setupCrossOriginIsolation(): Promise<void> {
   }
 
   if ('serviceWorker' in navigator && window.isSecureContext) {
-    await navigator.serviceWorker.register('/coi-serviceworker.js?v=2026-03-04-v4');
+    await navigator.serviceWorker.register('/coi-serviceworker.js?v=2026-03-04-v5');
   }
 }
 
