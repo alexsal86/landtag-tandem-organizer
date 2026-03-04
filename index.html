@@ -33,14 +33,31 @@
     <!-- Enable Cross-Origin Isolation for SharedArrayBuffer (Matrix E2EE) -->
     <script>
       (function() {
-        window.coi = {
-          shouldRegister: function() { return true; },
-          shouldDeregister: function() { return false; },
-          quiet: true
-        };
-        var s = document.createElement('script');
-        s.src = '/coi-serviceworker.js';
-        document.head.appendChild(s);
+        var inIframe = false;
+        try { inIframe = window.self !== window.top; }
+        catch (e) { inIframe = true; }
+
+        if (inIframe) {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              var hadWorker = false;
+              regs.forEach(function(r) { r.unregister(); hadWorker = true; });
+              if (hadWorker && !sessionStorage.getItem('coi-cleaned')) {
+                sessionStorage.setItem('coi-cleaned', '1');
+                window.location.reload();
+              }
+            });
+          }
+        } else {
+          window.coi = {
+            shouldRegister: function() { return true; },
+            shouldDeregister: function() { return false; },
+            quiet: true
+          };
+          var s = document.createElement('script');
+          s.src = '/coi-serviceworker.js';
+          document.head.appendChild(s);
+        }
       })();
     </script>
     <div id="root"></div>

@@ -135,11 +135,17 @@ if (typeof window === 'undefined') {
 
 } else {
   // ── Client (browser) scope ──
+
+  // Iframe detection — prevent SW registration & reload loops inside iframes
+  var inIframe = false;
+  try { inIframe = window.self !== window.top; }
+  catch (_e) { inIframe = true; }
+
   const e = {
-    shouldRegister: () => true,
-    shouldDeregister: () => false,
+    shouldRegister: () => !inIframe,
+    shouldDeregister: () => inIframe,
     coepCredentialless: () => !(window.chrome || window.netscape),
-    doReload: () => window.location.reload(),
+    doReload: () => { if (!inIframe) window.location.reload(); },
     quiet: false,
     ...window.coi
   };
