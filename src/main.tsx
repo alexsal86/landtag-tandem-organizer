@@ -61,17 +61,16 @@ async function setupCrossOriginIsolation(): Promise<void> {
   }
 }
 
-async function bootstrap() {
-  try {
-    await Promise.race([
-      setupCrossOriginIsolation(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('COI timeout')), 3000)),
-    ]);
-  } catch {
-    // Timeout or error — continue to render regardless
-  }
-
+function bootstrap() {
   createRoot(document.getElementById('root')!).render(<App />);
+
+  // Never block initial UI render on COI/SW operations.
+  void Promise.race([
+    setupCrossOriginIsolation(),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('COI timeout')), 3000)),
+  ]).catch(() => {
+    // Ignore COI setup failures/timeouts after render
+  });
 }
 
-void bootstrap();
+bootstrap();
