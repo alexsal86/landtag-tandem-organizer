@@ -1072,7 +1072,7 @@ export function AdminTimeTrackingView() {
                               )}
                             </TableCell>
                             <TableCell className="font-mono">
-                              {fmt(actualBeforeEntryById.get(entry.id) || 0)}
+                              {fmt(actualAfterEntryById.get(entry.id) || 0)}
                             </TableCell>
                             <TableCell>
                               {entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "-"}
