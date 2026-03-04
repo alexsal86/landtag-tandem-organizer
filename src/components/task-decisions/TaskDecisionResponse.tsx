@@ -424,44 +424,48 @@ export const TaskDecisionResponse = ({
             {option.description && renderDescriptionInfo(option.description)}
           </Button>
         </DialogTrigger>
-        <DialogContent className="w-[95vw] min-w-[320px] sm:w-[40vw] max-w-[900px]">
+        <DialogContent className="w-[95vw] min-w-[320px] sm:w-[40vw] max-w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>{option.label}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <SimpleRichTextEditor
-              initialContent={questionComment}
-              onChange={setQuestionComment}
-              placeholder="Ihre Frage oder Ihr Kommentar..."
-              minHeight="100px"
-            />
-            
-            <div className="border-t pt-4">
-              <p className="text-sm font-medium mb-2 flex items-center">
-                <Paperclip className="h-4 w-4 mr-2" />
-                Dateien anhängen (optional)
-              </p>
-              <DecisionFileUpload 
-                decisionId={decisionId}
-                canUpload={true}
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <div className="space-y-4">
+              <SimpleRichTextEditor
+                initialContent={questionComment}
+                onChange={setQuestionComment}
+                placeholder="Ihre Frage oder Ihr Kommentar..."
+                minHeight="100px"
+                maxHeight="45vh"
+                scrollable
               />
+
+              <div className="border-t pt-4">
+                <p className="text-sm font-medium mb-2 flex items-center">
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Dateien anhängen (optional)
+                </p>
+                <DecisionFileUpload
+                  decisionId={decisionId}
+                  canUpload={true}
+                />
+              </div>
             </div>
-            
-            <div className="flex justify-end space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsQuestionDialogOpen(false)}
-                disabled={isLoading}
-              >
-                Abbrechen
-              </Button>
-              <Button 
-                onClick={() => handleQuestionSubmit(option)}
-                disabled={isLoading}
-              >
-                {isLoading ? "Sende..." : "Senden"}
-              </Button>
-            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 border-t pt-4 mt-4 bg-background">
+            <Button
+              variant="outline"
+              onClick={() => setIsQuestionDialogOpen(false)}
+              disabled={isLoading}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              onClick={() => handleQuestionSubmit(option)}
+              disabled={isLoading}
+            >
+              {isLoading ? "Sende..." : "Senden"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
