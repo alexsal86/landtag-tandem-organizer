@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  LoaderCircle,
   MessageCircle,
   PhoneCall,
   Send,
@@ -307,10 +308,26 @@ export function MatrixWebsiteWidget() {
                         {message.text}
                       </div>
                       {message.role === "visitor" &&
-                        message.deliveryStatus === "failed" && (
-                          <p className="mt-1 text-right text-xs text-destructive">
-                            Nicht gesendet
-                          </p>
+                        message.deliveryStatus &&
+                        message.deliveryStatus !== "sent" && (
+                          <div
+                            className="mt-1 flex justify-end"
+                            aria-live="polite"
+                          >
+                            {message.deliveryStatus === "pending" ? (
+                              <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                <LoaderCircle
+                                  className="h-3 w-3 animate-spin"
+                                  aria-hidden="true"
+                                />
+                                Wird gesendet…
+                              </p>
+                            ) : (
+                              <p className="text-xs text-destructive">
+                                Nicht gesendet
+                              </p>
+                            )}
+                          </div>
                         )}
                     </div>
                   </div>
