@@ -40,8 +40,18 @@ interface WebsiteWidgetTestRequest {
   message?: string;
   conversation_id?: string;
   source?: string;
+  captcha_token?: string;
+  captcha_provider?: 'turnstile' | 'hcaptcha';
   callback_request?: WebsiteWidgetCallbackPayload;
 }
+
+interface WidgetRateLimitResult {
+  allowed: boolean;
+  retryAfterSeconds: number;
+}
+
+const WIDGET_RATE_LIMIT_WINDOW_SECONDS = Number(Deno.env.get('WIDGET_RATE_LIMIT_WINDOW_SECONDS') ?? 300);
+const WIDGET_RATE_LIMIT_MAX_REQUESTS = Number(Deno.env.get('WIDGET_RATE_LIMIT_MAX_REQUESTS') ?? 5);
 
 serve(async (req) => {
   console.log('🤖 Matrix function called with method:', req.method);
@@ -73,6 +83,7 @@ serve(async (req) => {
         supabaseAdmin,
         matrixToken,
         matrixHomeserver,
+        req,
       );
     }
 
@@ -692,6 +703,7 @@ async function handleWebsiteWidgetTest(
   supabaseAdmin: any,
   matrixToken: string,
   matrixHomeserver: string,
+  req: Request,
 ) {
   const responseMessageId = crypto.randomUUID();
   const configuredRoomId = Deno.env.get('MATRIX_WIDGET_TEST_ROOM_ID');
@@ -731,6 +743,63 @@ async function handleWebsiteWidgetTest(
       sent_date: new Date().toISOString().slice(0, 10),
     });
   };
+
+  const requesterIp = getRequesterIp(req);
+  const sessionId = getRequesterSession(body, req);
+
+  const rateLimit = await enforceWidgetRateLimit(
+    supabaseAdmin,
+    body.type,
+    requesterIp,
+    sessionId,
+  );
+
+  if (!rateLimit.allowed) {
+    await logAttempt('failed', {
+      error_message: 'Rate limit exceeded',
+      metadata: {
+        requester_ip: requesterIp,
+        requester_session: sessionId,
+      },
+    });
+
+    return new Response(JSON.stringify({
+      success: false,
+      event_id: null,
+      room_id: configuredRoomId ?? null,
+      task_id: null,
+      fallback_message: 'Anfrage konnte aktuell nicht verarbeitet werden. Bitte später erneut versuchen.',
+    }), {
+      status: 429,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        'Retry-After': String(rateLimit.retryAfterSeconds),
+      },
+    });
+  }
+
+  const captchaResult = await verifyWidgetCaptcha(body, req);
+  if (!captchaResult.verified) {
+    await logAttempt('failed', {
+      error_message: captchaResult.error,
+      metadata: {
+        requester_ip: requesterIp,
+        requester_session: sessionId,
+      },
+    });
+
+    return new Response(JSON.stringify({
+      success: false,
+      event_id: null,
+      room_id: configuredRoomId ?? null,
+      task_id: null,
+      fallback_message: 'Anfrage konnte nicht bestätigt werden. Bitte erneut versuchen.',
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   if (isCallbackRequest) {
     const hasMissingFields =
@@ -966,4 +1035,175 @@ ${callbackBody}`,
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function getRequesterIp(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+
+  const realIp = req.headers.get('x-real-ip') ?? req.headers.get('cf-connecting-ip');
+  return realIp?.trim() || 'unknown';
+}
+
+function getRequesterSession(body: WebsiteWidgetTestRequest, req: Request): string {
+  return body.conversation_id?.trim()
+    || req.headers.get('x-session-id')?.trim()
+    || 'anonymous';
+}
+
+async function enforceWidgetRateLimit(
+  supabaseAdmin: any,
+  eventType: WebsiteWidgetTestRequest['type'],
+  ip: string,
+  sessionId: string,
+): Promise<WidgetRateLimitResult> {
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const windowSizeSeconds = Math.max(1, WIDGET_RATE_LIMIT_WINDOW_SECONDS);
+  const maxRequests = Math.max(1, WIDGET_RATE_LIMIT_MAX_REQUESTS);
+  const limitKey = `${eventType}:${ip}:${sessionId}`;
+
+  await supabaseAdmin
+    .from('widget_rate_limits')
+    .delete()
+    .lt('window_expires_at', nowIso);
+
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from('widget_rate_limits')
+    .select('id, request_count, window_started_at, window_expires_at')
+    .eq('limit_key', limitKey)
+    .maybeSingle();
+
+  if (selectError) {
+    console.error('❌ Failed to read widget rate limit state:', selectError);
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+
+  if (!existing) {
+    const windowExpiresAt = new Date(now.getTime() + windowSizeSeconds * 1000).toISOString();
+    const { error: insertError } = await supabaseAdmin.from('widget_rate_limits').insert({
+      limit_key: limitKey,
+      request_count: 1,
+      window_started_at: nowIso,
+      window_expires_at: windowExpiresAt,
+      ip_address: ip,
+      session_id: sessionId,
+      event_type: eventType,
+    });
+
+    if (insertError) {
+      console.error('❌ Failed to create widget rate limit state:', insertError);
+    }
+
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+
+  const expiresAt = new Date(existing.window_expires_at);
+  if (expiresAt <= now) {
+    const nextExpiration = new Date(now.getTime() + windowSizeSeconds * 1000).toISOString();
+    const { error: resetError } = await supabaseAdmin
+      .from('widget_rate_limits')
+      .update({
+        request_count: 1,
+        window_started_at: nowIso,
+        window_expires_at: nextExpiration,
+        ip_address: ip,
+        session_id: sessionId,
+        event_type: eventType,
+      })
+      .eq('id', existing.id);
+
+    if (resetError) {
+      console.error('❌ Failed to reset widget rate limit state:', resetError);
+    }
+
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+
+  if (existing.request_count >= maxRequests) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((expiresAt.getTime() - now.getTime()) / 1000));
+    return { allowed: false, retryAfterSeconds };
+  }
+
+  const { error: updateError } = await supabaseAdmin
+    .from('widget_rate_limits')
+    .update({
+      request_count: existing.request_count + 1,
+      ip_address: ip,
+      session_id: sessionId,
+      event_type: eventType,
+    })
+    .eq('id', existing.id);
+
+  if (updateError) {
+    console.error('❌ Failed to update widget rate limit state:', updateError);
+  }
+
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
+async function verifyWidgetCaptcha(
+  body: WebsiteWidgetTestRequest,
+  req: Request,
+): Promise<{ verified: boolean; error?: string }> {
+  const token = body.captcha_token?.trim();
+  const provider = body.captcha_provider ?? 'turnstile';
+
+  if (!token) {
+    return { verified: false, error: 'Captcha token missing' };
+  }
+
+  const ip = getRequesterIp(req);
+
+  if (provider === 'hcaptcha') {
+    const secret = Deno.env.get('HCAPTCHA_SECRET_KEY');
+    if (!secret) {
+      return { verified: false, error: 'hCaptcha secret not configured' };
+    }
+
+    const response = await fetch('https://hcaptcha.com/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        secret,
+        response: token,
+        remoteip: ip,
+      }),
+    });
+
+    if (!response.ok) {
+      return { verified: false, error: `hCaptcha verification failed with HTTP ${response.status}` };
+    }
+
+    const result = await response.json();
+    return result.success
+      ? { verified: true }
+      : { verified: false, error: 'hCaptcha verification failed' };
+  }
+
+  const secret = Deno.env.get('TURNSTILE_SECRET_KEY');
+  if (!secret) {
+    return { verified: false, error: 'Turnstile secret not configured' };
+  }
+
+  const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      secret,
+      response: token,
+      remoteip: ip,
+    }),
+  });
+
+  if (!response.ok) {
+    return { verified: false, error: `Turnstile verification failed with HTTP ${response.status}` };
+  }
+
+  const result = await response.json();
+  return result.success
+    ? { verified: true }
+    : { verified: false, error: 'Turnstile verification failed' };
 }
