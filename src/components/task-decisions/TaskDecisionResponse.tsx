@@ -424,7 +424,7 @@ export const TaskDecisionResponse = ({
             {option.description && renderDescriptionInfo(option.description)}
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="w-[95vw] min-w-[320px] sm:w-[40vw] max-w-[900px]">
           <DialogHeader>
             <DialogTitle>{option.label}</DialogTitle>
           </DialogHeader>
