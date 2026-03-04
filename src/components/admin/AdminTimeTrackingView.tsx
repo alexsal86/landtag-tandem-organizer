@@ -282,6 +282,30 @@ export function AdminTimeTrackingView() {
     selectedEmployee ?? null
   );
 
+  const validateDailyLimit = async (workDate: string, grossMinutes: number, excludeEntryId?: string) => {
+    if (!selectedUserId) return;
+
+    const { data, error } = await supabase
+      .from("time_entries")
+      .select("id, started_at, ended_at")
+      .eq("user_id", selectedUserId)
+      .eq("work_date", workDate);
+
+    if (error) throw error;
+
+    const alreadyLogged = (data || []).reduce((sum, entry) => {
+      if (entry.id === excludeEntryId || !entry.started_at || !entry.ended_at) return sum;
+      const duration = Math.round((new Date(entry.ended_at).getTime() - new Date(entry.started_at).getTime()) / 60000);
+      return sum + duration;
+    }, 0);
+
+    if (alreadyLogged + grossMinutes > 600) {
+      throw new Error(
+        `Maximal 10:00 Stunden pro Tag erlaubt. Bereits erfasst: ${fmt(alreadyLogged)}. Mit diesem Eintrag: ${fmt(alreadyLogged + grossMinutes)}.`
+      );
+    }
+  };
+
   // Create new entry (work or absence)
   const handleCreateEntry = async () => {
     if (!user || !selectedUserId) return;
@@ -301,6 +325,21 @@ export function AdminTimeTrackingView() {
         
         const grossMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
         const pause = parseInt(newEntryPause) || 0;
+
+        if (pause < 0) {
+          toast.error("Die Pause darf nicht negativ sein");
+          setIsSaving(false);
+          return;
+        }
+
+        if (pause > grossMinutes) {
+          toast.error("Die Pause darf nicht länger als die Arbeitszeit sein");
+          setIsSaving(false);
+          return;
+        }
+
+        await validateDailyLimit(newEntryDate, grossMinutes);
+
         const netMinutes = grossMinutes - pause;
         
         const { error } = await supabase.from("time_entries").insert({
@@ -419,30 +458,28 @@ export function AdminTimeTrackingView() {
     [corrections]
   );
 
-  // Running monthly "Gesamt-Ist" at the START of each day (before that day's entries)
-  const startOfDayActualByDate = useMemo(() => {
+  // Running "Gesamt-Ist" before each displayed entry starts (supports multiple work entries per day)
+  const actualBeforeEntryById = useMemo(() => {
     const actualTypes = new Set<CombinedTimeEntry['entry_type']>(['work', 'sick', 'vacation', 'medical']);
-    const byDate = new Map<string, number>();
+    const byEntryId = new Map<string, number>();
 
-    const sortedByDateAsc = [...combinedEntries].sort(
-      (a, b) => new Date(a.work_date).getTime() - new Date(b.work_date).getTime()
-    );
+    const sortedChronologically = [...combinedEntries].sort((a, b) => {
+      const aDateTime = a.started_at ? new Date(a.started_at).getTime() : new Date(`${a.work_date}T00:00:00`).getTime();
+      const bDateTime = b.started_at ? new Date(b.started_at).getTime() : new Date(`${b.work_date}T00:00:00`).getTime();
+      if (aDateTime !== bDateTime) return aDateTime - bDateTime;
+      return a.id.localeCompare(b.id);
+    });
 
     let runningActual = 0;
-    let currentDate: string | null = null;
 
-    sortedByDateAsc.forEach((entry) => {
-      if (entry.work_date !== currentDate) {
-        currentDate = entry.work_date;
-        byDate.set(entry.work_date, runningActual);
-      }
-
+    sortedChronologically.forEach((entry) => {
+      byEntryId.set(entry.id, runningActual);
       if (actualTypes.has(entry.entry_type)) {
         runningActual += entry.minutes || 0;
       }
     });
 
-    return byDate;
+    return byEntryId;
   }, [combinedEntries]);
 
   const fmt = (m: number) => {
@@ -467,6 +504,20 @@ export function AdminTimeTrackingView() {
         toast.error("Endzeit muss nach Startzeit liegen");
         return;
       }
+
+      const grossMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
+
+      if (data.pause_minutes < 0) {
+        toast.error("Die Pause darf nicht negativ sein");
+        return;
+      }
+
+      if (data.pause_minutes > grossMinutes) {
+        toast.error("Die Pause darf nicht länger als die Arbeitszeit sein");
+        return;
+      }
+
+      await validateDailyLimit(data.work_date, grossMinutes, entryId);
 
       const { error } = await supabase
         .from("time_entries")
@@ -1021,7 +1072,7 @@ export function AdminTimeTrackingView() {
                               )}
                             </TableCell>
                             <TableCell className="font-mono">
-                              {fmt(startOfDayActualByDate.get(entry.work_date) || 0)}
+                              {fmt(actualBeforeEntryById.get(entry.id) || 0)}
                             </TableCell>
                             <TableCell>
                               {entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "-"}
