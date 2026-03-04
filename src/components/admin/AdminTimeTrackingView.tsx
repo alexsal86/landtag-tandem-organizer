@@ -454,10 +454,19 @@ export function AdminTimeTrackingView() {
     [combinedEntries]
   );
 
-  // Credit minutes (absences that count towards target - WITHOUT holidays, they reduce the target)
+  // Credit minutes (absences that count towards target - WITHOUT holidays and WITHOUT overtime_reduction)
+  // Overtime reduction must NOT be credited – it consumes the overtime balance
   const creditMinutes = useMemo(() => 
     combinedEntries
-      .filter(e => ['sick', 'vacation', 'medical', 'overtime_reduction'].includes(e.entry_type))
+      .filter(e => ['sick', 'vacation', 'medical'].includes(e.entry_type))
+      .reduce((sum, e) => sum + (e.minutes || 0), 0),
+    [combinedEntries]
+  );
+
+  // Overtime reduction minutes (tracked separately – reduces overtime balance)
+  const overtimeReductionMinutes = useMemo(() => 
+    combinedEntries
+      .filter(e => e.entry_type === 'overtime_reduction')
       .reduce((sum, e) => sum + (e.minutes || 0), 0),
     [combinedEntries]
   );
