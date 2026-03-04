@@ -28,6 +28,12 @@ interface DecisionMatrixMessage extends MatrixMessage {
   };
 }
 
+interface WebsiteWidgetTestRequest {
+  type: "website_widget_test";
+  message?: string;
+  source?: string;
+}
+
 serve(async (req) => {
   console.log('🤖 Matrix function called with method:', req.method);
   
@@ -44,7 +50,23 @@ serve(async (req) => {
     // Get Matrix configuration from secrets
     const matrixToken = Deno.env.get('MATRIX_BOT_TOKEN');
     const matrixHomeserver = Deno.env.get('MATRIX_HOMESERVER_URL') || 'https://matrix.org';
-    
+
+    // Initialize Supabase
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Handle website widget test request
+    if (body.type === 'website_widget_test') {
+      return await handleWebsiteWidgetTest(
+        body as WebsiteWidgetTestRequest,
+        supabaseAdmin,
+        matrixToken,
+        matrixHomeserver,
+      );
+    }
+
     if (!matrixToken) {
       console.error('❌ Matrix bot token not configured');
       return new Response(JSON.stringify({
@@ -55,12 +77,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-
-    // Initialize Supabase
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
 
     // Handle test requests - now sends REAL Matrix messages for testing
     if (body.test || body.type === 'test') {
@@ -610,5 +626,142 @@ async function sendDecisionMessages(
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
+  }
+}
+
+async function handleWebsiteWidgetTest(
+  body: WebsiteWidgetTestRequest,
+  supabaseAdmin: any,
+  matrixToken: string,
+  matrixHomeserver: string,
+) {
+  const configuredRoomId = Deno.env.get('MATRIX_WIDGET_TEST_ROOM_ID');
+  const fallbackMessage =
+    'Die Nachricht wurde gespeichert, konnte aber nicht in den Matrix-Test-Raum gesendet werden.';
+
+  const logAttempt = async (
+    success: boolean,
+    extra: { event_id?: string | null; error_message?: string; room_id?: string | null },
+  ) => {
+    await supabaseAdmin.from('matrix_bot_logs').insert({
+      event_type: 'website_widget_test',
+      room_id: extra.room_id ?? configuredRoomId ?? null,
+      message: body.message ?? '',
+      success,
+      event_id: extra.event_id ?? null,
+      error_message: extra.error_message,
+      timestamp: new Date().toISOString(),
+    });
+  };
+
+  if (!matrixToken) {
+    const errorText = 'Matrix bot token not configured';
+    await logAttempt(false, { error_message: errorText });
+    return new Response(JSON.stringify({
+      success: false,
+      event_id: null,
+      room_id: configuredRoomId ?? null,
+      fallback_message: 'Matrix-Zugang ist aktuell nicht konfiguriert.',
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (!configuredRoomId) {
+    const errorText = 'MATRIX_WIDGET_TEST_ROOM_ID not configured';
+    await logAttempt(false, { error_message: errorText });
+    return new Response(JSON.stringify({
+      success: false,
+      event_id: null,
+      room_id: null,
+      fallback_message: 'Kein Matrix-Test-Raum konfiguriert.',
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const payload: MatrixMessage = {
+    msgtype: 'm.text',
+    body: body.message || 'Website-Widget Testnachricht',
+    format: 'org.matrix.custom.html',
+    formatted_body: `<strong>Website-Widget Test</strong><br/>${body.message || 'Website-Widget Testnachricht'}`,
+  };
+
+  const txnId = `widget_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+  const matrixUrl = `${matrixHomeserver}/_matrix/client/r0/rooms/${configuredRoomId}/send/m.room.message/${txnId}`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort('timeout'), 10000);
+
+  try {
+    const response = await fetch(matrixUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${matrixToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      await logAttempt(false, {
+        error_message: `HTTP ${response.status}: ${errorText}`,
+        room_id: configuredRoomId,
+      });
+
+      return new Response(JSON.stringify({
+        success: false,
+        event_id: null,
+        room_id: configuredRoomId,
+        fallback_message: fallbackMessage,
+      }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const result = await response.json();
+    await logAttempt(true, {
+      event_id: result.event_id ?? null,
+      room_id: configuredRoomId,
+    });
+
+    return new Response(JSON.stringify({
+      success: true,
+      event_id: result.event_id ?? null,
+      room_id: configuredRoomId,
+      fallback_message: 'Nachricht erfolgreich an Matrix gesendet.',
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    const isTimeout = error instanceof DOMException && error.name === 'AbortError';
+    await logAttempt(false, {
+      error_message: isTimeout
+        ? 'Matrix API timeout after 10s'
+        : error instanceof Error
+          ? error.message
+          : String(error),
+      room_id: configuredRoomId,
+    });
+
+    return new Response(JSON.stringify({
+      success: false,
+      event_id: null,
+      room_id: configuredRoomId,
+      fallback_message: isTimeout
+        ? 'Zeitüberschreitung bei der Matrix-Übertragung.'
+        : fallbackMessage,
+    }), {
+      status: isTimeout ? 504 : 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } finally {
+    clearTimeout(timeout);
   }
 }
