@@ -15,7 +15,7 @@ import {
   sendWebsiteWidgetMessage,
   submitWebsiteWidgetCallbackRequest,
 } from "./api";
-import type { WebsiteWidgetCallbackRequest, WidgetMessage } from "./types";
+import type { FeedbackResponseRole, WebsiteWidgetCallbackRequest, WidgetMessage } from "./types";
 import { useTenant } from "@/hooks/useTenant";
 
 const INITIAL_MESSAGES: WidgetMessage[] = [
@@ -214,6 +214,12 @@ export function MatrixWebsiteWidget() {
       return;
     }
 
+    const responseRole: FeedbackResponseRole | null =
+      message.role === "bot" || message.role === "team" ? message.role : null;
+    if (!responseRole) {
+      return;
+    }
+
     const messageIndex = widgetMessages.findIndex((entry) => entry.id === messageId);
     const previousVisitorMessage =
       messageIndex > 0
@@ -228,7 +234,7 @@ export function MatrixWebsiteWidget() {
       conversationId,
       widgetMessageId: message.id,
       matrixEventId: message.matrixEventId,
-      responseRole: message.role,
+      responseRole,
       isHelpful,
       visitorMessage: previousVisitorMessage,
       botReply: message.text,
