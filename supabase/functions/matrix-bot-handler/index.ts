@@ -714,6 +714,13 @@ async function handleWebsiteWidgetTest(
     ? 'Die Rückrufanfrage konnte nicht vollständig verarbeitet werden.'
     : 'Die Nachricht wurde gespeichert, konnte aber nicht in den Matrix-Test-Raum gesendet werden.';
 
+  const maskedCallbackMetadata = isCallbackRequest && callbackRequest
+    ? {
+        requester_name_masked: maskPersonName(callbackRequest.name),
+        requester_phone_masked: maskPhoneNumber(callbackRequest.phone),
+      }
+    : {};
+
   const logAttempt = async (
     status: 'success' | 'failed',
     extra: {
@@ -721,23 +728,23 @@ async function handleWebsiteWidgetTest(
       room_id?: string | null;
       response_content?: string | null;
       metadata?: Record<string, unknown>;
+      status_code?: number;
     },
   ) => {
     await supabaseAdmin.from('matrix_bot_logs').insert({
       event_type: isCallbackRequest ? 'website_widget_callback_request' : 'website_widget_test',
       room_id: extra.room_id ?? configuredRoomId ?? null,
-      message_content: body.message ?? callbackRequest?.concern ?? '',
+      message_content: isCallbackRequest
+        ? 'Callback request submitted via website widget'
+        : (body.message ?? ''),
       response_content: extra.response_content ?? null,
       status,
       error_message: extra.error_message ?? null,
       metadata: {
         source: body.source ?? 'unknown',
         conversation_id: body.conversation_id ?? null,
-        ...(isCallbackRequest
-          ? {
-              callback_request: callbackRequest,
-            }
-          : {}),
+        status_code: extra.status_code ?? null,
+        ...maskedCallbackMetadata,
         ...(extra.metadata ?? {}),
       },
       sent_date: new Date().toISOString().slice(0, 10),
@@ -757,9 +764,11 @@ async function handleWebsiteWidgetTest(
   if (!rateLimit.allowed) {
     await logAttempt('failed', {
       error_message: 'Rate limit exceeded',
+      status_code: 429,
       metadata: {
-        requester_ip: requesterIp,
-        requester_session: sessionId,
+        requester_ip_masked: maskIpAddress(requesterIp),
+        requester_session: maskRequesterSession(sessionId),
+        retry_after_seconds: rateLimit.retryAfterSeconds,
       },
     });
 
@@ -783,9 +792,11 @@ async function handleWebsiteWidgetTest(
   if (!captchaResult.verified) {
     await logAttempt('failed', {
       error_message: captchaResult.error,
+      status_code: 400,
       metadata: {
-        requester_ip: requesterIp,
-        requester_session: sessionId,
+        requester_ip_masked: maskIpAddress(requesterIp),
+        requester_session: maskRequesterSession(sessionId),
+        captcha_provider: body.captcha_provider ?? null,
       },
     });
 
@@ -811,6 +822,7 @@ async function handleWebsiteWidgetTest(
     if (hasMissingFields) {
       await logAttempt('failed', {
         error_message: 'Missing callback request fields',
+        status_code: 400,
       });
 
       return new Response(JSON.stringify({
@@ -827,7 +839,7 @@ async function handleWebsiteWidgetTest(
 
   if (!matrixToken) {
     const errorText = 'Matrix bot token not configured';
-    await logAttempt('failed', { error_message: errorText });
+    await logAttempt('failed', { error_message: errorText, status_code: 500 });
     return new Response(JSON.stringify({
       success: false,
       message_id: responseMessageId,
@@ -841,7 +853,7 @@ async function handleWebsiteWidgetTest(
 
   if (!configuredRoomId) {
     const errorText = 'MATRIX_WIDGET_TEST_ROOM_ID not configured';
-    await logAttempt('failed', { error_message: errorText });
+    await logAttempt('failed', { error_message: errorText, status_code: 500 });
     return new Response(JSON.stringify({
       success: false,
       message_id: responseMessageId,
@@ -891,6 +903,7 @@ ${callbackBody}`,
       await logAttempt('failed', {
         error_message: `HTTP ${response.status}: ${errorText}`,
         room_id: configuredRoomId,
+        status_code: response.status,
       });
 
       return new Response(JSON.stringify({
@@ -915,6 +928,7 @@ ${callbackBody}`,
         await logAttempt('failed', {
           error_message: 'No tenant/user context found for callback request',
           room_id: configuredRoomId,
+          status_code: 500,
           metadata: { event_id: result.event_id ?? null },
         });
 
@@ -958,6 +972,7 @@ ${callbackBody}`,
         await logAttempt('failed', {
           error_message: `Task creation failed: ${taskError.message}`,
           room_id: configuredRoomId,
+          status_code: 500,
           metadata: { event_id: result.event_id ?? null },
         });
 
@@ -994,6 +1009,7 @@ ${callbackBody}`,
         ? 'Callback request sent to Matrix and stored as Organizer task'
         : 'Website widget test message sent to Matrix',
       metadata: {
+        status_code: 200,
         event_id: result.event_id ?? null,
         task_id: createdTaskId,
       },
@@ -1019,6 +1035,7 @@ ${callbackBody}`,
           ? error.message
           : String(error),
       room_id: configuredRoomId,
+      status_code: isTimeout ? 504 : 500,
     });
 
     return new Response(JSON.stringify({
@@ -1051,6 +1068,37 @@ function getRequesterSession(body: WebsiteWidgetTestRequest, req: Request): stri
   return body.conversation_id?.trim()
     || req.headers.get('x-session-id')?.trim()
     || 'anonymous';
+}
+
+function maskPersonName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return 'unknown';
+  if (trimmed.length <= 2) return `${trimmed[0]}*`;
+  return `${trimmed[0]}${'*'.repeat(trimmed.length - 2)}${trimmed[trimmed.length - 1]}`;
+}
+
+function maskPhoneNumber(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return 'unknown';
+  const tail = digits.slice(-2);
+  const maskedLength = Math.max(digits.length - tail.length, 2);
+  return `${'*'.repeat(maskedLength)}${tail}`;
+}
+
+function maskIpAddress(ip: string): string {
+  if (ip === 'unknown') return ip;
+  if (ip.includes(':')) {
+    const segments = ip.split(':');
+    return `${segments.slice(0, 2).join(':')}:****`;
+  }
+  const octets = ip.split('.');
+  if (octets.length !== 4) return 'masked';
+  return `${octets[0]}.${octets[1]}.x.x`;
+}
+
+function maskRequesterSession(sessionId: string): string {
+  if (sessionId.length <= 4) return 'anon';
+  return `${sessionId.slice(0, 2)}***${sessionId.slice(-2)}`;
 }
 
 async function enforceWidgetRateLimit(
