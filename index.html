@@ -32,21 +32,42 @@
   <body>
     <!-- Enable Cross-Origin Isolation for SharedArrayBuffer (Matrix E2EE) -->
     <script>
-      window.coi = {
-        shouldRegister: function() {
-          var inIframe = window !== window.top;
-          var onChat = window.location.pathname.startsWith('/chat');
-          return !inIframe || onChat;
-        },
-        shouldDeregister: function() {
-          var inIframe = window !== window.top;
-          var onChat = window.location.pathname.startsWith('/chat');
-          return inIframe && !onChat;
-        },
-        quiet: true
-      };
+      (function() {
+        var inIframe = window !== window.top;
+        var onChat = window.location.pathname.startsWith('/chat');
+
+        if (inIframe && !onChat) {
+          // In iframe (Lovable Preview) and NOT on /chat: aggressively remove any
+          // previously registered COI service worker to prevent COOP/COEP headers
+          // from blocking iframe embedding.
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              var hadWorker = false;
+              regs.forEach(function(r) {
+                if (r.active && r.active.scriptURL.indexOf('coi-serviceworker') !== -1) {
+                  hadWorker = true;
+                  r.unregister();
+                }
+              });
+              if (hadWorker) {
+                window.location.reload();
+              }
+            });
+          }
+          // Do NOT load coi-serviceworker.js in iframe (except /chat)
+        } else {
+          // Direct tab or /chat: register COI service worker for SharedArrayBuffer
+          window.coi = {
+            shouldRegister: function() { return true; },
+            shouldDeregister: function() { return false; },
+            quiet: true
+          };
+          var s = document.createElement('script');
+          s.src = '/coi-serviceworker.js';
+          document.head.appendChild(s);
+        }
+      })();
     </script>
-    <script src="/coi-serviceworker.js"></script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

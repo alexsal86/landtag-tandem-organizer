@@ -16,11 +16,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    headers: {
-      ...securityHeaders,
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'credentialless',
-    },
+    headers: securityHeaders,
   },
   preview: {
     headers: securityHeaders,
