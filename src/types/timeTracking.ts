@@ -20,6 +20,7 @@ export interface MonthlyBreakdown {
   month: Date;
   workedMinutes: number;
   creditMinutes: number;
+  overtimeReductionMinutes: number;
   targetMinutes: number;
   balance: number;
 }
