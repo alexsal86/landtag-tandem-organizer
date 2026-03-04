@@ -1,4 +1,5 @@
-import { ReactNode, Suspense, lazy, useEffect, useState } from "react";
+import { ReactNode, Suspense, useEffect, useState } from "react";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,24 +12,24 @@ import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { GlobalSearchCommand } from "@/components/GlobalSearchCommand";
 import { GlobalQuickNoteDialog } from "@/components/GlobalQuickNoteDialog";
 import { GlobalDaySlipPanel } from "@/components/GlobalDaySlipPanel";
-const Index = lazy(() => import("./pages/Index"));
-const CreateTask = lazy(() => import("./pages/CreateTask"));
-const ContactDetail = lazy(() => import("./pages/ContactDetail"));
-const EditContact = lazy(() => import("./pages/EditContact"));
-const ImportContacts = lazy(() => import("./pages/ImportContacts"));
-const PollGuest = lazy(() => import("./pages/PollGuest"));
-const DecisionResponse = lazy(() => import("./pages/DecisionResponse"));
-const GuestResponse = lazy(() => import("./pages/GuestResponse"));
-const EventRSVP = lazy(() => import("./pages/EventRSVP"));
-const AppointmentPreparationDetail = lazy(() => import("./pages/AppointmentPreparationDetail"));
-const EmployeeMeetingDetail = lazy(() => import("./pages/EmployeeMeetingDetail"));
-const LetterDetail = lazy(() => import("./pages/LetterDetail"));
-const TaskArchiveView = lazy(() =>
+const Index = lazyWithRetry(() => import("./pages/Index"));
+const CreateTask = lazyWithRetry(() => import("./pages/CreateTask"));
+const ContactDetail = lazyWithRetry(() => import("./pages/ContactDetail"));
+const EditContact = lazyWithRetry(() => import("./pages/EditContact"));
+const ImportContacts = lazyWithRetry(() => import("./pages/ImportContacts"));
+const PollGuest = lazyWithRetry(() => import("./pages/PollGuest"));
+const DecisionResponse = lazyWithRetry(() => import("./pages/DecisionResponse"));
+const GuestResponse = lazyWithRetry(() => import("./pages/GuestResponse"));
+const EventRSVP = lazyWithRetry(() => import("./pages/EventRSVP"));
+const AppointmentPreparationDetail = lazyWithRetry(() => import("./pages/AppointmentPreparationDetail"));
+const EmployeeMeetingDetail = lazyWithRetry(() => import("./pages/EmployeeMeetingDetail"));
+const LetterDetail = lazyWithRetry(() => import("./pages/LetterDetail"));
+const TaskArchiveView = lazyWithRetry(() =>
   import("./components/TaskArchiveView").then((module) => ({ default: module.TaskArchiveView })),
 );
-const Auth = lazy(() => import("./pages/Auth"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const MatrixClientProvider = lazy(() =>
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const MatrixClientProvider = lazyWithRetry(() =>
   import("@/contexts/MatrixClientContext").then((module) => ({ default: module.MatrixClientProvider })),
 );
 
