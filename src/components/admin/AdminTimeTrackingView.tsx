@@ -479,7 +479,7 @@ export function AdminTimeTrackingView() {
 
   // Running "Gesamt-Ist" AFTER each entry (inclusive – shows cumulative total including the current entry)
   const actualAfterEntryById = useMemo(() => {
-    const actualTypes = new Set<CombinedTimeEntry['entry_type']>(['work', 'sick', 'vacation', 'medical', 'overtime_reduction']);
+    const actualTypes = new Set<CombinedTimeEntry['entry_type']>(['work', 'sick', 'vacation', 'medical']);
     const byEntryId = new Map<string, number>();
 
     // Sort descending (same as display order) so running total grows as user reads top-to-bottom
