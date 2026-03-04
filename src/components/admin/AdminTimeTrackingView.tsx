@@ -358,6 +358,16 @@ export function AdminTimeTrackingView() {
         if (error) throw error;
         toast.success("Zeiteintrag erstellt");
       } else {
+        // Validate overtime reduction: check sufficient balance
+        if (newEntryType === 'overtime_reduction') {
+          const dailyMinutes = Math.round(dailyHours * 60);
+          if (yearlyBalance < dailyMinutes) {
+            toast.error(`Nicht genügend Überstunden vorhanden. Aktueller Saldo: ${fmt(yearlyBalance)}, benötigt: ${fmt(dailyMinutes)}`);
+            setIsSaving(false);
+            return;
+          }
+        }
+
         // Create absence
         const { error } = await supabase.from("leave_requests").insert({
           user_id: selectedUserId,
@@ -447,7 +457,7 @@ export function AdminTimeTrackingView() {
   // Credit minutes (absences that count towards target - WITHOUT holidays, they reduce the target)
   const creditMinutes = useMemo(() => 
     combinedEntries
-      .filter(e => ['sick', 'vacation', 'medical'].includes(e.entry_type))
+      .filter(e => ['sick', 'vacation', 'medical', 'overtime_reduction'].includes(e.entry_type))
       .reduce((sum, e) => sum + (e.minutes || 0), 0),
     [combinedEntries]
   );
@@ -460,23 +470,31 @@ export function AdminTimeTrackingView() {
 
   // Running "Gesamt-Ist" AFTER each entry (inclusive – shows cumulative total including the current entry)
   const actualAfterEntryById = useMemo(() => {
-    const actualTypes = new Set<CombinedTimeEntry['entry_type']>(['work', 'sick', 'vacation', 'medical']);
+    const actualTypes = new Set<CombinedTimeEntry['entry_type']>(['work', 'sick', 'vacation', 'medical', 'overtime_reduction']);
     const byEntryId = new Map<string, number>();
 
-    const sortedChronologically = [...combinedEntries].sort((a, b) => {
+    // Sort descending (same as display order) so running total grows as user reads top-to-bottom
+    const sortedDescending = [...combinedEntries].sort((a, b) => {
       const aDateTime = a.started_at ? new Date(a.started_at).getTime() : new Date(`${a.work_date}T00:00:00`).getTime();
       const bDateTime = b.started_at ? new Date(b.started_at).getTime() : new Date(`${b.work_date}T00:00:00`).getTime();
-      if (aDateTime !== bDateTime) return aDateTime - bDateTime;
-      return a.id.localeCompare(b.id);
+      if (aDateTime !== bDateTime) return bDateTime - aDateTime;
+      return b.id.localeCompare(a.id);
     });
 
-    let runningActual = 0;
+    // First pass: compute total of all qualifying entries
+    const totalActualAll = sortedDescending
+      .filter(e => actualTypes.has(e.entry_type))
+      .reduce((sum, e) => sum + (e.minutes || 0), 0);
 
-    sortedChronologically.forEach((entry) => {
-      if (actualTypes.has(entry.entry_type)) {
-        runningActual += entry.minutes || 0;
-      }
+    // Second pass: assign running total in display order (descending)
+    // Top row = full total, subtract as we go down
+    let runningActual = totalActualAll;
+
+    sortedDescending.forEach((entry) => {
       byEntryId.set(entry.id, runningActual);
+      if (actualTypes.has(entry.entry_type)) {
+        runningActual -= entry.minutes || 0;
+      }
     });
 
     return byEntryId;
@@ -978,9 +996,6 @@ export function AdminTimeTrackingView() {
             </div>
             <p className="text-xs text-muted-foreground">
               Gesamt-Ist: {fmt(totalActual)}
-              {totalCorrectionMinutes !== 0 && (
-                <span className="block">Korrekturen: {totalCorrectionMinutes >= 0 ? "+" : ""}{fmt(totalCorrectionMinutes)}</span>
-              )}
             </p>
           </CardContent>
         </Card>
@@ -1339,6 +1354,11 @@ export function AdminTimeTrackingView() {
                 <option value="sick">🤒 Krankheit</option>
                 <option value="overtime_reduction">⏰ Überstundenabbau</option>
               </select>
+              {newEntryType === 'overtime_reduction' && yearlyBalance < Math.round(dailyHours * 60) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-2 text-sm text-amber-800">
+                  ⚠️ Nicht genügend Überstunden vorhanden (Saldo: {fmt(yearlyBalance)}, benötigt: {fmt(Math.round(dailyHours * 60))})
+                </div>
+              )}
             </div>
             
             <div className="grid gap-2">

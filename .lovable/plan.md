@@ -1,48 +1,61 @@
 
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-## Analyse
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
-### Problem 1: Laufende Summe (Gesamt-Ist) falsch bei mehreren Einträgen am selben Tag
-Die Tabelle zeigt Einträge **absteigend** (neuester zuerst), aber die laufende Summe wird **aufsteigend** (chronologisch) berechnet. Bei zwei Einträgen am 13.01. sieht man zuerst den späteren Eintrag mit hoher Summe, dann den früheren mit niedrigerer Summe – die Zahl "springt zurück". Die Gesamt-Ist-Spalte muss in **Anzeigereihenfolge** (absteigend) akkumulieren, sodass die Zahl beim Lesen nach unten wächst.
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
-### Problem 2: Überstundenabbau zählt nicht ins Gesamt-Ist
-In `AdminTimeTrackingView.tsx` Zeile 448-453 enthält `creditMinutes` nur `sick`, `vacation`, `medical` – **nicht** `overtime_reduction`. Ebenso in `actualAfterEntryById` (Zeile 463) und in `useYearlyBalance.ts` (Zeile 84). Dadurch wird ein Überstundenabbau-Tag weder als Gutschrift gezählt noch reduziert er das Soll → der Mitarbeiter rutscht ins Minus.
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
-**Konzept für Überstundenabbau:**
-- Überstundenabbau soll wie Urlaub/Krankheit als Gutschrift (= `dailyMinutes`) ins Gesamt-Ist fließen
-- Er reduziert damit den Jahresüberstundensaldo korrekt (Tag wird gutgeschrieben, aber der Mitarbeiter hat ja auch nicht gearbeitet → Saldo sinkt)
-- **Validierung bei Antragstellung:** Überstundenabbau soll nur möglich sein, wenn genug Überstunden vorhanden sind (ganzer Tag = `dailyMinutes`, Teiltage ggf. anteilig). Das erfordert eine Prüfung des aktuellen Jahressaldos vor Genehmigung.
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-### Problem 3: Korrekturen werden bei jedem Monat angezeigt
-In Zeile 981-983 wird `totalCorrectionMinutes` in der Monatssaldo-Karte angezeigt. Korrekturen sind aber jahresbezogen und sollen **nur** in der Jahres-Gesamtsumme erscheinen.
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
----
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
-## Umsetzungsplan
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
-### A. Gesamt-Ist in Anzeigereihenfolge berechnen
-**Datei:** `src/components/admin/AdminTimeTrackingView.tsx`
-- Die `actualAfterEntryById`-Berechnung (Zeile 462-483) umstellen: statt chronologisch aufsteigend **absteigend** sortieren (wie die Tabelle), sodass die laufende Summe beim Lesen von oben nach unten wächst.
-- `overtime_reduction` zum Set `actualTypes` hinzufügen.
-
-### B. Überstundenabbau als Gutschrift zählen
-**Datei:** `src/components/admin/AdminTimeTrackingView.tsx`
-- `creditMinutes` (Zeile 448-453): `overtime_reduction` zum Filter hinzufügen.
-- `totalActual` und `balanceMinutes` fließen dann automatisch korrekt.
-
-**Datei:** `src/hooks/useYearlyBalance.ts`
-- Zeile 84: `overtime_reduction` in die Liste der Abwesenheitstypen aufnehmen, sodass Überstundenabbau-Tage als Gutschrift (`dailyMin`) in die Monatsberechnung einfließen.
-
-### C. Validierung: Überstundenabbau nur bei positivem Saldo
-**Datei:** `src/components/admin/AdminTimeTrackingView.tsx` (Eintrag erstellen)
-- Beim Erstellen eines `overtime_reduction`-Eintrags: aktuellen `yearlyBalance` prüfen.
-- Nur erlauben, wenn `yearlyBalance >= dailyMinutes` (ein ganzer Tag).
-- Fehlermeldung anzeigen, falls nicht genug Überstunden vorhanden.
-
-**Hinweis:** Für den Employee-Self-Service (Abwesenheitsanträge) sollte dieselbe Validierung greifen – das wird als Folgethema behandelt, sofern ein separater Antragsprozess existiert.
-
-### D. Korrekturen nur in Jahressumme anzeigen
-**Datei:** `src/components/admin/AdminTimeTrackingView.tsx`
-- In der Monatssaldo-Karte (Zeile 981-983): den Korrektur-Hinweis entfernen.
-- Korrekturen werden weiterhin in der Jahres-Karte (Zeile 826-829) und im Korrekturen-Tab angezeigt – nur nicht mehr im Monatskontext.
-
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
