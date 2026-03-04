@@ -3,7 +3,19 @@ import App from './App.tsx'
 import './index.css'
 
 function isLovablePreviewHost(hostname: string): boolean {
-  return hostname.endsWith('lovable.app') || hostname.endsWith('lovableproject.com');
+  return (
+    hostname.endsWith('lovable.app') ||
+    hostname.endsWith('lovableproject.com') ||
+    hostname.includes('lovable') // catch subdomain variants
+  );
+}
+
+function isInIframe(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true; // cross-origin iframe – treat as iframe
+  }
 }
 
 async function unregisterAllServiceWorkers(): Promise<void> {
@@ -14,45 +26,12 @@ async function unregisterAllServiceWorkers(): Promise<void> {
 }
 
 async function setupCrossOriginIsolation(): Promise<void> {
-  const inIframe = (() => {
-    try {
-      return window.self !== window.top;
-    } catch {
-      return true;
-    }
-  })();
-
+  const inIframe = isInIframe();
   const isPreviewHost = isLovablePreviewHost(window.location.hostname);
 
-  // Hard failsafe: never touch SW API on Lovable preview domains.
-  // navigator.serviceWorker calls can hang indefinitely in cross-origin iframes.
-  if (isPreviewHost) {
+  // Never touch SW in Lovable preview or any iframe – can hang indefinitely
+  if (isPreviewHost || inIframe) {
     sessionStorage.removeItem('coi-cleanup-state');
-    return;
-  }
-
-  if (inIframe) {
-    const state = sessionStorage.getItem('coi-cleanup-state');
-
-    if (state === 'done') return;
-
-    if (state === 'reloaded') {
-      sessionStorage.setItem('coi-cleanup-state', 'done');
-      return;
-    }
-
-    // Stuck-state recovery: if previous cleanup was interrupted
-    if (state === 'started') {
-      sessionStorage.removeItem('coi-cleanup-state');
-    }
-
-    if ((!state || state === 'started') && 'serviceWorker' in navigator) {
-      sessionStorage.setItem('coi-cleanup-state', 'started');
-      await unregisterAllServiceWorkers();
-      sessionStorage.setItem('coi-cleanup-state', 'reloaded');
-      window.location.reload();
-    }
-
     return;
   }
 
@@ -62,15 +41,13 @@ async function setupCrossOriginIsolation(): Promise<void> {
 }
 
 function bootstrap() {
+  // Always render immediately – never block on COI
   createRoot(document.getElementById('root')!).render(<App />);
 
-  // Never block initial UI render on COI/SW operations.
   void Promise.race([
     setupCrossOriginIsolation(),
     new Promise((_, reject) => setTimeout(() => reject(new Error('COI timeout')), 3000)),
-  ]).catch(() => {
-    // Ignore COI setup failures/timeouts after render
-  });
+  ]).catch(() => { /* ignore */ });
 }
 
 bootstrap();
