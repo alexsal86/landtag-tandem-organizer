@@ -915,7 +915,7 @@ export function AdminTimeTrackingView() {
           <CardContent>
             <div className="text-2xl font-bold">{fmt(monthlyTargetMinutes)}</div>
             <p className="text-xs text-muted-foreground">
-              {workdaysInMonth} Arbeitstage × {dailyHours.toFixed(1)}h
+              {workdaysInMonth} Arbeitstage × {fmt(dailyMinutes)}
             </p>
           </CardContent>
         </Card>
