@@ -9413,8 +9413,6 @@ export type Database = {
         Row: {
           badge_display_mode: string
           created_at: string | null
-          decision_tabs_hidden: Json
-          decision_tabs_order: Json
           id: string
           updated_at: string | null
           user_id: string
@@ -9422,8 +9420,6 @@ export type Database = {
         Insert: {
           badge_display_mode?: string
           created_at?: string | null
-          decision_tabs_hidden?: Json
-          decision_tabs_order?: Json
           id?: string
           updated_at?: string | null
           user_id: string
@@ -9431,8 +9427,6 @@ export type Database = {
         Update: {
           badge_display_mode?: string
           created_at?: string | null
-          decision_tabs_hidden?: Json
-          decision_tabs_order?: Json
           id?: string
           updated_at?: string | null
           user_id?: string
