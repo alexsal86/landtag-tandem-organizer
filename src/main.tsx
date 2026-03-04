@@ -21,7 +21,13 @@ async function setupCrossOriginIsolation(): Promise<void> {
       return;
     }
 
-    if (!state && 'serviceWorker' in navigator) {
+    // Stuck-state recovery: if previous cleanup was interrupted
+    if (state === 'started') {
+      sessionStorage.removeItem('coi-cleanup-state');
+      // Fall through to retry cleanup
+    }
+
+    if ((!state || state === 'started') && 'serviceWorker' in navigator) {
       sessionStorage.setItem('coi-cleanup-state', 'started');
       const regs = await navigator.serviceWorker.getRegistrations();
 
