@@ -716,6 +716,57 @@ export function AdminTimeTrackingView() {
     }
   };
 
+  const handleAddInitialBalance = async () => {
+    if (!user || !selectedUserId) return;
+    
+    const minutes = parseInt(initialBalanceMinutes);
+    if (isNaN(minutes)) {
+      toast.error("Bitte gültige Minutenzahl eingeben");
+      return;
+    }
+
+    try {
+      const yearStart = `${getYear(currentMonth)}-01-01`;
+      
+      // Check if a carry-over correction already exists for Jan 1
+      const { data: existing } = await supabase
+        .from("time_entry_corrections")
+        .select("id")
+        .eq("user_id", selectedUserId)
+        .eq("correction_date", yearStart)
+        .ilike("reason", "%Übertrag%Vorjahr%");
+      
+      if (existing && existing.length > 0) {
+        // Update existing
+        const { error } = await supabase
+          .from("time_entry_corrections")
+          .update({ correction_minutes: minutes, created_by: user.id })
+          .eq("id", existing[0].id);
+        if (error) throw error;
+      } else {
+        // Create new
+        const { error } = await supabase
+          .from("time_entry_corrections")
+          .insert({
+            user_id: selectedUserId,
+            correction_date: yearStart,
+            correction_minutes: minutes,
+            reason: `Übertrag aus Vorjahr ${getYear(currentMonth) - 1}`,
+            created_by: user.id,
+          });
+        if (error) throw error;
+      }
+
+      toast.success("Anfangsbestand gespeichert");
+      setInitialBalanceDialogOpen(false);
+      setInitialBalanceMinutes("");
+      loadMonthData();
+      refetchYearlyBalance();
+    } catch (error: any) {
+      toast.error(error.message || "Fehler beim Speichern");
+    }
+  };
+
   const getLeaveTypeBadge = (type: string) => {
     switch (type) {
       case "vacation":
