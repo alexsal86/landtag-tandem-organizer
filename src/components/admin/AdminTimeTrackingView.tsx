@@ -1559,7 +1559,7 @@ export function AdminTimeTrackingView() {
                     </TableRow>
                   )}
                   <TableRow className="bg-muted/50 font-bold">
-                    <TableCell colSpan={4}>Gesamt {getYear(currentMonth)}</TableCell>
+                    <TableCell colSpan={5}>Gesamt {getYear(currentMonth)}</TableCell>
                     <TableCell className={`text-right ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
                       {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
                     </TableCell>
