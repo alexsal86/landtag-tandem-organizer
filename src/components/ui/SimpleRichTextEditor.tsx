@@ -38,6 +38,8 @@ interface SimpleRichTextEditorProps {
   placeholder?: string;
   disabled?: boolean;
   minHeight?: string;
+  maxHeight?: string;
+  scrollable?: boolean;
   onMentionInsert?: (userId: string, displayName: string) => void;
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   showToolbar?: boolean;
@@ -355,6 +357,8 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   placeholder = "Text eingeben...",
   disabled = false,
   minHeight = "120px",
+  maxHeight,
+  scrollable = false,
   onMentionInsert,
   onKeyDown,
   showToolbar = true,
@@ -405,8 +409,11 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           <RichTextPlugin
             contentEditable={
               <ContentEditable 
-                className="p-3 focus:outline-none prose prose-sm max-w-none"
-                style={{ minHeight }}
+                className={cn(
+                  "p-3 focus:outline-none prose prose-sm max-w-none",
+                  scrollable && "overflow-y-auto"
+                )}
+                style={{ minHeight, maxHeight }}
                 onKeyDown={onKeyDown}
                 aria-placeholder={placeholder}
                 placeholder={
