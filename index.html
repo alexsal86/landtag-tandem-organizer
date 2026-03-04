@@ -33,13 +33,16 @@
     <!-- Enable Cross-Origin Isolation for SharedArrayBuffer (Matrix E2EE) -->
     <script>
       (function() {
-        var inIframe = window !== window.top;
+        var inIframe = false;
+        try {
+          inIframe = window.self !== window.top;
+        } catch (e) {
+          inIframe = true;
+        }
+
         var onChat = window.location.pathname.startsWith('/chat');
 
         if (inIframe && !onChat) {
-          // In iframe (Lovable Preview) and NOT on /chat: aggressively remove any
-          // previously registered COI service worker to prevent COOP/COEP headers
-          // from blocking iframe embedding.
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(regs) {
               var hadWorker = false;
@@ -54,9 +57,7 @@
               }
             });
           }
-          // Do NOT load coi-serviceworker.js in iframe (except /chat)
         } else {
-          // Direct tab or /chat: register COI service worker for SharedArrayBuffer
           window.coi = {
             shouldRegister: function() { return true; },
             shouldDeregister: function() { return false; },
