@@ -18,10 +18,9 @@ export interface WebsiteWidgetCallbackRequest {
 
 export interface WebsiteWidgetTestResponse {
   success: boolean;
-  event_id: string | null;
-  room_id: string | null;
-  fallback_message: string;
-  task_id?: string | null;
+  message_id: string;
+  status: string;
+  message: string;
 }
 
 export interface WidgetFeedbackStats {
