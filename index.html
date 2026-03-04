@@ -31,6 +31,21 @@
 
   <body>
     <!-- Enable Cross-Origin Isolation for SharedArrayBuffer (Matrix E2EE) -->
+    <script>
+      window.coi = {
+        shouldRegister: function() {
+          var inIframe = window !== window.top;
+          var onChat = window.location.pathname.startsWith('/chat');
+          return !inIframe || onChat;
+        },
+        shouldDeregister: function() {
+          var inIframe = window !== window.top;
+          var onChat = window.location.pathname.startsWith('/chat');
+          return inIframe && !onChat;
+        },
+        quiet: true
+      };
+    </script>
     <script src="/coi-serviceworker.js"></script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
