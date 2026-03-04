@@ -419,6 +419,32 @@ export function AdminTimeTrackingView() {
     [corrections]
   );
 
+  // Running monthly "Gesamt-Ist" at the START of each day (before that day's entries)
+  const startOfDayActualByDate = useMemo(() => {
+    const actualTypes = new Set<CombinedTimeEntry['entry_type']>(['work', 'sick', 'vacation', 'medical']);
+    const byDate = new Map<string, number>();
+
+    const sortedByDateAsc = [...combinedEntries].sort(
+      (a, b) => new Date(a.work_date).getTime() - new Date(b.work_date).getTime()
+    );
+
+    let runningActual = 0;
+    let currentDate: string | null = null;
+
+    sortedByDateAsc.forEach((entry) => {
+      if (entry.work_date !== currentDate) {
+        currentDate = entry.work_date;
+        byDate.set(entry.work_date, runningActual);
+      }
+
+      if (actualTypes.has(entry.entry_type)) {
+        runningActual += entry.minutes || 0;
+      }
+    });
+
+    return byDate;
+  }, [combinedEntries]);
+
   const fmt = (m: number) => {
     const sign = m < 0 ? "-" : "";
     const absM = Math.abs(m);
@@ -963,6 +989,7 @@ export function AdminTimeTrackingView() {
                       <TableRow>
                         <TableHead>Datum</TableHead>
                         <TableHead>Typ</TableHead>
+                        <TableHead>Gesamt-Ist</TableHead>
                         <TableHead>Start</TableHead>
                         <TableHead>Ende</TableHead>
                         <TableHead>Brutto</TableHead>
@@ -992,6 +1019,9 @@ export function AdminTimeTrackingView() {
                               ) : (
                                 <span className="text-muted-foreground text-xs">Arbeit</span>
                               )}
+                            </TableCell>
+                            <TableCell className="font-mono">
+                              {fmt(startOfDayActualByDate.get(entry.work_date) || 0)}
                             </TableCell>
                             <TableCell>
                               {entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "-"}
@@ -1423,4 +1453,3 @@ export function AdminTimeTrackingView() {
     </div>
   );
 }
-
