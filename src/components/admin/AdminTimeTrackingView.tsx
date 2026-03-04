@@ -986,9 +986,6 @@ export function AdminTimeTrackingView() {
             </div>
             <p className="text-xs text-muted-foreground">
               Gesamt-Ist: {fmt(totalActual)}
-              {totalCorrectionMinutes !== 0 && (
-                <span className="block">Korrekturen: {totalCorrectionMinutes >= 0 ? "+" : ""}{fmt(totalCorrectionMinutes)}</span>
-              )}
             </p>
           </CardContent>
         </Card>
