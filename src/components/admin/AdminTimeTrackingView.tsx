@@ -454,10 +454,19 @@ export function AdminTimeTrackingView() {
     [combinedEntries]
   );
 
-  // Credit minutes (absences that count towards target - WITHOUT holidays, they reduce the target)
+  // Credit minutes (absences that count towards target - WITHOUT holidays and WITHOUT overtime_reduction)
+  // Overtime reduction must NOT be credited – it consumes the overtime balance
   const creditMinutes = useMemo(() => 
     combinedEntries
-      .filter(e => ['sick', 'vacation', 'medical', 'overtime_reduction'].includes(e.entry_type))
+      .filter(e => ['sick', 'vacation', 'medical'].includes(e.entry_type))
+      .reduce((sum, e) => sum + (e.minutes || 0), 0),
+    [combinedEntries]
+  );
+
+  // Overtime reduction minutes (tracked separately – reduces overtime balance)
+  const overtimeReductionMinutes = useMemo(() => 
+    combinedEntries
+      .filter(e => e.entry_type === 'overtime_reduction')
       .reduce((sum, e) => sum + (e.minutes || 0), 0),
     [combinedEntries]
   );
@@ -470,7 +479,7 @@ export function AdminTimeTrackingView() {
 
   // Running "Gesamt-Ist" AFTER each entry (inclusive – shows cumulative total including the current entry)
   const actualAfterEntryById = useMemo(() => {
-    const actualTypes = new Set<CombinedTimeEntry['entry_type']>(['work', 'sick', 'vacation', 'medical', 'overtime_reduction']);
+    const actualTypes = new Set<CombinedTimeEntry['entry_type']>(['work', 'sick', 'vacation', 'medical']);
     const byEntryId = new Map<string, number>();
 
     // Sort descending (same as display order) so running total grows as user reads top-to-bottom
@@ -906,7 +915,7 @@ export function AdminTimeTrackingView() {
           <CardContent>
             <div className="text-2xl font-bold">{fmt(monthlyTargetMinutes)}</div>
             <p className="text-xs text-muted-foreground">
-              {workdaysInMonth} Arbeitstage × {dailyHours.toFixed(1)}h
+              {workdaysInMonth} Arbeitstage × {fmt(dailyMinutes)}
             </p>
           </CardContent>
         </Card>
@@ -952,30 +961,42 @@ export function AdminTimeTrackingView() {
                         <span>{combinedEntries.filter(e => e.entry_type === 'holiday').length} Tage (kein Soll)</span>
                       </div>
                     )}
-                    {combinedEntries.filter(e => e.entry_type === 'sick').length > 0 && (
-                      <div className="flex justify-between gap-4">
-                        <span>🤒 Krankheit:</span>
-                        <span>{combinedEntries.filter(e => e.entry_type === 'sick').length} Tage</span>
-                      </div>
-                    )}
-                    {combinedEntries.filter(e => e.entry_type === 'vacation').length > 0 && (
-                      <div className="flex justify-between gap-4">
-                        <span>🏖️ Urlaub:</span>
-                        <span>{combinedEntries.filter(e => e.entry_type === 'vacation').length} Tage</span>
-                      </div>
-                    )}
-                    {combinedEntries.filter(e => e.entry_type === 'overtime_reduction').length > 0 && (
-                      <div className="flex justify-between gap-4">
-                        <span>⏰ Überstundenabbau:</span>
-                        <span>{combinedEntries.filter(e => e.entry_type === 'overtime_reduction').length} Tage</span>
-                      </div>
-                    )}
-                    {combinedEntries.filter(e => e.entry_type === 'medical').length > 0 && (
-                      <div className="flex justify-between gap-4">
-                        <span>🏥 Arzttermine:</span>
-                        <span>{combinedEntries.filter(e => e.entry_type === 'medical').length}</span>
-                      </div>
-                    )}
+                    {(() => {
+                      const sickEntries = combinedEntries.filter(e => e.entry_type === 'sick');
+                      return sickEntries.length > 0 ? (
+                        <div className="flex justify-between gap-4">
+                          <span>🤒 Krankheit:</span>
+                          <span>{sickEntries.length} Tage ({fmt(sickEntries.reduce((s, e) => s + (e.minutes || 0), 0))})</span>
+                        </div>
+                      ) : null;
+                    })()}
+                    {(() => {
+                      const vacEntries = combinedEntries.filter(e => e.entry_type === 'vacation');
+                      return vacEntries.length > 0 ? (
+                        <div className="flex justify-between gap-4">
+                          <span>🏖️ Urlaub:</span>
+                          <span>{vacEntries.length} Tage ({fmt(vacEntries.reduce((s, e) => s + (e.minutes || 0), 0))})</span>
+                        </div>
+                      ) : null;
+                    })()}
+                    {(() => {
+                      const medEntries = combinedEntries.filter(e => e.entry_type === 'medical');
+                      return medEntries.length > 0 ? (
+                        <div className="flex justify-between gap-4">
+                          <span>🏥 Arzttermine:</span>
+                          <span>{medEntries.length}× ({fmt(medEntries.reduce((s, e) => s + (e.minutes || 0), 0))})</span>
+                        </div>
+                      ) : null;
+                    })()}
+                    {(() => {
+                      const otEntries = combinedEntries.filter(e => e.entry_type === 'overtime_reduction');
+                      return otEntries.length > 0 ? (
+                        <div className="flex justify-between gap-4 border-t pt-1 mt-1">
+                          <span>⏰ Überstundenabbau:</span>
+                          <span>{otEntries.length} Tage ({fmt(otEntries.reduce((s, e) => s + (e.minutes || 0), 0))}) — reduziert Saldo</span>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 </TooltipContent>
               </Tooltip>

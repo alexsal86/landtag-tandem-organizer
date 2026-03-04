@@ -80,6 +80,8 @@ export function useYearlyBalance(
 
           // Absence dates for this month
           const monthAbsenceDates = new Set<string>();
+          const medicalAbsenceDates = new Set<string>();
+          const overtimeReductionDates = new Set<string>();
           (leavesRes.data || []).forEach((leave) => {
             if (["sick", "vacation", "medical", "overtime_reduction"].includes(leave.type)) {
               try {
@@ -93,7 +95,12 @@ export function useYearlyBalance(
                       d.getFullYear() === year &&
                       d <= mEffectiveEnd
                   )
-                  .forEach((d) => monthAbsenceDates.add(format(d, "yyyy-MM-dd")));
+                  .forEach((d) => {
+                    const dateStr = format(d, "yyyy-MM-dd");
+                    monthAbsenceDates.add(dateStr);
+                    if (leave.type === "medical") medicalAbsenceDates.add(dateStr);
+                    if (leave.type === "overtime_reduction") overtimeReductionDates.add(dateStr);
+                  });
               } catch {
                 // ignore invalid date ranges
               }
@@ -115,9 +122,12 @@ export function useYearlyBalance(
             .reduce((sum, e) => sum + (e.minutes || 0), 0);
 
           // Credit minutes for day-based leave types on actual work days
+          // EXCLUDE medical (has own calculation) and overtime_reduction (must consume balance)
           const dayBasedCredit =
             [...monthAbsenceDates]
               .filter((d) => !holidayDates.has(d))
+              .filter((d) => !medicalAbsenceDates.has(d))
+              .filter((d) => !overtimeReductionDates.has(d))
               .filter((d) => {
                 const date = parseISO(d);
                 return date.getDay() !== 0 && date.getDay() !== 6;

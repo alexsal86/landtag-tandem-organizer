@@ -14,6 +14,7 @@ import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eac
 import { de } from "date-fns/locale";
 import { Clock, Plus, ExternalLink, TrendingUp, Calendar, Play, Pause, Square, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTimeEntryReminder } from "@/hooks/useTimeEntryReminder";
 
 interface TimeEntryRow {
   id: string;
@@ -49,6 +50,9 @@ export function MyWorkTimeTrackingTab() {
   const [entries, setEntries] = useState<TimeEntryRow[]>([]);
   const [employeeSettings, setEmployeeSettings] = useState<EmployeeSettingsRow | null>(null);
   const [isEmployee, setIsEmployee] = useState(false);
+
+  // Check for missing time entries and remind user
+  useTimeEntryReminder(user?.id ?? null);
 
   // Form state
   const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
