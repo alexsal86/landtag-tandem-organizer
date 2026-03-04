@@ -1549,7 +1549,7 @@ export function AdminTimeTrackingView() {
                   })}
                   {totalCorrectionMinutes !== 0 && (
                     <TableRow className="border-t-2">
-                      <TableCell colSpan={4} className="font-medium">
+                      <TableCell colSpan={5} className="font-medium">
                         Korrekturen (gesamt)
                       </TableCell>
                       <TableCell className={`text-right font-medium ${totalCorrectionMinutes >= 0 ? "text-green-600" : "text-destructive"}`}>
