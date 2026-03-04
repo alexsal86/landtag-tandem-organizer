@@ -458,8 +458,8 @@ export function AdminTimeTrackingView() {
     [corrections]
   );
 
-  // Running "Gesamt-Ist" before each displayed entry starts (supports multiple work entries per day)
-  const actualBeforeEntryById = useMemo(() => {
+  // Running "Gesamt-Ist" AFTER each entry (inclusive – shows cumulative total including the current entry)
+  const actualAfterEntryById = useMemo(() => {
     const actualTypes = new Set<CombinedTimeEntry['entry_type']>(['work', 'sick', 'vacation', 'medical']);
     const byEntryId = new Map<string, number>();
 
@@ -473,10 +473,10 @@ export function AdminTimeTrackingView() {
     let runningActual = 0;
 
     sortedChronologically.forEach((entry) => {
-      byEntryId.set(entry.id, runningActual);
       if (actualTypes.has(entry.entry_type)) {
         runningActual += entry.minutes || 0;
       }
+      byEntryId.set(entry.id, runningActual);
     });
 
     return byEntryId;
