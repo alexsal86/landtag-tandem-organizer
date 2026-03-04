@@ -51,6 +51,9 @@ export function MyWorkTimeTrackingTab() {
   const [employeeSettings, setEmployeeSettings] = useState<EmployeeSettingsRow | null>(null);
   const [isEmployee, setIsEmployee] = useState(false);
 
+  // Check for missing time entries and remind user
+  useTimeEntryReminder(user?.id ?? null);
+
   // Form state
   const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [startTime, setStartTime] = useState("");
