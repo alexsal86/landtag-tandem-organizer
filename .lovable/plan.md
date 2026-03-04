@@ -1,57 +1,61 @@
 
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-## Analyse
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
-### 1. Monatssaldo berücksichtigt Überstundenabbau nicht
-`balanceMinutes = totalActual - monthlyTargetMinutes` (Zeile 768), wobei `totalActual = workedMinutes + creditMinutes` (Zeile 765). Überstundenabbau fehlt hier komplett. Der Monatssaldo muss den Überstundenabbau abziehen. Außerdem soll die Monatssaldo-Card einen Tooltip bekommen wie die Monats-Badges im Überstundensaldo.
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
-### 2. "Gearbeitet" Diskrepanz Cards vs. Überstundensaldo
-Die Cards berechnen `workedMinutes` aus `combinedEntries` (nur aktueller Monat), während `useYearlyBalance` die Daten direkt aus Supabase lädt. In `useYearlyBalance` werden Arbeitseinträge an Abwesenheitstagen gefiltert (`monthAbsenceDates`), aber `combinedEntries` filtert ebenfalls — die Logik sollte identisch sein. Das Problem: `useYearlyBalance` filtert `monthWorked` an ALLEN `monthAbsenceDates` inkl. `overtime_reduction`-Tagen. Falls ein Mitarbeiter an einem Überstundenabbau-Tag trotzdem einen Arbeitseintrag hat, wird dieser in `useYearlyBalance` ignoriert, aber in den Cards möglicherweise angezeigt (oder umgekehrt). Die Werte müssen konsistent sein.
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
-### 3. Tooltip im Überstundensaldo zeigt keine Gutschriften für laufenden Monat
-Die `MonthlyBreakdown` aus `useYearlyBalance` hat `creditMinutes`, aber der Tooltip (Zeile 887-890) zeigt sie schon an. Problem: Wenn der aktuelle Monat März ist und `mEffectiveEnd = today`, werden Gutschriften für März korrekt berechnet, ABER der Tooltip zeigt nur `mb.creditMinutes` — das muss geprüft werden ob es tatsächlich 0 ist bei Franziska März. Da `overtime_reduction` aus Credits rausgefiltert wurde und keine anderen Abwesenheiten im März existieren, ist `creditMinutes = 0` korrekt. Was fehlt: Überstundenabbau wird im Tooltip nicht angezeigt.
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-### 4. Überstundenabbau im Tooltip und Aufschlüsselung
-Der Tooltip bei den Monats-Badges zeigt nur Soll/Gearbeitet/Gutschriften/Saldo. Überstundenabbau fehlt. Die Aufschlüsselungs-Tabelle hat keine Überstundenabbau-Spalte. `MonthlyBreakdown` muss um `overtimeReductionMinutes` erweitert werden.
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
-### 5. Anfangsbestand für Überstunden aus dem Vorjahr
-Es soll möglich sein, einen Übertrag vom Vorjahr einzutragen. Das kann über eine spezielle Korrektur am 01.01. des Jahres gelöst werden, mit einem dedizierten UI-Element.
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
----
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
-## Umsetzungsplan
-
-### A. MonthlyBreakdown erweitern
-**Datei:** `src/types/timeTracking.ts`
-- `overtimeReductionMinutes: number` hinzufügen
-
-### B. useYearlyBalance: Überstundenabbau tracken
-**Datei:** `src/hooks/useYearlyBalance.ts`
-- Überstundenabbau-Minuten pro Monat berechnen (Anzahl overtimeReductionDates × dailyMin)
-- In `monthlyBreakdown` als `overtimeReductionMinutes` speichern
-- `monthBalance = monthWorked + monthCredit - monthTarget` bleibt korrekt (overtime_reduction hat keine Gutschrift, also wirkt es automatisch als Defizit)
-
-### C. Monatssaldo-Card: Überstundenabbau abziehen + Tooltip
-**Datei:** `AdminTimeTrackingView.tsx`
-- `balanceMinutes = totalActual - monthlyTargetMinutes` → Das ist bereits korrekt, WENN `totalActual` keinen Überstundenabbau enthält (tut es nicht). Aber die Monatssaldo-Karte muss trotzdem einen Tooltip bekommen mit Aufschlüsselung (Soll, Gearbeitet, Gutschriften, ÜA-Abbau, Saldo).
-
-### D. Tooltips bei Monats-Badges: Überstundenabbau anzeigen
-**Datei:** `AdminTimeTrackingView.tsx`, Zeilen 876-897
-- Neue Zeile für Überstundenabbau: `mb.overtimeReductionMinutes`
-- Saldo-Formel im Tooltip: Gearbeitet + Gutschriften − Soll (Überstundenabbau ist implizit, da keine Gutschrift)
-
-### E. Aufschlüsselungs-Dialog: Überstundenabbau-Spalte
-**Datei:** `AdminTimeTrackingView.tsx`, Zeilen 1472-1522
-- Neue Spalte "ÜA-Abbau" in der Tabelle
-- Wert aus `mb.overtimeReductionMinutes`
-
-### F. Anfangsbestand aus Vorjahr
-**Datei:** `AdminTimeTrackingView.tsx`
-- Im Korrektur-Dialog: Option "Übertrag aus Vorjahr" hinzufügen
-- Setzt `correction_date` auf den 01.01. des aktuellen Jahres
-- Eigener Button in der Überstundensaldo-Card: "Anfangsbestand eintragen"
-- Im Aufschlüsselungs-Dialog: Übertrag als erste Zeile anzeigen (Korrekturen am 01.01.)
-
-### G. Konsistenz Cards vs. Überstundensaldo
-Prüfen, ob `workedMinutes` in den Cards und `mb.workedMinutes` in `useYearlyBalance` gleich berechnet werden. Beide filtern Arbeit an Abwesenheitstagen raus — die Logik ist konsistent. Falls trotzdem Abweichungen auftreten, liegt es an der `effectiveEnd`-Logik in `useYearlyBalance` (begrenzt auf heute), während die Cards den gesamten Monat zeigen. Fix: sicherstellen, dass für vergangene Monate `mEffectiveEnd = mEnd` gilt.
-
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.

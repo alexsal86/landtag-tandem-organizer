@@ -147,12 +147,25 @@ export function useYearlyBalance(
 
           const monthCredit = dayBasedCredit + medicalCredit;
 
+          // Overtime reduction minutes (count of OT reduction workdays × daily target)
+          const monthOvertimeReduction =
+            [...overtimeReductionDates]
+              .filter((d) => !holidayDates.has(d))
+              .filter((d) => {
+                const date = parseISO(d);
+                return date.getMonth() === m &&
+                  date.getFullYear() === year &&
+                  date <= mEffectiveEnd &&
+                  date.getDay() !== 0 && date.getDay() !== 6;
+              }).length * dailyMin;
+
           const monthBalance = monthWorked + monthCredit - monthTarget;
 
           monthlyBreakdown.push({
             month: mStart,
             workedMinutes: monthWorked,
             creditMinutes: monthCredit,
+            overtimeReductionMinutes: monthOvertimeReduction,
             targetMinutes: monthTarget,
             balance: monthBalance,
           });

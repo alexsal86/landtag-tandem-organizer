@@ -105,6 +105,8 @@ export function AdminTimeTrackingView() {
   const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false);
   const [correctionMinutes, setCorrectionMinutes] = useState("");
   const [correctionReason, setCorrectionReason] = useState("");
+  const [initialBalanceDialogOpen, setInitialBalanceDialogOpen] = useState(false);
+  const [initialBalanceMinutes, setInitialBalanceMinutes] = useState("");
   
   // Create entry dialog state
   const [createEntryDialogOpen, setCreateEntryDialogOpen] = useState(false);
@@ -714,6 +716,57 @@ export function AdminTimeTrackingView() {
     }
   };
 
+  const handleAddInitialBalance = async () => {
+    if (!user || !selectedUserId) return;
+    
+    const minutes = parseInt(initialBalanceMinutes);
+    if (isNaN(minutes)) {
+      toast.error("Bitte gültige Minutenzahl eingeben");
+      return;
+    }
+
+    try {
+      const yearStart = `${getYear(currentMonth)}-01-01`;
+      
+      // Check if a carry-over correction already exists for Jan 1
+      const { data: existing } = await supabase
+        .from("time_entry_corrections")
+        .select("id")
+        .eq("user_id", selectedUserId)
+        .eq("correction_date", yearStart)
+        .ilike("reason", "%Übertrag%Vorjahr%");
+      
+      if (existing && existing.length > 0) {
+        // Update existing
+        const { error } = await supabase
+          .from("time_entry_corrections")
+          .update({ correction_minutes: minutes, created_by: user.id })
+          .eq("id", existing[0].id);
+        if (error) throw error;
+      } else {
+        // Create new
+        const { error } = await supabase
+          .from("time_entry_corrections")
+          .insert({
+            user_id: selectedUserId,
+            correction_date: yearStart,
+            correction_minutes: minutes,
+            reason: `Übertrag aus Vorjahr ${getYear(currentMonth) - 1}`,
+            created_by: user.id,
+          });
+        if (error) throw error;
+      }
+
+      toast.success("Anfangsbestand gespeichert");
+      setInitialBalanceDialogOpen(false);
+      setInitialBalanceMinutes("");
+      loadMonthData();
+      refetchYearlyBalance();
+    } catch (error: any) {
+      toast.error(error.message || "Fehler beim Speichern");
+    }
+  };
+
   const getLeaveTypeBadge = (type: string) => {
     switch (type) {
       case "vacation":
@@ -829,14 +882,24 @@ export function AdminTimeTrackingView() {
               <TrendingUp className="h-4 w-4" />
               Überstundensaldo {getYear(currentMonth)}
             </CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setShowBreakdownDialog(true)}
-              className="text-xs"
-            >
-              Aufschlüsselung anzeigen
-            </Button>
+            <div className="flex gap-1">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setInitialBalanceDialogOpen(true)}
+                className="text-xs"
+              >
+                Anfangsbestand
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowBreakdownDialog(true)}
+                className="text-xs"
+              >
+                Aufschlüsselung
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -888,6 +951,12 @@ export function AdminTimeTrackingView() {
                           <span>Gutschriften:</span>
                           <span>+{fmt(mb.creditMinutes)}</span>
                         </div>
+                        {mb.overtimeReductionMinutes > 0 && (
+                          <div className="flex justify-between gap-4 text-amber-600">
+                            <span>⏰ ÜA-Abbau:</span>
+                            <span>{fmt(mb.overtimeReductionMinutes)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between gap-4 font-medium border-t pt-1">
                           <span>Saldo:</span>
                           <span className={mb.balance >= 0 ? "text-green-600" : "text-destructive"}>
@@ -1012,12 +1081,49 @@ export function AdminTimeTrackingView() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${balanceMinutes >= 0 ? "text-green-600" : "text-destructive"}`}>
-              {balanceMinutes >= 0 ? "+" : ""}{fmt(balanceMinutes)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Gesamt-Ist: {fmt(totalActual)}
-            </p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-help">
+                    <div className={`text-2xl font-bold ${balanceMinutes >= 0 ? "text-green-600" : "text-destructive"}`}>
+                      {balanceMinutes >= 0 ? "+" : ""}{fmt(balanceMinutes)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Gesamt-Ist: {fmt(totalActual)}
+                    </p>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  <div className="space-y-1">
+                    <div className="font-medium">{format(currentMonth, "MMMM yyyy", { locale: de })}</div>
+                    <div className="flex justify-between gap-4">
+                      <span>Soll:</span>
+                      <span>{fmt(monthlyTargetMinutes)}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span>Gearbeitet:</span>
+                      <span>{fmt(workedMinutes)}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span>Gutschriften:</span>
+                      <span>+{fmt(creditMinutes)}</span>
+                    </div>
+                    {overtimeReductionMinutes > 0 && (
+                      <div className="flex justify-between gap-4 text-amber-600">
+                        <span>⏰ ÜA-Abbau:</span>
+                        <span>{fmt(overtimeReductionMinutes)} (reduziert Saldo)</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between gap-4 font-medium border-t pt-1">
+                      <span>Saldo:</span>
+                      <span className={balanceMinutes >= 0 ? "text-green-600" : "text-destructive"}>
+                        {balanceMinutes >= 0 ? "+" : ""}{fmt(balanceMinutes)}
+                      </span>
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </CardContent>
         </Card>
 
@@ -1476,6 +1582,7 @@ export function AdminTimeTrackingView() {
                     <TableHead className="text-right">Soll</TableHead>
                     <TableHead className="text-right">Gearbeitet</TableHead>
                     <TableHead className="text-right">Gutschriften</TableHead>
+                    <TableHead className="text-right">ÜA-Abbau</TableHead>
                     <TableHead className="text-right">Saldo</TableHead>
                     <TableHead className="text-right">Kumuliert</TableHead>
                   </TableRow>
@@ -1491,6 +1598,9 @@ export function AdminTimeTrackingView() {
                         <TableCell className="text-right">{fmt(mb.targetMinutes)}</TableCell>
                         <TableCell className="text-right">{fmt(mb.workedMinutes)}</TableCell>
                         <TableCell className="text-right text-blue-600">+{fmt(mb.creditMinutes)}</TableCell>
+                        <TableCell className="text-right text-amber-600">
+                          {mb.overtimeReductionMinutes > 0 ? fmt(mb.overtimeReductionMinutes) : "—"}
+                        </TableCell>
                         <TableCell className={`text-right font-medium ${mb.balance >= 0 ? "text-green-600" : "text-destructive"}`}>
                           {mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}
                         </TableCell>
@@ -1502,7 +1612,7 @@ export function AdminTimeTrackingView() {
                   })}
                   {totalCorrectionMinutes !== 0 && (
                     <TableRow className="border-t-2">
-                      <TableCell colSpan={4} className="font-medium">
+                      <TableCell colSpan={5} className="font-medium">
                         Korrekturen (gesamt)
                       </TableCell>
                       <TableCell className={`text-right font-medium ${totalCorrectionMinutes >= 0 ? "text-green-600" : "text-destructive"}`}>
@@ -1512,7 +1622,7 @@ export function AdminTimeTrackingView() {
                     </TableRow>
                   )}
                   <TableRow className="bg-muted/50 font-bold">
-                    <TableCell colSpan={4}>Gesamt {getYear(currentMonth)}</TableCell>
+                    <TableCell colSpan={5}>Gesamt {getYear(currentMonth)}</TableCell>
                     <TableCell className={`text-right ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
                       {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
                     </TableCell>
@@ -1538,6 +1648,49 @@ export function AdminTimeTrackingView() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowBreakdownDialog(false)}>
               Schließen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Initial balance (Anfangsbestand) dialog */}
+      <Dialog open={initialBalanceDialogOpen} onOpenChange={setInitialBalanceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anfangsbestand {getYear(currentMonth)}</DialogTitle>
+            <DialogDescription>
+              Übertrag des Überstundensaldos aus dem Vorjahr ({getYear(currentMonth) - 1}) für {selectedEmployee?.display_name}. 
+              Wird als Korrektur zum 01.01.{getYear(currentMonth)} gespeichert.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Übertrag (in Minuten)</Label>
+              <Input
+                type="number"
+                value={initialBalanceMinutes}
+                onChange={e => setInitialBalanceMinutes(e.target.value)}
+                placeholder="z.B. 480 für +8 Stunden"
+              />
+              <p className="text-xs text-muted-foreground">
+                Positiv = Überstunden aus Vorjahr, Negativ = Minusstunden aus Vorjahr.
+                {initialBalanceMinutes && !isNaN(parseInt(initialBalanceMinutes)) && (
+                  <> Entspricht: <strong>{fmt(parseInt(initialBalanceMinutes))}</strong></>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInitialBalanceDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button 
+              onClick={handleAddInitialBalance}
+              disabled={!initialBalanceMinutes || isNaN(parseInt(initialBalanceMinutes))}
+            >
+              Anfangsbestand speichern
             </Button>
           </DialogFooter>
         </DialogContent>
