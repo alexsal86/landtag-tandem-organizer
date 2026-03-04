@@ -43,6 +43,8 @@ export default defineConfig(({ mode }) => ({
       'react/jsx-dev-runtime',
       'react',
       'react-dom',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-compose-refs',
     ],
     exclude: [
       '@matrix-org/matrix-sdk-crypto-wasm',
