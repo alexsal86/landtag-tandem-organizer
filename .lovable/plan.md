@@ -1,93 +1,61 @@
 
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-## Diagnose
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
-Der Service Worker (`coi-serviceworker.js`) fängt **alle** Fetch-Requests ab und setzt COOP/COEP-Header — auch wenn die Seite in einem iframe geladen wird. Der Browser blockiert dann das Rendering, weil `Cross-Origin-Opener-Policy: same-origin` das Embedding in einem Cross-Origin-iframe verhindert.
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
-Das Cleanup-Script in `index.html` kommt **zu spät**: Der SW hat den HTML-Response bereits mit COOP/COEP-Headern ausgeliefert, bevor das Script ausgeführt wird.
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
-## Lösung: Iframe-aware COI Worker
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-Der Service Worker selbst prüft bei jeder Fetch-Response den `Sec-Fetch-Dest`-Header des Requests. Der Browser sendet bei iframe-Navigationen `Sec-Fetch-Dest: iframe`. In diesem Fall werden COOP/COEP-Header **nicht** gesetzt.
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
-```text
-Fetch-Event im Service Worker:
-┌─────────────────────────────────────────────┐
-│ request.headers['Sec-Fetch-Dest'] === ?     │
-│   'iframe'  → Response OHNE COOP/COEP      │
-│   andere    → Response MIT COOP/COEP        │
-└─────────────────────────────────────────────┘
-```
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
-### Datei 1: `public/coi-serviceworker.js`
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
-Die minifizierte Fetch-Handler-Zeile wird durch eine lesbare Version ersetzt. Kernänderung im `fetch`-Event:
-
-```javascript
-self.addEventListener("fetch", function(e) {
-  const r = e.request;
-  if ("only-if-cached" === r.cache && "same-origin" !== r.mode) return;
-
-  // Detect iframe navigation — skip COOP/COEP to allow embedding
-  const isIframeNavigation = r.headers.get("Sec-Fetch-Dest") === "iframe";
-
-  const s = coepCredentialless && "no-cors" === r.mode
-    ? new Request(r, { credentials: "omit" })
-    : r;
-
-  e.respondWith(
-    fetch(s).then(function(response) {
-      if (0 === response.status) return response;
-
-      const headers = new Headers(response.headers);
-
-      if (!isIframeNavigation) {
-        headers.set("Cross-Origin-Embedder-Policy",
-          coepCredentialless ? "credentialless" : "require-corp");
-        if (!coepCredentialless) {
-          headers.set("Cross-Origin-Resource-Policy", "cross-origin");
-        }
-        headers.set("Cross-Origin-Opener-Policy", "same-origin");
-      }
-
-      const noBody = [101, 204, 205, 304].includes(response.status);
-      return new Response(noBody ? null : response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: headers,
-      });
-    }).catch(function(err) { console.error(err); })
-  );
-});
-```
-
-Push-Handler und der Client-Side-Block bleiben unverändert.
-
-### Datei 2: `index.html`
-
-Das Inline-Script wird vereinfacht. Da der SW jetzt selbst iframe-aware ist, braucht das Script keine aggressive Deregistrierung mehr. Es reicht eine einfache Konfiguration:
-
-```javascript
-(function() {
-  window.coi = {
-    shouldRegister: function() { return true; },
-    shouldDeregister: function() { return false; },
-    quiet: true
-  };
-  var s = document.createElement('script');
-  s.src = '/coi-serviceworker.js';
-  document.head.appendChild(s);
-})();
-```
-
-Kein iframe-Detection-Code mehr nötig in `index.html` — der SW regelt das selbst.
-
-### Ergebnis
-
-| Umgebung | COOP/COEP | Push | Matrix E2EE |
-|---|---|---|---|
-| Preview iframe | Nicht gesetzt — App rendert | Nicht verfügbar (kein eigener Tab) | Nicht verfügbar |
-| Direkter Browser-Tab | Aktiv | Voll funktionsfähig | Voll funktionsfähig |
-
-Zwei Dateien geändert: `public/coi-serviceworker.js`, `index.html`.
-
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
