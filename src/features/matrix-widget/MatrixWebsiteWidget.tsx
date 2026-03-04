@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MessageCircle,
   PhoneCall,
@@ -45,6 +45,36 @@ export function MatrixWebsiteWidget() {
   const [callbackForm, setCallbackForm] = useState<WebsiteWidgetCallbackRequest>(
     INITIAL_CALLBACK_FORM,
   );
+  const messageContainerRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const shouldAutoScrollRef = useRef(true);
+
+  useEffect(() => {
+    const container = messageContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const updateAutoScrollPreference = () => {
+      const distanceToBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight;
+      const nearBottomThreshold = 64;
+      shouldAutoScrollRef.current = distanceToBottom <= nearBottomThreshold;
+    };
+
+    updateAutoScrollPreference();
+    container.addEventListener("scroll", updateAutoScrollPreference);
+
+    return () => {
+      container.removeEventListener("scroll", updateAutoScrollPreference);
+    };
+  }, [widgetOpen]);
+
+  useEffect(() => {
+    if (shouldAutoScrollRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [widgetMessages]);
 
 
   const sendWidgetMessage = async () => {
@@ -256,7 +286,10 @@ export function MatrixWebsiteWidget() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="max-h-72 space-y-2 overflow-y-auto p-3">
+            <div
+              ref={messageContainerRef}
+              className="max-h-72 space-y-2 overflow-y-auto p-3"
+            >
               {widgetMessages.map((message) => (
                 <div key={message.id}>
                   <div
@@ -308,6 +341,7 @@ export function MatrixWebsiteWidget() {
                   )}
                 </div>
               ))}
+              <div ref={bottomRef} aria-hidden="true" />
             </div>
 
             {showCallbackForm && (
