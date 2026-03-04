@@ -16,6 +16,7 @@ import { usePersistentState } from "@/hooks/usePersistentState";
 import { useDecisionRefreshScheduler } from "@/hooks/useDecisionRefreshScheduler";
 import { useMyWorkDecisionsData } from "@/hooks/useMyWorkDecisionsData";
 import { useMyWorkDecisionsSidebarData } from "@/hooks/useMyWorkDecisionsSidebarData";
+import { useMyWorkSettings, DecisionTabId } from "@/hooks/useMyWorkSettings";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { DecisionEditDialog } from "@/components/task-decisions/DecisionEditDialog";
@@ -32,8 +33,9 @@ export function MyWorkDecisionsTab() {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [activeTab, setActiveTab] = usePersistentState<"for-me" | "answered" | "my-decisions" | "public">("mywork-decisions-active-tab", "for-me");
+  const [activeTab, setActiveTab] = usePersistentState<DecisionTabId>("mywork-decisions-active-tab", "for-me");
   const [searchQuery, setSearchQuery] = useState("");
+  const { decisionTabOrder, hiddenDecisionTabs, updateDecisionTabSettings } = useMyWorkSettings();
 
   // Dialog states
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
@@ -294,6 +296,22 @@ export function MyWorkDecisionsTab() {
     }
   };
 
+  const visibleDecisionTabs = decisionTabOrder.filter((tab) => !hiddenDecisionTabs.includes(tab));
+
+  useEffect(() => {
+    if (visibleDecisionTabs.length === 0) return;
+    if (!visibleDecisionTabs.includes(activeTab)) {
+      setActiveTab(visibleDecisionTabs[0]);
+    }
+  }, [activeTab, setActiveTab, visibleDecisionTabs]);
+
+  const tabConfig: Record<DecisionTabId, { label: string; count: number }> = {
+    "for-me": { label: "Für mich", count: tabCounts.forMe },
+    "answered": { label: "Beantwortet", count: tabCounts.answered },
+    "my-decisions": { label: "Von mir", count: tabCounts.myDecisions },
+    "public": { label: "Öffentlich", count: tabCounts.public },
+  };
+
   const emptyMessages: Record<string, string> = {
     "for-me": "Keine offenen Entscheidungen für Sie.",
     "answered": "Keine beantworteten Entscheidungen.",
@@ -343,24 +361,19 @@ export function MyWorkDecisionsTab() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-          <TabsList className="grid w-full grid-cols-4 h-8">
-            <TabsTrigger value="for-me" className="text-[10px] px-1">
-              Für mich
-              {tabCounts.forMe > 0 && (
-                <Badge variant="destructive" className="ml-1 text-[9px] px-1 py-0 h-4">
-                  {tabCounts.forMe}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="answered" className="text-[10px] px-1">
-              Beantwortet ({tabCounts.answered})
-            </TabsTrigger>
-            <TabsTrigger value="my-decisions" className="text-[10px] px-1">
-              Von mir ({tabCounts.myDecisions})
-            </TabsTrigger>
-            <TabsTrigger value="public" className="text-[10px] px-1">
-              Öffentlich ({tabCounts.public})
-            </TabsTrigger>
+          <TabsList className={`grid w-full h-8`} style={{ gridTemplateColumns: `repeat(${Math.max(visibleDecisionTabs.length, 1)}, minmax(0, 1fr))` }}>
+            {visibleDecisionTabs.map((tab) => (
+              <TabsTrigger key={tab} value={tab} className="text-[10px] px-1">
+                {tabConfig[tab].label}
+                {tab === "for-me" && tabConfig[tab].count > 0 ? (
+                  <Badge variant="destructive" className="ml-1 text-[9px] px-1 py-0 h-4">
+                    {tabConfig[tab].count}
+                  </Badge>
+                ) : (
+                  tab !== "for-me" ? ` (${tabConfig[tab].count})` : null
+                )}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-3">
@@ -449,6 +462,11 @@ export function MyWorkDecisionsTab() {
       <DefaultParticipantsDialog
         open={defaultParticipantsOpen}
         onOpenChange={setDefaultParticipantsOpen}
+        decisionTabSettings={{
+          order: decisionTabOrder,
+          hiddenTabs: hiddenDecisionTabs,
+          onSave: updateDecisionTabSettings,
+        }}
       />
 
       <AlertDialog open={!!deletingDecisionId} onOpenChange={() => setDeletingDecisionId(null)}>

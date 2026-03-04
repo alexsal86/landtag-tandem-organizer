@@ -13,13 +13,19 @@ import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { supabase } from "@/integrations/supabase/client";
 import { useDefaultDecisionSettings } from "@/hooks/useDefaultDecisionSettings";
+import { DecisionTabId, DEFAULT_DECISION_TAB_ORDER } from "@/hooks/useMyWorkSettings";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Globe, Mail, MessageSquare, Users } from "lucide-react";
+import { Settings, Globe, Mail, MessageSquare, Users, ArrowDown, ArrowUp } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 interface DefaultParticipantsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  decisionTabSettings?: {
+    order: DecisionTabId[];
+    hiddenTabs: DecisionTabId[];
+    onSave: (settings: { order: DecisionTabId[]; hiddenTabs: DecisionTabId[] }) => Promise<boolean>;
+  };
 }
 
 interface Profile {
@@ -27,7 +33,14 @@ interface Profile {
   display_name: string | null;
 }
 
-export function DefaultParticipantsDialog({ open, onOpenChange }: DefaultParticipantsDialogProps) {
+const decisionTabLabels: Record<DecisionTabId, string> = {
+  'for-me': 'Für mich',
+  answered: 'Beantwortet',
+  'my-decisions': 'Von mir',
+  public: 'Öffentlich',
+};
+
+export function DefaultParticipantsDialog({ open, onOpenChange, decisionTabSettings }: DefaultParticipantsDialogProps) {
   const { settings, setSettings } = useDefaultDecisionSettings();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -35,6 +48,8 @@ export function DefaultParticipantsDialog({ open, onOpenChange }: DefaultPartici
   const [visibleToAll, setVisibleToAll] = useState(settings.visibleToAll);
   const [sendByEmail, setSendByEmail] = useState(settings.sendByEmail);
   const [sendViaMatrix, setSendViaMatrix] = useState(settings.sendViaMatrix);
+  const [decisionTabOrder, setDecisionTabOrder] = useState<DecisionTabId[]>(decisionTabSettings?.order || DEFAULT_DECISION_TAB_ORDER);
+  const [hiddenDecisionTabs, setHiddenDecisionTabs] = useState<DecisionTabId[]>(decisionTabSettings?.hiddenTabs || []);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -46,8 +61,34 @@ export function DefaultParticipantsDialog({ open, onOpenChange }: DefaultPartici
       setVisibleToAll(settings.visibleToAll);
       setSendByEmail(settings.sendByEmail);
       setSendViaMatrix(settings.sendViaMatrix);
+      if (decisionTabSettings) {
+        setDecisionTabOrder(decisionTabSettings.order);
+        setHiddenDecisionTabs(decisionTabSettings.hiddenTabs);
+      }
     }
-  }, [open]);
+  }, [decisionTabSettings, open, settings]);
+
+  const moveDecisionTab = (tab: DecisionTabId, direction: -1 | 1) => {
+    setDecisionTabOrder((current) => {
+      const idx = current.indexOf(tab);
+      const target = idx + direction;
+      if (idx < 0 || target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  };
+
+  const toggleDecisionTabHidden = (tab: DecisionTabId, hidden: boolean) => {
+    setHiddenDecisionTabs((current) => {
+      if (hidden) {
+        const next = Array.from(new Set([...current, tab]));
+        if (next.length >= decisionTabOrder.length) return current;
+        return next;
+      }
+      return current.filter((item) => item !== tab);
+    });
+  };
 
   const loadProfiles = async () => {
     try {
@@ -70,13 +111,30 @@ export function DefaultParticipantsDialog({ open, onOpenChange }: DefaultPartici
     }));
   }, [profiles]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSettings({
       participants: selectedUsers,
       visibleToAll,
       sendByEmail,
       sendViaMatrix,
     });
+
+    if (decisionTabSettings) {
+      const success = await decisionTabSettings.onSave({
+        order: decisionTabOrder,
+        hiddenTabs: hiddenDecisionTabs,
+      });
+
+      if (!success) {
+        toast({
+          title: "Fehler",
+          description: "Tab-Einstellungen konnten nicht gespeichert werden.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     toast({
       title: "Gespeichert",
       description: "Standard-Einstellungen für neue Entscheidungen gespeichert.",
@@ -156,6 +214,52 @@ export function DefaultParticipantsDialog({ open, onOpenChange }: DefaultPartici
               />
             </div>
           </div>
+
+          {decisionTabSettings && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Reihenfolge & Sichtbarkeit der Tabs</Label>
+                <p className="text-xs text-muted-foreground">
+                  Gilt für „Meine Arbeit / Entscheidungen“ und „Aufgaben / Entscheidungen“.
+                </p>
+                <div className="space-y-2">
+                  {decisionTabOrder.map((tab, index) => {
+                    const isHidden = hiddenDecisionTabs.includes(tab);
+                    return (
+                      <div key={tab} className="flex items-center justify-between rounded-md border px-3 py-2 gap-2">
+                        <span className="text-sm">{decisionTabLabels[tab]}</span>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={!isHidden}
+                            onCheckedChange={(visible) => toggleDecisionTabHidden(tab, !visible)}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => moveDecisionTab(tab, -1)}
+                            disabled={index === 0}
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => moveDecisionTab(tab, 1)}
+                            disabled={index === decisionTabOrder.length - 1}
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>
