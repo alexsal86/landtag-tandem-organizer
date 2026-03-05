@@ -103,24 +103,21 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
 
       if (error) {
         if (isMissingRpcError(error)) {
-          const { data: fallbackData, error: fallbackError } = await supabase.rpc('get_my_work_counts' as any, {
-            p_user_id: user.id,
-            p_include_team: true,
-          });
+          // Safety fallback: if the dedicated new-counts RPC is unavailable,
+          // never fall back to total item counts (misleading as notification badges).
+          if (contexts && contexts.length > 0) {
+            setNewCounts((prev) => {
+              const updated = { ...prev };
+              contexts.forEach((context) => {
+                updated[CONTEXT_TO_COUNT_KEY[context]] = 0;
+              });
+              return updated;
+            });
+          } else {
+            setNewCounts(DEFAULT_COUNTS);
+          }
 
-          if (fallbackError) throw fallbackError;
-
-          const fallbackCounts = (fallbackData || {}) as Partial<NewCounts>;
-          setNewCounts((prev) => ({
-            ...prev,
-            tasks: Number(fallbackCounts.tasks || 0),
-            decisions: Number(fallbackCounts.decisions || 0),
-            jourFixe: Number(fallbackCounts.jourFixe || 0),
-            caseFiles: Number(fallbackCounts.caseFiles || 0),
-            plannings: Number(fallbackCounts.plannings || 0),
-            team: Number(fallbackCounts.team || 0),
-            feedbackFeed: Number(fallbackCounts.feedbackFeed || 0),
-          }));
+          console.warn('get_my_work_new_counts RPC is unavailable; new badges are reset to 0.');
           return;
         }
 
