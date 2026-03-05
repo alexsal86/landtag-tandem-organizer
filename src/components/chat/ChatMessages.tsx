@@ -48,10 +48,30 @@ export function ChatMessages({
   onRemoveReaction,
 }: ChatMessagesProps) {
   
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const hasDoneInitialScrollRef = useRef(false);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const scrollContainer = scrollContainerRef.current;
+    const bottomElement = bottomRef.current;
+
+    if (!scrollContainer || !bottomElement) {
+      return;
+    }
+
+    if (!hasDoneInitialScrollRef.current) {
+      bottomElement.scrollIntoView({ behavior: 'auto' });
+      hasDoneInitialScrollRef.current = true;
+      return;
+    }
+
+    const remainingDistance = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight;
+    const isNearBottom = remainingDistance < 100;
+
+    if (isNearBottom) {
+      bottomElement.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   const getInitials = (name: string) => {
@@ -136,7 +156,7 @@ export function ChatMessages({
   }
 
   return (
-    <div className="flex-1 px-4 overflow-y-auto">
+    <div ref={scrollContainerRef} className="flex-1 px-4 overflow-y-auto">
       <div className="py-4 space-y-4">
         {groupedMessages.map((group) => (
           <div key={group.date}>
