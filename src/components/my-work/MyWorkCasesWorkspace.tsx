@@ -179,6 +179,28 @@ export function MyWorkCasesWorkspace() {
     [filteredCaseItems],
   );
 
+  const stats = useMemo(() => {
+    const closedStatuses = new Set(["closed", "done", "abgeschlossen"]);
+
+    const openItems = filteredCaseItems.filter((item) => {
+      const normalizedStatus = item.status?.trim().toLowerCase();
+      return !normalizedStatus || !closedStatuses.has(normalizedStatus);
+    }).length;
+
+    const uniqueCaseFiles = new Set(
+      linkedCaseItems
+        .map((item) => item.case_file_id)
+        .filter((caseFileId): caseFileId is string => Boolean(caseFileId)),
+    ).size;
+
+    return {
+      totalItems: filteredCaseItems.length,
+      openItems,
+      singleItemsCount: unlinkedCaseItems.length,
+      uniqueCaseFiles,
+    };
+  }, [filteredCaseItems, linkedCaseItems, unlinkedCaseItems]);
+
   const renderCaseItemEntry = (item: CaseItem) => {
     const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
     const isActive = selectedCaseItem?.id === item.id;
