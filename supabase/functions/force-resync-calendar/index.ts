@@ -1,160 +1,135 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import {
+  buildRequestId,
+  createCorsHeaders,
+  createServiceClient,
+  getAuthenticatedUser,
+  jsonResponse,
+  safeErrorResponse,
+  userCanAccessTenant,
+} from "../_shared/security.ts";
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
+  const corsHeaders = createCorsHeaders(req);
+
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = buildRequestId();
+
   try {
-    console.log('🔄 Starting force calendar re-sync');
+    console.log(`[${requestId}] Starting force calendar re-sync`);
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const authResult = await getAuthenticatedUser(req);
+    if ("errorResponse" in authResult) {
+      return authResult.errorResponse;
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const user = authResult.user;
+    const supabase = createServiceClient();
 
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const body = await req.json();
+    const calendarId = body?.calendar_id;
+    const clearExisting = Boolean(body?.clear_existing);
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAuth.auth.getUser();
-
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const supabase = createClient(
-      supabaseUrl,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const { calendar_id, clear_existing = false } = await req.json();
-
-    if (!calendar_id) {
-      return new Response(
-        JSON.stringify({ error: 'calendar_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    if (!calendarId || typeof calendarId !== "string") {
+      return safeErrorResponse(
+        "calendar_id is required",
+        400,
+        corsHeaders,
+        requestId,
       );
     }
 
     const { data: calendar, error: calendarError } = await supabase
-      .from('external_calendars')
-      .select('id, tenant_id')
-      .eq('id', calendar_id)
+      .from("external_calendars")
+      .select("id, tenant_id")
+      .eq("id", calendarId)
       .single();
 
     if (calendarError || !calendar) {
-      return new Response(
-        JSON.stringify({ error: 'Calendar not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return safeErrorResponse(
+        "Calendar not found",
+        404,
+        corsHeaders,
+        requestId,
       );
     }
 
-    const { data: isAdmin } = await supabase.rpc('is_admin', { _user_id: user.id });
-    const { data: membership } = await supabase
-      .from('user_tenant_memberships')
-      .select('role, is_active')
-      .eq('user_id', user.id)
-      .eq('tenant_id', calendar.tenant_id)
-      .eq('is_active', true)
-      .maybeSingle();
+    const canResync = await userCanAccessTenant(
+      supabase,
+      user.id,
+      calendar.tenant_id,
+      ["abgeordneter"],
+    );
 
-    const canResync = Boolean(isAdmin) || membership?.role === 'abgeordneter';
     if (!canResync) {
-      return new Response(
-        JSON.stringify({ error: 'Insufficient permissions' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return safeErrorResponse(
+        "Insufficient permissions",
+        403,
+        corsHeaders,
+        requestId,
       );
     }
 
-    console.log(`📅 Force re-sync for calendar: ${calendar_id}`);
-    console.log(`🗑️ Clear existing events: ${clear_existing}`);
+    console.log(`[${requestId}] Force re-sync for calendar: ${calendarId}`);
+    console.log(`[${requestId}] Clear existing events: ${clearExisting}`);
 
-    // If requested, clear existing events
-    if (clear_existing) {
-      console.log('🗑️ Deleting existing events...');
+    if (clearExisting) {
       const { error: deleteError } = await supabase
-        .from('external_events')
+        .from("external_events")
         .delete()
-        .eq('external_calendar_id', calendar_id);
+        .eq("external_calendar_id", calendarId);
 
       if (deleteError) {
-        throw new Error(`Failed to delete existing events: ${deleteError.message}`);
+        throw new Error(
+          `Failed to delete existing events: ${deleteError.message}`,
+        );
       }
-      console.log('✅ Existing events cleared');
     }
 
-    // Reset sync timestamps to force full re-sync
-    console.log('🔄 Resetting sync timestamps...');
     const { error: resetError } = await supabase
-      .from('external_calendars')
+      .from("external_calendars")
       .update({
         last_sync: null,
         last_successful_sync: null,
         sync_errors_count: 0,
-        last_sync_error: null
+        last_sync_error: null,
       })
-      .eq('id', calendar_id);
+      .eq("id", calendarId);
 
     if (resetError) {
       throw new Error(`Failed to reset sync timestamps: ${resetError.message}`);
     }
 
-    console.log('✅ Sync timestamps reset');
-
-    // Trigger the sync function
-    console.log('🚀 Triggering sync function...');
-    const { data: syncResult, error: syncError } = await supabase.functions.invoke('sync-external-calendar', {
-      body: { calendar_id }
-    });
+    const { data: syncResult, error: syncError } =
+      await supabase.functions.invoke("sync-external-calendar", {
+        body: { calendar_id: calendarId },
+      });
 
     if (syncError) {
       throw new Error(`Sync function failed: ${syncError.message}`);
     }
 
-    console.log('🎉 Force re-sync completed successfully!');
-    console.log('📊 Sync result:', syncResult);
-
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      {
         success: true,
-        message: 'Force re-sync completed successfully',
+        message: "Force re-sync completed successfully",
         syncResult,
-        clearedExisting: clear_existing
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        clearedExisting: clearExisting,
+        request_id: requestId,
+      },
+      200,
+      corsHeaders,
     );
-
   } catch (error) {
-    console.error('❌ Force re-sync error:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+    console.error(`[${requestId}] Force re-sync error:`, error);
+    return safeErrorResponse(
+      "Internal server error",
+      500,
+      corsHeaders,
+      requestId,
     );
   }
 });
