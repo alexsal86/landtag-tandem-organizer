@@ -126,16 +126,33 @@ export const useCaseItems = () => {
 
     try {
       const insertData = {
-        ...data,
-        intake_payload: data.intake_payload as any,
+        source_channel: data.source_channel,
+        status: data.status ?? "active",
+        priority: data.priority ?? "medium",
+        subject: data.subject ?? null,
+        summary: data.summary ?? null,
+        resolution_summary: data.resolution_summary ?? null,
+        due_at: data.due_at ?? null,
+        follow_up_at: data.follow_up_at ?? null,
+        owner_user_id: data.owner_user_id ?? null,
+        contact_id: data.contact_id ?? null,
+        source_received_at: data.source_received_at ?? null,
+        source_reference: data.source_reference ?? null,
+        reporter_name: data.reporter_name ?? null,
+        reporter_contact: data.reporter_contact ?? null,
+        confidentiality_level: data.confidentiality_level ?? null,
+        contains_personal_data: data.contains_personal_data ?? false,
+        case_file_id: data.case_file_id ?? null,
+        case_scale: data.case_scale ?? null,
         user_id: user.id,
         tenant_id: currentTenant.id,
       };
+
       const { data: newCaseItem, error } = await supabase
         .from("case_items")
-        .insert(insertData as any)
-        .select()
-        .single();
+        .insert(insertData)
+        .select("id")
+        .maybeSingle();
 
       if (error) throw error;
 
@@ -145,7 +162,7 @@ export const useCaseItems = () => {
       });
 
       await fetchCaseItems();
-      return newCaseItem as unknown as CaseItem;
+      return newCaseItem ? { id: newCaseItem.id } as unknown as CaseItem : null;
     } catch (error: any) {
       console.error("Error creating case item:", error);
       const detail = error?.message || error?.details || "Unbekannter Fehler";
