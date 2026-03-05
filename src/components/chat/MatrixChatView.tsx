@@ -31,6 +31,7 @@ export function MatrixChatView() {
     roomMessages,
     typingUsers,
     sendTypingNotification,
+    sendReadReceiptForLatestVisibleEvent,
     addReaction,
     removeReaction,
     createRoom,
@@ -43,7 +44,8 @@ export function MatrixChatView() {
   const [roomFilter, setRoomFilter] = useState<RoomFilterType>('all');
   const [replyTo, setReplyTo] = useState<{ eventId: string; sender: string; content: string } | null>(null);
   const [isRoomListCollapsed, setIsRoomListCollapsed] = useState(false);
-  const previousRoomIdRef = useRef<string | null>(null);
+  const lastReadReceiptEventIdRef = useRef<string | null>(null);
+  const lastReadReceiptAtRef = useRef<number>(0);
 
   // Get messages from context
   const messages = selectedRoomId ? (roomMessages.get(selectedRoomId) || []) : [];
@@ -150,6 +152,23 @@ export function MatrixChatView() {
       await removeReaction(selectedRoomId, eventId, emoji);
     }
   }, [selectedRoomId, removeReaction]);
+
+  useEffect(() => {
+    if (!selectedRoomId || !isConnected || messages.length === 0) return;
+
+    const latestMessage = messages[messages.length - 1];
+    if (!latestMessage?.eventId) return;
+
+    const now = Date.now();
+    const sameEvent = lastReadReceiptEventIdRef.current === latestMessage.eventId;
+    const throttleActive = now - lastReadReceiptAtRef.current < 1500;
+    if (sameEvent || throttleActive) return;
+
+    lastReadReceiptEventIdRef.current = latestMessage.eventId;
+    lastReadReceiptAtRef.current = now;
+
+    void sendReadReceiptForLatestVisibleEvent(selectedRoomId);
+  }, [selectedRoomId, isConnected, messages, sendReadReceiptForLatestVisibleEvent]);
 
 
   // Show settings/login form

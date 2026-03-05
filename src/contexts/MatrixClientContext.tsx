@@ -312,6 +312,7 @@ interface MatrixClientContextType {
   roomMessages: Map<string, MatrixMessage[]>;
   typingUsers: Map<string, string[]>;
   sendTypingNotification: (roomId: string, isTyping: boolean) => void;
+  sendReadReceiptForLatestVisibleEvent: (roomId: string) => Promise<void>;
   addReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
   removeReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
   createRoom: (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => Promise<string>;
@@ -373,6 +374,7 @@ const defaultMatrixClientContext: MatrixClientContextType = {
   roomMessages: new Map(),
   typingUsers: new Map(),
   sendTypingNotification: noopTyping,
+  sendReadReceiptForLatestVisibleEvent: noopAsync,
   addReaction: noopAsync,
   removeReaction: noopAsync,
   createRoom: async () => '',
@@ -1274,6 +1276,38 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     mc.sendTyping(roomId, isTyping, isTyping ? 30000 : 0);
   }, []);
 
+  // ─── sendReadReceiptForLatestVisibleEvent ───────────────────────────────
+
+  const sendReadReceiptForLatestVisibleEvent = useCallback(async (roomId: string) => {
+    const mc = clientRef.current;
+    if (!mc || !isConnectedRef.current) return;
+
+    const room = mc.getRoom(roomId);
+    if (!room) return;
+
+    const cachedMessages = messagesRef.current.get(roomId) || [];
+    const lastVisibleEventId = cachedMessages[cachedMessages.length - 1]?.eventId;
+    const latestEvent = lastVisibleEventId
+      ? room.findEventById(lastVisibleEventId)
+      : (() => {
+          const events = room.getLiveTimeline().getEvents();
+          return events[events.length - 1];
+        })();
+
+    if (!latestEvent) return;
+
+    try {
+      await mc.sendReadReceipt(latestEvent);
+
+      const latestEventId = latestEvent.getId();
+      if (latestEventId) {
+        await (mc as any).setRoomReadMarkers(roomId, latestEventId, latestEventId);
+      }
+    } catch (error) {
+      matrixLogger.warn('Failed to send read receipt (non-critical):', error);
+    }
+  }, []);
+
   // ─── addReaction ─────────────────────────────────────────────────────────
 
   const addReaction = useCallback(async (roomId: string, eventId: string, emoji: string) => {
@@ -1558,6 +1592,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     roomMessages: messages,
     typingUsers,
     sendTypingNotification,
+    sendReadReceiptForLatestVisibleEvent,
     addReaction,
     removeReaction,
     createRoom,
