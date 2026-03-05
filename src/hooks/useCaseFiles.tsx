@@ -227,9 +227,12 @@ export const useCaseFiles = () => {
       return true;
     } catch (error) {
       console.error('Error updating case file:', error);
+      const errorMessage = error instanceof Error ? error.message : "";
       toast({
         title: "Fehler",
-        description: "FallAkte konnte nicht aktualisiert werden.",
+        description: errorMessage.includes("Abschlussinteraktion")
+          ? "Zum Abschließen ist mindestens eine dokumentierte Abschlussinteraktion erforderlich."
+          : "FallAkte konnte nicht aktualisiert werden.",
         variant: "destructive",
       });
       return false;
