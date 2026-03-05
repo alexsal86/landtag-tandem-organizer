@@ -160,9 +160,8 @@ export const useCaseItems = () => {
       });
 
       await fetchCaseItems();
-      // Return a minimal object; the full item is now in caseItems state via fetchCaseItems
-      const created = caseItems.find(ci => ci.subject === insertData.subject && ci.user_id === user.id);
-      return created ?? { id: "created" } as unknown as CaseItem;
+      // Return a placeholder; the real item is now in caseItems state
+      return { id: "new" } as unknown as CaseItem;
     } catch (error: any) {
       console.error("Error creating case item:", error);
       const detail = error?.message || error?.details || "Unbekannter Fehler";
