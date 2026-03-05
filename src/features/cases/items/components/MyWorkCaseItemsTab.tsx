@@ -97,7 +97,7 @@ export function MyWorkCaseItemsTab() {
     try {
       setLoading(true);
 
-      const [{ data, error }, { data: caseFileData, error: caseFilesError }, { data: escalationData, error: escalationError }] = await Promise.all([
+      const [{ data, error }, { data: caseFileData, error: caseFilesError }] = await Promise.all([
         supabase
           .from("case_items" as any)
           .select("*")
@@ -111,14 +111,21 @@ export function MyWorkCaseItemsTab() {
           .in("status", ["active", "pending"])
           .order("updated_at", { ascending: false })
           .limit(50),
-        supabase.functions.invoke("suggest-case-escalations", {
-          body: { action: "list" },
-        }),
       ]);
 
       if (error) throw error;
       if (caseFilesError) throw caseFilesError;
-      if (escalationError) throw escalationError;
+
+      // Escalation suggestions loaded separately (best-effort)
+      let escalationData: any = null;
+      try {
+        const { data: escData, error: escError } = await supabase.functions.invoke("suggest-case-escalations", {
+          body: { action: "list" },
+        });
+        if (!escError) escalationData = escData;
+      } catch (e) {
+        console.warn("Eskalationsvorschläge konnten nicht geladen werden:", e);
+      }
 
       const visibleItems = ((data || []) as any[])
         .filter((row) => row.user_id === user.id || row.owner_user_id === user.id)

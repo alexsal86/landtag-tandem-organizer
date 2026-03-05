@@ -1,32 +1,61 @@
 
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-# Plan: Vorgänge-Dialog reparieren und Struktur weiterentwickeln
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
-## Problemanalyse
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
-Der Dialog "Neues Anliegen" zeigt einen Fehler. Es gibt zwei mögliche Ursachen:
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
-1. **Kein Sitzungskontext**: `user` oder `currentTenant` ist `null` → Dialog zeigt "Kein aktiver Mandanten-/Sitzungskontext". Dies passiert, wenn der Nutzer nicht eingeloggt ist oder kein Mandant ausgewählt wurde.
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-2. **DB-Insert schlägt fehl**: `createCaseItem` gibt `null` zurück → Dialog zeigt "Anliegen konnte nicht erstellt werden". Die Fehlermeldung im Catch-Block ist zu generisch - der tatsächliche DB-Fehler wird nur in die Konsole geloggt, nicht dem Nutzer angezeigt.
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
-Zusätzlich: In `MyWorkCaseItemsTab.tsx` (Zeile 114) wird die Edge Function `suggest-case-escalations` aufgerufen. Wenn diese fehlschlägt, bricht der gesamte `loadCaseItems`-Aufruf ab.
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
-## Umsetzung
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
-### 1. Fehlerdetails im Dialog anzeigen
-In `useCaseItems.createCaseItem`: Den tatsächlichen DB-Fehler (z.B. RLS-Verletzung, fehlende Spalte) als Toast-Beschreibung anzeigen statt nur "Vorgang konnte nicht erstellt werden." — so sieht man sofort, ob es ein Auth-Problem, ein RLS-Problem oder ein Schema-Problem ist.
-
-### 2. CaseItemCreateDialog verbessern
-- Wenn `hasContext` false ist, den Button komplett deaktivieren UND eine klarere Meldung zeigen
-- Den tatsächlichen Fehlertext vom Server im `submitError` anzeigen, nicht nur eine generische Meldung
-
-### 3. Edge-Function-Aufruf in MyWorkCaseItemsTab entkoppeln
-Der `suggest-case-escalations`-Aufruf in `loadCaseItems` (Zeile 100-117) ist in einem `Promise.all` mit dem Laden der Vorgänge. Wenn die Edge Function fehlschlägt, werden auch keine Vorgänge angezeigt. Fix: Den Edge-Function-Aufruf in einen separaten try/catch auslagern, sodass Vorgänge auch ohne Eskalationsvorschläge geladen werden.
-
-### 4. MyWorkCasesWorkspace: subject-Feld in der Anzeige verwenden
-Aktuell zeigt der Workspace `resolution_summary` als Titel (Zeile 273). Besser: `subject || resolution_summary || "Ohne Titel"` — konsistent mit dem, was im Dialog eingegeben wird.
-
-### 5. Vorgangs-CaseItem-Typ um subject erweitern
-In `MyWorkCasesWorkspace.tsx` fehlt `subject` im lokalen `CaseItem`-Type (Zeile 21-32). Es wird im SELECT nicht abgefragt (Zeile 115) und daher nie angezeigt.
-
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.

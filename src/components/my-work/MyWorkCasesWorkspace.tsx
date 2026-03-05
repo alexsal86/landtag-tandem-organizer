@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 
 type CaseItem = {
   id: string;
+  subject: string | null;
   resolution_summary: string | null;
   source_channel: string | null;
   status: string | null;
@@ -112,7 +113,7 @@ export function MyWorkCasesWorkspace() {
     try {
       const { data: caseItemsData, error: caseItemsError } = await supabase
         .from("case_items" as any)
-        .select("id, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
+        .select("id, subject, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
         .eq("tenant_id", tenantId)
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(120);
@@ -196,7 +197,7 @@ export function MyWorkCasesWorkspace() {
 
     return caseItems.filter((item) => {
       const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
-      return [item.resolution_summary, item.source_channel, item.status, item.priority]
+      return [item.subject, item.resolution_summary, item.source_channel, item.status, item.priority]
         .concat(linkedFile ? [linkedFile.title, linkedFile.reference_number] : [])
         .filter(Boolean)
         .some((value) => value!.toLowerCase().includes(query));
@@ -270,7 +271,7 @@ export function MyWorkCasesWorkspace() {
       >
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-medium">{item.resolution_summary || "Ohne Titel"}</p>
+            <p className="text-sm font-medium">{item.subject || item.resolution_summary || "Ohne Titel"}</p>
             {item.source_channel ? <p className="mt-1 text-xs text-muted-foreground">Kanal: {item.source_channel}</p> : null}
           </div>
           {item.priority && <Badge variant="outline">{item.priority}</Badge>}
@@ -345,7 +346,7 @@ export function MyWorkCasesWorkspace() {
         <div className="space-y-3">
           <div className="rounded-md border bg-muted/30 p-3 text-sm">
             <p className="font-medium">Vorgang</p>
-            <p>{selectedCaseItem.resolution_summary || "Ohne Titel"}</p>
+            <p>{selectedCaseItem.subject || selectedCaseItem.resolution_summary || "Ohne Titel"}</p>
             {selectedCaseItem.source_channel ? <p className="mt-1 text-xs text-muted-foreground">Kanal: {selectedCaseItem.source_channel}</p> : null}
           </div>
           <CaseFileDetail caseFileId={selectedCaseItem.case_file_id} onBack={() => undefined} />

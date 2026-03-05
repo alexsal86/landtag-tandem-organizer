@@ -49,12 +49,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     setSubmitting(false);
 
     if (!newItem) {
-      setSubmitError("Anliegen konnte nicht erstellt werden. Bitte Kontext und Eingaben prüfen.");
-      toast({
-        title: "Anliegen nicht erstellt",
-        description: "Bitte versuchen Sie es erneut oder prüfen Sie den aktiven Mandanten.",
-        variant: "destructive",
-      });
+      setSubmitError("Anliegen konnte nicht erstellt werden. Details siehe Benachrichtigung.");
       return;
     }
 
