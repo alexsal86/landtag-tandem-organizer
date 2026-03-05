@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, Plus, Lock, ExternalLink, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -49,18 +49,20 @@ export function MatrixChatView() {
   const currentTypingUsers = selectedRoomId ? (typingUsers.get(selectedRoomId) || []) : [];
 
   // Filter rooms
-  const filteredRooms = rooms.filter(room => {
-    if (roomFilter === 'all') return true;
-    if (roomFilter === 'direct') return room.isDirect;
-    if (roomFilter === 'groups') return !room.isDirect;
-    return true;
-  });
+  const filteredRooms = useMemo(() => {
+    return rooms.filter(room => {
+      if (roomFilter === 'all') return true;
+      if (roomFilter === 'direct') return room.isDirect;
+      if (roomFilter === 'groups') return !room.isDirect;
+      return true;
+    });
+  }, [rooms, roomFilter]);
 
-  const roomCounts = {
+  const roomCounts = useMemo(() => ({
     all: rooms.length,
     direct: rooms.filter(r => r.isDirect).length,
     groups: rooms.filter(r => !r.isDirect).length,
-  };
+  }), [rooms]);
 
   const selectedRoom = rooms.find(r => r.roomId === selectedRoomId);
   const isLovableHost = window.location.hostname.includes('lovable');
