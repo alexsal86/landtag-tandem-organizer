@@ -1,6 +1,6 @@
-import { CaseFile } from "@/hooks/useCaseFiles";
-import { CASE_STATUSES } from "@/hooks/useCaseFiles";
-import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
+import { CaseFile } from "@/features/cases/files/hooks";
+import { CASE_STATUSES } from "@/features/cases/files/hooks";
+import { useCaseFileTypes } from "@/features/cases/files/hooks";
 import { useCaseFileProcessingStatuses } from "@/hooks/useCaseFileProcessingStatuses";
 import { icons, LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";

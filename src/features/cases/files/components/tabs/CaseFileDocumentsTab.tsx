@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { CaseFileTask } from "@/hooks/useCaseFileDetails";
+import { CaseFileDocument, DOCUMENT_RELEVANCE } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, CheckSquare, Clock } from "lucide-react";
+import { Plus, Trash2, FileText, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,121 +17,100 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
 
-interface CaseFileTasksTabProps {
-  tasks: CaseFileTask[];
-  onAdd: (taskId: string, notes?: string, title?: string) => Promise<boolean>;
+interface CaseFileDocumentsTabProps {
+  documents: CaseFileDocument[];
+  onAdd: (documentId: string, relevance: string, notes?: string, title?: string) => Promise<boolean>;
   onRemove: (id: string) => Promise<boolean>;
 }
 
-export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabProps) {
+export function CaseFileDocumentsTab({ documents, onAdd, onRemove }: CaseFileDocumentsTabProps) {
   const { currentTenant } = useTenant();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [availableTasks, setAvailableTasks] = useState<any[]>([]);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [availableDocuments, setAvailableDocuments] = useState<any[]>([]);
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [relevance, setRelevance] = useState("supporting");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     if (dialogOpen && currentTenant) {
-      loadTasks();
+      loadDocuments();
     }
   }, [dialogOpen, currentTenant]);
 
-  const loadTasks = async () => {
+  const loadDocuments = async () => {
     if (!currentTenant) return;
     const { data } = await supabase
-      .from('tasks')
-      .select('id, title, status, priority, due_date')
+      .from('documents')
+      .select('id, title, file_name, file_type, created_at')
       .eq('tenant_id', currentTenant.id)
       .order('created_at', { ascending: false })
       .limit(100);
-    setAvailableTasks(data || []);
+    setAvailableDocuments(data || []);
   };
 
   const handleAdd = async () => {
-    if (!selectedTaskId) return;
+    if (!selectedDocumentId) return;
     setIsSubmitting(true);
-    const selectedTask = availableTasks.find(t => t.id === selectedTaskId);
-    const success = await onAdd(selectedTaskId, notes || undefined, selectedTask?.title);
+    const selectedDoc = availableDocuments.find(d => d.id === selectedDocumentId);
+    const success = await onAdd(selectedDocumentId, relevance, notes || undefined, selectedDoc?.title);
     setIsSubmitting(false);
     if (success) {
       setDialogOpen(false);
-      setSelectedTaskId(null);
+      setSelectedDocumentId(null);
+      setRelevance("supporting");
       setNotes("");
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-500';
-      case 'in_progress': return 'bg-blue-500';
-      case 'todo': return 'bg-gray-500';
-      default: return 'bg-gray-500';
-    }
+  const getRelevanceLabel = (value: string) => {
+    return DOCUMENT_RELEVANCE.find(r => r.value === value)?.label || value;
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'completed': return 'Erledigt';
-      case 'in_progress': return 'In Bearbeitung';
-      case 'todo': return 'Offen';
-      default: return status;
-    }
-  };
-
-  const filteredTasks = availableTasks.filter(task =>
-    task.title.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredDocuments = availableDocuments.filter(doc =>
+    doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doc.file_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const linkedTaskIds = tasks.map(t => t.task_id);
+  const linkedDocumentIds = documents.map(d => d.document_id);
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
-          <CheckSquare className="h-5 w-5" />
-          Verknüpfte Aufgaben
+          <FileText className="h-5 w-5" />
+          Verknüpfte Dokumente
         </CardTitle>
         <Button onClick={() => setDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Aufgabe hinzufügen
+          Dokument hinzufügen
         </Button>
       </CardHeader>
       <CardContent>
-        {tasks.length === 0 ? (
+        {documents.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
-            Noch keine Aufgaben verknüpft
+            Noch keine Dokumente verknüpft
           </p>
         ) : (
           <div className="space-y-3">
-            {tasks.map((item) => (
+            {documents.map((item) => (
               <div
                 key={item.id}
                 className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <CheckSquare className={cn(
-                    "h-5 w-5",
-                    item.task?.status === 'completed' ? "text-green-500" : "text-muted-foreground"
-                  )} />
+                  <FileText className="h-8 w-8 text-muted-foreground" />
                   <div>
-                    <div className={cn(
-                      "font-medium",
-                      item.task?.status === 'completed' && "line-through text-muted-foreground"
-                    )}>
-                      {item.task?.title}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      {item.task?.due_date && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {format(new Date(item.task.due_date), 'dd.MM.yyyy', { locale: de })}
-                        </span>
+                    <div className="font-medium">{item.document?.title}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {item.document?.file_name}
+                      {item.document?.created_at && (
+                        <> · {format(new Date(item.document.created_at), 'dd.MM.yyyy', { locale: de })}</>
                       )}
                     </div>
                     {item.notes && (
@@ -140,9 +119,7 @@ export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabPro
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge className={cn("text-white", getStatusColor(item.task?.status || ''))}>
-                    {getStatusLabel(item.task?.status || '')}
-                  </Badge>
+                  <Badge variant="secondary">{getRelevanceLabel(item.relevance)}</Badge>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -161,14 +138,14 @@ export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabPro
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Aufgabe verknüpfen</DialogTitle>
+            <DialogTitle>Dokument verknüpfen</DialogTitle>
             <DialogDescription>
-              Wählen Sie eine Aufgabe aus, die mit dieser FallAkte verknüpft werden soll.
+              Wählen Sie ein Dokument aus und definieren Sie dessen Relevanz.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>Aufgabe suchen</Label>
+              <Label>Dokument suchen</Label>
               <input
                 type="text"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -178,34 +155,40 @@ export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabPro
               />
               <ScrollArea className="h-48 border rounded-md">
                 <div className="p-2 space-y-1">
-                  {filteredTasks
-                    .filter(task => !linkedTaskIds.includes(task.id))
-                    .map((task) => (
+                  {filteredDocuments
+                    .filter(doc => !linkedDocumentIds.includes(doc.id))
+                    .map((doc) => (
                       <div
-                        key={task.id}
-                        className={`p-2 rounded cursor-pointer hover:bg-muted ${selectedTaskId === task.id ? 'bg-muted' : ''}`}
-                        onClick={() => setSelectedTaskId(task.id)}
+                        key={doc.id}
+                        className={`p-2 rounded cursor-pointer hover:bg-muted ${selectedDocumentId === doc.id ? 'bg-muted' : ''}`}
+                        onClick={() => setSelectedDocumentId(doc.id)}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">{task.title}</span>
-                          <Badge variant="secondary" className="text-xs">
-                            {getStatusLabel(task.status)}
-                          </Badge>
-                        </div>
-                        {task.due_date && (
-                          <div className="text-xs text-muted-foreground">
-                            Fällig: {format(new Date(task.due_date), 'dd.MM.yyyy', { locale: de })}
-                          </div>
-                        )}
+                        <div className="font-medium text-sm">{doc.title}</div>
+                        <div className="text-xs text-muted-foreground">{doc.file_name}</div>
                       </div>
                     ))}
-                  {filteredTasks.filter(task => !linkedTaskIds.includes(task.id)).length === 0 && (
+                  {filteredDocuments.filter(doc => !linkedDocumentIds.includes(doc.id)).length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      Keine verfügbaren Aufgaben gefunden
+                      Keine verfügbaren Dokumente gefunden
                     </p>
                   )}
                 </div>
               </ScrollArea>
+            </div>
+            <div className="grid gap-2">
+              <Label>Relevanz</Label>
+              <Select value={relevance} onValueChange={setRelevance}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOCUMENT_RELEVANCE.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label>Notizen (optional)</Label>
@@ -220,7 +203,7 @@ export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabPro
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Abbrechen
             </Button>
-            <Button onClick={handleAdd} disabled={!selectedTaskId || isSubmitting}>
+            <Button onClick={handleAdd} disabled={!selectedDocumentId || isSubmitting}>
               {isSubmitting ? "Füge hinzu..." : "Hinzufügen"}
             </Button>
           </DialogFooter>

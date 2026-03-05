@@ -24,7 +24,7 @@ const EventRSVP = lazyWithRetry(() => import("./pages/EventRSVP"));
 const AppointmentPreparationDetail = lazyWithRetry(() => import("./pages/AppointmentPreparationDetail"));
 const EmployeeMeetingDetail = lazyWithRetry(() => import("./pages/EmployeeMeetingDetail"));
 const LetterDetail = lazyWithRetry(() => import("./pages/LetterDetail"));
-const CaseItemDetail = lazyWithRetry(() => import("./pages/CaseItemDetail"));
+const CaseItemDetail = lazyWithRetry(() => import("@/features/cases/items/pages").then((m) => ({ default: m.CaseItemDetail })));
 const TaskArchiveView = lazyWithRetry(() =>
   import("./components/TaskArchiveView").then((module) => ({ default: module.TaskArchiveView })),
 );

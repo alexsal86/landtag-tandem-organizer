@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CaseFileContact, CONTACT_ROLES } from "@/hooks/useCaseFileDetails";
+import { CaseFileContact, CONTACT_ROLES } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

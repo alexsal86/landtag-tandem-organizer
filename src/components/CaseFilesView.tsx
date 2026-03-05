@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useCaseFiles, CaseFile, CASE_STATUSES } from "@/hooks/useCaseFiles";
-import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
+import { useCaseFiles, CaseFile, CASE_STATUSES } from "@/features/cases/files/hooks";
+import { useCaseFileTypes } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,12 +23,12 @@ import {
   ChevronRight
 } from "lucide-react";
 import { icons, LucideIcon } from "lucide-react";
-import { CaseFileCreateDialog } from "./case-files/CaseFileCreateDialog";
-import { CaseFileCard } from "./case-files/CaseFileCard";
-import { CaseFileDetail } from "./case-files/CaseFileDetail";
+import { CaseFileCreateDialog } from "@/features/cases/files/components";
+import { CaseFileCard } from "@/features/cases/files/components";
+import { CaseFileDetail } from "@/features/cases/files/components";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { classifyCaseScale, type CaseScale } from "@/lib/caseFileSizing";
+import { classifyCaseScale, type CaseScale } from "@/features/cases/shared/utils";
 
 type ViewStyle = "flat" | "grouped";
 

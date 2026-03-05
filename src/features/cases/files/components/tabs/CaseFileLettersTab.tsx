@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CaseFileLetter } from "@/hooks/useCaseFileDetails";
+import { CaseFileLetter } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

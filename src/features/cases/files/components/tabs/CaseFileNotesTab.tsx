@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CaseFileNote } from "@/hooks/useCaseFileDetails";
+import { CaseFileNote } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";

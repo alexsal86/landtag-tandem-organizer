@@ -1,5 +1,5 @@
-import { CaseFile } from "@/hooks/useCaseFiles";
-import { CaseFileTask } from "@/hooks/useCaseFileDetails";
+import { CaseFile } from "@/features/cases/files/hooks";
+import { CaseFileTask } from "@/features/cases/files/hooks";
 import { CaseFileCurrentStatus } from "./CaseFileCurrentStatus";
 import { CaseFileNextSteps } from "./CaseFileNextSteps";
 import { CaseFileRisksOpportunities } from "./CaseFileRisksOpportunities";

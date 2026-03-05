@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useCaseFileDetails } from "@/hooks/useCaseFileDetails";
-import { useCaseFiles } from "@/hooks/useCaseFiles";
+import { useCaseFileDetails } from "@/features/cases/files/hooks";
+import { useCaseFiles } from "@/features/cases/files/hooks";
 import { useCaseFileTopics } from "@/hooks/useTopics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
