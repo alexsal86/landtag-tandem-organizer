@@ -25,6 +25,14 @@ export function ChatInput({ onSendMessage, onTyping, disabled, placeholder }: Ch
     }
   }, [message]);
 
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
     
