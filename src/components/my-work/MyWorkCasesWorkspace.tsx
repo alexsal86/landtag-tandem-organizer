@@ -137,20 +137,6 @@ export function MyWorkCasesWorkspace() {
   }, [caseItems, selectedCaseItemId]);
 
 
-  const stats = useMemo(() => {
-    const openStatuses = new Set(["neu", "offen", "in_bearbeitung", "in_pruefung", "wartet_extern", "wartet_intern"]);
-    const openItems = caseItems.filter((item) => openStatuses.has((item.status || "offen").toLowerCase())).length;
-    const linkedItemsCount = caseItems.filter((item) => Boolean(item.case_file_id)).length;
-    const uniqueCaseFiles = new Set(caseItems.map((item) => item.case_file_id).filter(Boolean)).size;
-
-    return {
-      totalItems: caseItems.length,
-      openItems,
-      linkedItemsCount,
-      singleItemsCount: Math.max(caseItems.length - linkedItemsCount, 0),
-      uniqueCaseFiles,
-    };
-  }, [caseItems]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
