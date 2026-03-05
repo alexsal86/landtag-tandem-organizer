@@ -24,6 +24,7 @@ export const classifyCaseScale = (input: {
   explicitScale?: string | null;
   caseType?: string | null;
 }): CaseScale => {
+  // Explicit scale always wins; case type classification is fallback for legacy records.
   const explicitScale = normalize(input.explicitScale);
   if (explicitScale === "small" || explicitScale === "large") {
     return explicitScale;

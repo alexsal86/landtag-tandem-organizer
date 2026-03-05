@@ -11,6 +11,7 @@ export interface CaseFile {
   title: string;
   description: string | null;
   case_type: string;
+  case_scale: "small" | "large" | null;
   status: string;
   priority: string | null;
   reference_number: string | null;
@@ -37,6 +38,7 @@ export interface CaseFileFormData {
   title: string;
   description?: string;
   case_type: string;
+  case_scale?: "small" | "large";
   status: string;
   priority?: string;
   reference_number?: string;
@@ -90,7 +92,7 @@ export const useCaseFiles = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('case_files')
-        .select('id, user_id, tenant_id, title, description, case_type, status, priority, reference_number, start_date, target_date, tags, is_private, visibility, current_status_note, current_status_updated_at, risks_and_opportunities, assigned_to, created_at, updated_at, processing_status, processing_statuses')
+        .select('id, user_id, tenant_id, title, description, case_type, case_scale, status, priority, reference_number, start_date, target_date, tags, is_private, visibility, current_status_note, current_status_updated_at, risks_and_opportunities, assigned_to, created_at, updated_at, processing_status, processing_statuses')
         .eq('tenant_id', currentTenant.id)
         .order('updated_at', { ascending: false });
 

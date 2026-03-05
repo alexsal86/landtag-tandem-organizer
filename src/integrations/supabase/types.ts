@@ -1864,6 +1864,7 @@ export type Database = {
       case_files: {
         Row: {
           assigned_to: string | null
+          case_scale: string | null
           case_type: string
           created_at: string
           current_status_note: string | null
@@ -1888,6 +1889,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          case_scale?: string | null
           case_type?: string
           created_at?: string
           current_status_note?: string | null
@@ -1912,6 +1914,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          case_scale?: string | null
           case_type?: string
           created_at?: string
           current_status_note?: string | null
@@ -2076,6 +2079,7 @@ export type Database = {
       case_items: {
         Row: {
           case_file_id: string | null
+          case_scale: string | null
           contact_id: string | null
           created_at: string
           due_at: string | null
@@ -2094,6 +2098,7 @@ export type Database = {
         }
         Insert: {
           case_file_id?: string | null
+          case_scale?: string | null
           contact_id?: string | null
           created_at?: string
           due_at?: string | null
@@ -2112,6 +2117,7 @@ export type Database = {
         }
         Update: {
           case_file_id?: string | null
+          case_scale?: string | null
           contact_id?: string | null
           created_at?: string
           due_at?: string | null

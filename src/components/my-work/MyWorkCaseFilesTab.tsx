@@ -19,6 +19,7 @@ interface CaseFile {
   current_status_note: string | null;
   status: string;
   case_type: string;
+  case_scale: "small" | "large" | null;
   priority: string | null;
   target_date: string | null;
   reference_number: string | null;
@@ -65,7 +66,7 @@ export function MyWorkCaseFilesTab() {
     try {
       const { data, error } = await supabase
         .from("case_files")
-        .select("id, title, description, current_status_note, status, case_type, priority, target_date, reference_number, created_at, user_id, assigned_to")
+        .select("id, title, description, current_status_note, status, case_type, case_scale, priority, target_date, reference_number, created_at, user_id, assigned_to")
         .eq("tenant_id", currentTenant.id)
         .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
         .in("status", ["active", "pending"])
@@ -107,13 +108,13 @@ export function MyWorkCaseFilesTab() {
   const filteredCaseFiles = caseFiles.filter((caseFile) => {
     if (scaleFilter === "all") return true;
 
-    return classifyCaseScale({ caseType: caseFile.case_type }) === scaleFilter;
+    return classifyCaseScale({ explicitScale: caseFile.case_scale, caseType: caseFile.case_type }) === scaleFilter;
   });
 
   const scaleCounts = {
     all: caseFiles.length,
-    small: caseFiles.filter((caseFile) => classifyCaseScale({ caseType: caseFile.case_type }) === "small").length,
-    large: caseFiles.filter((caseFile) => classifyCaseScale({ caseType: caseFile.case_type }) === "large").length,
+    small: caseFiles.filter((caseFile) => classifyCaseScale({ explicitScale: caseFile.case_scale, caseType: caseFile.case_type }) === "small").length,
+    large: caseFiles.filter((caseFile) => classifyCaseScale({ explicitScale: caseFile.case_scale, caseType: caseFile.case_type }) === "large").length,
   };
 
   if (loading) {

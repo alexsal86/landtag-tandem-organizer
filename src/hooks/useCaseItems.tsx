@@ -17,6 +17,7 @@ export interface CaseItem {
   follow_up_at: string | null;
   resolution_summary: string | null;
   case_file_id: string | null;
+  case_scale: "small" | "large" | null;
   created_at: string;
   updated_at: string;
   last_modified_by: string | null;
@@ -47,6 +48,7 @@ export interface CaseItemFormData {
   follow_up_at?: string | null;
   resolution_summary?: string | null;
   case_file_id?: string | null;
+  case_scale?: CaseItem["case_scale"] | null;
 }
 
 export interface CaseItemInteractionFormData {
@@ -76,7 +78,7 @@ export const useCaseItems = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("case_items")
-        .select("id, user_id, tenant_id, source_channel, status, priority, owner_user_id, contact_id, due_at, follow_up_at, resolution_summary, case_file_id, created_at, updated_at, last_modified_by, last_modified_at")
+        .select("id, user_id, tenant_id, source_channel, status, priority, owner_user_id, contact_id, due_at, follow_up_at, resolution_summary, case_file_id, case_scale, created_at, updated_at")
         .eq("tenant_id", currentTenant.id)
         .order("updated_at", { ascending: false });
 

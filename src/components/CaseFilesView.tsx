@@ -87,7 +87,7 @@ export function CaseFilesView() {
     if (scopeFilter === "all") return true;
 
     return (
-classifyCaseScale({ caseType: cf.case_type }) === scopeFilter
+classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === scopeFilter
     );
   });
 
@@ -187,8 +187,8 @@ classifyCaseScale({ caseType: cf.case_type }) === scopeFilter
 
   const scopeCounts = {
     all: caseFiles.length,
-    small: caseFiles.filter((cf) => classifyCaseScale({ caseType: cf.case_type }) === "small").length,
-    large: caseFiles.filter((cf) => classifyCaseScale({ caseType: cf.case_type }) === "large").length,
+    small: caseFiles.filter((cf) => classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === "small").length,
+    large: caseFiles.filter((cf) => classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === "large").length,
   };
 
   if (selectedCaseFile) {
