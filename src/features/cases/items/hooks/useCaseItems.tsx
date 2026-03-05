@@ -15,6 +15,15 @@ export interface CaseItem {
   contact_id: string | null;
   due_at: string | null;
   follow_up_at: string | null;
+  subject: string | null;
+  summary: string | null;
+  source_received_at: string | null;
+  source_reference: string | null;
+  reporter_name: string | null;
+  reporter_contact: string | null;
+  intake_payload: Record<string, unknown> | null;
+  confidentiality_level: string | null;
+  contains_personal_data: boolean;
   resolution_summary: string | null;
   case_file_id: string | null;
   case_scale: "small" | "large" | null;
@@ -46,6 +55,15 @@ export interface CaseItemFormData {
   contact_id?: string | null;
   due_at?: string | null;
   follow_up_at?: string | null;
+  subject?: string | null;
+  summary?: string | null;
+  source_received_at?: string | null;
+  source_reference?: string | null;
+  reporter_name?: string | null;
+  reporter_contact?: string | null;
+  intake_payload?: Record<string, unknown> | null;
+  confidentiality_level?: "public" | "internal" | "restricted" | "strictly_confidential" | null;
+  contains_personal_data?: boolean;
   resolution_summary?: string | null;
   case_file_id?: string | null;
   case_scale?: CaseItem["case_scale"] | null;
@@ -78,7 +96,7 @@ export const useCaseItems = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("case_items")
-        .select("id, user_id, tenant_id, source_channel, status, priority, owner_user_id, contact_id, due_at, follow_up_at, resolution_summary, case_file_id, case_scale, created_at, updated_at")
+        .select("id, user_id, tenant_id, source_channel, status, priority, owner_user_id, contact_id, due_at, follow_up_at, subject, summary, source_received_at, source_reference, reporter_name, reporter_contact, intake_payload, confidentiality_level, contains_personal_data, resolution_summary, case_file_id, case_scale, created_at, updated_at")
         .eq("tenant_id", currentTenant.id)
         .order("updated_at", { ascending: false });
 
