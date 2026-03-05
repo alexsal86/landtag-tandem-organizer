@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,19 @@ type CaseItem = {
 };
 
 type SortBy = "updated_desc" | "due_asc" | "priority_desc";
+
+type CaseFileOption = {
+  id: string;
+  title: string;
+};
+
+type EscalationSuggestion = {
+  id: string;
+  suggested_case_file_id: string | null;
+  case_items: {
+    id: string;
+  };
+};
 
 const STATUS_STYLES: Record<string, string> = {
   open: "bg-blue-500 text-white",
@@ -81,9 +95,14 @@ const getAssigneeId = (row: Record<string, any>): string | null => (
 export function MyWorkCaseItemsTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [items, setItems] = useState<CaseItem[]>([]);
+  const [caseFiles, setCaseFiles] = useState<CaseFileOption[]>([]);
+  const [escalationSuggestionByItemId, setEscalationSuggestionByItemId] = useState<Record<string, EscalationSuggestion>>({});
+  const [selectedCaseFileByItemId, setSelectedCaseFileByItemId] = useState<Record<string, string>>({});
+  const [processingItemId, setProcessingItemId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -95,50 +114,131 @@ export function MyWorkCaseItemsTab() {
   const [assignedToMeOnly, setAssignedToMeOnly] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>("updated_desc");
 
-  useEffect(() => {
-    const loadCaseItems = async () => {
-      if (!user || !currentTenant?.id) return;
+  const loadCaseItems = useCallback(async () => {
+    if (!user || !currentTenant?.id) return;
 
-      try {
-        setLoading(true);
+    try {
+      setLoading(true);
 
-        const { data, error } = await supabase
+      const [{ data, error }, { data: caseFileData, error: caseFilesError }, { data: escalationData, error: escalationError }] = await Promise.all([
+        supabase
           .from("case_items" as any)
           .select("*")
           .eq("tenant_id", currentTenant.id)
           .order("updated_at", { ascending: false, nullsFirst: false })
-          .limit(150);
+          .limit(150),
+        supabase
+          .from("case_files")
+          .select("id, title")
+          .eq("tenant_id", currentTenant.id)
+          .in("status", ["active", "pending"])
+          .order("updated_at", { ascending: false })
+          .limit(50),
+        supabase.functions.invoke("suggest-case-escalations", {
+          body: { action: "list" },
+        }),
+      ]);
 
-        if (error) throw error;
+      if (error) throw error;
+      if (caseFilesError) throw caseFilesError;
+      if (escalationError) throw escalationError;
 
-        const visibleItems = ((data || []) as any[])
-          .filter((row) => row.user_id === user.id || getAssigneeId(row) === user.id)
-          .map((row) => ({
-            id: row.id,
-            title: row.title || "Ohne Titel",
-            description: row.description || null,
-            status: row.status || null,
-            priority: row.priority || null,
-            channel: row.channel || null,
-            follow_up_at: row.follow_up_at || row.snoozed_until || null,
-            due_date: row.due_date || row.target_date || null,
-            assigned_to: getAssigneeId(row),
-            user_id: row.user_id || null,
-            case_file_id: row.case_file_id || null,
-            created_at: row.created_at,
-            updated_at: row.updated_at || null,
-          }));
+      const visibleItems = ((data || []) as any[])
+        .filter((row) => row.user_id === user.id || getAssigneeId(row) === user.id)
+        .map((row) => ({
+          id: row.id,
+          title: row.title || "Ohne Titel",
+          description: row.description || null,
+          status: row.status || null,
+          priority: row.priority || null,
+          channel: row.channel || null,
+          follow_up_at: row.follow_up_at || row.snoozed_until || null,
+          due_date: row.due_date || row.target_date || null,
+          assigned_to: getAssigneeId(row),
+          user_id: row.user_id || null,
+          case_file_id: row.case_file_id || null,
+          created_at: row.created_at,
+          updated_at: row.updated_at || null,
+        }));
 
-        setItems(visibleItems);
-      } catch (error) {
-        console.error("Error loading case items:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      setItems(visibleItems);
+      setCaseFiles((caseFileData || []) as CaseFileOption[]);
 
-    void loadCaseItems();
+      const incomingSuggestions = (escalationData?.suggestions ?? []) as EscalationSuggestion[];
+      const byItemId = incomingSuggestions.reduce<Record<string, EscalationSuggestion>>((acc, suggestion) => {
+        acc[suggestion.case_items.id] = suggestion;
+        return acc;
+      }, {});
+      setEscalationSuggestionByItemId(byItemId);
+
+      const initialSelection = incomingSuggestions.reduce<Record<string, string>>((acc, suggestion) => {
+        if (suggestion.suggested_case_file_id) {
+          acc[suggestion.case_items.id] = suggestion.suggested_case_file_id;
+        }
+        return acc;
+      }, {});
+      setSelectedCaseFileByItemId(initialSelection);
+    } catch (error) {
+      console.error("Error loading case items:", error);
+    } finally {
+      setLoading(false);
+    }
   }, [user, currentTenant?.id]);
+
+  useEffect(() => {
+    void loadCaseItems();
+  }, [loadCaseItems]);
+
+  const handleEscalation = async (itemId: string, mode: "create" | "assign") => {
+    const suggestion = escalationSuggestionByItemId[itemId];
+    if (!suggestion) {
+      toast({
+        title: "Kein Eskalationsvorschlag",
+        description: "Für dieses Anliegen liegt aktuell kein Eskalationsvorschlag vor.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selectedCaseFileId = selectedCaseFileByItemId[itemId] ?? "";
+    if (mode === "assign" && !selectedCaseFileId) {
+      toast({
+        title: "Akte wählen",
+        description: "Bitte zuerst eine bestehende Akte auswählen.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setProcessingItemId(itemId);
+      const { error } = await supabase.functions.invoke("suggest-case-escalations", {
+        body: {
+          action: "review",
+          suggestionId: suggestion.id,
+          decision: "accepted",
+          ...(mode === "create" ? { createCaseFile: true } : { targetCaseFileId: selectedCaseFileId }),
+        },
+      });
+      if (error) throw error;
+
+      toast({
+        title: "Eskalation bestätigt",
+        description: mode === "create" ? "Anliegen wurde in eine neue Akte überführt." : "Anliegen wurde einer bestehenden Akte zugeordnet.",
+      });
+
+      await loadCaseItems();
+    } catch (error) {
+      console.error("Error escalating case item:", error);
+      toast({
+        title: "Fehler",
+        description: "Eskalation konnte nicht verarbeitet werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingItemId(null);
+    }
+  };
 
   const channelOptions = useMemo(() => {
     const channels = new Set(items.map((item) => normalize(item.channel)).filter(Boolean));
@@ -363,6 +463,38 @@ export function MyWorkCaseItemsTab() {
                     </div>
 
                     <div className="flex shrink-0 items-center gap-1">
+                      {!item.case_file_id && (
+                        <>
+                          <Button
+                            size="sm"
+                            disabled={processingItemId === item.id}
+                            onClick={() => handleEscalation(item.id, "create")}
+                          >
+                            In Akte überführen
+                          </Button>
+                          <select
+                            className="h-9 rounded-md border bg-background px-2 text-sm"
+                            value={selectedCaseFileByItemId[item.id] ?? ""}
+                            onChange={(event) =>
+                              setSelectedCaseFileByItemId((prev) => ({ ...prev, [item.id]: event.target.value }))
+                            }
+                            disabled={processingItemId === item.id}
+                          >
+                            <option value="">Bestehende Akte wählen</option>
+                            {caseFiles.map((caseFile) => (
+                              <option key={caseFile.id} value={caseFile.id}>{caseFile.title}</option>
+                            ))}
+                          </select>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={processingItemId === item.id || !selectedCaseFileByItemId[item.id]}
+                            onClick={() => handleEscalation(item.id, "assign")}
+                          >
+                            Bestehender Akte zuordnen
+                          </Button>
+                        </>
+                      )}
                       <Button size="sm" variant="outline" onClick={() => navigate(`/?section=casefiles&caseItemId=${item.id}`)}>
                         <ExternalLink className="mr-1 h-3.5 w-3.5" />
                         Öffnen
