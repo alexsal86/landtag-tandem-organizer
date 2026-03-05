@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Briefcase, ExternalLink, FileText, FolderOpen, Plus, Search } from "lucide-react";
+import { Briefcase, ExternalLink, FileText, FolderOpen, Mail, MessageSquare, Phone, Plus, Search, UserRound } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
+import { CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,6 +39,14 @@ type CaseFile = {
   reference_number: string | null;
   current_status_note: string | null;
   case_type: string | null;
+};
+
+const sourceChannelMeta: Record<string, { icon: typeof Phone; label: string }> = {
+  phone: { icon: Phone, label: "Telefon" },
+  email: { icon: Mail, label: "E-Mail" },
+  social: { icon: MessageSquare, label: "Social" },
+  in_person: { icon: UserRound, label: "Vor Ort" },
+  other: { icon: Briefcase, label: "Sonstiges" },
 };
 
 export function MyWorkCasesWorkspace() {
@@ -178,16 +186,6 @@ export function MyWorkCasesWorkspace() {
     return counts;
   }, [caseItems]);
 
-  const itemStats = useMemo(() => {
-    const closedStatuses = new Set(["closed", "done", "abgeschlossen"]);
-    const openItems = filteredCaseItems.filter((item) => {
-      const s = item.status?.trim().toLowerCase();
-      return !s || !closedStatuses.has(s);
-    }).length;
-    const singleItems = filteredCaseItems.filter((i) => !i.case_file_id).length;
-    return { total: filteredCaseItems.length, open: openItems, single: singleItems };
-  }, [filteredCaseItems]);
-
   const fileStats = useMemo(() => {
     const closedStatuses = new Set(["closed", "done", "abgeschlossen", "archived", "archiviert"]);
     const active = filteredCaseFiles.filter((cf) => {
@@ -246,6 +244,11 @@ export function MyWorkCasesWorkspace() {
     return caseItems.find((i) => i.id === detailItemId) || null;
   }, [caseItems, detailItemId]);
 
+  const detailFile = useMemo(() => {
+    if (!detailFileId) return null;
+    return caseFilesById[detailFileId] ?? null;
+  }, [caseFilesById, detailFileId]);
+
   // --- Render ---
 
   if (loading) {
@@ -267,20 +270,6 @@ export function MyWorkCasesWorkspace() {
                 <Plus className="mr-1 h-4 w-4" />
                 Neu
               </Button>
-            </div>
-            <div className="mt-2 flex gap-3 text-xs">
-              <span className="rounded-md border px-2 py-1">
-                <span className="text-muted-foreground">Gesamt:</span>{" "}
-                <span className="font-semibold">{itemStats.total}</span>
-              </span>
-              <span className="rounded-md border px-2 py-1">
-                <span className="text-muted-foreground">Offen:</span>{" "}
-                <span className="font-semibold">{itemStats.open}</span>
-              </span>
-              <span className="rounded-md border px-2 py-1">
-                <span className="text-muted-foreground">Einzeln:</span>{" "}
-                <span className="font-semibold">{itemStats.single}</span>
-              </span>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -304,6 +293,8 @@ export function MyWorkCasesWorkspace() {
                   filteredCaseItems.map((item) => {
                     const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
                     const isActive = detailItemId === item.id;
+                    const channel = item.source_channel ? sourceChannelMeta[item.source_channel] : null;
+                    const ChannelIcon = channel?.icon ?? Briefcase;
                     return (
                       <button
                         key={item.id}
@@ -315,9 +306,14 @@ export function MyWorkCasesWorkspace() {
                         onClick={() => handleSelectCaseItem(item)}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium line-clamp-1">
-                            {item.subject || item.resolution_summary || "Ohne Titel"}
-                          </p>
+                          <div className="flex items-start gap-2 min-w-0">
+                            <span className="mt-0.5 rounded-sm bg-muted p-1 text-muted-foreground" title={channel?.label || "Kanal unbekannt"}>
+                              <ChannelIcon className="h-3 w-3" />
+                            </span>
+                            <p className="text-sm font-medium line-clamp-1">
+                              {item.subject || item.resolution_summary || "Ohne Titel"}
+                            </p>
+                          </div>
                           {item.priority && <Badge variant="outline" className="shrink-0 text-[10px]">{item.priority}</Badge>}
                         </div>
                         <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
@@ -451,7 +447,15 @@ export function MyWorkCasesWorkspace() {
               {detailItem.case_file_id && caseFilesById[detailItem.case_file_id] ? (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte FallAkte</p>
-                  <CaseFileDetail caseFileId={detailItem.case_file_id} onBack={() => undefined} />
+                  <div className="rounded-md border p-3 text-sm">
+                    <p className="font-semibold">{caseFilesById[detailItem.case_file_id].title}</p>
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      <li>• Status: {caseFilesById[detailItem.case_file_id].status || "offen"}</li>
+                      {caseFilesById[detailItem.case_file_id].reference_number && <li>• Aktenzeichen: {caseFilesById[detailItem.case_file_id].reference_number}</li>}
+                      {caseFilesById[detailItem.case_file_id].case_type && <li>• Typ: {caseFilesById[detailItem.case_file_id].case_type}</li>}
+                      {caseFilesById[detailItem.case_file_id].current_status_note && <li>• Hinweis: {caseFilesById[detailItem.case_file_id].current_status_note}</li>}
+                    </ul>
+                  </div>
                   <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${detailItem.case_file_id}`)}>
                     <ExternalLink className="mr-1 h-3.5 w-3.5" />
                     Vollansicht
@@ -484,7 +488,18 @@ export function MyWorkCasesWorkspace() {
           </SheetHeader>
           {detailFileId && (
             <div className="mt-4 space-y-3">
-              <CaseFileDetail caseFileId={detailFileId} onBack={() => undefined} />
+              {detailFile && (
+                <div className="rounded-md border p-4 text-sm">
+                  <p className="font-semibold">{detailFile.title}</p>
+                  <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">
+                    <li>• Status: {detailFile.status || "offen"}</li>
+                    {detailFile.reference_number && <li>• Aktenzeichen: {detailFile.reference_number}</li>}
+                    {detailFile.case_type && <li>• Typ: {detailFile.case_type}</li>}
+                    {detailFile.current_status_note && <li>• Notiz: {detailFile.current_status_note}</li>}
+                    <li>• Verknüpfte Vorgänge: {linkedItemsCountByFile[detailFile.id] || 0}</li>
+                  </ul>
+                </div>
+              )}
               <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${detailFileId}`)}>
                 <ExternalLink className="mr-1 h-3.5 w-3.5" />
                 Vollansicht öffnen
