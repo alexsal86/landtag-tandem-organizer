@@ -15,14 +15,14 @@ interface CaseItemCreateDialogProps {
 }
 
 export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCaseItem }: CaseItemCreateDialogProps) {
-  const [title, setTitle] = useState("");
+  const [subject, setSubject] = useState("");
   const [sourceChannel, setSourceChannel] = useState<CaseItemFormData["source_channel"]>("email");
   const [priority, setPriority] = useState<NonNullable<CaseItemFormData["priority"]>>("medium");
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!title.trim()) return;
+    if (!subject.trim()) return;
 
     setSubmitting(true);
 
@@ -31,7 +31,9 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       priority,
       status: "active",
       due_at: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : null,
-      resolution_summary: title.trim(),
+      subject: subject.trim(),
+      summary: subject.trim(),
+      resolution_summary: subject.trim(),
     });
 
     setSubmitting(false);
@@ -39,7 +41,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     if (!newItem) return;
 
     onCreated(newItem.id);
-    setTitle("");
+    setSubject("");
     setSourceChannel("email");
     setPriority("medium");
     setDueDate("");
@@ -55,12 +57,12 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="case-item-title">Titel</Label>
+            <Label htmlFor="case-item-subject">Betreff</Label>
             <Input
-              id="case-item-title"
-              placeholder="Kurzer Titel"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
+              id="case-item-subject"
+              placeholder="Kurzer Betreff"
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
             />
           </div>
 
@@ -110,7 +112,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Abbrechen
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || !title.trim()}>
+          <Button onClick={handleSubmit} disabled={submitting || !subject.trim()}>
             Anliegen erstellen
           </Button>
         </DialogFooter>

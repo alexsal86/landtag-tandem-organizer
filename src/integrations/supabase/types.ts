@@ -2080,59 +2080,86 @@ export type Database = {
         Row: {
           case_file_id: string | null
           case_scale: string | null
+          confidentiality_level: string | null
           contact_id: string | null
+          contains_personal_data: boolean
           created_at: string
           due_at: string | null
           follow_up_at: string | null
           id: string
+          intake_payload: Json | null
+          last_modified_at: string
+          last_modified_by: string | null
           owner_user_id: string | null
           priority: Database["public"]["Enums"]["case_item_priority"]
+          reporter_contact: string | null
+          reporter_name: string | null
           resolution_summary: string | null
           source_channel: Database["public"]["Enums"]["case_item_source_channel"]
+          source_received_at: string | null
+          source_reference: string | null
           status: Database["public"]["Enums"]["case_item_status"]
+          subject: string | null
+          summary: string | null
           tenant_id: string
           updated_at: string
           user_id: string
-          last_modified_at: string
-          last_modified_by: string | null
         }
         Insert: {
           case_file_id?: string | null
           case_scale?: string | null
+          confidentiality_level?: string | null
           contact_id?: string | null
+          contains_personal_data?: boolean
           created_at?: string
           due_at?: string | null
           follow_up_at?: string | null
           id?: string
+          intake_payload?: Json | null
+          last_modified_at?: string
+          last_modified_by?: string | null
           owner_user_id?: string | null
           priority?: Database["public"]["Enums"]["case_item_priority"]
+          reporter_contact?: string | null
+          reporter_name?: string | null
           resolution_summary?: string | null
           source_channel?: Database["public"]["Enums"]["case_item_source_channel"]
+          source_received_at?: string | null
+          source_reference?: string | null
           status?: Database["public"]["Enums"]["case_item_status"]
+          subject?: string | null
+          summary?: string | null
           tenant_id: string
           updated_at?: string
           user_id: string
-          last_modified_at?: string
-          last_modified_by?: string | null
         }
         Update: {
           case_file_id?: string | null
           case_scale?: string | null
+          confidentiality_level?: string | null
           contact_id?: string | null
+          contains_personal_data?: boolean
           created_at?: string
           due_at?: string | null
           follow_up_at?: string | null
           id?: string
+          intake_payload?: Json | null
+          last_modified_at?: string
+          last_modified_by?: string | null
           owner_user_id?: string | null
           priority?: Database["public"]["Enums"]["case_item_priority"]
+          reporter_contact?: string | null
+          reporter_name?: string | null
           resolution_summary?: string | null
           source_channel?: Database["public"]["Enums"]["case_item_source_channel"]
+          source_received_at?: string | null
+          source_reference?: string | null
           status?: Database["public"]["Enums"]["case_item_status"]
+          subject?: string | null
+          summary?: string | null
           tenant_id?: string
           updated_at?: string
           user_id?: string
-          last_modified_at?: string
-          last_modified_by?: string | null
         }
         Relationships: [
           {
