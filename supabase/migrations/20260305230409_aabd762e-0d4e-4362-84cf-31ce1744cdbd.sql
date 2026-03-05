@@ -1,0 +1,2 @@
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS source_type text;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS source_id uuid;

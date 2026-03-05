@@ -9353,6 +9353,8 @@ export type Database = {
           pending_for_jour_fixe: boolean | null
           priority: string
           progress: number | null
+          source_id: string | null
+          source_type: string | null
           status: string
           tenant_id: string
           title: string
@@ -9372,6 +9374,8 @@ export type Database = {
           pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
+          source_id?: string | null
+          source_type?: string | null
           status?: string
           tenant_id: string
           title: string
@@ -9391,6 +9395,8 @@ export type Database = {
           pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
+          source_id?: string | null
+          source_type?: string | null
           status?: string
           tenant_id?: string
           title?: string
