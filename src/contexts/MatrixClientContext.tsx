@@ -512,7 +512,10 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             homeserverUrl: profile.matrix_homeserver_url || 'https://matrix.org',
             deviceId: storedDeviceId,
           });
+          return;
         }
+
+        setCredentials(null);
       } catch (error) {
         matrixLogger.error('Error loading Matrix credentials:', error);
       }
@@ -1497,6 +1500,18 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       await connect({ ...credentials, deviceId: undefined });
     }
   }, [credentials, connect, disconnect]);
+
+  // ─── Keep connection lifecycle aligned with auth session ──────────────────
+
+  useEffect(() => {
+    if (user && currentTenant?.id) {
+      return;
+    }
+
+    disconnect();
+    setCredentials(null);
+    connectCalledRef.current = false;
+  }, [user, currentTenant?.id, disconnect]);
 
   // ─── Auto-connect (guarded by connectCalledRef) ─────────────────────────
 

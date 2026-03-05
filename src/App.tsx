@@ -1,10 +1,10 @@
-import { ReactNode, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
 import { NotificationProvider } from "@/contexts/NotificationContext";
@@ -44,34 +44,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Inner component to use hooks
-const shouldEnableMatrixProvider = (pathname: string) => {
-  if (pathname.startsWith("/chat")) {
-    return true;
-  }
-
-  if (pathname.startsWith("/administration")) {
-    return true;
-  }
-
-  return false;
-};
-
-const MatrixProviderBoundary = ({ children }: { children: ReactNode }) => {
-  const location = useLocation();
-  const matrixEnabled = shouldEnableMatrixProvider(location.pathname);
-
-  if (!matrixEnabled) {
-    return <>{children}</>;
-  }
-
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-gradient-subtle flex items-center justify-center" />}>
-      <MatrixClientProvider>{children}</MatrixClientProvider>
-    </Suspense>
-  );
-};
-
 const AppContent = () => {
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
 
@@ -100,14 +72,15 @@ const AppContent = () => {
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <MatrixProviderBoundary>
-          <GlobalSearchCommand />
-          <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
-          <GlobalDaySlipPanel />
-          <Suspense
-            fallback={<div className="min-h-screen bg-gradient-subtle flex items-center justify-center" />}
-          >
-            <Routes>
+        <Suspense fallback={<div className="min-h-screen bg-gradient-subtle flex items-center justify-center" />}>
+          <MatrixClientProvider>
+            <GlobalSearchCommand />
+            <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
+            <GlobalDaySlipPanel />
+            <Suspense
+              fallback={<div className="min-h-screen bg-gradient-subtle flex items-center justify-center" />}
+            >
+              <Routes>
               <Route path="/" element={<Navigate to="/mywork" replace />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/contacts/new" element={<Navigate to="/contacts?action=new" replace />} />
@@ -136,9 +109,10 @@ const AppContent = () => {
               <Route path="/:section/:subId" element={<Index />} />
               <Route path="/:section" element={<Index />} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </MatrixProviderBoundary>
+              </Routes>
+            </Suspense>
+          </MatrixClientProvider>
+        </Suspense>
       </BrowserRouter>
       </>
     );
