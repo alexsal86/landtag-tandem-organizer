@@ -148,11 +148,9 @@ export const useCaseItems = () => {
         tenant_id: currentTenant.id,
       };
 
-      const { data: newCaseItem, error } = await supabase
+      const { error } = await supabase
         .from("case_items")
-        .insert(insertData)
-        .select("id")
-        .maybeSingle();
+        .insert(insertData);
 
       if (error) throw error;
 
@@ -162,7 +160,9 @@ export const useCaseItems = () => {
       });
 
       await fetchCaseItems();
-      return newCaseItem ? { id: newCaseItem.id } as unknown as CaseItem : null;
+      // Return a minimal object; the full item is now in caseItems state via fetchCaseItems
+      const created = caseItems.find(ci => ci.subject === insertData.subject && ci.user_id === user.id);
+      return created ?? { id: "created" } as unknown as CaseItem;
     } catch (error: any) {
       console.error("Error creating case item:", error);
       const detail = error?.message || error?.details || "Unbekannter Fehler";
