@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { AssignedItemsSection } from "./tasks/AssignedItemsSection";
 import { LetterSourceLink } from "@/components/letters/LetterSourceLink";
 import { extractLetterSourceId, stripLetterSourceMarker } from "@/utils/letterSource";
+import { buildFeedbackBackLink } from "@/types/feedbackContext";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +49,8 @@ interface Task {
   user_id?: string;
   call_log_id?: string;
   tenant_id?: string;
+  source_type?: string | null;
+  source_id?: string | null;
 }
 
 interface TaskComment {
@@ -731,7 +734,9 @@ export function TasksView() {
         updated_at: task.updated_at,
         user_id: task.user_id,
         call_log_id: task.call_log_id,
-        tenant_id: task.tenant_id
+        tenant_id: task.tenant_id,
+        source_type: task.source_type,
+        source_id: task.source_id
       }));
 
       setTasks(transformedTasks);
@@ -1623,7 +1628,12 @@ export function TasksView() {
   };
 
   // Filter logic
+  const feedbackFilterId = searchParams.get('feedback_id');
+
   const filteredTasks = tasks.filter(task => {
+    if (feedbackFilterId && !(task.source_type === 'appointment_feedback' && task.source_id === feedbackFilterId)) {
+      return false;
+    }
     if (filter === "all") return true;
     if (filter === "pending") return task.status === "todo" || task.status === "in-progress";
     if (filter === "overdue") return isOverdue(task.dueDate);
@@ -1910,6 +1920,20 @@ export function TasksView() {
                           {taskSourceLetterId && (
                             <div className="mt-2">
                               <LetterSourceLink letterId={taskSourceLetterId} />
+                            </div>
+                          )}
+                          {task.source_type === 'appointment_feedback' && task.source_id && (
+                            <div className="mt-2">
+                              <Button
+                                variant="link"
+                                className="h-auto px-0 text-xs"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  window.location.href = buildFeedbackBackLink(task.source_id!);
+                                }}
+                              >
+                                aus Rückmeldung erstellt
+                              </Button>
                             </div>
                           )}
                         </div>

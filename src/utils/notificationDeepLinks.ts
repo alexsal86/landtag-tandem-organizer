@@ -81,6 +81,12 @@ export const buildDeepLinkPath = (notification: Notification): string => {
 
     // Feedback
     case 'appointment_feedback':
+      if (data.feedback_context?.target?.type === 'task' && data.feedback_context?.target?.id) {
+        return `/tasks?highlight=${data.feedback_context.target.id}&feedback_id=${data.feedback_id || data.feedback_context.source?.id || ''}`;
+      }
+      if (data.feedback_context?.target?.type === 'calendar' && data.feedback_context?.target?.id) {
+        return `/calendar?highlight=${data.feedback_context.target.id}&source=notification-feedback`;
+      }
       return data.feedback_id
         ? `/mywork?tab=feedbackfeed&highlight=${data.feedback_id}`
         : '/mywork?tab=feedbackfeed';

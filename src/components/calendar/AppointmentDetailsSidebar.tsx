@@ -45,6 +45,7 @@ export function AppointmentDetailsSidebar({
   const [isLoadingGuests, setIsLoadingGuests] = useState(false);
   const [isSendingInvitations, setIsSendingInvitations] = useState(false);
   const [feedback, setFeedback] = useState<{
+    id: string;
     feedback_status: 'pending' | 'completed' | 'skipped';
     notes: string | null;
     completed_at: string | null;
@@ -111,13 +112,14 @@ export function AppointmentDetailsSidebar({
     try {
       const { data, error } = await supabase
         .from('appointment_feedback')
-        .select('feedback_status, notes, completed_at, has_documents, has_tasks')
+        .select('id, feedback_status, notes, completed_at, has_documents, has_tasks')
         .eq('appointment_id', appointment.id)
         .maybeSingle();
 
       if (error) throw error;
       if (data) {
         setFeedback({
+          id: data.id,
           feedback_status: data.feedback_status as 'pending' | 'completed' | 'skipped',
           notes: data.notes,
           completed_at: data.completed_at,
@@ -743,6 +745,15 @@ export function AppointmentDetailsSidebar({
                         minute: '2-digit'
                       })}
                     </div>
+                  )}
+                  {feedback.id && (
+                    <Button
+                      variant="link"
+                      className="h-auto px-0 text-xs"
+                      onClick={() => navigate(`/mywork?tab=feedbackfeed&highlight=${feedback.id}&source=calendar`)}
+                    >
+                      Rückmeldung im Feed öffnen
+                    </Button>
                   )}
                 </div>
               </div>
