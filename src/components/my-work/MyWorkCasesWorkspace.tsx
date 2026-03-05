@@ -488,7 +488,15 @@ export function MyWorkCasesWorkspace() {
               {detailItem.case_file_id && caseFilesById[detailItem.case_file_id] ? (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte FallAkte</p>
-                  <CaseFileDetail caseFileId={detailItem.case_file_id} onBack={() => undefined} />
+                  <div className="rounded-md border p-3 text-sm">
+                    <p className="font-semibold">{caseFilesById[detailItem.case_file_id].title}</p>
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      <li>• Status: {caseFilesById[detailItem.case_file_id].status || "offen"}</li>
+                      {caseFilesById[detailItem.case_file_id].reference_number && <li>• Aktenzeichen: {caseFilesById[detailItem.case_file_id].reference_number}</li>}
+                      {caseFilesById[detailItem.case_file_id].case_type && <li>• Typ: {caseFilesById[detailItem.case_file_id].case_type}</li>}
+                      {caseFilesById[detailItem.case_file_id].current_status_note && <li>• Hinweis: {caseFilesById[detailItem.case_file_id].current_status_note}</li>}
+                    </ul>
+                  </div>
                   <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${detailItem.case_file_id}`)}>
                     <ExternalLink className="mr-1 h-3.5 w-3.5" />
                     Vollansicht
@@ -521,7 +529,18 @@ export function MyWorkCasesWorkspace() {
           </SheetHeader>
           {detailFileId && (
             <div className="mt-4 space-y-3">
-              <CaseFileDetail caseFileId={detailFileId} onBack={() => undefined} />
+              {detailFile && (
+                <div className="rounded-md border p-4 text-sm">
+                  <p className="font-semibold">{detailFile.title}</p>
+                  <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">
+                    <li>• Status: {detailFile.status || "offen"}</li>
+                    {detailFile.reference_number && <li>• Aktenzeichen: {detailFile.reference_number}</li>}
+                    {detailFile.case_type && <li>• Typ: {detailFile.case_type}</li>}
+                    {detailFile.current_status_note && <li>• Notiz: {detailFile.current_status_note}</li>}
+                    <li>• Verknüpfte Vorgänge: {linkedItemsCountByFile[detailFile.id] || 0}</li>
+                  </ul>
+                </div>
+              )}
               <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${detailFileId}`)}>
                 <ExternalLink className="mr-1 h-3.5 w-3.5" />
                 Vollansicht öffnen
