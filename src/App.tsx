@@ -24,6 +24,7 @@ const EventRSVP = lazyWithRetry(() => import("./pages/EventRSVP"));
 const AppointmentPreparationDetail = lazyWithRetry(() => import("./pages/AppointmentPreparationDetail"));
 const EmployeeMeetingDetail = lazyWithRetry(() => import("./pages/EmployeeMeetingDetail"));
 const LetterDetail = lazyWithRetry(() => import("./pages/LetterDetail"));
+const CaseItemDetail = lazyWithRetry(() => import("./pages/CaseItemDetail"));
 const TaskArchiveView = lazyWithRetry(() =>
   import("./components/TaskArchiveView").then((module) => ({ default: module.TaskArchiveView })),
 );
@@ -105,6 +106,7 @@ const AppContent = () => {
               {/* editor-test route removed */}
               <Route path="/employee-meeting/:meetingId" element={<Index />} />
               <Route path="/letters/:letterId" element={<LetterDetail />} />
+              <Route path="/vorgaenge/:caseItemId" element={<CaseItemDetail />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="/:section/:subId" element={<Index />} />
               <Route path="/:section" element={<Index />} />

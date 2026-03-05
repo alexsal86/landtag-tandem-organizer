@@ -1023,6 +1023,7 @@ export type Database = {
           step_order: number
           step_type: string
           tenant_id: string
+          visibility: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Insert: {
           created_at?: string
@@ -1035,6 +1036,7 @@ export type Database = {
           step_order: number
           step_type: string
           tenant_id: string
+          visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Update: {
           created_at?: string
@@ -1047,6 +1049,7 @@ export type Database = {
           step_order?: number
           step_type?: string
           tenant_id?: string
+          visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Relationships: [
           {
@@ -1467,6 +1470,59 @@ export type Database = {
           },
         ]
       }
+      case_item_interactions: {
+        Row: {
+          case_file_id: string
+          created_at: string
+          created_by: string
+          details: string | null
+          direction: string
+          id: string
+          interaction_type: string
+          is_resolution: boolean
+          source_id: string | null
+          source_type: string | null
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          case_file_id: string
+          created_at?: string
+          created_by: string
+          details?: string | null
+          direction: string
+          id?: string
+          interaction_type: string
+          is_resolution?: boolean
+          source_id?: string | null
+          source_type?: string | null
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          case_file_id?: string
+          created_at?: string
+          created_by?: string
+          details?: string | null
+          direction?: string
+          id?: string
+          interaction_type?: string
+          is_resolution?: boolean
+          source_id?: string | null
+          source_type?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_item_interactions_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_file_letters: {
         Row: {
           case_file_id: string
@@ -1808,6 +1864,7 @@ export type Database = {
       case_files: {
         Row: {
           assigned_to: string | null
+          case_scale: string | null
           case_type: string
           created_at: string
           current_status_note: string | null
@@ -1832,6 +1889,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          case_scale?: string | null
           case_type?: string
           created_at?: string
           current_status_note?: string | null
@@ -1856,6 +1914,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          case_scale?: string | null
           case_type?: string
           created_at?: string
           current_status_note?: string | null
@@ -1881,6 +1940,217 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "case_files_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+
+      case_item_attachments: {
+        Row: {
+          case_item_id: string
+          created_at: string
+          created_by: string | null
+          document_id: string
+          id: string
+        }
+        Insert: {
+          case_item_id: string
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          id?: string
+        }
+        Update: {
+          case_item_id?: string
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_item_attachments_case_item_id_fkey"
+            columns: ["case_item_id"]
+            isOneToOne: false
+            referencedRelation: "case_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_item_attachments_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_item_interactions: {
+        Row: {
+          case_item_id: string
+          created_at: string
+          created_by: string | null
+          direction: string
+          id: string
+          interaction_at: string
+          interaction_type: Database["public"]["Enums"]["case_item_source_channel"]
+          payload: Json | null
+          summary: string | null
+          tenant_id: string
+          visibility: Database["public"]["Enums"]["case_item_interaction_visibility"]
+        }
+        Insert: {
+          case_item_id: string
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          interaction_at?: string
+          interaction_type: Database["public"]["Enums"]["case_item_source_channel"]
+          payload?: Json | null
+          summary?: string | null
+          tenant_id: string
+          visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
+        }
+        Update: {
+          case_item_id?: string
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          interaction_at?: string
+          interaction_type?: Database["public"]["Enums"]["case_item_source_channel"]
+          payload?: Json | null
+          summary?: string | null
+          tenant_id?: string
+          visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_item_interactions_case_item_id_fkey"
+            columns: ["case_item_id"]
+            isOneToOne: false
+            referencedRelation: "case_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_item_interactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_item_participants: {
+        Row: {
+          case_item_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          case_item_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          case_item_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_item_participants_case_item_id_fkey"
+            columns: ["case_item_id"]
+            isOneToOne: false
+            referencedRelation: "case_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_items: {
+        Row: {
+          case_file_id: string | null
+          case_scale: string | null
+          contact_id: string | null
+          created_at: string
+          due_at: string | null
+          follow_up_at: string | null
+          id: string
+          owner_user_id: string | null
+          priority: Database["public"]["Enums"]["case_item_priority"]
+          resolution_summary: string | null
+          source_channel: Database["public"]["Enums"]["case_item_source_channel"]
+          status: Database["public"]["Enums"]["case_item_status"]
+          tenant_id: string
+          updated_at: string
+          user_id: string
+          last_modified_at: string
+          last_modified_by: string | null
+        }
+        Insert: {
+          case_file_id?: string | null
+          case_scale?: string | null
+          contact_id?: string | null
+          created_at?: string
+          due_at?: string | null
+          follow_up_at?: string | null
+          id?: string
+          owner_user_id?: string | null
+          priority?: Database["public"]["Enums"]["case_item_priority"]
+          resolution_summary?: string | null
+          source_channel?: Database["public"]["Enums"]["case_item_source_channel"]
+          status?: Database["public"]["Enums"]["case_item_status"]
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+          last_modified_at?: string
+          last_modified_by?: string | null
+        }
+        Update: {
+          case_file_id?: string | null
+          case_scale?: string | null
+          contact_id?: string | null
+          created_at?: string
+          due_at?: string | null
+          follow_up_at?: string | null
+          id?: string
+          owner_user_id?: string | null
+          priority?: Database["public"]["Enums"]["case_item_priority"]
+          resolution_summary?: string | null
+          source_channel?: Database["public"]["Enums"]["case_item_source_channel"]
+          status?: Database["public"]["Enums"]["case_item_status"]
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+          last_modified_at?: string
+          last_modified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_items_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_items_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_items_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -10138,6 +10408,10 @@ export type Database = {
     }
     Enums: {
       app_role: "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant"
+      case_item_interaction_visibility: "internal" | "team" | "public_to_case_participants"
+      case_item_priority: "low" | "medium" | "high" | "urgent"
+      case_item_source_channel: "phone" | "email" | "social" | "in_person" | "other"
+      case_item_status: "active" | "pending" | "closed" | "archived"
       flag_visibility: "public" | "private" | "team"
       leave_status:
         | "pending"
@@ -10286,6 +10560,10 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["abgeordneter", "bueroleitung", "mitarbeiter", "praktikant"],
+      case_item_interaction_visibility: ["internal", "team", "public_to_case_participants"],
+      case_item_priority: ["low", "medium", "high", "urgent"],
+      case_item_source_channel: ["phone", "email", "social", "in_person", "other"],
+      case_item_status: ["active", "pending", "closed", "archived"],
       flag_visibility: ["public", "private", "team"],
       leave_status: [
         "pending",

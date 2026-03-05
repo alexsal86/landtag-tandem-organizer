@@ -113,6 +113,21 @@ export interface CaseFileTimelineEntry {
   created_at: string;
 }
 
+export interface CaseItemInteraction {
+  id: string;
+  case_file_id: string;
+  created_by: string;
+  interaction_type: "call" | "email" | "social" | "meeting" | "note" | "letter" | "system";
+  direction: "inbound" | "outbound" | "internal";
+  subject: string;
+  details: string | null;
+  is_resolution: boolean;
+  source_type: "contacts" | "documents" | "letters" | "tasks" | null;
+  source_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const CONTACT_ROLES = [
   { value: 'initiator', label: 'Initiator' },
   { value: 'stakeholder', label: 'Stakeholder' },
@@ -138,6 +153,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
   const [letters, setLetters] = useState<CaseFileLetter[]>([]);
   const [notes, setNotes] = useState<CaseFileNote[]>([]);
   const [timeline, setTimeline] = useState<CaseFileTimelineEntry[]>([]);
+  const [interactions, setInteractions] = useState<CaseItemInteraction[]>([]);
   const [loading, setLoading] = useState(true);
   
   const { user } = useAuth();
@@ -298,6 +314,22 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     }
   }, [caseFileId]);
 
+  const fetchInteractions = useCallback(async () => {
+    if (!caseFileId) return;
+    const { data, error } = await supabase
+      .from("case_item_interactions")
+      .select("*")
+      .eq("case_file_id", caseFileId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching interactions:", error);
+      return;
+    }
+
+    setInteractions((data || []) as CaseItemInteraction[]);
+  }, [caseFileId]);
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     await Promise.all([
@@ -309,9 +341,11 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       fetchLetters(),
       fetchNotes(),
       fetchTimeline(),
+      fetchInteractions(),
     ]);
     setLoading(false);
-  }, [fetchCaseFile, fetchContacts, fetchDocuments, fetchTasks, fetchAppointments, fetchLetters, fetchNotes, fetchTimeline]);
+  }, [fetchCaseFile, fetchContacts, fetchDocuments, fetchTasks, fetchAppointments, fetchLetters, fetchNotes, fetchTimeline, fetchInteractions]);
+
 
   // Helper to create timeline entry
   const createTimelineEntry = async (
@@ -670,6 +704,31 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     }
   };
 
+  const addInteraction = async (interaction: {
+    case_file_id: string;
+    interaction_type: CaseItemInteraction["interaction_type"];
+    direction: CaseItemInteraction["direction"];
+    subject: string;
+    details?: string;
+    is_resolution: boolean;
+    source_type?: "contacts" | "documents" | "letters" | "tasks";
+    source_id?: string;
+  }) => {
+    if (!user) return false;
+    const { error } = await supabase
+      .from("case_item_interactions")
+      .insert({ ...interaction, created_by: user.id });
+
+    if (error) {
+      toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+      return false;
+    }
+
+    await fetchInteractions();
+    toast({ title: "Interaktion hinzugefügt" });
+    return true;
+  };
+
   const updateCurrentStatus = async (note: string) => {
     if (!caseFileId) return false;
 
@@ -781,6 +840,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     letters,
     notes,
     timeline,
+    interactions,
     loading,
     refresh: fetchAll,
     addContact,
@@ -798,6 +858,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     deleteNote,
     addTimelineEntry,
     deleteTimelineEntry,
+    addInteraction,
     updateCurrentStatus,
     updateRisksOpportunities,
     completeTask,

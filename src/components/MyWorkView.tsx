@@ -15,6 +15,7 @@ import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -78,6 +79,7 @@ const BASE_TABS: TabConfig[] = [
 
 export function MyWorkView() {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { app_logo_url } = useAppSettings();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -271,6 +273,18 @@ export function MyWorkView() {
         { event: '*', schema: 'public', table: 'event_plannings', filter: `user_id=eq.${user.id}` },
         () => debouncedUpdate(['mywork_plannings'])
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointment_feedback',
+          filter: currentTenant?.id
+            ? `tenant_id=eq.${currentTenant.id}`
+            : `user_id=eq.${user.id}`,
+        },
+        () => debouncedUpdate(['mywork_feedbackfeed'])
+      )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") setRealtimeStatus("connected");
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setRealtimeStatus("degraded");
@@ -280,7 +294,7 @@ export function MyWorkView() {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       supabase.removeChannel(channel);
     };
-  }, [user, debouncedUpdate]);
+  }, [user, currentTenant?.id, debouncedUpdate]);
 
   const loadUserRoleAndCounts = async () => {
     if (!user) return;

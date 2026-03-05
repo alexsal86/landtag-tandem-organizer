@@ -45,6 +45,18 @@ interface WebsiteWidgetTestRequest {
   callback_request?: WebsiteWidgetCallbackPayload;
 }
 
+interface MatrixSendRequestBody {
+  test?: boolean;
+  type?: string;
+  title?: string;
+  message?: string;
+  data?: Record<string, unknown>;
+  priority?: string;
+  user_id?: string;
+  room_id?: string;
+  allow_broadcast?: boolean;
+}
+
 interface WidgetRateLimitResult {
   allowed: boolean;
   retryAfterSeconds: number;
@@ -52,6 +64,57 @@ interface WidgetRateLimitResult {
 
 const WIDGET_RATE_LIMIT_WINDOW_SECONDS = Number(Deno.env.get('WIDGET_RATE_LIMIT_WINDOW_SECONDS') ?? 300);
 const WIDGET_RATE_LIMIT_MAX_REQUESTS = Number(Deno.env.get('WIDGET_RATE_LIMIT_MAX_REQUESTS') ?? 5);
+
+async function resolveTargetedSubscriptions(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  body: MatrixSendRequestBody,
+) {
+  if (!body.user_id && !body.allow_broadcast) {
+    return {
+      subscriptions: null,
+      errorResponse: new Response(JSON.stringify({
+        success: false,
+        error: 'user_id ist erforderlich, um unbeabsichtigten Broadcast zu verhindern'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    };
+  }
+
+  let query = supabaseAdmin
+    .from('matrix_subscriptions')
+    .select('*')
+    .eq('is_active', true);
+
+  if (body.user_id) {
+    query = query.eq('user_id', body.user_id);
+  }
+
+  if (body.room_id) {
+    query = query.eq('room_id', body.room_id);
+  }
+
+  const { data: subscriptions, error } = await query;
+
+  if (error) {
+    return {
+      subscriptions: null,
+      errorResponse: new Response(JSON.stringify({
+        success: false,
+        error: 'Database error: ' + error.message
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    };
+  }
+
+  return {
+    subscriptions,
+    errorResponse: null,
+  };
+}
 
 serve(async (req) => {
   console.log('🤖 Matrix function called with method:', req.method);
@@ -63,7 +126,7 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const body = await req.json();
+    const body = await req.json() as MatrixSendRequestBody;
     console.log('📨 Matrix request body:', JSON.stringify(body, null, 2));
 
     // Get Matrix configuration from secrets
@@ -103,21 +166,10 @@ serve(async (req) => {
       console.log('🧪 Processing Matrix test request - sending REAL messages');
       
       try {
-        // Get Matrix subscriptions for testing
-        const { data: subscriptions, error } = await supabaseAdmin
-          .from('matrix_subscriptions')
-          .select('*')
-          .eq('is_active', true);
+        const { subscriptions, errorResponse } = await resolveTargetedSubscriptions(supabaseAdmin, body);
 
-        if (error) {
-          console.error('❌ Database error:', error);
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'Database error: ' + error.message
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+        if (errorResponse) {
+          return errorResponse;
         }
 
         console.log(`📋 Found ${subscriptions?.length || 0} Matrix subscriptions`);
@@ -173,33 +225,30 @@ serve(async (req) => {
               console.error(`❌ Matrix API error for room ${subscription.room_id}:`, response.status, errorText);
               failedCount++;
               
-              // Log the failed attempt
-              await supabaseAdmin
-                .from('matrix_bot_logs')
-                .insert({
-                  user_id: subscription.user_id,
-                  room_id: subscription.room_id,
-                  message: testMessage.body,
-                  success: false,
-                  error_message: `HTTP ${response.status}: ${errorText}`,
-                  timestamp: new Date().toISOString()
-                });
+              await logMatrixEvent(supabaseAdmin, {
+                event_type: 'test_message_sent',
+                user_id: subscription.user_id,
+                room_id: subscription.room_id,
+                message_content: testMessage.body,
+                status: 'failed',
+                error_message: `HTTP ${response.status}: ${errorText}`,
+              });
             } else {
               const result = await response.json();
               console.log(`✅ TEST Matrix message sent successfully to room ${subscription.room_id}:`, result);
               sentCount++;
               
-              // Log the successful attempt
-              await supabaseAdmin
-                .from('matrix_bot_logs')
-                .insert({
-                  user_id: subscription.user_id,
-                  room_id: subscription.room_id,
-                  message: testMessage.body,
-                  success: true,
-                  event_id: result.event_id,
-                  timestamp: new Date().toISOString()
-                });
+              await logMatrixEvent(supabaseAdmin, {
+                event_type: 'test_message_sent',
+                user_id: subscription.user_id,
+                room_id: subscription.room_id,
+                message_content: testMessage.body,
+                response_content: JSON.stringify({ event_id: result.event_id ?? null }),
+                status: 'success',
+                metadata: {
+                  event_id: result.event_id ?? null,
+                },
+              });
 
               // Also create a database notification
               if (subscription.user_id) {
@@ -226,17 +275,14 @@ serve(async (req) => {
             console.error(`❌ Failed to send TEST Matrix message to room ${subscription.room_id}:`, sendError);
             failedCount++;
             
-            // Log the failed attempt
-            await supabaseAdmin
-              .from('matrix_bot_logs')
-              .insert({
-                user_id: subscription.user_id,
-                room_id: subscription.room_id,
-                message: body.message || 'Test message',
-                success: false,
-                error_message: sendError instanceof Error ? sendError.message : String(sendError),
-                timestamp: new Date().toISOString()
-              });
+            await logMatrixEvent(supabaseAdmin, {
+              event_type: 'test_message_sent',
+              user_id: subscription.user_id,
+              room_id: subscription.room_id,
+              message_content: body.message || 'Test message',
+              status: 'failed',
+              error_message: sendError instanceof Error ? sendError.message : String(sendError),
+            });
           }
         }
 
@@ -246,7 +292,7 @@ serve(async (req) => {
           failed: failedCount,
           total_subscriptions: subscriptions.length,
           message: sentCount > 0 
-            ? `✅ Matrix-Test erfolgreich! ${sentCount} echte Nachrichten gesendet, ${failedCount} fehlgeschlagen.`
+            ? `✅ Matrix-Test erfolgreich! An ${sentCount} meiner Räume gesendet, ${failedCount} fehlgeschlagen.`
             : `❌ Matrix-Test fehlgeschlagen. ${failedCount} Nachrichten konnten nicht gesendet werden.`
         }), {
           status: 200,
@@ -274,20 +320,10 @@ serve(async (req) => {
     // Handle real Matrix message sending
     console.log('📤 Processing real Matrix message request');
     
-    const { data: subscriptions, error } = await supabaseAdmin
-      .from('matrix_subscriptions')
-      .select('*')
-      .eq('is_active', true);
+    const { subscriptions, errorResponse } = await resolveTargetedSubscriptions(supabaseAdmin, body);
 
-    if (error) {
-      console.error('❌ Database error:', error);
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Database error: ' + error.message
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    if (errorResponse) {
+      return errorResponse;
     }
 
     if (!subscriptions || subscriptions.length === 0) {
@@ -340,33 +376,30 @@ serve(async (req) => {
           console.error(`❌ Matrix API error for room ${subscription.room_id}:`, response.status, errorText);
           failedCount++;
           
-          // Log the failed attempt
-          await supabaseAdmin
-            .from('matrix_bot_logs')
-            .insert({
-              user_id: subscription.user_id,
-              room_id: subscription.room_id,
-              message: message.body,
-              success: false,
-              error_message: `HTTP ${response.status}: ${errorText}`,
-              timestamp: new Date().toISOString()
-            });
+          await logMatrixEvent(supabaseAdmin, {
+            event_type: 'broadcast_message_sent',
+            user_id: subscription.user_id,
+            room_id: subscription.room_id,
+            message_content: message.body,
+            status: 'failed',
+            error_message: `HTTP ${response.status}: ${errorText}`,
+          });
         } else {
           const result = await response.json();
           console.log(`✅ Matrix message sent successfully to room ${subscription.room_id}:`, result);
           sentCount++;
           
-          // Log the successful attempt
-          await supabaseAdmin
-            .from('matrix_bot_logs')
-            .insert({
-              user_id: subscription.user_id,
-              room_id: subscription.room_id,
-              message: message.body,
-              success: true,
-              event_id: result.event_id,
-              timestamp: new Date().toISOString()
-            });
+          await logMatrixEvent(supabaseAdmin, {
+            event_type: 'broadcast_message_sent',
+            user_id: subscription.user_id,
+            room_id: subscription.room_id,
+            message_content: message.body,
+            response_content: JSON.stringify({ event_id: result.event_id ?? null }),
+            status: 'success',
+            metadata: {
+              event_id: result.event_id ?? null,
+            },
+          });
 
           // Also create a database notification for consistency
           if (subscription.user_id) {
@@ -393,17 +426,14 @@ serve(async (req) => {
         console.error(`❌ Failed to send Matrix message to room ${subscription.room_id}:`, sendError);
         failedCount++;
         
-        // Log the failed attempt
-        await supabaseAdmin
-          .from('matrix_bot_logs')
-          .insert({
-            user_id: subscription.user_id,
-            room_id: subscription.room_id,
-            message: body.message || 'Test message',
-            success: false,
-            error_message: sendError instanceof Error ? sendError.message : String(sendError),
-            timestamp: new Date().toISOString()
-          });
+        await logMatrixEvent(supabaseAdmin, {
+          event_type: 'broadcast_message_sent',
+          user_id: subscription.user_id,
+          room_id: subscription.room_id,
+          message_content: body.message || 'Test message',
+          status: 'failed',
+          error_message: sendError instanceof Error ? sendError.message : String(sendError),
+        });
       }
     }
 
@@ -415,7 +445,7 @@ serve(async (req) => {
       sent: sentCount,
       failed: failedCount,
       total_subscriptions: totalSubscriptions,
-      message: `Matrix-Nachrichten versendet! ${sentCount} erfolgreich, ${failedCount} fehlgeschlagen.`
+      message: `Matrix-Nachrichten versendet! An ${sentCount} meiner Räume gesendet, ${failedCount} fehlgeschlagen.`
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -550,6 +580,15 @@ async function sendDecisionMessages(
             if (!response.ok) {
               const errorText = await response.text();
               console.error(`❌ Matrix API error for room ${matrixSub.room_id}:`, response.status, errorText);
+              await logMatrixEvent(supabaseAdmin, {
+                event_type: 'decision_sent',
+                room_id: matrixSub.room_id,
+                user_id: participantId,
+                message_content: decisionMessage.body,
+                status: 'failed',
+                error_message: `HTTP ${response.status}: ${errorText}`,
+                metadata: { status_code: response.status },
+              });
               roomResults.push({ roomId: matrixSub.room_id, success: false, error: `API error: ${response.status}` });
               continue;
             }
@@ -558,13 +597,14 @@ async function sendDecisionMessages(
             console.log(`✅ Decision message sent to room ${matrixSub.room_id}:`, result);
             sentToAnyRoom = true;
             
-            // Log to matrix_bot_logs
-            await supabaseAdmin.from('matrix_bot_logs').insert({
+            await logMatrixEvent(supabaseAdmin, {
               event_type: 'decision_sent',
               room_id: matrixSub.room_id,
               user_id: participantId,
-              success: true,
-              timestamp: new Date().toISOString()
+              message_content: decisionMessage.body,
+              response_content: JSON.stringify({ event_id: result.event_id ?? null }),
+              status: 'success',
+              metadata: { event_id: result.event_id ?? null },
             });
 
             // Track the Matrix message
@@ -586,6 +626,14 @@ async function sendDecisionMessages(
             
           } catch (roomError) {
             console.error(`❌ Error sending to room ${matrixSub.room_id}:`, roomError);
+            await logMatrixEvent(supabaseAdmin, {
+              event_type: 'decision_sent',
+              room_id: matrixSub.room_id,
+              user_id: participantId,
+              message_content: decisionMessage.body,
+              status: 'failed',
+              error_message: roomError instanceof Error ? roomError.message : 'Unknown error',
+            });
             roomResults.push({ 
               roomId: matrixSub.room_id, 
               success: false, 
@@ -731,7 +779,7 @@ async function handleWebsiteWidgetTest(
       status_code?: number;
     },
   ) => {
-    await supabaseAdmin.from('matrix_bot_logs').insert({
+    await logMatrixEvent(supabaseAdmin, {
       event_type: isCallbackRequest ? 'website_widget_callback_request' : 'website_widget_test',
       room_id: extra.room_id ?? configuredRoomId ?? null,
       message_content: isCallbackRequest
@@ -747,7 +795,6 @@ async function handleWebsiteWidgetTest(
         ...maskedCallbackMetadata,
         ...(extra.metadata ?? {}),
       },
-      sent_date: new Date().toISOString().slice(0, 10),
     });
   };
 
