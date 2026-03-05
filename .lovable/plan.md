@@ -1,61 +1,76 @@
 
-Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-1) Diagnose (aus Code + DB)
-- Do I know what the issue is? Ja.
-- Es gibt aktuell 2 Ebenen von Problemen:
-  1. Build ist kaputt (TypeScript):
-     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
-     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
-  2. Feed-Logik ist instabil/zu restriktiv:
-     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
-       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
-     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
-- DB-Check:
-  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
-  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
+# Plan: Vorgangssystem (Ticketsystem) funktionsfähig machen
 
-2) Umsetzungsplan (in Reihenfolge)
-A. Build sofort reparieren (Blocker)
-- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
-- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
+## Problemanalyse
 
-B. Feed-Query stabilisieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
-  - Entweder:
-    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
-    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
-- `useTeamFeedbackFeed.ts`:
-  - Query-Key nur mit stabilen Filterwerten.
-  - Zeitfilter robust halten (kein per-render Drift).
+Das Vorgangssystem hat zahlreiche Build-Fehler, die durch Diskrepanzen zwischen Datenbankschema und Code verursacht werden. Die Hauptprobleme:
 
-C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
-- `useTeamFeedbackFeed.ts`:
-  - Notiz-Pflicht entfernen oder erweitern:
-    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
-  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
+### Datenbankprobleme
+1. **`case_files` fehlt `case_scale`-Spalte** — Code erwartet sie, DB hat sie nicht
+2. **`case_item_interactions` fehlen Spalten** — Code erwartet `subject`, `details`, `is_resolution`, `source_type`, `source_id`, die nicht existieren. Zudem nutzt `interaction_type` den Enum `case_item_source_channel` (phone/email/social/in_person/other), aber Code erwartet call/email/social/meeting/note/letter/system
+3. **`tasks` fehlen `source_type`/`source_id`** — Code in TasksView referenziert diese
 
-D. Fehler nicht mehr als „keine Daten“ maskieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `isError` + `error` aus Query auslesen.
-  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
+### Code-Probleme
+4. **MyWorkCaseItemsTab.tsx**: Doppelte `items`-Variable (Zeile 73 + 91), `caseItems`/`getAssigneeId`/`createCaseItem` undefiniert
+5. **MyWorkCasesWorkspace.tsx**: `linkedCaseFileIds` undefiniert (Zeile 129), `case_items as any`-Cast schlägt fehl
+6. **Doppelter Export**: `CaseItemInteraction` wird aus `items/hooks` UND `files/hooks` exportiert → Konflikt in `features/cases/index.ts`
+7. **Type-Mismatches**: `case_scale` ist `string` in DB-Rückgabe aber `"small" | "large"` im Interface
 
-E. Quercheck auf Seiteneffekte
-- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
+## Umsetzungsplan
 
-3) Validierung nach Umsetzung
-- Build grün ohne TS-Fehler.
-- Im Tab „Meine Arbeit > Rückmeldungen“:
-  - Keine Endlos-Ladeanzeige.
-  - Team-Einträge der letzten 7/14 Tage sichtbar.
-  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
-  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
-- Schneller Datenabgleich:
-  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
+### Schritt 1: Datenbank-Migrationen
 
-4) Warum das den aktuellen Zustand löst
-- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
-- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
-- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
-- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
+SQL-Migration mit folgenden Änderungen:
+
+1. **`case_files`**: Spalte `case_scale` (text, nullable) hinzufügen
+2. **`case_item_interactions`**: Spalten `subject` (text), `details` (text), `is_resolution` (boolean, default false), `source_type` (text), `source_id` (uuid) hinzufügen. Den `interaction_type`-Enum erweitern oder auf Text umstellen, da der bestehende Enum (phone/email/social/in_person/other) nicht zu den benötigten Werten (call/email/social/meeting/note/letter/system) passt
+3. **`tasks`**: Spalten `source_type` (text) und `source_id` (uuid) hinzufügen
+
+### Schritt 2: Export-Konflikt auflösen
+
+- In `features/cases/index.ts` den Doppel-Export von `CaseItemInteraction` auflösen — entweder eines der Interfaces umbenennen oder explizit re-exportieren
+
+### Schritt 3: MyWorkCaseItemsTab.tsx reparieren
+
+- Doppelte `items`-Deklaration entfernen (Zeile 91-109 entfernen, da Zeile 73 die richtige ist)
+- `loadCaseItems`-Funktion korrigieren: statt `getAssigneeId` direkt `owner_user_id` verwenden, DB-Spaltenreferenzen anpassen (z.B. `row.subject` statt `row.title`, `row.source_channel` statt `row.channel`)
+- `createCaseItem` aus dem `useCaseItems`-Hook importieren und verwenden
+
+### Schritt 4: MyWorkCasesWorkspace.tsx reparieren
+
+- `linkedCaseFileIds` berechnen bevor es bei der Abfrage verwendet wird (es wird auf Zeile 129 referenziert, aber erst auf Zeile 214 in einem `useMemo` berechnet)
+- `case_items as any`-Cast durch korrektes Typing ersetzen
+
+### Schritt 5: Type-Casting für `case_scale` korrigieren
+
+- In `useCaseFiles.tsx`, `useCaseFileDetails.tsx`, `CaseFileCreateDialog.tsx`, `MyWorkCaseFilesTab.tsx`: `case_scale` als `string` casten und dann validieren, oder das Interface auf `string` erweitern
+
+### Schritt 6: useCaseItems Hook reparieren
+
+- Die `CaseItemInteraction`-Interface und Insert-Logik an das tatsächliche DB-Schema anpassen (nach Migration)
+- `intake_payload`-Type-Kompatibilität mit Supabase Json-Typ sicherstellen
+- `tenant_id` aus Interaction-Insert entfernen, falls die Tabelle es nicht hat (aber sie hat es — das Problem ist der TypeScript-Typ)
+
+### Schritt 7: Interaktionstypen harmonisieren
+
+- Einen neuen Enum oder Text-basierte Spalte für `interaction_type` verwenden, der sowohl die alten als auch neuen Werte unterstützt: call, email, social, meeting, note, letter, system, phone, in_person, other
+
+## Technische Details
+
+```text
+Aktuelle DB-Struktur case_item_interactions:
+  id, case_item_id, tenant_id, interaction_type (enum: phone/email/social/in_person/other),
+  interaction_at, direction (text), summary, payload, created_by, created_at, visibility
+
+Benötigte Struktur:
+  + subject (text)
+  + details (text)  
+  + is_resolution (boolean, default false)
+  + source_type (text, nullable)
+  + source_id (uuid, nullable)
+  interaction_type → text statt Enum (für erweiterte Werte)
+```
+
+Die Migration wird so gestaltet, dass bestehende Daten erhalten bleiben. Der Enum wird zu einem Text-Typ konvertiert, da die neuen Interaction-Types (call, meeting, note, letter, system) nicht im bestehenden Enum enthalten sind.
+
