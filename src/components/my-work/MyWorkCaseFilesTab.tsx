@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { cn } from "@/lib/utils";
+import { classifyCaseScale, type CaseScale } from "@/lib/caseFileSizing";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -40,6 +41,7 @@ export function MyWorkCaseFilesTab() {
   
   const [caseFiles, setCaseFiles] = useState<CaseFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [scaleFilter, setScaleFilter] = useState<"all" | CaseScale>("all");
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -102,6 +104,23 @@ export function MyWorkCaseFilesTab() {
     }
   };
 
+  const filteredCaseFiles = caseFiles.filter((caseFile) => {
+    if (scaleFilter === "all") return true;
+
+    return (
+      classifyCaseScale({
+        caseType: caseFile.case_type,
+        title: caseFile.title,
+      }) === scaleFilter
+    );
+  });
+
+  const scaleCounts = {
+    all: caseFiles.length,
+    small: caseFiles.filter((caseFile) => classifyCaseScale({ caseType: caseFile.case_type, title: caseFile.title }) === "small").length,
+    large: caseFiles.filter((caseFile) => classifyCaseScale({ caseType: caseFile.case_type, title: caseFile.title }) === "large").length,
+  };
+
   if (loading) {
     return (
       <div className="space-y-2 p-4">
@@ -115,13 +134,43 @@ export function MyWorkCaseFilesTab() {
   return (
     <ScrollArea className="h-[500px]">
       <div className="space-y-2 p-4">
-        {caseFiles.length === 0 ? (
+        <div className="flex items-center gap-2 pb-2">
+          <Button
+            size="sm"
+            variant={scaleFilter === "all" ? "secondary" : "outline"}
+            onClick={() => setScaleFilter("all")}
+          >
+            Alle ({scaleCounts.all})
+          </Button>
+          <Button
+            size="sm"
+            variant={scaleFilter === "small" ? "secondary" : "outline"}
+            onClick={() => setScaleFilter("small")}
+          >
+            Kleine Vorgänge ({scaleCounts.small})
+          </Button>
+          <Button
+            size="sm"
+            variant={scaleFilter === "large" ? "secondary" : "outline"}
+            onClick={() => setScaleFilter("large")}
+          >
+            Große Akten ({scaleCounts.large})
+          </Button>
+        </div>
+
+        {filteredCaseFiles.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Briefcase className="h-10 w-10 mx-auto mb-2 opacity-50" />
-            <p>Keine aktiven FallAkten</p>
+            <p>
+              {scaleFilter === "all"
+                ? "Keine aktiven FallAkten"
+                : scaleFilter === "small"
+                  ? "Keine kleinen Vorgänge"
+                  : "Keine großen Akten"}
+            </p>
           </div>
         ) : (
-          caseFiles.map((caseFile) => (
+          filteredCaseFiles.map((caseFile) => (
             <div
               key={caseFile.id}
               className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
