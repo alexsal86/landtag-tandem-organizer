@@ -22,7 +22,7 @@ interface MessageReactionsProps {
 
 const QUICK_EMOJIS = ['👍', '❤️', '😄', '😮', '😢', '🎉', '🤔', '👀'];
 
-export function MessageReactions({ reactions, onAddReaction, onRemoveReaction }: MessageReactionsProps) {
+export const MessageReactions = React.memo(function MessageReactions({ reactions, onAddReaction, onRemoveReaction }: MessageReactionsProps) {
   const [showPicker, setShowPicker] = useState(false);
 
   const handleReactionClick = (reaction: Reaction) => {
@@ -85,4 +85,4 @@ export function MessageReactions({ reactions, onAddReaction, onRemoveReaction }:
       </Popover>
     </div>
   );
-}
+});
