@@ -24,8 +24,8 @@ const MyWorkQuickCapture = lazyWithRetry(() => import("./my-work/MyWorkQuickCapt
 const MyWorkNotesList = lazyWithRetry(() => import("./my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
 const MyWorkTasksTab = lazyWithRetry(() => import("./my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
 const MyWorkDecisionsTab = lazyWithRetry(() => import("./my-work/MyWorkDecisionsTab").then(m => ({ default: m.MyWorkDecisionsTab })));
-const MyWorkCaseFilesTab = lazyWithRetry(() => import("./my-work/MyWorkCaseFilesTab").then(m => ({ default: m.MyWorkCaseFilesTab })));
-const MyWorkCaseItemsTab = lazyWithRetry(() => import("./my-work/MyWorkCaseItemsTab").then(m => ({ default: m.MyWorkCaseItemsTab })));
+const MyWorkCaseFilesTab = lazyWithRetry(() => import("@/features/cases/files/components").then(m => ({ default: m.MyWorkCaseFilesTab })));
+const MyWorkCaseItemsTab = lazyWithRetry(() => import("@/features/cases/items/components").then(m => ({ default: m.MyWorkCaseItemsTab })));
 const MyWorkPlanningsTab = lazyWithRetry(() => import("./my-work/MyWorkPlanningsTab").then(m => ({ default: m.MyWorkPlanningsTab })));
 const MyWorkTeamTab = lazyWithRetry(() => import("./my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
 const MyWorkJourFixeTab = lazyWithRetry(() => import("./my-work/MyWorkJourFixeTab").then(m => ({ default: m.MyWorkJourFixeTab })));

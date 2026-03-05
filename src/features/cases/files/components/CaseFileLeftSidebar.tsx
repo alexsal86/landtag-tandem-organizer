@@ -1,6 +1,6 @@
-import { CaseFile } from "@/hooks/useCaseFiles";
-import { CaseFileContact, CONTACT_ROLES } from "@/hooks/useCaseFileDetails";
-import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
+import { CaseFile } from "@/features/cases/files/hooks";
+import { CaseFileContact, CONTACT_ROLES } from "@/features/cases/files/hooks";
+import { useCaseFileTypes } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

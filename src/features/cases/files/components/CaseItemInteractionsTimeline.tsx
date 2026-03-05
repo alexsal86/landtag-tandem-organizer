@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Phone, Mail, Share2, Handshake, NotebookPen, Send, Bot } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import type { CaseItemInteraction } from "@/hooks/useCaseFileDetails";
+import type { CaseItemInteraction } from "@/features/cases/files/hooks";
 
 const iconByType = {
   call: Phone,

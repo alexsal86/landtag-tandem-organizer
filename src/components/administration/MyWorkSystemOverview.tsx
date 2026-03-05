@@ -29,7 +29,7 @@ const tabSourceMap: Record<typeof tabs[number], string> = {
   tasks: "src/components/my-work/MyWorkTasksTab.tsx",
   decisions: "src/components/my-work/MyWorkDecisionsTab.tsx",
   jourFixe: "src/components/my-work/MyWorkJourFixeTab.tsx",
-  casefiles: "src/components/my-work/MyWorkCaseFilesTab.tsx",
+  casefiles: "src/features/cases/files/components/MyWorkCaseFilesTab.tsx",
   plannings: "src/components/my-work/MyWorkPlanningsTab.tsx",
   time: "src/components/my-work/MyWorkTimeTrackingTab.tsx",
   feedbackfeed: "src/components/my-work/MyWorkFeedbackFeedTab.tsx",

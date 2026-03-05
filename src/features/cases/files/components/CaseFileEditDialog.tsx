@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useCaseFiles, CaseFileFormData } from "@/hooks/useCaseFiles";
-import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
+import { useCaseFiles, CaseFileFormData, CASE_STATUSES, CaseFile } from "@/features/cases/files/hooks";
+import { useCaseFileTypes } from "@/features/cases/files/hooks";
 import { icons, LucideIcon } from "lucide-react";
 import {
   Dialog,
@@ -18,13 +18,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Lock, Users, Globe } from "lucide-react";
-import { CaseFile } from "@/hooks/useCaseFiles";
 import { supabase } from "@/integrations/supabase/client";
 
-interface CaseFileCreateDialogProps {
+interface CaseFileEditDialogProps {
+  caseFile: CaseFile;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: (caseFile: CaseFile) => void;
 }
 
 interface Profile {
@@ -32,9 +31,8 @@ interface Profile {
   display_name: string | null;
 }
 
-
-export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFileCreateDialogProps) {
-  const { createCaseFile } = useCaseFiles();
+export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEditDialogProps) {
+  const { updateCaseFile } = useCaseFiles();
   const { caseFileTypes } = useCaseFileTypes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CaseFileFormData>({
@@ -52,11 +50,35 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
 
+  const getIconComponent = (iconName?: string | null): LucideIcon | null => {
+    if (!iconName) return null;
+    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
+    return Icon || null;
+  };
+
   useEffect(() => {
-    if (open && !profilesLoaded) {
-      loadProfiles();
+    if (caseFile && open) {
+      setFormData({
+        title: caseFile.title,
+        description: caseFile.description || "",
+        case_type: caseFile.case_type,
+        status: caseFile.status,
+        priority: caseFile.priority || "medium",
+        reference_number: caseFile.reference_number || "",
+        start_date: caseFile.start_date || undefined,
+        target_date: caseFile.target_date || undefined,
+        is_private: caseFile.is_private,
+      });
+      
+      // Determine visibility from the case file data
+      const vis = (caseFile as any).visibility || (caseFile.is_private ? 'private' : 'public');
+      setVisibility(vis);
+      
+      // Load existing participants
+      loadParticipants();
+      if (!profilesLoaded) loadProfiles();
     }
-  }, [open, profilesLoaded]);
+  }, [caseFile, open]);
 
   const loadProfiles = async () => {
     try {
@@ -73,6 +95,25 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
     }
   };
 
+  const loadParticipants = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('case_file_participants')
+        .select('user_id, role')
+        .eq('case_file_id', caseFile.id);
+      if (error) throw error;
+      
+      const ids = data?.map(p => p.user_id) || [];
+      const roles: Record<string, 'viewer' | 'editor'> = {};
+      data?.forEach(p => { roles[p.user_id] = p.role as 'viewer' | 'editor'; });
+      
+      setSelectedParticipantIds(ids);
+      setParticipantRoles(roles);
+    } catch (error) {
+      console.error('Error loading participants:', error);
+    }
+  };
+
   const userOptions = useMemo(() => {
     return profiles.map(p => ({
       value: p.user_id,
@@ -80,54 +121,36 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
     }));
   }, [profiles]);
 
-  const getIconComponent = (iconName?: string | null): LucideIcon | null => {
-    if (!iconName) return null;
-    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
-    return Icon || null;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) return;
 
     setIsSubmitting(true);
-    try {
-      // Map visibility to is_private for backward compat + set visibility
-      const submitData = {
-        ...formData,
-        is_private: visibility === 'private',
-        visibility,
-      };
+    
+    const submitData = {
+      ...formData,
+      is_private: visibility === 'private',
+      visibility,
+    };
+    
+    const success = await updateCaseFile(caseFile.id, submitData);
 
-      const participants = visibility === 'shared'
-        ? selectedParticipantIds.map((userId) => ({
-            user_id: userId,
-            role: participantRoles[userId] || 'viewer',
-          }))
-        : [];
-
-      const result = await createCaseFile(submitData, participants);
-
-      if (!result) return;
-
-      // Reset form
-      setFormData({
-        title: "",
-        description: "",
-        case_type: "general",
-        status: "active",
-        priority: "medium",
-        reference_number: "",
-        is_private: false,
-      });
-      setVisibility('private');
-      setSelectedParticipantIds([]);
-      setParticipantRoles({});
+    if (success) {
+      // Update participants: delete old, insert new
+      await supabase.from('case_file_participants').delete().eq('case_file_id', caseFile.id);
+      
+      if (visibility === 'shared' && selectedParticipantIds.length > 0) {
+        const participants = selectedParticipantIds.map(userId => ({
+          case_file_id: caseFile.id,
+          user_id: userId,
+          role: participantRoles[userId] || 'viewer',
+        }));
+        await supabase.from('case_file_participants').insert(participants);
+      }
+      
       onOpenChange(false);
-      onSuccess?.(result);
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   };
 
   return (
@@ -135,9 +158,9 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Neue FallAkte erstellen</DialogTitle>
+            <DialogTitle>FallAkte bearbeiten</DialogTitle>
             <DialogDescription>
-              Erstellen Sie eine neue FallAkte, um Dokumente, Kontakte und Aufgaben zu einem Sachverhalt zu bündeln.
+              Bearbeiten Sie die Eigenschaften der FallAkte.
             </DialogDescription>
           </DialogHeader>
 
@@ -148,7 +171,6 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="z.B. Gesetzesinitiative Klimaschutz"
                 required
               />
             </div>
@@ -159,7 +181,6 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Kurze Beschreibung des Sachverhalts..."
                 rows={3}
               />
             </div>
@@ -195,6 +216,27 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
               </div>
 
               <div className="grid gap-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CASE_STATUSES.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        {status.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
                 <Label htmlFor="priority">Priorität</Label>
                 <Select
                   value={formData.priority}
@@ -211,16 +253,15 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="reference_number">Aktenzeichen</Label>
-              <Input
-                id="reference_number"
-                value={formData.reference_number}
-                onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })}
-                placeholder="z.B. GV-2024-001"
-              />
+              <div className="grid gap-2">
+                <Label htmlFor="reference_number">Aktenzeichen</Label>
+                <Input
+                  id="reference_number"
+                  value={formData.reference_number}
+                  onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -250,22 +291,22 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
               <Label>Sichtbarkeit</Label>
               <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as any)} className="gap-3">
                 <div className="flex items-center space-x-3">
-                  <RadioGroupItem value="private" id="vis-private" />
-                  <Label htmlFor="vis-private" className="flex items-center gap-2 cursor-pointer font-normal">
+                  <RadioGroupItem value="private" id="edit-vis-private" />
+                  <Label htmlFor="edit-vis-private" className="flex items-center gap-2 cursor-pointer font-normal">
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     Privat – nur für mich sichtbar
                   </Label>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <RadioGroupItem value="shared" id="vis-shared" />
-                  <Label htmlFor="vis-shared" className="flex items-center gap-2 cursor-pointer font-normal">
+                  <RadioGroupItem value="shared" id="edit-vis-shared" />
+                  <Label htmlFor="edit-vis-shared" className="flex items-center gap-2 cursor-pointer font-normal">
                     <Users className="h-4 w-4 text-muted-foreground" />
                     Geteilt – bestimmte Personen
                   </Label>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <RadioGroupItem value="public" id="vis-public" />
-                  <Label htmlFor="vis-public" className="flex items-center gap-2 cursor-pointer font-normal">
+                  <RadioGroupItem value="public" id="edit-vis-public" />
+                  <Label htmlFor="edit-vis-public" className="flex items-center gap-2 cursor-pointer font-normal">
                     <Globe className="h-4 w-4 text-muted-foreground" />
                     Öffentlich – alle im Mandanten
                   </Label>
@@ -322,7 +363,7 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
               Abbrechen
             </Button>
             <Button type="submit" disabled={isSubmitting || !formData.title.trim()}>
-              {isSubmitting ? "Erstelle..." : "Erstellen"}
+              {isSubmitting ? "Speichere..." : "Speichern"}
             </Button>
           </DialogFooter>
         </form>

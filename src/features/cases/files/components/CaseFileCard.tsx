@@ -1,5 +1,5 @@
-import { CaseFile, CASE_STATUSES } from "@/hooks/useCaseFiles";
-import { CaseFileType } from "@/hooks/useCaseFileTypes";
+import { CaseFile, CASE_STATUSES } from "@/features/cases/files/hooks";
+import { CaseFileType } from "@/features/cases/files/hooks";
 import { useCaseFileProcessingStatuses } from "@/hooks/useCaseFileProcessingStatuses";
 import { useUserDisplay } from "@/hooks/useUserDisplay";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";

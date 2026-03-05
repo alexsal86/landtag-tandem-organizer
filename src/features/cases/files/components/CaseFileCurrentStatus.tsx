@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CaseFile } from "@/hooks/useCaseFiles";
+import { CaseFile } from "@/features/cases/files/hooks";
 import { useCaseFileProcessingStatuses } from "@/hooks/useCaseFileProcessingStatuses";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
