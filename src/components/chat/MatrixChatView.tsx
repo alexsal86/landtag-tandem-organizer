@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, Plus, Lock, ExternalLink, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -31,6 +31,7 @@ export function MatrixChatView() {
     roomMessages,
     typingUsers,
     sendTypingNotification,
+    sendReadReceiptForLatestVisibleEvent,
     addReaction,
     removeReaction,
     createRoom,
@@ -84,6 +85,25 @@ export function MatrixChatView() {
     }
   }, [selectedRoomId, isConnected, refreshMessages]);
 
+  useEffect(() => {
+    const previousRoomId = previousRoomIdRef.current;
+
+    if (previousRoomId && previousRoomId !== selectedRoomId) {
+      sendTypingNotification(previousRoomId, false);
+    }
+
+    previousRoomIdRef.current = selectedRoomId;
+  }, [selectedRoomId, sendTypingNotification]);
+
+  useEffect(() => {
+    return () => {
+      const currentRoomId = previousRoomIdRef.current;
+      if (currentRoomId) {
+        sendTypingNotification(currentRoomId, false);
+      }
+    };
+  }, [sendTypingNotification]);
+
 
   // Fallback refresh for encrypted timelines if event callbacks are delayed/missed
   useEffect(() => {
@@ -132,6 +152,23 @@ export function MatrixChatView() {
       await removeReaction(selectedRoomId, eventId, emoji);
     }
   }, [selectedRoomId, removeReaction]);
+
+  useEffect(() => {
+    if (!selectedRoomId || !isConnected || messages.length === 0) return;
+
+    const latestMessage = messages[messages.length - 1];
+    if (!latestMessage?.eventId) return;
+
+    const now = Date.now();
+    const sameEvent = lastReadReceiptEventIdRef.current === latestMessage.eventId;
+    const throttleActive = now - lastReadReceiptAtRef.current < 1500;
+    if (sameEvent || throttleActive) return;
+
+    lastReadReceiptEventIdRef.current = latestMessage.eventId;
+    lastReadReceiptAtRef.current = now;
+
+    void sendReadReceiptForLatestVisibleEvent(selectedRoomId);
+  }, [selectedRoomId, isConnected, messages, sendReadReceiptForLatestVisibleEvent]);
 
 
   useEffect(() => {

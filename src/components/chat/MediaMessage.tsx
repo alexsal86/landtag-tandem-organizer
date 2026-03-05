@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { FileIcon, Download, Play, Pause, ImageIcon, FileText, Film, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -29,7 +29,7 @@ interface MediaMessageProps {
 
 export function MediaMessage({ content, homeserverUrl }: MediaMessageProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const getMxcUrl = (mxcUrl?: string) => {
     if (!mxcUrl) return '';
@@ -115,13 +115,12 @@ export function MediaMessage({ content, homeserverUrl }: MediaMessageProps) {
   // Audio message
   if (content.msgtype === 'm.audio') {
     const togglePlay = () => {
-      if (audioRef) {
+      if (audioRef.current) {
         if (isPlaying) {
-          audioRef.pause();
+          audioRef.current.pause();
         } else {
-          audioRef.play();
+          audioRef.current.play();
         }
-        setIsPlaying(!isPlaying);
       }
     };
 
@@ -148,8 +147,10 @@ export function MediaMessage({ content, homeserverUrl }: MediaMessageProps) {
           )}
         </div>
         <audio
-          ref={setAudioRef}
+          ref={audioRef}
           src={mediaUrl}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
           onEnded={() => setIsPlaying(false)}
           className="hidden"
         />
