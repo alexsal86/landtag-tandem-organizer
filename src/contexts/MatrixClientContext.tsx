@@ -537,6 +537,10 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           ? undefined
           : (creds.deviceId || localStorage.getItem(deviceStorageKey) || undefined);
 
+        if (cachedDeviceId) {
+          return cachedDeviceId;
+        }
+
         let whoamiBody: { user_id?: string; device_id?: string };
         try {
           const whoamiResponse = await fetch(`${creds.homeserverUrl}/_matrix/client/v3/account/whoami`, {
@@ -560,14 +564,12 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           );
         }
 
-        const resolvedDeviceId = cachedDeviceId || whoamiBody.device_id;
+        const resolvedDeviceId = whoamiBody.device_id;
         if (!resolvedDeviceId) {
           throw new Error('Matrix-Connect abgebrochen: whoami lieferte keine device_id und lokal ist keine deviceId gespeichert.');
         }
 
-        if (!cachedDeviceId && whoamiBody.device_id) {
-          localStorage.setItem(deviceStorageKey, whoamiBody.device_id);
-        }
+        localStorage.setItem(deviceStorageKey, resolvedDeviceId);
 
         return resolvedDeviceId;
       };
