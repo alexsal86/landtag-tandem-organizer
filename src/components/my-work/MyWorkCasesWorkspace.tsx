@@ -10,7 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { CaseFileDetail } from "@/features/cases/files/components";
+import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
+import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
+import { useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,8 +44,12 @@ export function MyWorkCasesWorkspace() {
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { createCaseItem } = useCaseItems();
 
   const [caseItems, setCaseItems] = useState<CaseItem[]>([]);
+  const [isCaseItemDialogOpen, setIsCaseItemDialogOpen] = useState(false);
+  const [isCaseFileDialogOpen, setIsCaseFileDialogOpen] = useState(false);
+  const [pendingCaseItemLinkId, setPendingCaseItemLinkId] = useState<string | null>(null);
   const [caseFilesById, setCaseFilesById] = useState<Record<string, CaseFile>>({});
   const [loading, setLoading] = useState(true);
   const [filterQuery, setFilterQuery] = useState("");
@@ -52,16 +58,28 @@ export function MyWorkCasesWorkspace() {
 
   const selectedCaseItemId = searchParams.get("caseItemId");
 
+  const clearActionParam = useCallback(() => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete("action");
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   useEffect(() => {
     const action = searchParams.get("action");
     if (action === "create-caseitem") {
-      navigate("/caseitems?action=create");
+      setPendingCaseItemLinkId(null);
+      setIsCaseItemDialogOpen(true);
+      clearActionParam();
       return;
     }
     if (action === "create-casefile") {
-      navigate("/casefiles?action=create");
+      setPendingCaseItemLinkId(searchParams.get("caseItemId"));
+      setIsCaseFileDialogOpen(true);
+      clearActionParam();
     }
-  }, [navigate, searchParams]);
+  }, [clearActionParam, searchParams]);
 
   const updateWorkspaceParams = useCallback((next: { caseItemId?: string | null; caseFileId?: string | null }) => {
     setSearchParams((prev) => {
@@ -248,11 +266,37 @@ export function MyWorkCasesWorkspace() {
   };
 
   const handleCreateCaseItem = () => {
-    navigate('/caseitems?action=create');
+    setPendingCaseItemLinkId(null);
+    setIsCaseItemDialogOpen(true);
   };
 
-  const handleCreateCaseFile = () => {
-    navigate('/casefiles?action=create');
+  const handleCreateCaseFile = (caseItemId?: string) => {
+    setPendingCaseItemLinkId(caseItemId ?? null);
+    setIsCaseFileDialogOpen(true);
+  };
+
+  const handleCaseItemCreated = async (newCaseItemId: string) => {
+    await loadWorkspaceData();
+    updateWorkspaceParams({ caseItemId: newCaseItemId, caseFileId: null });
+  };
+
+  const handleCaseFileCreated = async (newCaseFileId: string) => {
+    if (pendingCaseItemLinkId) {
+      await supabase
+        .from("case_items")
+        .update({ case_file_id: newCaseFileId, case_scale: "large" })
+        .eq("id", pendingCaseItemLinkId);
+    }
+
+    await loadWorkspaceData();
+
+    if (pendingCaseItemLinkId) {
+      updateWorkspaceParams({ caseItemId: pendingCaseItemLinkId, caseFileId: newCaseFileId });
+    } else {
+      updateWorkspaceParams({ caseItemId: null, caseFileId: newCaseFileId });
+    }
+
+    setPendingCaseItemLinkId(null);
   };
 
   const renderDetailPanel = () => {
@@ -289,7 +333,7 @@ export function MyWorkCasesWorkspace() {
         <Briefcase className="h-4 w-4" />
         <p>Für dieses Anliegen ist noch keine Akte verknüpft.</p>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => navigate(`/casefiles?action=create&caseItemId=${selectedCaseItem.id}`)}>
+          <Button size="sm" onClick={() => handleCreateCaseFile(selectedCaseItem.id)}>
             Neue Akte anlegen
           </Button>
           <Button
@@ -324,7 +368,7 @@ export function MyWorkCasesWorkspace() {
               <Plus className="mr-1 h-4 w-4" />
               Vorgang erstellen
             </Button>
-            <Button size="sm" variant="outline" onClick={handleCreateCaseFile}>
+            <Button size="sm" variant="outline" onClick={() => handleCreateCaseFile()}>
               <Plus className="mr-1 h-4 w-4" />
               FallAkte erstellen
             </Button>
@@ -365,7 +409,7 @@ export function MyWorkCasesWorkspace() {
                   <p>Keine Anliegen passend zum Filter gefunden.</p>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={handleCreateCaseItem}>Vorgang erstellen</Button>
-                    <Button size="sm" variant="outline" onClick={handleCreateCaseFile}>FallAkte erstellen</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleCreateCaseFile()}>FallAkte erstellen</Button>
                   </div>
                 </div>
               ) : (
@@ -423,6 +467,29 @@ export function MyWorkCasesWorkspace() {
           <div className="mt-4">{renderDetailPanel()}</div>
         </SheetContent>
       </Sheet>
+
+      <CaseItemCreateDialog
+        open={isCaseItemDialogOpen}
+        onOpenChange={setIsCaseItemDialogOpen}
+        onCreated={(id) => {
+          void handleCaseItemCreated(id);
+        }}
+        createCaseItem={createCaseItem}
+      />
+
+      <CaseFileCreateDialog
+        open={isCaseFileDialogOpen}
+        onOpenChange={(open) => {
+          setIsCaseFileDialogOpen(open);
+          if (!open) {
+            setPendingCaseItemLinkId(null);
+          }
+        }}
+        onSuccess={(caseFile) => {
+          void handleCaseFileCreated(caseFile.id);
+          setIsCaseFileDialogOpen(false);
+        }}
+      />
     </div>
   );
 }
