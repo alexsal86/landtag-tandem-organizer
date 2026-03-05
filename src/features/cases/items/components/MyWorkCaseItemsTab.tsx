@@ -120,17 +120,17 @@ export function MyWorkCaseItemsTab() {
       if (escalationError) throw escalationError;
 
       const visibleItems = ((data || []) as any[])
-        .filter((row) => row.user_id === user.id || getAssigneeId(row) === user.id)
+        .filter((row) => row.user_id === user.id || row.owner_user_id === user.id)
         .map((row) => ({
           id: row.id,
-          title: row.title || "Ohne Titel",
-          description: row.description || null,
+          title: row.subject || row.resolution_summary || "Ohne Titel",
+          description: row.summary || null,
           status: row.status || null,
           priority: row.priority || null,
-          channel: row.channel || null,
-          follow_up_at: row.follow_up_at || row.snoozed_until || null,
-          due_date: row.due_date || row.target_date || null,
-          assigned_to: getAssigneeId(row),
+          channel: row.source_channel || null,
+          follow_up_at: row.follow_up_at || null,
+          due_date: row.due_at || null,
+          assigned_to: row.owner_user_id,
           user_id: row.user_id || null,
           case_file_id: row.case_file_id || null,
           created_at: row.created_at,
