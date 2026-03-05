@@ -24,6 +24,7 @@ const MyWorkNotesList = lazyWithRetry(() => import("./my-work/MyWorkNotesList").
 const MyWorkTasksTab = lazyWithRetry(() => import("./my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
 const MyWorkDecisionsTab = lazyWithRetry(() => import("./my-work/MyWorkDecisionsTab").then(m => ({ default: m.MyWorkDecisionsTab })));
 const MyWorkCaseFilesTab = lazyWithRetry(() => import("./my-work/MyWorkCaseFilesTab").then(m => ({ default: m.MyWorkCaseFilesTab })));
+const MyWorkCaseItemsTab = lazyWithRetry(() => import("./my-work/MyWorkCaseItemsTab").then(m => ({ default: m.MyWorkCaseItemsTab })));
 const MyWorkPlanningsTab = lazyWithRetry(() => import("./my-work/MyWorkPlanningsTab").then(m => ({ default: m.MyWorkPlanningsTab })));
 const MyWorkTeamTab = lazyWithRetry(() => import("./my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
 const MyWorkJourFixeTab = lazyWithRetry(() => import("./my-work/MyWorkJourFixeTab").then(m => ({ default: m.MyWorkJourFixeTab })));
@@ -40,12 +41,13 @@ interface TabCounts {
   tasks: number;
   decisions: number;
   caseFiles: number;
+  caseItems: number;
   plannings: number;
   team: number;
   jourFixe: number;
 }
 
-type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "casefiles" | "plannings" | "team" | "time" | "feedbackfeed";
+type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "caseitems" | "casefiles" | "plannings" | "team" | "time" | "feedbackfeed";
 
 interface TabConfig {
   value: TabValue;
@@ -67,7 +69,8 @@ const BASE_TABS: TabConfig[] = [
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
   { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },
   { value: "jourFixe", label: "Jour Fixe", icon: Calendar, countKey: "jourFixe" },
-  { value: "casefiles", label: "FallAkten", icon: Briefcase, countKey: "caseFiles" },
+  { value: "caseitems", label: "Anliegen", icon: Briefcase, countKey: "caseItems" },
+  { value: "casefiles", label: "Vorgänge & Akten", icon: Briefcase, countKey: "caseFiles" },
   { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
   { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare, countKey: "team" },
@@ -90,6 +93,7 @@ export function MyWorkView() {
     tasks: 0,
     decisions: 0,
     caseFiles: 0,
+    caseItems: 0,
     plannings: 0,
     team: 0,
     jourFixe: 0,
@@ -118,6 +122,7 @@ export function MyWorkView() {
       tasks: 'mywork_tasks',
       decisions: 'mywork_decisions',
       jourFixe: 'mywork_jourFixe',
+      caseitems: 'mywork_caseitems',
       casefiles: 'mywork_casefiles',
       plannings: 'mywork_plannings',
       time: '',
@@ -182,6 +187,7 @@ export function MyWorkView() {
         tasks: Number(counts.tasks || 0),
         decisions: Number(counts.decisions || 0),
         caseFiles: Number(counts.caseFiles || 0),
+        caseItems: Number((counts as any).caseItems || 0),
         plannings: Number(counts.plannings || 0),
         team: Number(counts.team || 0),
         jourFixe: Number(counts.jourFixe || 0),
@@ -251,6 +257,11 @@ export function MyWorkView() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'meetings', filter: `user_id=eq.${user.id}` },
         () => debouncedUpdate(['mywork_jourFixe'])
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'case_items', filter: `user_id=eq.${user.id}` },
+        () => debouncedUpdate(['mywork_caseitems'])
       )
       .on(
         'postgres_changes',
@@ -438,6 +449,7 @@ export function MyWorkView() {
                   tasks: 'tasks',
                   decisions: 'decisions',
                   jourFixe: 'jourFixe',
+                  caseItems: 'caseItems',
                   caseFiles: 'caseFiles',
                   plannings: 'plannings',
                 };
@@ -509,7 +521,8 @@ export function MyWorkView() {
       {activeTab === "tasks" && <ErrorBoundary fallback={tabError("Aufgaben")}><Suspense fallback={tabFallback}><MyWorkTasksTab /></Suspense></ErrorBoundary>}
       {activeTab === "decisions" && <ErrorBoundary fallback={tabError("Entscheidungen")}><Suspense fallback={tabFallback}><MyWorkDecisionsTab /></Suspense></ErrorBoundary>}
       {activeTab === "jourFixe" && <ErrorBoundary fallback={tabError("Jour Fixe")}><Suspense fallback={tabFallback}><MyWorkJourFixeTab /></Suspense></ErrorBoundary>}
-      {activeTab === "casefiles" && <ErrorBoundary fallback={tabError("FallAkten")}><Suspense fallback={tabFallback}><MyWorkCaseFilesTab /></Suspense></ErrorBoundary>}
+      {activeTab === "caseitems" && <ErrorBoundary fallback={tabError("Anliegen")}><Suspense fallback={tabFallback}><MyWorkCaseItemsTab /></Suspense></ErrorBoundary>}
+      {activeTab === "casefiles" && <ErrorBoundary fallback={tabError("Vorgänge & Akten")}><Suspense fallback={tabFallback}><MyWorkCaseFilesTab /></Suspense></ErrorBoundary>}
       {activeTab === "plannings" && <ErrorBoundary fallback={tabError("Planungen")}><Suspense fallback={tabFallback}><MyWorkPlanningsTab /></Suspense></ErrorBoundary>}
       {activeTab === "time" && <ErrorBoundary fallback={tabError("Meine Zeit")}><Suspense fallback={tabFallback}><MyWorkTimeTrackingTab /></Suspense></ErrorBoundary>}
       {activeTab === "team" && <ErrorBoundary fallback={tabError("Team")}><Suspense fallback={tabFallback}><MyWorkTeamTab /></Suspense></ErrorBoundary>}

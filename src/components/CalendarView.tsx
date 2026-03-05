@@ -64,9 +64,18 @@ export function CalendarView() {
   const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<CalendarEvent | null>(null);
   const handledHighlightRef = useRef<string | null>(null);
 
-  // Deep-link support: /calendar?highlight=<appointment_id>
+  // Deep-link support: /calendar?highlight=<appointment_id|external-<event_id>>
   useEffect(() => {
     const highlightId = searchParams.get('highlight');
+    const dateParam = searchParams.get('date');
+
+    if (dateParam) {
+      const parsedDate = new Date(dateParam);
+      if (!Number.isNaN(parsedDate.getTime())) {
+        setCurrentDate(parsedDate);
+      }
+    }
+
     if (!highlightId || handledHighlightRef.current === highlightId) {
       return;
     }
@@ -86,6 +95,46 @@ export function CalendarView() {
     let active = true;
 
     const loadHighlightedAppointment = async () => {
+      const isExternalHighlight = highlightId.startsWith('external-');
+
+      if (isExternalHighlight) {
+        const externalId = highlightId.replace(/^external-/, '');
+        const { data, error } = await supabase
+          .from('external_events')
+          .select('id, title, start_time, end_time, location, all_day')
+          .eq('id', externalId)
+          .maybeSingle();
+
+        if (!active || error || !data) {
+          handledHighlightRef.current = highlightId;
+          return;
+        }
+
+        const startDate = new Date(data.start_time);
+        const endDate = data.end_time ? new Date(data.end_time) : startDate;
+
+        handledHighlightRef.current = highlightId;
+        setCurrentDate(startDate);
+        setSelectedAppointment({
+          id: `external-${data.id}`,
+          title: `📅 ${data.title}`,
+          time: data.all_day ? 'Ganztägig' : startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+          duration: '',
+          date: startDate,
+          endTime: endDate,
+          location: data.location || undefined,
+          priority: 'medium',
+          type: 'appointment',
+          is_all_day: data.all_day || false,
+          _isExternal: true,
+        });
+        setSidebarOpen(true);
+        if (view === 'polls') {
+          setView('day');
+        }
+        return;
+      }
+
       const { data, error } = await supabase
         .from('appointments')
         .select('id, title, start_time, end_time, location, is_all_day')

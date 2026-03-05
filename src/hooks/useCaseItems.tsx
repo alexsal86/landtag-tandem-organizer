@@ -20,6 +20,8 @@ export interface CaseItem {
   case_scale: "small" | "large" | null;
   created_at: string;
   updated_at: string;
+  last_modified_by: string | null;
+  last_modified_at: string;
 }
 
 export interface CaseItemInteraction {
@@ -33,6 +35,7 @@ export interface CaseItemInteraction {
   payload: Record<string, unknown> | null;
   created_by: string | null;
   created_at: string;
+  visibility: "internal" | "team" | "public_to_case_participants";
 }
 
 export interface CaseItemFormData {
@@ -55,6 +58,7 @@ export interface CaseItemInteractionFormData {
   direction?: CaseItemInteraction["direction"];
   summary?: string | null;
   payload?: Record<string, unknown> | null;
+  visibility?: CaseItemInteraction["visibility"];
 }
 
 export const useCaseItems = () => {
@@ -214,7 +218,7 @@ export const useCaseItems = () => {
       try {
         const { data, error } = await supabase
           .from("case_item_interactions")
-          .select("id, case_item_id, tenant_id, interaction_type, interaction_at, direction, summary, payload, created_by, created_at")
+          .select("id, case_item_id, tenant_id, interaction_type, interaction_at, direction, summary, payload, created_by, created_at, visibility")
           .eq("tenant_id", currentTenant.id)
           .eq("case_item_id", caseItemId)
           .order("interaction_at", { ascending: false });

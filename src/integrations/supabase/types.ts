@@ -1023,6 +1023,7 @@ export type Database = {
           step_order: number
           step_type: string
           tenant_id: string
+          visibility: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Insert: {
           created_at?: string
@@ -1035,6 +1036,7 @@ export type Database = {
           step_order: number
           step_type: string
           tenant_id: string
+          visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Update: {
           created_at?: string
@@ -1047,6 +1049,7 @@ export type Database = {
           step_order?: number
           step_type?: string
           tenant_id?: string
+          visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Relationships: [
           {
@@ -1463,6 +1466,59 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_item_interactions: {
+        Row: {
+          case_file_id: string
+          created_at: string
+          created_by: string
+          details: string | null
+          direction: string
+          id: string
+          interaction_type: string
+          is_resolution: boolean
+          source_id: string | null
+          source_type: string | null
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          case_file_id: string
+          created_at?: string
+          created_by: string
+          details?: string | null
+          direction: string
+          id?: string
+          interaction_type: string
+          is_resolution?: boolean
+          source_id?: string | null
+          source_type?: string | null
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          case_file_id?: string
+          created_at?: string
+          created_by?: string
+          details?: string | null
+          direction?: string
+          id?: string
+          interaction_type?: string
+          is_resolution?: boolean
+          source_id?: string | null
+          source_type?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_item_interactions_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
             referencedColumns: ["id"]
           },
         ]
@@ -1943,6 +1999,7 @@ export type Database = {
           payload: Json | null
           summary: string | null
           tenant_id: string
+          visibility: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Insert: {
           case_item_id: string
@@ -1955,6 +2012,7 @@ export type Database = {
           payload?: Json | null
           summary?: string | null
           tenant_id: string
+          visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Update: {
           case_item_id?: string
@@ -1967,6 +2025,7 @@ export type Database = {
           payload?: Json | null
           summary?: string | null
           tenant_id?: string
+          visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Relationships: [
           {
@@ -2034,6 +2093,8 @@ export type Database = {
           tenant_id: string
           updated_at: string
           user_id: string
+          last_modified_at: string
+          last_modified_by: string | null
         }
         Insert: {
           case_file_id?: string | null
@@ -2051,6 +2112,8 @@ export type Database = {
           tenant_id: string
           updated_at?: string
           user_id: string
+          last_modified_at?: string
+          last_modified_by?: string | null
         }
         Update: {
           case_file_id?: string | null
@@ -2068,6 +2131,8 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
           user_id?: string
+          last_modified_at?: string
+          last_modified_by?: string | null
         }
         Relationships: [
           {
@@ -10343,6 +10408,7 @@ export type Database = {
     }
     Enums: {
       app_role: "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant"
+      case_item_interaction_visibility: "internal" | "team" | "public_to_case_participants"
       case_item_priority: "low" | "medium" | "high" | "urgent"
       case_item_source_channel: "phone" | "email" | "social" | "in_person" | "other"
       case_item_status: "active" | "pending" | "closed" | "archived"
@@ -10494,6 +10560,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["abgeordneter", "bueroleitung", "mitarbeiter", "praktikant"],
+      case_item_interaction_visibility: ["internal", "team", "public_to_case_participants"],
       case_item_priority: ["low", "medium", "high", "urgent"],
       case_item_source_channel: ["phone", "email", "social", "in_person", "other"],
       case_item_status: ["active", "pending", "closed", "archived"],
