@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -38,6 +38,30 @@ interface ChatMessagesProps {
   onRemoveReaction?: (eventId: string, emoji: string) => void;
 }
 
+const getInitials = (name: string) => {
+  const parts = name.split(/[@:]/);
+  const displayPart = parts[0] || parts[1] || name;
+  return displayPart.slice(0, 2).toUpperCase();
+};
+
+const getAvatarColor = (sender: string) => {
+  let hash = 0;
+  for (let i = 0; i < sender.length; i++) {
+    hash = sender.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = hash % 360;
+  return `hsl(${hue}, 60%, 45%)`;
+};
+
+const getReactionsArray = (reactions?: Map<string, { count: number; userReacted: boolean }>) => {
+  if (!reactions) return [];
+  return Array.from(reactions.entries()).map(([key, value]) => ({
+    key,
+    count: value.count,
+    userReacted: value.userReacted,
+  }));
+};
+
 export function ChatMessages({ 
   messages, 
   currentUserId, 
@@ -54,21 +78,6 @@ export function ChatMessages({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const getInitials = (name: string) => {
-    const parts = name.split(/[@:]/);
-    const displayPart = parts[0] || parts[1] || name;
-    return displayPart.slice(0, 2).toUpperCase();
-  };
-
-  const getAvatarColor = (sender: string) => {
-    let hash = 0;
-    for (let i = 0; i < sender.length; i++) {
-      hash = sender.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const hue = hash % 360;
-    return `hsl(${hue}, 60%, 45%)`;
-  };
-
   const formatMessageTime = (timestamp: number) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -80,18 +89,22 @@ export function ChatMessages({
     return format(date, 'dd.MM. HH:mm', { locale: de });
   };
 
-  const groupedMessages: { date: string; messages: Message[] }[] = [];
-  let currentDate = '';
+  const groupedMessages = useMemo<{ date: string; messages: Message[] }[]>(() => {
+    const grouped: { date: string; messages: Message[] }[] = [];
+    let currentDate = '';
 
-  messages.forEach(message => {
-    const messageDate = new Date(message.timestamp).toDateString();
-    if (messageDate !== currentDate) {
-      currentDate = messageDate;
-      groupedMessages.push({ date: messageDate, messages: [message] });
-    } else {
-      groupedMessages[groupedMessages.length - 1].messages.push(message);
-    }
-  });
+    messages.forEach(message => {
+      const messageDate = new Date(message.timestamp).toDateString();
+      if (messageDate !== currentDate) {
+        currentDate = messageDate;
+        grouped.push({ date: messageDate, messages: [message] });
+      } else {
+        grouped[grouped.length - 1].messages.push(message);
+      }
+    });
+
+    return grouped;
+  }, [messages]);
 
   const formatDateHeader = (dateString: string) => {
     const date = new Date(dateString);
@@ -102,15 +115,6 @@ export function ChatMessages({
     if (date.toDateString() === now.toDateString()) return 'Heute';
     if (date.toDateString() === yesterday.toDateString()) return 'Gestern';
     return format(date, 'EEEE, d. MMMM', { locale: de });
-  };
-
-  const getReactionsArray = (reactions?: Map<string, { count: number; userReacted: boolean }>) => {
-    if (!reactions) return [];
-    return Array.from(reactions.entries()).map(([key, value]) => ({
-      key,
-      count: value.count,
-      userReacted: value.userReacted,
-    }));
   };
 
   if (isLoading) {
@@ -153,6 +157,7 @@ export function ChatMessages({
                 const isOwnMessage = currentUserId === message.sender;
                 const showAvatar = index === 0 || group.messages[index - 1].sender !== message.sender;
                 const isMediaMessage = message.mediaContent && ['m.image', 'm.video', 'm.audio', 'm.file'].includes(message.mediaContent.msgtype);
+                const reactionsArray = getReactionsArray(message.reactions);
 
                 return (
                   <div
@@ -228,9 +233,9 @@ export function ChatMessages({
                       </div>
 
                       {/* Reactions */}
-                      {(onAddReaction || getReactionsArray(message.reactions).length > 0) && (
+                      {(onAddReaction || reactionsArray.length > 0) && (
                         <MessageReactions
-                          reactions={getReactionsArray(message.reactions)}
+                          reactions={reactionsArray}
                           onAddReaction={(emoji) => onAddReaction?.(message.eventId, emoji)}
                           onRemoveReaction={(emoji) => onRemoveReaction?.(message.eventId, emoji)}
                         />
