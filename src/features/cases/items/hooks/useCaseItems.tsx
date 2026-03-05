@@ -125,13 +125,15 @@ export const useCaseItems = () => {
     }
 
     try {
+      const insertData = {
+        ...data,
+        intake_payload: data.intake_payload as any,
+        user_id: user.id,
+        tenant_id: currentTenant.id,
+      };
       const { data: newCaseItem, error } = await supabase
         .from("case_items")
-        .insert({
-          ...data,
-          user_id: user.id,
-          tenant_id: currentTenant.id,
-        })
+        .insert(insertData as any)
         .select()
         .single();
 
