@@ -85,6 +85,25 @@ export function MatrixChatView() {
     }
   }, [selectedRoomId, isConnected, refreshMessages]);
 
+  useEffect(() => {
+    const previousRoomId = previousRoomIdRef.current;
+
+    if (previousRoomId && previousRoomId !== selectedRoomId) {
+      sendTypingNotification(previousRoomId, false);
+    }
+
+    previousRoomIdRef.current = selectedRoomId;
+  }, [selectedRoomId, sendTypingNotification]);
+
+  useEffect(() => {
+    return () => {
+      const currentRoomId = previousRoomIdRef.current;
+      if (currentRoomId) {
+        sendTypingNotification(currentRoomId, false);
+      }
+    };
+  }, [sendTypingNotification]);
+
 
   // Fallback refresh for encrypted timelines if event callbacks are delayed/missed
   useEffect(() => {
