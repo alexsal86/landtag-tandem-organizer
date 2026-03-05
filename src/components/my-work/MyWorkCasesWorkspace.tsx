@@ -113,7 +113,7 @@ export function MyWorkCasesWorkspace() {
     try {
       const { data: caseItemsData, error: caseItemsError } = await supabase
         .from("case_items" as any)
-        .select("id, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
+        .select("id, subject, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
         .eq("tenant_id", tenantId)
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(120);
