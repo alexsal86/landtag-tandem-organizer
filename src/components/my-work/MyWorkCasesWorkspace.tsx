@@ -346,7 +346,7 @@ export function MyWorkCasesWorkspace() {
         <div className="space-y-3">
           <div className="rounded-md border bg-muted/30 p-3 text-sm">
             <p className="font-medium">Vorgang</p>
-            <p>{selectedCaseItem.resolution_summary || "Ohne Titel"}</p>
+            <p>{selectedCaseItem.subject || selectedCaseItem.resolution_summary || "Ohne Titel"}</p>
             {selectedCaseItem.source_channel ? <p className="mt-1 text-xs text-muted-foreground">Kanal: {selectedCaseItem.source_channel}</p> : null}
           </div>
           <CaseFileDetail caseFileId={selectedCaseItem.case_file_id} onBack={() => undefined} />
