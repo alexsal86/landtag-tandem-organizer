@@ -216,7 +216,7 @@ export const useCaseItems = () => {
           ...data,
           tenant_id: currentTenant.id,
           created_by: user.id,
-        })
+        } as any)
         .select()
         .single();
 
