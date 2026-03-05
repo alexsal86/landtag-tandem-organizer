@@ -1,17 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { ArrowLeft, Briefcase, Loader2 } from "lucide-react";
+import { ArrowLeft, Briefcase, CalendarClock, CheckSquare, Clock3, Loader2, MessageSquareText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { classifyCaseScale } from "@/features/cases/shared/utils";
+import { useCaseFileDetails } from "@/features/cases/files/hooks";
+import {
+  CaseFileAppointmentsTab,
+  CaseFileContactsTab,
+  CaseFileDocumentsTab,
+  CaseFileLettersTab,
+  CaseFileTasksTab,
+  CaseFileTimelineTab,
+} from "@/features/cases/files/components/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AppNavigation, getNavigationGroups } from "@/components/AppNavigation";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { SubNavigation } from "@/components/layout/SubNavigation";
@@ -45,18 +55,23 @@ type CaseFileRecord = {
 const CaseItemDetail = () => {
   const { caseItemId } = useParams<{ caseItemId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
 
   const [caseItem, setCaseItem] = useState<CaseItemRecord | null>(null);
   const [caseFile, setCaseFile] = useState<CaseFileRecord | null>(null);
   const [timelineEntries, setTimelineEntries] = useState<Array<{ id: string; created_at: string; summary: string | null }>>([]);
-  const [taskLinks, setTaskLinks] = useState<Array<{ task_id: string }>>([]);
-  const [stakeholderLinks, setStakeholderLinks] = useState<Array<{ id: string }>>([]);
   const [assignableFiles, setAssignableFiles] = useState<Array<{ id: string; title: string }>>([]);
   const [selectedCaseFileId, setSelectedCaseFileId] = useState<string>("");
   const [newCaseFileTitle, setNewCaseFileTitle] = useState<string>("");
   const [loading, setLoading] = useState(true);
+
+  const requestedCaseFileId = searchParams.get("caseFileId");
+  const allowedFocusSections = ["timeline", "contacts", "documents", "tasks", "appointments", "letters"] as const;
+  const focusSection = allowedFocusSections.includes((searchParams.get("focus") || "timeline") as (typeof allowedFocusSections)[number])
+    ? (searchParams.get("focus") as (typeof allowedFocusSections)[number]) || "timeline"
+    : "timeline";
 
   const activeSection = "mywork";
   const navGroups = useMemo(() => getNavigationGroups(), []);
@@ -81,6 +96,42 @@ const CaseItemDetail = () => {
   }, [caseItem, caseFile]);
 
   const isLarge = mode === "extended";
+  const activeCaseFileId = requestedCaseFileId || caseItem?.case_file_id || null;
+  const caseFileDetails = useCaseFileDetails(activeCaseFileId);
+
+  const compactFacts = useMemo(() => {
+    if (!caseItem) return [];
+    const latestInteraction = timelineEntries[0]?.created_at
+      ? new Date(timelineEntries[0].created_at).toLocaleString("de-DE")
+      : "Noch keine Interaktion";
+
+    return [
+      {
+        key: "eingang",
+        title: "Eingang",
+        value: caseItem.source_channel,
+        icon: MessageSquareText,
+      },
+      {
+        key: "naechste-aktion",
+        title: "Nächste Aktion",
+        value: caseItem.follow_up_at ? `Follow-up am ${new Date(caseItem.follow_up_at).toLocaleDateString("de-DE")}` : "Follow-up setzen",
+        icon: CheckSquare,
+      },
+      {
+        key: "frist",
+        title: "Frist",
+        value: caseItem.due_at ? new Date(caseItem.due_at).toLocaleDateString("de-DE") : "Keine Frist",
+        icon: CalendarClock,
+      },
+      {
+        key: "letzte-interaktion",
+        title: "Letzte Interaktion",
+        value: latestInteraction,
+        icon: Clock3,
+      },
+    ];
+  }, [caseItem, timelineEntries]);
 
   const loadData = async () => {
     if (!caseItemId || !currentTenant) return;
@@ -105,23 +156,15 @@ const CaseItemDetail = () => {
     setTimelineEntries(itemTimeline ?? []);
 
     if (ci?.case_file_id) {
-      const [{ data: cf }, { data: links }, { data: stakeholders }] = await Promise.all([
-        supabase
-          .from("case_files")
-          .select("id, title, case_type, case_scale, start_date, target_date, risks_and_opportunities")
-          .eq("id", ci.case_file_id)
-          .maybeSingle(),
-        supabase.from("case_file_tasks").select("task_id").eq("case_file_id", ci.case_file_id),
-        supabase.from("case_file_contacts").select("id").eq("case_file_id", ci.case_file_id),
-      ]);
+      const { data: cf } = await supabase
+        .from("case_files")
+        .select("id, title, case_type, case_scale, start_date, target_date, risks_and_opportunities")
+        .eq("id", ci.case_file_id)
+        .maybeSingle();
 
       setCaseFile((cf as CaseFileRecord | null) ?? null);
-      setTaskLinks(links ?? []);
-      setStakeholderLinks(stakeholders ?? []);
     } else {
       setCaseFile(null);
-      setTaskLinks([]);
-      setStakeholderLinks([]);
     }
 
     setLoading(false);
@@ -186,6 +229,13 @@ const CaseItemDetail = () => {
 
   const handleSectionChange = (section: string) => navigate(section === "dashboard" ? "/" : `/${section}`);
 
+  const handleFocusChange = (focus: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("focus", focus);
+    if (activeCaseFileId) next.set("caseFileId", activeCaseFileId);
+    setSearchParams(next, { replace: true });
+  };
+
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="flex min-h-screen w-full bg-background overflow-hidden">
@@ -249,23 +299,57 @@ const CaseItemDetail = () => {
                         </div>
                       </div>
                     ) : null}
+
+                    {activeCaseFileId ? (
+                      <div className="text-xs text-muted-foreground">
+                        Deep-Link: <code>caseItemId={caseItem.id}</code> · <code>caseFileId={activeCaseFileId}</code> · <code>focus={focusSection}</code>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        Deep-Link: <code>caseItemId={caseItem.id}</code> · <code>focus={focusSection}</code>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Card><CardHeader><CardTitle>Status</CardTitle></CardHeader><CardContent>{caseItem.status}</CardContent></Card>
-                  <Card><CardHeader><CardTitle>Owner</CardTitle></CardHeader><CardContent>{caseItem.owner_user_id ?? "Nicht zugewiesen"}</CardContent></Card>
-                  <Card><CardHeader><CardTitle>Timeline</CardTitle></CardHeader><CardContent>{timelineEntries.length} Einträge</CardContent></Card>
-                  <Card><CardHeader><CardTitle>Aufgaben</CardTitle></CardHeader><CardContent>{taskLinks.length} verknüpft</CardContent></Card>
-                </div>
-
-                {isLarge ? (
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <Card><CardHeader><CardTitle>Stakeholder</CardTitle></CardHeader><CardContent>{stakeholderLinks.length} Kontakte verknüpft</CardContent></Card>
-                    <Card><CardHeader><CardTitle>Risiken</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">{caseFile?.risks_and_opportunities ? JSON.stringify(caseFile.risks_and_opportunities) : "Noch keine Risiken/Chancen gepflegt"}</CardContent></Card>
-                    <Card><CardHeader><CardTitle>Meilensteine</CardTitle></CardHeader><CardContent className="text-sm">Start: {caseFile?.start_date ?? "-"}<br />Ziel: {caseFile?.target_date ?? "-"}</CardContent></Card>
+                {!isLarge ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {compactFacts.map((fact) => {
+                      const Icon = fact.icon;
+                      return (
+                        <Card key={fact.key}>
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base"><Icon className="h-4 w-4" /> {fact.title}</CardTitle>
+                          </CardHeader>
+                          <CardContent>{fact.value}</CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
-                ) : null}
+                ) : !activeCaseFileId ? (
+                  <Card>
+                    <CardHeader><CardTitle>Akte verknüpfen</CardTitle></CardHeader>
+                    <CardContent className="text-sm text-muted-foreground">Für den großen Detailmodus zuerst eine Akte zuordnen oder erstellen.</CardContent>
+                  </Card>
+                ) : (
+                  <Tabs value={focusSection} onValueChange={handleFocusChange} className="space-y-4">
+                    <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto gap-1">
+                      <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                      <TabsTrigger value="contacts">Kontakte</TabsTrigger>
+                      <TabsTrigger value="documents">Dokumente</TabsTrigger>
+                      <TabsTrigger value="tasks">Aufgaben</TabsTrigger>
+                      <TabsTrigger value="appointments">Termine</TabsTrigger>
+                      <TabsTrigger value="letters">Briefe</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="timeline"><CaseFileTimelineTab timeline={caseFileDetails.timeline} onAddEntry={caseFileDetails.addTimelineEntry} onDeleteEntry={caseFileDetails.deleteTimelineEntry} /></TabsContent>
+                    <TabsContent value="contacts"><CaseFileContactsTab contacts={caseFileDetails.contacts} onAdd={caseFileDetails.addContact} onRemove={caseFileDetails.removeContact} /></TabsContent>
+                    <TabsContent value="documents"><CaseFileDocumentsTab documents={caseFileDetails.documents} onAdd={caseFileDetails.addDocument} onRemove={caseFileDetails.removeDocument} /></TabsContent>
+                    <TabsContent value="tasks"><CaseFileTasksTab tasks={caseFileDetails.tasks} onAdd={caseFileDetails.addTask} onRemove={caseFileDetails.removeTask} /></TabsContent>
+                    <TabsContent value="appointments"><CaseFileAppointmentsTab appointments={caseFileDetails.appointments} onAdd={caseFileDetails.addAppointment} onRemove={caseFileDetails.removeAppointment} /></TabsContent>
+                    <TabsContent value="letters"><CaseFileLettersTab letters={caseFileDetails.letters} onAdd={caseFileDetails.addLetter} onRemove={caseFileDetails.removeLetter} /></TabsContent>
+                  </Tabs>
+                )}
               </div>
             )}
           </main>
