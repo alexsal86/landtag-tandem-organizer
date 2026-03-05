@@ -80,6 +80,7 @@ export function ChatMessages({
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const hasDoneInitialScrollRef = useRef(false);
   const pendingHistoryLoadScrollRef = useRef<{ previousHeight: number; previousTop: number } | null>(null);
 
@@ -119,13 +120,43 @@ export function ChatMessages({
       return;
     }
 
+    if (scrollToEventId) {
+      return;
+    }
+
     const remainingDistance = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight;
     const isNearBottom = remainingDistance < 100;
 
     if (isNearBottom) {
       bottomElement.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [messages, scrollToEventId]);
+
+  useEffect(() => {
+    if (!scrollToEventId) {
+      return;
+    }
+
+    const target = messageRefs.current.get(scrollToEventId);
+    if (!target) {
+      return;
+    }
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [scrollToEventId, messages]);
+
+  useEffect(() => {
+    if (!highlightedEventId) {
+      return;
+    }
+
+    setActiveHighlightEventId(highlightedEventId);
+    const timeoutId = window.setTimeout(() => {
+      setActiveHighlightEventId((current) => (current === highlightedEventId ? null : current));
+    }, 1800);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [highlightedEventId]);
 
   useEffect(() => {
     if (isLoadingOlderMessages) return;
@@ -238,7 +269,12 @@ export function ChatMessages({
                 return (
                   <div
                     key={message.eventId}
-                    className={cn("flex gap-3 group", isOwnMessage && "flex-row-reverse")}
+                    ref={(element) => registerMessageRef(message.eventId, element)}
+                    className={cn(
+                      'flex gap-3 group rounded-md transition-colors duration-700',
+                      isOwnMessage && 'flex-row-reverse',
+                      activeHighlightEventId === message.eventId && 'bg-primary/10 animate-pulse'
+                    )}
                   >
                     {showAvatar ? (
                       <Avatar className="h-8 w-8 flex-shrink-0">
