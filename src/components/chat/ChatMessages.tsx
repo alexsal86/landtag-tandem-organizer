@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -39,6 +39,8 @@ interface ChatMessagesProps {
   onLoadOlderMessages?: () => void;
   isLoadingOlderMessages?: boolean;
   hasMoreHistory?: boolean;
+  scrollToEventId?: string | null;
+  highlightedEventId?: string | null;
 }
 
 const getInitials = (name: string) => {
@@ -76,6 +78,8 @@ export function ChatMessages({
   onLoadOlderMessages,
   isLoadingOlderMessages = false,
   hasMoreHistory = true,
+  scrollToEventId,
+  highlightedEventId,
 }: ChatMessagesProps) {
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -83,6 +87,16 @@ export function ChatMessages({
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const hasDoneInitialScrollRef = useRef(false);
   const pendingHistoryLoadScrollRef = useRef<{ previousHeight: number; previousTop: number } | null>(null);
+  const [activeHighlightEventId, setActiveHighlightEventId] = useState<string | null>(null);
+
+  const registerMessageRef = useCallback((eventId: string, element: HTMLDivElement | null) => {
+    if (element) {
+      messageRefs.current.set(eventId, element);
+      return;
+    }
+
+    messageRefs.current.delete(eventId);
+  }, []);
 
   const handleLoadOlderMessages = useCallback(() => {
     if (!onLoadOlderMessages || isLoadingOlderMessages || !hasMoreHistory) return;
