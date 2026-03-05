@@ -72,7 +72,7 @@ export function MyWorkCaseFilesTab() {
         .limit(20);
 
       if (error) throw error;
-      setCaseFiles(data || []);
+      setCaseFiles((data || []) as unknown as CaseFile[]);
     } catch (error) {
       console.error("Error loading case files:", error);
     } finally {
