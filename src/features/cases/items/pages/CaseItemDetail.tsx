@@ -137,12 +137,12 @@ const CaseItemDetail = () => {
     if (!caseItemId || !currentTenant) return;
     setLoading(true);
 
-    const { data: caseItemData } = await supabase
+    const { data: caseItemData } = await (supabase
       .from("case_items")
-      .select("id, source_channel, status, owner_user_id, due_at, follow_up_at, case_file_id, case_scale, updated_at") as any
+      .select("id, source_channel, status, owner_user_id, due_at, follow_up_at, case_file_id, case_scale, updated_at")
       .eq("tenant_id", currentTenant.id)
       .eq("id", caseItemId)
-      .maybeSingle();
+      .maybeSingle() as any);
 
     const ci = (caseItemData as CaseItemRecord | null) ?? null;
     setCaseItem(ci);
