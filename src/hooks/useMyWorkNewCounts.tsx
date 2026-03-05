@@ -6,6 +6,7 @@ export interface NewCounts {
   tasks: number;
   decisions: number;
   jourFixe: number;
+  cases: number;
   caseFiles: number;
   caseItems: number;
   plannings: number;
@@ -51,6 +52,7 @@ const DEFAULT_COUNTS: NewCounts = {
   tasks: 0,
   decisions: 0,
   jourFixe: 0,
+  cases: 0,
   caseFiles: 0,
   caseItems: 0,
   plannings: 0,
@@ -118,6 +120,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
               contexts.forEach((context) => {
                 updated[CONTEXT_TO_COUNT_KEY[context]] = 0;
               });
+              updated.cases = updated.caseItems + updated.caseFiles;
               return updated;
             });
           } else {
@@ -132,12 +135,19 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
       }
 
       const incoming = (data || {}) as Partial<NewCounts>;
-      setNewCounts((prev) => ({
-        ...prev,
-        ...Object.fromEntries(
-          Object.entries(incoming).map(([key, value]) => [key, Number(value || 0)]),
-        ),
-      }));
+      setNewCounts((prev) => {
+        const normalized = {
+          ...prev,
+          ...Object.fromEntries(
+            Object.entries(incoming).map(([key, value]) => [key, Number(value || 0)]),
+          ),
+        };
+
+        return {
+          ...normalized,
+          cases: normalized.caseItems + normalized.caseFiles,
+        };
+      });
     } catch (error) {
       console.error('Error loading new counts via RPC:', error);
     } finally {
@@ -205,6 +215,9 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
       setNewCounts((prev) => ({
         ...prev,
         [countKey]: 0,
+        cases: (countKey === 'caseFiles' || countKey === 'caseItems')
+          ? (countKey === 'caseFiles' ? prev.caseItems : prev.caseFiles)
+          : prev.cases,
       }));
 
       localStorage.setItem('navigation_visit_sync', JSON.stringify({

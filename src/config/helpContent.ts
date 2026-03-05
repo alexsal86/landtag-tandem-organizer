@@ -45,22 +45,13 @@ export const MYWORK_HELP_CONTENT: Record<string, HelpContent> = {
       "Neues Jour Fixe erstellen"
     ]
   },
-  caseitems: {
-    title: "Anliegen",
-    description: "Inbox für Vorgänge mit Wiedervorlage, Fristen und Status.",
+  cases: {
+    title: "Vorgänge",
+    description: "Zentrale Fallbearbeitung mit Anliegen als Arbeitsliste und Akten als Kontext.",
     features: [
-      "Textsuche über Titel, Beschreibung und Kanal",
-      "Filter für Status, Priorität, Wiedervorlage und Fälligkeit",
-      "Schneller Wechsel in Vorgang und verknüpfte Akte"
-    ]
-  },
-  casefiles: {
-    title: "FallAkten",
-    description: "Sammlung von Vorgängen und Fällen, die du bearbeitest.",
-    features: [
-      "Aktive und wartende Akten im Überblick",
-      "Nach Priorität und Zieldatum sortiert",
-      "Zur FallAkten-Verwaltung wechseln"
+      "Anliegen als primäre Arbeitsliste mit Status und Fristen",
+      "Verknüpfte Akte direkt als Kontext-Detail anzeigen",
+      "Deep-Links mit caseItemId und caseFileId werden unterstützt"
     ]
   },
   plannings: {
