@@ -8,6 +8,15 @@ const corsHeaders = {
 
 const SUPERADMIN_EMAIL = 'mail@alexander-salomon.de';
 
+class HttpError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 function generatePassword(): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
   let password = '';
@@ -45,15 +54,22 @@ serve(async (req) => {
     const isSuperadmin = user.email === SUPERADMIN_EMAIL;
     console.log(`User ${user.email} is superadmin: ${isSuperadmin}`);
 
-    // Get caller's tenant and role for permission checks
-    const { data: callerMembership } = await supabaseAdmin
-      .from('user_tenant_memberships')
-      .select('tenant_id, role')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single();
+    const assertTenantPermission = async (tenantId: string, requiredRole: 'abgeordneter') => {
+      if (isSuperadmin) return;
 
-    const isAbgeordneter = callerMembership?.role === 'abgeordneter';
+      const { data: permission } = await supabaseAdmin
+        .from('user_tenant_memberships')
+        .select('user_id, tenant_id, is_active, role')
+        .eq('user_id', user.id)
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .eq('role', requiredRole)
+        .maybeSingle();
+
+      if (!permission) {
+        throw new HttpError(403, 'Insufficient permissions');
+      }
+    };
 
     const body = await req.json();
     const { action } = body;
@@ -63,7 +79,7 @@ serve(async (req) => {
       case 'listAllUsers': {
         // Superadmin only
         if (!isSuperadmin) {
-          throw new Error('Only superadmin can list all users');
+          throw new HttpError(403, 'Only superadmin can list all users');
         }
 
         // Get all users from auth
@@ -115,7 +131,7 @@ serve(async (req) => {
       case 'createUser': {
         // Superadmin only
         if (!isSuperadmin) {
-          throw new Error('Only superadmin can create users');
+          throw new HttpError(403, 'Only superadmin can create users');
         }
 
         const { email, displayName, role, tenantId } = body;
@@ -191,7 +207,7 @@ serve(async (req) => {
       case 'assignTenant': {
         // Superadmin only
         if (!isSuperadmin) {
-          throw new Error('Only superadmin can assign tenants');
+          throw new HttpError(403, 'Only superadmin can assign tenants');
         }
 
         const { userId, tenantId, role } = body;
@@ -247,12 +263,7 @@ serve(async (req) => {
           throw new Error('userId and tenantId are required');
         }
 
-        const canRemove = isSuperadmin || 
-          (isAbgeordneter && callerMembership?.tenant_id === tenantId);
-
-        if (!canRemove) {
-          throw new Error('Insufficient permissions');
-        }
+        await assertTenantPermission(tenantId, 'abgeordneter');
 
         console.log(`Removing user ${userId} from tenant ${tenantId}`);
 
@@ -276,21 +287,25 @@ serve(async (req) => {
           throw new Error('userId is required');
         }
 
-        // For Abgeordneter: verify user is in their tenant
-        if (!isSuperadmin && isAbgeordneter) {
+        // Actions without tenant context are platform-admin only
+        if (!tenantId) {
+          if (!isSuperadmin) {
+            throw new HttpError(403, 'Only superadmin can delete users without tenant context');
+          }
+        } else {
+          await assertTenantPermission(tenantId, 'abgeordneter');
+
           const { data: targetMembership } = await supabaseAdmin
             .from('user_tenant_memberships')
             .select('tenant_id')
             .eq('user_id', userId)
-            .eq('tenant_id', callerMembership?.tenant_id)
+            .eq('tenant_id', tenantId)
             .eq('is_active', true)
-            .single();
+            .maybeSingle();
 
           if (!targetMembership) {
-            throw new Error('Insufficient permissions - user not in your tenant');
+            throw new HttpError(403, 'Insufficient permissions - user not in target tenant');
           }
-        } else if (!isSuperadmin) {
-          throw new Error('Insufficient permissions');
         }
 
         // Prevent self-deletion
@@ -319,12 +334,7 @@ serve(async (req) => {
           throw new Error('userId, tenantId, and role are required');
         }
 
-        const canUpdate = isSuperadmin || 
-          (isAbgeordneter && callerMembership?.tenant_id === tenantId);
-
-        if (!canUpdate) {
-          throw new Error('Insufficient permissions');
-        }
+        await assertTenantPermission(tenantId, 'abgeordneter');
 
         console.log(`Updating role for user ${userId} to ${role}`);
 
@@ -353,7 +363,7 @@ serve(async (req) => {
       case 'initializeTenant': {
         // Superadmin only - initialize default settings for a new tenant
         if (!isSuperadmin) {
-          throw new Error('Only superadmin can initialize tenants');
+          throw new HttpError(403, 'Only superadmin can initialize tenants');
         }
 
         const { tenantId } = body;
@@ -397,7 +407,7 @@ serve(async (req) => {
       success: false,
       error: error instanceof Error ? error.message : String(error) 
     }), {
-      status: 400,
+      status: error instanceof HttpError ? error.status : 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
