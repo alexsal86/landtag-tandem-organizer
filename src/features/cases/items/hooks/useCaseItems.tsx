@@ -26,7 +26,7 @@ export interface CaseItem {
   contains_personal_data: boolean;
   resolution_summary: string | null;
   case_file_id: string | null;
-  case_scale: "small" | "large" | null;
+  case_scale: string | null;
   created_at: string;
   updated_at: string;
   last_modified_by: string | null;
