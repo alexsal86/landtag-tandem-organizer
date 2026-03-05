@@ -156,11 +156,11 @@ const CaseItemDetail = () => {
     setTimelineEntries(itemTimeline ?? []);
 
     if (ci?.case_file_id) {
-      const { data: cf } = await supabase
+      const { data: cf } = await (supabase
         .from("case_files")
-        .select("id, title, case_type, case_scale, start_date, target_date, risks_and_opportunities") as any
+        .select("id, title, case_type, case_scale, start_date, target_date, risks_and_opportunities")
         .eq("id", ci.case_file_id)
-        .maybeSingle();
+        .maybeSingle() as any);
 
       setCaseFile((cf as CaseFileRecord | null) ?? null);
     } else {
