@@ -93,7 +93,7 @@ export const useStakeholderPreload = (searchTerm?: string) => {
           return;
         }
 
-        const pageStakeholders = (data || []).map(mapStakeholder);
+        const pageStakeholders = (data || []).map((d: any) => mapStakeholder(d));
         allStakeholders.push(...pageStakeholders);
 
         if (!data || data.length < PAGE_SIZE) {
@@ -165,7 +165,7 @@ export const useStakeholderPreload = (searchTerm?: string) => {
           filter: `tenant_id=eq.${currentTenant.id},contact_type=eq.organization`,
         },
         (payload: RealtimePostgresChangesPayload<{ id: string }>) => {
-          const changedId = payload.new?.id || payload.old?.id;
+          const changedId = (payload.new as any)?.id || (payload.old as any)?.id;
           if (!changedId) return;
 
           if (payload.eventType === "DELETE") {

@@ -173,7 +173,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         .single();
 
       if (error) throw error;
-      setCaseFile(data);
+      setCaseFile(data as unknown as CaseFile);
     } catch (error) {
       console.error('Error fetching case file:', error);
     }
@@ -316,18 +316,18 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
   const fetchInteractions = useCallback(async () => {
     if (!caseFileId) return;
-    const { data, error } = await supabase
+    const { data, error } = await (supabase
       .from("case_item_interactions")
       .select("*")
       .eq("case_file_id", caseFileId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }) as any);
 
     if (error) {
       console.error("Error fetching interactions:", error);
       return;
     }
 
-    setInteractions((data || []) as CaseItemInteraction[]);
+    setInteractions((data || []) as unknown as CaseItemInteraction[]);
   }, [caseFileId]);
 
   const fetchAll = useCallback(async () => {
@@ -717,7 +717,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     if (!user) return false;
     const { error } = await supabase
       .from("case_item_interactions")
-      .insert({ ...interaction, created_by: user.id });
+      .insert({ ...interaction, created_by: user.id } as any);
 
     if (error) {
       toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });

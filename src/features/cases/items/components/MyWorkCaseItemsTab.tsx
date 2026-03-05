@@ -17,6 +17,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useCaseItems } from "@/features/cases/items/hooks";
 
 type SortBy = "updated_desc" | "due_asc" | "priority_desc";
 
@@ -70,7 +71,7 @@ export function MyWorkCaseItemsTab() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [items, setItems] = useState<CaseItem[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [caseFiles, setCaseFiles] = useState<CaseFileOption[]>([]);
   const [escalationSuggestionByItemId, setEscalationSuggestionByItemId] = useState<Record<string, EscalationSuggestion>>({});
   const [selectedCaseFileByItemId, setSelectedCaseFileByItemId] = useState<Record<string, string>>({});
@@ -88,25 +89,7 @@ export function MyWorkCaseItemsTab() {
   const [createOpen, setCreateOpen] = useState(false);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
 
-  const items = useMemo(() => (
-    caseItems
-      .filter((row) => row.user_id === user?.id || row.owner_user_id === user?.id)
-      .map((row) => ({
-        id: row.id,
-        title: row.resolution_summary || "Ohne Titel",
-        description: null,
-        status: row.status || null,
-        priority: row.priority || null,
-        channel: row.source_channel || null,
-        follow_up_at: row.follow_up_at || null,
-        due_date: row.due_at || null,
-        assigned_to: row.owner_user_id,
-        user_id: row.user_id || null,
-        case_file_id: row.case_file_id || null,
-        created_at: row.created_at,
-        updated_at: row.updated_at || null,
-      }))
-  ), [caseItems, user?.id]);
+  const { createCaseItem } = useCaseItems();
 
   const loadCaseItems = useCallback(async () => {
     if (!user || !currentTenant?.id) return;
@@ -138,17 +121,17 @@ export function MyWorkCaseItemsTab() {
       if (escalationError) throw escalationError;
 
       const visibleItems = ((data || []) as any[])
-        .filter((row) => row.user_id === user.id || getAssigneeId(row) === user.id)
+        .filter((row) => row.user_id === user.id || row.owner_user_id === user.id)
         .map((row) => ({
           id: row.id,
-          title: row.title || "Ohne Titel",
-          description: row.description || null,
+          title: row.subject || row.resolution_summary || "Ohne Titel",
+          description: row.summary || null,
           status: row.status || null,
           priority: row.priority || null,
-          channel: row.channel || null,
-          follow_up_at: row.follow_up_at || row.snoozed_until || null,
-          due_date: row.due_date || row.target_date || null,
-          assigned_to: getAssigneeId(row),
+          channel: row.source_channel || null,
+          follow_up_at: row.follow_up_at || null,
+          due_date: row.due_at || null,
+          assigned_to: row.owner_user_id,
           user_id: row.user_id || null,
           case_file_id: row.case_file_id || null,
           created_at: row.created_at,

@@ -26,7 +26,7 @@ export interface CaseItem {
   contains_personal_data: boolean;
   resolution_summary: string | null;
   case_file_id: string | null;
-  case_scale: "small" | "large" | null;
+  case_scale: string | null;
   created_at: string;
   updated_at: string;
   last_modified_by: string | null;
@@ -66,7 +66,7 @@ export interface CaseItemFormData {
   contains_personal_data?: boolean;
   resolution_summary?: string | null;
   case_file_id?: string | null;
-  case_scale?: CaseItem["case_scale"] | null;
+  case_scale?: string | null;
 }
 
 export interface CaseItemInteractionFormData {
@@ -101,7 +101,7 @@ export const useCaseItems = () => {
         .order("updated_at", { ascending: false });
 
       if (error) throw error;
-      setCaseItems((data ?? []) as CaseItem[]);
+      setCaseItems((data ?? []) as unknown as CaseItem[]);
     } catch (error) {
       console.error("Error fetching case items:", error);
       toast({
@@ -125,13 +125,15 @@ export const useCaseItems = () => {
     }
 
     try {
+      const insertData = {
+        ...data,
+        intake_payload: data.intake_payload as any,
+        user_id: user.id,
+        tenant_id: currentTenant.id,
+      };
       const { data: newCaseItem, error } = await supabase
         .from("case_items")
-        .insert({
-          ...data,
-          user_id: user.id,
-          tenant_id: currentTenant.id,
-        })
+        .insert(insertData as any)
         .select()
         .single();
 
@@ -143,7 +145,7 @@ export const useCaseItems = () => {
       });
 
       await fetchCaseItems();
-      return newCaseItem as CaseItem;
+      return newCaseItem as unknown as CaseItem;
     } catch (error) {
       console.error("Error creating case item:", error);
       toast({
@@ -157,7 +159,8 @@ export const useCaseItems = () => {
 
   const updateCaseItem = async (id: string, data: Partial<CaseItemFormData>) => {
     try {
-      const { error } = await supabase.from("case_items").update(data).eq("id", id);
+      const updateData = { ...data, intake_payload: data.intake_payload as any };
+      const { error } = await supabase.from("case_items").update(updateData as any).eq("id", id);
 
       if (error) throw error;
 
@@ -213,7 +216,7 @@ export const useCaseItems = () => {
           ...data,
           tenant_id: currentTenant.id,
           created_by: user.id,
-        })
+        } as any)
         .select()
         .single();
 
@@ -224,7 +227,7 @@ export const useCaseItems = () => {
         description: "Interaktion wurde hinzugefügt.",
       });
 
-      return interaction as CaseItemInteraction;
+      return interaction as unknown as CaseItemInteraction;
     } catch (error) {
       console.error("Error creating case item interaction:", error);
       toast({
@@ -249,7 +252,7 @@ export const useCaseItems = () => {
           .order("interaction_at", { ascending: false });
 
         if (error) throw error;
-        return (data ?? []) as CaseItemInteraction[];
+        return (data ?? []) as unknown as CaseItemInteraction[];
       } catch (error) {
         console.error("Error fetching case item interactions:", error);
         toast({
