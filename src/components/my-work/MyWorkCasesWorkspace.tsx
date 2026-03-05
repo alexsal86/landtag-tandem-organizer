@@ -42,6 +42,7 @@ type CaseFile = {
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { createCaseItem } = useCaseItems();
@@ -98,14 +99,19 @@ export function MyWorkCasesWorkspace() {
   }, [setSearchParams]);
 
   const loadWorkspaceData = useCallback(async () => {
-    if (!user || !currentTenant?.id) return;
+    if (!user || !tenantId) {
+      setCaseItems([]);
+      setCaseFilesById({});
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     try {
       const { data: caseItemsData, error: caseItemsError } = await supabase
         .from("case_items" as any)
         .select("id, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
-        .eq("tenant_id", currentTenant.id)
+        .eq("tenant_id", tenantId)
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(120);
 
@@ -124,7 +130,7 @@ export function MyWorkCasesWorkspace() {
       const { data: caseFilesData, error: caseFilesError } = await supabase
         .from("case_files")
         .select("id, title, status, reference_number, current_status_note")
-        .eq("tenant_id", currentTenant.id)
+        .eq("tenant_id", tenantId)
         .in("id", linkedCaseFileIds);
 
       if (caseFilesError) throw caseFilesError;
@@ -140,11 +146,16 @@ export function MyWorkCasesWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [currentTenant?.id, user]);
+  }, [tenantId, user]);
 
   useEffect(() => {
+    if (!user || !tenantId) {
+      setLoading(false);
+      return;
+    }
+
     void loadWorkspaceData();
-  }, [loadWorkspaceData]);
+  }, [loadWorkspaceData, tenantId, user]);
 
   const selectedCaseItem = useMemo(() => {
     if (selectedCaseItemId) {
