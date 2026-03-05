@@ -149,6 +149,7 @@ export function MyWorkView() {
         "create-task": "tasks",
         "create-decision": "decisions",
         "create-meeting": "jourFixe",
+        "create-caseitem": "caseitems",
         "create-casefile": "casefiles",
         "create-eventplanning": "plannings",
       };
@@ -388,6 +389,14 @@ export function MyWorkView() {
               <DropdownMenuItem onClick={() => navigate("/meetings?action=create-meeting")}>
                 <Calendar className="h-4 w-4 mr-2" />
                 Jour Fixe
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSearchParams({ tab: "caseitems", action: "create-caseitem" })}>
+                <Briefcase className="h-4 w-4 mr-2" />
+                Anliegen erstellen
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSearchParams({ tab: "casefiles", action: "create-casefile" })}>
+                <Briefcase className="h-4 w-4 mr-2" />
+                Akte erstellen
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
