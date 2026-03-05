@@ -96,7 +96,7 @@ export async function fetchOpenImprovementTriggers(tenantId: string): Promise<Im
     conversationId: item.conversation_id,
     widgetMessageId: item.widget_message_id,
     suggestedChannel: item.suggested_channel as "faq" | "routing",
-    status: item.status,
+    status: item.status as "open" | "in_progress" | "done",
     createdAt: item.created_at,
   }));
 }
