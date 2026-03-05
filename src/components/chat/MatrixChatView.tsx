@@ -27,8 +27,10 @@ export function MatrixChatView() {
     credentials,
     sendMessage,
     refreshMessages,
+    loadOlderMessages,
     totalUnreadCount,
     roomMessages,
+    roomHistoryState,
     typingUsers,
     sendTypingNotification,
     addReaction,
@@ -47,6 +49,9 @@ export function MatrixChatView() {
   // Get messages from context
   const messages = selectedRoomId ? (roomMessages.get(selectedRoomId) || []) : [];
   const currentTypingUsers = selectedRoomId ? (typingUsers.get(selectedRoomId) || []) : [];
+  const currentRoomHistoryState = selectedRoomId
+    ? (roomHistoryState.get(selectedRoomId) || { isLoadingMore: false, hasMoreHistory: true })
+    : { isLoadingMore: false, hasMoreHistory: true };
 
   // Filter rooms
   const filteredRooms = useMemo(() => {
@@ -131,6 +136,10 @@ export function MatrixChatView() {
     }
   }, [selectedRoomId, removeReaction]);
 
+  const handleLoadOlderMessages = useCallback(() => {
+    if (!selectedRoomId) return;
+    void loadOlderMessages(selectedRoomId, 1);
+  }, [loadOlderMessages, selectedRoomId]);
 
   // Show settings/login form
   if (showSettings || (!credentials && !isConnecting)) {
@@ -379,6 +388,9 @@ export function MatrixChatView() {
                 onReply={handleReply}
                 onAddReaction={handleAddReaction}
                 onRemoveReaction={handleRemoveReaction}
+                onLoadOlderMessages={handleLoadOlderMessages}
+                isLoadingOlderMessages={currentRoomHistoryState.isLoadingMore}
+                hasMoreHistory={currentRoomHistoryState.hasMoreHistory}
               />
 
               {/* Typing Indicator */}

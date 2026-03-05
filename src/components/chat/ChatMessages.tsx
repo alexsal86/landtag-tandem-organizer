@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -36,6 +36,9 @@ interface ChatMessagesProps {
   onReply?: (eventId: string, sender: string, content: string) => void;
   onAddReaction?: (eventId: string, emoji: string) => void;
   onRemoveReaction?: (eventId: string, emoji: string) => void;
+  onLoadOlderMessages?: () => void;
+  isLoadingOlderMessages?: boolean;
+  hasMoreHistory?: boolean;
 }
 
 const getInitials = (name: string) => {
@@ -70,17 +73,43 @@ export function ChatMessages({
   onReply,
   onAddReaction,
   onRemoveReaction,
+  onLoadOlderMessages,
+  isLoadingOlderMessages = false,
+  hasMoreHistory = true,
 }: ChatMessagesProps) {
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const hasDoneInitialScrollRef = useRef(false);
+  const pendingHistoryLoadScrollRef = useRef<{ previousHeight: number; previousTop: number } | null>(null);
+
+  const handleLoadOlderMessages = useCallback(() => {
+    if (!onLoadOlderMessages || isLoadingOlderMessages || !hasMoreHistory) return;
+
+    const container = scrollContainerRef.current;
+    if (container) {
+      pendingHistoryLoadScrollRef.current = {
+        previousHeight: container.scrollHeight,
+        previousTop: container.scrollTop,
+      };
+    }
+
+    onLoadOlderMessages();
+  }, [hasMoreHistory, isLoadingOlderMessages, onLoadOlderMessages]);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     const bottomElement = bottomRef.current;
 
     if (!scrollContainer || !bottomElement) {
+      return;
+    }
+
+    if (pendingHistoryLoadScrollRef.current) {
+      const { previousHeight, previousTop } = pendingHistoryLoadScrollRef.current;
+      const heightDelta = scrollContainer.scrollHeight - previousHeight;
+      scrollContainer.scrollTop = previousTop + heightDelta;
+      pendingHistoryLoadScrollRef.current = null;
       return;
     }
 
@@ -97,6 +126,17 @@ export function ChatMessages({
       bottomElement.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (isLoadingOlderMessages) return;
+    const scrollContainer = scrollContainerRef.current;
+    const pending = pendingHistoryLoadScrollRef.current;
+    if (!scrollContainer || !pending) return;
+
+    const heightDelta = scrollContainer.scrollHeight - pending.previousHeight;
+    scrollContainer.scrollTop = pending.previousTop + heightDelta;
+    pendingHistoryLoadScrollRef.current = null;
+  }, [isLoadingOlderMessages]);
 
   const formatMessageTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -162,6 +202,22 @@ export function ChatMessages({
   return (
     <div ref={scrollContainerRef} className="flex-1 px-4 overflow-y-auto">
       <div className="py-4 space-y-4">
+        {onLoadOlderMessages && (
+          <div className="flex justify-center">
+            {hasMoreHistory ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLoadOlderMessages}
+                disabled={isLoadingOlderMessages}
+              >
+                {isLoadingOlderMessages ? 'Ältere Nachrichten werden geladen…' : 'Ältere Nachrichten laden'}
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">Beginn der Unterhaltung erreicht</span>
+            )}
+          </div>
+        )}
         {groupedMessages.map((group) => (
           <div key={group.date}>
             <div className="flex items-center gap-4 my-4">
