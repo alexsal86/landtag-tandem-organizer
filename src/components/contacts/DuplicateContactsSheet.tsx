@@ -3,14 +3,13 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { AlertCircle, Merge, X } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { findDuplicates } from '@/utils/duplicateDetection';
+import { findDuplicatesProgressive } from '@/utils/duplicateDetection';
 import { MergeContactsDialog } from './MergeContactsDialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 
 interface Contact {
@@ -20,8 +19,6 @@ interface Contact {
   phone?: string;
   organization?: string;
   contact_type?: string;
-  avatar_url?: string;
-  [key: string]: any;
 }
 
 interface DuplicateMatch {
@@ -52,12 +49,11 @@ export function DuplicateContactsSheet({
   onClose,
   onDuplicatesResolved,
 }: DuplicateContactsSheetProps) {
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState<{ processed: number; total: number }>({ processed: 0, total: 0 });
   const [selectedMatch, setSelectedMatch] = useState<DuplicateMatch | null>(null);
   const [dismissedPairs, setDismissedPairs] = useState<Set<string>>(new Set());
-  const { user } = useAuth();
   const { currentTenant } = useTenant();
 
   useEffect(() => {
@@ -73,13 +69,16 @@ export function DuplicateContactsSheet({
     try {
       const { data, error } = await supabase
         .from('contacts')
-        .select('*')
+        .select('id,name,email,phone,organization,organization_id,contact_type')
         .eq('tenant_id', currentTenant.id);
 
       if (error) throw error;
 
-      setContacts(data || []);
-      const foundDuplicates = findDuplicates(data || []);
+      setProgress({ processed: 0, total: 0 });
+      const foundDuplicates = await findDuplicatesProgressive(data || [], {
+        chunkSize: 300,
+        onProgress: (processed, total) => setProgress({ processed, total }),
+      });
       setDuplicates(foundDuplicates);
     } catch (error) {
       console.error('Error fetching contacts:', error);
@@ -118,7 +117,14 @@ export function DuplicateContactsSheet({
           <div className="mt-6 space-y-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                <div className="text-center space-y-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+                  {progress.total > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Vergleiche Kontakte… {progress.processed} / {progress.total}
+                    </p>
+                  )}
+                </div>
               </div>
             ) : visibleDuplicates.length === 0 ? (
               <Alert>
@@ -160,7 +166,6 @@ export function DuplicateContactsSheet({
                         {/* Contact 1 */}
                         <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                           <Avatar className="h-12 w-12">
-                            <AvatarImage src={match.contact1.avatar_url} />
                             <AvatarFallback>{getInitials(match.contact1.name)}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
@@ -180,7 +185,6 @@ export function DuplicateContactsSheet({
                         {/* Contact 2 */}
                         <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                           <Avatar className="h-12 w-12">
-                            <AvatarImage src={match.contact2.avatar_url} />
                             <AvatarFallback>{getInitials(match.contact2.name)}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
