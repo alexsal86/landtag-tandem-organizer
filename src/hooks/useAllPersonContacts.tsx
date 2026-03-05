@@ -120,7 +120,7 @@ export const useAllPersonContacts = () => {
           filter: `tenant_id=eq.${currentTenant.id}`,
         },
         (payload: RealtimePostgresChangesPayload<{ id: string }>) => {
-          const changedId = payload.new?.id || payload.old?.id;
+          const changedId = (payload.new as any)?.id || (payload.old as any)?.id;
           if (!changedId) return;
 
           if (payload.eventType === "DELETE") {

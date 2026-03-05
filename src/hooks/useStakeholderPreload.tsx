@@ -165,7 +165,7 @@ export const useStakeholderPreload = (searchTerm?: string) => {
           filter: `tenant_id=eq.${currentTenant.id},contact_type=eq.organization`,
         },
         (payload: RealtimePostgresChangesPayload<{ id: string }>) => {
-          const changedId = payload.new?.id || payload.old?.id;
+          const changedId = (payload.new as any)?.id || (payload.old as any)?.id;
           if (!changedId) return;
 
           if (payload.eventType === "DELETE") {
