@@ -3,11 +3,20 @@ import App from './App.tsx'
 import './index.css'
 import { evaluateCoiCapabilityStatus, setCoiCapabilityStatus } from './lib/coiRuntime'
 
-async function unregisterAllServiceWorkers(): Promise<void> {
-  if (!('serviceWorker' in navigator)) return;
+async function unregisterAllServiceWorkers(
+  shouldUnregister: (registration: ServiceWorkerRegistration) => boolean = () => true,
+): Promise<number> {
+  if (!('serviceWorker' in navigator)) return 0;
   const regs = await navigator.serviceWorker.getRegistrations();
-  if (regs.length === 0) return;
-  await Promise.allSettled(regs.map((r) => r.unregister()));
+  const relevantRegistrations = regs.filter(shouldUnregister);
+  if (relevantRegistrations.length === 0) return 0;
+
+  const results = await Promise.allSettled(relevantRegistrations.map((r) => r.unregister()));
+  const successfulUnregistrations = results.filter(
+    (result) => result.status === 'fulfilled' && result.value,
+  ).length;
+
+  return successfulUnregistrations;
 }
 
 async function setupCrossOriginIsolation(): Promise<void> {
@@ -21,9 +30,25 @@ async function setupCrossOriginIsolation(): Promise<void> {
   };
 
   if (!isTopLevel) {
+    let removedCoiServiceWorkerRegistrations = 0;
+
+    if ('serviceWorker' in navigator) {
+      const coiServiceWorkerUrl = new URL('/coi-serviceworker.js', window.location.origin).href;
+      removedCoiServiceWorkerRegistrations = await unregisterAllServiceWorkers((registration) => {
+        const activeScriptUrl = registration.active?.scriptURL;
+        const waitingScriptUrl = registration.waiting?.scriptURL;
+        const installingScriptUrl = registration.installing?.scriptURL;
+
+        return [activeScriptUrl, waitingScriptUrl, installingScriptUrl]
+          .filter((scriptUrl): scriptUrl is string => Boolean(scriptUrl))
+          .some((scriptUrl) => scriptUrl.startsWith(coiServiceWorkerUrl));
+      });
+    }
+
     debugLog('Skipping service worker registration: running inside iframe.', {
       reason: coiStatus.reason,
       host: window.location.hostname,
+      removedCoiServiceWorkerRegistrations,
     });
     sessionStorage.removeItem('coi-cleanup-state');
     return;
