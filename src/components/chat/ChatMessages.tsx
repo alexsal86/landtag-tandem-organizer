@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -36,6 +36,8 @@ interface ChatMessagesProps {
   onReply?: (eventId: string, sender: string, content: string) => void;
   onAddReaction?: (eventId: string, emoji: string) => void;
   onRemoveReaction?: (eventId: string, emoji: string) => void;
+  highlightedEventId?: string | null;
+  scrollToEventId?: string | null;
 }
 
 const getInitials = (name: string) => {
@@ -70,11 +72,24 @@ export function ChatMessages({
   onReply,
   onAddReaction,
   onRemoveReaction,
+  highlightedEventId,
+  scrollToEventId,
 }: ChatMessagesProps) {
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const hasDoneInitialScrollRef = useRef(false);
+  const [activeHighlightEventId, setActiveHighlightEventId] = useState<string | null>(null);
+
+  const registerMessageRef = useCallback((eventId: string, element: HTMLDivElement | null) => {
+    if (element) {
+      messageRefs.current.set(eventId, element);
+      return;
+    }
+
+    messageRefs.current.delete(eventId);
+  }, []);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -90,13 +105,43 @@ export function ChatMessages({
       return;
     }
 
+    if (scrollToEventId) {
+      return;
+    }
+
     const remainingDistance = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight;
     const isNearBottom = remainingDistance < 100;
 
     if (isNearBottom) {
       bottomElement.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [messages, scrollToEventId]);
+
+  useEffect(() => {
+    if (!scrollToEventId) {
+      return;
+    }
+
+    const target = messageRefs.current.get(scrollToEventId);
+    if (!target) {
+      return;
+    }
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [scrollToEventId, messages]);
+
+  useEffect(() => {
+    if (!highlightedEventId) {
+      return;
+    }
+
+    setActiveHighlightEventId(highlightedEventId);
+    const timeoutId = window.setTimeout(() => {
+      setActiveHighlightEventId((current) => (current === highlightedEventId ? null : current));
+    }, 1800);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [highlightedEventId]);
 
   const formatMessageTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -182,7 +227,12 @@ export function ChatMessages({
                 return (
                   <div
                     key={message.eventId}
-                    className={cn("flex gap-3 group", isOwnMessage && "flex-row-reverse")}
+                    ref={(element) => registerMessageRef(message.eventId, element)}
+                    className={cn(
+                      'flex gap-3 group rounded-md transition-colors duration-700',
+                      isOwnMessage && 'flex-row-reverse',
+                      activeHighlightEventId === message.eventId && 'bg-primary/10 animate-pulse'
+                    )}
                   >
                     {showAvatar ? (
                       <Avatar className="h-8 w-8 flex-shrink-0">

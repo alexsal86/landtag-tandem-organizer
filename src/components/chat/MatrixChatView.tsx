@@ -43,6 +43,8 @@ export function MatrixChatView() {
   const [roomFilter, setRoomFilter] = useState<RoomFilterType>('all');
   const [replyTo, setReplyTo] = useState<{ eventId: string; sender: string; content: string } | null>(null);
   const [isRoomListCollapsed, setIsRoomListCollapsed] = useState(false);
+  const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
+  const [scrollToEventId, setScrollToEventId] = useState<string | null>(null);
 
   // Get messages from context
   const messages = selectedRoomId ? (roomMessages.get(selectedRoomId) || []) : [];
@@ -130,6 +132,22 @@ export function MatrixChatView() {
       await removeReaction(selectedRoomId, eventId, emoji);
     }
   }, [selectedRoomId, removeReaction]);
+
+
+  useEffect(() => {
+    setHighlightedEventId(null);
+    setScrollToEventId(null);
+  }, [selectedRoomId]);
+
+  const handleSelectMessage = useCallback((eventId: string) => {
+    setHighlightedEventId(eventId);
+    setShowSearch(false);
+
+    setScrollToEventId(null);
+    window.requestAnimationFrame(() => {
+      setScrollToEventId(eventId);
+    });
+  }, []);
 
 
   // Show settings/login form
@@ -379,6 +397,8 @@ export function MatrixChatView() {
                 onReply={handleReply}
                 onAddReaction={handleAddReaction}
                 onRemoveReaction={handleRemoveReaction}
+                highlightedEventId={highlightedEventId}
+                scrollToEventId={scrollToEventId}
               />
 
               {/* Typing Indicator */}
@@ -420,6 +440,7 @@ export function MatrixChatView() {
           <div className="w-80">
             <ChatSearch
               messages={messages}
+              onSelectMessage={handleSelectMessage}
               onClose={() => setShowSearch(false)}
             />
           </div>
