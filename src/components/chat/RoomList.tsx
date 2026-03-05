@@ -28,8 +28,11 @@ const OVERSCAN_ROWS = 6;
 
 export function RoomList({ rooms, selectedRoomId, onSelectRoom }: RoomListProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const rowHeightsRef = React.useRef<Map<string, number>>(new Map());
+  const resizeObserversRef = React.useRef<Map<string, ResizeObserver>>(new Map());
   const [scrollTop, setScrollTop] = React.useState(0);
   const [viewportHeight, setViewportHeight] = React.useState(0);
+  const [layoutVersion, setLayoutVersion] = React.useState(0);
 
   React.useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -48,6 +51,57 @@ export function RoomList({ rooms, selectedRoomId, onSelectRoom }: RoomListProps)
       scrollContainer.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', updateViewportHeight);
     };
+  }, []);
+
+  React.useEffect(() => {
+    const roomIds = new Set(rooms.map((room) => room.roomId));
+
+    rowHeightsRef.current.forEach((_, roomId) => {
+      if (!roomIds.has(roomId)) {
+        rowHeightsRef.current.delete(roomId);
+      }
+    });
+
+    resizeObserversRef.current.forEach((observer, roomId) => {
+      if (!roomIds.has(roomId)) {
+        observer.disconnect();
+        resizeObserversRef.current.delete(roomId);
+      }
+    });
+  }, [rooms]);
+
+  React.useEffect(() => {
+    return () => {
+      resizeObserversRef.current.forEach((observer) => observer.disconnect());
+      resizeObserversRef.current.clear();
+    };
+  }, []);
+
+  const registerRowRef = React.useCallback((roomId: string, element: HTMLDivElement | null) => {
+    const existingObserver = resizeObserversRef.current.get(roomId);
+    if (existingObserver) {
+      existingObserver.disconnect();
+      resizeObserversRef.current.delete(roomId);
+    }
+
+    if (!element) {
+      return;
+    }
+
+    const updateHeight = () => {
+      const nextHeight = Math.ceil(element.getBoundingClientRect().height);
+      const previousHeight = rowHeightsRef.current.get(roomId);
+      if (previousHeight === nextHeight) return;
+
+      rowHeightsRef.current.set(roomId, nextHeight);
+      setLayoutVersion((value) => value + 1);
+    };
+
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(element);
+    resizeObserversRef.current.set(roomId, observer);
   }, []);
 
   const formatTimestamp = (timestamp?: number) => {
@@ -78,26 +132,54 @@ export function RoomList({ rooms, selectedRoomId, onSelectRoom }: RoomListProps)
     );
   }
 
-  const startIndex = Math.max(0, Math.floor(scrollTop / ESTIMATED_ROW_HEIGHT) - OVERSCAN_ROWS);
-  const endIndex = Math.min(
-    rooms.length,
-    Math.ceil((scrollTop + viewportHeight) / ESTIMATED_ROW_HEIGHT) + OVERSCAN_ROWS
-  );
+  const prefixOffsets: number[] = new Array(rooms.length);
+  let totalHeight = 0;
+
+  for (let i = 0; i < rooms.length; i++) {
+    prefixOffsets[i] = totalHeight;
+    const room = rooms[i];
+    totalHeight += rowHeightsRef.current.get(room.roomId) ?? ESTIMATED_ROW_HEIGHT;
+  }
+
+  const findStartIndex = (targetOffset: number) => {
+    let low = 0;
+    let high = rooms.length - 1;
+    let result = 0;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (prefixOffsets[mid] <= targetOffset) {
+        result = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    return result;
+  };
+
+  const rawStartIndex = findStartIndex(scrollTop);
+  const rawEndIndex = findStartIndex(scrollTop + viewportHeight + ESTIMATED_ROW_HEIGHT);
+
+  const startIndex = Math.max(0, rawStartIndex - OVERSCAN_ROWS);
+  const endIndex = Math.min(rooms.length, rawEndIndex + OVERSCAN_ROWS + 1);
+
   const visibleRooms = rooms.slice(startIndex, endIndex);
-  const totalHeight = rooms.length * ESTIMATED_ROW_HEIGHT;
 
   return (
     <div ref={scrollContainerRef} className="overflow-y-auto h-full">
-      <div className="relative p-2" style={{ height: totalHeight + 16 }}>
+      <div className="relative p-2" style={{ height: totalHeight + 16 }} data-layout-version={layoutVersion}>
         {visibleRooms.map((room, index) => {
           const rowIndex = startIndex + index;
 
           return (
             <div
               key={room.roomId}
+              ref={(element) => registerRowRef(room.roomId, element)}
               className="absolute left-2 right-2 pb-1"
               style={{
-                transform: `translateY(${rowIndex * ESTIMATED_ROW_HEIGHT}px)`
+                transform: `translateY(${prefixOffsets[rowIndex]}px)`
               }}
             >
               <button
