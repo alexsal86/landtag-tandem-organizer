@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Briefcase, ExternalLink, FileText, FolderOpen } from "lucide-react";
+import { Briefcase, ExternalLink, FileText, FolderOpen, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { CaseFileDetail } from "@/features/cases/files/components";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,9 +46,11 @@ export function MyWorkCasesWorkspace() {
   const [caseItems, setCaseItems] = useState<CaseItem[]>([]);
   const [caseFilesById, setCaseFilesById] = useState<Record<string, CaseFile>>({});
   const [loading, setLoading] = useState(true);
+  const [filterQuery, setFilterQuery] = useState("");
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   const selectedCaseItemId = searchParams.get("caseItemId");
-  const selectedCaseFileId = searchParams.get("caseFileId");
 
   useEffect(() => {
     const action = searchParams.get("action");
@@ -131,24 +136,89 @@ export function MyWorkCasesWorkspace() {
     return caseItems[0] || null;
   }, [caseItems, selectedCaseItemId]);
 
-  const contextualCaseFile = useMemo(() => {
-    if (selectedCaseFileId && caseFilesById[selectedCaseFileId]) {
-      return caseFilesById[selectedCaseFileId];
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 1023px)");
+    const updateViewport = () => {
+      setIsMobileViewport(mediaQuery.matches);
+      if (!mediaQuery.matches) {
+        setMobileDetailOpen(false);
+      }
+    };
+
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
+
+
+  const filteredCaseItems = useMemo(() => {
+    const query = filterQuery.trim().toLowerCase();
+    if (!query) return caseItems;
+
+    return caseItems.filter((item) => {
+      return [item.title, item.description, item.status, item.priority]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(query));
+    });
+  }, [caseItems, filterQuery]);
+
+  const handleSelectCaseItem = (item: CaseItem) => {
+    updateWorkspaceParams({ caseItemId: item.id, caseFileId: item.case_file_id });
+    if (isMobileViewport) {
+      setMobileDetailOpen(true);
+    }
+  };
+
+  const renderDetailPanel = () => {
+    if (!selectedCaseItem) {
+      return (
+        <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+          <Briefcase className="mb-2 h-4 w-4" />
+          Wähle links ein Anliegen aus, um Details und Aktenkontext anzuzeigen.
+        </div>
+      );
     }
 
-    if (selectedCaseItem?.case_file_id) {
-      return caseFilesById[selectedCaseItem.case_file_id] || null;
+    if (selectedCaseItem.case_file_id) {
+      return (
+        <div className="space-y-3">
+          <CaseFileDetail caseFileId={selectedCaseItem.case_file_id} onBack={() => undefined} />
+          <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${selectedCaseItem.case_file_id}`)}>
+            <ExternalLink className="mr-1 h-3.5 w-3.5" />
+            Vollansicht öffnen
+          </Button>
+        </div>
+      );
     }
 
-    return null;
-  }, [caseFilesById, selectedCaseFileId, selectedCaseItem?.case_file_id]);
+    return (
+      <div className="space-y-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+        <Briefcase className="h-4 w-4" />
+        <p>Für dieses Anliegen ist noch keine Akte verknüpft.</p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => navigate(`/casefiles?action=create&caseItemId=${selectedCaseItem.id}`)}>
+            Neue Akte anlegen
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(`/?tab=cases&caseItemId=${selectedCaseItem.id}&focus=caseitem-linking`)}
+          >
+            Bestehender Akte zuordnen
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return <div className="p-4 text-sm text-muted-foreground">Lade Fallbearbeitung…</div>;
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.9fr)]">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -156,15 +226,24 @@ export function MyWorkCasesWorkspace() {
             Anliegen
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={filterQuery}
+              onChange={(event) => setFilterQuery(event.target.value)}
+              placeholder="Anliegen filtern…"
+              className="pl-8"
+            />
+          </div>
           <ScrollArea className="h-[520px] pr-3">
             <div className="space-y-2">
-              {caseItems.length === 0 ? (
+              {filteredCaseItems.length === 0 ? (
                 <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  Keine zugeordneten Anliegen gefunden.
+                  Keine Anliegen passend zum Filter gefunden.
                 </div>
               ) : (
-                caseItems.map((item) => {
+                filteredCaseItems.map((item) => {
                   const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
                   const isActive = selectedCaseItem?.id === item.id;
 
@@ -176,7 +255,7 @@ export function MyWorkCasesWorkspace() {
                         "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
                         isActive && "border-primary bg-primary/5",
                       )}
-                      onClick={() => updateWorkspaceParams({ caseItemId: item.id, caseFileId: item.case_file_id })}
+                      onClick={() => handleSelectCaseItem(item)}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -205,61 +284,27 @@ export function MyWorkCasesWorkspace() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="hidden lg:block">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <FolderOpen className="h-4 w-4" />
-            Zugeordnete Akte
+            Detailpanel
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {contextualCaseFile ? (
-            <>
-              <div className="rounded-md border p-3">
-                <p className="font-medium">{contextualCaseFile.title}</p>
-                {contextualCaseFile.reference_number ? (
-                  <p className="text-xs text-muted-foreground">Az: {contextualCaseFile.reference_number}</p>
-                ) : null}
-                <div className="mt-2 flex items-center gap-2">
-                  <Badge variant="secondary">{contextualCaseFile.status}</Badge>
-                </div>
-                {contextualCaseFile.current_status_note ? (
-                  <p className="mt-2 text-xs text-muted-foreground line-clamp-3">
-                    {contextualCaseFile.current_status_note.replace(/<[^>]*>/g, "").trim()}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => updateWorkspaceParams({ caseItemId: selectedCaseItem?.id || null, caseFileId: contextualCaseFile.id })}
-                >
-                  Als Kontext setzen
-                </Button>
-                <Button size="sm" onClick={() => navigate(`/casefiles?caseFileId=${contextualCaseFile.id}`)}>
-                  <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                  Akte öffnen
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-              <Briefcase className="mb-2 h-4 w-4" />
-              Wähle ein Anliegen mit verknüpfter Akte oder öffne eine Akte per Deep-Link mit
-              <code className="mx-1 rounded bg-muted px-1 py-0.5">caseFileId</code>.
-            </div>
-          )}
-
-          {selectedCaseItem ? (
-            <Button size="sm" variant="ghost" onClick={() => navigate(`/?section=casefiles&caseItemId=${selectedCaseItem.id}`)}>
-              <ExternalLink className="mr-1 h-3.5 w-3.5" />
-              Vollansicht zum Anliegen
-            </Button>
-          ) : null}
-        </CardContent>
+        <CardContent className="space-y-3">{renderDetailPanel()}</CardContent>
       </Card>
+
+      <Sheet open={mobileDetailOpen} onOpenChange={setMobileDetailOpen}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <FolderOpen className="h-4 w-4" />
+              Detailpanel
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">{renderDetailPanel()}</div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
