@@ -252,7 +252,7 @@ export const useCaseItems = () => {
           .order("interaction_at", { ascending: false });
 
         if (error) throw error;
-        return (data ?? []) as CaseItemInteraction[];
+        return (data ?? []) as unknown as CaseItemInteraction[];
       } catch (error) {
         console.error("Error fetching case item interactions:", error);
         toast({

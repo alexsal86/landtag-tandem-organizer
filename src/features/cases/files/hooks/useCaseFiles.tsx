@@ -38,7 +38,7 @@ export interface CaseFileFormData {
   title: string;
   description?: string;
   case_type: string;
-  case_scale?: "small" | "large";
+  case_scale?: string;
   status: string;
   priority?: string;
   reference_number?: string;

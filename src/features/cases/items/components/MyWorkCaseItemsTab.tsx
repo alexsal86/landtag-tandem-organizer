@@ -17,6 +17,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useCaseItems } from "@/features/cases/items/hooks";
 
 type SortBy = "updated_desc" | "due_asc" | "priority_desc";
 

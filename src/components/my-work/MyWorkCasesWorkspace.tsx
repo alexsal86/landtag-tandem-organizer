@@ -119,14 +119,18 @@ export function MyWorkCasesWorkspace() {
 
       if (caseItemsError) throw caseItemsError;
 
-      const items = (caseItemsData || []) as CaseItem[];
+      const items = (caseItemsData || []) as unknown as CaseItem[];
       setCaseItems(items);
 
-      const { data: caseFilesData, error: caseFilesError } = await supabase
-        .from("case_files")
-        .select("id, title, status, reference_number, current_status_note")
-        .eq("tenant_id", tenantId)
-        .in("id", linkedCaseFileIds);
+      const caseFileIds = [...new Set(items.map(i => i.case_file_id).filter((id): id is string => Boolean(id)))];
+
+      const { data: caseFilesData, error: caseFilesError } = caseFileIds.length > 0
+        ? await supabase
+            .from("case_files")
+            .select("id, title, status, reference_number, current_status_note")
+            .eq("tenant_id", tenantId)
+            .in("id", caseFileIds)
+        : { data: [] as CaseFile[], error: null };
 
       if (caseFilesError) throw caseFilesError;
 

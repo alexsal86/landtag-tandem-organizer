@@ -188,7 +188,7 @@ export function MyWorkView() {
       setTotalCounts({
         tasks: Number(counts.tasks || 0),
         decisions: Number(counts.decisions || 0),
-        cases: Number((counts as any).caseItems || 0) + Number(counts.caseFiles || 0),
+        cases: Number((counts as any).caseItems || 0) + Number((counts as any).caseFiles || 0),
         plannings: Number(counts.plannings || 0),
         team: Number(counts.team || 0),
         jourFixe: Number(counts.jourFixe || 0),

@@ -158,7 +158,7 @@ const CaseItemDetail = () => {
     if (ci?.case_file_id) {
       const { data: cf } = await supabase
         .from("case_files")
-        .select("id, title, case_type, case_scale, start_date, target_date, risks_and_opportunities")
+        .select("id, title, case_type, case_scale, start_date, target_date, risks_and_opportunities") as any
         .eq("id", ci.case_file_id)
         .maybeSingle();
 
