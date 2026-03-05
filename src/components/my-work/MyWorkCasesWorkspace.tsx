@@ -197,7 +197,7 @@ export function MyWorkCasesWorkspace() {
 
     return caseItems.filter((item) => {
       const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
-      return [item.resolution_summary, item.source_channel, item.status, item.priority]
+      return [item.subject, item.resolution_summary, item.source_channel, item.status, item.priority]
         .concat(linkedFile ? [linkedFile.title, linkedFile.reference_number] : [])
         .filter(Boolean)
         .some((value) => value!.toLowerCase().includes(query));

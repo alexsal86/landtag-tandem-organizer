@@ -146,11 +146,12 @@ export const useCaseItems = () => {
 
       await fetchCaseItems();
       return newCaseItem as unknown as CaseItem;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating case item:", error);
+      const detail = error?.message || error?.details || "Unbekannter Fehler";
       toast({
-        title: "Fehler",
-        description: "Vorgang konnte nicht erstellt werden.",
+        title: "Fehler beim Erstellen",
+        description: detail,
         variant: "destructive",
       });
       return null;
