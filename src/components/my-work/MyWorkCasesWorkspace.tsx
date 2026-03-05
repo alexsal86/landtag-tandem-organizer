@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 
 type CaseItem = {
   id: string;
+  subject: string | null;
   resolution_summary: string | null;
   source_channel: string | null;
   status: string | null;
