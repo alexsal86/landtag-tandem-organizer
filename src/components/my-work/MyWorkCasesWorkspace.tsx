@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Briefcase, ExternalLink, FileText, FolderOpen, Search } from "lucide-react";
+import { Briefcase, ExternalLink, FileText, FolderOpen, Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -225,6 +225,14 @@ export function MyWorkCasesWorkspace() {
     }
   };
 
+  const handleCreateCaseItem = () => {
+    navigate('/caseitems?action=create');
+  };
+
+  const handleCreateCaseFile = () => {
+    navigate('/casefiles?action=create');
+  };
+
   const renderDetailPanel = () => {
     if (!selectedCaseItem) {
       return (
@@ -289,6 +297,16 @@ export function MyWorkCasesWorkspace() {
           <p className="text-xs text-muted-foreground">
             Alle Bürgeranfragen, Petitionen und ähnliche Sachverhalte als Vorgangs-Items – mit optionaler Zuordnung zu einer FallAkte.
           </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" onClick={handleCreateCaseItem}>
+              <Plus className="mr-1 h-4 w-4" />
+              Vorgang erstellen
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleCreateCaseFile}>
+              <Plus className="mr-1 h-4 w-4" />
+              FallAkte erstellen
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-2 text-xs lg:grid-cols-4">
@@ -321,8 +339,12 @@ export function MyWorkCasesWorkspace() {
           <ScrollArea className="h-[520px] pr-3">
             <div className="space-y-4">
               {filteredCaseItems.length === 0 ? (
-                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  Keine Anliegen passend zum Filter gefunden.
+                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
+                  <p>Keine Anliegen passend zum Filter gefunden.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={handleCreateCaseItem}>Vorgang erstellen</Button>
+                    <Button size="sm" variant="outline" onClick={handleCreateCaseFile}>FallAkte erstellen</Button>
+                  </div>
                 </div>
               ) : (
                 <>
