@@ -1467,6 +1467,59 @@ export type Database = {
           },
         ]
       }
+      case_item_interactions: {
+        Row: {
+          case_file_id: string
+          created_at: string
+          created_by: string
+          details: string | null
+          direction: string
+          id: string
+          interaction_type: string
+          is_resolution: boolean
+          source_id: string | null
+          source_type: string | null
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          case_file_id: string
+          created_at?: string
+          created_by: string
+          details?: string | null
+          direction: string
+          id?: string
+          interaction_type: string
+          is_resolution?: boolean
+          source_id?: string | null
+          source_type?: string | null
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          case_file_id?: string
+          created_at?: string
+          created_by?: string
+          details?: string | null
+          direction?: string
+          id?: string
+          interaction_type?: string
+          is_resolution?: boolean
+          source_id?: string | null
+          source_type?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_item_interactions_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_file_letters: {
         Row: {
           case_file_id: string

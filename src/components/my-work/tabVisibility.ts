@@ -6,6 +6,7 @@ export type TabValue =
   | "tasks"
   | "decisions"
   | "jourFixe"
+  | "caseitems"
   | "casefiles"
   | "plannings"
   | "team"

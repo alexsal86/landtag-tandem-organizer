@@ -21,6 +21,10 @@ import { CaseFileDetailHeader } from "./CaseFileDetailHeader";
 import { CaseFileLeftSidebar } from "./CaseFileLeftSidebar";
 import { CaseFileRightSidebar } from "./CaseFileRightSidebar";
 import { CaseFileUnifiedTimeline } from "./CaseFileUnifiedTimeline";
+import { CallNoteQuickCapture } from "@/components/my-work/CallNoteQuickCapture";
+import { EmailQuickCapture } from "@/components/my-work/EmailQuickCapture";
+import { SocialHintQuickCapture } from "@/components/my-work/SocialHintQuickCapture";
+import { CaseItemInteractionsTimeline } from "./CaseItemInteractionsTimeline";
 
 // Tab dialogs — still needed for Add actions
 import { CaseFileContactsTab } from "./tabs/CaseFileContactsTab";
@@ -62,6 +66,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
     letters,
     notes,
     timeline,
+    interactions,
     loading,
   } = details;
 
@@ -126,7 +131,15 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
         </div>
 
         {/* Center: Unified Timeline */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 space-y-4">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
+            <CallNoteQuickCapture caseFileId={caseFile.id} onCreate={details.addInteraction} />
+            <EmailQuickCapture caseFileId={caseFile.id} onCreate={details.addInteraction} />
+            <SocialHintQuickCapture caseFileId={caseFile.id} onCreate={details.addInteraction} />
+          </div>
+
+          <CaseItemInteractionsTimeline interactions={interactions} />
+
           <CaseFileUnifiedTimeline
             timeline={timeline}
             notes={notes}

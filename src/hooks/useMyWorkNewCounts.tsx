@@ -7,6 +7,7 @@ export interface NewCounts {
   decisions: number;
   jourFixe: number;
   caseFiles: number;
+  caseItems: number;
   plannings: number;
   team: number;
   feedbackFeed: number;
@@ -17,6 +18,7 @@ const CONTEXTS = [
   'mywork_decisions',
   'mywork_jourFixe',
   'mywork_casefiles',
+  'mywork_caseitems',
   'mywork_plannings',
   'mywork_team',
   'mywork_feedbackfeed',
@@ -29,6 +31,7 @@ const CONTEXT_TO_COUNT_KEY: Record<ContextType, keyof NewCounts> = {
   mywork_decisions: 'decisions',
   mywork_jourFixe: 'jourFixe',
   mywork_casefiles: 'caseFiles',
+  mywork_caseitems: 'caseItems',
   mywork_plannings: 'plannings',
   mywork_team: 'team',
   mywork_feedbackfeed: 'feedbackFeed',
@@ -46,6 +49,7 @@ const DEFAULT_COUNTS: NewCounts = {
   decisions: 0,
   jourFixe: 0,
   caseFiles: 0,
+  caseItems: 0,
   plannings: 0,
   team: 0,
   feedbackFeed: 0,
