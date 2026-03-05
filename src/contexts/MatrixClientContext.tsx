@@ -684,7 +684,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       // 3. Init Rust Crypto (BEFORE startClient)
       const coiStatus = getCoiCapabilityStatus();
       if (coiStatus.blocked) {
-        lastCryptoError = 'Cross-Origin-Isolation ist in dieser Session nicht erreichbar (iframe/Preview-Host). Bitte in einem neuen Tab öffnen.';
+        lastCryptoError = 'Cross-Origin-Isolation ist in dieser Session nicht erreichbar (iframe). Bitte in einem neuen Tab öffnen.';
         matrixLogger.warn('Skipping Matrix E2EE init due to hard COI capability block:', coiStatus);
         updateRuntimeDiagnostics(lastCryptoError);
         setCryptoEnabled(false);
