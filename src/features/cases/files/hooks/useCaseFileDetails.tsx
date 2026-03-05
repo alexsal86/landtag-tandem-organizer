@@ -173,7 +173,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         .single();
 
       if (error) throw error;
-      setCaseFile(data);
+      setCaseFile(data as unknown as CaseFile);
     } catch (error) {
       console.error('Error fetching case file:', error);
     }
