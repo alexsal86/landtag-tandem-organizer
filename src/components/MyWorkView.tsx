@@ -24,8 +24,7 @@ const MyWorkQuickCapture = lazyWithRetry(() => import("./my-work/MyWorkQuickCapt
 const MyWorkNotesList = lazyWithRetry(() => import("./my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
 const MyWorkTasksTab = lazyWithRetry(() => import("./my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
 const MyWorkDecisionsTab = lazyWithRetry(() => import("./my-work/MyWorkDecisionsTab").then(m => ({ default: m.MyWorkDecisionsTab })));
-const MyWorkCaseFilesTab = lazyWithRetry(() => import("@/features/cases/files/components").then(m => ({ default: m.MyWorkCaseFilesTab })));
-const MyWorkCaseItemsTab = lazyWithRetry(() => import("@/features/cases/items/components").then(m => ({ default: m.MyWorkCaseItemsTab })));
+const MyWorkCasesWorkspace = lazyWithRetry(() => import("./my-work/MyWorkCasesWorkspace").then(m => ({ default: m.MyWorkCasesWorkspace })));
 const MyWorkPlanningsTab = lazyWithRetry(() => import("./my-work/MyWorkPlanningsTab").then(m => ({ default: m.MyWorkPlanningsTab })));
 const MyWorkTeamTab = lazyWithRetry(() => import("./my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
 const MyWorkJourFixeTab = lazyWithRetry(() => import("./my-work/MyWorkJourFixeTab").then(m => ({ default: m.MyWorkJourFixeTab })));
@@ -41,15 +40,14 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 interface TabCounts {
   tasks: number;
   decisions: number;
-  caseFiles: number;
-  caseItems: number;
+  cases: number;
   plannings: number;
   team: number;
   jourFixe: number;
   feedbackFeed: number;
 }
 
-type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "caseitems" | "casefiles" | "plannings" | "team" | "time" | "feedbackfeed";
+type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "cases" | "plannings" | "team" | "time" | "feedbackfeed";
 
 interface TabConfig {
   value: TabValue;
@@ -71,8 +69,7 @@ const BASE_TABS: TabConfig[] = [
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
   { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },
   { value: "jourFixe", label: "Jour Fixe", icon: Calendar, countKey: "jourFixe" },
-  { value: "caseitems", label: "Anliegen", icon: Briefcase, countKey: "caseItems" },
-  { value: "casefiles", label: "Vorgänge & Akten", icon: Briefcase, countKey: "caseFiles" },
+  { value: "cases", label: "Vorgänge", icon: Briefcase, countKey: "cases" },
   { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
   { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare, countKey: "feedbackFeed" },
@@ -94,8 +91,7 @@ export function MyWorkView() {
   const [totalCounts, setTotalCounts] = useState<TabCounts>({
     tasks: 0,
     decisions: 0,
-    caseFiles: 0,
-    caseItems: 0,
+    cases: 0,
     plannings: 0,
     team: 0,
     jourFixe: 0,
@@ -113,30 +109,32 @@ export function MyWorkView() {
   const { newCounts, markTabAsVisited, refreshCounts } = useMyWorkNewCounts();
   
   // Get active tab from URL or default to "dashboard"
-  const activeTab = (searchParams.get("tab") as TabValue) || "dashboard";
+  const rawTab = searchParams.get("tab");
+  const activeTab = rawTab === "caseitems" || rawTab === "casefiles" ? "cases" : ((rawTab as TabValue) || "dashboard");
   
   const setActiveTab = (tab: TabValue) => {
     setSearchParams({ tab });
     
     // Mark tab as visited when switching
-    const tabToContext: Record<TabValue, string> = {
-      dashboard: '',
-      capture: '',
-      tasks: 'mywork_tasks',
-      decisions: 'mywork_decisions',
-      jourFixe: 'mywork_jourFixe',
-      caseitems: 'mywork_caseitems',
-      casefiles: 'mywork_casefiles',
-      plannings: 'mywork_plannings',
-      time: '',
-      team: 'mywork_team',
-      feedbackfeed: 'mywork_feedbackfeed',
+    const tabToContexts: Record<TabValue, string[]> = {
+      dashboard: [],
+      capture: [],
+      tasks: ['mywork_tasks'],
+      decisions: ['mywork_decisions'],
+      jourFixe: ['mywork_jourFixe'],
+      cases: ['mywork_caseitems', 'mywork_casefiles'],
+      plannings: ['mywork_plannings'],
+      time: [],
+      team: ['mywork_team'],
+      feedbackfeed: ['mywork_feedbackfeed'],
     };
-    
-    const context = tabToContext[tab];
-    if (context) {
-      markTabAsVisited(context as any);
-      refreshCounts([context as any]);
+
+    const contexts = tabToContexts[tab];
+    if (contexts.length > 0) {
+      contexts.forEach((context) => {
+        markTabAsVisited(context as any);
+      });
+      refreshCounts(contexts as any);
     }
   };
 
@@ -149,8 +147,8 @@ export function MyWorkView() {
         "create-task": "tasks",
         "create-decision": "decisions",
         "create-meeting": "jourFixe",
-        "create-caseitem": "caseitems",
-        "create-casefile": "casefiles",
+        "create-caseitem": "cases",
+        "create-casefile": "cases",
         "create-eventplanning": "plannings",
       };
       
@@ -190,8 +188,7 @@ export function MyWorkView() {
       setTotalCounts({
         tasks: Number(counts.tasks || 0),
         decisions: Number(counts.decisions || 0),
-        caseFiles: Number(counts.caseFiles || 0),
-        caseItems: Number((counts as any).caseItems || 0),
+        cases: Number((counts as any).caseItems || 0) + Number(counts.caseFiles || 0),
         plannings: Number(counts.plannings || 0),
         team: Number(counts.team || 0),
         jourFixe: Number(counts.jourFixe || 0),
@@ -390,11 +387,11 @@ export function MyWorkView() {
                 <Calendar className="h-4 w-4 mr-2" />
                 Jour Fixe
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSearchParams({ tab: "caseitems", action: "create-caseitem" })}>
+              <DropdownMenuItem onClick={() => setSearchParams({ tab: "cases", action: "create-caseitem" })}>
                 <Briefcase className="h-4 w-4 mr-2" />
                 Anliegen erstellen
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSearchParams({ tab: "casefiles", action: "create-casefile" })}>
+              <DropdownMenuItem onClick={() => setSearchParams({ tab: "cases", action: "create-casefile" })}>
                 <Briefcase className="h-4 w-4 mr-2" />
                 Akte erstellen
               </DropdownMenuItem>
@@ -462,8 +459,7 @@ export function MyWorkView() {
                   tasks: 'tasks',
                   decisions: 'decisions',
                   jourFixe: 'jourFixe',
-                  caseItems: 'caseItems',
-                  caseFiles: 'caseFiles',
+                  cases: 'cases',
                   plannings: 'plannings',
                 };
                 const key = newCountsMap[tab.countKey];
@@ -554,8 +550,7 @@ export function MyWorkView() {
       {activeTab === "tasks" && <ErrorBoundary fallback={tabError("Aufgaben")}><Suspense fallback={tabFallback}><MyWorkTasksTab /></Suspense></ErrorBoundary>}
       {activeTab === "decisions" && <ErrorBoundary fallback={tabError("Entscheidungen")}><Suspense fallback={tabFallback}><MyWorkDecisionsTab /></Suspense></ErrorBoundary>}
       {activeTab === "jourFixe" && <ErrorBoundary fallback={tabError("Jour Fixe")}><Suspense fallback={tabFallback}><MyWorkJourFixeTab /></Suspense></ErrorBoundary>}
-      {activeTab === "caseitems" && <ErrorBoundary fallback={tabError("Anliegen")}><Suspense fallback={tabFallback}><MyWorkCaseItemsTab /></Suspense></ErrorBoundary>}
-      {activeTab === "casefiles" && <ErrorBoundary fallback={tabError("Vorgänge & Akten")}><Suspense fallback={tabFallback}><MyWorkCaseFilesTab /></Suspense></ErrorBoundary>}
+      {activeTab === "cases" && <ErrorBoundary fallback={tabError("Vorgänge")}><Suspense fallback={tabFallback}><MyWorkCasesWorkspace /></Suspense></ErrorBoundary>}
       {activeTab === "plannings" && <ErrorBoundary fallback={tabError("Planungen")}><Suspense fallback={tabFallback}><MyWorkPlanningsTab /></Suspense></ErrorBoundary>}
       {activeTab === "time" && <ErrorBoundary fallback={tabError("Meine Zeit")}><Suspense fallback={tabFallback}><MyWorkTimeTrackingTab /></Suspense></ErrorBoundary>}
       {activeTab === "team" && <ErrorBoundary fallback={tabError("Team")}><Suspense fallback={tabFallback}><MyWorkTeamTab /></Suspense></ErrorBoundary>}
