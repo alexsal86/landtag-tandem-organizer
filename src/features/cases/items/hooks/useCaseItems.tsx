@@ -159,7 +159,8 @@ export const useCaseItems = () => {
 
   const updateCaseItem = async (id: string, data: Partial<CaseItemFormData>) => {
     try {
-      const { error } = await supabase.from("case_items").update(data).eq("id", id);
+      const updateData = { ...data, intake_payload: data.intake_payload as any };
+      const { error } = await supabase.from("case_items").update(updateData as any).eq("id", id);
 
       if (error) throw error;
 
