@@ -227,7 +227,7 @@ export const useCaseItems = () => {
         description: "Interaktion wurde hinzugefügt.",
       });
 
-      return interaction as CaseItemInteraction;
+      return interaction as unknown as CaseItemInteraction;
     } catch (error) {
       console.error("Error creating case item interaction:", error);
       toast({
