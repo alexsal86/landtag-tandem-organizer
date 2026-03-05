@@ -45,6 +45,8 @@ const ROLE_OPTIONS = [
 export function SuperadminTenantManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [roleCheckLoading, setRoleCheckLoading] = useState(true);
   
   // Tenant states
   const [tenants, setTenants] = useState<TenantWithStats[]>([]);
@@ -77,8 +79,27 @@ export function SuperadminTenantManagement() {
   const [assignTenantId, setAssignTenantId] = useState("");
   const [assignRole, setAssignRole] = useState("mitarbeiter");
 
-  // Superadmin-Check (hardcoded für mail@alexander-salomon.de)
-  const isSuperadmin = user?.email === "mail@alexander-salomon.de";
+  useEffect(() => {
+    const checkPlatformRole = async () => {
+      if (!user?.id) {
+        setIsPlatformAdmin(false);
+        setRoleCheckLoading(false);
+        return;
+      }
+
+      setRoleCheckLoading(true);
+      const { data, error } = await supabase.rpc('is_superadmin', { _user_id: user.id });
+      if (error) {
+        console.error('Error checking platform role:', error);
+        setIsPlatformAdmin(false);
+      } else {
+        setIsPlatformAdmin(Boolean(data));
+      }
+      setRoleCheckLoading(false);
+    };
+
+    checkPlatformRole();
+  }, [user?.id]);
 
   const loadTenants = async () => {
     try {
@@ -119,11 +140,11 @@ export function SuperadminTenantManagement() {
   };
 
   useEffect(() => {
-    if (isSuperadmin) {
+    if (isPlatformAdmin) {
       loadTenants();
       loadAllUsers();
     }
-  }, [isSuperadmin]);
+  }, [isPlatformAdmin]);
 
   const handleSaveTenant = async () => {
     if (!formName.trim()) {
@@ -358,7 +379,17 @@ export function SuperadminTenantManagement() {
     );
   }, [allUsers]);
 
-  if (!isSuperadmin) {
+  if (roleCheckLoading) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center text-muted-foreground">
+          Berechtigungen werden geladen...
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!isPlatformAdmin) {
     return (
       <Card>
         <CardContent className="p-8 text-center text-muted-foreground">
