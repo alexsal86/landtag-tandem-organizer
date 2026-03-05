@@ -19,6 +19,8 @@ export interface TeamFeedbackEntry {
   id: string;
   appointment_id: string | null;
   external_event_id: string | null;
+  target_type: 'appointment' | 'external_event' | 'feedback';
+  target_id: string;
   notes: string;
   completed_at: string | null;
   has_documents: boolean;
@@ -137,6 +139,8 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
           id: f.id,
           appointment_id: f.appointment_id,
           external_event_id: f.external_event_id,
+          target_type: f.appointment_id ? 'appointment' : f.external_event_id ? 'external_event' : 'feedback',
+          target_id: f.appointment_id || f.external_event_id || f.id,
           notes: f.notes || '',
           completed_at: f.completed_at,
           has_documents: f.has_documents || false,
