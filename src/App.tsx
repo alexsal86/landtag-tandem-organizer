@@ -75,11 +75,10 @@ const MatrixProviderBoundary = ({ children }: { children: ReactNode }) => {
 const AppContent = () => {
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
 
-  // Guard: COI Service Worker im Lovable-Iframe deaktivieren
+  // Guard: COI Service Worker nur in iframes deaktivieren
   useEffect(() => {
     const isInIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
-    const isLovable = window.location.hostname.includes('lovable');
-    if (isInIframe || isLovable) {
+    if (isInIframe) {
       sessionStorage.removeItem('coi-cleanup-state');
     }
   }, []);

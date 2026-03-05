@@ -13,15 +13,35 @@ async function unregisterAllServiceWorkers(): Promise<void> {
 async function setupCrossOriginIsolation(): Promise<void> {
   const coiStatus = evaluateCoiCapabilityStatus();
   setCoiCapabilityStatus(coiStatus);
+  const isTopLevel = window.self === window.top;
+  const debugLog = (...args: unknown[]) => {
+    if (import.meta.env.DEV) {
+      console.info('[COI]', ...args);
+    }
+  };
 
-  if (coiStatus.blocked) {
+  if (!isTopLevel) {
+    debugLog('Skipping service worker registration: running inside iframe.', {
+      reason: coiStatus.reason,
+      host: window.location.hostname,
+    });
     sessionStorage.removeItem('coi-cleanup-state');
     return;
   }
 
   if ('serviceWorker' in navigator && window.isSecureContext) {
+    debugLog('Registering COI service worker in top-level window.', {
+      host: window.location.hostname,
+      isPreviewHost: coiStatus.isPreviewHost,
+    });
     await navigator.serviceWorker.register('/coi-serviceworker.js?v=2026-03-04-v6');
+    return;
   }
+
+  debugLog('Skipping service worker registration: unsupported environment.', {
+    hasServiceWorker: 'serviceWorker' in navigator,
+    isSecureContext: window.isSecureContext,
+  });
 }
 
 function bootstrap() {

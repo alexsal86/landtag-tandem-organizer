@@ -36,7 +36,6 @@ export function evaluateCoiCapabilityStatus(): CoiCapabilityStatus {
   let reason: CoiBlockedReason = null;
   if (inIframe && isPreviewHost) reason = 'iframe-preview';
   else if (inIframe) reason = 'iframe';
-  else if (isPreviewHost) reason = 'preview-host';
 
   return {
     blocked: Boolean(reason),
@@ -53,4 +52,3 @@ export function setCoiCapabilityStatus(status: CoiCapabilityStatus): void {
 export function getCoiCapabilityStatus(): CoiCapabilityStatus {
   return window.__coiCapabilityStatus ?? evaluateCoiCapabilityStatus();
 }
-
