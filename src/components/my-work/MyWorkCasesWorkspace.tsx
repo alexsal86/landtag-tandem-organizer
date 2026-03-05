@@ -38,6 +38,7 @@ type CaseFile = {
   status: string;
   reference_number: string | null;
   current_status_note: string | null;
+  case_type: string | null;
 };
 
 export function MyWorkCasesWorkspace() {
@@ -49,18 +50,19 @@ export function MyWorkCasesWorkspace() {
   const { createCaseItem } = useCaseItems();
 
   const [caseItems, setCaseItems] = useState<CaseItem[]>([]);
+  const [allCaseFiles, setAllCaseFiles] = useState<CaseFile[]>([]);
+  const [caseFilesById, setCaseFilesById] = useState<Record<string, CaseFile>>({});
+  const [loading, setLoading] = useState(true);
+  const [itemFilterQuery, setItemFilterQuery] = useState("");
+  const [fileFilterQuery, setFileFilterQuery] = useState("");
+
   const [isCaseItemDialogOpen, setIsCaseItemDialogOpen] = useState(false);
   const [isCaseFileDialogOpen, setIsCaseFileDialogOpen] = useState(false);
   const [pendingCaseItemLinkId, setPendingCaseItemLinkId] = useState<string | null>(null);
-  const [caseFiles, setCaseFiles] = useState<CaseFile[]>([]);
-  const [caseFilesById, setCaseFilesById] = useState<Record<string, CaseFile>>({});
-  const [loading, setLoading] = useState(true);
-  const [filterQuery, setFilterQuery] = useState("");
-  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
 
-  const selectedCaseItemId = searchParams.get("caseItemId");
-  const selectedCaseFileId = searchParams.get("caseFileId");
+  // Sheet states for detail views
+  const [detailItemId, setDetailItemId] = useState<string | null>(null);
+  const [detailFileId, setDetailFileId] = useState<string | null>(null);
 
   const clearActionParam = useCallback(() => {
     setSearchParams((prev) => {
@@ -85,25 +87,10 @@ export function MyWorkCasesWorkspace() {
     }
   }, [clearActionParam, searchParams]);
 
-  const updateWorkspaceParams = useCallback((next: { caseItemId?: string | null; caseFileId?: string | null }) => {
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      params.set("tab", "cases");
-
-      if (next.caseItemId) params.set("caseItemId", next.caseItemId);
-      else params.delete("caseItemId");
-
-      if (next.caseFileId) params.set("caseFileId", next.caseFileId);
-      else params.delete("caseFileId");
-
-      params.delete("action");
-      return params;
-    });
-  }, [setSearchParams]);
-
   const loadWorkspaceData = useCallback(async () => {
     if (!user || !tenantId) {
       setCaseItems([]);
+      setAllCaseFiles([]);
       setCaseFilesById({});
       setLoading(false);
       return;
@@ -111,38 +98,35 @@ export function MyWorkCasesWorkspace() {
 
     setLoading(true);
     try {
-      const { data: caseItemsData, error: caseItemsError } = await supabase
-        .from("case_items" as any)
-        .select("id, subject, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
-        .eq("tenant_id", tenantId)
-        .order("updated_at", { ascending: false, nullsFirst: false })
-        .limit(120);
+      // Load case items and ALL case files in parallel
+      const [itemsRes, filesRes] = await Promise.all([
+        supabase
+          .from("case_items" as any)
+          .select("id, subject, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
+          .eq("tenant_id", tenantId)
+          .order("updated_at", { ascending: false, nullsFirst: false })
+          .limit(200),
+        supabase
+          .from("case_files")
+          .select("id, title, status, reference_number, current_status_note, case_type")
+          .eq("tenant_id", tenantId)
+          .order("updated_at", { ascending: false })
+          .limit(200),
+      ]);
 
-      if (caseItemsError) throw caseItemsError;
+      if (itemsRes.error) throw itemsRes.error;
+      if (filesRes.error) throw filesRes.error;
 
-      const items = (caseItemsData || []) as unknown as CaseItem[];
+      const items = (itemsRes.data || []) as unknown as CaseItem[];
+      const files = (filesRes.data || []) as unknown as CaseFile[];
+
       setCaseItems(items);
+      setAllCaseFiles(files);
 
-      const caseFileIds = [...new Set(items.map(i => i.case_file_id).filter((id): id is string => Boolean(id)))];
-
-      const { data: caseFilesData, error: caseFilesError } = caseFileIds.length > 0
-        ? await supabase
-            .from("case_files")
-            .select("id, title, status, reference_number, current_status_note")
-            .eq("tenant_id", tenantId)
-            .in("id", caseFileIds)
-        : { data: [] as CaseFile[], error: null };
-
-      if (caseFilesError) throw caseFilesError;
-
-      const caseFilesList = (caseFilesData || []) as CaseFile[];
-      setCaseFiles(caseFilesList);
-
-      const mapped = caseFilesList.reduce<Record<string, CaseFile>>((acc, row) => {
+      const mapped = files.reduce<Record<string, CaseFile>>((acc, row) => {
         acc[row.id] = row;
         return acc;
       }, {});
-
       setCaseFilesById(mapped);
     } catch (error) {
       console.error("Error loading cases workspace:", error);
@@ -156,154 +140,73 @@ export function MyWorkCasesWorkspace() {
       setLoading(false);
       return;
     }
-
     void loadWorkspaceData();
   }, [loadWorkspaceData, tenantId, user]);
 
-  const selectedCaseItem = useMemo(() => {
-    if (selectedCaseItemId) {
-      return caseItems.find((item) => item.id === selectedCaseItemId) || null;
-    }
-    return null;
-  }, [caseItems, selectedCaseItemId]);
-
-  const selectedCaseFile = useMemo(() => {
-    if (!selectedCaseFileId) return null;
-    return caseFilesById[selectedCaseFileId] || null;
-  }, [caseFilesById, selectedCaseFileId]);
-
-
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const mediaQuery = window.matchMedia("(max-width: 1023px)");
-    const updateViewport = () => {
-      setIsMobileViewport(mediaQuery.matches);
-      if (!mediaQuery.matches) {
-        setMobileDetailOpen(false);
-      }
-    };
-
-    updateViewport();
-    mediaQuery.addEventListener("change", updateViewport);
-    return () => mediaQuery.removeEventListener("change", updateViewport);
-  }, []);
-
+  // --- Filtered lists ---
 
   const filteredCaseItems = useMemo(() => {
-    const query = filterQuery.trim().toLowerCase();
+    const query = itemFilterQuery.trim().toLowerCase();
     if (!query) return caseItems;
-
     return caseItems.filter((item) => {
       const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
       return [item.subject, item.resolution_summary, item.source_channel, item.status, item.priority]
         .concat(linkedFile ? [linkedFile.title, linkedFile.reference_number] : [])
         .filter(Boolean)
-        .some((value) => value!.toLowerCase().includes(query));
+        .some((v) => v!.toLowerCase().includes(query));
     });
-  }, [caseFilesById, caseItems, filterQuery]);
+  }, [caseFilesById, caseItems, itemFilterQuery]);
 
-
-  const unlinkedCaseItems = useMemo(
-    () => filteredCaseItems.filter((item) => !item.case_file_id),
-    [filteredCaseItems],
-  );
-
-  const linkedCaseItems = useMemo(
-    () => filteredCaseItems.filter((item) => Boolean(item.case_file_id)),
-    [filteredCaseItems],
-  );
-
-  const filteredStandaloneCaseFiles = useMemo(() => {
-    const linkedCaseFileIds = new Set(
-      caseItems
-        .map((item) => item.case_file_id)
-        .filter((caseFileId): caseFileId is string => Boolean(caseFileId)),
-    );
-
-    const standalone = caseFiles.filter((caseFile) => !linkedCaseFileIds.has(caseFile.id));
-    const query = filterQuery.trim().toLowerCase();
-    if (!query) return standalone;
-
-    return standalone.filter((caseFile) =>
-      [caseFile.title, caseFile.reference_number, caseFile.status, caseFile.current_status_note]
+  const filteredCaseFiles = useMemo(() => {
+    const query = fileFilterQuery.trim().toLowerCase();
+    if (!query) return allCaseFiles;
+    return allCaseFiles.filter((cf) =>
+      [cf.title, cf.reference_number, cf.status, cf.current_status_note, cf.case_type]
         .filter(Boolean)
-        .some((value) => value!.toLowerCase().includes(query)),
+        .some((v) => v!.toLowerCase().includes(query)),
     );
-  }, [caseFiles, caseItems, filterQuery]);
+  }, [allCaseFiles, fileFilterQuery]);
 
-  const stats = useMemo(() => {
+  // Count linked items per case file
+  const linkedItemsCountByFile = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of caseItems) {
+      if (item.case_file_id) {
+        counts[item.case_file_id] = (counts[item.case_file_id] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [caseItems]);
+
+  const itemStats = useMemo(() => {
     const closedStatuses = new Set(["closed", "done", "abgeschlossen"]);
-
     const openItems = filteredCaseItems.filter((item) => {
-      const normalizedStatus = item.status?.trim().toLowerCase();
-      return !normalizedStatus || !closedStatuses.has(normalizedStatus);
+      const s = item.status?.trim().toLowerCase();
+      return !s || !closedStatuses.has(s);
     }).length;
+    const singleItems = filteredCaseItems.filter((i) => !i.case_file_id).length;
+    return { total: filteredCaseItems.length, open: openItems, single: singleItems };
+  }, [filteredCaseItems]);
 
-    const linkedCaseFileCount = new Set(
-      linkedCaseItems
-        .map((item) => item.case_file_id)
-        .filter((caseFileId): caseFileId is string => Boolean(caseFileId)),
-    ).size;
+  const fileStats = useMemo(() => {
+    const closedStatuses = new Set(["closed", "done", "abgeschlossen", "archived", "archiviert"]);
+    const active = filteredCaseFiles.filter((cf) => {
+      const s = cf.status?.trim().toLowerCase();
+      return !s || !closedStatuses.has(s);
+    }).length;
+    return { total: filteredCaseFiles.length, active };
+  }, [filteredCaseFiles]);
 
-    return {
-      totalItems: filteredCaseItems.length,
-      openItems,
-      singleItemsCount: unlinkedCaseItems.length,
-      uniqueCaseFiles: linkedCaseFileCount + filteredStandaloneCaseFiles.length,
-    };
-  }, [filteredCaseItems, filteredStandaloneCaseFiles.length, linkedCaseItems, unlinkedCaseItems]);
-
-  const renderCaseItemEntry = (item: CaseItem) => {
-    const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
-    const isActive = selectedCaseItem?.id === item.id;
-
-    return (
-      <button
-        key={item.id}
-        type="button"
-        className={cn(
-          "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
-          isActive && "border-primary bg-primary/5",
-        )}
-        onClick={() => handleSelectCaseItem(item)}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-sm font-medium">{item.subject || item.resolution_summary || "Ohne Titel"}</p>
-            {item.source_channel ? <p className="mt-1 text-xs text-muted-foreground">Kanal: {item.source_channel}</p> : null}
-          </div>
-          {item.priority && <Badge variant="outline">{item.priority}</Badge>}
-        </div>
-        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{item.status || "offen"}</span>
-          {item.due_at ? <span>Fällig: {format(new Date(item.due_at), "dd.MM.yyyy", { locale: de })}</span> : null}
-        </div>
-        {linkedFile ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Akte: <span className="font-medium text-foreground">{linkedFile.title}</span>
-            {linkedFile.reference_number ? <span className="ml-1">({linkedFile.reference_number})</span> : null}
-          </p>
-        ) : (
-          <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">Einzelvorgang ohne Akte</p>
-        )}
-      </button>
-    );
-  };
+  // --- Handlers ---
 
   const handleSelectCaseItem = (item: CaseItem) => {
-    updateWorkspaceParams({ caseItemId: item.id, caseFileId: item.case_file_id });
-    if (isMobileViewport) {
-      setMobileDetailOpen(true);
-    }
+    setDetailItemId(item.id);
+    setDetailFileId(null);
   };
 
-  const handleSelectCaseFile = (caseFile: CaseFile) => {
-    updateWorkspaceParams({ caseItemId: null, caseFileId: caseFile.id });
-    if (isMobileViewport) {
-      setMobileDetailOpen(true);
-    }
+  const handleSelectCaseFile = (cf: CaseFile) => {
+    setDetailFileId(cf.id);
+    setDetailItemId(null);
   };
 
   const handleCreateCaseItem = () => {
@@ -318,7 +221,7 @@ export function MyWorkCasesWorkspace() {
 
   const handleCaseItemCreated = async (newCaseItemId: string) => {
     await loadWorkspaceData();
-    updateWorkspaceParams({ caseItemId: newCaseItemId, caseFileId: null });
+    setDetailItemId(newCaseItemId);
   };
 
   const handleCaseFileCreated = async (newCaseFileId: string) => {
@@ -328,232 +231,273 @@ export function MyWorkCasesWorkspace() {
         .update({ case_file_id: newCaseFileId, case_scale: "large" })
         .eq("id", pendingCaseItemLinkId);
     }
-
     await loadWorkspaceData();
-
     if (pendingCaseItemLinkId) {
-      updateWorkspaceParams({ caseItemId: pendingCaseItemLinkId, caseFileId: newCaseFileId });
+      setDetailItemId(pendingCaseItemLinkId);
     } else {
-      navigate(`/casefiles?caseFileId=${newCaseFileId}`);
+      setDetailFileId(newCaseFileId);
     }
-
     setPendingCaseItemLinkId(null);
   };
 
-  const renderDetailPanel = () => {
-    if (selectedCaseItem?.case_file_id) {
-      return (
-        <div className="space-y-3">
-          <div className="rounded-md border bg-muted/30 p-3 text-sm">
-            <p className="font-medium">Vorgang</p>
-            <p>{selectedCaseItem.subject || selectedCaseItem.resolution_summary || "Ohne Titel"}</p>
-            {selectedCaseItem.source_channel ? <p className="mt-1 text-xs text-muted-foreground">Kanal: {selectedCaseItem.source_channel}</p> : null}
-          </div>
-          <CaseFileDetail caseFileId={selectedCaseItem.case_file_id} onBack={() => undefined} />
-          <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${selectedCaseItem.case_file_id}`)}>
-            <ExternalLink className="mr-1 h-3.5 w-3.5" />
-            Vollansicht öffnen
-          </Button>
-        </div>
-      );
-    }
+  // --- Detail item for Sheet ---
+  const detailItem = useMemo(() => {
+    if (!detailItemId) return null;
+    return caseItems.find((i) => i.id === detailItemId) || null;
+  }, [caseItems, detailItemId]);
 
-    if (selectedCaseItem && !selectedCaseItem.case_file_id) {
-      return (
-        <div className="space-y-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-          <Briefcase className="h-4 w-4" />
-          <p>Für dieses Anliegen ist noch keine Akte verknüpft.</p>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => handleCreateCaseFile(selectedCaseItem.id)}>
-              Neue Akte anlegen
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => navigate(`/?tab=cases&caseItemId=${selectedCaseItem.id}&focus=caseitem-linking`)}
-            >
-              Bestehender Akte zuordnen
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-    if (selectedCaseFile) {
-      return (
-        <div className="space-y-3">
-          <CaseFileDetail caseFileId={selectedCaseFile.id} onBack={() => undefined} />
-          <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${selectedCaseFile.id}`)}>
-            <ExternalLink className="mr-1 h-3.5 w-3.5" />
-            Vollansicht öffnen
-          </Button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-        <Briefcase className="mb-2 h-4 w-4" />
-        Wähle links einen Vorgang oder eine FallAkte aus, um Details anzuzeigen.
-      </div>
-    );
-  };
+  // --- Render ---
 
   if (loading) {
     return <div className="p-4 text-sm text-muted-foreground">Lade Fallbearbeitung…</div>;
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.9fr)]">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-4 w-4" />
-            Vorgänge in Meine Arbeit
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Alle Bürgeranfragen, Petitionen und ähnliche Sachverhalte als Vorgangs-Items – mit optionaler Zuordnung zu einer FallAkte.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button size="sm" onClick={handleCreateCaseItem}>
-              <Plus className="mr-1 h-4 w-4" />
-              Vorgang erstellen
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => handleCreateCaseFile()}>
-              <Plus className="mr-1 h-4 w-4" />
-              FallAkte erstellen
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-2 text-xs lg:grid-cols-4">
-            <div className="rounded-md border p-2">
-              <p className="text-muted-foreground">Alle Vorgänge</p>
-              <p className="text-sm font-semibold">{stats.totalItems}</p>
+    <>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* LEFT: Vorgänge */}
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileText className="h-4 w-4" />
+                Vorgänge
+              </CardTitle>
+              <Button size="sm" onClick={handleCreateCaseItem}>
+                <Plus className="mr-1 h-4 w-4" />
+                Neu
+              </Button>
             </div>
-            <div className="rounded-md border p-2">
-              <p className="text-muted-foreground">Offen</p>
-              <p className="text-sm font-semibold">{stats.openItems}</p>
+            <div className="mt-2 flex gap-3 text-xs">
+              <span className="rounded-md border px-2 py-1">
+                <span className="text-muted-foreground">Gesamt:</span>{" "}
+                <span className="font-semibold">{itemStats.total}</span>
+              </span>
+              <span className="rounded-md border px-2 py-1">
+                <span className="text-muted-foreground">Offen:</span>{" "}
+                <span className="font-semibold">{itemStats.open}</span>
+              </span>
+              <span className="rounded-md border px-2 py-1">
+                <span className="text-muted-foreground">Einzeln:</span>{" "}
+                <span className="font-semibold">{itemStats.single}</span>
+              </span>
             </div>
-            <div className="rounded-md border p-2">
-              <p className="text-muted-foreground">Einzelvorgänge</p>
-              <p className="text-sm font-semibold">{stats.singleItemsCount}</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={itemFilterQuery}
+                onChange={(e) => setItemFilterQuery(e.target.value)}
+                placeholder="Vorgänge filtern…"
+                className="pl-8"
+              />
             </div>
-            <div className="rounded-md border p-2">
-              <p className="text-muted-foreground">FallAkten</p>
-              <p className="text-sm font-semibold">{stats.uniqueCaseFiles}</p>
-            </div>
-          </div>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={filterQuery}
-              onChange={(event) => setFilterQuery(event.target.value)}
-              placeholder="Anliegen filtern…"
-              className="pl-8"
-            />
-          </div>
-          <ScrollArea className="h-[520px] pr-3">
-            <div className="space-y-4">
-              {filteredCaseItems.length === 0 ? (
-                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
-                  <p>Keine Anliegen passend zum Filter gefunden.</p>
-                  <div className="flex flex-wrap gap-2">
+            <ScrollArea className="h-[520px] pr-2">
+              <div className="space-y-1.5">
+                {filteredCaseItems.length === 0 ? (
+                  <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
+                    <p>Keine Vorgänge gefunden.</p>
                     <Button size="sm" onClick={handleCreateCaseItem}>Vorgang erstellen</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleCreateCaseFile()}>FallAkte erstellen</Button>
                   </div>
+                ) : (
+                  filteredCaseItems.map((item) => {
+                    const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
+                    const isActive = detailItemId === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={cn(
+                          "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
+                          isActive && "border-primary bg-primary/5",
+                        )}
+                        onClick={() => handleSelectCaseItem(item)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium line-clamp-1">
+                            {item.subject || item.resolution_summary || "Ohne Titel"}
+                          </p>
+                          {item.priority && <Badge variant="outline" className="shrink-0 text-[10px]">{item.priority}</Badge>}
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{item.status || "offen"}</span>
+                          {item.due_at && <span>Fällig: {format(new Date(item.due_at), "dd.MM.yy", { locale: de })}</span>}
+                        </div>
+                        {linkedFile ? (
+                          <p className="mt-1 text-xs text-muted-foreground truncate">
+                            <FolderOpen className="inline h-3 w-3 mr-0.5" />
+                            {linkedFile.title}
+                            {linkedFile.reference_number && <span className="ml-1 opacity-70">({linkedFile.reference_number})</span>}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Einzelvorgang</p>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* RIGHT: FallAkten */}
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FolderOpen className="h-4 w-4" />
+                FallAkten
+              </CardTitle>
+              <Button size="sm" onClick={() => handleCreateCaseFile()}>
+                <Plus className="mr-1 h-4 w-4" />
+                Neu
+              </Button>
+            </div>
+            <div className="mt-2 flex gap-3 text-xs">
+              <span className="rounded-md border px-2 py-1">
+                <span className="text-muted-foreground">Gesamt:</span>{" "}
+                <span className="font-semibold">{fileStats.total}</span>
+              </span>
+              <span className="rounded-md border px-2 py-1">
+                <span className="text-muted-foreground">Aktiv:</span>{" "}
+                <span className="font-semibold">{fileStats.active}</span>
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={fileFilterQuery}
+                onChange={(e) => setFileFilterQuery(e.target.value)}
+                placeholder="FallAkten filtern…"
+                className="pl-8"
+              />
+            </div>
+            <ScrollArea className="h-[520px] pr-2">
+              <div className="space-y-1.5">
+                {filteredCaseFiles.length === 0 ? (
+                  <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
+                    <p>Keine FallAkten gefunden.</p>
+                    <Button size="sm" onClick={() => handleCreateCaseFile()}>FallAkte erstellen</Button>
+                  </div>
+                ) : (
+                  filteredCaseFiles.map((cf) => {
+                    const isActive = detailFileId === cf.id;
+                    const linkedCount = linkedItemsCountByFile[cf.id] || 0;
+                    return (
+                      <button
+                        key={cf.id}
+                        type="button"
+                        className={cn(
+                          "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
+                          isActive && "border-primary bg-primary/5",
+                        )}
+                        onClick={() => handleSelectCaseFile(cf)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium line-clamp-1">{cf.title}</p>
+                          <Badge variant="outline" className="shrink-0 text-[10px]">{cf.status || "offen"}</Badge>
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                          {cf.reference_number && <span>{cf.reference_number}</span>}
+                          {linkedCount > 0 && (
+                            <span>
+                              <FileText className="inline h-3 w-3 mr-0.5" />
+                              {linkedCount} {linkedCount === 1 ? "Vorgang" : "Vorgänge"}
+                            </span>
+                          )}
+                        </div>
+                        {cf.current_status_note && (
+                          <p className="mt-1 text-xs text-muted-foreground truncate">{cf.current_status_note}</p>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Sheet: Vorgang Detail (from left) */}
+      <Sheet open={!!detailItemId} onOpenChange={(open) => { if (!open) setDetailItemId(null); }}>
+        <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Vorgang
+            </SheetTitle>
+          </SheetHeader>
+          {detailItem && (
+            <div className="mt-4 space-y-4">
+              <div className="space-y-2">
+                <h3 className="font-semibold">{detailItem.subject || detailItem.resolution_summary || "Ohne Titel"}</h3>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {detailItem.status && <Badge variant="outline">{detailItem.status}</Badge>}
+                  {detailItem.priority && <Badge variant="secondary">{detailItem.priority}</Badge>}
+                  {detailItem.source_channel && <Badge variant="secondary">Kanal: {detailItem.source_channel}</Badge>}
+                </div>
+                {detailItem.due_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Fällig: {format(new Date(detailItem.due_at), "dd.MM.yyyy", { locale: de })}
+                  </p>
+                )}
+              </div>
+
+              {detailItem.case_file_id && caseFilesById[detailItem.case_file_id] ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte FallAkte</p>
+                  <CaseFileDetail caseFileId={detailItem.case_file_id} onBack={() => undefined} />
+                  <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${detailItem.case_file_id}`)}>
+                    <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                    Vollansicht
+                  </Button>
                 </div>
               ) : (
-                <>
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Einzelvorgänge (ohne FallAkte)
-                    </p>
-                    {unlinkedCaseItems.length > 0 ? (
-                      unlinkedCaseItems.map(renderCaseItemEntry)
-                    ) : (
-                      <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                        Keine Einzelvorgänge im aktuellen Filter.
-                      </div>
-                    )}
+                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
+                  <Briefcase className="h-4 w-4" />
+                  <p>Keine Akte verknüpft.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => handleCreateCaseFile(detailItem.id)}>
+                      Neue Akte anlegen
+                    </Button>
                   </div>
-
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Vorgänge in FallAkten
-                    </p>
-                    {linkedCaseItems.length > 0 ? (
-                      linkedCaseItems.map(renderCaseItemEntry)
-                    ) : (
-                      <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                        Keine zugeordneten Vorgänge im aktuellen Filter.
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      FallAkten ohne verknüpfte Vorgänge
-                    </p>
-                    {filteredStandaloneCaseFiles.length > 0 ? (
-                      filteredStandaloneCaseFiles.map((caseFile) => (
-                        <button
-                          key={caseFile.id}
-                          type="button"
-                          className={cn(
-                            "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
-                            selectedCaseFile?.id === caseFile.id && "border-primary bg-primary/5",
-                          )}
-                          onClick={() => handleSelectCaseFile(caseFile)}
-                        >
-                          <p className="text-sm font-medium">{caseFile.title}</p>
-                          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                            <span>{caseFile.status || "offen"}</span>
-                            {caseFile.reference_number ? <span>{caseFile.reference_number}</span> : null}
-                          </div>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                        Keine zusätzlichen FallAkten im aktuellen Filter.
-                      </div>
-                    )}
-                  </div>
-                </>
+                </div>
               )}
             </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+          )}
+        </SheetContent>
+      </Sheet>
 
-      <Card className="hidden lg:block">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FolderOpen className="h-4 w-4" />
-            Detailpanel
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">{renderDetailPanel()}</CardContent>
-      </Card>
-
-      <Sheet open={mobileDetailOpen} onOpenChange={setMobileDetailOpen}>
+      {/* Sheet: FallAkte Detail (from right) */}
+      <Sheet open={!!detailFileId} onOpenChange={(open) => { if (!open) setDetailFileId(null); }}>
         <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <FolderOpen className="h-4 w-4" />
-              Detailpanel
+              FallAkte
             </SheetTitle>
           </SheetHeader>
-          <div className="mt-4">{renderDetailPanel()}</div>
+          {detailFileId && (
+            <div className="mt-4 space-y-3">
+              <CaseFileDetail caseFileId={detailFileId} onBack={() => undefined} />
+              <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${detailFileId}`)}>
+                <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                Vollansicht öffnen
+              </Button>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
 
       <CaseItemCreateDialog
         open={isCaseItemDialogOpen}
         onOpenChange={setIsCaseItemDialogOpen}
-        onCreated={(id) => {
-          void handleCaseItemCreated(id);
-        }}
+        onCreated={(id) => { void handleCaseItemCreated(id); }}
         createCaseItem={createCaseItem}
       />
 
@@ -561,15 +505,13 @@ export function MyWorkCasesWorkspace() {
         open={isCaseFileDialogOpen}
         onOpenChange={(open) => {
           setIsCaseFileDialogOpen(open);
-          if (!open) {
-            setPendingCaseItemLinkId(null);
-          }
+          if (!open) setPendingCaseItemLinkId(null);
         }}
         onSuccess={(caseFile) => {
           void handleCaseFileCreated(caseFile.id);
           setIsCaseFileDialogOpen(false);
         }}
       />
-    </div>
+    </>
   );
 }
