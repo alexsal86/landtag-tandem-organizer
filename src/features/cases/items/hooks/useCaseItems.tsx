@@ -145,7 +145,7 @@ export const useCaseItems = () => {
       });
 
       await fetchCaseItems();
-      return newCaseItem as CaseItem;
+      return newCaseItem as unknown as CaseItem;
     } catch (error) {
       console.error("Error creating case item:", error);
       toast({
