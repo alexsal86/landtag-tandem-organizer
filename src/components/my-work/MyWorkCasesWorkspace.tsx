@@ -50,6 +50,7 @@ export function MyWorkCasesWorkspace() {
   const [isCaseItemDialogOpen, setIsCaseItemDialogOpen] = useState(false);
   const [isCaseFileDialogOpen, setIsCaseFileDialogOpen] = useState(false);
   const [pendingCaseItemLinkId, setPendingCaseItemLinkId] = useState<string | null>(null);
+  const [caseFiles, setCaseFiles] = useState<CaseFile[]>([]);
   const [caseFilesById, setCaseFilesById] = useState<Record<string, CaseFile>>({});
   const [loading, setLoading] = useState(true);
   const [filterQuery, setFilterQuery] = useState("");
@@ -57,6 +58,7 @@ export function MyWorkCasesWorkspace() {
   const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   const selectedCaseItemId = searchParams.get("caseItemId");
+  const selectedCaseFileId = searchParams.get("caseFileId");
 
   const clearActionParam = useCallback(() => {
     setSearchParams((prev) => {
@@ -114,22 +116,18 @@ export function MyWorkCasesWorkspace() {
       const items = (caseItemsData || []) as CaseItem[];
       setCaseItems(items);
 
-      const linkedCaseFileIds = Array.from(new Set(items.map((item) => item.case_file_id).filter(Boolean) as string[]));
-
-      if (linkedCaseFileIds.length === 0) {
-        setCaseFilesById({});
-        return;
-      }
-
       const { data: caseFilesData, error: caseFilesError } = await supabase
         .from("case_files")
         .select("id, title, status, reference_number, current_status_note")
         .eq("tenant_id", currentTenant.id)
-        .in("id", linkedCaseFileIds);
+        .order("updated_at", { ascending: false });
 
       if (caseFilesError) throw caseFilesError;
 
-      const mapped = ((caseFilesData || []) as CaseFile[]).reduce<Record<string, CaseFile>>((acc, row) => {
+      const caseFilesList = (caseFilesData || []) as CaseFile[];
+      setCaseFiles(caseFilesList);
+
+      const mapped = caseFilesList.reduce<Record<string, CaseFile>>((acc, row) => {
         acc[row.id] = row;
         return acc;
       }, {});
@@ -150,8 +148,13 @@ export function MyWorkCasesWorkspace() {
     if (selectedCaseItemId) {
       return caseItems.find((item) => item.id === selectedCaseItemId) || null;
     }
-    return caseItems[0] || null;
+    return null;
   }, [caseItems, selectedCaseItemId]);
+
+  const selectedCaseFile = useMemo(() => {
+    if (!selectedCaseFileId) return null;
+    return caseFilesById[selectedCaseFileId] || null;
+  }, [caseFilesById, selectedCaseFileId]);
 
 
 
@@ -196,6 +199,24 @@ export function MyWorkCasesWorkspace() {
     [filteredCaseItems],
   );
 
+  const filteredStandaloneCaseFiles = useMemo(() => {
+    const linkedCaseFileIds = new Set(
+      caseItems
+        .map((item) => item.case_file_id)
+        .filter((caseFileId): caseFileId is string => Boolean(caseFileId)),
+    );
+
+    const standalone = caseFiles.filter((caseFile) => !linkedCaseFileIds.has(caseFile.id));
+    const query = filterQuery.trim().toLowerCase();
+    if (!query) return standalone;
+
+    return standalone.filter((caseFile) =>
+      [caseFile.title, caseFile.reference_number, caseFile.status, caseFile.current_status_note]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(query)),
+    );
+  }, [caseFiles, caseItems, filterQuery]);
+
   const stats = useMemo(() => {
     const closedStatuses = new Set(["closed", "done", "abgeschlossen"]);
 
@@ -204,7 +225,7 @@ export function MyWorkCasesWorkspace() {
       return !normalizedStatus || !closedStatuses.has(normalizedStatus);
     }).length;
 
-    const uniqueCaseFiles = new Set(
+    const linkedCaseFileCount = new Set(
       linkedCaseItems
         .map((item) => item.case_file_id)
         .filter((caseFileId): caseFileId is string => Boolean(caseFileId)),
@@ -214,9 +235,9 @@ export function MyWorkCasesWorkspace() {
       totalItems: filteredCaseItems.length,
       openItems,
       singleItemsCount: unlinkedCaseItems.length,
-      uniqueCaseFiles,
+      uniqueCaseFiles: linkedCaseFileCount + filteredStandaloneCaseFiles.length,
     };
-  }, [filteredCaseItems, linkedCaseItems, unlinkedCaseItems]);
+  }, [filteredCaseItems, filteredStandaloneCaseFiles.length, linkedCaseItems, unlinkedCaseItems]);
 
   const renderCaseItemEntry = (item: CaseItem) => {
     const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
@@ -262,6 +283,13 @@ export function MyWorkCasesWorkspace() {
     }
   };
 
+  const handleSelectCaseFile = (caseFile: CaseFile) => {
+    updateWorkspaceParams({ caseItemId: null, caseFileId: caseFile.id });
+    if (isMobileViewport) {
+      setMobileDetailOpen(true);
+    }
+  };
+
   const handleCreateCaseItem = () => {
     setPendingCaseItemLinkId(null);
     setIsCaseItemDialogOpen(true);
@@ -297,16 +325,7 @@ export function MyWorkCasesWorkspace() {
   };
 
   const renderDetailPanel = () => {
-    if (!selectedCaseItem) {
-      return (
-        <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-          <Briefcase className="mb-2 h-4 w-4" />
-          Wähle links ein Anliegen aus, um Details und Aktenkontext anzuzeigen.
-        </div>
-      );
-    }
-
-    if (selectedCaseItem.case_file_id) {
+    if (selectedCaseItem?.case_file_id) {
       return (
         <div className="space-y-3">
           <div className="rounded-md border bg-muted/30 p-3 text-sm">
@@ -323,22 +342,43 @@ export function MyWorkCasesWorkspace() {
       );
     }
 
-    return (
-      <div className="space-y-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-        <Briefcase className="h-4 w-4" />
-        <p>Für dieses Anliegen ist noch keine Akte verknüpft.</p>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => handleCreateCaseFile(selectedCaseItem.id)}>
-            Neue Akte anlegen
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => navigate(`/?tab=cases&caseItemId=${selectedCaseItem.id}&focus=caseitem-linking`)}
-          >
-            Bestehender Akte zuordnen
+    if (selectedCaseItem && !selectedCaseItem.case_file_id) {
+      return (
+        <div className="space-y-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+          <Briefcase className="h-4 w-4" />
+          <p>Für dieses Anliegen ist noch keine Akte verknüpft.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => handleCreateCaseFile(selectedCaseItem.id)}>
+              Neue Akte anlegen
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(`/?tab=cases&caseItemId=${selectedCaseItem.id}&focus=caseitem-linking`)}
+            >
+              Bestehender Akte zuordnen
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedCaseFile) {
+      return (
+        <div className="space-y-3">
+          <CaseFileDetail caseFileId={selectedCaseFile.id} onBack={() => undefined} />
+          <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${selectedCaseFile.id}`)}>
+            <ExternalLink className="mr-1 h-3.5 w-3.5" />
+            Vollansicht öffnen
           </Button>
         </div>
+      );
+    }
+
+    return (
+      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+        <Briefcase className="mb-2 h-4 w-4" />
+        Wähle links einen Vorgang oder eine FallAkte aus, um Details anzuzeigen.
       </div>
     );
   };
@@ -431,6 +471,35 @@ export function MyWorkCasesWorkspace() {
                     ) : (
                       <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
                         Keine zugeordneten Vorgänge im aktuellen Filter.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      FallAkten ohne verknüpfte Vorgänge
+                    </p>
+                    {filteredStandaloneCaseFiles.length > 0 ? (
+                      filteredStandaloneCaseFiles.map((caseFile) => (
+                        <button
+                          key={caseFile.id}
+                          type="button"
+                          className={cn(
+                            "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
+                            selectedCaseFile?.id === caseFile.id && "border-primary bg-primary/5",
+                          )}
+                          onClick={() => handleSelectCaseFile(caseFile)}
+                        >
+                          <p className="text-sm font-medium">{caseFile.title}</p>
+                          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{caseFile.status || "offen"}</span>
+                            {caseFile.reference_number ? <span>{caseFile.reference_number}</span> : null}
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                        Keine zusätzlichen FallAkten im aktuellen Filter.
                       </div>
                     )}
                   </div>
