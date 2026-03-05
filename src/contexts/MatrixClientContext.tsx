@@ -308,8 +308,10 @@ interface MatrixClientContextType {
   disconnect: () => void;
   sendMessage: (roomId: string, message: string, replyToEventId?: string) => Promise<void>;
   refreshMessages: (roomId: string, limit?: number) => void;
+  loadOlderMessages: (roomId: string, pages?: number) => Promise<void>;
   totalUnreadCount: number;
   roomMessages: Map<string, MatrixMessage[]>;
+  roomHistoryState: Map<string, { isLoadingMore: boolean; hasMoreHistory: boolean }>;
   typingUsers: Map<string, string[]>;
   sendTypingNotification: (roomId: string, isTyping: boolean) => void;
   sendReadReceiptForLatestVisibleEvent: (roomId: string) => Promise<void>;
@@ -370,8 +372,10 @@ const defaultMatrixClientContext: MatrixClientContextType = {
   disconnect: noopRejectSas,
   sendMessage: noopAsync,
   refreshMessages: noopRefreshMessages,
+  loadOlderMessages: noopAsync,
   totalUnreadCount: 0,
   roomMessages: new Map(),
+  roomHistoryState: new Map(),
   typingUsers: new Map(),
   sendTypingNotification: noopTyping,
   sendReadReceiptForLatestVisibleEvent: noopAsync,
@@ -406,6 +410,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const [typingUsers, setTypingUsers] = useState<Map<string, string[]>>(new Map());
+  const [roomHistoryState, setRoomHistoryState] = useState<Map<string, { isLoadingMore: boolean; hasMoreHistory: boolean }>>(new Map());
   const [activeSasVerification, setActiveSasVerification] = useState<MatrixSasVerificationState | null>(null);
   const [lastVerificationError, setLastVerificationError] = useState<string | null>(null);
   const [e2eeDiagnostics, setE2eeDiagnostics] = useState<MatrixE2EEDiagnostics>({
@@ -428,6 +433,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const clientRef = useRef<sdk.MatrixClient | null>(null);
   const listenersRef = useRef<Array<{ event: string; handler: (...args: any[]) => void }>>([]);
   const refreshInFlightRef = useRef<Set<string>>(new Set());
+  const historyLoadInFlightRef = useRef<Set<string>>(new Set());
   const messagesRoomLruRef = useRef<string[]>([]);
 
   const touchRoomInLru = useCallback((roomId: string) => {
@@ -1129,6 +1135,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     });
     setRooms([]);
     setMessages(new Map());
+    setRoomHistoryState(new Map());
     setTypingUsers(new Map());
     setActiveSasVerification(null);
     setLastVerificationError(null);
@@ -1239,6 +1246,52 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       cacheRooms: messagesRef.current.size,
     });
   }, [touchRoomInLru, upsertRoomMessages]);
+
+
+  const loadOlderMessages = useCallback(async (roomId: string, pages: number = 1) => {
+    const mc = clientRef.current;
+    if (!mc || historyLoadInFlightRef.current.has(roomId)) return;
+
+    const room = mc.getRoom(roomId);
+    if (!room) return;
+
+    historyLoadInFlightRef.current.add(roomId);
+    setRoomHistoryState(prev => {
+      const next = new Map(prev);
+      const existing = next.get(roomId);
+      next.set(roomId, {
+        isLoadingMore: true,
+        hasMoreHistory: existing?.hasMoreHistory ?? true,
+      });
+      return next;
+    });
+
+    const safePages = Math.max(1, pages);
+    let hasMoreHistory = true;
+
+    try {
+      for (let i = 0; i < safePages; i += 1) {
+        hasMoreHistory = (await mc.scrollback(room, SCROLLBACK_BATCH_LIMIT)) as unknown as boolean;
+        if (!hasMoreHistory) break;
+      }
+
+      const currentLength = messagesRef.current.get(roomId)?.length || 0;
+      const nextLimit = Math.min(MAX_CACHED_MESSAGES, Math.max(100, currentLength + (safePages * SCROLLBACK_BATCH_LIMIT)));
+      refreshMessages(roomId, nextLimit);
+    } catch (error) {
+      matrixLogger.warn('Matrix loadOlderMessages failed:', error);
+    } finally {
+      historyLoadInFlightRef.current.delete(roomId);
+      setRoomHistoryState(prev => {
+        const next = new Map(prev);
+        next.set(roomId, {
+          isLoadingMore: false,
+          hasMoreHistory,
+        });
+        return next;
+      });
+    }
+  }, [refreshMessages]);
 
   // ─── sendMessage ─────────────────────────────────────────────────────────
 
@@ -1588,8 +1641,10 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     disconnect,
     sendMessage,
     refreshMessages,
+    loadOlderMessages,
     totalUnreadCount,
     roomMessages: messages,
+    roomHistoryState,
     typingUsers,
     sendTypingNotification,
     sendReadReceiptForLatestVisibleEvent,

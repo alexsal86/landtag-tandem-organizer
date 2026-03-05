@@ -27,8 +27,10 @@ export function MatrixChatView() {
     credentials,
     sendMessage,
     refreshMessages,
+    loadOlderMessages,
     totalUnreadCount,
     roomMessages,
+    roomHistoryState,
     typingUsers,
     sendTypingNotification,
     sendReadReceiptForLatestVisibleEvent,
@@ -50,6 +52,9 @@ export function MatrixChatView() {
   // Get messages from context
   const messages = selectedRoomId ? (roomMessages.get(selectedRoomId) || []) : [];
   const currentTypingUsers = selectedRoomId ? (typingUsers.get(selectedRoomId) || []) : [];
+  const currentRoomHistoryState = selectedRoomId
+    ? (roomHistoryState.get(selectedRoomId) || { isLoadingMore: false, hasMoreHistory: true })
+    : { isLoadingMore: false, hasMoreHistory: true };
 
   // Filter rooms
   const filteredRooms = useMemo(() => {
@@ -153,39 +158,10 @@ export function MatrixChatView() {
     }
   }, [selectedRoomId, removeReaction]);
 
-  useEffect(() => {
-    if (!selectedRoomId || !isConnected || messages.length === 0) return;
-
-    const latestMessage = messages[messages.length - 1];
-    if (!latestMessage?.eventId) return;
-
-    const now = Date.now();
-    const sameEvent = lastReadReceiptEventIdRef.current === latestMessage.eventId;
-    const throttleActive = now - lastReadReceiptAtRef.current < 1500;
-    if (sameEvent || throttleActive) return;
-
-    lastReadReceiptEventIdRef.current = latestMessage.eventId;
-    lastReadReceiptAtRef.current = now;
-
-    void sendReadReceiptForLatestVisibleEvent(selectedRoomId);
-  }, [selectedRoomId, isConnected, messages, sendReadReceiptForLatestVisibleEvent]);
-
-
-  useEffect(() => {
-    setHighlightedEventId(null);
-    setScrollToEventId(null);
-  }, [selectedRoomId]);
-
-  const handleSelectMessage = useCallback((eventId: string) => {
-    setHighlightedEventId(eventId);
-    setShowSearch(false);
-
-    setScrollToEventId(null);
-    window.requestAnimationFrame(() => {
-      setScrollToEventId(eventId);
-    });
-  }, []);
-
+  const handleLoadOlderMessages = useCallback(() => {
+    if (!selectedRoomId) return;
+    void loadOlderMessages(selectedRoomId, 1);
+  }, [loadOlderMessages, selectedRoomId]);
 
   // Show settings/login form
   if (showSettings || (!credentials && !isConnecting)) {
@@ -434,8 +410,9 @@ export function MatrixChatView() {
                 onReply={handleReply}
                 onAddReaction={handleAddReaction}
                 onRemoveReaction={handleRemoveReaction}
-                highlightedEventId={highlightedEventId}
-                scrollToEventId={scrollToEventId}
+                onLoadOlderMessages={handleLoadOlderMessages}
+                isLoadingOlderMessages={currentRoomHistoryState.isLoadingMore}
+                hasMoreHistory={currentRoomHistoryState.hasMoreHistory}
               />
 
               {/* Typing Indicator */}
