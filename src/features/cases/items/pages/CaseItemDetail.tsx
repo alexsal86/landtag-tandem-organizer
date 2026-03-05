@@ -139,7 +139,7 @@ const CaseItemDetail = () => {
 
     const { data: caseItemData } = await supabase
       .from("case_items")
-      .select("id, source_channel, status, owner_user_id, due_at, follow_up_at, case_file_id, case_scale, updated_at")
+      .select("id, source_channel, status, owner_user_id, due_at, follow_up_at, case_file_id, case_scale, updated_at") as any
       .eq("tenant_id", currentTenant.id)
       .eq("id", caseItemId)
       .maybeSingle();
