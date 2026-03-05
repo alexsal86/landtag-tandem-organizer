@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
 import { AlertCircle, ArrowUpDown, Briefcase, CalendarClock, ExternalLink, Search } from "lucide-react";
@@ -82,6 +82,7 @@ export function MyWorkCaseItemsTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [items, setItems] = useState<CaseItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +95,15 @@ export function MyWorkCaseItemsTab() {
   const [dueFilter, setDueFilter] = useState("all");
   const [assignedToMeOnly, setAssignedToMeOnly] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>("updated_desc");
+
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action === "create-caseitem") {
+      searchParams.delete("action");
+      setSearchParams(searchParams, { replace: true });
+      navigate("/casefiles?action=create-case-item");
+    }
+  }, [searchParams, setSearchParams, navigate]);
 
   useEffect(() => {
     const loadCaseItems = async () => {
