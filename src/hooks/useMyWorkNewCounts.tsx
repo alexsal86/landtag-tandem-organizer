@@ -53,6 +53,16 @@ const DEFAULT_COUNTS: NewCounts = {
 
 const REFRESH_THROTTLE_MS = 1200;
 
+const isMissingRpcError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
+
+  const maybeError = error as { code?: string; message?: string };
+  return (
+    maybeError.code === 'PGRST202'
+    || maybeError.message?.includes('get_my_work_new_counts')
+  );
+};
+
 export function useMyWorkNewCounts(): MyWorkNewCountsResult {
   const { user } = useAuth();
   const [newCounts, setNewCounts] = useState<NewCounts>(DEFAULT_COUNTS);
@@ -91,7 +101,31 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
         p_contexts: contexts && contexts.length > 0 ? contexts : null,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (isMissingRpcError(error)) {
+          const { data: fallbackData, error: fallbackError } = await supabase.rpc('get_my_work_counts' as any, {
+            p_user_id: user.id,
+            p_include_team: true,
+          });
+
+          if (fallbackError) throw fallbackError;
+
+          const fallbackCounts = (fallbackData || {}) as Partial<NewCounts>;
+          setNewCounts((prev) => ({
+            ...prev,
+            tasks: Number(fallbackCounts.tasks || 0),
+            decisions: Number(fallbackCounts.decisions || 0),
+            jourFixe: Number(fallbackCounts.jourFixe || 0),
+            caseFiles: Number(fallbackCounts.caseFiles || 0),
+            plannings: Number(fallbackCounts.plannings || 0),
+            team: Number(fallbackCounts.team || 0),
+            feedbackFeed: Number(fallbackCounts.feedbackFeed || 0),
+          }));
+          return;
+        }
+
+        throw error;
+      }
 
       const incoming = (data || {}) as Partial<NewCounts>;
       setNewCounts((prev) => ({
