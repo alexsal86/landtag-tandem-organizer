@@ -88,25 +88,7 @@ export function MyWorkCaseItemsTab() {
   const [createOpen, setCreateOpen] = useState(false);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
 
-  const items = useMemo(() => (
-    caseItems
-      .filter((row) => row.user_id === user?.id || row.owner_user_id === user?.id)
-      .map((row) => ({
-        id: row.id,
-        title: row.resolution_summary || "Ohne Titel",
-        description: null,
-        status: row.status || null,
-        priority: row.priority || null,
-        channel: row.source_channel || null,
-        follow_up_at: row.follow_up_at || null,
-        due_date: row.due_at || null,
-        assigned_to: row.owner_user_id,
-        user_id: row.user_id || null,
-        case_file_id: row.case_file_id || null,
-        created_at: row.created_at,
-        updated_at: row.updated_at || null,
-      }))
-  ), [caseItems, user?.id]);
+  const { createCaseItem } = useCaseItems();
 
   const loadCaseItems = useCallback(async () => {
     if (!user || !currentTenant?.id) return;
