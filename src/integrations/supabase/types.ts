@@ -1023,7 +1023,6 @@ export type Database = {
           step_order: number
           step_type: string
           tenant_id: string
-          visibility: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Insert: {
           created_at?: string
@@ -1036,7 +1035,6 @@ export type Database = {
           step_order: number
           step_type: string
           tenant_id: string
-          visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Update: {
           created_at?: string
@@ -1049,7 +1047,6 @@ export type Database = {
           step_order?: number
           step_type?: string
           tenant_id?: string
-          visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Relationships: [
           {
@@ -1470,59 +1467,6 @@ export type Database = {
           },
         ]
       }
-      case_item_interactions: {
-        Row: {
-          case_file_id: string
-          created_at: string
-          created_by: string
-          details: string | null
-          direction: string
-          id: string
-          interaction_type: string
-          is_resolution: boolean
-          source_id: string | null
-          source_type: string | null
-          subject: string
-          updated_at: string
-        }
-        Insert: {
-          case_file_id: string
-          created_at?: string
-          created_by: string
-          details?: string | null
-          direction: string
-          id?: string
-          interaction_type: string
-          is_resolution?: boolean
-          source_id?: string | null
-          source_type?: string | null
-          subject: string
-          updated_at?: string
-        }
-        Update: {
-          case_file_id?: string
-          created_at?: string
-          created_by?: string
-          details?: string | null
-          direction?: string
-          id?: string
-          interaction_type?: string
-          is_resolution?: boolean
-          source_id?: string | null
-          source_type?: string | null
-          subject?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "case_item_interactions_case_file_id_fkey"
-            columns: ["case_file_id"]
-            isOneToOne: false
-            referencedRelation: "case_files"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       case_file_letters: {
         Row: {
           case_file_id: string
@@ -1864,7 +1808,6 @@ export type Database = {
       case_files: {
         Row: {
           assigned_to: string | null
-          case_scale: string | null
           case_type: string
           created_at: string
           current_status_note: string | null
@@ -1889,7 +1832,6 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
-          case_scale?: string | null
           case_type?: string
           created_at?: string
           current_status_note?: string | null
@@ -1914,7 +1856,6 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
-          case_scale?: string | null
           case_type?: string
           created_at?: string
           current_status_note?: string | null
@@ -1947,7 +1888,6 @@ export type Database = {
           },
         ]
       }
-
       case_item_attachments: {
         Row: {
           case_item_id: string
@@ -1983,6 +1923,83 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_item_escalation_suggestions: {
+        Row: {
+          accepted_case_file_id: string | null
+          case_item_id: string
+          created_at: string
+          id: string
+          reason_codes: string[]
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["case_item_escalation_status"]
+          suggested_case_file_id: string | null
+          suggestion_payload: Json
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_case_file_id?: string | null
+          case_item_id: string
+          created_at?: string
+          id?: string
+          reason_codes?: string[]
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["case_item_escalation_status"]
+          suggested_case_file_id?: string | null
+          suggestion_payload?: Json
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_case_file_id?: string | null
+          case_item_id?: string
+          created_at?: string
+          id?: string
+          reason_codes?: string[]
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["case_item_escalation_status"]
+          suggested_case_file_id?: string | null
+          suggestion_payload?: Json
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_item_escalation_suggestions_accepted_case_file_id_fkey"
+            columns: ["accepted_case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_item_escalation_suggestions_case_item_id_fkey"
+            columns: ["case_item_id"]
+            isOneToOne: false
+            referencedRelation: "case_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_item_escalation_suggestions_suggested_case_file_id_fkey"
+            columns: ["suggested_case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_item_escalation_suggestions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -2076,10 +2093,60 @@ export type Database = {
           },
         ]
       }
+      case_item_timeline: {
+        Row: {
+          case_item_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          case_item_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          case_item_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_item_timeline_case_item_id_fkey"
+            columns: ["case_item_id"]
+            isOneToOne: false
+            referencedRelation: "case_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_item_timeline_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_items: {
         Row: {
           case_file_id: string | null
-          case_scale: string | null
           confidentiality_level: string | null
           contact_id: string | null
           contains_personal_data: boolean
@@ -2088,6 +2155,8 @@ export type Database = {
           follow_up_at: string | null
           id: string
           intake_payload: Json | null
+          is_legal_relevant: boolean
+          is_political_relevant: boolean
           last_modified_at: string
           last_modified_by: string | null
           owner_user_id: string | null
@@ -2107,7 +2176,6 @@ export type Database = {
         }
         Insert: {
           case_file_id?: string | null
-          case_scale?: string | null
           confidentiality_level?: string | null
           contact_id?: string | null
           contains_personal_data?: boolean
@@ -2116,6 +2184,8 @@ export type Database = {
           follow_up_at?: string | null
           id?: string
           intake_payload?: Json | null
+          is_legal_relevant?: boolean
+          is_political_relevant?: boolean
           last_modified_at?: string
           last_modified_by?: string | null
           owner_user_id?: string | null
@@ -2135,7 +2205,6 @@ export type Database = {
         }
         Update: {
           case_file_id?: string | null
-          case_scale?: string | null
           confidentiality_level?: string | null
           contact_id?: string | null
           contains_personal_data?: boolean
@@ -2144,6 +2213,8 @@ export type Database = {
           follow_up_at?: string | null
           id?: string
           intake_payload?: Json | null
+          is_legal_relevant?: boolean
+          is_political_relevant?: boolean
           last_modified_at?: string
           last_modified_by?: string | null
           owner_user_id?: string | null
@@ -6323,7 +6394,53 @@ export type Database = {
           },
         ]
       }
-
+      matrix_widget_callback_requests: {
+        Row: {
+          concern: string
+          created_at: string
+          id: string
+          matrix_event_id: string | null
+          matrix_room_id: string
+          preferred_time: string
+          requester_name: string
+          requester_phone: string
+          source: string
+          task_id: string
+        }
+        Insert: {
+          concern: string
+          created_at?: string
+          id?: string
+          matrix_event_id?: string | null
+          matrix_room_id: string
+          preferred_time: string
+          requester_name: string
+          requester_phone: string
+          source?: string
+          task_id: string
+        }
+        Update: {
+          concern?: string
+          created_at?: string
+          id?: string
+          matrix_event_id?: string | null
+          matrix_room_id?: string
+          preferred_time?: string
+          requester_name?: string
+          requester_phone?: string
+          source?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matrix_widget_callback_requests_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matrix_widget_improvement_triggers: {
         Row: {
           conversation_id: string
@@ -10170,6 +10287,45 @@ export type Database = {
         }
         Relationships: []
       }
+      widget_rate_limits: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          ip_address: string
+          limit_key: string
+          request_count: number
+          session_id: string
+          updated_at: string
+          window_expires_at: string
+          window_started_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          ip_address: string
+          limit_key: string
+          request_count?: number
+          session_id: string
+          updated_at?: string
+          window_expires_at: string
+          window_started_at: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          ip_address?: string
+          limit_key?: string
+          request_count?: number
+          session_id?: string
+          updated_at?: string
+          window_expires_at?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       matrix_widget_feedback_admin_stats: {
@@ -10333,7 +10489,7 @@ export type Database = {
         Returns: Json
       }
       get_my_work_new_counts: {
-        Args: { p_contexts?: string[] | null; p_user_id: string }
+        Args: { p_contexts?: string[]; p_user_id: string }
         Returns: Json
       }
       get_shared_note_ids: { Args: { _user_id: string }; Returns: string[] }
@@ -10358,6 +10514,10 @@ export type Database = {
       }
       get_user_role_level: { Args: { _user_id: string }; Returns: number }
       get_user_tenant_ids: { Args: { _user_id: string }; Returns: string[] }
+      has_active_tenant_role: {
+        Args: { _roles: string[]; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -10424,6 +10584,14 @@ export type Database = {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
       }
+      user_can_access_case_item: {
+        Args: { _case_item_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_can_access_case_item_interaction: {
+        Args: { _interaction_id: string; _user_id: string }
+        Returns: boolean
+      }
       user_can_access_task_decision: {
         Args: { _decision_id: string; _user_id: string }
         Returns: boolean
@@ -10435,9 +10603,18 @@ export type Database = {
     }
     Enums: {
       app_role: "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant"
-      case_item_interaction_visibility: "internal" | "team" | "public_to_case_participants"
+      case_item_escalation_status: "pending" | "accepted" | "rejected"
+      case_item_interaction_visibility:
+        | "internal"
+        | "team"
+        | "public_to_case_participants"
       case_item_priority: "low" | "medium" | "high" | "urgent"
-      case_item_source_channel: "phone" | "email" | "social" | "in_person" | "other"
+      case_item_source_channel:
+        | "phone"
+        | "email"
+        | "social"
+        | "in_person"
+        | "other"
       case_item_status: "active" | "pending" | "closed" | "archived"
       flag_visibility: "public" | "private" | "team"
       leave_status:
@@ -10587,9 +10764,20 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["abgeordneter", "bueroleitung", "mitarbeiter", "praktikant"],
-      case_item_interaction_visibility: ["internal", "team", "public_to_case_participants"],
+      case_item_escalation_status: ["pending", "accepted", "rejected"],
+      case_item_interaction_visibility: [
+        "internal",
+        "team",
+        "public_to_case_participants",
+      ],
       case_item_priority: ["low", "medium", "high", "urgent"],
-      case_item_source_channel: ["phone", "email", "social", "in_person", "other"],
+      case_item_source_channel: [
+        "phone",
+        "email",
+        "social",
+        "in_person",
+        "other",
+      ],
       case_item_status: ["active", "pending", "closed", "archived"],
       flag_visibility: ["public", "private", "team"],
       leave_status: [
